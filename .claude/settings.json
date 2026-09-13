@@ -19,7 +19,15 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(bash scripts/spec-loop.sh:*)",
-      "Bash(bash scripts/skillworks-preflight.sh:*)"
+      "Bash(bash scripts/skillworks-preflight.sh:*)",
+      "Bash(dotnet:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(aspire:*)",
+      "Bash(aspire.cmd:*)",
+      "Bash(docker:*)",
+      "Bash(mkdir:*)"
     ]
   },
   "promptCacheTtl": "1h",
