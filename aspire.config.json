@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/Skillworks.AppHost/Skillworks.AppHost.csproj"
+  }
+}

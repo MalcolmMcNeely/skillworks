@@ -8,8 +8,9 @@ Three parts are planned:
 - **MCP server** — C#, exposing the catalogue and its telemetry to an agent.
 - **Studio** — a local app for watching skill telemetry, authoring the catalogue, and running evals. React over an ASP.NET Core API, started by Aspire.
 
-Nothing is built yet. The vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in
-[docs/adr/](docs/adr/), and the research behind it in
+Studio is a walking skeleton: it starts, and the front end reads one value from the API. The
+vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in [docs/adr/](docs/adr/), and the
+research behind it in
 [skills-marketplace](https://github.com/MalcolmMcNeely/skills-marketplace).
 
 ## Getting started
@@ -32,10 +33,41 @@ It creates the `ready-for-agent` label, writes `docs/agents/`, points `CLAUDE.md
 
 Then go to [the dev loop](#the-dev-loop).
 
+## Running Studio
+
+You need the .NET 10 SDK, Node 20 or later, and the Aspire CLI. Then, from the repo root:
+
+```
+aspire run
+```
+
+That starts the API and the front end together, and prints the address of Aspire's own dashboard.
+Aspire runs `npm install` and `npm run dev` for the front end itself, and hands it the API's
+address, so there is no port to look up.
+
+Checks. The front-end ones must run from `src/Skillworks.Studio.Web`, so they pick up the local
+tools rather than anything installed globally:
+
+```
+dotnet test Skillworks.slnx
+
+cd src/Skillworks.Studio.Web
+npm run typecheck
+npm run lint
+npm test
+```
+
 ## Repo layout
 
 | Path | What it is |
 |---|---|
+| `src/Skillworks.Core/` | The domain. No HTTP. The API and the planned MCP server are both shells over it. |
+| `src/Skillworks.Studio.Api/` | The ASP.NET Core shell. HTTP and nothing else. |
+| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped; any rule of its own lives in `src/lib/` with a test beside it. |
+| `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
+| `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service-discovery setup. |
+| `tests/` | The one test seam: the real API in memory, asserting the JSON it returns. |
+| `plugins/` | Where the catalogue will live. See [ADR 0003](docs/adr/0003-catalogue-lives-here-until-it-is-published.md). |
 | `.claude/skills/` | Dev tooling used while working in this repo. Mostly vendored, not shipped. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
 | `docs/agents/` | Written by `/skillworks-setup`. The tracker, label and domain-doc references the skills read. |

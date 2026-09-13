@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Skillworks.AppHost/Skillworks.AppHost.csproj" />
+    <Project Path="src/Skillworks.Core/Skillworks.Core.csproj" />
+    <Project Path="src/Skillworks.ServiceDefaults/Skillworks.ServiceDefaults.csproj" />
+    <Project Path="src/Skillworks.Studio.Api/Skillworks.Studio.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Skillworks.Studio.Api.Tests/Skillworks.Studio.Api.Tests.csproj" />
+  </Folder>
+</Solution>
