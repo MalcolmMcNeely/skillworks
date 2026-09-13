@@ -8,12 +8,15 @@ public sealed class Activation
 {
     public required string ToolUseId { get; init; }
 
-    /// <summary>As invoked: <c>&lt;plugin&gt;:&lt;skill&gt;</c> for a skill delivered by a plugin.</summary>
     public required string SkillName { get; init; }
 
+    /// <summary>
+    /// Kept even though nothing reads it yet. Ingest never revisits a line it has read, so a field
+    /// dropped now costs a full re-read of the transcripts to add back.
+    /// </summary>
     public required string SessionId { get; init; }
 
-    /// <summary>The leaf of the working directory. Null when the transcript did not record one.</summary>
+    /// <summary>Null when the transcript recorded no working directory.</summary>
     public string? Repository { get; init; }
 
     public string? GitBranch { get; init; }

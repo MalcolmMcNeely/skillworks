@@ -3,6 +3,7 @@ import { fetchCatalogue } from '../api/catalogue';
 import { fetchSkills, type SkillSummary } from '../api/skills';
 import { SkillTable } from '../components/SkillTable';
 import { describeCatalogueLocation } from '../lib/catalogue';
+import { describeFetchFailure } from '../lib/errors';
 
 export function Home() {
   const [status, setStatus] = useState('Asking the API…');
@@ -12,21 +13,18 @@ export function Home() {
   useEffect(() => {
     const abort = new AbortController();
 
+    // An abort is this effect tidying up after itself, not a failure worth showing.
+    const report = (show: (message: string) => void) => (failure: unknown) => {
+      if (!abort.signal.aborted) {
+        show(describeFetchFailure(failure));
+      }
+    };
+
     fetchCatalogue(abort.signal)
       .then((location) => setStatus(describeCatalogueLocation(location)))
-      .catch((error: unknown) => {
-        if (!abort.signal.aborted) {
-          setStatus(error instanceof Error ? error.message : 'Could not reach the API');
-        }
-      });
+      .catch(report(setStatus));
 
-    fetchSkills(abort.signal)
-      .then(setSkills)
-      .catch((error: unknown) => {
-        if (!abort.signal.aborted) {
-          setSkillsError(error instanceof Error ? error.message : 'Could not reach the API');
-        }
-      });
+    fetchSkills(abort.signal).then(setSkills).catch(report(setSkillsError));
 
     return () => abort.abort();
   }, []);

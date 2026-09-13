@@ -14,6 +14,7 @@ public readonly record struct IngestPass(int TranscriptsRead, int ActivationsAdd
 /// </summary>
 public sealed class TranscriptIngestor(
     TranscriptLocator locator,
+    RepositoryNames repositories,
     IDbContextFactory<TelemetryDbContext> contexts)
 {
     public async Task<IngestPass> RunAsync(CancellationToken cancellationToken)
@@ -53,7 +54,7 @@ public sealed class TranscriptIngestor(
                 cancellationToken.ThrowIfCancellationRequested();
                 readTo = line.EndOffset;
 
-                foreach (var activation in TranscriptParser.Activations(line.Text))
+                foreach (var activation in TranscriptParser.Activations(line.Text, repositories))
                 {
                     if (counted.Add(activation.ToolUseId))
                     {

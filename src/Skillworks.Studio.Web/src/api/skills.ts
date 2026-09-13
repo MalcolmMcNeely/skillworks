@@ -1,3 +1,5 @@
+import { getJson } from './json';
+
 /** One row of `GET /api/skills`, already shaped by the API. */
 export interface SkillSummary {
   name: string;
@@ -6,12 +8,6 @@ export interface SkillSummary {
   branches: string[];
 }
 
-export async function fetchSkills(signal: AbortSignal): Promise<SkillSummary[]> {
-  const response = await fetch('/api/skills', { signal });
-
-  if (!response.ok) {
-    throw new Error(`GET /api/skills returned ${response.status}`);
-  }
-
-  return (await response.json()) as SkillSummary[];
+export function fetchSkills(signal: AbortSignal): Promise<SkillSummary[]> {
+  return getJson<SkillSummary[]>('/api/skills', signal);
 }

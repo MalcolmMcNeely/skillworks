@@ -5,13 +5,11 @@ namespace Skillworks.Core.Telemetry;
 /// <param name="CompletedPasses">Passes finished since Studio started. Zero means nothing is in yet.</param>
 /// <param name="TranscriptsRead">Files with new content in the last finished pass.</param>
 /// <param name="ActivationsAdded">Firings added by the last finished pass.</param>
-/// <param name="LastCompletedUtc">When the last pass finished, so a screen can say how stale it is.</param>
 public sealed record IngestStatus(
     bool Running,
     int CompletedPasses,
     int TranscriptsRead,
-    int ActivationsAdded,
-    DateTimeOffset? LastCompletedUtc);
+    int ActivationsAdded);
 
 /// <summary>
 /// The live state of the ingest, shared between the background service that does the work and the
@@ -25,7 +23,6 @@ public sealed class IngestState
     private bool _running;
     private int _completedPasses;
     private IngestPass _lastPass;
-    private DateTimeOffset? _lastCompletedUtc;
 
     public IngestStatus Status()
     {
@@ -35,8 +32,7 @@ public sealed class IngestState
                 _running,
                 _completedPasses,
                 _lastPass.TranscriptsRead,
-                _lastPass.ActivationsAdded,
-                _lastCompletedUtc);
+                _lastPass.ActivationsAdded);
         }
     }
 
@@ -63,7 +59,6 @@ public sealed class IngestState
         lock (_gate)
         {
             _lastPass = pass;
-            _lastCompletedUtc = DateTimeOffset.UtcNow;
             _running = false;
             _completedPasses++;
         }

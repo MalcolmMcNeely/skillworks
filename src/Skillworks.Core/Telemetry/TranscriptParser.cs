@@ -1,14 +1,22 @@
 using System.Text.Json;
+using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Telemetry;
 
 /// <summary>
-/// Turns one transcript line into the activations it records. A Skill tool use is a firing, so one
-/// assistant record can hold several. Internal on purpose: the tests drive the API, not this.
+/// Turns one transcript line into the activations it records. Internal on purpose: the tests drive
+/// the API, not this.
 /// </summary>
+/// <remarks>
+/// An activation is read from a Skill tool use, because CONTEXT.md defines one as "one occasion on
+/// which a skill fired" and that block is the firing. The record's own <c>attributionSkill</c> is a
+/// different fact: the skill that was already active when the request was made. It repeats on every
+/// turn a skill is in force, so counting it would count turns, not firings. It is what Attribution
+/// will read when cost lands.
+/// </remarks>
 internal static class TranscriptParser
 {
-    public static List<Activation> Activations(string line)
+    public static List<Activation> Activations(string line, RepositoryNames repositories)
     {
         var activations = new List<Activation>();
 
@@ -46,7 +54,7 @@ internal static class TranscriptParser
                 ToolUseId = toolUseId,
                 SkillName = skill,
                 SessionId = Text(record, "sessionId") ?? "",
-                Repository = Repository(Text(record, "cwd")),
+                Repository = repositories.Of(Text(record, "cwd")),
                 GitBranch = Text(record, "gitBranch"),
                 TimestampUtc = Timestamp(record),
             });
@@ -76,15 +84,6 @@ internal static class TranscriptParser
     private static string? Text(JsonElement element, string property) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
-            : null;
-
-    /// <summary>
-    /// Split by hand rather than with Path, because a Windows transcript read on Linux still has to
-    /// yield "alpha" from "C:\Projects\alpha".
-    /// </summary>
-    private static string? Repository(string? workingDirectory) =>
-        workingDirectory?.TrimEnd('\\', '/').Split('\\', '/') is [.., var leaf] && leaf.Length > 0
-            ? leaf
             : null;
 
     private static DateTimeOffset Timestamp(JsonElement record) =>

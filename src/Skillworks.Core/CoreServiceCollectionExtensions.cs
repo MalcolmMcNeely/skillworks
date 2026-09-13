@@ -22,6 +22,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<CatalogueLocator>();
         services.AddSingleton<CatalogueSkills>();
         services.AddSingleton<TranscriptLocator>();
+        services.AddSingleton<RepositoryNames>();
 
         services.AddDbContextFactory<TelemetryDbContext>((provider, builder) =>
         {
@@ -32,6 +33,7 @@ public static class CoreServiceCollectionExtensions
 
         services.AddSingleton<TranscriptIngestor>();
         services.AddSingleton<IngestState>();
+        services.AddSingleton<ActivationStore>();
         services.AddSingleton<SkillReport>();
 
         // Order matters: the schema is in place before the first pass and before the first query.

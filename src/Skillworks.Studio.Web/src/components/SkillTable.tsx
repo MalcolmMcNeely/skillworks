@@ -13,7 +13,7 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useState } from 'react';
 import type { SkillSummary } from '../api/skills';
-import { describeList } from '../lib/skills';
+import { ariaSort, describeList, sortMark } from '../lib/skills';
 
 const features = tableFeatures({
   rowSortingFeature,
@@ -42,8 +42,6 @@ const columns = column.columns([
 ]);
 
 const rowHeight = 34;
-
-const sortMarks: Record<string, string> = { asc: ' ▲', desc: ' ▼' };
 
 export function SkillTable({ skills }: { skills: SkillSummary[] }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'activations', desc: true }]);
@@ -84,7 +82,7 @@ export function SkillTable({ skills }: { skills: SkillSummary[] }) {
               >
                 <button type="button" onClick={header.column.getToggleSortingHandler()}>
                   {flexRender(header.column.columnDef.header, header.getContext())}
-                  {sortMarks[String(header.column.getIsSorted())] ?? ''}
+                  {sortMark(header.column.getIsSorted())}
                 </button>
               </div>
             ))}
@@ -116,12 +114,4 @@ export function SkillTable({ skills }: { skills: SkillSummary[] }) {
       </div>
     </div>
   );
-}
-
-function ariaSort(sorted: false | 'asc' | 'desc'): 'ascending' | 'descending' | 'none' {
-  if (sorted === 'asc') {
-    return 'ascending';
-  }
-
-  return sorted === 'desc' ? 'descending' : 'none';
 }

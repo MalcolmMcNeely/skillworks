@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Skillworks.Studio.Api.Tests;
 
 public sealed class SkillEndpointTests
@@ -9,12 +7,20 @@ public sealed class SkillEndpointTests
     {
         using var studio = new Studio(Studio.Fixture("ordinary"));
 
-        var skills = await studio.GetSkills();
-        var grilling = Skill(skills, "grilling");
+        var grilling = await studio.Skill("grilling");
 
-        Assert.Equal(1, grilling.GetProperty("activations").GetInt32());
-        Assert.Equal(["alpha"], Strings(grilling, "repositories"));
-        Assert.Equal(["main"], Strings(grilling, "branches"));
+        Assert.Equal(1, grilling.Activations);
+        Assert.Equal(["alpha"], grilling.Repositories);
+        Assert.Equal(["main"], grilling.Branches);
+    }
+
+    [Fact]
+    public async Task Reads_the_rest_of_a_transcript_that_holds_a_line_it_cannot_parse()
+    {
+        using var studio = new Studio(Studio.Fixture("ordinary"));
+
+        // The ordinary fixture carries one truncated line. One bad line must not cost the file.
+        Assert.Equal(1, await studio.ActivationsOf("grilling"));
     }
 
     [Fact]
@@ -22,9 +28,7 @@ public sealed class SkillEndpointTests
     {
         using var studio = new Studio(Studio.Fixture("repeated"));
 
-        var skills = await studio.GetSkills();
-
-        Assert.Equal(3, Skill(skills, "unslop").GetProperty("activations").GetInt32());
+        Assert.Equal(3, await studio.ActivationsOf("unslop"));
     }
 
     [Fact]
@@ -32,9 +36,7 @@ public sealed class SkillEndpointTests
     {
         using var studio = new Studio(Studio.Fixture("quiet"));
 
-        var skills = await studio.GetSkills();
-
-        Assert.Empty(skills.EnumerateArray());
+        Assert.Empty(await studio.Skills());
     }
 
     [Fact]
@@ -42,11 +44,10 @@ public sealed class SkillEndpointTests
     {
         using var studio = new Studio(Studio.Fixture("quiet"), Studio.Catalogue());
 
-        var skills = await studio.GetSkills();
-        var never = Skill(skills, "probekit:probe-local");
+        var never = await studio.Skill("probekit:probe-local");
 
-        Assert.Equal(0, never.GetProperty("activations").GetInt32());
-        Assert.Empty(never.GetProperty("repositories").EnumerateArray());
+        Assert.Equal(0, never.Activations);
+        Assert.Empty(never.Repositories);
     }
 
     [Fact]
@@ -54,17 +55,34 @@ public sealed class SkillEndpointTests
     {
         using var studio = new Studio(Studio.Fixture("catalogue"), Studio.Catalogue());
 
-        var skills = await studio.GetSkills();
+        var skills = await studio.Skills();
 
         Assert.Equal(
             ["probekit:probe-local", "probekit:probe-plugin"],
-            skills.EnumerateArray().Select(row => row.GetProperty("name").GetString()));
-        Assert.Equal(2, Skill(skills, "probekit:probe-plugin").GetProperty("activations").GetInt32());
+            skills.Select(skill => skill.Name));
+        Assert.Equal(2, await studio.ActivationsOf("probekit:probe-plugin"));
     }
 
-    private static JsonElement Skill(JsonElement skills, string name) =>
-        skills.EnumerateArray().Single(skill => skill.GetProperty("name").GetString() == name);
+    [Fact]
+    public async Task Names_the_repository_a_session_ran_in_when_it_started_in_a_subfolder()
+    {
+        using var machine = new TemporaryFolder();
 
-    private static string[] Strings(JsonElement skill, string property) =>
-        [.. skill.GetProperty(property).EnumerateArray().Select(value => value.GetString()!)];
+        // A repository with a session started two folders down, which is where the leaf of the
+        // working directory would answer "web" instead of "omega".
+        machine.Subfolder("omega", ".git");
+        var startedIn = machine.Subfolder("omega", "src", "web");
+
+        var transcripts = machine.Subfolder("transcripts", "C--Projects-omega-src-web");
+        var template = await File.ReadAllTextAsync(
+            Path.Combine(Studio.Fixture("in-a-subfolder"), "template.jsonl.part"));
+
+        await File.WriteAllTextAsync(
+            Path.Combine(transcripts, "0a9f1c2e-0000-4000-8000-000000000006.jsonl"),
+            template.Replace("__CWD__", startedIn.Replace("\\", "\\\\")));
+
+        using var studio = new Studio(machine.Subfolder("transcripts"));
+
+        Assert.Equal(["omega"], (await studio.Skill("comment-sweep")).Repositories);
+    }
 }
