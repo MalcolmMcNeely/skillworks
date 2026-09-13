@@ -39,6 +39,13 @@ The local app for watching, authoring and testing the catalogue. It runs on the 
 machine because authoring writes files and evals start `claude`.
 _Avoid_: Reader, console, dashboard, portal
 
+**Health**:
+How each **part** of Studio is doing, in one place. A part is working, starting, off or broken. A
+switch nobody flipped is off and not broken, because only one of those is a fault and only one of
+them is the developer's to fix. Every part that is not working names the action that would change
+it.
+_Avoid_: Status, diagnostics, readiness
+
 ### Measurement
 
 **Activation**:
@@ -53,6 +60,13 @@ Where a Skill came from and what set it off. Only the events store records it; a
 not, which is the whole reason there are two stores. A period the store holds nothing for is
 labelled missing, never shown as none.
 _Avoid_: Lineage, delivery, history
+
+**Gap**:
+Which way Provenance fell short, when it did: the store was unreachable, telemetry was never
+switched on, the period was genuinely quiet, or it held more events than one read takes. All four
+arrive as no Origins at all, so the Gap is the only thing that tells them apart, and each one means
+something different for the developer to do.
+_Avoid_: Error, empty, null
 
 **Origin**:
 One way a Skill was delivered and set off: its Trigger, the place it was loaded from, and the Plugin

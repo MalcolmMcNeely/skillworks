@@ -1,5 +1,8 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Skillworks.Core;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Health;
 using Skillworks.Core.Settings;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Telemetry;
@@ -10,11 +13,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddSkillworksCore(builder.Configuration);
 
+// Enums by name, cased like every other name on the wire. A number would make "the events store is
+// down" and "telemetry was never switched on" a 1 and a 2, which is a thing to look up rather than
+// a thing to read.
+builder.Services.ConfigureHttpJsonOptions(json =>
+    json.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
 var api = app.MapGroup("/api");
+
+// One place that says which parts of Studio are doing their job, so an empty screen elsewhere is
+// explained rather than mysterious. It probes the events store, so it is a read of the outside
+// world rather than a cached opinion about it.
+api.MapGet("health", (StudioHealth health, CancellationToken cancellationToken) =>
+    health.ReportAsync(cancellationToken));
 
 api.MapGet("catalogue", (CatalogueLocator locator) => locator.Locate());
 

@@ -13,9 +13,21 @@ export interface Origin {
   marketplace: string | null;
 }
 
+/**
+ * Which way provenance fell short, if it did. Every one of these arrives as an empty list of
+ * origins, so the word is the only thing that tells a screen what it is looking at.
+ */
+export type ProvenanceGap =
+  | 'complete'
+  | 'unreachable'
+  | 'truncated'
+  | 'telemetryOff'
+  | 'telemetryUnknown'
+  | 'quiet';
+
 /** What the events store had to say about the period on screen. */
 export interface Provenance {
-  reachable: boolean;
+  gap: ProvenanceGap;
   missing: string | null;
   sinceUtc: string;
 }

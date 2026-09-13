@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Health;
 using Skillworks.Core.Provenance;
 using Skillworks.Core.Settings;
 using Skillworks.Core.Skills;
@@ -72,6 +73,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<ProvenanceReport>();
         services.AddSingleton<SkillReport>();
         services.AddSingleton<ActivationReport>();
+        services.AddSingleton<StudioHealth>();
 
         // Order matters: the schema is in place before the first pass and before the first query.
         services.AddHostedService<TelemetrySchemaService>();

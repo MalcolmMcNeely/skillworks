@@ -75,7 +75,7 @@ describe('describeProvenance', () => {
   it('says what is missing in the words the API gave for it', () => {
     expect(
       describeProvenance({
-        reachable: false,
+        gap: 'unreachable',
         missing: 'Studio could not read the events store.',
         sinceUtc: '2026-09-05T00:00:00Z',
       }),
@@ -84,7 +84,7 @@ describe('describeProvenance', () => {
 
   it('says how far back the provenance on screen reaches when nothing is missing', () => {
     expect(
-      describeProvenance({ reachable: true, missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
+      describeProvenance({ gap: 'complete', missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
     ).toBe('Where a skill came from is known for events since 2026-09-05 00:00:00 UTC.');
   });
 });
@@ -93,18 +93,30 @@ describe('describeMissingOrigin', () => {
   it('blames the store when the store is what failed', () => {
     expect(
       describeMissingOrigin({
-        reachable: false,
+        gap: 'unreachable',
         missing: 'Studio could not read the events store.',
         sinceUtc: '2026-09-05T00:00:00Z',
       }),
     ).toBe('Studio could not read the events store.');
   });
 
+  it('points at the switch when the switch is what was never flipped', () => {
+    // A firing with no trigger beside it reads as "Claude did not choose this one" unless the
+    // screen says telemetry was never recording. The API gives the words; this passes them on.
+    expect(
+      describeMissingOrigin({
+        gap: 'telemetryOff',
+        missing: 'Claude Code is not emitting telemetry. Turn it on in the Telemetry panel.',
+        sinceUtc: '2026-09-05T00:00:00Z',
+      }),
+    ).toBe('Claude Code is not emitting telemetry. Turn it on in the Telemetry panel.');
+  });
+
   it('says one firing has nothing recorded when the store answered for others', () => {
     // The store was read, and held events from that moment for other skills. Showing how far back
     // it reaches would answer a question about one firing with a fact about a month.
     expect(
-      describeMissingOrigin({ reachable: true, missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
+      describeMissingOrigin({ gap: 'complete', missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
     ).toBe('The events store has nothing recorded for this firing.');
   });
 });

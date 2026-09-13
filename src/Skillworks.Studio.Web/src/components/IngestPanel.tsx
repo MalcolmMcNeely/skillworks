@@ -27,11 +27,11 @@ export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) 
   const [failure, setFailure] = useState<string | null>(null);
   const [faults, setFaults] = useState<TranscriptFault[] | null>(null);
 
-  // One controller for this panel's whole life, so nothing it started is still writing state after
-  // it has gone. The poll and the fault list both hang off it.
-  const [abort] = useState(() => new AbortController());
-
+  // A controller per poll rather than one for the panel's life. React remounts a component in
+  // development, so a controller held in state outlives its own cleanup and would leave the panel
+  // stuck on "Asking the API…" with nothing to say about why.
   useEffect(() => {
+    const abort = new AbortController();
     let told = -1;
 
     const look = () =>
@@ -62,12 +62,11 @@ export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) 
       clearInterval(poll);
       abort.abort();
     };
-  }, [abort, onPassFinished]);
+  }, [onPassFinished]);
 
+  // For the reads a click starts. Those carry no signal, because a deliberate act should finish.
   function show(problem: unknown) {
-    if (!abort.signal.aborted) {
-      setFailure(describeFetchFailure(problem));
-    }
+    setFailure(describeFetchFailure(problem));
   }
 
   function ask(request: () => Promise<IngestStatus>) {
@@ -104,10 +103,7 @@ export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) 
               <p data-testid="ingest-faults">{describeFaults(status.faults)}</p>
 
               {faults === null ? (
-                <button
-                  type="button"
-                  onClick={() => fetchFaults(abort.signal).then(setFaults, show)}
-                >
+                <button type="button" onClick={() => fetchFaults().then(setFaults, show)}>
                   Show what was skipped
                 </button>
               ) : (

@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
+using Skillworks.Core.Settings;
 
 namespace Skillworks.Studio.Api.Tests;
 
@@ -49,14 +51,36 @@ public sealed record OriginRow
     public required string? Marketplace { get; init; }
 }
 
-/// <summary>What the events store had to say: whether it answered, and what it could not cover.</summary>
+/// <summary>What the events store had to say: which way it fell short, if it did, and in what words.</summary>
 public sealed record ProvenanceRow
 {
-    public required bool Reachable { get; init; }
+    /// <summary>One of <c>none</c>, <c>unreachable</c>, <c>telemetryOff</c>, <c>quiet</c>, <c>truncated</c>.</summary>
+    public required string Gap { get; init; }
 
     public required string? Missing { get; init; }
 
     public required DateTimeOffset SinceUtc { get; init; }
+}
+
+/// <summary><c>GET /api/health</c>: every part of Studio, and why a view built on them is empty.</summary>
+public sealed record HealthRow
+{
+    public required PartRow[] Parts { get; init; }
+
+    public required string? WhyEmpty { get; init; }
+}
+
+/// <summary>One part of Studio: how it is doing, and what a developer would do about it.</summary>
+public sealed record PartRow
+{
+    public required string Name { get; init; }
+
+    /// <summary>One of <c>working</c>, <c>starting</c>, <c>off</c>, <c>broken</c>.</summary>
+    public required string State { get; init; }
+
+    public required string Detail { get; init; }
+
+    public required string? Action { get; init; }
 }
 
 /// <summary>What one skill cost, as the skill table reports it.</summary>
@@ -211,6 +235,19 @@ public sealed class Studio : IDisposable
 {
     private static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web);
 
+    /// <summary>
+    /// A settings file holding exactly the variables the switch owns, built from the switch's own
+    /// list so a change to that list cannot leave this fixture claiming telemetry is on when Studio
+    /// would read it as off.
+    /// </summary>
+    private static readonly string EmittingSettings = new JsonObject
+    {
+        ["env"] = new JsonObject(
+            TelemetryVariables
+                .For(new ClaudeSettingsOptions().CollectorEndpoint)
+                .Select(variable => KeyValuePair.Create(variable.Key, (JsonNode?)JsonValue.Create(variable.Value)))),
+    }.ToJsonString();
+
     private readonly TemporaryFolder _data = new();
     private readonly StudioApi _api;
     private readonly HttpClient _client;
@@ -228,19 +265,35 @@ public sealed class Studio : IDisposable
     /// The cap Studio ships with, so a test that wants to reach it can ask for a smaller one
     /// instead of building five thousand events.
     /// </param>
+    /// <param name="emitting">
+    /// True by default, and never read from the developer's own settings. Studio asks the switch
+    /// whenever it explains a gap in provenance, so a test left pointing at the real file would
+    /// pass or fail on whether the machine running it happens to have telemetry turned on.
+    /// </param>
+    /// <param name="settings">
+    /// The settings file's exact text, for a test about a document Studio cannot parse. It stands
+    /// in place of <paramref name="emitting"/>.
+    /// </param>
     public Studio(
         string? transcriptPath,
         string? cataloguePath = null,
         int sweepSeconds = 0,
         Events? events = null,
-        int maxEvents = 5000)
+        int maxEvents = 5000,
+        bool emitting = true,
+        string? settings = null)
     {
+        var settingsPath = Path.Combine(_data.Path, "settings.json");
+        File.WriteAllText(settingsPath, settings ?? (emitting ? EmittingSettings : "{}"));
+
         _api = new StudioApi(
             events ?? Events.Holding(),
             ("Transcripts:Path", transcriptPath),
             ("Telemetry:DatabasePath", Path.Combine(_data.Path, "telemetry.db")),
             ("Telemetry:SweepSeconds", sweepSeconds.ToString()),
             ("Loki:MaxEvents", maxEvents.ToString()),
+            ("ClaudeSettings:Path", settingsPath),
+            ("ClaudeSettings:StampPath", Path.Combine(_data.Path, "telemetry-switch.json")),
             ("Catalogue:Path", cataloguePath ?? Path.Combine(_data.Path, "no-catalogue")));
 
         _client = _api.CreateClient();
@@ -296,6 +349,19 @@ public sealed class Studio : IDisposable
         return await response.Content.ReadFromJsonAsync<IngestRow>(Wire)
             ?? throw new InvalidOperationException("The ingest status came back empty.");
     }
+
+    /// <summary>How every part of Studio is doing, in the one place that says so.</summary>
+    public async Task<HealthRow> Health()
+    {
+        await WaitForIngestPasses(1);
+
+        return await _client.GetFromJsonAsync<HealthRow>("/api/health", Wire)
+            ?? throw new InvalidOperationException("The health report came back empty.");
+    }
+
+    /// <summary>One named part of the health report. Fails the test if the report has not got it.</summary>
+    public async Task<PartRow> Part(string name) =>
+        (await Health()).Parts.Single(part => part.Name == name);
 
     public async Task<IReadOnlyList<FaultRow>> Faults()
     {

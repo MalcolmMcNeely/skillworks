@@ -131,7 +131,7 @@ public sealed class ProvenanceEndpointTests
         var answer = await studio.SkillTable();
         var grilling = Assert.Single(answer.Skills);
 
-        Assert.False(answer.Provenance.Reachable);
+        Assert.Equal("unreachable", answer.Provenance.Gap);
         Assert.NotNull(answer.Provenance.Missing);
 
         // The transcript half is the durable record and stands on its own, so the count and the
@@ -150,7 +150,7 @@ public sealed class ProvenanceEndpointTests
 
         // A store that is up and unhappy is an outage. Reading it as silence would report the
         // provenance as genuinely absent, which is the one thing this half must never do.
-        Assert.False(answer.Provenance.Reachable);
+        Assert.Equal("unreachable", answer.Provenance.Gap);
         Assert.Contains("502", answer.Provenance.Missing ?? "");
     }
 
@@ -162,11 +162,88 @@ public sealed class ProvenanceEndpointTests
 
         var answer = await studio.SkillTable();
 
-        // The store answered, so nothing is broken, and there is still no provenance for this
-        // period. Saying so is the difference between "not recorded" and "none".
-        Assert.True(answer.Provenance.Reachable);
+        // The store answered and telemetry is on, so nothing is broken, and there is still no
+        // provenance for this period. Saying so is the difference between "not recorded" and "none".
+        Assert.Equal("quiet", answer.Provenance.Gap);
         Assert.NotNull(answer.Provenance.Missing);
         Assert.Empty(Assert.Single(answer.Skills).Origins);
+    }
+
+    [Fact]
+    public async Task Says_telemetry_was_never_switched_on_rather_than_that_the_period_was_quiet()
+    {
+        using var events = Events.Holding();
+        using var studio = new Studio(Studio.Fixture("ordinary"), events: events, emitting: false);
+
+        var answer = await studio.SkillTable();
+
+        // The store is up and empty, and the reason is that nothing was ever sent to it. A reader
+        // told the period was quiet would go looking for a fault that is not there.
+        Assert.Equal("telemetryOff", answer.Provenance.Gap);
+        Assert.Contains("Telemetry panel", answer.Provenance.Missing ?? "");
+    }
+
+    [Fact]
+    public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_was_never_switched_on()
+    {
+        using var down = Events.Down();
+        using var quiet = Events.Holding();
+        using var broken = new Studio(Studio.Fixture("ordinary"), events: down, emitting: true);
+        using var off = new Studio(Studio.Fixture("ordinary"), events: quiet, emitting: false);
+
+        var outage = (await broken.SkillTable()).Provenance;
+        var never = (await off.SkillTable()).Provenance;
+
+        // Two empty answers, two different problems, two different things to do about them. A
+        // caller that only counted the events it got back could not tell these apart at all.
+        Assert.Equal("unreachable", outage.Gap);
+        Assert.Equal("telemetryOff", never.Gap);
+        Assert.NotEqual(outage.Missing, never.Missing);
+    }
+
+    [Fact]
+    public async Task Says_telemetry_is_off_even_where_the_store_has_events_from_before_it_was()
+    {
+        using var events = Events.Holding(new Event("grilling", GrilledAt, Trigger: "claude-proactive"));
+        using var studio = new Studio(Studio.Fixture("ordinary"), events: events, emitting: false);
+
+        var answer = await studio.SkillTable();
+
+        // The origins on screen are real and were recorded earlier. The period runs up to now, and
+        // nothing has reached the store since the switch went off, so a whole-looking answer would
+        // be read as covering a stretch it does not.
+        Assert.Equal("telemetryOff", answer.Provenance.Gap);
+        Assert.Contains("Telemetry panel", answer.Provenance.Missing ?? "");
+        Assert.NotEmpty(Assert.Single(answer.Skills).Origins);
+    }
+
+    [Fact]
+    public async Task Says_it_cannot_tell_whether_telemetry_was_on_rather_than_saying_it_was_off()
+    {
+        using var events = Events.Holding();
+        using var studio = new Studio(Studio.Fixture("ordinary"), events: events, settings: "{ not json");
+
+        var answer = await studio.SkillTable();
+
+        // Studio refuses to write a settings file it could not parse, and reports one as not
+        // emitting so it never writes it by accident. Repeating that on a screen would tell a
+        // developer to flip a switch Studio has already refused to touch.
+        Assert.Equal("telemetryUnknown", answer.Provenance.Gap);
+        Assert.Contains("cannot read", answer.Provenance.Missing ?? "");
+    }
+
+    [Fact]
+    public async Task Says_telemetry_is_off_beside_one_firing_as_well_as_beside_the_table()
+    {
+        using var events = Events.Holding();
+        using var studio = new Studio(Studio.Fixture("ordinary"), events: events, emitting: false);
+
+        var opened = await studio.OpenActivation(Grilling);
+
+        // The same question asked of one firing. A detail page that stayed silent would leave the
+        // empty trigger beside it to be read as "Claude did not choose this one".
+        Assert.Equal("telemetryOff", opened.Provenance.Gap);
+        Assert.Null(opened.Activation.Origin);
     }
 
     [Fact]
@@ -181,7 +258,7 @@ public sealed class ProvenanceEndpointTests
 
         // A full answer and a cut one look the same from here, so a full one is reported as cut.
         // The origins on screen are real; what is not said is whether they are all of them.
-        Assert.True(answer.Provenance.Reachable);
+        Assert.Equal("truncated", answer.Provenance.Gap);
         Assert.NotNull(answer.Provenance.Missing);
         Assert.Equal(2, Assert.Single(answer.Skills).Origins.Length);
     }
@@ -194,7 +271,7 @@ public sealed class ProvenanceEndpointTests
 
         var answer = await studio.SkillTable();
 
-        Assert.True(answer.Provenance.Reachable);
+        Assert.Equal("complete", answer.Provenance.Gap);
         Assert.Null(answer.Provenance.Missing);
     }
 
@@ -206,9 +283,10 @@ public sealed class ProvenanceEndpointTests
 
         var opened = await studio.OpenActivation(Grilling);
 
-        // The store is up and holds a grilling, hours away from this one. A join on name alone
-        // would hand this firing somebody else's trigger.
-        Assert.True(opened.Provenance.Reachable);
+        // The store is up, telemetry is on and it holds a grilling hours away from this one. So the
+        // answer is whole: this firing has no origin because none was recorded near it, and a join
+        // on name alone would have handed it somebody else's trigger.
+        Assert.Equal("complete", opened.Provenance.Gap);
         Assert.Null(opened.Activation.Origin);
     }
 

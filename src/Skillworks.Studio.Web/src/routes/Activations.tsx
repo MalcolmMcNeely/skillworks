@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { fetchActivations, type ActivationList } from '../api/activations';
+import { useHealth } from '../components/useHealth';
 import { activationPath, describeMoment, describeRecorded, skillsPath } from '../lib/activations';
 import { describeFetchFailure } from '../lib/errors';
 import { describeEmpty, readFilter } from '../lib/filters';
@@ -14,6 +15,11 @@ export function Activations() {
   const { skill = '' } = useParams();
   const [activations, setActivations] = useState<ActivationList | null>(null);
   const [activationsError, setActivationsError] = useState<string | null>(null);
+
+  // The same reading the home page takes, and never narrowed: Studio's health is the same whatever
+  // this page is asking about. It is here so an empty list can name the missing source too, rather
+  // than sending a reader back to the page that holds the panel to find out why.
+  const health = useHealth();
 
   const [params] = useSearchParams();
 
@@ -54,7 +60,13 @@ export function Activations() {
           <p data-testid="provenance-note">{describeProvenance(activations.provenance)}</p>
 
           {activations.activations.length === 0 ? (
-            <p data-testid="activations-empty">{describeEmpty(filter)}</p>
+            // Held back until the health read has come back one way or the other, so a reader is
+            // never handed the filter as the reason and the missing source a moment afterwards.
+            health.settled && (
+              <p data-testid="activations-empty">
+                {describeEmpty(filter, health.report?.whyEmpty ?? null)}
+              </p>
+            )
           ) : (
             // Plain rather than virtualised, unlike the skill table. This list is one skill's firings
             // inside a filter, which is hundreds where the table is thousands, and nothing here sorts

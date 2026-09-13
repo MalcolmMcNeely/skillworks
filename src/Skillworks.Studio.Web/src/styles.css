@@ -82,17 +82,27 @@ main {
   white-space: nowrap;
 }
 
+.health,
 .ingest,
 .telemetry {
   margin-top: 2rem;
 }
 
+.health ul,
 .ingest ul,
 .telemetry ul {
   font-family: ui-monospace, monospace;
   padding-inline-start: 1.25rem;
 }
 
+/* The panel is read down the marks first, so they carry the meaning and the list carries no bullet
+   of its own to compete with them. */
+.health ul {
+  list-style: none;
+  padding-inline-start: 0;
+}
+
+.health button,
 .ingest button,
 .telemetry button {
   font: inherit;

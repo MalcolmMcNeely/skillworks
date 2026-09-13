@@ -1,22 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { fetchCatalogue } from '../api/catalogue';
 import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
 import { FilterBar } from '../components/FilterBar';
+import { HealthPanel } from '../components/HealthPanel';
 import { IngestPanel } from '../components/IngestPanel';
 import { SkillTable } from '../components/SkillTable';
 import { TelemetrySwitch } from '../components/TelemetrySwitch';
-import { describeCatalogueLocation } from '../lib/catalogue';
+import { useHealth } from '../components/useHealth';
 import { describeFetchFailure } from '../lib/errors';
 import { describeEmpty, filterParams, readFilter, type Filter } from '../lib/filters';
 import { describeProvenance } from '../lib/provenance';
 import { readSort, withSort, type Sort } from '../lib/sorting';
 
 export function Home() {
-  const [status, setStatus] = useState('Asking the API…');
   const [skills, setSkills] = useState<SkillsAnswer | null>(null);
   const [skillsError, setSkillsError] = useState<string | null>(null);
   const [passes, setPasses] = useState(0);
+
+  // Read here rather than inside the panel, because the same answer does two jobs on this page: it
+  // fills the panel, and it is what tells an empty table which source is missing.
+  const health = useHealth();
 
   // The filter and the sort both live in the address bar, so a reload, a bookmark, the back button
   // and a trip out to one activation all land on the view the reader built. There is nothing to
@@ -33,21 +36,6 @@ export function Home() {
   // whole life, so changing a filter cannot tear the ingest poll down and start it again.
   const countPass = useCallback(() => setPasses((counted) => counted + 1), []);
 
-  useEffect(() => {
-    const abort = new AbortController();
-
-    fetchCatalogue(abort.signal)
-      .then((location) => setStatus(describeCatalogueLocation(location)))
-      .catch((failure: unknown) => {
-        // An abort is the page tidying up after itself, not a failure worth showing.
-        if (!abort.signal.aborted) {
-          setStatus(describeFetchFailure(failure));
-        }
-      });
-
-    return () => abort.abort();
-  }, []);
-
   // Read again when the filter changes and when the ingest finishes a pass, so a session written a
   // moment ago reaches the table without a reload. The table keeps its own sorting across the read.
   useEffect(() => {
@@ -61,6 +49,7 @@ export function Home() {
         setSkillsError(null);
       })
       .catch((failure: unknown) => {
+        // An abort is the page tidying up after itself, not a failure worth showing.
         if (!abort.signal.aborted) {
           setSkillsError(describeFetchFailure(failure));
         }
@@ -82,7 +71,10 @@ export function Home() {
   return (
     <main>
       <h1>Skillworks Studio</h1>
-      <p data-testid="catalogue-status">{status}</p>
+
+      {/* Above the table on purpose. A reader who finds nothing below should meet the reason for it
+          on the way down rather than hunt for it at the bottom of the page. */}
+      <HealthPanel reading={health} />
 
       <FilterBar filter={filter} onChange={narrow} />
 
@@ -94,7 +86,14 @@ export function Home() {
           <p data-testid="provenance-note">{describeProvenance(skills.provenance)}</p>
 
           {skills.skills.length === 0 ? (
-            <p data-testid="skills-empty">{describeEmpty(filter)}</p>
+            // Held back until the health read has come back one way or the other. The filter and
+            // the missing source both explain an empty table, and saying the filter first and the
+            // folder a moment later would let a reader act on the wrong one.
+            health.settled && (
+              <p data-testid="skills-empty">
+                {describeEmpty(filter, health.report?.whyEmpty ?? null)}
+              </p>
+            )
           ) : (
             <SkillTable skills={skills.skills} sort={sort} onSort={rank} />
           )}

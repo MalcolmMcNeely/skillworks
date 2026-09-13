@@ -21,6 +21,12 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
     public const string RestartNote =
         "A Claude Code session that is already running will not pick this up. Restart it.";
 
+    /// <summary>
+    /// What a developer does about telemetry being off, spelled once. The health report and every
+    /// provenance note both have to say it, and two spellings of one instruction is one too many.
+    /// </summary>
+    public const string TurnOnNote = "Turn telemetry on in the Telemetry panel. " + RestartNote;
+
     public TelemetrySwitchState State()
     {
         var document = file.Read(options.Value.ResolvedPath());

@@ -80,8 +80,18 @@ export function describeFilter(filter: Filter): string {
 /**
  * What an empty table means. A filter that matches nothing is an answer, not a failure, so it is
  * said as one and it names the filter that emptied it.
+ *
+ * @param whyEmpty
+ * The API's reason the source behind the table has nothing in it, when there is one. It comes
+ * first, because a missing source explains an empty table better than a filter does: with nothing
+ * to read from, every filter matches nothing and blaming this one would send a reader to widen a
+ * date range that was never the problem.
  */
-export function describeEmpty(filter: Filter): string {
+export function describeEmpty(filter: Filter, whyEmpty: string | null = null): string {
+  if (whyEmpty !== null) {
+    return whyEmpty;
+  }
+
   return isEverything(filter)
     ? 'No skill has fired yet.'
     : `Nothing matched ${describeFilter(filter)}.`;
