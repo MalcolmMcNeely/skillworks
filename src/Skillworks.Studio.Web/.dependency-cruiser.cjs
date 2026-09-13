@@ -1,6 +1,9 @@
 /**
  * Module boundaries for the front end. The spec keeps this layer thin: `lib` is plain TypeScript
  * with tests beside it, `api` only fetches, `routes` only renders. Dependencies point downward.
+ *
+ * A `components` module may fetch. One that owns a write owns the read that follows it, and routing
+ * that through a parent only spreads one concern over two files.
  * @type {import('dependency-cruiser').IConfiguration}
  */
 module.exports = {

@@ -14,7 +14,9 @@ event does, carrying `skill.source`, `plugin.name` and `marketplace.name`, and t
 what tells an engine from an entry point once the catalogue ships as a plugin. Claude Code sends
 OTLP to an OpenTelemetry Collector, which forwards to Loki; `Skillworks.Core` queries Loki's
 `/loki/api/v1/query_range` over `HttpClient`. Both containers are Aspire resources with
-`WithPersistentLifetime()` and a data volume, so they keep catching events after the AppHost stops.
+`WithLifetime(ContainerLifetime.Persistent)` and a data volume, so they keep catching events after
+the AppHost stops. Their host ports are pinned and unproxied, because Aspire's proxy holds the port
+and then dies with the AppHost.
 
 ## Consequences
 

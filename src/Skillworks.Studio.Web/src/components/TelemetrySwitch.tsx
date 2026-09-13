@@ -33,7 +33,13 @@ export function TelemetrySwitch() {
 
     setTelemetry(emitting)
       .then(setState)
-      .catch((problem: unknown) => setFailure(describeFetchFailure(problem)));
+      .catch((problem: unknown) => {
+        setFailure(describeFetchFailure(problem));
+
+        // Studio refuses a write when the settings have changed under it, so show what is on disk
+        // now rather than a preview of a write that cannot happen. The refusal is already reported.
+        fetchTelemetry().then(setState, () => undefined);
+      });
   }
 
   return (

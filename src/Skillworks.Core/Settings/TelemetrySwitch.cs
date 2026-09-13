@@ -27,17 +27,17 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
 
         if (Unusable(document) is { } problem)
         {
-            return Report(false, false, [], problem);
+            return Report(emitting: false, readable: false, [], problem);
         }
 
         var environment = document.Root!["env"] as JsonObject;
 
-        var changes = Wanted()
+        var changes = Owned()
             .Where(variable => Held(environment, variable.Key) != variable.Value)
             .Select(variable => new TelemetryChange(variable.Key, Held(environment, variable.Key), variable.Value))
             .ToArray();
 
-        return Report(changes.Length == 0, true, changes, null);
+        return Report(emitting: changes.Length == 0, readable: true, changes, problem: null);
     }
 
     public TelemetrySwitchResult TurnOn()
@@ -56,13 +56,16 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         var previous = TelemetryStamp.Read(options.Value.ResolvedStampPath());
         var displaced = new Dictionary<string, string?>();
 
-        foreach (var (name, value) in Wanted())
+        foreach (var (name, value) in Owned())
         {
             var held = Held(environment, name);
 
-            // Turning on twice must not record Studio's own value as the thing to restore, so a
-            // variable already at its target keeps whatever the earlier stamp remembered.
-            displaced[name] = held == value ? previous.Displaced.GetValueOrDefault(name) : held;
+            // A variable already at its target is either Studio's own value from last time or the
+            // developer's own, and only the earlier stamp tells the two apart. Without one it is
+            // theirs, and recording it as absent would delete it on the way back out.
+            displaced[name] = held == value && previous.Displaced.TryGetValue(name, out var earlier)
+                ? earlier
+                : held;
             environment[name] = value;
         }
 
@@ -71,13 +74,17 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
             root["env"] = environment;
         }
 
-        file.Write(settingsPath, root);
-
-        // Studio owns the block from the moment it first created it, however many times it is
-        // flipped afterwards.
+        // The stamp goes down first, and deliberately. A crash between these two writes then leaves
+        // a record of a write that never happened, which turning off ignores because the settings
+        // never took Studio's values. The other order would lose the undo record instead.
+        //
+        // Studio owns the environment block from the moment it first created it, however many times
+        // the switch is flipped afterwards.
         TelemetryStamp.Write(
             options.Value.ResolvedStampPath(),
             new TelemetryStamp(displaced, created || previous.CreatedEnvironment));
+
+        file.Write(settingsPath, root);
 
         return new TelemetrySwitchResult(State(), null);
     }
@@ -105,7 +112,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
 
         if (root["env"] is JsonObject environment)
         {
-            foreach (var (name, value) in Wanted())
+            foreach (var (name, value) in Owned())
             {
                 // A value the developer has since changed by hand is not Studio's to take away.
                 if (Held(environment, name) != value)
@@ -135,7 +142,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         return new TelemetrySwitchResult(State(), null);
     }
 
-    private IReadOnlyList<KeyValuePair<string, string>> Wanted() =>
+    private IReadOnlyList<KeyValuePair<string, string>> Owned() =>
         TelemetryVariables.For(options.Value.CollectorEndpoint);
 
     /// <summary>

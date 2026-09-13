@@ -220,6 +220,19 @@ public sealed class TelemetrySwitchEndpointTests
     }
 
     [Fact]
+    public async Task Turning_off_keeps_a_variable_the_developer_had_already_set_the_same_way()
+    {
+        using var studio = new TelemetryStudio(
+            """{ "env": { "CLAUDE_CODE_ENABLE_TELEMETRY": "1" } }""");
+
+        await studio.Turn(emitting: true);
+        await studio.Turn(emitting: false);
+
+        Assert.Equal("1", studio.Variable("CLAUDE_CODE_ENABLE_TELEMETRY"));
+        Assert.Null(studio.Variable("OTEL_LOGS_EXPORTER"));
+    }
+
+    [Fact]
     public async Task Turning_off_leaves_a_variable_the_developer_has_since_changed()
     {
         using var studio = new TelemetryStudio("{}");

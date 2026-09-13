@@ -18,7 +18,7 @@ export interface TelemetryState {
   problem: string | null;
 }
 
-export function fetchTelemetry(signal: AbortSignal): Promise<TelemetryState> {
+export function fetchTelemetry(signal?: AbortSignal): Promise<TelemetryState> {
   return getJson<TelemetryState>('/api/telemetry/switch', signal);
 }
 
