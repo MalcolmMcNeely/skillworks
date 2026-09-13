@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.
+The issue tracker should have been provided to you. If not, tell the user to run `/skillworks-setup`.
 
 ## Process
 
@@ -57,16 +57,18 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets to the configured tracker
 
-Publish the approved tickets. **How** depends on the tracker `/setup-matt-pocock-skills` configured — the tickets are the same either way, only the shape of the blocking edges changes:
+Publish the approved tickets. **How** depends on the tracker `/skillworks-setup` configured — the tickets are the same either way, only the shape of the blocking edges changes:
 
 - **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
-- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
+- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` label unless instructed otherwise — the tickets are agent-grabbable by construction.
 
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 
 Ticket names should all begin with "TICKET:".
 
-After you are done, CLOSE the parent issue.
+**When the source was an existing issue, make every ticket a child of it on the tracker.** Not a `Parent:` line in the body — the native parent/child relationship, so it is queryable. `/spec-loop` reads a spec's children to find its own work and ignores everything else, which is the only thing stopping two people's loops taking each other's tickets. Your tracker doc carries the exact calls.
+
+**Leave the parent issue open.** It is the loop's anchor and the drift check reads it at the end. The human closes it when the work merges. (Without a loop — a plain conversation, no parent issue on the tracker — there is nothing to leave open.)
 
 <local-ticket-template>
 

@@ -22,3 +22,9 @@ dist/
 # Environment files. May hold secrets.
 .env
 .env.local
+
+# Borrowed research notes. Reference only, kept local.
+docs/research/
+
+# Spec loop run logs. Transient, per-machine.
+.spec-loop/

@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user — just synthesize what you already know.
 
-The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.
+The issue tracker should have been provided to you. If not, tell the user to run `/skillworks-setup`.
 
 ## Process
 
@@ -16,7 +16,11 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 Check with the user that these seams match their expectations.
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage. The spec title should begin with "SPEC:"
+3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` label. The spec title should begin with "SPEC:"
+
+4. Commit and push whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there. Do not include "co-authored by" in the commit message.
+
+5. Report the spec's issue number and URL. That number is the argument to `/spec-loop`.
 
 <spec-template>
 
