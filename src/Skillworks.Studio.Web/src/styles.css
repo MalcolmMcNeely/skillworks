@@ -57,15 +57,18 @@ main {
   white-space: nowrap;
 }
 
+.ingest,
 .telemetry {
   margin-top: 2rem;
 }
 
+.ingest ul,
 .telemetry ul {
   font-family: ui-monospace, monospace;
   padding-inline-start: 1.25rem;
 }
 
+.ingest button,
 .telemetry button {
   font: inherit;
   margin-inline-end: 0.5rem;

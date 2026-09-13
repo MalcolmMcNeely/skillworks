@@ -13,6 +13,20 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
 }
 
 /**
+ * One POST against the API. Nothing sent here carries a body: these routes are commands, and what
+ * comes back is the state to poll from rather than the answer.
+ */
+export async function postJson<T>(path: string): Promise<T> {
+  const response = await fetch(path, { method: 'POST' });
+
+  if (!response.ok) {
+    throw new Error(`POST ${path} returned ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+/**
  * One PUT against the API. Studio refuses some writes on purpose, and says why in the problem
  * document, so that reason is the message rather than the status.
  */

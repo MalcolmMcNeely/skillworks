@@ -10,4 +10,10 @@ public sealed class IngestedTranscript
 
     /// <summary>A byte offset, always on a line boundary.</summary>
     public long Offset { get; set; }
+
+    /// <summary>
+    /// Lines read so far. Counting them costs nothing and is the only way a fault found on the
+    /// second pass can name a line number a developer's editor agrees with.
+    /// </summary>
+    public long Lines { get; set; }
 }

@@ -8,6 +8,8 @@ public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> opti
 
     public DbSet<IngestedTranscript> IngestedTranscripts => Set<IngestedTranscript>();
 
+    public DbSet<TranscriptFault> TranscriptFaults => Set<TranscriptFault>();
+
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.Entity<Activation>(activation =>
@@ -17,5 +19,9 @@ public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> opti
         });
 
         model.Entity<IngestedTranscript>().HasKey(t => t.Path);
+
+        // Where the fault is found is what identifies it, so reading the same line twice cannot
+        // report it twice.
+        model.Entity<TranscriptFault>().HasKey(f => new { f.Path, f.Line });
     }
 }

@@ -3,6 +3,14 @@ using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Telemetry;
 
+/// <summary>What one transcript line held.</summary>
+/// <param name="Activations">Empty for the great majority of lines, which record something else.</param>
+/// <param name="Problem">
+/// Why the line could not be read at all. Non-null means the line was stepped over, so the ingest
+/// has something to count and report rather than a silent gap.
+/// </param>
+internal readonly record struct LineReading(IReadOnlyList<Activation> Activations, string? Problem);
+
 /// <summary>
 /// Turns one transcript line into the activations it records. Internal on purpose: the tests drive
 /// the API, not this.
@@ -16,26 +24,46 @@ namespace Skillworks.Core.Telemetry;
 /// </remarks>
 internal static class TranscriptParser
 {
-    public static List<Activation> Activations(string line, RepositoryNames repositories)
+    public static LineReading Read(string line, RepositoryNames repositories)
     {
-        var activations = new List<Activation>();
-
-        using var document = Parse(line);
-
-        if (document is null || document.RootElement.ValueKind != JsonValueKind.Object)
+        if (string.IsNullOrWhiteSpace(line))
         {
-            return activations;
+            return new LineReading([], null);
         }
 
-        var record = document.RootElement;
+        JsonDocument document;
 
-        if (Text(record, "type") != "assistant" ||
+        try
+        {
+            document = JsonDocument.Parse(line);
+        }
+        catch (JsonException failure)
+        {
+            // A line Studio cannot read is one line, never the other 1,470. Its own message names
+            // the column it gave up at, which is what makes the fault worth reporting.
+            return new LineReading([], failure.Message);
+        }
+
+        using (document)
+        {
+            return new LineReading(Activations(document.RootElement, repositories), null);
+        }
+    }
+
+    private static IReadOnlyList<Activation> Activations(JsonElement record, RepositoryNames repositories)
+    {
+        if (record.ValueKind != JsonValueKind.Object ||
+            Text(record, "type") != "assistant" ||
             !record.TryGetProperty("message", out var message) ||
             !message.TryGetProperty("content", out var content) ||
             content.ValueKind != JsonValueKind.Array)
         {
-            return activations;
+            return [];
         }
+
+        // Left null until something is found: almost every line of 678 MB reaches here and holds
+        // no skill at all.
+        List<Activation>? activations = null;
 
         foreach (var block in content.EnumerateArray())
         {
@@ -49,7 +77,7 @@ internal static class TranscriptParser
                 continue;
             }
 
-            activations.Add(new Activation
+            (activations ??= []).Add(new Activation
             {
                 ToolUseId = toolUseId,
                 SkillName = skill,
@@ -60,25 +88,7 @@ internal static class TranscriptParser
             });
         }
 
-        return activations;
-    }
-
-    /// <summary>A line Studio cannot read is one line, never the other 1,470. It is skipped.</summary>
-    private static JsonDocument? Parse(string line)
-    {
-        if (string.IsNullOrWhiteSpace(line))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonDocument.Parse(line);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
+        return activations is null ? [] : activations;
     }
 
     private static string? Text(JsonElement element, string property) =>

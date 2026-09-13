@@ -23,13 +23,19 @@ api.MapGet("transcripts", (TranscriptLocator locator) => locator.Locate());
 api.MapGet("skills", (SkillReport report, CancellationToken cancellationToken) =>
     report.SkillsAsync(cancellationToken));
 
-api.MapGet("ingest", (IngestState state) => state.Status());
+api.MapGet("ingest", (IngestReport report, CancellationToken cancellationToken) =>
+    report.StatusAsync(cancellationToken));
 
-api.MapPost("ingest", (IngestState state) =>
-{
-    state.RequestPass();
-    return Results.Accepted(value: state.Status());
-});
+api.MapPost("ingest", async (IngestReport report, CancellationToken cancellationToken) =>
+    Results.Accepted(value: await report.RequestPassAsync(full: false, cancellationToken)));
+
+// A route of its own, not a flag on the one above: a full re-ingest throws away everything already
+// read, and that should not be reachable by mistyping a query string.
+api.MapPost("ingest/full", async (IngestReport report, CancellationToken cancellationToken) =>
+    Results.Accepted(value: await report.RequestPassAsync(full: true, cancellationToken)));
+
+api.MapGet("ingest/faults", (IngestReport report, CancellationToken cancellationToken) =>
+    report.FaultsAsync(cancellationToken));
 
 // The GET carries the preview, so the front end can show the exact change and ask before the PUT.
 api.MapGet("telemetry/switch", (TelemetrySwitch telemetry) => telemetry.State());

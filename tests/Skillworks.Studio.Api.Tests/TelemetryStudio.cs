@@ -36,6 +36,7 @@ public sealed class TelemetryStudio : IDisposable
             ("ClaudeSettings:CollectorEndpoint", Collector),
             ("Transcripts:Path", _folder.Subfolder("no-transcripts")),
             ("Telemetry:DatabasePath", Path.Combine(_folder.Path, "telemetry.db")),
+            ("Telemetry:SweepSeconds", "0"),
             ("Catalogue:Path", Path.Combine(_folder.Path, "no-catalogue")));
 
         _client = _api.CreateClient();

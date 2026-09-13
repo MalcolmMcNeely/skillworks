@@ -53,6 +53,16 @@ The session file Claude Code writes to disk. It records every activation with it
 and the tokens that turn spent.
 _Avoid_: Log, history, session log
 
+**Ingest**:
+Reading the Transcripts into Studio's own store. One **pass** is one sweep of the folder; a pass
+reads only what changed unless it is asked to read everything again.
+_Avoid_: Import, sync, scrape
+
+**Fault**:
+A line, or a whole Transcript, the ingest could not read and stepped over. Faults are counted and
+kept, so a gap in the numbers is never read as a fact.
+_Avoid_: Error, failure, bad record
+
 **Attribution**:
 The link from a unit of spend back to the skill that caused it.
 

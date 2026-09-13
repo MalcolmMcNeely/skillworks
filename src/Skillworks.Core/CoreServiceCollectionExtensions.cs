@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Catalogue;
@@ -21,6 +22,8 @@ public static class CoreServiceCollectionExtensions
         services.Configure<TelemetryOptions>(configuration.GetSection(TelemetryOptions.SectionName));
         services.Configure<ClaudeSettingsOptions>(configuration.GetSection(ClaudeSettingsOptions.SectionName));
 
+        services.TryAddSingleton(TimeProvider.System);
+
         services.AddSingleton<CatalogueLocator>();
         services.AddSingleton<CatalogueSkills>();
         services.AddSingleton<TranscriptLocator>();
@@ -37,6 +40,8 @@ public static class CoreServiceCollectionExtensions
 
         services.AddSingleton<TranscriptIngestor>();
         services.AddSingleton<IngestState>();
+        services.AddSingleton<TranscriptFaultStore>();
+        services.AddSingleton<IngestReport>();
         services.AddSingleton<ActivationStore>();
         services.AddSingleton<SkillReport>();
 

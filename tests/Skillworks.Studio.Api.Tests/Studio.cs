@@ -19,6 +19,40 @@ public sealed record SkillRow
     public required string[] Branches { get; init; }
 }
 
+/// <summary><c>GET /api/ingest</c>: how far the ingest has got and how stale the numbers are.</summary>
+public sealed record IngestRow
+{
+    public required bool Running { get; init; }
+
+    public required int CompletedPasses { get; init; }
+
+    public required int TranscriptsSeen { get; init; }
+
+    public required int TranscriptsTotal { get; init; }
+
+    public required int TranscriptsRead { get; init; }
+
+    public required int ActivationsAdded { get; init; }
+
+    public required bool LastPassWasFull { get; init; }
+
+    public required DateTimeOffset? LastRefreshUtc { get; init; }
+
+    public required int Faults { get; init; }
+}
+
+/// <summary>One row of <c>GET /api/ingest/faults</c>: something the ingest had to step over.</summary>
+public sealed record FaultRow
+{
+    public required string Path { get; init; }
+
+    public required long Line { get; init; }
+
+    public required string Reason { get; init; }
+
+    public required DateTimeOffset NoticedUtc { get; init; }
+}
+
 /// <summary>
 /// One running Studio for one test: the real API in memory, a real SQLite file in a temporary
 /// directory, and a checked-in fixture folder standing in for the machine's transcripts.
@@ -32,11 +66,16 @@ public sealed class Studio : IDisposable
     private readonly HttpClient _client;
 
     /// <param name="transcriptPath">Null leaves the setting out, so Studio falls back to its default.</param>
-    public Studio(string? transcriptPath, string? cataloguePath = null)
+    /// <param name="sweepSeconds">
+    /// Zero, so no pass happens that the test did not ask for. Counting passes is how these tests
+    /// stay off the flake list, and a sweep on a clock would make the count meaningless.
+    /// </param>
+    public Studio(string? transcriptPath, string? cataloguePath = null, int sweepSeconds = 0)
     {
         _api = new StudioApi(
             ("Transcripts:Path", transcriptPath),
             ("Telemetry:DatabasePath", Path.Combine(_data.Path, "telemetry.db")),
+            ("Telemetry:SweepSeconds", sweepSeconds.ToString()),
             ("Catalogue:Path", cataloguePath ?? Path.Combine(_data.Path, "no-catalogue")));
 
         _client = _api.CreateClient();
@@ -58,7 +97,7 @@ public sealed class Studio : IDisposable
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
 
-        while (await CompletedPasses() < passes)
+        while ((await Status()).CompletedPasses < passes)
         {
             if (DateTime.UtcNow > deadline)
             {
@@ -69,16 +108,35 @@ public sealed class Studio : IDisposable
         }
     }
 
+    public async Task<IngestRow> Status()
+    {
+        return await _client.GetFromJsonAsync<IngestRow>("/api/ingest", Wire)
+            ?? throw new InvalidOperationException("The ingest status came back empty.");
+    }
+
     /// <summary>Asks for another pass and waits for it, so a test can prove what a re-read does.</summary>
-    public async Task IngestAgain()
+    public Task IngestAgain() => AskAndWait("/api/ingest");
+
+    /// <summary>Throws away everything already read and waits for the re-read to finish.</summary>
+    public Task FullIngest() => AskAndWait("/api/ingest/full");
+
+    /// <summary>Asks for a pass without waiting, so a test can see what the ask itself reports.</summary>
+    public async Task<IngestRow> Ask(string route)
     {
         await WaitForIngestPasses(1);
-        var passes = await CompletedPasses();
 
-        using var response = await _client.PostAsync("/api/ingest", content: null);
+        using var response = await _client.PostAsync(route, content: null);
         response.EnsureSuccessStatusCode();
 
-        await WaitForIngestPasses(passes + 1);
+        return await response.Content.ReadFromJsonAsync<IngestRow>(Wire)
+            ?? throw new InvalidOperationException("The ingest status came back empty.");
+    }
+
+    public async Task<IReadOnlyList<FaultRow>> Faults()
+    {
+        await WaitForIngestPasses(1);
+
+        return await _client.GetFromJsonAsync<FaultRow[]>("/api/ingest/faults", Wire) ?? [];
     }
 
     public async Task<IReadOnlyList<SkillRow>> Skills()
@@ -96,6 +154,22 @@ public sealed class Studio : IDisposable
     public async Task<int> ActivationsOf(string name) =>
         (await Skills()).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
 
+    /// <summary>Waits for a skill to turn up on its own, for the sweep that nobody asked for.</summary>
+    public async Task WaitForSkill(string name)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+
+        while (await ActivationsOf(name) == 0)
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException($"{name} never appeared.");
+            }
+
+            await Task.Delay(50);
+        }
+    }
+
     public void Dispose()
     {
         _client.Dispose();
@@ -107,10 +181,14 @@ public sealed class Studio : IDisposable
         _data.Dispose();
     }
 
-    private async Task<int> CompletedPasses()
+    private async Task AskAndWait(string route)
     {
-        var status = await _client.GetFromJsonAsync<JsonElement>("/api/ingest");
+        await WaitForIngestPasses(1);
+        var passes = (await Status()).CompletedPasses;
 
-        return status.GetProperty("completedPasses").GetInt32();
+        using var response = await _client.PostAsync(route, content: null);
+        response.EnsureSuccessStatusCode();
+
+        await WaitForIngestPasses(passes + 1);
     }
 }
