@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Telemetry;
 
@@ -26,7 +27,14 @@ public sealed record ActivationSummary(
     string? Branch,
     string? Model,
     string? Effort,
-    DateTimeOffset TimestampUtc);
+    DateTimeOffset TimestampUtc)
+{
+    /// <summary>
+    /// Where this firing came from, joined on afterwards. It is not read with the rest because the
+    /// store this comes out of holds transcripts, and transcripts do not record it.
+    /// </summary>
+    public SkillOrigin? Origin { get; init; }
+}
 
 /// <summary>
 /// One firing opened: everything the list holds, plus the session it belongs to and what the skill
@@ -45,7 +53,11 @@ public sealed record ActivationDetail(
     string? Model,
     string? Effort,
     DateTimeOffset TimestampUtc,
-    IReadOnlyList<ActivationArgument> Arguments);
+    IReadOnlyList<ActivationArgument> Arguments)
+{
+    /// <summary>Where this firing came from, joined on afterwards. Null when no event matches it.</summary>
+    public SkillOrigin? Origin { get; init; }
+}
 
 /// <summary>
 /// One thing a skill was called with. The value is text whatever the transcript wrote, because the

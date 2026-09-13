@@ -15,6 +15,7 @@ import { useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { SkillSummary } from '../api/skills';
 import { activationsPath } from '../lib/activations';
+import { describeDeliveries, describeTriggers } from '../lib/provenance';
 import { ariaSort, describeList, describeMoney, describeSplit, sortMark } from '../lib/skills';
 import { byActivations, type Sort } from '../lib/sorting';
 
@@ -49,6 +50,16 @@ const columns = column.columns([
   column.accessor('activations', {
     header: 'Activations',
     cell: (cell) => <ActivationsLink skill={cell.row.original.name} count={cell.getValue()} />,
+  }),
+  // Beside the count and before the money, so one row answers what fired, from where, and what it
+  // cost, which is the whole reason the two stores are joined.
+  column.accessor((skill) => describeTriggers(skill.origins), {
+    id: 'trigger',
+    header: 'Trigger',
+  }),
+  column.accessor((skill) => describeDeliveries(skill.origins), {
+    id: 'delivery',
+    header: 'Delivered by',
   }),
   // The money columns sort on the number and render the words, so clicking the heading ranks
   // skills by what they actually cost rather than by how the figure happens to read.

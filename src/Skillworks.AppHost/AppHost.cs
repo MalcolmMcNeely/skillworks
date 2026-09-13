@@ -35,7 +35,10 @@ builder.AddContainer("collector", "otel/opentelemetry-collector-contrib", "0.138
 var api = builder.AddProject<Projects.Skillworks_Studio_Api>("api")
     .WithHttpHealthCheck("/health")
     .WithEnvironment("Catalogue__Path", Path.Combine(repositoryRoot, "plugins"))
-    .WithEnvironment("ClaudeSettings__CollectorEndpoint", collectorAddress);
+    .WithEnvironment("ClaudeSettings__CollectorEndpoint", collectorAddress)
+    // Where the provenance half is read from. The endpoint is pinned, so this address is the same
+    // one tomorrow, whether or not the container was up when Studio started.
+    .WithEnvironment("Loki__Address", loki.GetEndpoint("http"));
 
 // AddViteApp runs npm install and npm run dev itself, and injects the API address as API_HTTP(S),
 // which vite.config.ts proxies to. Nothing hard codes a port.

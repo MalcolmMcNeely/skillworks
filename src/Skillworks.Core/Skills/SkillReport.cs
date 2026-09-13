@@ -1,20 +1,28 @@
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Provenance;
 using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Core.Skills;
 
 /// <summary>
-/// Answers "which skills fired, how often, where, and what did they cost", and names the catalogue
-/// skills that never fired so a broken description shows up as a zero rather than a gap.
+/// Answers "which skills fired, how often, where, from where, and what did they cost", and names
+/// the catalogue skills that never fired so a broken description shows up as a zero rather than a
+/// gap. The two stores meet here, on skill name and period.
 /// </summary>
-public sealed class SkillReport(ActivationStore activations, SpendStore spend, PriceTable prices, CatalogueSkills catalogue)
+public sealed class SkillReport(
+    ActivationStore activations,
+    SpendStore spend,
+    PriceTable prices,
+    CatalogueSkills catalogue,
+    ProvenanceReport provenance)
 {
-    public async Task<IReadOnlyList<SkillSummary>> SkillsAsync(
+    public async Task<SkillTable> SkillsAsync(
         TelemetryFilter filter,
         CancellationToken cancellationToken)
     {
         var tally = await activations.TallyBySkillAsync(filter, cancellationToken);
         var tokens = await spend.TokensBySkillAsync(filter, cancellationToken);
+        var origins = await provenance.ForAsync(filter, cancellationToken);
 
         // Read now rather than stored with the turns, so yesterday's spend is costed at today's
         // prices and correcting a rate never means reading a transcript again.
@@ -40,24 +48,26 @@ public sealed class SkillReport(ActivationStore activations, SpendStore spend, P
             counts.TryAdd(name, 0);
         }
 
-        return
-        [
-            .. counts
-                .Select(skill =>
-                {
-                    var runs = tokens.GetValueOrDefault(skill.Key, []);
+        return new SkillTable(
+            [
+                .. counts
+                    .Select(skill =>
+                    {
+                        var runs = tokens.GetValueOrDefault(skill.Key, []);
 
-                    return new SkillSummary(
-                        skill.Key,
-                        skill.Value,
-                        tally.Repositories.GetValueOrDefault(skill.Key, []),
-                        tally.Branches.GetValueOrDefault(skill.Key, []),
-                        Together(tally.Models.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Model)),
-                        Together(tally.Efforts.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Effort)),
-                        SkillSpend.Of(runs, rates));
-                })
-                .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
-        ];
+                        return new SkillSummary(
+                            skill.Key,
+                            skill.Value,
+                            tally.Repositories.GetValueOrDefault(skill.Key, []),
+                            tally.Branches.GetValueOrDefault(skill.Key, []),
+                            Together(tally.Models.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Model)),
+                            Together(tally.Efforts.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Effort)),
+                            SkillSpend.Of(runs, rates),
+                            origins.Of(skill.Key));
+                    })
+                    .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
+            ],
+            origins.Note);
     }
 
     /// <summary>

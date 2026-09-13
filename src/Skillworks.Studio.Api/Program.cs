@@ -27,12 +27,12 @@ api.MapGet("transcripts", (TranscriptLocator locator) => locator.Locate());
 api.MapGet("skills", ([AsParameters] TelemetryFilter filter, SkillReport report, CancellationToken cancellationToken) =>
     report.SkillsAsync(filter, cancellationToken));
 
-api.MapGet("activations", ([AsParameters] TelemetryFilter filter, ActivationStore activations, CancellationToken cancellationToken) =>
+api.MapGet("activations", ([AsParameters] TelemetryFilter filter, ActivationReport activations, CancellationToken cancellationToken) =>
     activations.ListAsync(filter, cancellationToken));
 
 // No filter here. A reader who has a firing's id is asking about that firing, and narrowing it
 // would answer a link with a blank page whenever the filter had moved on.
-api.MapGet("activations/{id}", async (string id, ActivationStore activations, CancellationToken cancellationToken) =>
+api.MapGet("activations/{id}", async (string id, ActivationReport activations, CancellationToken cancellationToken) =>
     await activations.OpenAsync(id, cancellationToken) is { } activation
         ? Results.Ok(activation)
         : Results.NotFound());

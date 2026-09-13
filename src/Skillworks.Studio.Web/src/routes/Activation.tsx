@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
-import { fetchActivation, type ActivationDetail } from '../api/activations';
+import { fetchActivation, type ActivationOpened } from '../api/activations';
 import { activationsPath, describeMoment, describeRecorded, skillsPath } from '../lib/activations';
 import { describeFetchFailure } from '../lib/errors';
+import { describeDelivery, describeMissingOrigin, describeTrigger } from '../lib/provenance';
 
 /**
  * One firing, opened. This is the view that turns a count into evidence: it names what the skill
@@ -10,7 +11,7 @@ import { describeFetchFailure } from '../lib/errors';
  */
 export function Activation() {
   const { id = '' } = useParams();
-  const [activation, setActivation] = useState<ActivationDetail | null>(null);
+  const [opened, setOpened] = useState<ActivationOpened | null>(null);
   const [activationError, setActivationError] = useState<string | null>(null);
 
   const [params] = useSearchParams();
@@ -25,7 +26,7 @@ export function Activation() {
 
     fetchActivation(id, abort.signal)
       .then((next) => {
-        setActivation(next);
+        setOpened(next);
         setActivationError(null);
       })
       .catch((failure: unknown) => {
@@ -36,6 +37,8 @@ export function Activation() {
 
     return () => abort.abort();
   }, [id]);
+
+  const activation = opened?.activation ?? null;
 
   return (
     <main>
@@ -49,13 +52,23 @@ export function Activation() {
 
       {activationError !== null && <p data-testid="activation-error">{activationError}</p>}
 
-      {activation !== null && (
+      {opened !== null && activation !== null && (
         <>
           <h1>{activation.skill}</h1>
 
           <dl className="activation">
             <dt>When</dt>
             <dd>{describeMoment(activation.timestampUtc)}</dd>
+
+            {/* What set this firing off, which is the fact a count cannot carry: a skill the model
+                reached for and one a developer had to ask for are not the same success. */}
+            <dt>Trigger</dt>
+            <dd>{describeTrigger(activation.origin?.trigger ?? null)}</dd>
+
+            <dt>Delivered by</dt>
+            <dd>
+              {activation.origin === null ? 'Not recorded' : describeDelivery(activation.origin)}
+            </dd>
 
             <dt>Model</dt>
             <dd>{describeRecorded(activation.model)}</dd>
@@ -72,6 +85,12 @@ export function Activation() {
             <dt>Session</dt>
             <dd>{describeRecorded(activation.sessionId)}</dd>
           </dl>
+
+          {/* Why the two rows above may be empty. A firing older than the events store, or one made
+              while telemetry was off, is not a firing that came from nowhere. */}
+          {activation.origin === null && (
+            <p data-testid="provenance-note">{describeMissingOrigin(opened.provenance)}</p>
+          )}
 
           <h2>Arguments</h2>
 

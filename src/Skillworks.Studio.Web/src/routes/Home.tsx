@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { fetchCatalogue } from '../api/catalogue';
-import { fetchSkills, type SkillSummary } from '../api/skills';
+import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
 import { FilterBar } from '../components/FilterBar';
 import { IngestPanel } from '../components/IngestPanel';
 import { SkillTable } from '../components/SkillTable';
@@ -9,11 +9,12 @@ import { TelemetrySwitch } from '../components/TelemetrySwitch';
 import { describeCatalogueLocation } from '../lib/catalogue';
 import { describeFetchFailure } from '../lib/errors';
 import { describeEmpty, filterParams, readFilter, type Filter } from '../lib/filters';
+import { describeProvenance } from '../lib/provenance';
 import { readSort, withSort, type Sort } from '../lib/sorting';
 
 export function Home() {
   const [status, setStatus] = useState('Asking the API…');
-  const [skills, setSkills] = useState<SkillSummary[] | null>(null);
+  const [skills, setSkills] = useState<SkillsAnswer | null>(null);
   const [skillsError, setSkillsError] = useState<string | null>(null);
   const [passes, setPasses] = useState(0);
 
@@ -86,12 +87,19 @@ export function Home() {
       <FilterBar filter={filter} onChange={narrow} />
 
       {skillsError !== null && <p data-testid="skills-error">{skillsError}</p>}
-      {skills !== null &&
-        (skills.length === 0 ? (
-          <p data-testid="skills-empty">{describeEmpty(filter)}</p>
-        ) : (
-          <SkillTable skills={skills} sort={sort} onSort={rank} />
-        ))}
+      {skills !== null && (
+        <>
+          {/* Beside the table rather than inside it. What the events store could not tell us is one
+              fact about the whole period, and repeating it down a column would read as many. */}
+          <p data-testid="provenance-note">{describeProvenance(skills.provenance)}</p>
+
+          {skills.skills.length === 0 ? (
+            <p data-testid="skills-empty">{describeEmpty(filter)}</p>
+          ) : (
+            <SkillTable skills={skills.skills} sort={sort} onSort={rank} />
+          )}
+        </>
+      )}
 
       <IngestPanel onPassFinished={countPass} />
       <TelemetrySwitch />

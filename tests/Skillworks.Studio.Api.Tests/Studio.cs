@@ -4,6 +4,14 @@ using Microsoft.Data.Sqlite;
 
 namespace Skillworks.Studio.Api.Tests;
 
+/// <summary><c>GET /api/skills</c>: the rows, and what the events store had to say about them.</summary>
+public sealed record SkillsAnswer
+{
+    public required SkillRow[] Skills { get; init; }
+
+    public required ProvenanceRow Provenance { get; init; }
+}
+
 /// <summary>
 /// One row of <c>GET /api/skills</c>. Every property is required, so a renamed field in the API
 /// fails the deserialize rather than quietly reading as zero.
@@ -25,6 +33,30 @@ public sealed record SkillRow
     public required SpendRow Spend { get; init; }
 
     public required decimal AverageCost { get; init; }
+
+    public required OriginRow[] Origins { get; init; }
+}
+
+/// <summary>One way a skill was delivered and set off, as the events store recorded it.</summary>
+public sealed record OriginRow
+{
+    public required string? Trigger { get; init; }
+
+    public required string? Source { get; init; }
+
+    public required string? Plugin { get; init; }
+
+    public required string? Marketplace { get; init; }
+}
+
+/// <summary>What the events store had to say: whether it answered, and what it could not cover.</summary>
+public sealed record ProvenanceRow
+{
+    public required bool Reachable { get; init; }
+
+    public required string? Missing { get; init; }
+
+    public required DateTimeOffset SinceUtc { get; init; }
 }
 
 /// <summary>What one skill cost, as the skill table reports it.</summary>
@@ -91,6 +123,14 @@ public sealed record IngestRow
     public required int Faults { get; init; }
 }
 
+/// <summary><c>GET /api/activations</c>: the firings, and what the events store had to say.</summary>
+public sealed record ActivationsAnswer
+{
+    public required ActivationRow[] Activations { get; init; }
+
+    public required ProvenanceRow Provenance { get; init; }
+}
+
 /// <summary>One row of <c>GET /api/activations</c>: one firing, enough of it to pick one out.</summary>
 public sealed record ActivationRow
 {
@@ -107,9 +147,19 @@ public sealed record ActivationRow
     public required string? Effort { get; init; }
 
     public required DateTimeOffset TimestampUtc { get; init; }
+
+    public required OriginRow? Origin { get; init; }
 }
 
-/// <summary><c>GET /api/activations/{id}</c>: one firing, with what it was called with.</summary>
+/// <summary><c>GET /api/activations/{id}</c>: one firing opened, beside the same note.</summary>
+public sealed record ActivationAnswer
+{
+    public required ActivationDetailRow Activation { get; init; }
+
+    public required ProvenanceRow Provenance { get; init; }
+}
+
+/// <summary>One firing, with what it was called with and where it came from.</summary>
 public sealed record ActivationDetailRow
 {
     public required string Id { get; init; }
@@ -129,6 +179,8 @@ public sealed record ActivationDetailRow
     public required DateTimeOffset TimestampUtc { get; init; }
 
     public required ArgumentRow[] Arguments { get; init; }
+
+    public required OriginRow? Origin { get; init; }
 }
 
 /// <summary>One thing a skill was called with, as the transcript recorded it.</summary>
@@ -168,12 +220,27 @@ public sealed class Studio : IDisposable
     /// Zero, so no pass happens that the test did not ask for. Counting passes is how these tests
     /// stay off the flake list, and a sweep on a clock would make the count meaningless.
     /// </param>
-    public Studio(string? transcriptPath, string? cataloguePath = null, int sweepSeconds = 0)
+    /// <param name="events">
+    /// A store that is up and holds nothing, unless a test says otherwise. Every test answers the
+    /// events side from here, so none of them reaches a container that may or may not be running.
+    /// </param>
+    /// <param name="maxEvents">
+    /// The cap Studio ships with, so a test that wants to reach it can ask for a smaller one
+    /// instead of building five thousand events.
+    /// </param>
+    public Studio(
+        string? transcriptPath,
+        string? cataloguePath = null,
+        int sweepSeconds = 0,
+        Events? events = null,
+        int maxEvents = 5000)
     {
         _api = new StudioApi(
+            events ?? Events.Holding(),
             ("Transcripts:Path", transcriptPath),
             ("Telemetry:DatabasePath", Path.Combine(_data.Path, "telemetry.db")),
             ("Telemetry:SweepSeconds", sweepSeconds.ToString()),
+            ("Loki:MaxEvents", maxEvents.ToString()),
             ("Catalogue:Path", cataloguePath ?? Path.Combine(_data.Path, "no-catalogue")));
 
         _client = _api.CreateClient();
@@ -238,11 +305,15 @@ public sealed class Studio : IDisposable
     }
 
     /// <param name="filter">A query string, leading <c>?</c> and all. Empty asks about everything.</param>
-    public async Task<IReadOnlyList<SkillRow>> Skills(string filter = "")
+    public async Task<IReadOnlyList<SkillRow>> Skills(string filter = "") => (await SkillTable(filter)).Skills;
+
+    /// <summary>The whole skill answer, so a test can read the provenance note beside the rows.</summary>
+    public async Task<SkillsAnswer> SkillTable(string filter = "")
     {
         await WaitForIngestPasses(1);
 
-        return await _client.GetFromJsonAsync<SkillRow[]>($"/api/skills{filter}", Wire) ?? [];
+        return await _client.GetFromJsonAsync<SkillsAnswer>($"/api/skills{filter}", Wire)
+            ?? throw new InvalidOperationException("The skill table came back empty.");
     }
 
     /// <summary>The skills call as it came back, so a test can assert the status as well as the rows.</summary>
@@ -262,19 +333,27 @@ public sealed class Studio : IDisposable
         (await Skills(filter)).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
 
     /// <param name="filter">A query string, leading <c>?</c> and all. Empty asks about everything.</param>
-    public async Task<IReadOnlyList<ActivationRow>> Activations(string filter = "")
+    public async Task<IReadOnlyList<ActivationRow>> Activations(string filter = "") =>
+        (await ActivationList(filter)).Activations;
+
+    /// <summary>The whole list answer, so a test can read the provenance note beside the firings.</summary>
+    public async Task<ActivationsAnswer> ActivationList(string filter = "")
     {
         await WaitForIngestPasses(1);
 
-        return await _client.GetFromJsonAsync<ActivationRow[]>($"/api/activations{filter}", Wire) ?? [];
+        return await _client.GetFromJsonAsync<ActivationsAnswer>($"/api/activations{filter}", Wire)
+            ?? throw new InvalidOperationException("The activation list came back empty.");
     }
 
     /// <summary>One firing opened by its id, which is how the front end reaches a detail page.</summary>
-    public async Task<ActivationDetailRow> Activation(string id)
+    public async Task<ActivationDetailRow> Activation(string id) => (await OpenActivation(id)).Activation;
+
+    /// <summary>The whole detail answer, note and all.</summary>
+    public async Task<ActivationAnswer> OpenActivation(string id)
     {
         await WaitForIngestPasses(1);
 
-        return await _client.GetFromJsonAsync<ActivationDetailRow>($"/api/activations/{id}", Wire)
+        return await _client.GetFromJsonAsync<ActivationAnswer>($"/api/activations/{id}", Wire)
             ?? throw new InvalidOperationException("The activation came back empty.");
     }
 

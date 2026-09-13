@@ -1,4 +1,5 @@
 import { filterQuery, type Filter } from '../lib/filters';
+import type { Origin, Provenance } from '../lib/provenance';
 import type { TokenSplit } from '../lib/skills';
 import { getJson } from './json';
 
@@ -22,9 +23,17 @@ export interface SkillSummary {
   efforts: string[];
   spend: SkillSpend;
   averageCost: number;
+  /** Empty when the events store said nothing about the name, which the note explains. */
+  origins: Origin[];
+}
+
+/** `GET /api/skills`: the rows, and what the events store had to say about the same period. */
+export interface SkillTable {
+  skills: SkillSummary[];
+  provenance: Provenance;
 }
 
 /** The filter goes to the API, never to the rows that come back: narrowing happens in the query. */
-export function fetchSkills(filter: Filter, signal: AbortSignal): Promise<SkillSummary[]> {
-  return getJson<SkillSummary[]>(`/api/skills${filterQuery(filter)}`, signal);
+export function fetchSkills(filter: Filter, signal: AbortSignal): Promise<SkillTable> {
+  return getJson<SkillTable>(`/api/skills${filterQuery(filter)}`, signal);
 }

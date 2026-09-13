@@ -43,7 +43,7 @@ public sealed class CatalogueEndpointTests
 
     private static async Task<JsonElement> GetCatalogue(string cataloguePath)
     {
-        using var api = new StudioApi(("Catalogue:Path", cataloguePath));
+        using var api = new StudioApi(Events.Holding(), ("Catalogue:Path", cataloguePath));
         using var client = api.CreateClient();
 
         return await client.GetFromJsonAsync<JsonElement>("/api/catalogue");

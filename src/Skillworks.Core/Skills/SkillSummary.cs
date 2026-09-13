@@ -1,3 +1,5 @@
+using Skillworks.Core.Provenance;
+
 namespace Skillworks.Core.Skills;
 
 /// <summary>One row of the skill table, shaped so the front end can render it without arithmetic.</summary>
@@ -11,6 +13,11 @@ namespace Skillworks.Core.Skills;
 /// </param>
 /// <param name="Efforts">Distinct effort levels it was chosen at and ran at, sorted.</param>
 /// <param name="Spend">What the requests made under it cost.</param>
+/// <param name="Origins">
+/// Every way the events store saw this name delivered and set off inside the period. Empty means
+/// the store said nothing about it, which the note beside the table explains: it is never a count
+/// of zero.
+/// </param>
 public sealed record SkillSummary(
     string Name,
     int Activations,
@@ -18,7 +25,8 @@ public sealed record SkillSummary(
     IReadOnlyList<string> Branches,
     IReadOnlyList<string> Models,
     IReadOnlyList<string> Efforts,
-    SkillSpend Spend)
+    SkillSpend Spend,
+    IReadOnlyList<SkillOrigin> Origins)
 {
     /// <summary>
     /// What one firing costs on average, so a skill used twice a year at a pound a time is not

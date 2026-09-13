@@ -48,6 +48,17 @@ _Avoid_: Invocation, call, run, usage
 **Trigger**:
 What caused an activation: Claude chose the skill, or a developer typed it.
 
+**Provenance**:
+Where a Skill came from and what set it off. Only the events store records it; a Transcript does
+not, which is the whole reason there are two stores. A period the store holds nothing for is
+labelled missing, never shown as none.
+_Avoid_: Lineage, delivery, history
+
+**Origin**:
+One way a Skill was delivered and set off: its Trigger, the place it was loaded from, and the Plugin
+and Marketplace behind it where a plugin delivered it. A Skill name with two Origins is two Skills
+sharing a name.
+
 **Transcript**:
 The session file Claude Code writes to disk. It records every activation with its real skill name
 and the tokens that turn spent.
