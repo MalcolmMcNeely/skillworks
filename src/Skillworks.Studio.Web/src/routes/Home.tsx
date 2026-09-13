@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchCatalogue } from '../api/catalogue';
 import { fetchSkills, type SkillSummary } from '../api/skills';
 import { SkillTable } from '../components/SkillTable';
+import { TelemetrySwitch } from '../components/TelemetrySwitch';
 import { describeCatalogueLocation } from '../lib/catalogue';
 import { describeFetchFailure } from '../lib/errors';
 
@@ -35,6 +36,7 @@ export function Home() {
       <p data-testid="catalogue-status">{status}</p>
       {skillsError !== null && <p data-testid="skills-error">{skillsError}</p>}
       {skills !== null && <SkillTable skills={skills} />}
+      <TelemetrySwitch />
     </main>
   );
 }

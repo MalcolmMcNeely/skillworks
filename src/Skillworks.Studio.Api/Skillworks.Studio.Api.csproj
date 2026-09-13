@@ -3,6 +3,10 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <!-- Smart App Control blocks a file named Skillworks.Studio.Api.dll, and nothing else here:
+         the same bytes under any other name load. It is a reputation verdict on the name, so the
+         app and the whole test suite are unrunnable on this machine without this rename. -->
+    <AssemblyName>Skillworks.StudioApi</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Settings;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Telemetry;
 using Skillworks.Core.Transcripts;
@@ -18,11 +19,14 @@ public static class CoreServiceCollectionExtensions
         services.Configure<CatalogueOptions>(configuration.GetSection(CatalogueOptions.SectionName));
         services.Configure<TranscriptOptions>(configuration.GetSection(TranscriptOptions.SectionName));
         services.Configure<TelemetryOptions>(configuration.GetSection(TelemetryOptions.SectionName));
+        services.Configure<ClaudeSettingsOptions>(configuration.GetSection(ClaudeSettingsOptions.SectionName));
 
         services.AddSingleton<CatalogueLocator>();
         services.AddSingleton<CatalogueSkills>();
         services.AddSingleton<TranscriptLocator>();
         services.AddSingleton<RepositoryNames>();
+        services.AddSingleton<ClaudeSettingsFile>();
+        services.AddSingleton<TelemetrySwitch>();
 
         services.AddDbContextFactory<TelemetryDbContext>((provider, builder) =>
         {

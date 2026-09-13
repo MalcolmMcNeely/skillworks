@@ -1,0 +1,35 @@
+# Claude Code sends OTLP here and this forwards it to Loki.
+#
+# ADR 0002: the collector only forwards today. It is here as the seam — dropping noisy events,
+# renaming fields and fanning out to a second sink are all changes to this file, invisible to both
+# Claude Code and Studio.
+
+extensions:
+  # Backs the exporter queue with the container's data volume, so events already accepted survive a
+  # collector restart instead of being dropped.
+  file_storage:
+    directory: /var/lib/otelcol/queue
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  otlphttp/loki:
+    # Loki 3 takes OTLP directly, so no Loki-specific exporter is needed.
+    endpoint: http://loki:3100/otlp
+    sending_queue:
+      storage: file_storage
+
+service:
+  extensions: [file_storage]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/loki]

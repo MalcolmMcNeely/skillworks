@@ -57,6 +57,21 @@ main {
   white-space: nowrap;
 }
 
+.telemetry {
+  margin-top: 2rem;
+}
+
+.telemetry ul {
+  font-family: ui-monospace, monospace;
+  padding-inline-start: 1.25rem;
+}
+
+.telemetry button {
+  font: inherit;
+  margin-inline-end: 0.5rem;
+  padding: 0.3rem 0.75rem;
+}
+
 .skills-cell button {
   background: none;
   border: 0;
