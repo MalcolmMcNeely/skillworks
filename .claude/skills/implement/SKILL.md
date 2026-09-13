@@ -30,7 +30,7 @@ Once done, use /code-review to review the work.
 
 A ticket is not done until the full test suite runs and passes. Do not close it on a partial pass or a skipped suite.
 
-Commit your work to the current branch, then push it. Do not include "co-authored by" in the commit message.
+Commit your work to `main`. Do NOT push. A spec loop pushes once at the end, after every ticket is done, so a half-finished spec never reaches the remote. This repo has no branches and no pull requests. Do not include "co-authored by" in the commit message.
 
 Leave the working tree clean. A caller may be driving you in a loop and will stop if it is not.
 

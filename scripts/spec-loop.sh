@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # Drive one spec's tickets to done, sequentially, one fresh Claude session each.
+# Commits per ticket, pushes once at the end.
 #
 #   scripts/spec-loop.sh <spec-issue-number> [--dry-run]
 #
@@ -50,13 +51,11 @@ spec_title=$(gh api "repos/$REPO/issues/$SPEC" --jq .title)
 ticket_count=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" --jq 'length' | head -1)
 [ "${ticket_count:-0}" -gt 0 ] || die "ABORT spec #$SPEC has no sub-issues. Run /to-tickets first."
 
-# --- branch -----------------------------------------------------------------
+# --- working tree ------------------------------------------------------------
 
-slug=$(printf '%s' "$spec_title" \
-  | tr '[:upper:]' '[:lower:]' \
-  | sed -e 's/^spec:[[:space:]]*//' -e 's/[^a-z0-9]\+/-/g' -e 's/^-//' -e 's/-$//' \
-  | cut -c1-40 | sed -e 's/-$//')
-BRANCH="spec/$SPEC-$slug"
+# This repo commits straight to main. No branch, no PR. See CLAUDE.md.
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+[ "$BRANCH" = "main" ] || die "ABORT on branch '$BRANCH'. This repo works on main."
 
 [ -z "$(git status --porcelain)" ] || die "ABORT working tree is dirty. Commit or stash first."
 
@@ -69,14 +68,17 @@ if [ "$DRY_RUN" = "1" ]; then
   exit 0
 fi
 
-if git rev-parse --verify --quiet "refs/heads/$BRANCH" >/dev/null; then
-  git checkout "$BRANCH"
-else
-  git checkout -b "$BRANCH"
-fi
-git push -u origin "$BRANCH" 2>/dev/null || git push origin "$BRANCH"
+# Every ticket pushes to main, so start level with the remote. Otherwise the
+# first push fails after a session has already spent money.
+git pull --ff-only origin main
 
-say "LOOP  spec #$SPEC on $BRANCH ($REPO)"
+# The drift check needs the commit this loop started from. Written once, so a
+# resumed run still measures against the original starting point.
+BASE_FILE="$LOG_DIR/base.sha"
+[ -f "$BASE_FILE" ] || git rev-parse HEAD > "$BASE_FILE"
+BASE=$(cat "$BASE_FILE")
+
+say "LOOP  spec #$SPEC on $BRANCH from $BASE ($REPO)"
 
 # --- the loop ---------------------------------------------------------------
 
@@ -139,14 +141,15 @@ while :; do
     die "FAIL  #$next still open after /implement. Tests probably failed."
   fi
 
-  git push origin "$BRANCH"
-  say "DONE  #$next"
+  # No push here. The loop pushes once at the end, so a half-finished spec
+  # never reaches the remote.
+  say "DONE  #$next  $(git rev-parse --short HEAD)"
 done
 
 # --- drift check ------------------------------------------------------------
 
 say "DRIFT all tickets closed. Checking the result against spec #$SPEC."
-env -u CLAUDECODE claude -p "/spec-drift $SPEC" \
+env -u CLAUDECODE claude -p "/spec-drift $SPEC $BASE" \
   --permission-mode "$PERMISSION_MODE" \
   --output-format json \
   >"$LOG_DIR/drift.json" 2>"$LOG_DIR/drift.err" \
@@ -155,7 +158,9 @@ env -u CLAUDECODE claude -p "/spec-drift $SPEC" \
 if [ -n "$(git status --porcelain)" ]; then
   die "FAIL  drift check left uncommitted changes. See git status."
 fi
+# The one push. Everything up to here stayed local, so a failed loop leaves
+# the remote untouched and a "git reset --hard $BASE" undoes the lot.
 git push origin "$BRANCH"
 
-say "END   spec #$SPEC complete on $BRANCH"
-say "      gh pr create --base main --head $BRANCH --title \"$spec_title\" --body \"Closes #$SPEC\""
+say "END   spec #$SPEC complete and pushed to $BRANCH."
+say "      Review it with: git log --oneline $BASE..HEAD"

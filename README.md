@@ -48,8 +48,8 @@ Two stages. A human drives the first. A script drives the second.
 /to-spec                a SPEC: issue on GitHub; docs committed and pushed
 /spec-loop <spec#>      /to-tickets, then scripts/spec-loop.sh takes over
                           └─ per ticket: fresh `claude -p "/implement <n>"`
-                                         commit, push, close, next
-                          └─ at the end: /spec-drift against the spec
+                                         commit, close ticket, next
+                          └─ at the end: /spec-drift against the spec, then ONE push
 ```
 
 The tickets are GitHub **sub-issues of the spec**. The driver reads one spec's children and nothing else, so two people running the loop on two specs never take each other's work.
