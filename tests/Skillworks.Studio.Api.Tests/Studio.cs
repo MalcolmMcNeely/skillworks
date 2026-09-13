@@ -91,6 +91,54 @@ public sealed record IngestRow
     public required int Faults { get; init; }
 }
 
+/// <summary>One row of <c>GET /api/activations</c>: one firing, enough of it to pick one out.</summary>
+public sealed record ActivationRow
+{
+    public required string Id { get; init; }
+
+    public required string Skill { get; init; }
+
+    public required string? Repository { get; init; }
+
+    public required string? Branch { get; init; }
+
+    public required string? Model { get; init; }
+
+    public required string? Effort { get; init; }
+
+    public required DateTimeOffset TimestampUtc { get; init; }
+}
+
+/// <summary><c>GET /api/activations/{id}</c>: one firing, with what it was called with.</summary>
+public sealed record ActivationDetailRow
+{
+    public required string Id { get; init; }
+
+    public required string Skill { get; init; }
+
+    public required string SessionId { get; init; }
+
+    public required string? Repository { get; init; }
+
+    public required string? Branch { get; init; }
+
+    public required string? Model { get; init; }
+
+    public required string? Effort { get; init; }
+
+    public required DateTimeOffset TimestampUtc { get; init; }
+
+    public required ArgumentRow[] Arguments { get; init; }
+}
+
+/// <summary>One thing a skill was called with, as the transcript recorded it.</summary>
+public sealed record ArgumentRow
+{
+    public required string Name { get; init; }
+
+    public required string Value { get; init; }
+}
+
 /// <summary>One row of <c>GET /api/ingest/faults</c>: something the ingest had to step over.</summary>
 public sealed record FaultRow
 {
@@ -212,6 +260,31 @@ public sealed class Studio : IDisposable
     /// <summary>How often a skill fired, counting a skill the table never mentions as zero.</summary>
     public async Task<int> ActivationsOf(string name, string filter = "") =>
         (await Skills(filter)).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
+
+    /// <param name="filter">A query string, leading <c>?</c> and all. Empty asks about everything.</param>
+    public async Task<IReadOnlyList<ActivationRow>> Activations(string filter = "")
+    {
+        await WaitForIngestPasses(1);
+
+        return await _client.GetFromJsonAsync<ActivationRow[]>($"/api/activations{filter}", Wire) ?? [];
+    }
+
+    /// <summary>One firing opened by its id, which is how the front end reaches a detail page.</summary>
+    public async Task<ActivationDetailRow> Activation(string id)
+    {
+        await WaitForIngestPasses(1);
+
+        return await _client.GetFromJsonAsync<ActivationDetailRow>($"/api/activations/{id}", Wire)
+            ?? throw new InvalidOperationException("The activation came back empty.");
+    }
+
+    /// <summary>The detail call as it came back, so a test can assert the status of a bad id.</summary>
+    public async Task<HttpResponseMessage> AskForActivation(string id)
+    {
+        await WaitForIngestPasses(1);
+
+        return await _client.GetAsync($"/api/activations/{id}");
+    }
 
     public async Task<FilterChoiceRow> Filters()
     {

@@ -9,6 +9,7 @@ import { TelemetrySwitch } from '../components/TelemetrySwitch';
 import { describeCatalogueLocation } from '../lib/catalogue';
 import { describeFetchFailure } from '../lib/errors';
 import { describeEmpty, filterParams, readFilter, type Filter } from '../lib/filters';
+import { readSort, withSort, type Sort } from '../lib/sorting';
 
 export function Home() {
   const [status, setStatus] = useState('Asking the API…');
@@ -16,10 +17,12 @@ export function Home() {
   const [skillsError, setSkillsError] = useState<string | null>(null);
   const [passes, setPasses] = useState(0);
 
-  // The filter lives in the address bar, so a reload, a bookmark and the back button all land on
-  // the view the reader built. There is nothing to save and nothing to restore.
+  // The filter and the sort both live in the address bar, so a reload, a bookmark, the back button
+  // and a trip out to one activation all land on the view the reader built. There is nothing to
+  // save and nothing to restore.
   const [params, setParams] = useSearchParams();
   const filter = readFilter(params);
+  const sort = readSort(params);
 
   // The same filter written out flat. `params` is a new object on every render, so an effect keyed
   // on it would re-read on every render; keyed on the text, it re-reads when the filter changes.
@@ -71,7 +74,9 @@ export function Home() {
 
   // Replaced rather than pushed: the address bar holds the view being looked at, and a trip through
   // four filters should not cost four presses of the back button to leave.
-  const narrow = (next: Filter) => setParams(filterParams(next), { replace: true });
+  const narrow = (next: Filter) => setParams(withSort(filterParams(next), sort), { replace: true });
+
+  const rank = (next: Sort) => setParams(withSort(filterParams(filter), next), { replace: true });
 
   return (
     <main>
@@ -85,7 +90,7 @@ export function Home() {
         (skills.length === 0 ? (
           <p data-testid="skills-empty">{describeEmpty(filter)}</p>
         ) : (
-          <SkillTable skills={skills} />
+          <SkillTable skills={skills} sort={sort} onSort={rank} />
         ))}
 
       <IngestPanel onPassFinished={countPass} />

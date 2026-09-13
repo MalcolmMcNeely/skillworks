@@ -16,6 +16,43 @@ public sealed record ActivationTally(
     IReadOnlyDictionary<string, IReadOnlyList<string>> Models,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Efforts);
 
+/// <summary>One firing in a list, carrying enough of itself to be told apart and opened.</summary>
+/// <param name="Id">The tool use id, which is how one firing is asked for by name.</param>
+/// <param name="Repository">Null when the transcript recorded no working directory.</param>
+public sealed record ActivationSummary(
+    string Id,
+    string Skill,
+    string? Repository,
+    string? Branch,
+    string? Model,
+    string? Effort,
+    DateTimeOffset TimestampUtc);
+
+/// <summary>
+/// One firing opened: everything the list holds, plus the session it belongs to and what the skill
+/// was actually called with. This is what turns a count into evidence.
+/// </summary>
+/// <param name="Arguments">
+/// In the order the transcript wrote them. Empty when the firing recorded nothing at all, which is
+/// a fact about the firing rather than a gap.
+/// </param>
+public sealed record ActivationDetail(
+    string Id,
+    string Skill,
+    string SessionId,
+    string? Repository,
+    string? Branch,
+    string? Model,
+    string? Effort,
+    DateTimeOffset TimestampUtc,
+    IReadOnlyList<ActivationArgument> Arguments);
+
+/// <summary>
+/// One thing a skill was called with. The value is text whatever the transcript wrote, because the
+/// reader is judging the words that were used, not the shape they arrived in.
+/// </summary>
+public sealed record ActivationArgument(string Name, string Value);
+
 /// <summary>
 /// Reads the activations back out. It sits beside the ingest that writes them, so the store's shape
 /// is known in one place and callers see tallies rather than tables.
@@ -45,6 +82,56 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
             await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.GitBranch), cancellationToken),
             await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Model), cancellationToken),
             await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
+    }
+
+    /// <summary>
+    /// The firings the filter takes in, newest first, so the reader opening one is looking at the
+    /// most recent by default. Narrowed by the same filter as the skill table, so the list reached
+    /// from a row is the same slice of history that row was counting.
+    /// </summary>
+    public async Task<IReadOnlyList<ActivationSummary>> ListAsync(
+        TelemetryFilter filter,
+        CancellationToken cancellationToken)
+    {
+        await using var store = await contexts.CreateDbContextAsync(cancellationToken);
+
+        return await Narrowed(store.Activations, filter)
+            .OrderByDescending(a => a.TimestampUtc)
+            .Select(a => new ActivationSummary(
+                a.ToolUseId,
+                a.SkillName,
+                a.Repository,
+                a.GitBranch,
+                a.Model,
+                a.Effort,
+                a.TimestampUtc))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// One firing by its tool use id, or null when the ingest has never read it. Not narrowed by a
+    /// filter: a reader who has a firing's id is asking about that firing, not about a week.
+    /// </summary>
+    public async Task<ActivationDetail?> OpenAsync(string id, CancellationToken cancellationToken)
+    {
+        await using var store = await contexts.CreateDbContextAsync(cancellationToken);
+
+        var activation = await store.Activations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.ToolUseId == id, cancellationToken);
+
+        return activation is null
+            ? null
+            : new ActivationDetail(
+                activation.ToolUseId,
+                activation.SkillName,
+                activation.SessionId,
+                activation.Repository,
+                activation.GitBranch,
+                activation.Model,
+                activation.Effort,
+                activation.TimestampUtc,
+                RecordedArguments.Read(activation.Arguments));
     }
 
     /// <summary>

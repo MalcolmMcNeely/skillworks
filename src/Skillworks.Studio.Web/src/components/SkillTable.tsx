@@ -11,9 +11,12 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import type { SkillSummary } from '../api/skills';
+import { activationsPath } from '../lib/activations';
 import { ariaSort, describeList, describeMoney, describeSplit, sortMark } from '../lib/skills';
+import { byActivations, type Sort } from '../lib/sorting';
 
 const features = tableFeatures({
   rowSortingFeature,
@@ -27,10 +30,26 @@ const features = tableFeatures({
 
 const column = createColumnHelper<typeof features, SkillSummary>();
 
+/**
+ * The way in to the firings behind a count. It reads the address bar rather than being handed a
+ * prop, because a column definition is built once for the module and cannot be handed anything —
+ * and because carrying the whole address onward, sort and filter together, is the job.
+ *
+ * A skill that has never fired is left as a plain nought. A link to an empty list is a dead end.
+ */
+function ActivationsLink({ skill, count }: { skill: string; count: number }) {
+  const [params] = useSearchParams();
+
+  return count === 0 ? <>{count}</> : <Link to={activationsPath(params.toString(), skill)}>{count}</Link>;
+}
+
 // column.columns keeps each column's own value type, which a bare array widens away.
 const columns = column.columns([
   column.accessor('name', { header: 'Skill' }),
-  column.accessor('activations', { header: 'Activations' }),
+  column.accessor('activations', {
+    header: 'Activations',
+    cell: (cell) => <ActivationsLink skill={cell.row.original.name} count={cell.getValue()} />,
+  }),
   // The money columns sort on the number and render the words, so clicking the heading ranks
   // skills by what they actually cost rather than by how the figure happens to read.
   column.accessor((skill) => skill.spend.cost, {
@@ -62,15 +81,40 @@ const columns = column.columns([
 
 const rowHeight = 34;
 
-export function SkillTable({ skills }: { skills: SkillSummary[] }) {
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'activations', desc: true }]);
+/**
+ * The skill table. The sort is handed in and handed back rather than kept here, because it lives in
+ * the address bar: opening an activation and pressing back has to land on the table the reader
+ * built, and state held in this component would not survive the trip.
+ */
+export function SkillTable({
+  skills,
+  sort,
+  onSort,
+}: {
+  skills: SkillSummary[];
+  sort: Sort;
+  onSort: (sort: Sort) => void;
+}) {
+  // Keyed on the two values, not on the object: the sort is read fresh out of the address bar on
+  // every render, so an object identity would miss every time and re-sort every row with it.
+  const sorting: SortingState = useMemo(
+    () => [{ id: sort.column, desc: sort.desc }],
+    [sort.column, sort.desc],
+  );
 
   const table = useTable({
     features,
     columns,
     data: skills,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange: (change) => {
+      const chosen = typeof change === 'function' ? change(sorting) : change;
+      const [first] = chosen;
+
+      // A third click clears the sort altogether, which would leave the table in whatever order the
+      // API happened to answer in. Going back to the starting rank says something instead.
+      onSort(first === undefined ? byActivations : { column: first.id, desc: first.desc });
+    },
   });
 
   const rows = table.getRowModel().rows;

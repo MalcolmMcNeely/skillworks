@@ -100,6 +100,7 @@ internal static class TranscriptParser
                 ToolUseId = toolUseId,
                 SkillName = skill,
                 SessionId = Text(record, "sessionId") ?? "",
+                Arguments = input.GetRawText(),
                 Repository = repositories.Of(Text(record, "cwd")),
                 GitBranch = Text(record, "gitBranch"),
                 TimestampUtc = Timestamp(record),
