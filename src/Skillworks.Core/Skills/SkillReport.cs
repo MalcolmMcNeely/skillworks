@@ -9,10 +9,12 @@ namespace Skillworks.Core.Skills;
 /// </summary>
 public sealed class SkillReport(ActivationStore activations, SpendStore spend, PriceTable prices, CatalogueSkills catalogue)
 {
-    public async Task<IReadOnlyList<SkillSummary>> SkillsAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<SkillSummary>> SkillsAsync(
+        TelemetryFilter filter,
+        CancellationToken cancellationToken)
     {
-        var tally = await activations.TallyBySkillAsync(cancellationToken);
-        var tokens = await spend.TokensBySkillAsync(cancellationToken);
+        var tally = await activations.TallyBySkillAsync(filter, cancellationToken);
+        var tokens = await spend.TokensBySkillAsync(filter, cancellationToken);
 
         // Read now rather than stored with the turns, so yesterday's spend is costed at today's
         // prices and correcting a rate never means reading a transcript again.
@@ -20,9 +22,15 @@ public sealed class SkillReport(ActivationStore activations, SpendStore spend, P
 
         var counts = new Dictionary<string, int>(tally.Counts);
 
-        foreach (var name in catalogue.Names())
+        // A skill that never fired belongs to the all-time, everywhere answer, where its zero is the
+        // point. A filter that asks what happened in one week or one project is asking about events,
+        // and a skill with no events there is not a zero in that answer: it is not in it.
+        if (!filter.AsksWhatHappened)
         {
-            counts.TryAdd(name, 0);
+            foreach (var name in catalogue.Names().Where(filter.Covers))
+            {
+                counts.TryAdd(name, 0);
+            }
         }
 
         // A skill can own tokens without a firing of its own in the store: the transcript that held
@@ -50,6 +58,28 @@ public sealed class SkillReport(ActivationStore activations, SpendStore spend, P
                 })
                 .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
         ];
+    }
+
+    /// <summary>
+    /// What the three filters can be set to. The catalogue is in the skill names as well as the
+    /// history, so a skill can be followed from the day it is written rather than the day it first
+    /// fires.
+    /// </summary>
+    public async Task<FilterChoices> ChoicesAsync(CancellationToken cancellationToken)
+    {
+        var (repositories, fired) = await activations.ChoicesAsync(cancellationToken);
+
+        return new FilterChoices(
+            repositories,
+            [
+                // Told apart exactly, because that is how the filter matches them. Folding two
+                // spellings into one choice would offer a name that then matches only half of what
+                // it appears to name.
+                .. fired
+                    .Concat(catalogue.Names())
+                    .Distinct()
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            ]);
     }
 
     /// <summary>

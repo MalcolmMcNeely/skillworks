@@ -1,3 +1,4 @@
+import { filterQuery, type Filter } from '../lib/filters';
 import type { TokenSplit } from '../lib/skills';
 import { getJson } from './json';
 
@@ -23,6 +24,7 @@ export interface SkillSummary {
   averageCost: number;
 }
 
-export function fetchSkills(signal: AbortSignal): Promise<SkillSummary[]> {
-  return getJson<SkillSummary[]>('/api/skills', signal);
+/** The filter goes to the API, never to the rows that come back: narrowing happens in the query. */
+export function fetchSkills(filter: Filter, signal: AbortSignal): Promise<SkillSummary[]> {
+  return getJson<SkillSummary[]>(`/api/skills${filterQuery(filter)}`, signal);
 }

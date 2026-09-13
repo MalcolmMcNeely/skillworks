@@ -88,6 +88,13 @@ How hard the model was asked to think on a Turn or an Activation. It moves the c
 the Model, so it is reported beside it.
 _Avoid_: Reasoning level, thinking budget
 
+**Filter**:
+The one way every list narrows: a span of days, a repository and a Skill. The span is counted in
+whole UTC days and takes both ends in. A Skill that never fired belongs in the unnarrowed answer,
+where its zero says the description may be broken; a filter that asks what happened in one week or
+one project leaves it out, because it did not happen there.
+_Avoid_: Query, search, scope
+
 **Firing eval**:
 A test of whether a skill activates on the prompts it should, and stays quiet on the ones it should
 not. Cheap. Applies to every engine.

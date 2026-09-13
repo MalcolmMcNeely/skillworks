@@ -20,8 +20,15 @@ api.MapGet("catalogue", (CatalogueLocator locator) => locator.Locate());
 
 api.MapGet("transcripts", (TranscriptLocator locator) => locator.Locate());
 
-api.MapGet("skills", (SkillReport report, CancellationToken cancellationToken) =>
-    report.SkillsAsync(cancellationToken));
+// Every list of telemetry takes the same filter set, bound as one object rather than four
+// parameters, so the next list to arrive narrows the same way without being asked to remember how.
+// The prices and the ingest faults below take none of it: a price is configuration, and a fault
+// names a file rather than a skill, a repository or a moment a skill fired.
+api.MapGet("skills", ([AsParameters] TelemetryFilter filter, SkillReport report, CancellationToken cancellationToken) =>
+    report.SkillsAsync(filter, cancellationToken));
+
+api.MapGet("filters", (SkillReport report, CancellationToken cancellationToken) =>
+    report.ChoicesAsync(cancellationToken));
 
 // Prices are configuration, not data: they are read on every skill query and changing one changes
 // what the next answer says without a transcript being read again.

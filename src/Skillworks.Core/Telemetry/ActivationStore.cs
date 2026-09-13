@@ -26,24 +26,88 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
 
     private readonly record struct SkillCount(string Skill, int Activations);
 
-    public async Task<ActivationTally> TallyBySkillAsync(CancellationToken cancellationToken)
+    public async Task<ActivationTally> TallyBySkillAsync(TelemetryFilter filter, CancellationToken cancellationToken)
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);
 
+        var activations = Narrowed(store.Activations, filter);
+
         // Narrow reads beat one wide one. SQLite has no distinct-within-group, and pulling every
         // activation back to fold it in memory would not survive a full transcript folder.
-        var counts = await store.Activations
+        var counts = await activations
             .GroupBy(a => a.SkillName)
             .Select(group => new SkillCount(group.Key, group.Count()))
             .ToListAsync(cancellationToken);
 
         return new ActivationTally(
             counts.ToDictionary(count => count.Skill, count => count.Activations),
-            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.Repository), cancellationToken),
-            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.GitBranch), cancellationToken),
-            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.Model), cancellationToken),
-            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
+            await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Repository), cancellationToken),
+            await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.GitBranch), cancellationToken),
+            await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Model), cancellationToken),
+            await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
     }
+
+    /// <summary>
+    /// The repositories and skills the whole history holds, sorted. Deliberately not narrowed: they
+    /// are what a filter can be set to, so a filter that has cut the answer to nothing must still be
+    /// able to offer the way back out.
+    /// </summary>
+    public async Task<(IReadOnlyList<string> Repositories, IReadOnlyList<string> Skills)> ChoicesAsync(
+        CancellationToken cancellationToken)
+    {
+        await using var store = await contexts.CreateDbContextAsync(cancellationToken);
+
+        var repositories = await store.Activations
+            .Select(a => a.Repository)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var skills = await store.Activations
+            .Select(a => a.SkillName)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return (Sorted(repositories.OfType<string>()), Sorted(skills));
+    }
+
+    /// <summary>
+    /// The filter applied where the ticket asks for it: in the query. Narrowing after the rows came
+    /// back would read a whole history to answer a question about one week of it.
+    /// </summary>
+    /// <remarks>
+    /// Written again over in <see cref="SpendStore"/> rather than shared. Both ways of sharing it
+    /// cost more than the repetition: an interface over the two tables leaves EF translating a
+    /// member it cannot see the column behind, and a helper taking a selector per column has to
+    /// graft the expressions together by hand. What repeats here is four predicates, and what does
+    /// not repeat is the rule behind them, which <see cref="TelemetryFilter"/> owns alone.
+    /// </remarks>
+    private static IQueryable<Activation> Narrowed(IQueryable<Activation> activations, TelemetryFilter filter)
+    {
+        if (filter.FromUtc is { } from)
+        {
+            activations = activations.Where(a => a.TimestampUtc >= from);
+        }
+
+        if (filter.UntilUtc is { } until)
+        {
+            activations = activations.Where(a => a.TimestampUtc < until);
+        }
+
+        if (filter.Repository is { } repository)
+        {
+            activations = activations.Where(a => a.Repository == repository);
+        }
+
+        if (filter.Skill is { } skill)
+        {
+            activations = activations.Where(a => a.SkillName == skill);
+        }
+
+        return activations;
+    }
+
+    private static IReadOnlyList<string> Sorted(IEnumerable<string> names) =>
+        [.. names.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>
     /// The distinct values of one column per skill. Taking the whole pair as an expression keeps
@@ -52,11 +116,11 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
     /// because a predicate over a projected pair is the one thing SQLite will not be told.
     /// </summary>
     private static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> BySkillAsync(
-        TelemetryDbContext store,
+        IQueryable<Activation> activations,
         Expression<Func<Activation, SkillValue>> pair,
         CancellationToken cancellationToken)
     {
-        var pairs = await store.Activations
+        var pairs = await activations
             .Select(pair)
             .Distinct()
             .ToListAsync(cancellationToken);

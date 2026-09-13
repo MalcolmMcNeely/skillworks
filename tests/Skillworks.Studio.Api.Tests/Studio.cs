@@ -45,6 +45,14 @@ public sealed record SpendRow
     public required bool CostIsPartial { get; init; }
 }
 
+/// <summary><c>GET /api/filters</c>: the values the three filters can be narrowed to.</summary>
+public sealed record FilterChoiceRow
+{
+    public required string[] Repositories { get; init; }
+
+    public required string[] Skills { get; init; }
+}
+
 /// <summary>One row of <c>GET /api/prices</c>: what a million tokens costs on one model.</summary>
 public sealed record PriceRow
 {
@@ -181,20 +189,37 @@ public sealed class Studio : IDisposable
         return await _client.GetFromJsonAsync<FaultRow[]>("/api/ingest/faults", Wire) ?? [];
     }
 
-    public async Task<IReadOnlyList<SkillRow>> Skills()
+    /// <param name="filter">A query string, leading <c>?</c> and all. Empty asks about everything.</param>
+    public async Task<IReadOnlyList<SkillRow>> Skills(string filter = "")
     {
         await WaitForIngestPasses(1);
 
-        return await _client.GetFromJsonAsync<SkillRow[]>("/api/skills", Wire) ?? [];
+        return await _client.GetFromJsonAsync<SkillRow[]>($"/api/skills{filter}", Wire) ?? [];
+    }
+
+    /// <summary>The skills call as it came back, so a test can assert the status as well as the rows.</summary>
+    public async Task<HttpResponseMessage> AskForSkills(string filter)
+    {
+        await WaitForIngestPasses(1);
+
+        return await _client.GetAsync($"/api/skills{filter}");
     }
 
     /// <summary>The one named skill. Fails the test if the table does not hold exactly one.</summary>
-    public async Task<SkillRow> Skill(string name) =>
-        (await Skills()).Single(skill => skill.Name == name);
+    public async Task<SkillRow> Skill(string name, string filter = "") =>
+        (await Skills(filter)).Single(skill => skill.Name == name);
 
     /// <summary>How often a skill fired, counting a skill the table never mentions as zero.</summary>
-    public async Task<int> ActivationsOf(string name) =>
-        (await Skills()).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
+    public async Task<int> ActivationsOf(string name, string filter = "") =>
+        (await Skills(filter)).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
+
+    public async Task<FilterChoiceRow> Filters()
+    {
+        await WaitForIngestPasses(1);
+
+        return await _client.GetFromJsonAsync<FilterChoiceRow>("/api/filters", Wire)
+            ?? throw new InvalidOperationException("The filter choices came back empty.");
+    }
 
     public async Task<IReadOnlyList<PriceRow>> Prices()
     {
