@@ -39,10 +39,10 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
 
         return new ActivationTally(
             counts.ToDictionary(count => count.Skill, count => count.Activations),
-            await DistinctAsync(store, a => new SkillValue(a.SkillName, a.Repository), cancellationToken),
-            await DistinctAsync(store, a => new SkillValue(a.SkillName, a.GitBranch), cancellationToken),
-            await DistinctAsync(store, a => new SkillValue(a.SkillName, a.Model), cancellationToken),
-            await DistinctAsync(store, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
+            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.Repository), cancellationToken),
+            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.GitBranch), cancellationToken),
+            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.Model), cancellationToken),
+            await BySkillAsync(store, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
     }
 
     /// <summary>
@@ -51,13 +51,13 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
     /// comes back, never a row per activation. The rows that recorded nothing are dropped here,
     /// because a predicate over a projected pair is the one thing SQLite will not be told.
     /// </summary>
-    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> DistinctAsync(
+    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> BySkillAsync(
         TelemetryDbContext store,
-        Expression<Func<Activation, SkillValue>> column,
+        Expression<Func<Activation, SkillValue>> pair,
         CancellationToken cancellationToken)
     {
         var pairs = await store.Activations
-            .Select(column)
+            .Select(pair)
             .Distinct()
             .ToListAsync(cancellationToken);
 

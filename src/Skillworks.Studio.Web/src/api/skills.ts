@@ -1,13 +1,10 @@
+import type { TokenSplit } from '../lib/skills';
 import { getJson } from './json';
 
 /** What a skill cost, split by kind so an expensive one can be diagnosed rather than just noticed. */
-export interface SkillSpend {
-  inputTokens: number;
-  outputTokens: number;
+export interface SkillSpend extends TokenSplit {
   /** Already inside `outputTokens`, because that is how thinking is billed. */
   thinkingTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
   /** US dollars, worked out by the API from its price table at the moment of the question. */
   cost: number;
   /** True when some tokens ran on a model with no price, so the money is a floor. */

@@ -7,7 +7,7 @@ namespace Skillworks.Core.Telemetry;
 /// cheap — it holds one row per model — and it is what lets a corrected price show up in the next
 /// answer rather than in the next ingest.
 /// </summary>
-public sealed class PriceBook(IDbContextFactory<TelemetryDbContext> contexts)
+public sealed class PriceTable(IDbContextFactory<TelemetryDbContext> contexts)
 {
     public async Task<IReadOnlyList<ModelPrice>> PricesAsync(CancellationToken cancellationToken)
     {
@@ -16,6 +16,11 @@ public sealed class PriceBook(IDbContextFactory<TelemetryDbContext> contexts)
         return await store.ModelPrices.OrderBy(price => price.Model).ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Keyed exactly as a transcript spells the model. A near miss is a row the developer has not
+    /// written yet, and reporting that cost as partial is true; matching it loosely would only have
+    /// to guess which of two rows was meant.
+    /// </summary>
     public async Task<IReadOnlyDictionary<string, ModelPrice>> ByModelAsync(CancellationToken cancellationToken) =>
         (await PricesAsync(cancellationToken)).ToDictionary(price => price.Model);
 

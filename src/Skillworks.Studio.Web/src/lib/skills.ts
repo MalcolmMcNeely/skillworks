@@ -1,7 +1,16 @@
-import type { SkillSpend } from '../api/skills';
-
 /** How a column reports itself: not sorted, or sorted one way. */
 export type SortDirection = false | 'asc' | 'desc';
+
+/**
+ * The token counts a split cell reads. Declared here rather than taken from `api`, because lib is
+ * the bottom of the stack and reaching up for a shape would point a dependency the wrong way.
+ */
+export interface TokenSplit {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+}
 
 // Pinned to one locale rather than the reader's, because the price table is in US dollars and a
 // figure that reads as dollars should be grouped and pointed the way dollars are.
@@ -33,7 +42,7 @@ export function describeMoney(amount: number, partial = false): string {
 }
 
 /** How a count of tokens reads in one cell. */
-export function describeTokens(count: number): string {
+function describeTokens(count: number): string {
   return tokens.format(count);
 }
 
@@ -41,7 +50,7 @@ export function describeTokens(count: number): string {
  * The token split in one cell: input, output and the cache read and written. The thinking is left
  * out because it is already inside the output, and a reader would add it on.
  */
-export function describeSplit(spend: SkillSpend): string {
+export function describeSplit(spend: TokenSplit): string {
   return [
     `in ${describeTokens(spend.inputTokens)}`,
     `out ${describeTokens(spend.outputTokens)}`,

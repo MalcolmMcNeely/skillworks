@@ -78,6 +78,16 @@ What a million tokens of each kind costs on each model. It is read when a questi
 never folded into a stored Turn, so correcting a price never means reading the Transcripts again.
 _Avoid_: Rate card, tariff
 
+**Model**:
+Which model answered, as the Transcript spells it. It is what a row of the Price table is found by,
+and what makes two costs comparable.
+_Avoid_: Engine, LLM
+
+**Effort**:
+How hard the model was asked to think on a Turn or an Activation. It moves the cost without moving
+the Model, so it is reported beside it.
+_Avoid_: Reasoning level, thinking budget
+
 **Firing eval**:
 A test of whether a skill activates on the prompts it should, and stays quiet on the ones it should
 not. Cheap. Applies to every engine.

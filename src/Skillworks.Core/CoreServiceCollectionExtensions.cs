@@ -44,7 +44,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IngestReport>();
         services.AddSingleton<ActivationStore>();
         services.AddSingleton<SpendStore>();
-        services.AddSingleton<PriceBook>();
+        services.AddSingleton<PriceTable>();
         services.AddSingleton<SkillReport>();
 
         // Order matters: the schema is in place before the first pass and before the first query.

@@ -46,6 +46,12 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
+    // Without this a type-only import is stripped before the graph is built, and `lib` could reach
+    // up into `api` for a shape with the check still passing. The coupling is real either way.
+    tsPreCompilationDeps: true,
+    // Vite's own ambient types, referenced by a triple slash and resolved by nothing. There is no
+    // boundary question in a file that declares no module of ours.
+    exclude: { path: 'src/vite-env\\.d\\.ts$' },
     tsConfig: { fileName: 'tsconfig.app.json' },
     enhancedResolveOptions: {
       exportsFields: ['exports'],

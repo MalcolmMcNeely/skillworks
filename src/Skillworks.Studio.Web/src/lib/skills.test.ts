@@ -1,15 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { SkillSpend } from '../api/skills';
-import { ariaSort, describeList, describeMoney, describeSplit, sortMark } from './skills';
+import { ariaSort, describeList, describeMoney, describeSplit, sortMark, type TokenSplit } from './skills';
 
-const spend: SkillSpend = {
+const spend: TokenSplit = {
   inputTokens: 1500,
   outputTokens: 6000,
-  thinkingTokens: 3000,
   cacheReadTokens: 3000000,
   cacheWriteTokens: 400000,
-  cost: 14.5215,
-  costIsPartial: false,
 };
 
 describe('describeList', () => {

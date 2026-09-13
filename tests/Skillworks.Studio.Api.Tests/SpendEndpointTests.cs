@@ -80,8 +80,11 @@ public sealed class SpendEndpointTests
 
         var sweep = await studio.Skill("comment-sweep");
 
-        Assert.Equal(["claude-opus-5"], sweep.Models);
-        Assert.Equal(["high"], sweep.Efforts);
+        // Chosen on opus at high effort, and its own requests ran on opus and on sonnet at medium.
+        // Naming only the model that chose it would report a cost charged at two rates as if it had
+        // been charged at one.
+        Assert.Equal(["claude-opus-5", "claude-sonnet-5"], sweep.Models);
+        Assert.Equal(["high", "medium"], sweep.Efforts);
     }
 
     [Fact]
@@ -121,13 +124,13 @@ public sealed class SpendEndpointTests
     {
         using var studio = new Studio(Studio.Fixture("costly"));
 
-        var byName = (await studio.Skills()).Select(skill => skill.Name);
-        var bySpend = (await studio.Skills())
-            .OrderByDescending(skill => skill.Spend.Cost)
-            .Select(skill => skill.Name);
+        var skills = await studio.Skills();
 
-        Assert.Equal(["comment-sweep", "grilling", "tdd", "unslop"], byName);
-        Assert.Equal(["comment-sweep", "unslop"], bySpend.Take(2));
+        // The API answers in name order, because which rank to read is the reader's to choose. What
+        // makes a rank by spend possible is a total against every skill, so the totals are what is
+        // asserted here; sorting them in the test would only assert that LINQ sorts.
+        Assert.Equal(["comment-sweep", "grilling", "tdd", "unslop"], skills.Select(skill => skill.Name));
+        Assert.Equal([SweepCost, 0m, 0m, HaikuCost], skills.Select(skill => skill.Spend.Cost));
     }
 
     [Fact]

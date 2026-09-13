@@ -5,8 +5,11 @@ namespace Skillworks.Core.Skills;
 /// <param name="Activations">How many times it fired. Zero means it exists and never has.</param>
 /// <param name="Repositories">Distinct repositories it fired in, sorted.</param>
 /// <param name="Branches">Distinct git branches it fired on, sorted.</param>
-/// <param name="Models">Distinct models that fired it, sorted, so like is compared with like.</param>
-/// <param name="Efforts">Distinct effort levels it fired at, sorted.</param>
+/// <param name="Models">
+/// Distinct models it was chosen by and ran on, sorted, so the cost beside them is compared with
+/// like: a skill charged at two rates does not read as one charged at a single rate.
+/// </param>
+/// <param name="Efforts">Distinct effort levels it was chosen at and ran at, sorted.</param>
 /// <param name="Spend">What the requests made under it cost.</param>
 public sealed record SkillSummary(
     string Name,

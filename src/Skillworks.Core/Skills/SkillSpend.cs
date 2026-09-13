@@ -44,7 +44,7 @@ public sealed record SkillSpend(
         {
             if (prices.TryGetValue(run.Model, out var price))
             {
-                cost += Money(run, price);
+                cost += price.CostOf(run);
             }
             else
             {
@@ -61,12 +61,4 @@ public sealed record SkillSpend(
             cost,
             partial);
     }
-
-    /// <summary>Thinking is left out on purpose: it is already inside the output tokens.</summary>
-    private static decimal Money(ModelTokens tokens, ModelPrice price) =>
-        (tokens.InputTokens * price.InputPerMillion +
-         tokens.OutputTokens * price.OutputPerMillion +
-         tokens.CacheReadTokens * price.CacheReadPerMillion +
-         tokens.CacheWrite5mTokens * price.CacheWrite5mPerMillion +
-         tokens.CacheWrite1hTokens * price.CacheWrite1hPerMillion) / 1_000_000m;
 }
