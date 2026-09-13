@@ -9,6 +9,8 @@ extensions:
   # collector restart instead of being dropped.
   file_storage:
     directory: /var/lib/otelcol/queue
+    # The volume mounts empty, so the queue directory is not there on a first run.
+    create_directory: true
 
 receivers:
   otlp:
