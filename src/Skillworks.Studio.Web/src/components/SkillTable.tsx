@@ -13,7 +13,7 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useState } from 'react';
 import type { SkillSummary } from '../api/skills';
-import { ariaSort, describeList, sortMark } from '../lib/skills';
+import { ariaSort, describeList, describeMoney, describeSplit, sortMark } from '../lib/skills';
 
 const features = tableFeatures({
   rowSortingFeature,
@@ -31,6 +31,25 @@ const column = createColumnHelper<typeof features, SkillSummary>();
 const columns = column.columns([
   column.accessor('name', { header: 'Skill' }),
   column.accessor('activations', { header: 'Activations' }),
+  // The money columns sort on the number and render the words, so clicking the heading ranks
+  // skills by what they actually cost rather than by how the figure happens to read.
+  column.accessor((skill) => skill.spend.cost, {
+    id: 'cost',
+    header: 'Cost',
+    cell: (cell) => describeMoney(cell.getValue(), cell.row.original.spend.costIsPartial),
+  }),
+  column.accessor('averageCost', {
+    header: 'Per activation',
+    cell: (cell) => describeMoney(cell.getValue(), cell.row.original.spend.costIsPartial),
+  }),
+  column.accessor((skill) => describeSplit(skill.spend), {
+    id: 'tokens',
+    header: 'Tokens',
+  }),
+  column.accessor((skill) => describeList(skill.models), {
+    id: 'models',
+    header: 'Models',
+  }),
   column.accessor((skill) => describeList(skill.repositories), {
     id: 'repositories',
     header: 'Repositories',

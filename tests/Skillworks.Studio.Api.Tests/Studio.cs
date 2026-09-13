@@ -17,6 +17,48 @@ public sealed record SkillRow
     public required string[] Repositories { get; init; }
 
     public required string[] Branches { get; init; }
+
+    public required string[] Models { get; init; }
+
+    public required string[] Efforts { get; init; }
+
+    public required SpendRow Spend { get; init; }
+
+    public required decimal AverageCost { get; init; }
+}
+
+/// <summary>What one skill cost, as the skill table reports it.</summary>
+public sealed record SpendRow
+{
+    public required long InputTokens { get; init; }
+
+    public required long OutputTokens { get; init; }
+
+    public required long ThinkingTokens { get; init; }
+
+    public required long CacheReadTokens { get; init; }
+
+    public required long CacheWriteTokens { get; init; }
+
+    public required decimal Cost { get; init; }
+
+    public required bool CostIsPartial { get; init; }
+}
+
+/// <summary>One row of <c>GET /api/prices</c>: what a million tokens costs on one model.</summary>
+public sealed record PriceRow
+{
+    public required string Model { get; init; }
+
+    public required decimal InputPerMillion { get; init; }
+
+    public required decimal OutputPerMillion { get; init; }
+
+    public required decimal CacheReadPerMillion { get; init; }
+
+    public required decimal CacheWrite5mPerMillion { get; init; }
+
+    public required decimal CacheWrite1hPerMillion { get; init; }
 }
 
 /// <summary><c>GET /api/ingest</c>: how far the ingest has got and how stale the numbers are.</summary>
@@ -153,6 +195,18 @@ public sealed class Studio : IDisposable
     /// <summary>How often a skill fired, counting a skill the table never mentions as zero.</summary>
     public async Task<int> ActivationsOf(string name) =>
         (await Skills()).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
+
+    public async Task<IReadOnlyList<PriceRow>> Prices()
+    {
+        return await _client.GetFromJsonAsync<PriceRow[]>("/api/prices", Wire) ?? [];
+    }
+
+    /// <summary>Sets one model's price, which is the whole point of a table read at query time.</summary>
+    public async Task Reprice(PriceRow price)
+    {
+        using var response = await _client.PutAsJsonAsync("/api/prices", price, Wire);
+        response.EnsureSuccessStatusCode();
+    }
 
     /// <summary>Waits for a skill to turn up on its own, for the sweep that nobody asked for.</summary>
     public async Task WaitForSkill(string name)

@@ -28,10 +28,12 @@ public sealed class TranscriptIngestor(
     /// <summary>What the pass already knows when it reaches a file, carried from file to file.</summary>
     /// <param name="Cursors">How far each file was read last time, updated as the pass goes.</param>
     /// <param name="Counted">Tool use ids already in the store, so a re-read cannot double count.</param>
+    /// <param name="Charged">Request ids already in the store, so a turn is paid for once.</param>
     /// <param name="Unreadable">Files carrying a standing fault, so it can be cleared when one opens.</param>
     private sealed record Known(
         Dictionary<string, IngestedTranscript> Cursors,
         HashSet<string> Counted,
+        HashSet<string> Charged,
         HashSet<string> Unreadable);
 
     /// <param name="full">True forgets everything already read and reads it all again.</param>
@@ -46,6 +48,7 @@ public sealed class TranscriptIngestor(
         if (full)
         {
             await store.Activations.ExecuteDeleteAsync(cancellationToken);
+            await store.Turns.ExecuteDeleteAsync(cancellationToken);
             await store.IngestedTranscripts.ExecuteDeleteAsync(cancellationToken);
             await store.TranscriptFaults.ExecuteDeleteAsync(cancellationToken);
         }
@@ -53,6 +56,7 @@ public sealed class TranscriptIngestor(
         var known = new Known(
             await store.IngestedTranscripts.ToDictionaryAsync(t => t.Path, cancellationToken),
             await store.Activations.Select(a => a.ToolUseId).ToHashSetAsync(cancellationToken),
+            await store.Turns.Select(t => t.RequestId).ToHashSetAsync(cancellationToken),
             await store.TranscriptFaults
                 .Where(f => f.Line == TranscriptFault.WholeFile)
                 .Select(f => f.Path)
@@ -113,8 +117,10 @@ public sealed class TranscriptIngestor(
         }
 
         var fresh = new List<Activation>();
+        var turns = new List<Turn>();
         var faults = new List<TranscriptFault>();
         var firstSeenHere = new HashSet<string>();
+        var chargedHere = new HashSet<string>();
         var readTo = offset;
 
         try
@@ -140,6 +146,15 @@ public sealed class TranscriptIngestor(
                     {
                         fresh.Add(activation);
                     }
+                }
+
+                // Several lines report the same request in full, and they say the same thing, so
+                // the first one wins and the rest are already paid for.
+                if (reading.Turn is { } turn &&
+                    !known.Charged.Contains(turn.RequestId) &&
+                    chargedHere.Add(turn.RequestId))
+                {
+                    turns.Add(turn);
                 }
             }
         }
@@ -170,6 +185,7 @@ public sealed class TranscriptIngestor(
         }
 
         store.Activations.AddRange(fresh);
+        store.Turns.AddRange(turns);
         store.TranscriptFaults.AddRange(faults);
 
         if (cursor is null)
@@ -189,6 +205,7 @@ public sealed class TranscriptIngestor(
         // rather than only at the end of it.
         await store.SaveChangesAsync(cancellationToken);
         known.Counted.UnionWith(firstSeenHere);
+        known.Charged.UnionWith(chargedHere);
 
         return new TranscriptRead(true, fresh.Count);
     }

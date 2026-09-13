@@ -1,11 +1,29 @@
 import { getJson } from './json';
 
+/** What a skill cost, split by kind so an expensive one can be diagnosed rather than just noticed. */
+export interface SkillSpend {
+  inputTokens: number;
+  outputTokens: number;
+  /** Already inside `outputTokens`, because that is how thinking is billed. */
+  thinkingTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  /** US dollars, worked out by the API from its price table at the moment of the question. */
+  cost: number;
+  /** True when some tokens ran on a model with no price, so the money is a floor. */
+  costIsPartial: boolean;
+}
+
 /** One row of `GET /api/skills`, already shaped by the API. */
 export interface SkillSummary {
   name: string;
   activations: number;
   repositories: string[];
   branches: string[];
+  models: string[];
+  efforts: string[];
+  spend: SkillSpend;
+  averageCost: number;
 }
 
 export function fetchSkills(signal: AbortSignal): Promise<SkillSummary[]> {

@@ -6,6 +6,10 @@ public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> opti
 {
     public DbSet<Activation> Activations => Set<Activation>();
 
+    public DbSet<Turn> Turns => Set<Turn>();
+
+    public DbSet<ModelPrice> ModelPrices => Set<ModelPrice>();
+
     public DbSet<IngestedTranscript> IngestedTranscripts => Set<IngestedTranscript>();
 
     public DbSet<TranscriptFault> TranscriptFaults => Set<TranscriptFault>();
@@ -16,6 +20,18 @@ public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> opti
         {
             activation.HasKey(a => a.ToolUseId);
             activation.HasIndex(a => a.SkillName);
+        });
+
+        model.Entity<Turn>(turn =>
+        {
+            turn.HasKey(t => t.RequestId);
+            turn.HasIndex(t => t.SkillName);
+        });
+
+        model.Entity<ModelPrice>(price =>
+        {
+            price.HasKey(p => p.Model);
+            price.HasData(SeededPrices.All);
         });
 
         model.Entity<IngestedTranscript>().HasKey(t => t.Path);

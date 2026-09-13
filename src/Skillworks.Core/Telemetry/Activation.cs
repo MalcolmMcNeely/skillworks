@@ -22,4 +22,9 @@ public sealed class Activation
     public string? GitBranch { get; init; }
 
     public DateTimeOffset TimestampUtc { get; init; }
+
+    /// <summary>What chose the skill, so a firing is compared with one made on the same terms.</summary>
+    public string? Model { get; init; }
+
+    public string? Effort { get; init; }
 }

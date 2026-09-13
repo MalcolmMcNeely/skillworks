@@ -63,8 +63,20 @@ A line, or a whole Transcript, the ingest could not read and stepped over. Fault
 kept, so a gap in the numbers is never read as a fact.
 _Avoid_: Error, failure, bad record
 
+**Turn**:
+One request to the model, and the tokens it spent. It is the unit of spend. A Transcript writes one
+record per content block and repeats the whole usage on each, so a turn is counted by its request id
+and never by its records.
+_Avoid_: Message, exchange, round trip
+
 **Attribution**:
-The link from a unit of spend back to the skill that caused it.
+The link from a unit of spend back to the skill that caused it. A Turn is attributed to the skill
+that was in force when the request was made, so the turn that chose a skill belongs to no skill.
+
+**Price table**:
+What a million tokens of each kind costs on each model. It is read when a question is asked and
+never folded into a stored Turn, so correcting a price never means reading the Transcripts again.
+_Avoid_: Rate card, tariff
 
 **Firing eval**:
 A test of whether a skill activates on the prompts it should, and stays quiet on the ones it should

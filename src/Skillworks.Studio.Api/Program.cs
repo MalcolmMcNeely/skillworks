@@ -23,6 +23,14 @@ api.MapGet("transcripts", (TranscriptLocator locator) => locator.Locate());
 api.MapGet("skills", (SkillReport report, CancellationToken cancellationToken) =>
     report.SkillsAsync(cancellationToken));
 
+// Prices are configuration, not data: they are read on every skill query and changing one changes
+// what the next answer says without a transcript being read again.
+api.MapGet("prices", (PriceBook prices, CancellationToken cancellationToken) =>
+    prices.PricesAsync(cancellationToken));
+
+api.MapPut("prices", async (ModelPrice price, PriceBook prices, CancellationToken cancellationToken) =>
+    Results.Ok(await prices.SetAsync(price, cancellationToken)));
+
 api.MapGet("ingest", (IngestReport report, CancellationToken cancellationToken) =>
     report.StatusAsync(cancellationToken));
 
