@@ -10,6 +10,59 @@ body {
 
 main {
   margin: 0 auto;
-  max-width: 48rem;
+  max-width: 64rem;
   padding: 2rem 1.5rem;
+}
+
+/* Plain on purpose. The spec settles the screen design in a later pass. */
+.skills {
+  --skills-columns: minmax(12rem, 2fr) 7rem minmax(10rem, 3fr) minmax(10rem, 3fr);
+
+  border: 1px solid CanvasText;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.skills-row {
+  display: grid;
+  grid-template-columns: var(--skills-columns);
+}
+
+.skills-head {
+  border-bottom: 1px solid CanvasText;
+  font-weight: 600;
+}
+
+/* The runway holds the full height of every row; only the visible ones are drawn on it. */
+.skills-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.skills-runway {
+  position: relative;
+}
+
+.skills-body .skills-row {
+  align-items: center;
+  inset-inline: 0;
+  position: absolute;
+  top: 0;
+}
+
+.skills-cell {
+  overflow: hidden;
+  padding: 0.4rem 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-cell button {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  padding: 0;
 }

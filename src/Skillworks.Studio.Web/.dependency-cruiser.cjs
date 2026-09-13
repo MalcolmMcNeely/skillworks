@@ -33,6 +33,13 @@ module.exports = {
       from: { path: '^src/api' },
       to: { path: '^src/routes' },
     },
+    {
+      name: 'components-do-not-know-the-routes',
+      severity: 'error',
+      comment: 'A component is placed by a route, never the other way round.',
+      from: { path: '^src/components' },
+      to: { path: '^src/routes' },
+    },
   ],
   options: {
     doNotFollow: { path: 'node_modules' },

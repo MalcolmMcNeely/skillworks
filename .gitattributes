@@ -1,0 +1,4 @@
+# Transcript fixtures are read by byte offset. A line-ending rewrite on checkout would move the
+# offsets the incremental ingest tests depend on, so pin them to LF everywhere.
+*.jsonl text eol=lf
+*.jsonl.part text eol=lf

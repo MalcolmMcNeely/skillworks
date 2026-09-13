@@ -23,4 +23,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- Real-shaped session files, checked in. They are the only stand-in for the outside world on
+       the transcript side, so the parser meets the shapes Claude Code actually writes. -->
+  <ItemGroup>
+    <Content Include="Transcripts\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Catalogue\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

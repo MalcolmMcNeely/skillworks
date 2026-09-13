@@ -8,9 +8,9 @@ Three parts are planned:
 - **MCP server** — C#, exposing the catalogue and its telemetry to an agent.
 - **Studio** — a local app for watching skill telemetry, authoring the catalogue, and running evals. React over an ASP.NET Core API, started by Aspire.
 
-Studio is a walking skeleton: it starts, and the front end reads one value from the API. The
-vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in [docs/adr/](docs/adr/), and the
-research behind it in
+Studio reads the transcripts Claude Code already writes and shows which skills fired, how often,
+and where. The vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in
+[docs/adr/](docs/adr/), and the research behind it in
 [skills-marketplace](https://github.com/MalcolmMcNeely/skills-marketplace).
 
 ## Getting started
@@ -44,6 +44,10 @@ aspire run
 That starts the API and the front end together, and prints the address of Aspire's own dashboard.
 Aspire runs `npm install` and `npm run dev` for the front end itself, and hands it the API's
 address, so there is no port to look up.
+
+Studio finds your transcripts in `~/.claude/projects` on its own, and parses them into SQLite under
+your local application data. The first pass runs in the background, so the app is usable while it
+reads; later passes read only what changed. Set `Transcripts__Path` to read from somewhere else.
 
 Checks. The front-end ones must run from `src/Skillworks.Studio.Web`, so they pick up the local
 tools rather than anything installed globally:
