@@ -1,0 +1,70 @@
+# Skillworks
+
+Skillworks builds, ships and measures Claude Code agent skills. It publishes a catalogue as a
+Claude Code plugin marketplace, and it runs a local app for watching how those skills behave.
+
+## Language
+
+### The catalogue
+
+**Catalogue**:
+The set of plugins Skillworks publishes. It is the product.
+_Avoid_: Library, registry, pack
+
+**Marketplace**:
+The git repository a developer adds to Claude Code so the catalogue installs and updates itself.
+_Avoid_: Feed, source, channel
+
+**Plugin**:
+One installable unit of the catalogue. It holds skills, hooks, output styles and MCP servers.
+_Avoid_: Package, bundle, module
+
+**Skill**:
+A folder of instructions Claude reads when a task matches it.
+
+**Engine**:
+A skill Claude picks up on its own. Its description competes for space in the skill listing, so
+engines are capped in number.
+_Avoid_: Model-invocable skill, auto skill
+
+**Entry point**:
+A skill a developer types. Its description is kept out of the model's context, so entry points cost
+nothing to add.
+_Avoid_: Slash command, manual skill
+
+### The app
+
+**Studio**:
+The local app for watching, authoring and testing the catalogue. It runs on the developer's own
+machine because authoring writes files and evals start `claude`.
+_Avoid_: Reader, console, dashboard, portal
+
+### Measurement
+
+**Activation**:
+One occasion on which a skill fired.
+_Avoid_: Invocation, call, run, usage
+
+**Trigger**:
+What caused an activation: Claude chose the skill, or a developer typed it.
+
+**Transcript**:
+The session file Claude Code writes to disk. It records every activation with its real skill name
+and the tokens that turn spent.
+_Avoid_: Log, history, session log
+
+**Attribution**:
+The link from a unit of spend back to the skill that caused it.
+
+**Firing eval**:
+A test of whether a skill activates on the prompts it should, and stays quiet on the ones it should
+not. Cheap. Applies to every engine.
+_Avoid_: Trigger test, discovery eval
+
+**Outcome eval**:
+A test of whether a skill's output meets its contract once it has fired. Expensive. Applies only
+where a skill promises something observable.
+_Avoid_: Quality eval, judge eval
+
+**Contract**:
+The part of a skill's output that can be asserted without a model judging it.

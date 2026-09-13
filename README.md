@@ -4,11 +4,12 @@ Tools for building, testing and watching Claude Code agent skills.
 
 Three parts are planned:
 
-- **Plugins** — a shipped catalogue of agent skills, installed as a Claude Code plugin marketplace.
+- **Catalogue** — the plugins we ship: skills, hooks, output styles and MCP servers, installed as a Claude Code plugin marketplace.
 - **MCP server** — C#, exposing the catalogue and its telemetry to an agent.
-- **Reader** — React, for reading skill telemetry and, later, for authoring and testing a skill by hand.
+- **Studio** — a local app for watching skill telemetry, authoring the catalogue, and running evals. React over an ASP.NET Core API, started by Aspire.
 
-Nothing is built yet. The research behind it lives in
+Nothing is built yet. The vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in
+[docs/adr/](docs/adr/), and the research behind it in
 [skills-marketplace](https://github.com/MalcolmMcNeely/skills-marketplace).
 
 ## Getting started
