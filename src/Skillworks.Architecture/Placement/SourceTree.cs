@@ -28,6 +28,8 @@ internal static class SourceTree
         return sourceFiles;
     }
 
+    public static string FolderOf(string path) => path.LastIndexOf('/') is var slash and >= 0 ? path[..slash] : "";
+
     // A worktree or a clone inside the root is another checkout, which answers to its own rules.
     private static bool IsRepository(string folder) => Path.Exists(Path.Combine(folder, ".git"));
 }

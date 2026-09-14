@@ -26,8 +26,8 @@ public sealed partial class ArchitectureCheckTests
                 }
                 """)
             .Write("tests/Studio.Tests/Skillworks.Studio.Tests.csproj", ProjectFile)
-            .Write("tests/Studio.Tests/Catalogue/CatalogueLocator.Tests.cs", """
-                namespace Skillworks.Studio.Tests.Catalogue;
+            .Write("tests/Studio.Tests/Catalogue/Locators/CatalogueLocator.Tests.cs", """
+                namespace Skillworks.Studio.Tests.Catalogue.Locators;
 
                 public sealed class CatalogueLocatorTests;
                 """);

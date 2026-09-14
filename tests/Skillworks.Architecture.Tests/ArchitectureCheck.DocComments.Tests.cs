@@ -120,6 +120,7 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Set(CommentsFile, "doc-comments", "true")
             .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n")
+            .Write("web/src/format.ts")
             .Write("web/src/format.test.ts", "/** Formats a moment. */\nit('formats', () => {});\n");
 
         Assert.Equal(
