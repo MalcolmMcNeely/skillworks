@@ -16,6 +16,8 @@ C# and TypeScript share one shape: feature folders first, concern folders beneat
 - Code that serves no feature goes in a folder named for what it does. Every folder name says what
   its code serves or does, so the names in `banned-folder-names` are never used, in any letter case.
 - Folders in `skip-folders` hold code nobody writes by hand. These rules skip them.
+- A folder with its own `.git`, such as an agent's worktree, is another checkout. These rules skip it
+  too.
 
 ## Files
 

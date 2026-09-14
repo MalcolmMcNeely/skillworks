@@ -70,7 +70,9 @@ npm test
 | `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped; any rule of its own lives in `src/lib/` with a test beside it. |
 | `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
 | `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service-discovery setup. |
-| `tests/` | The one test seam: the real API in memory, asserting the JSON it returns. |
+| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks the rules it checks. |
+| `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, asserting the JSON it returns. |
+| `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
 | `plugins/` | Where the catalogue will live. See [ADR 0003](docs/adr/0003-catalogue-lives-here-until-it-is-published.md). |
 | `.claude/skills/` | Dev tooling used while working in this repo. Mostly vendored, not shipped. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
