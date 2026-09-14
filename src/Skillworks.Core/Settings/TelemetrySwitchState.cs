@@ -1,7 +1,5 @@
 namespace Skillworks.Core.Settings;
 
-public sealed record TelemetryChange(string Name, string? From, string To);
-
 public sealed record TelemetrySwitchState(
     bool Emitting,
     string SettingsPath,
@@ -10,5 +8,3 @@ public sealed record TelemetrySwitchState(
     IReadOnlyList<TelemetryChange> Changes,
     string RestartNote,
     string? Problem);
-
-public sealed record TelemetrySwitchResult(TelemetrySwitchState State, string? Refusal);

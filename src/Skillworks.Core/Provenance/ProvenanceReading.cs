@@ -2,20 +2,6 @@ using Skillworks.Core.Settings;
 
 namespace Skillworks.Core.Provenance;
 
-public sealed record SkillOrigin(string? Trigger, string? Source, string? Plugin, string? Marketplace);
-
-public enum ProvenanceGap
-{
-    Complete,
-    Unreachable,
-    Truncated,
-    TelemetryOff,
-    TelemetryUnknown,
-    Quiet,
-}
-
-public sealed record ProvenanceNote(ProvenanceGap Gap, string? Missing, DateTimeOffset SinceUtc);
-
 public sealed class ProvenanceReading
 {
     // Tight: two firings of one skill in a session can be minutes apart and must not swap triggers.

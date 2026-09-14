@@ -133,8 +133,8 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Set(CommentsFile, "doc-comments", "true")
             .Set(PlacementFile, "test-files", "[\"*Spec.cs\"]")
-            .Write("tests/App.Tests/ClockSpec.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockSpec;\n")
-            .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n");
+            .Write("tests/App.Tests/ClockSpec.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n")
+            .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed partial class Clock;\n");
 
         Assert.Equal([("doc-comments", "tests/App.Tests/ClockSpec.cs")], tree.Breaches());
     }

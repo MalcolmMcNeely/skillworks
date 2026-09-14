@@ -3,12 +3,6 @@ using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Core.Skills;
 
-public sealed record ActivationList(
-    IReadOnlyList<ActivationSummary> Activations,
-    ProvenanceNote Provenance);
-
-public sealed record ActivationOpened(ActivationDetail Activation, ProvenanceNote Provenance);
-
 public sealed class ActivationReport(ActivationStore activations, ProvenanceReport provenance)
 {
     public async Task<ActivationList> ListAsync(TelemetryFilter filter, CancellationToken cancellationToken)

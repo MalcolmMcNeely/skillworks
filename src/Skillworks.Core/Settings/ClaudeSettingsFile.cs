@@ -3,8 +3,6 @@ using System.Text.Json.Nodes;
 
 namespace Skillworks.Core.Settings;
 
-public sealed record ClaudeSettingsDocument(JsonObject? Root, bool Existed, string? Problem);
-
 public sealed class ClaudeSettingsFile
 {
     private static readonly JsonSerializerOptions Layout = new() { WriteIndented = true };

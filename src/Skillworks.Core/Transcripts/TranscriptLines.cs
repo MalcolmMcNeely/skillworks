@@ -2,8 +2,6 @@ using System.Text;
 
 namespace Skillworks.Core.Transcripts;
 
-public readonly record struct TranscriptLine(string Text, long EndOffset);
-
 public static class TranscriptLines
 {
     private const int BufferSize = 64 * 1024;

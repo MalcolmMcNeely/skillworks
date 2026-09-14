@@ -28,10 +28,26 @@ internal sealed record PlacementRules(
     public bool IsSourceFile(string fileName) =>
         SourceFiles.Any(suffix => fileName.EndsWith(suffix, StringComparison.Ordinal));
 
-    public bool IsTestFile(string fileName) =>
-        TestFiles.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, fileName, ignoreCase: false));
+    public bool IsTestFile(string fileName) => TestPatternOf(fileName) is not null;
+
+    public SourceFileName NameOf(string fileName)
+    {
+        var testPattern = TestPatternOf(fileName);
+
+        // Only a pattern of `*` then fixed text shows where the test marker starts; any other shape cuts at the extension.
+        var stem = testPattern is ['*', .. var marker] && marker.IndexOfAny(['*', '?']) < 0
+            ? fileName[..^marker.Length]
+            : Path.GetFileNameWithoutExtension(fileName);
+
+        var dot = stem.IndexOf('.');
+
+        return new SourceFileName(dot < 0 ? stem : stem[..dot], IsTest: testPattern is not null, HasAspect: dot >= 0);
+    }
 
     public bool IsSkipped(string folderName) => SkipFolders.Contains(folderName, StringComparer.Ordinal);
 
     public bool IsBanned(string folderName) => BannedFolderNames.Contains(folderName, StringComparer.OrdinalIgnoreCase);
+
+    private string? TestPatternOf(string fileName) =>
+        TestFiles.FirstOrDefault(pattern => FileSystemName.MatchesSimpleExpression(pattern, fileName, ignoreCase: false));
 }

@@ -7,19 +7,6 @@ using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Health;
 
-public enum PartState
-{
-    Working,
-    Starting,
-    Off,
-    Broken,
-}
-
-public sealed record StudioPart(string Name, PartState State, string Detail, string? Action);
-
-// WhyEmpty covers the transcript half only: provenance explains its own gaps in its ProvenanceNote.
-public sealed record HealthReport(IReadOnlyList<StudioPart> Parts, string? WhyEmpty);
-
 public sealed class StudioHealth(
     TranscriptLocator transcripts,
     CatalogueLocator catalogue,

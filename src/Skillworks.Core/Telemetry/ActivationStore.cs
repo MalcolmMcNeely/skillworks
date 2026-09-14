@@ -1,45 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Telemetry;
-
-public sealed record ActivationTally(
-    IReadOnlyDictionary<string, int> Counts,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> Repositories,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> Branches,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> Models,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> Efforts);
-
-public sealed record ActivationSummary(
-    string Id,
-    string Skill,
-    string? Repository,
-    string? Branch,
-    string? Model,
-    string? Effort,
-    DateTimeOffset TimestampUtc)
-{
-    // Joined on afterwards: transcripts, which this store reads, do not record where a firing came from.
-    public SkillOrigin? Origin { get; init; }
-}
-
-public sealed record ActivationDetail(
-    string Id,
-    string Skill,
-    string SessionId,
-    string? Repository,
-    string? Branch,
-    string? Model,
-    string? Effort,
-    DateTimeOffset TimestampUtc,
-    IReadOnlyList<ActivationArgument> Arguments)
-{
-    public SkillOrigin? Origin { get; init; }
-}
-
-// Always text: the reader judges the words an argument used, not the JSON shape they arrived in.
-public sealed record ActivationArgument(string Name, string Value);
 
 public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contexts)
 {

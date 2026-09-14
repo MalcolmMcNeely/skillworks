@@ -1,18 +1,5 @@
 namespace Skillworks.Core.Telemetry;
 
-public sealed record IngestStatus(
-    bool Running,
-    int CompletedPasses,
-    int TranscriptsSeen,
-    int TranscriptsTotal,
-    int TranscriptsRead,
-    int ActivationsAdded,
-    bool LastPassWasFull,
-    DateTimeOffset? LastRefreshUtc,
-    int Faults);
-
-public readonly record struct PassRequest(bool Asked, bool Full);
-
 public sealed class IngestState(TimeProvider clock)
 {
     private readonly SemaphoreSlim _requests = new(0);

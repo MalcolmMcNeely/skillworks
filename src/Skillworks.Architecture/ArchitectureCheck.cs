@@ -16,6 +16,8 @@ public static class ArchitectureCheck
         return new CheckResult(
             [
                 .. BannedFolderNames.Check(sourceFiles, rules.Placement),
+                .. OneTypePerFile.Check(root, sourceFiles, rules.Placement),
+                .. NamespaceFollowsFolder.Check(root, sourceFiles),
                 .. DocComments.Check(root, sourceFiles, rules.Placement, rules.Comments),
             ],
             sourceFiles.Count);

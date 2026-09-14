@@ -42,11 +42,11 @@ public sealed class RulesTree : IDisposable
         return WriteRules(file);
     }
 
-    public RulesTree Write(string path, string content = "")
+    public RulesTree Write(string path, string? content = null)
     {
         var full = Path.Combine(_root.FullName, path);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-        File.WriteAllText(full, content);
+        File.WriteAllText(full, content ?? TypeNamedFor(path));
         return this;
     }
 
@@ -62,6 +62,19 @@ public sealed class RulesTree : IDisposable
         Check().Breaches.Select(breach => (breach.Rule, breach.Path));
 
     public void Dispose() => _root.Delete(recursive: true);
+
+    // A C# file with no content breaks the one-type rule, which would crowd the breaches of every other rule.
+    private static string TypeNamedFor(string path)
+    {
+        var fileName = Path.GetFileName(path);
+        if (!fileName.EndsWith(".cs", StringComparison.Ordinal))
+            return "";
+
+        var subject = fileName.Split('.')[0];
+        return fileName.EndsWith(".Tests.cs", StringComparison.Ordinal)
+            ? $"public sealed partial class {subject}Tests;\n"
+            : $"public sealed partial class {subject};\n";
+    }
 
     private RulesTree WriteRules(string file)
     {

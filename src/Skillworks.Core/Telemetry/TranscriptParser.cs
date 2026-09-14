@@ -3,11 +3,6 @@ using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Telemetry;
 
-internal readonly record struct LineReading(
-    IReadOnlyList<Activation> Activations,
-    Turn? Turn,
-    string? Problem);
-
 // Firings come from the Skill tool use, not attributionSkill, which repeats on every turn a skill lasts.
 internal static class TranscriptParser
 {

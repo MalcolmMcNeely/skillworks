@@ -7,6 +7,8 @@ using Skillworks.Core.Settings;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Telemetry;
 using Skillworks.Core.Transcripts;
+using Skillworks.ServiceDefaults;
+using Skillworks.Studio.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -92,8 +94,6 @@ api.MapPut("telemetry/switch", (TelemetrySwitchRequest request, TelemetrySwitch 
 });
 
 app.Run();
-
-public sealed record TelemetrySwitchRequest(bool Emitting);
 
 // The in-memory test host needs a handle on this assembly's entry point.
 public partial class Program;

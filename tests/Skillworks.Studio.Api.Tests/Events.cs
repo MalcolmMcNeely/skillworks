@@ -5,14 +5,6 @@ using System.Text.Json.Nodes;
 
 namespace Skillworks.Studio.Api.Tests;
 
-public sealed record Event(
-    string Skill,
-    string At,
-    string? Trigger = null,
-    string? Source = null,
-    string? Plugin = null,
-    string? Marketplace = null);
-
 public sealed class Events : HttpMessageHandler
 {
     private readonly Func<HttpResponseMessage> _answer;

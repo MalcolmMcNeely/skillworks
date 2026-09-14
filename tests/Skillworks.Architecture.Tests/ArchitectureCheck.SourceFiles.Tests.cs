@@ -8,7 +8,7 @@ public sealed partial class ArchitectureCheckTests
     public void Only_source_files_are_scanned()
     {
         using var tree = new RulesTree()
-            .Write("src/App/Clock.cs")
+            .Write("src/App/Clock.cs", "namespace App;\n\npublic sealed class Clock;\n")
             .Write("src/App/App.csproj")
             .Write("web/src/main.tsx")
             .Write("web/src/format.ts")

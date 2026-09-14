@@ -4,23 +4,6 @@ using Microsoft.Extensions.Options;
 
 namespace Skillworks.Core.Provenance;
 
-// Trigger stays verbatim (claude-proactive, user-slash): putting it into words is the screen's job.
-public sealed record SkillEvent(
-    string Skill,
-    DateTimeOffset At,
-    string? Trigger,
-    string? Source,
-    string? Plugin,
-    string? Marketplace);
-
-public sealed record EventReading(IReadOnlyList<SkillEvent> Events, string? Unreachable, bool Truncated = false)
-{
-    public static EventReading Of(IReadOnlyList<SkillEvent> events, bool truncated) =>
-        new(events, null, truncated);
-
-    public static EventReading Failed(string reason) => new([], reason);
-}
-
 public sealed class SkillEvents(IHttpClientFactory clients, IOptions<LokiOptions> options)
 {
     public const string ClientName = "loki";
