@@ -90,4 +90,4 @@ label() {
 
 label ready-for-agent 0e8a16 "Fully specified. An agent can take it."
 
-printf '\nReady. Next: /skillworks-setup writes docs/agents/, CLAUDE.md and .claude/settings.json.\n'
+printf '\nReady. Next: the rest of /skillworks-setup.\n'

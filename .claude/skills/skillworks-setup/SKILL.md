@@ -1,6 +1,6 @@
 ---
 name: skillworks-setup
-description: Configure a repo for the Skillworks dev loop — GitHub labels, the tracker doc the skills read, the CLAUDE.md pointer, and the permission allowlist the loop needs to run unattended. Run once per repo.
+description: Configure a repo for the Skillworks dev loop — GitHub labels, the tracker doc the skills read, the CLAUDE.md pointer, the permission allowlist the loop needs to run unattended, and the skillworks output style. Run once per repo.
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,7 @@ Write the per-repo configuration the Skillworks skills assume. Run it once. Re-r
 
 Skillworks is **GitHub only**. There is no tracker question, because there is no other answer. If a repo tracks work somewhere else, it cannot run this loop.
 
-Four outputs:
+The outputs:
 
 | Output | Why it exists |
 |---|---|
@@ -18,6 +18,7 @@ Four outputs:
 | `docs/agents/*.md` | One copy of the tracker calls. `/to-spec`, `/to-tickets`, `/implement`, `/code-review` and `/wayfinder` all need them. Without one shared copy each skill carries its own and they drift. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
 | `.claude/settings.json` | The permission allowlist. Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. |
+| `.claude/output-styles/skillworks.md`, set as `outputStyle` in `.claude/settings.json` | The output style. Without it every clone and every loop session uses whatever style its own machine sets, so the loop reports differently from one machine to the next. |
 
 ## Process
 
@@ -70,9 +71,23 @@ If the file exists, merge: add the missing entries to `permissions.allow`, leave
 
 Read the allowlist out loud to the user before writing. It lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. They should agree to it knowingly.
 
-### 5. Report
+### 5. Write and set the output style
 
-Say what was written and what was skipped. Then tell them the loop is ready:
+Copy [skillworks.md](./skillworks.md) to `.claude/output-styles/skillworks.md`, unchanged. If the destination already exists, show the user the difference and let them choose. Never overwrite their edits without asking.
+
+Then read `outputStyle` in `.claude/settings.json`:
+
+| What is there | What to do |
+|---|---|
+| No `outputStyle`, or no file | Set it to `skillworks`. Create the file if it is missing. Leave every other key alone. |
+| `skillworks` | Nothing. |
+| Any other style | Show the user their style and `skillworks` side by side, and ask which to keep. Never change it without asking. |
+
+Then read `outputStyle` in `.claude/settings.local.json`. `/config` saves a style there, and that file wins over `.claude/settings.json` on this machine. If it sets a style other than `skillworks`, show the user both side by side and ask which to keep. If they pick `skillworks`, remove `outputStyle` from `.claude/settings.local.json` and leave every other key alone.
+
+### 6. Report
+
+Say what was written and what was skipped. Say which output style the repo now sets. A new style file loads only when Claude Code starts, so tell them to restart it. Then tell them the loop is ready:
 
 ```
 /grill-with-docs  →  /to-spec  →  /spec-loop <spec#>

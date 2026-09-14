@@ -30,6 +30,7 @@
       "Bash(mkdir:*)"
     ]
   },
+  "outputStyle": "skillworks",
   "promptCacheTtl": "1h",
   "subagentPromptCacheTtl": "1h"
 }

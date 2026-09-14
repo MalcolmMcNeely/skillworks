@@ -29,7 +29,7 @@ Then, in Claude Code:
 
 That is the whole setup. One command, once per repo. Run it again any time to repair.
 
-It creates the `ready-for-agent` label, writes `docs/agents/`, points `CLAUDE.md` at it, and installs the permission allowlist the loop needs to run unattended. It asks before it overwrites anything you have edited.
+It creates the `ready-for-agent` label, writes `docs/agents/`, points `CLAUDE.md` at it, installs the permission allowlist the loop needs to run unattended, and sets the `skillworks` output style. It asks before it overwrites anything you have edited.
 
 Then go to [the dev loop](#the-dev-loop).
 
