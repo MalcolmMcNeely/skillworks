@@ -1,4 +1,4 @@
-using Skillworks.Core.Telemetry;
+using Skillworks.Core.Ingest;
 
 namespace Skillworks.Studio.Api.Ingest;
 

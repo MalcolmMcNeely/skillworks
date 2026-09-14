@@ -1,4 +1,4 @@
-using Skillworks.Core.Settings;
+using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Studio.Api.Telemetry;
 

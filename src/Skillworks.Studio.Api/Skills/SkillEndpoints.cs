@@ -1,5 +1,5 @@
+using Skillworks.Core.Filters;
 using Skillworks.Core.Skills;
-using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Studio.Api.Skills;
 

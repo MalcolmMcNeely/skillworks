@@ -1,6 +1,9 @@
+using Skillworks.Core.Activations.Stores;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Filters;
 using Skillworks.Core.Provenance;
-using Skillworks.Core.Telemetry;
+using Skillworks.Core.Spend;
+using Skillworks.Core.Spend.Stores;
 
 namespace Skillworks.Core.Skills;
 

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Ingest;
 using Skillworks.Core.Provenance;
-using Skillworks.Core.Settings;
 using Skillworks.Core.Telemetry;
 using Skillworks.Core.Transcripts;
 

@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
-using Skillworks.Core.Settings;
+using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 

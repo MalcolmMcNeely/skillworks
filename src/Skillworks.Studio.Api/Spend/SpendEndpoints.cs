@@ -1,4 +1,4 @@
-using Skillworks.Core.Telemetry;
+using Skillworks.Core.Spend;
 
 namespace Skillworks.Studio.Api.Spend;
 

@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Skillworks.Core;
+using Skillworks.Core.Registration;
 using Skillworks.ServiceDefaults;
 using Skillworks.Studio.Api.Activations;
 using Skillworks.Studio.Api.Catalogue;
