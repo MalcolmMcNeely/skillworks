@@ -56,13 +56,13 @@ _Avoid_: Invocation, call, run, usage
 What caused an activation: Claude chose the skill, or a developer typed it.
 
 **Provenance**:
-Where a Skill came from and what set it off. Only the events store records it; a Transcript does
-not, which is the whole reason there are two stores. A period the store holds nothing for is
+Where a Skill came from and what set it off. Only the Events store records it; a Transcript does
+not, which is the whole reason there are two stores. A period the Events store holds nothing for is
 labelled missing, never shown as none.
 _Avoid_: Lineage, delivery, history
 
 **Gap**:
-Which way Provenance fell short, when it did: the store was unreachable, telemetry was never
+Which way Provenance fell short, when it did: the Events store was unreachable, telemetry was never
 switched on, the period was genuinely quiet, or it held more events than one read takes. All four
 arrive as no Origins at all, so the Gap is the only thing that tells them apart, and each one means
 something different for the developer to do.
@@ -78,8 +78,27 @@ The session file Claude Code writes to disk. It records every activation with it
 and the tokens that turn spent.
 _Avoid_: Log, history, session log
 
+**Store**:
+One of the two places Studio keeps what it measures. Each is named for what fills it. Nothing else
+is a store.
+
+**Transcript store**:
+The Store the ingest fills from the Transcripts. It holds every Activation, Turn and Fault, and the
+Price table.
+_Avoid_: Telemetry store, database, Studio's own store
+
+**Events store**:
+The Store Claude Code's telemetry events arrive in, once telemetry is switched on. It is the only
+place Provenance can come from.
+_Avoid_: Event log, telemetry store
+
+**Telemetry**:
+The events Claude Code sends while it is switched on. Nothing Studio reads from a Transcript is
+telemetry.
+_Avoid_: Usage data, metrics
+
 **Ingest**:
-Reading the Transcripts into Studio's own store. One **pass** is one sweep of the folder; a pass
+Reading the Transcripts into the Transcript store. One **pass** is one sweep of the folder; a pass
 reads only what changed unless it is asked to read everything again.
 _Avoid_: Import, sync, scrape
 
