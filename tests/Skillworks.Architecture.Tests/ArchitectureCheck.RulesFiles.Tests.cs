@@ -47,6 +47,9 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(PlacementFile, "max-types-per-folder", "0")]
     [InlineData(PlacementFile, "skip-folders", "bin")]
     [InlineData(PlacementFile, "name-map", "[Stores]")]
+    [InlineData(PlacementFile, "name-map", "{Store: Stores}")]
+    [InlineData(PlacementFile, "name-map", "{\"Sto*re\": Stores}")]
+    [InlineData(PlacementFile, "name-map", "{\"*Store*\": Stores}")]
     [InlineData(CommentsFile, "doc-comments", "sometimes")]
     public void A_setting_of_the_wrong_shape_is_a_breach_that_names_the_key(string file, string key, string value)
     {

@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Skillworks.Architecture.Placement;
+namespace Skillworks.Architecture.Placement.CSharp;
 
 internal sealed class CSharpFile
 {

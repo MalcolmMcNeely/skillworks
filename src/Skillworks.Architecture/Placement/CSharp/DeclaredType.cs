@@ -1,4 +1,4 @@
-namespace Skillworks.Architecture.Placement;
+namespace Skillworks.Architecture.Placement.CSharp;
 
 internal sealed record DeclaredType(string Name, int Arity, string Namespace, bool IsPartial, bool IsHidden)
 {

@@ -1,4 +1,4 @@
-namespace Skillworks.Architecture.Placement;
+namespace Skillworks.Architecture.Placement.CSharp;
 
 internal sealed record CSharpProject(string Name, string Folder)
 {

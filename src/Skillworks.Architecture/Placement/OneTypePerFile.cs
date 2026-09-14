@@ -1,3 +1,5 @@
+using Skillworks.Architecture.Placement.CSharp;
+
 namespace Skillworks.Architecture.Placement;
 
 internal static class OneTypePerFile

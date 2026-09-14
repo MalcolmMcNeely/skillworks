@@ -50,9 +50,10 @@ internal sealed class RulesFile
                 : null)
         ?? [];
 
-    public IReadOnlyDictionary<string, string> RequireMap(string key) =>
-        Read<IReadOnlyDictionary<string, string>>(key, "a map, such as {\"*Store\": Stores}", node =>
-            node is YamlMappingNode map && map.Children.All(pair => IsText(pair.Key) && IsText(pair.Value))
+    public IReadOnlyDictionary<string, string> RequireMap(string key, string shape, Func<string, bool> fitsKey) =>
+        Read<IReadOnlyDictionary<string, string>>(key, shape, node =>
+            node is YamlMappingNode map
+            && map.Children.All(pair => IsText(pair.Key) && IsText(pair.Value) && fitsKey(Text(pair.Key)))
                 ? map.Children.ToDictionary(pair => Text(pair.Key), pair => Text(pair.Value))
                 : null)
         ?? new Dictionary<string, string>();

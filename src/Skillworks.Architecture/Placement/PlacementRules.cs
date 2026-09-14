@@ -20,7 +20,10 @@ internal sealed record PlacementRules(
         var testFiles = file.RequireList("test-files");
         var skipFolders = file.RequireList("skip-folders");
         var bannedFolderNames = file.RequireList("banned-folder-names");
-        var nameMap = file.RequireMap("name-map");
+        var nameMap = file.RequireMap(
+            "name-map",
+            "a map from a name with `*` at the start or the end to a folder name, such as {\"*Store\": Stores}",
+            IsNamePattern);
 
         return new(maxTypesPerFolder, sourceFiles, testFiles, skipFolders, bannedFolderNames, nameMap);
     }
@@ -44,9 +47,23 @@ internal sealed record PlacementRules(
         return new SourceFileName(dot < 0 ? stem : stem[..dot], IsTest: testPattern is not null, HasAspect: dot >= 0);
     }
 
+    public string SubjectOf(string path) => NameOf(Path.GetFileName(path)).Subject;
+
     public bool IsSkipped(string folderName) => SkipFolders.Contains(folderName, StringComparer.Ordinal);
 
     public bool IsBanned(string folderName) => BannedFolderNames.Contains(folderName, StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyList<(string Pattern, string Folder)> NameMapEntriesMatching(string subject) =>
+        [
+            .. NameMap
+                .Where(entry => entry.Key[0] == '*'
+                    ? subject.EndsWith(entry.Key[1..], StringComparison.Ordinal)
+                    : subject.StartsWith(entry.Key[..^1], StringComparison.Ordinal))
+                .Select(entry => (Pattern: entry.Key, Folder: entry.Value)),
+        ];
+
+    private static bool IsNamePattern(string pattern) =>
+        pattern.Length > 1 && pattern.AsSpan().Count('*') == 1 && (pattern[0] == '*' || pattern[^1] == '*');
 
     private string? TestPatternOf(string fileName) =>
         TestFiles.FirstOrDefault(pattern => FileSystemName.MatchesSimpleExpression(pattern, fileName, ignoreCase: false));

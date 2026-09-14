@@ -19,6 +19,10 @@ C# and TypeScript share one shape: feature folders first, concern folders beneat
 - A folder with its own `.git`, such as an agent's worktree, is another checkout. These rules skip it
   too.
 
+Copy the shape of `src/Skillworks.Core/Ingest`. The feature folder holds the types of the ingest.
+`Stores` beneath it holds `TranscriptFaultStore`, as `name-map` says. `Parsing` is a concern the
+feature grew: it holds the types that turn a transcript line into rows.
+
 ## Files
 
 A file's **subject** is its name up to the first dot.

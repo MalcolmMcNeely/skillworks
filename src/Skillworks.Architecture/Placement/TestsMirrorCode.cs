@@ -1,3 +1,5 @@
+using Skillworks.Architecture.Placement.CSharp;
+
 namespace Skillworks.Architecture.Placement;
 
 internal static class TestsMirrorCode
@@ -10,7 +12,7 @@ internal static class TestsMirrorCode
 
         var code = sourceFiles
             .Except(tests)
-            .Select(file => (Folder: SourceTree.FolderOf(file), rules.NameOf(Path.GetFileName(file)).Subject, IsCSharp: CSharpFile.IsCSharp(file)))
+            .Select(file => (Folder: SourceTree.FolderOf(file), Subject: rules.SubjectOf(file), IsCSharp: CSharpFile.IsCSharp(file)))
             .ToHashSet();
 
         var projects = CSharpProject.AboveEach(root, sourceFiles.Where(CSharpFile.IsCSharp).Select(SourceTree.FolderOf));
