@@ -1,9 +1,6 @@
 import { getJson } from './json';
 
-/**
- * `GET /api/filters`: what the three filters can be narrowed to. Read from the whole history rather
- * than from the narrowed answer, so a filter that has emptied the table still offers the way back.
- */
+// Read from the whole history, so a filter that has emptied the table still offers the way back.
 export interface FilterChoices {
   repositories: string[];
   skills: string[];

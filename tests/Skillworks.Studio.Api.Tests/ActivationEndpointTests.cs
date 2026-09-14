@@ -2,13 +2,8 @@ using System.Net;
 
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>
-/// Opening one firing and reading what it was asked to do. The count in the skill table is a
-/// number until this answers "called with what, on which branch, at what moment".
-/// </summary>
 public sealed class ActivationEndpointTests
 {
-    /// <summary>The one firing in the ordinary fixture, which every detail assertion here opens.</summary>
     private const string Grilling = "toolu_01EAt7jnkYt1D63phjpVUBqL";
 
     [Fact]

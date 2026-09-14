@@ -4,11 +4,6 @@ import { everything, isEverything, withChosen, type Filter } from '../lib/filter
 
 const noChoices: FilterChoices = { repositories: [], skills: [] };
 
-/**
- * The three filters in one place: a span of days, a repository and a skill. It fetches the choices
- * itself, because they are its own concern and routing them through the page would only spread one
- * thing over two files.
- */
 export function FilterBar({
   filter,
   onChange,

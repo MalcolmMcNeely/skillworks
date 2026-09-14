@@ -18,10 +18,6 @@ import {
 
 const pollMilliseconds = 2000;
 
-/**
- * How far the ingest has got, when it last moved, and the two ways to move it again. It polls, so a
- * session written while Studio is open reaches the screen as well as the store.
- */
 export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) {
   const [status, setStatus] = useState<IngestStatus | null>(null);
   const [failure, setFailure] = useState<string | null>(null);

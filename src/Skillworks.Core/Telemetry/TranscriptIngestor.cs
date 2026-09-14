@@ -3,41 +3,24 @@ using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>What one pass of the ingest got through.</summary>
-/// <param name="TranscriptsRead">Files that had new content this pass, not files that exist.</param>
-/// <param name="ActivationsAdded">Firings that were not already in the store.</param>
-/// <param name="Full">The pass threw away what was already read and read it all again.</param>
 public readonly record struct IngestPass(int TranscriptsRead, int ActivationsAdded, bool Full);
 
-/// <summary>How far a pass in flight has got, so an empty screen can say which it is.</summary>
 public readonly record struct IngestProgress(int TranscriptsSeen, int TranscriptsTotal);
 
-/// <summary>
-/// Keeps the store level with the transcripts on disk. Point it at a folder and call it again
-/// whenever; each pass reads only the bytes that arrived since the last one.
-/// </summary>
 public sealed class TranscriptIngestor(
     TranscriptLocator locator,
     RepositoryNames repositories,
     IDbContextFactory<TelemetryDbContext> contexts,
     TimeProvider clock)
 {
-    /// <summary>What one transcript gave the pass it was read in.</summary>
     private readonly record struct TranscriptRead(bool HadNewContent, int ActivationsAdded);
 
-    /// <summary>What the pass already knows when it reaches a file, carried from file to file.</summary>
-    /// <param name="Cursors">How far each file was read last time, updated as the pass goes.</param>
-    /// <param name="Counted">Tool use ids already in the store, so a re-read cannot double count.</param>
-    /// <param name="Charged">Request ids already in the store, so a turn is paid for once.</param>
-    /// <param name="Unreadable">Files carrying a standing fault, so it can be cleared when one opens.</param>
     private sealed record Known(
         Dictionary<string, IngestedTranscript> Cursors,
         HashSet<string> Counted,
         HashSet<string> Charged,
         HashSet<string> Unreadable);
 
-    /// <param name="full">True forgets everything already read and reads it all again.</param>
-    /// <param name="progress">Called once per transcript, so a caller can show how far it has got.</param>
     public async Task<IngestPass> RunAsync(
         bool full,
         Action<IngestProgress> progress,
@@ -218,10 +201,7 @@ public sealed class TranscriptIngestor(
         NoticedUtc = clock.GetUtcNow(),
     };
 
-    /// <summary>
-    /// Records that a file would not open, replacing the standing fault rather than stacking one up
-    /// per pass: the cursor never moves past such a file, so every pass meets it again.
-    /// </summary>
+    // Replaces rather than adds: the cursor never passes a file that would not open, so every pass meets it.
     private static async Task RefuseAsync(
         TelemetryDbContext store,
         Known known,

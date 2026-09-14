@@ -1,11 +1,5 @@
 namespace Skillworks.Core.Transcripts;
 
-/// <summary>
-/// Names the repository a session ran in. A transcript records the working directory, which is
-/// often a folder inside the repository rather than its root, so the leaf of that path is the wrong
-/// answer: a session started in <c>skillworks\src\Skillworks.Studio.Web</c> belongs to skillworks.
-/// The answer is cached, because a history holds far more activations than distinct folders.
-/// </summary>
 public sealed class RepositoryNames
 {
     private readonly Dictionary<string, string?> _known = new(StringComparer.OrdinalIgnoreCase);
@@ -59,10 +53,7 @@ public sealed class RepositoryNames
         }
     }
 
-    /// <summary>
-    /// Split by hand rather than with Path, because a Windows transcript read on Linux still has to
-    /// yield "alpha" from "C:\Projects\alpha".
-    /// </summary>
+    // Split by hand, not with Path, so a Windows transcript read on Linux still yields its leaf.
     private static string? Leaf(string path) =>
         path.TrimEnd('\\', '/').Split('\\', '/') is [.., var leaf] && leaf.Length > 0 ? leaf : null;
 }

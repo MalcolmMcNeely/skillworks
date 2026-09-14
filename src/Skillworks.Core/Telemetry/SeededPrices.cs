@@ -1,14 +1,6 @@
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>
-/// The prices a fresh store starts with, in US dollars per million tokens. They are a starting
-/// point and not the truth: rates move, and the developer corrects a row from Studio without a
-/// re-ingest. That is the whole reason the table exists.
-/// </summary>
-/// <remarks>
-/// Cache follows the published multipliers of each model's input rate: a tenth to read, and a
-/// quarter more to write for five minutes or double to write for an hour.
-/// </remarks>
+// Cache follows the published multipliers of each model's input rate.
 internal static class SeededPrices
 {
     public static readonly ModelPrice[] All =

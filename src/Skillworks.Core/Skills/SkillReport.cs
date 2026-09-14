@@ -4,11 +4,7 @@ using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Core.Skills;
 
-/// <summary>
-/// Answers "which skills fired, how often, where, from where, and what did they cost", and names
-/// the catalogue skills that never fired so a broken description shows up as a zero rather than a
-/// gap. The two stores meet here, on skill name and period.
-/// </summary>
+// Lists catalogue skills that never fired, so a broken description shows up as a zero rather than a gap.
 public sealed class SkillReport(
     ActivationStore activations,
     SpendStore spend,
@@ -70,11 +66,6 @@ public sealed class SkillReport(
             origins.Note);
     }
 
-    /// <summary>
-    /// What the three filters can be set to. The catalogue is in the skill names as well as the
-    /// history, so a skill can be followed from the day it is written rather than the day it first
-    /// fires.
-    /// </summary>
     public async Task<FilterChoices> ChoicesAsync(CancellationToken cancellationToken)
     {
         var (repositories, fired) = await activations.ChoicesAsync(cancellationToken);
@@ -92,11 +83,7 @@ public sealed class SkillReport(
             ]);
     }
 
-    /// <summary>
-    /// What the skill was chosen at, and what its own requests ran at, in one list. The cost beside
-    /// it covers the requests, so a skill charged at two rates must not read as if it were charged
-    /// at one.
-    /// </summary>
+    // The cost covers every request, so a skill billed at two rates must list both models.
     private static IReadOnlyList<string> Together(IReadOnlyList<string> chosen, IEnumerable<string?> ran) =>
         [.. chosen.Concat(ran.OfType<string>()).Distinct().Order()];
 }

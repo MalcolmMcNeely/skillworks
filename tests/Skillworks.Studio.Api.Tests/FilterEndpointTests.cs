@@ -2,24 +2,13 @@ using System.Net;
 
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>
-/// What the filtered fixture holds, so the assertions below read as arithmetic rather than as magic.
-/// Two sessions in two repositories, four days apart:
-/// <list type="bullet">
-/// <item><c>nu</c> on 1 September: grilling fires once and owns one sonnet request; unslop fires
-/// once and owns one haiku request.</item>
-/// <item><c>xi</c> on 5 September: grilling fires once and owns one sonnet request; unslop fires
-/// once and owns nothing; tdd fires at half past eleven at night and owns nothing.</item>
-/// </list>
-/// </summary>
 public sealed class FilterEndpointTests
 {
-    /// <summary>grilling's one request in nu, at the seeded claude-sonnet-5 rates.</summary>
+    // At the rates the price table is seeded with for claude-sonnet-5.
     private const decimal GrillingInNu =
         (1_000m * 3m) / 1_000_000m +
         (2_000m * 15m) / 1_000_000m;
 
-    /// <summary>grilling's one request in xi, at the same rates on half the tokens.</summary>
     private const decimal GrillingInXi =
         (500m * 3m) / 1_000_000m +
         (1_000m * 15m) / 1_000_000m;

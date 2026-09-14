@@ -1,3 +1,4 @@
+using Skillworks.Architecture.Comments;
 using Skillworks.Architecture.Placement;
 
 namespace Skillworks.Architecture;
@@ -12,6 +13,11 @@ public static class ArchitectureCheck
 
         var sourceFiles = SourceTree.Find(root, rules.Placement);
 
-        return new CheckResult([.. BannedFolderNames.Check(sourceFiles, rules.Placement)], sourceFiles.Count);
+        return new CheckResult(
+            [
+                .. BannedFolderNames.Check(sourceFiles, rules.Placement),
+                .. DocComments.Check(root, sourceFiles, rules.Placement, rules.Comments),
+            ],
+            sourceFiles.Count);
     }
 }

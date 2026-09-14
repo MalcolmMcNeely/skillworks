@@ -1,9 +1,5 @@
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>
-/// What the developer needs to trust an empty table: how far the read has got, when it last moved,
-/// a way to start it again, and an honest account of anything it could not read.
-/// </summary>
 public sealed class IngestControlTests
 {
     [Fact]
@@ -270,7 +266,6 @@ public sealed class IngestControlTests
         await studio.WaitForSkill("research");
     }
 
-    /// <summary>Puts a fixture transcript where a locator will find it, and hands back its path.</summary>
     private static string Plant(TemporaryFolder machine)
     {
         const string Project = "C--Projects-delta";
@@ -282,7 +277,6 @@ public sealed class IngestControlTests
         return transcript;
     }
 
-    /// <summary>Copies one project's folder of sessions under a folder a test owns.</summary>
     private static void CopyInto(string project, string transcripts)
     {
         var landing = Directory.CreateDirectory(

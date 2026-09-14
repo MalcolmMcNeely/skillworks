@@ -3,10 +3,7 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>
-/// Only `dotnet ef migrations add` uses this. The path is never opened, so it does not matter what
-/// it is; the tool needs a provider to know it is writing SQLite.
-/// </summary>
+// Only `dotnet ef migrations add` uses this, and it never opens the path; it only needs the provider.
 internal sealed class TelemetryDbContextFactory : IDesignTimeDbContextFactory<TelemetryDbContext>
 {
     public TelemetryDbContext CreateDbContext(string[] args) =>

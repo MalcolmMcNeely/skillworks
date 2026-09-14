@@ -2,11 +2,6 @@ using System.Net;
 
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>
-/// The one place that says which parts of Studio are doing their job. Everything here exists so an
-/// empty screen is explained rather than mysterious, and so a part that is deliberately off is never
-/// reported as a part that is broken.
-/// </summary>
 public sealed class HealthEndpointTests
 {
     [Fact]

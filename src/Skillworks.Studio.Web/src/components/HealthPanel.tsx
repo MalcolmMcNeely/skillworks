@@ -1,14 +1,6 @@
 import { describeHealth, describePart } from '../lib/health';
 import { type HealthReading } from './useHealth';
 
-/**
- * Which parts of Studio are doing their job, in one place. It exists so that an empty screen
- * anywhere else is explained rather than mysterious: the panel names the part that is missing and
- * what a developer would do about it.
- *
- * It renders and nothing else. The route that places it owns the reading, because the same reading
- * is what tells that route why its own table is empty.
- */
 export function HealthPanel({ reading }: { reading: HealthReading }) {
   const { report, failure, recheck } = reading;
 

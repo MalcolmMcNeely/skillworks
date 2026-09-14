@@ -3,10 +3,6 @@ using Microsoft.Extensions.Hosting;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>
-/// Brings the SQLite file up to the current schema before anything is served. Registered ahead of
-/// the ingest so no query and no pass can meet a missing table.
-/// </summary>
 public sealed class TelemetrySchemaService(IDbContextFactory<TelemetryDbContext> contexts) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)

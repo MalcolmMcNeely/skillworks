@@ -3,28 +3,11 @@ using Microsoft.Extensions.Options;
 
 namespace Skillworks.Core.Settings;
 
-/// <summary>
-/// The switch that makes Claude Code emit telemetry. It reports whether the variables Studio needs
-/// are in place, and merges them into the developer's settings or takes them out again.
-/// <para>
-/// Two rules hold everywhere in here. It only ever touches <see cref="TelemetryVariables"/>, so
-/// nothing else in the document can be lost. And it refuses to write a document it could not fully
-/// parse, because a settings file it does not understand is one it would damage.
-/// </para>
-/// </summary>
 public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSettingsOptions> options)
 {
-    /// <summary>
-    /// Claude Code reads its settings once, at startup. Studio says so rather than leaving the
-    /// developer to wonder why the events screen stays empty.
-    /// </summary>
     public const string RestartNote =
         "A Claude Code session that is already running will not pick this up. Restart it.";
 
-    /// <summary>
-    /// What a developer does about telemetry being off, spelled once. The health report and every
-    /// provenance note both have to say it, and two spellings of one instruction is one too many.
-    /// </summary>
     public const string TurnOnNote = "Turn telemetry on in the Telemetry panel. " + RestartNote;
 
     public TelemetrySwitchState State()
@@ -151,10 +134,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
     private IReadOnlyList<KeyValuePair<string, string>> Owned() =>
         TelemetryVariables.For(options.Value.CollectorEndpoint);
 
-    /// <summary>
-    /// Why the document cannot be merged into, or null when it can. An <c>env</c> that is not an
-    /// object counts: overwriting it would throw away whatever the developer meant by it.
-    /// </summary>
+    // A non-object env counts: overwriting it would discard whatever the developer meant by it.
     private static string? Unusable(ClaudeSettingsDocument document) => document.Root switch
     {
         null => document.Problem ?? "it could not be parsed",
@@ -162,10 +142,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         _ => null,
     };
 
-    /// <summary>
-    /// What a variable holds today. A settings file may spell a flag as a number, so the value is
-    /// read as text rather than demanded as a string.
-    /// </summary>
+    // A settings file may spell a flag as a number, so any JSON value is read as its text.
     private static string? Held(JsonObject? environment, string name) => environment?[name] switch
     {
         null => null,

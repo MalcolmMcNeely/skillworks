@@ -3,10 +3,6 @@ import { fetchTelemetry, setTelemetry, type TelemetryState } from '../api/teleme
 import { describeFetchFailure } from '../lib/errors';
 import { describeChange, describeTelemetry } from '../lib/telemetry';
 
-/**
- * The one place telemetry is switched on and off. Nothing is written until the developer has seen
- * the exact change and said yes to it.
- */
 export function TelemetrySwitch() {
   const [state, setState] = useState<TelemetryState | null>(null);
   const [failure, setFailure] = useState<string | null>(null);

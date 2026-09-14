@@ -3,17 +3,14 @@ import type { Origin, Provenance } from '../lib/provenance';
 import type { TokenSplit } from '../lib/skills';
 import { getJson } from './json';
 
-/** What a skill cost, split by kind so an expensive one can be diagnosed rather than just noticed. */
 export interface SkillSpend extends TokenSplit {
-  /** Already inside `outputTokens`, because that is how thinking is billed. */
+  // Already inside outputTokens, because that is how thinking is billed.
   thinkingTokens: number;
-  /** US dollars, worked out by the API from its price table at the moment of the question. */
+  // US dollars, priced by the API at the moment of the question.
   cost: number;
-  /** True when some tokens ran on a model with no price, so the money is a floor. */
   costIsPartial: boolean;
 }
 
-/** One row of `GET /api/skills`, already shaped by the API. */
 export interface SkillSummary {
   name: string;
   activations: number;
@@ -23,17 +20,14 @@ export interface SkillSummary {
   efforts: string[];
   spend: SkillSpend;
   averageCost: number;
-  /** Empty when the events store said nothing about the name, which the note explains. */
   origins: Origin[];
 }
 
-/** `GET /api/skills`: the rows, and what the events store had to say about the same period. */
 export interface SkillTable {
   skills: SkillSummary[];
   provenance: Provenance;
 }
 
-/** The filter goes to the API, never to the rows that come back: narrowing happens in the query. */
 export function fetchSkills(filter: Filter, signal: AbortSignal): Promise<SkillTable> {
   return getJson<SkillTable>(`/api/skills${filterQuery(filter)}`, signal);
 }

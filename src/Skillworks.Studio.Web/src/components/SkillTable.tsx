@@ -31,13 +31,7 @@ const features = tableFeatures({
 
 const column = createColumnHelper<typeof features, SkillSummary>();
 
-/**
- * The way in to the firings behind a count. It reads the address bar rather than being handed a
- * prop, because a column definition is built once for the module and cannot be handed anything —
- * and because carrying the whole address onward, sort and filter together, is the job.
- *
- * A skill that has never fired is left as a plain nought. A link to an empty list is a dead end.
- */
+// Reads the address bar itself, because columns built once for the module cannot take props.
 function ActivationsLink({ skill, count }: { skill: string; count: number }) {
   const [params] = useSearchParams();
 
@@ -92,11 +86,6 @@ const columns = column.columns([
 
 const rowHeight = 34;
 
-/**
- * The skill table. The sort is handed in and handed back rather than kept here, because it lives in
- * the address bar: opening an activation and pressing back has to land on the table the reader
- * built, and state held in this component would not survive the trip.
- */
 export function SkillTable({
   skills,
   sort,

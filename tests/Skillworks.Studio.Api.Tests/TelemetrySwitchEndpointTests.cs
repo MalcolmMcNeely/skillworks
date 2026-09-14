@@ -5,10 +5,7 @@ namespace Skillworks.Studio.Api.Tests;
 
 public sealed class TelemetrySwitchEndpointTests
 {
-    /// <summary>
-    /// The five variables Studio owns. Named here rather than shared with the code under test, so a
-    /// rename has to be made twice on purpose.
-    /// </summary>
+    // Not shared with the code under test, so a rename has to be made twice on purpose.
     private static readonly string[] Owned =
     [
         "CLAUDE_CODE_ENABLE_TELEMETRY",
@@ -293,7 +290,6 @@ public sealed class TelemetrySwitchEndpointTests
         Assert.Equal("console", studio.Variable("OTEL_LOGS_EXPORTER"));
     }
 
-    /// <summary>Stands in for a developer opening the file and editing one variable by hand.</summary>
     private static void Rewrite(TelemetryStudio studio, string name, string value)
     {
         var settings = JsonNode.Parse(studio.SettingsText())!;

@@ -1,9 +1,3 @@
-/**
- * How the ingest reads as sentences. Structural, so this module stays pure — it never imports the
- * wire types that happen to match it.
- */
-
-/** How far the read has got: the answer to "is this table empty, or just not filled in yet". */
 export function describeIngest(status: {
   running: boolean;
   completedPasses: number;
@@ -32,14 +26,12 @@ export function describeIngest(status: {
     : `Read all ${status.transcriptsTotal} transcripts.`;
 }
 
-/** When the numbers on screen last moved, so a stale table is never read as a fresh one. */
 export function describeRefresh(lastRefreshUtc: string | null): string {
   return lastRefreshUtc === null
     ? 'Not refreshed yet.'
     : `Last refreshed ${new Date(lastRefreshUtc).toLocaleString()}.`;
 }
 
-/** How much of the transcripts was stepped over, as a sentence rather than a bare number. */
 export function describeFaults(faults: number): string {
   if (faults === 0) {
     return 'Nothing was skipped.';
@@ -50,15 +42,11 @@ export function describeFaults(faults: number): string {
     : `${faults} pieces of transcript were skipped.`;
 }
 
-/**
- * Whether the list on screen is all of them. The API caps what it hands back, and a list that is
- * shorter than the count would otherwise read as a contradiction.
- */
+// The API caps the list, which would otherwise seem to contradict the count.
 export function describeFaultList(shown: number, total: number): string {
   return shown < total ? `Showing the first ${shown} of ${total}.` : `Showing all ${shown}.`;
 }
 
-/** One skipped piece, named the way a developer would have to open it. */
 export function describeFault(fault: { path: string; line: number; reason: string }): string {
   const where = fault.line === 0 ? fault.path : `${fault.path} line ${fault.line}`;
 

@@ -2,20 +2,13 @@ using System.Text;
 
 namespace Skillworks.Core.Transcripts;
 
-/// <summary>One complete line of a transcript, and the byte offset just past its newline.</summary>
-/// <param name="Text">The line, without its line ending.</param>
-/// <param name="EndOffset">Where to resume next time. Only ever a line boundary.</param>
 public readonly record struct TranscriptLine(string Text, long EndOffset);
 
 public static class TranscriptLines
 {
     private const int BufferSize = 64 * 1024;
 
-    /// <summary>
-    /// Reads complete lines from <paramref name="offset"/> onward. A trailing line with no newline
-    /// belongs to a session still being written, so it is left for the next pass rather than parsed
-    /// half-finished.
-    /// </summary>
+    // A last line with no newline is still being written, so it waits for the next pass.
     public static IEnumerable<TranscriptLine> From(string path, long offset)
     {
         using var file = new FileStream(

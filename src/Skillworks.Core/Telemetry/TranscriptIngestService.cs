@@ -4,11 +4,6 @@ using Microsoft.Extensions.Options;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>
-/// Runs the ingest in the background: one pass at startup, then one for every request that arrives
-/// and one every sweep in between. Studio serves pages while 678 MB is still being read, and a
-/// session written while Studio is open turns up without anyone asking.
-/// </summary>
 public sealed class TranscriptIngestService(
     TranscriptIngestor ingestor,
     IngestState state,

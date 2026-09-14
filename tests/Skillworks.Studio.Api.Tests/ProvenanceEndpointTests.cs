@@ -4,14 +4,8 @@ using System.Web;
 
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>
-/// Where a skill came from and what set it off. Transcripts carry neither, so this is the whole
-/// reason the events store exists, and every answer here is the two stores joined on skill name
-/// and moment.
-/// </summary>
 public sealed class ProvenanceEndpointTests
 {
-    /// <summary>The one firing in the ordinary fixture, and the moment the transcript gives it.</summary>
     private const string Grilling = "toolu_01EAt7jnkYt1D63phjpVUBqL";
 
     private const string GrilledAt = "2026-09-02T14:48:23.182Z";

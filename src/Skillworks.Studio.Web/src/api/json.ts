@@ -1,7 +1,4 @@
-/**
- * One GET against the API. The status goes in the message, because a 404 on a dev server usually
- * means the proxy is not wired rather than that the data is missing.
- */
+// The status stays in the message: a 404 on a dev server usually means the proxy is not wired.
 export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(path, { signal });
 
@@ -12,10 +9,6 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
   return (await response.json()) as T;
 }
 
-/**
- * One POST against the API. Nothing sent here carries a body: these routes are commands, and what
- * comes back is the state to poll from rather than the answer.
- */
 export async function postJson<T>(path: string): Promise<T> {
   const response = await fetch(path, { method: 'POST' });
 
@@ -26,10 +19,7 @@ export async function postJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-/**
- * One PUT against the API. Studio refuses some writes on purpose, and says why in the problem
- * document, so that reason is the message rather than the status.
- */
+// Studio says in the problem document why it refused a write, so that reason is the message.
 export async function putJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'PUT',

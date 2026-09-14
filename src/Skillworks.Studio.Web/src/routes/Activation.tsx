@@ -5,10 +5,6 @@ import { activationsPath, describeMoment, describeRecorded, skillsPath } from '.
 import { describeFetchFailure } from '../lib/errors';
 import { describeDelivery, describeMissingOrigin, describeTrigger } from '../lib/provenance';
 
-/**
- * One firing, opened. This is the view that turns a count into evidence: it names what the skill
- * was asked to do, and the terms it ran on, so a reader can judge whether it fired for a reason.
- */
 export function Activation() {
   const { id = '' } = useParams();
   const [opened, setOpened] = useState<ActivationOpened | null>(null);

@@ -6,7 +6,6 @@ using Skillworks.Core.Settings;
 
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary><c>GET /api/skills</c>: the rows, and what the events store had to say about them.</summary>
 public sealed record SkillsAnswer
 {
     public required SkillRow[] Skills { get; init; }
@@ -14,10 +13,7 @@ public sealed record SkillsAnswer
     public required ProvenanceRow Provenance { get; init; }
 }
 
-/// <summary>
-/// One row of <c>GET /api/skills</c>. Every property is required, so a renamed field in the API
-/// fails the deserialize rather than quietly reading as zero.
-/// </summary>
+// Required, so a field renamed in the API fails the deserialize rather than quietly reading as zero.
 public sealed record SkillRow
 {
     public required string Name { get; init; }
@@ -39,7 +35,6 @@ public sealed record SkillRow
     public required OriginRow[] Origins { get; init; }
 }
 
-/// <summary>One way a skill was delivered and set off, as the events store recorded it.</summary>
 public sealed record OriginRow
 {
     public required string? Trigger { get; init; }
@@ -51,10 +46,8 @@ public sealed record OriginRow
     public required string? Marketplace { get; init; }
 }
 
-/// <summary>What the events store had to say: which way it fell short, if it did, and in what words.</summary>
 public sealed record ProvenanceRow
 {
-    /// <summary>One of <c>none</c>, <c>unreachable</c>, <c>telemetryOff</c>, <c>quiet</c>, <c>truncated</c>.</summary>
     public required string Gap { get; init; }
 
     public required string? Missing { get; init; }
@@ -62,7 +55,6 @@ public sealed record ProvenanceRow
     public required DateTimeOffset SinceUtc { get; init; }
 }
 
-/// <summary><c>GET /api/health</c>: every part of Studio, and why a view built on them is empty.</summary>
 public sealed record HealthRow
 {
     public required PartRow[] Parts { get; init; }
@@ -70,12 +62,10 @@ public sealed record HealthRow
     public required string? WhyEmpty { get; init; }
 }
 
-/// <summary>One part of Studio: how it is doing, and what a developer would do about it.</summary>
 public sealed record PartRow
 {
     public required string Name { get; init; }
 
-    /// <summary>One of <c>working</c>, <c>starting</c>, <c>off</c>, <c>broken</c>.</summary>
     public required string State { get; init; }
 
     public required string Detail { get; init; }
@@ -83,7 +73,6 @@ public sealed record PartRow
     public required string? Action { get; init; }
 }
 
-/// <summary>What one skill cost, as the skill table reports it.</summary>
 public sealed record SpendRow
 {
     public required long InputTokens { get; init; }
@@ -101,7 +90,6 @@ public sealed record SpendRow
     public required bool CostIsPartial { get; init; }
 }
 
-/// <summary><c>GET /api/filters</c>: the values the three filters can be narrowed to.</summary>
 public sealed record FilterChoiceRow
 {
     public required string[] Repositories { get; init; }
@@ -109,7 +97,6 @@ public sealed record FilterChoiceRow
     public required string[] Skills { get; init; }
 }
 
-/// <summary>One row of <c>GET /api/prices</c>: what a million tokens costs on one model.</summary>
 public sealed record PriceRow
 {
     public required string Model { get; init; }
@@ -125,7 +112,6 @@ public sealed record PriceRow
     public required decimal CacheWrite1hPerMillion { get; init; }
 }
 
-/// <summary><c>GET /api/ingest</c>: how far the ingest has got and how stale the numbers are.</summary>
 public sealed record IngestRow
 {
     public required bool Running { get; init; }
@@ -147,7 +133,6 @@ public sealed record IngestRow
     public required int Faults { get; init; }
 }
 
-/// <summary><c>GET /api/activations</c>: the firings, and what the events store had to say.</summary>
 public sealed record ActivationsAnswer
 {
     public required ActivationRow[] Activations { get; init; }
@@ -155,7 +140,6 @@ public sealed record ActivationsAnswer
     public required ProvenanceRow Provenance { get; init; }
 }
 
-/// <summary>One row of <c>GET /api/activations</c>: one firing, enough of it to pick one out.</summary>
 public sealed record ActivationRow
 {
     public required string Id { get; init; }
@@ -175,7 +159,6 @@ public sealed record ActivationRow
     public required OriginRow? Origin { get; init; }
 }
 
-/// <summary><c>GET /api/activations/{id}</c>: one firing opened, beside the same note.</summary>
 public sealed record ActivationAnswer
 {
     public required ActivationDetailRow Activation { get; init; }
@@ -183,7 +166,6 @@ public sealed record ActivationAnswer
     public required ProvenanceRow Provenance { get; init; }
 }
 
-/// <summary>One firing, with what it was called with and where it came from.</summary>
 public sealed record ActivationDetailRow
 {
     public required string Id { get; init; }
@@ -207,7 +189,6 @@ public sealed record ActivationDetailRow
     public required OriginRow? Origin { get; init; }
 }
 
-/// <summary>One thing a skill was called with, as the transcript recorded it.</summary>
 public sealed record ArgumentRow
 {
     public required string Name { get; init; }
@@ -215,7 +196,6 @@ public sealed record ArgumentRow
     public required string Value { get; init; }
 }
 
-/// <summary>One row of <c>GET /api/ingest/faults</c>: something the ingest had to step over.</summary>
 public sealed record FaultRow
 {
     public required string Path { get; init; }
@@ -227,19 +207,11 @@ public sealed record FaultRow
     public required DateTimeOffset NoticedUtc { get; init; }
 }
 
-/// <summary>
-/// One running Studio for one test: the real API in memory, a real SQLite file in a temporary
-/// directory, and a checked-in fixture folder standing in for the machine's transcripts.
-/// </summary>
 public sealed class Studio : IDisposable
 {
     private static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web);
 
-    /// <summary>
-    /// A settings file holding exactly the variables the switch owns, built from the switch's own
-    /// list so a change to that list cannot leave this fixture claiming telemetry is on when Studio
-    /// would read it as off.
-    /// </summary>
+    // Shares the switch's list, so this fixture cannot claim telemetry is on while Studio reads it as off.
     private static readonly string EmittingSettings = new JsonObject
     {
         ["env"] = new JsonObject(
@@ -252,34 +224,14 @@ public sealed class Studio : IDisposable
     private readonly StudioApi _api;
     private readonly HttpClient _client;
 
-    /// <param name="transcriptPath">Null leaves the setting out, so Studio falls back to its default.</param>
-    /// <param name="sweepSeconds">
-    /// Zero, so no pass happens that the test did not ask for. Counting passes is how these tests
-    /// stay off the flake list, and a sweep on a clock would make the count meaningless.
-    /// </param>
-    /// <param name="events">
-    /// A store that is up and holds nothing, unless a test says otherwise. Every test answers the
-    /// events side from here, so none of them reaches a container that may or may not be running.
-    /// </param>
-    /// <param name="maxEvents">
-    /// The cap Studio ships with, so a test that wants to reach it can ask for a smaller one
-    /// instead of building five thousand events.
-    /// </param>
-    /// <param name="emitting">
-    /// True by default, and never read from the developer's own settings. Studio asks the switch
-    /// whenever it explains a gap in provenance, so a test left pointing at the real file would
-    /// pass or fail on whether the machine running it happens to have telemetry turned on.
-    /// </param>
-    /// <param name="settings">
-    /// The settings file's exact text, for a test about a document Studio cannot parse. It stands
-    /// in place of <paramref name="emitting"/>.
-    /// </param>
     public Studio(
         string? transcriptPath,
         string? cataloguePath = null,
+        // Zero, so no pass runs that a test did not ask for and the pass counts tests wait on stay exact.
         int sweepSeconds = 0,
         Events? events = null,
         int maxEvents = 5000,
+        // Not the developer's settings, or provenance tests would pass or fail on this machine's telemetry.
         bool emitting = true,
         string? settings = null)
     {
@@ -301,16 +253,10 @@ public sealed class Studio : IDisposable
 
     public HttpClient Client => _client;
 
-    /// <summary>Fixture folders live beside the test assembly, copied there by the build.</summary>
     public static string Fixture(string name) => Path.Combine(AppContext.BaseDirectory, "Transcripts", name);
 
-    /// <summary>A fixture catalogue: one plugin, one skill that fires and one that never does.</summary>
     public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Catalogue");
 
-    /// <summary>
-    /// Blocks until the background service has finished <paramref name="passes"/> ingest passes.
-    /// Waiting on the count rather than on a clock is what keeps these tests off the flake list.
-    /// </summary>
     public async Task WaitForIngestPasses(int passes)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
@@ -332,13 +278,10 @@ public sealed class Studio : IDisposable
             ?? throw new InvalidOperationException("The ingest status came back empty.");
     }
 
-    /// <summary>Asks for another pass and waits for it, so a test can prove what a re-read does.</summary>
     public Task IngestAgain() => AskAndWait("/api/ingest");
 
-    /// <summary>Throws away everything already read and waits for the re-read to finish.</summary>
     public Task FullIngest() => AskAndWait("/api/ingest/full");
 
-    /// <summary>Asks for a pass without waiting, so a test can see what the ask itself reports.</summary>
     public async Task<IngestRow> Ask(string route)
     {
         await WaitForIngestPasses(1);
@@ -350,7 +293,6 @@ public sealed class Studio : IDisposable
             ?? throw new InvalidOperationException("The ingest status came back empty.");
     }
 
-    /// <summary>How every part of Studio is doing, in the one place that says so.</summary>
     public async Task<HealthRow> Health()
     {
         await WaitForIngestPasses(1);
@@ -359,7 +301,6 @@ public sealed class Studio : IDisposable
             ?? throw new InvalidOperationException("The health report came back empty.");
     }
 
-    /// <summary>One named part of the health report. Fails the test if the report has not got it.</summary>
     public async Task<PartRow> Part(string name) =>
         (await Health()).Parts.Single(part => part.Name == name);
 
@@ -370,10 +311,8 @@ public sealed class Studio : IDisposable
         return await _client.GetFromJsonAsync<FaultRow[]>("/api/ingest/faults", Wire) ?? [];
     }
 
-    /// <param name="filter">A query string, leading <c>?</c> and all. Empty asks about everything.</param>
     public async Task<IReadOnlyList<SkillRow>> Skills(string filter = "") => (await SkillTable(filter)).Skills;
 
-    /// <summary>The whole skill answer, so a test can read the provenance note beside the rows.</summary>
     public async Task<SkillsAnswer> SkillTable(string filter = "")
     {
         await WaitForIngestPasses(1);
@@ -382,7 +321,6 @@ public sealed class Studio : IDisposable
             ?? throw new InvalidOperationException("The skill table came back empty.");
     }
 
-    /// <summary>The skills call as it came back, so a test can assert the status as well as the rows.</summary>
     public async Task<HttpResponseMessage> AskForSkills(string filter)
     {
         await WaitForIngestPasses(1);
@@ -390,19 +328,15 @@ public sealed class Studio : IDisposable
         return await _client.GetAsync($"/api/skills{filter}");
     }
 
-    /// <summary>The one named skill. Fails the test if the table does not hold exactly one.</summary>
     public async Task<SkillRow> Skill(string name, string filter = "") =>
         (await Skills(filter)).Single(skill => skill.Name == name);
 
-    /// <summary>How often a skill fired, counting a skill the table never mentions as zero.</summary>
     public async Task<int> ActivationsOf(string name, string filter = "") =>
         (await Skills(filter)).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
 
-    /// <param name="filter">A query string, leading <c>?</c> and all. Empty asks about everything.</param>
     public async Task<IReadOnlyList<ActivationRow>> Activations(string filter = "") =>
         (await ActivationList(filter)).Activations;
 
-    /// <summary>The whole list answer, so a test can read the provenance note beside the firings.</summary>
     public async Task<ActivationsAnswer> ActivationList(string filter = "")
     {
         await WaitForIngestPasses(1);
@@ -411,10 +345,8 @@ public sealed class Studio : IDisposable
             ?? throw new InvalidOperationException("The activation list came back empty.");
     }
 
-    /// <summary>One firing opened by its id, which is how the front end reaches a detail page.</summary>
     public async Task<ActivationDetailRow> Activation(string id) => (await OpenActivation(id)).Activation;
 
-    /// <summary>The whole detail answer, note and all.</summary>
     public async Task<ActivationAnswer> OpenActivation(string id)
     {
         await WaitForIngestPasses(1);
@@ -423,7 +355,6 @@ public sealed class Studio : IDisposable
             ?? throw new InvalidOperationException("The activation came back empty.");
     }
 
-    /// <summary>The detail call as it came back, so a test can assert the status of a bad id.</summary>
     public async Task<HttpResponseMessage> AskForActivation(string id)
     {
         await WaitForIngestPasses(1);
@@ -444,14 +375,12 @@ public sealed class Studio : IDisposable
         return await _client.GetFromJsonAsync<PriceRow[]>("/api/prices", Wire) ?? [];
     }
 
-    /// <summary>Sets one model's price, which is the whole point of a table read at query time.</summary>
     public async Task Reprice(PriceRow price)
     {
         using var response = await _client.PutAsJsonAsync("/api/prices", price, Wire);
         response.EnsureSuccessStatusCode();
     }
 
-    /// <summary>Waits for a skill to turn up on its own, for the sweep that nobody asked for.</summary>
     public async Task WaitForSkill(string name)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);

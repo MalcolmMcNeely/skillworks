@@ -2,13 +2,6 @@ using System.Text.Json;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>
-/// Reads the stored Skill block back into the arguments a firing can be judged by.
-/// </summary>
-/// <remarks>
-/// Read here rather than at ingest, so the transcript's own words stay in the store whole and a
-/// change to how they are shown never costs a re-read of 678 MB.
-/// </remarks>
 internal static class RecordedArguments
 {
     public static IReadOnlyList<ActivationArgument> Read(string? recorded)
@@ -59,10 +52,7 @@ internal static class RecordedArguments
         return null;
     }
 
-    /// <summary>
-    /// A string as its own words, anything else as the JSON it was written as. Quoting a string
-    /// would put marks round an argument the developer typed without them.
-    /// </summary>
+    // Quoting a string would put marks round an argument the developer typed without them.
     private static string Value(JsonElement value) =>
         value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.GetRawText();
 }

@@ -93,7 +93,6 @@ api.MapPut("telemetry/switch", (TelemetrySwitchRequest request, TelemetrySwitch 
 
 app.Run();
 
-/// <param name="Emitting">True asks Studio to turn telemetry on, false to turn it off again.</param>
 public sealed record TelemetrySwitchRequest(bool Emitting);
 
 // The in-memory test host needs a handle on this assembly's entry point.

@@ -3,32 +3,12 @@ using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>What one transcript line held.</summary>
-/// <param name="Activations">Empty for the great majority of lines, which record something else.</param>
-/// <param name="Turn">
-/// The request this line belongs to, or null when the line records no request. Several lines of one
-/// request each report it in full, so the caller keys on the request id and takes it once.
-/// </param>
-/// <param name="Problem">
-/// Why the line could not be read at all. Non-null means the line was stepped over, so the ingest
-/// has something to count and report rather than a silent gap.
-/// </param>
 internal readonly record struct LineReading(
     IReadOnlyList<Activation> Activations,
     Turn? Turn,
     string? Problem);
 
-/// <summary>
-/// Turns one transcript line into the activations and the spend it records. Internal on purpose:
-/// the tests drive the API, not this.
-/// </summary>
-/// <remarks>
-/// An activation is read from a Skill tool use, because CONTEXT.md defines one as "one occasion on
-/// which a skill fired" and that block is the firing. The record's own <c>attributionSkill</c> is a
-/// different fact: the skill that was already active when the request was made. It repeats on every
-/// turn a skill is in force, so counting it would count turns, not firings. It is what Attribution
-/// reads, and it is why the turn that chose a skill is charged to no skill.
-/// </remarks>
+// Firings come from the Skill tool use, not attributionSkill, which repeats on every turn a skill lasts.
 internal static class TranscriptParser
 {
     public static LineReading Read(string line, RepositoryNames repositories)

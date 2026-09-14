@@ -4,17 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Skillworks.Core.Provenance;
 
-/// <summary>
-/// One skill_activated event. It is the only record of where a skill came from and what set it
-/// off, because a transcript carries neither.
-/// </summary>
-/// <param name="Trigger">
-/// Verbatim, as the store holds it: <c>claude-proactive</c> when the model chose the skill,
-/// <c>user-slash</c> when a developer typed it. Reading those into words is the screen's job.
-/// </param>
-/// <param name="Source">Where the skill was loaded from: a settings folder, a plugin, and so on.</param>
-/// <param name="Plugin">Null unless a plugin delivered it.</param>
-/// <param name="Marketplace">Null unless a plugin delivered it.</param>
+// Trigger stays verbatim (claude-proactive, user-slash): putting it into words is the screen's job.
 public sealed record SkillEvent(
     string Skill,
     DateTimeOffset At,
@@ -23,15 +13,6 @@ public sealed record SkillEvent(
     string? Plugin,
     string? Marketplace);
 
-/// <summary>
-/// What one read of the events store came back with. A failure is carried rather than thrown:
-/// missing provenance is something to say on a screen, not a reason to lose the rest of it.
-/// </summary>
-/// <param name="Unreachable">Why the store could not be read, or null when it answered.</param>
-/// <param name="Truncated">
-/// True when the period held more events than one read takes, so the oldest of them are not in
-/// here. The newest are kept, because a screen is nearly always asking about recent work.
-/// </param>
 public sealed record EventReading(IReadOnlyList<SkillEvent> Events, string? Unreachable, bool Truncated = false)
 {
     public static EventReading Of(IReadOnlyList<SkillEvent> events, bool truncated) =>
@@ -40,20 +21,11 @@ public sealed record EventReading(IReadOnlyList<SkillEvent> Events, string? Unre
     public static EventReading Failed(string reason) => new([], reason);
 }
 
-/// <summary>
-/// Reads skill_activated events out of Loki, over its range endpoint. There is no C# client for
-/// Loki and none is needed: one GET, and one document to walk.
-/// </summary>
 public sealed class SkillEvents(IHttpClientFactory clients, IOptions<LokiOptions> options)
 {
-    /// <summary>The named client, so the address and the timeout are configured in one place.</summary>
     public const string ClientName = "loki";
 
-    /// <summary>
-    /// Every stream, and the body Claude Code writes for this event. Matched on the line rather
-    /// than on a label: the attributes arrive as structured metadata under names Loki derives, and
-    /// a selector built on a derived name would answer a rename with silence.
-    /// </summary>
+    // A line filter, not a label: Loki derives label names, so a rename would silently match nothing.
     private const string Query = "{service_name=~\".+\"} |= \"claude_code.skill_activated\"";
 
     public async Task<EventReading> ReadAsync(
@@ -94,10 +66,7 @@ public sealed class SkillEvents(IHttpClientFactory clients, IOptions<LokiOptions
         }
     }
 
-    /// <summary>
-    /// A failure of the store rather than of Studio. A cancelled request is the caller giving up
-    /// and has to go on being that, or a closed browser tab would be reported as an outage.
-    /// </summary>
+    // Caller cancellation must propagate, or a closed browser tab would be reported as an outage.
     private static bool Outside(Exception failure, CancellationToken cancellationToken) =>
         failure is HttpRequestException or JsonException ||
         (failure is TaskCanceledException && !cancellationToken.IsCancellationRequested);
@@ -132,11 +101,7 @@ public sealed class SkillEvents(IHttpClientFactory clients, IOptions<LokiOptions
         return events;
     }
 
-    /// <summary>
-    /// One entry: the moment, the line, and the attributes beside it. Loki carries a log record's
-    /// attributes as the third part of an entry and flattens their dots to underscores. An entry
-    /// without a skill name on it is some other event, and is not for this reader.
-    /// </summary>
+    // Loki puts a record's attributes third in an entry and flattens their dots to underscores.
     private static SkillEvent? Entry(JsonElement entry)
     {
         if (entry.ValueKind != JsonValueKind.Array || entry.GetArrayLength() < 3)

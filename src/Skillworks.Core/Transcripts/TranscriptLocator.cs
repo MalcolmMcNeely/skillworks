@@ -2,12 +2,8 @@ using Microsoft.Extensions.Options;
 
 namespace Skillworks.Core.Transcripts;
 
-/// <summary>Where the transcripts are, and whether anything is actually there.</summary>
-/// <param name="Path">The resolved absolute path.</param>
-/// <param name="Exists">False means Studio has nothing to read, which explains an empty screen.</param>
 public sealed record TranscriptLocation(string Path, bool Exists);
 
-/// <summary>Finds the session files. Configuration may override the folder; nothing has to.</summary>
 public sealed class TranscriptLocator(IOptions<TranscriptOptions> options)
 {
     public TranscriptLocation Locate()
@@ -16,7 +12,7 @@ public sealed class TranscriptLocator(IOptions<TranscriptOptions> options)
         return new TranscriptLocation(path, Directory.Exists(path));
     }
 
-    /// <summary>Every transcript under the folder, including subagent sidechains.</summary>
+    // Every subfolder too, so subagent sidechains are read along with their sessions.
     public IReadOnlyList<string> Transcripts()
     {
         var location = Locate();

@@ -1,3 +1,4 @@
+using System.IO.Enumeration;
 using Skillworks.Architecture.RulesFiles;
 
 namespace Skillworks.Architecture.Placement;
@@ -26,6 +27,9 @@ internal sealed record PlacementRules(
 
     public bool IsSourceFile(string fileName) =>
         SourceFiles.Any(suffix => fileName.EndsWith(suffix, StringComparison.Ordinal));
+
+    public bool IsTestFile(string fileName) =>
+        TestFiles.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, fileName, ignoreCase: false));
 
     public bool IsSkipped(string folderName) => SkipFolders.Contains(folderName, StringComparer.Ordinal);
 

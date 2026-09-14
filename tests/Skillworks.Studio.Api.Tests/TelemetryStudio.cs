@@ -4,13 +4,8 @@ using Microsoft.Data.Sqlite;
 
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>
-/// One running Studio pointed at a throwaway Claude Code settings file, so a test can watch the
-/// telemetry switch read and write a real document without going near the developer's own.
-/// </summary>
 public sealed class TelemetryStudio : IDisposable
 {
-    /// <summary>Stands in for the collector's pinned address, which the AppHost publishes.</summary>
     public const string Collector = "http://localhost:4318";
 
     private static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web);
@@ -20,7 +15,6 @@ public sealed class TelemetryStudio : IDisposable
     private readonly HttpClient _client;
     private readonly string _settingsPath;
 
-    /// <param name="settings">The settings file's exact text. Null leaves no file there at all.</param>
     public TelemetryStudio(string? settings = null)
     {
         _settingsPath = Path.Combine(_folder.Path, "settings.json");
@@ -45,11 +39,9 @@ public sealed class TelemetryStudio : IDisposable
 
     public Task<JsonElement> State() => _client.GetFromJsonAsync<JsonElement>("/api/telemetry/switch");
 
-    /// <summary>Flips the switch and hands back the raw response, so a test can assert a refusal.</summary>
     public Task<HttpResponseMessage> Flip(bool emitting) =>
         _client.PutAsJsonAsync("/api/telemetry/switch", new { emitting }, Wire);
 
-    /// <summary>Flips the switch and fails the test if Studio refused to write.</summary>
     public async Task<JsonElement> Turn(bool emitting)
     {
         using var response = await Flip(emitting);
@@ -62,12 +54,10 @@ public sealed class TelemetryStudio : IDisposable
 
     public string SettingsText() => File.ReadAllText(_settingsPath);
 
-    /// <summary>Puts new text in the file behind Studio's back, as a developer with an editor would.</summary>
     public void RewriteSettings(string settings) => File.WriteAllText(_settingsPath, settings);
 
     public JsonElement Settings() => JsonDocument.Parse(SettingsText()).RootElement.Clone();
 
-    /// <summary>One environment variable as it stands on disk, or null when it is not there.</summary>
     public string? Variable(string name)
     {
         var settings = Settings();
@@ -78,7 +68,6 @@ public sealed class TelemetryStudio : IDisposable
                 : null;
     }
 
-    /// <summary>Every variable the state says turning telemetry on would write, and its new value.</summary>
     public static Dictionary<string, string> Changes(JsonElement state) =>
         state.GetProperty("changes")
             .EnumerateArray()

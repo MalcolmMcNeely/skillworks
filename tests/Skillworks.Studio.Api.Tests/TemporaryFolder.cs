@@ -1,6 +1,5 @@
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>A folder that cleans itself up, so no test carries a try/finally for one.</summary>
 public sealed class TemporaryFolder : IDisposable
 {
     private readonly DirectoryInfo _folder = Directory.CreateTempSubdirectory("skillworks-test");

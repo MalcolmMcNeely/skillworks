@@ -4,12 +4,6 @@ using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>Everything the store knows about the skills that fired, gathered in one read.</summary>
-/// <param name="Counts">Activations per skill. A skill absent here never fired.</param>
-/// <param name="Repositories">Distinct repositories per skill, sorted.</param>
-/// <param name="Branches">Distinct git branches per skill, sorted.</param>
-/// <param name="Models">Distinct models per skill, sorted.</param>
-/// <param name="Efforts">Distinct effort levels per skill, sorted.</param>
 public sealed record ActivationTally(
     IReadOnlyDictionary<string, int> Counts,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Repositories,
@@ -17,9 +11,6 @@ public sealed record ActivationTally(
     IReadOnlyDictionary<string, IReadOnlyList<string>> Models,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Efforts);
 
-/// <summary>One firing in a list, carrying enough of itself to be told apart and opened.</summary>
-/// <param name="Id">The tool use id, which is how one firing is asked for by name.</param>
-/// <param name="Repository">Null when the transcript recorded no working directory.</param>
 public sealed record ActivationSummary(
     string Id,
     string Skill,
@@ -29,21 +20,10 @@ public sealed record ActivationSummary(
     string? Effort,
     DateTimeOffset TimestampUtc)
 {
-    /// <summary>
-    /// Where this firing came from, joined on afterwards. It is not read with the rest because the
-    /// store this comes out of holds transcripts, and transcripts do not record it.
-    /// </summary>
+    // Joined on afterwards: transcripts, which this store reads, do not record where a firing came from.
     public SkillOrigin? Origin { get; init; }
 }
 
-/// <summary>
-/// One firing opened: everything the list holds, plus the session it belongs to and what the skill
-/// was actually called with. This is what turns a count into evidence.
-/// </summary>
-/// <param name="Arguments">
-/// In the order the transcript wrote them. Empty when the firing recorded nothing at all, which is
-/// a fact about the firing rather than a gap.
-/// </param>
 public sealed record ActivationDetail(
     string Id,
     string Skill,
@@ -55,20 +35,12 @@ public sealed record ActivationDetail(
     DateTimeOffset TimestampUtc,
     IReadOnlyList<ActivationArgument> Arguments)
 {
-    /// <summary>Where this firing came from, joined on afterwards. Null when no event matches it.</summary>
     public SkillOrigin? Origin { get; init; }
 }
 
-/// <summary>
-/// One thing a skill was called with. The value is text whatever the transcript wrote, because the
-/// reader is judging the words that were used, not the shape they arrived in.
-/// </summary>
+// Always text: the reader judges the words an argument used, not the JSON shape they arrived in.
 public sealed record ActivationArgument(string Name, string Value);
 
-/// <summary>
-/// Reads the activations back out. It sits beside the ingest that writes them, so the store's shape
-/// is known in one place and callers see tallies rather than tables.
-/// </summary>
 public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contexts)
 {
     private readonly record struct SkillValue(string Skill, string? Value);
@@ -96,11 +68,6 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
             await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
     }
 
-    /// <summary>
-    /// The firings the filter takes in, newest first, so the reader opening one is looking at the
-    /// most recent by default. Narrowed by the same filter as the skill table, so the list reached
-    /// from a row is the same slice of history that row was counting.
-    /// </summary>
     public async Task<IReadOnlyList<ActivationSummary>> ListAsync(
         TelemetryFilter filter,
         CancellationToken cancellationToken)
@@ -120,10 +87,7 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// One firing by its tool use id, or null when the ingest has never read it. Not narrowed by a
-    /// filter: a reader who has a firing's id is asking about that firing, not about a week.
-    /// </summary>
+    // Not narrowed by a filter: a reader who has a firing's id is asking about that firing, not a week.
     public async Task<ActivationDetail?> OpenAsync(string id, CancellationToken cancellationToken)
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);
@@ -146,11 +110,7 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
                 RecordedArguments.Read(activation.Arguments));
     }
 
-    /// <summary>
-    /// The repositories and skills the whole history holds, sorted. Deliberately not narrowed: they
-    /// are what a filter can be set to, so a filter that has cut the answer to nothing must still be
-    /// able to offer the way back out.
-    /// </summary>
+    // Not narrowed: a filter that has cut the answer to nothing must still offer the way back out.
     public async Task<(IReadOnlyList<string> Repositories, IReadOnlyList<string> Skills)> ChoicesAsync(
         CancellationToken cancellationToken)
     {
@@ -169,17 +129,7 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
         return (Sorted(repositories.OfType<string>()), Sorted(skills));
     }
 
-    /// <summary>
-    /// The filter applied where the ticket asks for it: in the query. Narrowing after the rows came
-    /// back would read a whole history to answer a question about one week of it.
-    /// </summary>
-    /// <remarks>
-    /// Written again over in <see cref="SpendStore"/> rather than shared. Both ways of sharing it
-    /// cost more than the repetition: an interface over the two tables leaves EF translating a
-    /// member it cannot see the column behind, and a helper taking a selector per column has to
-    /// graft the expressions together by hand. What repeats here is four predicates, and what does
-    /// not repeat is the rule behind them, which <see cref="TelemetryFilter"/> owns alone.
-    /// </remarks>
+    // Repeated in SpendStore: sharing it means an interface EF cannot translate or hand-grafted expressions.
     private static IQueryable<Activation> Narrowed(IQueryable<Activation> activations, TelemetryFilter filter)
     {
         if (filter.FromUtc is { } from)
@@ -208,12 +158,7 @@ public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contex
     private static IReadOnlyList<string> Sorted(IEnumerable<string> names) =>
         [.. names.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];
 
-    /// <summary>
-    /// The distinct values of one column per skill. Taking the whole pair as an expression keeps
-    /// the distinct in SQLite, which is the point: only the handful of pairs a skill actually has
-    /// comes back, never a row per activation. The rows that recorded nothing are dropped here,
-    /// because a predicate over a projected pair is the one thing SQLite will not be told.
-    /// </summary>
+    // Nulls are dropped in memory because SQLite will not take a predicate over the pair.
     private static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> BySkillAsync(
         IQueryable<Activation> activations,
         Expression<Func<Activation, SkillValue>> pair,

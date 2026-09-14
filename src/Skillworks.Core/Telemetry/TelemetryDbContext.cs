@@ -5,12 +5,7 @@ namespace Skillworks.Core.Telemetry;
 
 public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> options) : DbContext(options)
 {
-    /// <summary>
-    /// SQLite has no date type, and EF will not translate a comparison over the text it writes for a
-    /// DateTimeOffset, so a date range would have to be answered by reading the whole history back
-    /// and sifting it in memory. Every one of these instants is already UTC, so dropping the offset
-    /// loses nothing and leaves text SQLite can compare.
-    /// </summary>
+    // EF can't compare DateTimeOffset text on SQLite; every instant is UTC, so dropping the offset is safe.
     private static readonly ValueConverter<DateTimeOffset, DateTime> AsUtc = new(
         moment => moment.UtcDateTime,
         stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc), TimeSpan.Zero));

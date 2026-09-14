@@ -1,19 +1,11 @@
-/**
- * How a table is ranked. One column, because a table ranked by three at once is a query language
- * and the spec asks for the extremes to be findable without one.
- */
+// One column, because ranking by several is a query language and finding the extremes needs none.
 export interface Sort {
   column: string;
   desc: boolean;
 }
 
-/** What the skill table shows before a heading is clicked: the skills that fire most, first. */
 export const byActivations: Sort = { column: 'activations', desc: true };
 
-/**
- * The sort the address bar is describing. It lives there beside the filter so that opening an
- * activation and coming back lands on the table the reader built, not on a fresh one.
- */
 export function readSort(params: URLSearchParams): Sort {
   const column = params.get('sort');
 
@@ -25,10 +17,7 @@ export function readSort(params: URLSearchParams): Sort {
   return { column, desc: params.get('desc') !== 'no' };
 }
 
-/**
- * The filter with the sort written beside it. The starting sort is left out rather than spelled
- * out, so a reader who has narrowed nothing and clicked nothing has a clean address to share.
- */
+// The starting sort is left out, so an untouched table has a clean address to share.
 export function withSort(params: URLSearchParams, sort: Sort): URLSearchParams {
   const written = new URLSearchParams(params);
 

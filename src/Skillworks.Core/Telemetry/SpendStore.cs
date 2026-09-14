@@ -2,10 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Skillworks.Core.Telemetry;
 
-/// <summary>
-/// One skill's tokens on one model, which is the grain money can be worked out at: a skill that ran
-/// on two models was billed at two sets of rates, and one blended rate would land nowhere near.
-/// </summary>
+// Per model: a skill that ran on two models was billed at two rates, and one blended rate would be wrong.
 public sealed record ModelTokens(
     string Model,
     string? Effort,
@@ -16,15 +13,10 @@ public sealed record ModelTokens(
     long CacheWrite5mTokens,
     long CacheWrite1hTokens);
 
-/// <summary>
-/// Reads the turns back out as tokens per skill. It hands back tokens and not money, because money
-/// depends on a price table that can change long after the turn was stored.
-/// </summary>
 public sealed class SpendStore(IDbContextFactory<TelemetryDbContext> contexts)
 {
     private readonly record struct SkillTokens(string Skill, ModelTokens Tokens);
 
-    /// <summary>A skill absent from the answer made no request of its own and so owes nothing.</summary>
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<ModelTokens>>> TokensBySkillAsync(
         TelemetryFilter filter,
         CancellationToken cancellationToken)
@@ -55,12 +47,7 @@ public sealed class SpendStore(IDbContextFactory<TelemetryDbContext> contexts)
                 IReadOnlyList<ModelTokens> (group) => [.. group.Select(total => total.Tokens)]);
     }
 
-    /// <summary>
-    /// The same filter, over the turns. A filtered count against an all-time cost would report one
-    /// firing as having cost a fortune, so both are narrowed the same way: each answers for what
-    /// happened inside the span. A firing late on the last day whose requests ran past midnight
-    /// therefore keeps its count and loses those requests, because that is when they happened.
-    /// </summary>
+    // Narrowed like the activations, or a filtered count would sit beside an all-time cost.
     private static IQueryable<Turn> Narrowed(IQueryable<Turn> turns, TelemetryFilter filter)
     {
         // A turn charged to no skill was spent choosing one, so it belongs in no skill's total.

@@ -1,9 +1,5 @@
 namespace Skillworks.Core.Catalogue;
 
-/// <summary>
-/// The skills the catalogue holds, named the way Claude Code invokes them. A marketplace is a
-/// folder of plugins, and a plugin keeps its skills in <c>skills/&lt;name&gt;/SKILL.md</c>.
-/// </summary>
 public sealed class CatalogueSkills(CatalogueLocator locator)
 {
     public IReadOnlyList<string> Names()
@@ -22,6 +18,7 @@ public sealed class CatalogueSkills(CatalogueLocator locator)
                where Directory.Exists(folder)
                from skill in Directory.EnumerateDirectories(folder)
                where File.Exists(Path.Combine(skill, "SKILL.md"))
+               // Spelled as Claude Code invokes a plugin skill, or a catalogue name never meets its firings.
                select $"{Path.GetFileName(plugin)}:{Path.GetFileName(skill)}"
         ];
     }

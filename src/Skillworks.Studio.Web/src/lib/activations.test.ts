@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { activationPath, activationsPath, describeMoment, describeRecorded, skillsPath } from './activations';
 
-/** A reader who has narrowed the table and ranked it by cost. Both have to survive the round trip. */
 const view = 'repository=alpha&sort=cost&desc=no';
 
 describe('activationsPath', () => {

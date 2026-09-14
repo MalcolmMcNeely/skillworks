@@ -47,7 +47,6 @@ public sealed class IncrementalIngestTests
         Assert.Equal(1, await studio.ActivationsOf("code-review"));
     }
 
-    /// <summary>Puts the first half of the fixture where a locator will find it.</summary>
     private static string Plant(TemporaryFolder folder)
     {
         var transcript = Path.Combine(folder.Subfolder(Project), Session);
@@ -57,7 +56,6 @@ public sealed class IncrementalIngestTests
         return transcript;
     }
 
-    /// <summary>The second half, held back so a test can make the file grow.</summary>
     private static string Appendix() =>
         File.ReadAllText(Path.Combine(Studio.Fixture("growing"), "appendix.jsonl.part"));
 }

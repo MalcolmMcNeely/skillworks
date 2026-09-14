@@ -7,10 +7,6 @@ import { describeFetchFailure } from '../lib/errors';
 import { describeEmpty, readFilter } from '../lib/filters';
 import { describeProvenance, describeTrigger } from '../lib/provenance';
 
-/**
- * The firings behind one count. The skill comes from the path and the rest of the filter from the
- * address bar, so the list counts exactly what the row that was clicked was counting.
- */
 export function Activations() {
   const { skill = '' } = useParams();
   const [activations, setActivations] = useState<ActivationList | null>(null);

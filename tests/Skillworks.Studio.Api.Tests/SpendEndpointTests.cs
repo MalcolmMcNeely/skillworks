@@ -1,20 +1,8 @@
 namespace Skillworks.Studio.Api.Tests;
 
-/// <summary>
-/// What the costly fixture holds, so the arithmetic below reads as arithmetic rather than as magic.
-/// One session in <c>zeta</c>:
-/// <list type="bullet">
-/// <item>comment-sweep fires twice and owns two requests: one on claude-opus-5 written across three
-/// transcript records, one on claude-sonnet-5.</item>
-/// <item>unslop fires once from inside comment-sweep and owns one cheap request on
-/// claude-haiku-4-5.</item>
-/// <item>tdd fires once and its one request ran on a model the price table does not name.</item>
-/// <item>grilling fires last and the session ends, so it owns no request at all.</item>
-/// </list>
-/// </summary>
 public sealed class SpendEndpointTests
 {
-    /// <summary>comment-sweep's opus request, at the seeded claude-opus-5 rates.</summary>
+    // Each cost is at the rates the price table is seeded with for its model.
     private const decimal OpusCost =
         (1_000m * 15m) / 1_000_000m +          // input
         (4_000m * 75m) / 1_000_000m +          // output, thinking included
@@ -22,13 +10,11 @@ public sealed class SpendEndpointTests
         (100_000m * 18.75m) / 1_000_000m +     // cache written for five minutes
         (300_000m * 30m) / 1_000_000m;         // cache written for an hour
 
-    /// <summary>comment-sweep's sonnet request, at the seeded claude-sonnet-5 rates.</summary>
     private const decimal SonnetCost =
         (500m * 3m) / 1_000_000m +
         (2_000m * 15m) / 1_000_000m +
         (1_000_000m * 0.30m) / 1_000_000m;
 
-    /// <summary>unslop's one request, at the seeded claude-haiku-4-5 rates.</summary>
     private const decimal HaikuCost =
         (200m * 1m) / 1_000_000m +
         (400m * 5m) / 1_000_000m +
