@@ -1,4 +1,4 @@
-import { getJson, postJson } from './json';
+import { getJson, postJson } from '../../fetching/api/json';
 
 export interface IngestStatus {
   running: boolean;

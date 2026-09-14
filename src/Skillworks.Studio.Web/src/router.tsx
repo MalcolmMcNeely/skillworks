@@ -1,7 +1,7 @@
 import { createBrowserRouter } from 'react-router';
-import { Activation } from './routes/Activation';
-import { Activations } from './routes/Activations';
-import { Home } from './routes/Home';
+import { Activation } from './activations/routes/Activation';
+import { Activations } from './activations/routes/Activations';
+import { Home } from './skills/routes/Home';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Home /> },

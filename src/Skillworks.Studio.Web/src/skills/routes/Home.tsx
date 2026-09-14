@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { describeFetchFailure } from '../../fetching/lib/errors';
+import { FilterBar } from '../../filters/components/FilterBar';
+import { describeEmpty, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
+import { HealthPanel } from '../../health/components/HealthPanel';
+import { useHealth } from '../../health/components/useHealth';
+import { IngestPanel } from '../../ingest/components/IngestPanel';
+import { describeProvenance } from '../../provenance/lib/provenance';
+import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
 import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
-import { FilterBar } from '../components/FilterBar';
-import { HealthPanel } from '../components/HealthPanel';
-import { IngestPanel } from '../components/IngestPanel';
 import { SkillTable } from '../components/SkillTable';
-import { TelemetrySwitch } from '../components/TelemetrySwitch';
-import { useHealth } from '../components/useHealth';
-import { describeFetchFailure } from '../lib/errors';
-import { describeEmpty, filterParams, readFilter, type Filter } from '../lib/filters';
-import { describeProvenance } from '../lib/provenance';
 import { readSort, withSort, type Sort } from '../lib/sorting';
 
 export function Home() {

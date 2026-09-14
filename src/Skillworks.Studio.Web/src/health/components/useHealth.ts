@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { describeFetchFailure } from '../../fetching/lib/errors';
 import { fetchHealth, type Health } from '../api/health';
-import { describeFetchFailure } from '../lib/errors';
 
 export interface HealthReading {
   report: Health | null;

@@ -13,9 +13,9 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { activationsPath } from '../../activations/lib/activations';
+import { describeDeliveries, describeTriggers } from '../../provenance/lib/provenance';
 import type { SkillSummary } from '../api/skills';
-import { activationsPath } from '../lib/activations';
-import { describeDeliveries, describeTriggers } from '../lib/provenance';
 import { ariaSort, describeList, describeMoney, describeSplit, sortMark } from '../lib/skills';
 import { byActivations, type Sort } from '../lib/sorting';
 

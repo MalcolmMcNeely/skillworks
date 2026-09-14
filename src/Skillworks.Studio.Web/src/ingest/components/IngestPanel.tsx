@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { describeFetchFailure } from '../../fetching/lib/errors';
 import {
   fetchFaults,
   fetchIngest,
@@ -7,7 +8,6 @@ import {
   type IngestStatus,
   type TranscriptFault,
 } from '../api/ingest';
-import { describeFetchFailure } from '../lib/errors';
 import {
   describeFault,
   describeFaultList,

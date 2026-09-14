@@ -1,5 +1,5 @@
+import { getJson } from '../../fetching/api/json';
 import type { Part } from '../lib/health';
-import { getJson } from './json';
 
 export interface Health {
   parts: Part[];

@@ -1,3 +1,6 @@
+// Any depth, so a feature that nests, or a stray `src/lib`, is still held to the boundaries.
+const layer = (names) => `^src/(.*/|)(${names})/`;
+
 /**
  * Module boundaries for the front end. The spec keeps this layer thin: `lib` is plain TypeScript
  * with tests beside it, `api` only fetches, `routes` only renders. Dependencies point downward.
@@ -26,22 +29,22 @@ module.exports = {
       name: 'lib-stays-pure',
       severity: 'error',
       comment: 'lib holds the calculation. It must not reach for the UI, the network or React.',
-      from: { path: '^src/lib' },
-      to: { path: '^(src/(api|routes)|node_modules/(react|react-dom|react-router))' },
+      from: { path: layer('lib') },
+      to: { path: `${layer('api|routes')}|^node_modules/(react|react-dom|react-router)` },
     },
     {
       name: 'api-does-not-render',
       severity: 'error',
       comment: 'api fetches and nothing else.',
-      from: { path: '^src/api' },
-      to: { path: '^src/routes' },
+      from: { path: layer('api') },
+      to: { path: layer('routes') },
     },
     {
       name: 'components-do-not-know-the-routes',
       severity: 'error',
       comment: 'A component is placed by a route, never the other way round.',
-      from: { path: '^src/components' },
-      to: { path: '^src/routes' },
+      from: { path: layer('components') },
+      to: { path: layer('routes') },
     },
   ],
   options: {

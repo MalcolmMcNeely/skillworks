@@ -1,6 +1,6 @@
-import { filterQuery, type Filter } from '../lib/filters';
-import type { Origin, Provenance } from '../lib/provenance';
-import { getJson } from './json';
+import { getJson } from '../../fetching/api/json';
+import { filterQuery, type Filter } from '../../filters/lib/filters';
+import type { Origin, Provenance } from '../../provenance/lib/provenance';
 
 export interface ActivationSummary {
   id: string;

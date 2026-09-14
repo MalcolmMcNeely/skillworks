@@ -15,17 +15,6 @@ function query(search: string): string {
   return search === '' ? '' : `?${search}`;
 }
 
-// UTC, because the filter counts whole UTC days and a local time can fall outside the day asked.
-export function describeMoment(recorded: string): string {
-  const moment = new Date(recorded);
-
-  if (Number.isNaN(moment.getTime())) {
-    return recorded;
-  }
-
-  return `${moment.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
-}
-
 export function describeRecorded(value: string | null): string {
   return value === null || value === '' ? '—' : value;
 }

@@ -1,7 +1,7 @@
-import { filterQuery, type Filter } from '../lib/filters';
-import type { Origin, Provenance } from '../lib/provenance';
+import { getJson } from '../../fetching/api/json';
+import { filterQuery, type Filter } from '../../filters/lib/filters';
+import type { Origin, Provenance } from '../../provenance/lib/provenance';
 import type { TokenSplit } from '../lib/skills';
-import { getJson } from './json';
 
 export interface SkillSpend extends TokenSplit {
   // Already inside outputTokens, because that is how thinking is billed.

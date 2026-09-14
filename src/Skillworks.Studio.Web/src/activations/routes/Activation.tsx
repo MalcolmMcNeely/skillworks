@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
+import { describeFetchFailure } from '../../fetching/lib/errors';
+import { describeMoment } from '../../moments/lib/moments';
+import { describeDelivery, describeMissingOrigin, describeTrigger } from '../../provenance/lib/provenance';
 import { fetchActivation, type ActivationOpened } from '../api/activations';
-import { activationsPath, describeMoment, describeRecorded, skillsPath } from '../lib/activations';
-import { describeFetchFailure } from '../lib/errors';
-import { describeDelivery, describeMissingOrigin, describeTrigger } from '../lib/provenance';
+import { activationsPath, describeRecorded, skillsPath } from '../lib/activations';
 
 export function Activation() {
   const { id = '' } = useParams();

@@ -67,7 +67,7 @@ npm test
 |---|---|
 | `src/Skillworks.Core/` | The domain. No HTTP. The API and the planned MCP server are both shells over it. |
 | `src/Skillworks.Studio.Api/` | The ASP.NET Core shell. HTTP and nothing else. |
-| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped; any rule of its own lives in `src/lib/` with a test beside it. |
+| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped; any rule of its own lives in a `lib` folder, such as `src/skills/lib/`, with a test beside it. |
 | `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
 | `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service-discovery setup. |
 | `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks the rules it checks. |

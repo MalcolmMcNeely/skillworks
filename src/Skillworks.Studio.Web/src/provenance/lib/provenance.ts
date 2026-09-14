@@ -1,4 +1,4 @@
-import { describeMoment } from './activations';
+import { describeMoment } from '../../moments/lib/moments';
 
 export interface Origin {
   trigger: string | null;
