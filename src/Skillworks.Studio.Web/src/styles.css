@@ -14,107 +14,786 @@ main {
   padding: 2rem 1.5rem;
 }
 
-/* One row, because the ticket asks for all three filters in one place and three rows would not
-   read as one control. It wraps rather than scrolls, so a narrow window loses none of them. */
-.filters {
-  align-items: end;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+.visually-hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
-.filters label {
+/* Every colour here is a custom property set from the palette, which the contrast test reads. */
+.home {
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --cut: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+
+  background: var(--void);
+  box-sizing: border-box;
+  color: var(--ink);
+  color-scheme: dark;
+  column-gap: clamp(0.6rem, 1.2vw, 1rem);
+  display: grid;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  grid-template-columns: clamp(188px, 17vw, 236px) minmax(0, 1fr);
+  height: 100dvh;
+  line-height: 1.3;
+  margin: 0;
+  max-width: none;
+  overflow: hidden;
+  padding: clamp(0.5rem, 1.6vh, 1rem) clamp(0.5rem, 1.2vw, 1rem);
+}
+
+.home *,
+.home *::before,
+.home *::after {
+  box-sizing: border-box;
+}
+
+/* Zero specificity, so each control's own font rule still wins. */
+:where(.home) button,
+:where(.home) select {
+  font: inherit;
+}
+
+.home :focus-visible {
+  outline: 2px solid var(--hud);
+  outline-offset: 2px;
+}
+
+.micro {
+  color: var(--ink-faint);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Sizes follow the viewport height to fit a short laptop; the scroll is a last resort, so nothing is out of reach. */
+.rail {
   display: flex;
   flex-direction: column;
-  font-size: 0.85rem;
-  gap: 0.15rem;
-}
-
-.filters input,
-.filters select,
-.filters button {
-  font: inherit;
-  padding: 0.3rem 0.5rem;
-}
-
-/* Plain on purpose. The spec settles the screen design in a later pass. */
-.skills {
-  --skills-columns: minmax(10rem, 2fr) 7rem minmax(9rem, 2fr) minmax(9rem, 2fr) 7rem 8rem
-    minmax(26rem, 4fr) minmax(8rem, 2fr) minmax(7rem, 1fr) minmax(8rem, 2fr);
-
-  border: 1px solid CanvasText;
-  border-radius: 0.25rem;
-  overflow: hidden;
-}
-
-.skills-row {
-  display: grid;
-  grid-template-columns: var(--skills-columns);
-}
-
-.skills-head {
-  border-bottom: 1px solid CanvasText;
-  font-weight: 600;
-}
-
-/* The runway holds the full height of every row; only the visible ones are drawn on it. */
-.skills-body {
-  max-height: 60vh;
+  gap: clamp(0.35rem, 1.3vh, 0.75rem);
+  min-height: 0;
   overflow-y: auto;
+  scrollbar-color: var(--rule) transparent;
+  scrollbar-width: thin;
 }
 
-.skills-runway {
+/* Above the blocks after it, or the Gap's sentence it opens is painted under them. */
+.rail-brand {
+  align-items: baseline;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  padding: 0 0.15rem clamp(0.3rem, 1vh, 0.55rem);
+  position: relative;
+  z-index: 2;
+}
+
+.rail-brand h1 {
+  color: var(--hud);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.signal,
+.signal summary {
+  align-items: center;
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: 0.6rem;
+  gap: 0.35rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.signal summary {
+  color: inherit;
+  cursor: pointer;
+  list-style: none;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.signal summary::-webkit-details-marker {
+  display: none;
+}
+
+.signal-dot {
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  height: 0.45rem;
+  width: 0.45rem;
+}
+
+.signal.is-live {
+  color: var(--live);
+}
+
+.signal.is-live .signal-dot {
+  animation: home-pulse 2.6s ease-in-out infinite;
+  background: currentColor;
+}
+
+.signal.is-failed {
+  color: var(--failed);
+}
+
+.signal.is-failed .signal-dot {
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.signal.is-warned {
+  color: var(--warned);
+}
+
+.signal-sentence {
+  background: var(--panel);
+  border: 1px solid var(--hud);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--void) 80%, transparent);
+  color: var(--ink);
+  font-size: 0.72rem;
+  left: 0;
+  letter-spacing: normal;
+  line-height: 1.45;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  position: absolute;
+  right: 0;
+  text-transform: none;
+  top: calc(100% + 0.35rem);
+}
+
+@keyframes home-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 45%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+/* The bevel eats a border, so the edge is a clipped layer and the fill a second one a pixel inside. */
+.rail-block {
+  display: grid;
+  flex: none;
+  gap: clamp(0.35rem, 1vh, 0.55rem);
+  isolation: isolate;
+  padding: clamp(0.4rem, 1.2vh, 0.65rem) 0.7rem;
   position: relative;
 }
 
-.skills-body .skills-row {
-  align-items: center;
-  inset-inline: 0;
+.rail-block::before,
+.rail-block::after {
+  clip-path: var(--cut);
+  content: '';
   position: absolute;
-  top: 0;
+  z-index: -1;
 }
 
-.skills-cell {
+.rail-block::before {
+  background: var(--rule);
+  inset: 0;
+}
+
+.rail-block::after {
+  background: var(--panel);
+  inset: 1px;
+}
+
+.keys {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+}
+
+.key {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  padding: clamp(0.2rem, 0.7vh, 0.32rem) 0.5rem;
+  white-space: nowrap;
+}
+
+.key + .key {
+  border-left: 0;
+}
+
+.key:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.key[aria-pressed='true'] {
+  background: var(--pressed);
+  box-shadow: inset 0 -2px 0 var(--hud);
+  color: var(--hud);
+}
+
+.picker {
+  align-items: center;
+  border: 1px solid var(--line);
+  display: flex;
+  gap: 0.4rem;
+  padding-left: 0.45rem;
+  position: relative;
+}
+
+.picker:hover {
+  background: var(--pressed);
+}
+
+.picker:has(select:focus-visible) {
+  outline: 2px solid var(--hud);
+  outline-offset: 2px;
+}
+
+.picker select:focus-visible {
+  outline: none;
+}
+
+.picker-glyph {
+  color: var(--hud);
+  font-size: 0.75rem;
+}
+
+.picker select {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  flex: 1;
+  font-size: 0.72rem;
+  min-width: 0;
+  padding: clamp(0.22rem, 0.8vh, 0.36rem) 1.2rem clamp(0.22rem, 0.8vh, 0.36rem) 0;
+  text-overflow: ellipsis;
+}
+
+.picker::after {
+  color: var(--ink-soft);
+  content: '▾';
+  font-size: 0.7rem;
+  pointer-events: none;
+  position: absolute;
+  right: 0.45rem;
+}
+
+.picker option {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.totals dl {
+  column-gap: 0.6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin: 0;
+  row-gap: clamp(0.3rem, 1.1vh, 0.6rem);
+}
+
+.total {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.total dt {
+  color: var(--ink-faint);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.total dd {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: clamp(0.9rem, 2.5vh, 1.2rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  margin: 0;
   overflow: hidden;
-  padding: 0.4rem 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.health,
-.telemetry {
-  margin-top: 2rem;
+.total.is-hero {
+  border-bottom: 1px solid var(--rule);
+  grid-column: 1 / -1;
+  padding-bottom: clamp(0.25rem, 0.9vh, 0.5rem);
 }
 
-.health ul,
-.telemetry ul {
-  font-family: ui-monospace, monospace;
-  padding-inline-start: 1.25rem;
+.total.is-hero dd {
+  color: var(--hud);
+  font-size: clamp(1.2rem, 4.2vh, 1.9rem);
+  letter-spacing: -0.02em;
 }
 
-/* The panel is read down the marks first, so they carry the meaning and the list carries no bullet
-   of its own to compete with them. */
-.health ul {
+.total.is-unnamed {
+  border-left: 1px dashed var(--unnamed);
+  grid-column: 1 / -1;
+  padding-left: 0.55rem;
+}
+
+.total.is-unnamed dt,
+.total.is-unnamed dd {
+  color: var(--unnamed);
+}
+
+/* A colour, not a fade, which would take the figures under their tested contrast. */
+.totals.is-arriving dd {
+  color: var(--ink-soft);
+}
+
+.rail-systems {
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.rail-systems h2 {
+  color: var(--ink-faint);
+  font-size: 0.6rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.rail-systems p {
+  color: var(--ink-soft);
+  margin: 0.25rem 0;
+}
+
+.rail-systems ul {
+  font-family: var(--mono);
   list-style: none;
-  padding-inline-start: 0;
-}
-
-.health button,
-.telemetry button {
-  font: inherit;
-  margin-inline-end: 0.5rem;
-  padding: 0.3rem 0.75rem;
-}
-
-.skills-cell button {
-  background: none;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  font-weight: inherit;
+  margin: 0.25rem 0;
   padding: 0;
+}
+
+.rail-systems code {
+  color: var(--ink);
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.rail-systems button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  margin: 0.25rem 0.4rem 0 0;
+  padding: 0.2rem 0.5rem;
+}
+
+.rail-systems button:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.rail-systems .telemetry {
+  border-top: 1px solid var(--rule);
+  padding-top: 0.4rem;
+}
+
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.3rem, 1vh, 0.55rem);
+  min-height: 0;
+  min-width: 0;
+}
+
+.deck-head {
+  align-items: center;
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
+.deck-head .key {
+  padding: 0.22rem 0.6rem;
+}
+
+.legend {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.legend-figure {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+}
+
+.legend-bar {
+  background: linear-gradient(90deg, var(--tile-cool), var(--tile-hot));
+  border: 1px solid var(--line);
+  height: 0.55rem;
+  width: 4.5rem;
+}
+
+.range {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  margin: 0 0 0 auto;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.frame {
+  --corner: linear-gradient(var(--line), var(--line));
+
+  background:
+    var(--corner) top left / 16px 1px no-repeat,
+    var(--corner) top left / 1px 16px no-repeat,
+    var(--corner) top right / 16px 1px no-repeat,
+    var(--corner) top right / 1px 16px no-repeat,
+    var(--corner) bottom left / 16px 1px no-repeat,
+    var(--corner) bottom left / 1px 16px no-repeat,
+    var(--corner) bottom right / 16px 1px no-repeat,
+    var(--corner) bottom right / 1px 16px no-repeat;
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+}
+
+.field {
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+.tiles {
+  inset: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+}
+
+.tile {
+  container: tile / size;
+  position: absolute;
+}
+
+/* Brightness is a mix between the palette's two tile grounds, so every shade lies between two tested ends. */
+.tile-skin {
+  background: color-mix(in srgb, var(--tile-hot) calc(var(--heat, 0) * 100%), var(--tile-cool));
+  box-shadow: inset 0 0 0 1px var(--line);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  inset: 2px;
+  overflow: hidden;
+  padding: 0.4rem 0.55rem 0.45rem;
+  position: absolute;
+}
+
+.tile-skin:hover {
+  box-shadow: inset 0 0 0 1px var(--hud);
+}
+
+/* A ring inside the tile, as the clipped corner would cut an outline drawn outside it. */
+.tile-skin:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--hud);
+  outline: none;
+}
+
+.tile-top {
+  align-items: baseline;
+  display: flex;
+  gap: 0.4rem;
+  min-width: 0;
+  padding-right: 6px;
+}
+
+.tile-rank {
+  color: var(--ink-soft);
+  flex: none;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+}
+
+.tile-name {
+  color: var(--ink);
+  flex: 1;
+  font-size: clamp(0.62rem, 9cqmin, 0.86rem);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heat {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.heat i {
+  border: 1px solid var(--ink-faint);
+  height: 10px;
+  transform: skewX(-20deg);
+  width: 5px;
+}
+
+.tile.is-heat-1 .heat i:nth-child(-n + 1),
+.tile.is-heat-2 .heat i:nth-child(-n + 2),
+.tile.is-heat-3 .heat i:nth-child(-n + 3) {
+  background: var(--hud);
+  border-color: var(--hud);
+}
+
+/* Sized by the tile's width as well as its height, so the exact figure shrinks to fit rather than being cut. */
+.tile-figure {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: clamp(0.62rem, min(17cqh, 15cqi), 3.2rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.tile.is-heat-2 .tile-figure,
+.tile.is-heat-3 .tile-figure {
+  color: var(--hud);
+}
+
+.tile-foot {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  margin-top: auto;
+  padding-top: 0.2rem;
+  white-space: nowrap;
+}
+
+.tile.is-unnamed .tile-skin {
+  background: repeating-linear-gradient(135deg, var(--unnamed-hatch) 0 2px, var(--void) 2px 8px);
+  box-shadow: inset 0 0 0 1px var(--unnamed);
+}
+
+.tile.is-unnamed .tile-skin:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--hud);
+}
+
+.tile.is-unnamed .tile-name,
+.tile.is-unnamed .tile-figure {
+  color: var(--unnamed);
+}
+
+.tile.is-unnamed .tile-name {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field.is-arriving .tile-name,
+.field.is-arriving .tile-figure {
+  color: var(--ink-soft);
+}
+
+@container tile (max-height: 80px) {
+  .tile-foot {
+    display: none;
+  }
+}
+
+@container tile (max-width: 110px) {
+  .tile-name {
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    font-size: 0.62rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .tile-skin {
+    padding-inline: 0.35rem;
+  }
+}
+
+/* One line rather than a hidden figure, as every tile prints its figure. */
+@container tile (max-height: 50px) {
+  .tile-skin {
+    align-items: baseline;
+    flex-direction: row;
+    padding-block: 0.2rem;
+  }
+
+  .tile-top {
+    flex: 1;
+  }
+
+  .tile-figure {
+    font-size: 0.7rem;
+  }
+}
+
+.panel {
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+  background-size: 48px 48px;
+  display: grid;
+  inset: 0;
+  place-items: center;
+  position: absolute;
+}
+
+.panel-box {
+  align-items: center;
+  background: var(--void);
+  border: 1px solid currentColor;
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+  padding: 1.4rem 2.6rem;
+}
+
+.panel.is-failed .panel-box {
+  color: var(--failed);
+}
+
+.panel.is-hud .panel-box {
+  color: var(--hud);
+}
+
+.panel.is-dim .panel-box {
+  color: var(--ink-faint);
+}
+
+.panel-glyph {
+  font-family: var(--mono);
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.panel.is-busy .panel-glyph {
+  animation: home-spin 1.6s linear infinite;
+}
+
+.panel-word {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+@keyframes home-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.strip {
+  align-items: baseline;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex: none;
+  gap: 0.5rem;
+  max-height: 5.5rem;
+  overflow-y: auto;
+  padding-top: 0.4rem;
+}
+
+.strip-label {
+  color: var(--ink-soft);
+  flex: none;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.strip ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.chip {
+  align-items: baseline;
+  border: 1px dashed var(--line);
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: 0.7rem;
+  gap: 0.4rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.12rem 0.5rem;
+}
+
+.chip-figure {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .home {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    row-gap: 0.75rem;
+  }
+
+  .rail {
+    overflow: visible;
+  }
+
+  .totals dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .frame {
+    flex: none;
+    height: 70vh;
+    min-height: 380px;
+  }
+
+  .range {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home *,
+  .home *::before,
+  .home *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* Plain on purpose. The spec settles the screen design in a later pass. */

@@ -1,86 +1,100 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { FilterBar } from '../../filters/components/FilterBar';
-import { describeEmpty, describeSpan, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
-import { GapNote } from '../../gaps/components/GapNote';
-import { explainsEmpty } from '../../gaps/lib/gaps';
+import { RepositoryPicker } from '../../filters/components/RepositoryPicker';
+import { filterParams, readFilter, type Filter } from '../../filters/lib/filters';
+import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../filters/lib/spanKeys';
+import { SignalWord } from '../../gaps/components/SignalWord';
 import { HealthPanel } from '../../health/components/HealthPanel';
 import { describeFetchFailure } from '../../http/lib/errors';
+import { Keys } from '../../keys/components/Keys';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
-import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
-import { SkillTable } from '../components/SkillTable';
-import { describeUnnamedSpend } from '../lib/skills';
-import { readSort, withSort, type Sort } from '../lib/sorting';
+import { fetchSkills } from '../api/skills';
+import { RailTotals } from '../components/RailTotals';
+import { SkillMap } from '../components/SkillMap';
+import { readMapChoice, withMapChoice, type MapChoice } from '../lib/mapChoice';
+import type { SkillsAnswer } from '../lib/skills';
+
+interface Reading {
+  // The filter the answer was asked for, as text, so the screen can tell an answer for an older filter.
+  narrowing: string;
+  answer: SkillsAnswer | null;
+  failure: string | null;
+}
 
 export function Home() {
-  const [skills, setSkills] = useState<SkillsAnswer | null>(null);
-  const [skillsError, setSkillsError] = useState<string | null>(null);
+  const [reading, setReading] = useState<Reading | null>(null);
 
-  // Filter and sort live in the address bar, so a reload, a bookmark or the back button lands on the same view.
+  // Filter, view and order live in the address bar, so a reload, a bookmark or the back button lands on the same map.
   const [params, setParams] = useSearchParams();
-  const filter = readFilter(params);
-  const sort = readSort(params);
+  // No skill: Home offers no way to see or clear one, so an old link naming a skill must not narrow it unseen.
+  const filter: Filter = { ...readFilter(params), skill: '' };
+  const choice = readMapChoice(params);
 
-  // Text, as a filter object is new every render; the sort is left out as it needs no new answer.
+  // Text, as a filter object is new every render; the view and order are left out as they need no new answer.
   const narrowing = filterParams(filter).toString();
 
   useEffect(() => {
     const abort = new AbortController();
 
     // Read back out of the text, so the effect depends only on what it is keyed on.
-    fetchSkills(readFilter(new URLSearchParams(narrowing)), abort.signal)
-      .then((next) => {
-        setSkills(next);
-        setSkillsError(null);
-      })
-      .catch((failure: unknown) => {
+    fetchSkills(readFilter(new URLSearchParams(narrowing)), abort.signal).then(
+      (answer) => setReading({ narrowing, answer, failure: null }),
+      (failure: unknown) => {
         // An abort is the page tidying up after itself, not a failure worth showing.
         if (!abort.signal.aborted) {
-          setSkillsError(describeFetchFailure(failure));
+          setReading({ narrowing, answer: null, failure: describeFetchFailure(failure) });
         }
-      });
+      },
+    );
 
     return () => abort.abort();
   }, [narrowing]);
 
-  // Replaced, not pushed, so trying four filters does not cost four presses of the back button.
-  const narrow = (next: Filter) => setParams(withSort(filterParams(next), sort), { replace: true });
+  const answer = reading?.answer ?? null;
+  const arriving = reading !== null && reading.narrowing !== narrowing;
+  const today = todayUtc(new Date());
 
-  const rank = (next: Sort) => setParams(withSort(filterParams(filter), next), { replace: true });
+  // With no dates asked, the answer names the lookback, whose length only the API knows.
+  const shownSpan = filter.from !== '' || filter.to !== '' ? filter : arriving ? null : (answer?.span ?? null);
+
+  // Replaced, not pushed, so trying four spans does not cost four presses of the back button.
+  const show = (nextFilter: Filter, nextChoice: MapChoice) =>
+    setParams(withMapChoice(filterParams(nextFilter), nextChoice), { replace: true });
 
   return (
-    <main>
-      <h1>Skillworks Studio</h1>
+    <main className="home">
+      <aside className="rail" aria-label="Instruments">
+        <div className="rail-brand">
+          <h1>Skillworks</h1>
+          <SignalWord gap={answer?.gap ?? null} failure={reading?.failure ?? null} />
+        </div>
 
-      <HealthPanel />
+        <section className="rail-block" aria-label="Narrow">
+          <Keys
+            label="Span"
+            pressed={shownSpan === null ? null : spanKeyOf(shownSpan, today)}
+            options={spanKeys}
+            onPress={(key) => show(withSpanKey(filter, key, today), choice)}
+          />
+          <RepositoryPicker repository={filter.repository} onChange={(repository) => show({ ...filter, repository }, choice)} />
+        </section>
 
-      <FilterBar filter={filter} onChange={narrow} />
+        {/* No figures from a store that could not be read, as never-fired skills would total a quiet zero. */}
+        <RailTotals answer={answer?.gap.kind === 'unreachable' ? null : answer} arriving={arriving} />
 
-      {skillsError !== null && <p data-testid="skills-error">{skillsError}</p>}
-      {skills !== null && (
-        <>
-          {/* From the answer, not the filter, so the words name the days the API actually counted. */}
-          <p data-testid="skills-span">Covers {describeSpan(skills.span)}.</p>
+        <section className="rail-block rail-systems" aria-label="Systems">
+          <HealthPanel />
+          <TelemetrySwitch />
+        </section>
+      </aside>
 
-          {/* Not in the table: the gap is one fact about the period, and a column would repeat it as many. */}
-          <GapNote gap={skills.gap} />
-
-          {/* Not a row: no skill is named for it, and a row would read as a skill. */}
-          {skills.unnamedSpend !== null && (
-            <p data-testid="unnamed-spend">{describeUnnamedSpend(skills.unnamedSpend)}</p>
-          )}
-
-          {skills.skills.length === 0 ? (
-            !explainsEmpty(skills.gap.kind) && (
-              <p data-testid="skills-empty">{describeEmpty(filter)}</p>
-            )
-          ) : (
-            <SkillTable skills={skills.skills} sort={sort} onSort={rank} />
-          )}
-        </>
-      )}
-
-      <TelemetrySwitch />
+      <SkillMap
+        answer={answer}
+        failure={reading?.failure ?? null}
+        arriving={arriving}
+        choice={choice}
+        onChoose={(next) => show(filter, next)}
+      />
     </main>
   );
 }

@@ -12,6 +12,25 @@ export interface Gap {
   missing: string | null;
 }
 
+export interface Signal {
+  word: string;
+  tone: 'live' | 'quiet' | 'warned' | 'failed';
+}
+
+// The word only says which Gap, as the Gap's own sentence opens from it.
+const signals: Record<GapKind, Signal> = {
+  complete: { word: 'Live', tone: 'live' },
+  unreachable: { word: 'No signal', tone: 'failed' },
+  truncated: { word: 'Cut short', tone: 'warned' },
+  telemetryOff: { word: 'Telemetry off', tone: 'warned' },
+  telemetryUnknown: { word: 'Telemetry unknown', tone: 'warned' },
+  quiet: { word: 'Quiet', tone: 'quiet' },
+};
+
+export function signalOf(kind: GapKind): Signal {
+  return signals[kind];
+}
+
 // Not telemetry off: it speaks for this machine only, so the store may still hold events a filter left out.
 export function explainsEmpty(kind: GapKind): boolean {
   return kind === 'unreachable' || kind === 'quiet' || kind === 'telemetryUnknown';

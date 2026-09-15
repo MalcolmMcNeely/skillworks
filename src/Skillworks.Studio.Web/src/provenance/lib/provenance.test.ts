@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  describeDeliveries,
-  describeDelivery,
-  describeTrigger,
-  describeTriggers,
-  type Origin,
-} from './provenance';
+import { describeDelivery, describeTrigger, type Origin } from './provenance';
 
 const local: Origin = {
   trigger: 'claude-proactive',
@@ -49,22 +43,5 @@ describe('describeDelivery', () => {
     expect(describeDelivery({ trigger: null, source: null, plugin: null, marketplace: null })).toBe(
       'Not recorded',
     );
-  });
-});
-
-describe('describeDeliveries', () => {
-  it('keeps two ways of delivering one name apart', () => {
-    expect(describeDeliveries([shipped, { ...shipped, marketplace: 'skillworks' }])).toBe(
-      'probekit from privateprobe, probekit from skillworks',
-    );
-  });
-
-  it('says the same thing once however many firings said it', () => {
-    expect(describeDeliveries([local, local])).toBe('projectSettings');
-  });
-
-  it('says nothing was recorded when the store knew of no firing at all', () => {
-    expect(describeDeliveries([])).toBe('Not recorded');
-    expect(describeTriggers([])).toBe('Not recorded');
   });
 });

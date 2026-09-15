@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeDay,
   describeEmpty,
   describeFilter,
   describeSpan,
@@ -111,6 +112,13 @@ describe('describeSpan', () => {
 
   it('names a chosen span of one day once', () => {
     expect(describeSpan({ from: '2026-09-05', to: '2026-09-05', lookback: false })).toBe('2026-09-05');
+  });
+});
+
+describe('describeDay', () => {
+  it('names a UTC day by its date and month, short enough for a HUD', () => {
+    expect(describeDay('2026-09-05')).toBe('05 Sep');
+    expect(describeDay('2026-12-31')).toBe('31 Dec');
   });
 });
 

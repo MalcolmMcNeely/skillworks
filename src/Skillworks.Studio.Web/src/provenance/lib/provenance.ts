@@ -26,18 +26,3 @@ export function describeDelivery(origin: Origin): string {
 
   return origin.marketplace === null ? origin.plugin : `${origin.plugin} from ${origin.marketplace}`;
 }
-
-export function describeTriggers(origins: readonly Origin[]): string {
-  return join(origins.map((origin) => describeTrigger(origin.trigger)));
-}
-
-// Two skills that share a name read as two here, which is the only place the difference shows.
-export function describeDeliveries(origins: readonly Origin[]): string {
-  return join(origins.map(describeDelivery));
-}
-
-function join(described: readonly string[]): string {
-  const distinct = [...new Set(described)];
-
-  return distinct.length === 0 ? unrecorded : distinct.join(', ');
-}

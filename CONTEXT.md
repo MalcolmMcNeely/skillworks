@@ -107,6 +107,11 @@ What Claude Code estimates a Turn cost, at the prices it was sent with. Studio n
 itself, so a wrong price is corrected where Claude Code takes its prices, not in Studio.
 _Avoid_: Price, bill, spend total
 
+**Each**:
+The Cost of a skill's Activations divided by how many there were. A skill with no Activations has no
+Each, and a skill whose spend Claude Code will not name has none either.
+_Avoid_: Per activation, per firing
+
 **Attribution**:
 The link from a unit of spend back to the skill that caused it. A Turn is attributed to the skill
 Claude Code says was in force when the request was made, so the turn that chose a skill belongs to

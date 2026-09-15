@@ -15,7 +15,7 @@ export interface Span {
   lookback: boolean;
 }
 
-const dayMilliseconds = 24 * 60 * 60 * 1000;
+export const dayMilliseconds = 24 * 60 * 60 * 1000;
 
 export function readFilter(params: URLSearchParams): Filter {
   return {
@@ -80,6 +80,15 @@ export function describeSpan(span: Span): string {
   }
 
   return span.from === span.to ? span.from : `${span.from} to ${span.to}`;
+}
+
+// Spelled out, not left to the locale, which writes September as Sept in some places and Sep in others.
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function describeDay(day: string): string {
+  const [, month, date] = day.split('-');
+
+  return `${date} ${months[Number(month) - 1] ?? month}`;
 }
 
 export function describeEmpty(filter: Filter): string {
