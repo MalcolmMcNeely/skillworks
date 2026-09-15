@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   describeDay,
-  describeEmpty,
-  describeFilter,
-  describeSpan,
   everything,
   filterParams,
   filterQuery,
-  isEverything,
   readFilter,
   withChosen,
   type Filter,
@@ -52,66 +48,6 @@ describe('readFilter', () => {
       ...everything,
       repository: 'skillworks',
     });
-  });
-});
-
-describe('isEverything', () => {
-  it('is true only when no part is narrowed', () => {
-    expect(isEverything(everything)).toBe(true);
-    expect(isEverything({ ...everything, skill: 'grilling' })).toBe(false);
-  });
-});
-
-describe('describeFilter', () => {
-  it('names both ends of a range', () => {
-    expect(describeFilter({ ...everything, from: '2026-09-01', to: '2026-09-05' })).toBe(
-      '2026-09-01 to 2026-09-05',
-    );
-  });
-
-  it('names one end when only one was given', () => {
-    expect(describeFilter({ ...everything, from: '2026-09-01' })).toBe('from 2026-09-01');
-    expect(describeFilter({ ...everything, to: '2026-09-05' })).toBe('up to 2026-09-05');
-  });
-
-  it('names all three in the order they are asked', () => {
-    expect(describeFilter(narrowed)).toBe('2026-09-01 to 2026-09-05, in skillworks, grilling');
-  });
-});
-
-describe('describeEmpty', () => {
-  it('reads an empty filtered table as an answer rather than a failure', () => {
-    expect(describeEmpty({ ...everything, repository: 'skillworks' })).toBe(
-      'Nothing matched in skillworks.',
-    );
-  });
-
-  it('says the history is empty when nothing was narrowed at all', () => {
-    expect(describeEmpty(everything)).toBe('No skill has fired yet.');
-  });
-});
-
-describe('describeSpan', () => {
-  it('names the lookback by its length, so a zero says which week it is a zero for', () => {
-    expect(describeSpan({ from: '2026-09-09', to: '2026-09-15', lookback: true })).toBe('the last 7 days');
-  });
-
-  it('counts the days across the end of a month', () => {
-    expect(describeSpan({ from: '2026-08-30', to: '2026-09-02', lookback: true })).toBe('the last 4 days');
-  });
-
-  it('calls a lookback of one day today', () => {
-    expect(describeSpan({ from: '2026-09-15', to: '2026-09-15', lookback: true })).toBe('today');
-  });
-
-  it('names both ends of a span the filter chose', () => {
-    expect(describeSpan({ from: '2026-09-01', to: '2026-09-05', lookback: false })).toBe(
-      '2026-09-01 to 2026-09-05',
-    );
-  });
-
-  it('names a chosen span of one day once', () => {
-    expect(describeSpan({ from: '2026-09-05', to: '2026-09-05', lookback: false })).toBe('2026-09-05');
   });
 });
 

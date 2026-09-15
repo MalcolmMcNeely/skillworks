@@ -19,9 +19,6 @@ public sealed class LokiOptions
     // Loki refuses a range longer than 721 hours by default.
     public int MaxQueryDays { get; set; } = 30;
 
-    // Matches Loki's own ceiling on one answer.
-    public int MaxEvents { get; set; } = 5000;
-
     // Ends in a slash, or a relative route resolved against it drops the last path segment.
     public Uri ResolvedAddress()
     {

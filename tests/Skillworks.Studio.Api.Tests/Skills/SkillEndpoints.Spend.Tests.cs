@@ -71,26 +71,6 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Totals_every_turn_in_a_period_that_holds_more_events_than_one_read_takes()
-    {
-        using var studio = new StudioHost(maxEvents: 2);
-
-        await studio.Push(
-            new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", Model: "claude-opus-5[1m]", CostUsd: 0.1m, OutputTokens: 100),
-            new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", Model: "claude-sonnet-5", CostUsd: 0.2m, OutputTokens: 200),
-            new ApiRequest("2026-09-14T09:02:00.000Z", Skill: "grilling", Model: "claude-haiku-4-5", CostUsd: 0.4m, OutputTokens: 400));
-
-        var answer = await studio.SkillTable();
-        var grilling = Assert.Single(answer.Skills);
-
-        // The store adds up, so a busy organisation's spend is never cut to what one read takes.
-        Assert.Equal("complete", answer.Gap.Kind);
-        Assert.Equal(0.7m, grilling.Spend?.Cost);
-        Assert.Equal(700, grilling.Spend?.OutputTokens);
-        Assert.Equal(["claude-haiku-4-5", "claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models!);
-    }
-
-    [Fact]
     public async Task Names_the_models_and_efforts_a_skills_turns_ran_on()
     {
         using var studio = new StudioHost();

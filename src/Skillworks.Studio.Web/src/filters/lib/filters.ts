@@ -12,10 +12,7 @@ export const everything: Filter = { from: '', to: '', repository: '', skill: '' 
 export interface Span {
   from: string;
   to: string;
-  lookback: boolean;
 }
-
-export const dayMilliseconds = 24 * 60 * 60 * 1000;
 
 export function readFilter(params: URLSearchParams): Filter {
   return {
@@ -45,43 +42,6 @@ export function filterQuery(filter: Filter): string {
   return query === '' ? '' : `?${query}`;
 }
 
-export function isEverything(filter: Filter): boolean {
-  return filterParams(filter).size === 0;
-}
-
-export function describeFilter(filter: Filter): string {
-  const parts: string[] = [];
-
-  if (filter.from !== '' && filter.to !== '') {
-    parts.push(`${filter.from} to ${filter.to}`);
-  } else if (filter.from !== '') {
-    parts.push(`from ${filter.from}`);
-  } else if (filter.to !== '') {
-    parts.push(`up to ${filter.to}`);
-  }
-
-  if (filter.repository !== '') {
-    parts.push(`in ${filter.repository}`);
-  }
-
-  if (filter.skill !== '') {
-    parts.push(filter.skill);
-  }
-
-  return parts.join(', ');
-}
-
-export function describeSpan(span: Span): string {
-  if (span.lookback) {
-    // Read as UTC midnights, so a daylight saving change cannot make a day 23 hours long.
-    const days = (Date.parse(`${span.to}T00:00:00Z`) - Date.parse(`${span.from}T00:00:00Z`)) / dayMilliseconds + 1;
-
-    return days === 1 ? 'today' : `the last ${days} days`;
-  }
-
-  return span.from === span.to ? span.from : `${span.from} to ${span.to}`;
-}
-
 // Spelled out, not left to the locale, which writes September as Sept in some places and Sep in others.
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -89,12 +49,6 @@ export function describeDay(day: string): string {
   const [, month, date] = day.split('-');
 
   return `${date} ${months[Number(month) - 1] ?? month}`;
-}
-
-export function describeEmpty(filter: Filter): string {
-  return isEverything(filter)
-    ? 'No skill has fired yet.'
-    : `Nothing matched ${describeFilter(filter)}.`;
 }
 
 // The address bar can name a choice the list lacks, and a select would silently show another.

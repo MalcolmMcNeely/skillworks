@@ -5,10 +5,6 @@ public static class EventAttributes
 {
     public const string Skill = "skill.name";
 
-    public const string Session = "session.id";
-
-    public const string Sequence = "event.sequence";
-
     public const string Owner = "vcs.owner.name";
 
     public const string RepositoryName = "vcs.repository.name";

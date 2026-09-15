@@ -17,34 +17,6 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private const string AnyStream = "{service_name=~\".+\"}";
 
-    public async Task<EventReading> ReadAsync(EventQuery query, CancellationToken cancellationToken)
-    {
-        var selected = Selected(query);
-        var limit = options.Value.MaxEvents;
-        var events = new List<TelemetryEvent>();
-
-        foreach (var (from, until) in Windows(query))
-        {
-            var read = await QueryAsync(selected, from, until, limit - events.Count, cancellationToken);
-
-            if (read.Unreachable is not null)
-            {
-                return read;
-            }
-
-            events.AddRange(read.Events);
-
-            if (events.Count >= limit)
-            {
-                break;
-            }
-        }
-
-        // A full answer cannot be told from a capped one, and calling a cut period whole is the worse mistake.
-        return EventReading.Of(events, events.Count >= limit);
-    }
-
-    // Counted by Loki, so no read cap cuts a busy organisation's total short.
     public Task<EventTotals> CountAsync(
         EventQuery query,
         IReadOnlyList<string> by,
@@ -64,11 +36,15 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
                 $"sum_over_time({selected} | unwrap {EventAttributes.LabelOf(attribute)} | __error__=\"\" [{range}])",
             cancellationToken);
 
-    public async Task<string?> UnreachableAsync(CancellationToken cancellationToken)
+    public Task<string?> UnreachableAsync(CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
 
-        return (await QueryAsync(AnyStream, now - Probe, now, 1, cancellationToken)).Unreachable;
+        var route =
+            $"loki/api/v1/query_range?query={Uri.EscapeDataString(AnyStream)}" +
+            $"&start={Nanoseconds(now - Probe)}&end={Nanoseconds(now)}&limit=1";
+
+        return AskAsync<string?>(route, _ => null, reason => reason, cancellationToken);
     }
 
     private async Task<EventTotals> TotalAsync(
@@ -108,19 +84,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
     {
         var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\"";
 
-        (string Attribute, string? Value)[] exactly =
-        [
-            (EventAttributes.Skill, query.Skill),
-            (EventAttributes.Session, query.Session),
-            (EventAttributes.Sequence, query.Sequence),
-        ];
-
-        foreach (var (attribute, value) in exactly)
+        if (query.Skill is { } skill)
         {
-            if (value is not null)
-            {
-                logql += $" | {EventAttributes.LabelOf(attribute)}={Quoted(value)}";
-            }
+            logql += $" | {EventAttributes.LabelOf(EventAttributes.Skill)}={Quoted(skill)}";
         }
 
         if (query.Repository is { } repository)
@@ -138,7 +104,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         return logql;
     }
 
-    // Newest first, as a read runs backward; abutting, so an event on a cut is read once.
+    // Abutting, so an event on a cut is counted once.
     private IEnumerable<(DateTimeOffset From, DateTimeOffset Until)> Windows(EventQuery query)
     {
         // At least a day, as a window of none would never move back.
@@ -156,21 +122,6 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
     }
 
     private static string Quoted(string value) => JsonSerializer.Serialize(value, LogQlString);
-
-    private Task<EventReading> QueryAsync(
-        string query,
-        DateTimeOffset from,
-        DateTimeOffset until,
-        int limit,
-        CancellationToken cancellationToken)
-    {
-        // Newest first, so a period too big for one read keeps the part a reader is asking about.
-        var route =
-            $"loki/api/v1/query_range?query={Uri.EscapeDataString(query)}" +
-            $"&start={Nanoseconds(from)}&end={Nanoseconds(until)}&limit={limit}&direction=backward";
-
-        return AskAsync(route, root => EventReading.Of(Read(root), truncated: false), EventReading.Failed, cancellationToken);
-    }
 
     private async Task<T> AskAsync<T>(
         string route,
@@ -214,32 +165,6 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         failure is HttpRequestException or JsonException ||
         (failure is TaskCanceledException && !cancellationToken.IsCancellationRequested);
 
-    private static IReadOnlyList<TelemetryEvent> Read(JsonElement root)
-    {
-        var events = new List<TelemetryEvent>();
-
-        foreach (var stream in Results(root))
-        {
-            if (!stream.TryGetProperty("values", out var entries) || entries.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            // Loki answers a record's attributes as its stream's labels, not beside the entry.
-            var labels = Labels(stream, "stream");
-
-            foreach (var entry in entries.EnumerateArray())
-            {
-                if (At(entry) is { } at)
-                {
-                    events.Add(new TelemetryEvent(at, labels));
-                }
-            }
-        }
-
-        return events;
-    }
-
     private static IReadOnlyList<EventTotal> Totals(JsonElement root)
     {
         var totals = new List<EventTotal>();
@@ -254,7 +179,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
                 double.IsFinite(total))
             {
                 // Loki adds in floating point, and a decimal from a double keeps 15 digits, so 0.1 and 0.2 make 0.3.
-                totals.Add(new EventTotal(Labels(sample, "metric"), (decimal)total));
+                totals.Add(new EventTotal(Labels(sample), (decimal)total));
             }
         }
 
@@ -268,11 +193,11 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             ? results.EnumerateArray()
             : [];
 
-    private static Dictionary<string, string> Labels(JsonElement result, string property)
+    private static Dictionary<string, string> Labels(JsonElement sample)
     {
         var labels = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        if (result.TryGetProperty(property, out var names) && names.ValueKind == JsonValueKind.Object)
+        if (sample.TryGetProperty("metric", out var names) && names.ValueKind == JsonValueKind.Object)
         {
             foreach (var label in names.EnumerateObject().Where(label => label.Value.ValueKind == JsonValueKind.String))
             {
@@ -282,14 +207,6 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
         return labels;
     }
-
-    private static DateTimeOffset? At(JsonElement entry) =>
-        entry.ValueKind == JsonValueKind.Array &&
-        entry.GetArrayLength() >= 1 &&
-        entry[0].ValueKind == JsonValueKind.String &&
-        long.TryParse(entry[0].GetString(), CultureInfo.InvariantCulture, out var nanoseconds)
-            ? DateTimeOffset.FromUnixTimeMilliseconds(nanoseconds / 1_000_000)
-            : null;
 
     private static long Nanoseconds(DateTimeOffset moment) => moment.ToUnixTimeMilliseconds() * 1_000_000;
 }

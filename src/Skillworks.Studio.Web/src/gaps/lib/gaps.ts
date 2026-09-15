@@ -2,7 +2,6 @@
 export type GapKind =
   | 'complete'
   | 'unreachable'
-  | 'truncated'
   | 'telemetryOff'
   | 'telemetryUnknown'
   | 'quiet';
@@ -21,7 +20,6 @@ export interface Signal {
 const signals: Record<GapKind, Signal> = {
   complete: { word: 'Live', tone: 'live' },
   unreachable: { word: 'No signal', tone: 'failed' },
-  truncated: { word: 'Cut short', tone: 'warned' },
   telemetryOff: { word: 'Telemetry off', tone: 'warned' },
   telemetryUnknown: { word: 'Telemetry unknown', tone: 'warned' },
   quiet: { word: 'Quiet', tone: 'quiet' },
@@ -29,9 +27,4 @@ const signals: Record<GapKind, Signal> = {
 
 export function signalOf(kind: GapKind): Signal {
   return signals[kind];
-}
-
-// Not telemetry off: it speaks for this machine only, so the store may still hold events a filter left out.
-export function explainsEmpty(kind: GapKind): boolean {
-  return kind === 'unreachable' || kind === 'quiet' || kind === 'telemetryUnknown';
 }

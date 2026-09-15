@@ -1,6 +1,8 @@
-import { dayMilliseconds, type Filter } from './filters';
+import type { Filter } from './filters';
 
 export type SpanKey = '24h' | '7d' | '30d';
+
+const dayMilliseconds = 24 * 60 * 60 * 1000;
 
 export const spanKeys: readonly { key: SpanKey; word: string; days: number }[] = [
   { key: '24h', word: '24H', days: 1 },

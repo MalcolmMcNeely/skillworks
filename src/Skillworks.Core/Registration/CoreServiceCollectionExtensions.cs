@@ -3,7 +3,6 @@ using Microsoft.Extensions.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
-using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.EventsStore;
@@ -54,7 +53,6 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<EventsStoreReader>();
         services.AddSingleton<GapReport>();
         services.AddSingleton<SkillReport>();
-        services.AddSingleton<ActivationReport>();
         services.AddSingleton<StudioHealth>();
 
         return services;

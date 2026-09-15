@@ -120,25 +120,6 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_every_firing_in_a_period_that_holds_more_events_than_one_read_takes()
-    {
-        using var studio = new StudioHost(maxEvents: 2);
-
-        await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T14:48:23.100Z", Trigger: "claude-proactive"),
-            new SkillActivated("grilling", "2026-09-14T14:50:00.000Z", Trigger: "user-slash"),
-            new SkillActivated("grilling", "2026-09-14T14:52:00.000Z", Trigger: "nested-skill"));
-
-        var answer = await studio.SkillTable();
-        var grilling = Assert.Single(answer.Skills);
-
-        // The store counts, so a busy organisation's totals are never cut to what one read takes.
-        Assert.Equal("complete", answer.Gap.Kind);
-        Assert.Equal(3, grilling.Activations);
-        Assert.Equal(3, grilling.Origins.Length);
-    }
-
-    [Fact]
     public async Task Says_nothing_is_missing_when_the_store_answered_with_events()
     {
         using var studio = new StudioHost();

@@ -30,7 +30,6 @@ public sealed class StudioHost : IDisposable
         string? cataloguePath = null,
         // Only for a store that is down or failing; data comes from the test Loki.
         BrokenEventsStore? events = null,
-        int maxEvents = 5000,
         // Not the developer's settings, or Gap tests would pass or fail on this machine's telemetry.
         bool emitting = true,
         string? settings = null,
@@ -49,7 +48,6 @@ public sealed class StudioHost : IDisposable
             [
                 ("Loki:Address", TestLoki.Address.ToString()),
                 ("Loki:Tenant", tenanted ? _tenant : null),
-                ("Loki:MaxEvents", maxEvents.ToString()),
                 ("Loki:MaxQueryDays", TestLoki.MaxQueryDays.ToString()),
                 ("ClaudeSettings:Path", settingsPath),
                 ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),

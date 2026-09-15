@@ -30,11 +30,10 @@ public static class TestLoki
     public static Task PushAsync(string tenant, IReadOnlyList<SkillActivated> events) =>
         PushAsync(
             tenant,
-            events.Select(recorded =>
-                LogRecord(SkillActivated.EventName, recorded.Moment, recorded.Session, recorded.Sequence, recorded.Attributes)));
+            events.Select(recorded => LogRecord(SkillActivated.EventName, recorded.Moment, recorded.Attributes)));
 
     public static Task PushAsync(string tenant, IReadOnlyList<ApiRequest> turns) =>
-        PushAsync(tenant, turns.Select(turn => LogRecord(ApiRequest.EventName, turn.Moment, null, null, turn.Attributes)));
+        PushAsync(tenant, turns.Select(turn => LogRecord(ApiRequest.EventName, turn.Moment, turn.Attributes)));
 
     private static async Task PushAsync(string tenant, IEnumerable<JsonObject> records)
     {
@@ -93,8 +92,6 @@ public static class TestLoki
     private static JsonObject LogRecord(
         string eventName,
         DateTimeOffset at,
-        string? session,
-        long? sequence,
         IEnumerable<(string Key, string? Value)> attributes)
     {
         var nanoseconds = ((at.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100).ToString(CultureInfo.InvariantCulture);
@@ -107,14 +104,14 @@ public static class TestLoki
             ["attributes"] = Attributes(
             [
                 ("user.id", "a68801ea0000400080000000000000001"),
-                ("session.id", session ?? Session),
+                ("session.id", Session),
                 ("app.version", ClaudeCodeVersion),
                 ("organization.id", "14451454-0000-4000-8000-000000000001"),
                 ("user.account_uuid", "784e9f9a-0000-4000-8000-000000000001"),
                 ("terminal.type", "windows-terminal"),
                 ("event.name", eventName),
                 ("event.timestamp", at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture)),
-                ("event.sequence", (sequence ?? Interlocked.Increment(ref _sequence)).ToString(CultureInfo.InvariantCulture)),
+                ("event.sequence", Interlocked.Increment(ref _sequence).ToString(CultureInfo.InvariantCulture)),
                 ("prompt.id", "3b0537fa-0000-4000-8000-000000000001"),
                 .. attributes,
             ]),

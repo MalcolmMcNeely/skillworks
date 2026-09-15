@@ -4,25 +4,3 @@ export interface Origin {
   plugin: string | null;
   marketplace: string | null;
 }
-
-// Words, not a dash: a dash reads as a fact about the skill, not a gap in what the store recorded.
-const unrecorded = 'Not recorded';
-
-const triggers: Record<string, string> = {
-  'claude-proactive': 'Claude chose it',
-  'user-slash': 'A developer typed it',
-  'nested-skill': 'Another skill called it',
-  'agent-preload': 'An agent was given it',
-};
-
-export function describeTrigger(trigger: string | null): string {
-  return trigger === null ? unrecorded : (triggers[trigger] ?? trigger);
-}
-
-export function describeDelivery(origin: Origin): string {
-  if (origin.plugin === null) {
-    return origin.source ?? unrecorded;
-  }
-
-  return origin.marketplace === null ? origin.plugin : `${origin.plugin} from ${origin.marketplace}`;
-}

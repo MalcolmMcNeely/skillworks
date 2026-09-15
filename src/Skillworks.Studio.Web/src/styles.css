@@ -795,34 +795,3 @@ main {
     transition: none !important;
   }
 }
-
-/* Plain on purpose. The spec settles the screen design in a later pass. */
-.activations {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-.activations th,
-.activations td {
-  border-bottom: 1px solid CanvasText;
-  padding: 0.4rem 0.75rem;
-  text-align: start;
-}
-
-.activations th {
-  white-space: nowrap;
-}
-
-.activation {
-  display: grid;
-  gap: 0.25rem 1rem;
-  grid-template-columns: max-content 1fr;
-}
-
-.activation dt {
-  font-weight: 600;
-}
-
-.activation dd {
-  margin: 0;
-}
