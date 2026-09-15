@@ -1,61 +1,82 @@
 # Skillworks
 
-Tools for building, testing and watching Claude Code agent skills.
+Skillworks is a proof of concept. It is an app an organisation runs to manage the Claude Code
+skills its developers use.
 
-Three parts are planned:
+The app is called Studio. It has four jobs, in this order:
 
-- **Catalogue** — the plugins we ship: skills, hooks, output styles and MCP servers, installed as a Claude Code plugin marketplace.
-- **MCP server** — C#, exposing the catalogue and its telemetry to an agent.
-- **Studio** — a local app for watching skill telemetry, authoring the catalogue, and running evals. React over an ASP.NET Core API, started by Aspire.
+1. **Watch.** Read the organisation's Claude Code telemetry. See which skills fire, how often, in
+   which repositories, and what they cost.
+2. **Author.** Write a skill and its evals.
+3. **Test.** Run the evals before anyone else gets the skill.
+4. **Publish.** Ship the skills to the organisation as a Claude Code plugin.
 
-Studio reads Claude Code's telemetry from the Events store and shows which skills fired, how often,
-where, and what they cost. The vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in
-[docs/adr/](docs/adr/), and the research behind it in
-[skills-marketplace](https://github.com/MalcolmMcNeely/skills-marketplace).
+Then it goes round again. Once the plugin is out, the telemetry shows whether its skills fire.
 
-## Getting started
+| Job | Built? |
+|---|---|
+| Watch | Yes. Home lists every skill with its Activations, Cost, Tokens, Models, Efforts and Repositories. Each skill opens a list of its Activations. |
+| Author | Not yet. |
+| Test | Not yet. |
+| Publish | Not yet. |
 
-You need three things on your machine:
+The words this README uses, such as Activation and Events store, are defined in
+[CONTEXT.md](CONTEXT.md). The decisions so far are in [docs/adr/](docs/adr/), and the research
+behind them is in [docs/research/](docs/research/).
 
-- `gh`, logged in — check with `gh auth status`
-- `claude` on your `PATH`
-- an `origin` remote pointing at GitHub
+## What each job will do
 
-Then, in Claude Code:
+**Author.** Studio writes a skill's folder and its evals to disk, as plugin files Claude Code can
+load.
 
-```
-/skillworks-setup
-```
+**Test.** Studio runs two kinds of eval. A Firing eval checks that a skill fires on the prompts it
+should, and stays quiet on the rest. It is cheap, and every skill Claude picks up on its own gets
+one. An Outcome eval checks what a skill produces after it fires. It costs more, so only a skill
+that promises something a test can check gets one.
 
-That is the whole setup. One command, once per repo. Run it again any time to repair.
+**Publish.** A Claude Code plugin marketplace is a git repository. Studio puts the tested plugin in
+the organisation's marketplace, and each developer's Claude Code installs it from there.
 
-It creates the `ready-for-agent` label, writes `docs/agents/`, points `CLAUDE.md` at it, installs the permission allowlist the loop needs to run unattended, and sets the `skillworks` output style. It asks before it overwrites anything you have edited.
+## Why Studio runs on your machine
 
-Then go to [the dev loop](#the-dev-loop).
+Authoring writes files, and an eval starts `claude`. A hosted service can do neither, so each
+developer runs their own Studio.
+
+The numbers still come from one place. Studio reads them from the organisation's Events store, not
+from the machine it runs on, so every developer's Studio shows the same numbers.
 
 ## Running Studio
 
-You need the .NET 10 SDK, Node 20 or later, the Aspire CLI, and Docker running. Then, from the repo
-root:
+You need these on your machine:
+
+- the .NET 10 SDK
+- Node 20 or later
+- the Aspire CLI
+- Docker, running
+
+Then, from the repo root:
 
 ```
 aspire run
 ```
 
-That starts the API, the front end, an OpenTelemetry Collector and Loki, and prints the address of
-Aspire's own dashboard. The Collector and Loki run as Docker containers. Aspire runs `npm install`
-and `npm run dev` for the front end itself, and hands it the API's address, so there is no port to
-look up.
+In Git Bash, type `aspire.cmd run`. Git Bash does not find the bare name `aspire`.
+
+That starts the API, the front end, an OpenTelemetry Collector and Loki. It prints the address of
+Aspire's own dashboard, and the front end is the `web` resource there. The Collector and Loki run
+as Docker containers. Aspire runs `npm install` and `npm run dev` for the front end, and hands it
+the API's address, so there is no port to look up.
 
 ### Where Studio's numbers come from
 
 Studio reads everything it measures from the Events store, a Loki that Claude Code's telemetry
 reaches. It never reads the transcripts Claude Code writes to `~/.claude/projects`, and it keeps no
-database. In an organisation the Events store is the organisation's Loki, so every developer's
-Studio shows the same numbers. Until one exists, the AppHost's Collector and Loki stand in for it,
-and Studio shows only what this machine sent.
+database.
 
-Studio finds the Events store through these settings:
+In an organisation, the Events store is the organisation's Loki. Until one exists, the AppHost's
+Collector and Loki stand in for it, and Studio shows only what this machine sent.
+
+Studio finds the Events store and the plugins through these settings:
 
 | Setting | What it does | Default |
 |---|---|---|
@@ -63,12 +84,21 @@ Studio finds the Events store through these settings:
 | `Loki__Tenant` | Sent as `X-Scope-OrgID`, for a Loki with several tenants. | Not sent |
 | `Loki__LookbackDays` | The lookback: how many days a list covers when the Filter has no start day. | `7` |
 | `Loki__MaxQueryDays` | The most days one Loki query may cover. Studio splits a longer span. | `30` |
+| `Catalogue__Path` | The folder of plugins Studio reads skill names from, so a skill that never fired still shows, with zero Activations. The AppHost sets it to `plugins/` in this repo. | `plugins` |
+
+### What telemetry cannot tell you
+
+A plugin from the organisation's own marketplace is a third-party plugin to Claude Code. Its
+Activations arrive with the skill's real name. Its spend does not. On each request made while one of
+its skills is in force, Claude Code sends the skill name as `third-party`, and no setting changes
+that. Studio shows that spend as one
+amount, Unnamed spend, and never splits it among skills.
 
 ### The telemetry switch
 
 Claude Code sends nothing until telemetry is on. The Telemetry panel, at the foot of Studio's first
-page, turns it on for this machine. It lists what it will write to the `env` block of `~/.claude/settings.json`, and writes
-only when you say so:
+page, turns it on for this machine. It lists what it will write to the `env` block of
+`~/.claude/settings.json`, and writes only when you say so:
 
 | Variable | Value |
 |---|---|
@@ -80,8 +110,8 @@ only when you say so:
 | `OTEL_METRICS_INCLUDE_REPOSITORY` | `true` |
 
 The panel says telemetry is on only when all six hold these values. Turning it off puts back what
-was there before. A Claude Code session that is already running picks up neither change, so restart
-it.
+was there before. A Claude Code session that is already running picks up neither change, so
+restart it.
 
 The repository variable, `OTEL_METRICS_INCLUDE_REPOSITORY`, reaches past metrics despite its name.
 It names the session's `origin` remote on every event, and Studio shows that as a Repository,
@@ -91,9 +121,8 @@ recorded.
 
 ### Checks
 
-The API tests start Loki in a container, so Docker must be running. The front-end ones must run
-from `src/Skillworks.Studio.Web`, so they pick up the local tools rather than anything installed
-globally:
+The API tests start Loki in a container, so Docker must be running. Run the front-end checks from
+`src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally:
 
 ```
 dotnet test Skillworks.slnx
@@ -108,20 +137,42 @@ npm test
 
 | Path | What it is |
 |---|---|
-| `src/Skillworks.Core/` | The domain. No HTTP. The API and the planned MCP server are both shells over it. |
+| `src/Skillworks.Core/` | The domain. No HTTP. The API is a thin shell over it. |
 | `src/Skillworks.Studio.Api/` | The ASP.NET Core shell. HTTP and nothing else. |
-| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped; any rule of its own lives in a `lib` folder, such as `src/skills/lib/`, with a test beside it. |
+| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped. Any rule of its own lives in a `lib` folder, such as `src/skills/lib/`, with a test beside it. |
 | `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
-| `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service-discovery setup. |
-| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks the rules it checks. |
+| `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service discovery setup. |
+| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks them. |
 | `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
-| `plugins/` | Where the catalogue will live. See [ADR 0003](docs/adr/0003-catalogue-lives-here-until-it-is-published.md). |
-| `.claude/skills/` | Dev tooling used while working in this repo. Mostly vendored, not shipped. |
+| `plugins/` | The folder of plugins Studio reads by default. Empty for now. |
+| `.claude/skills/` | Dev tooling for working in this repo. Mostly vendored, not shipped. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
-| `docs/agents/` | Written by `/skillworks-setup`. The tracker, label and domain-doc references the skills read. |
+| `docs/agents/` | Written by `/skillworks-setup`. The tracker, label and domain doc references the skills read. |
 
-## The dev loop
+## Working on Skillworks
+
+### Setup
+
+You need three things on your machine:
+
+- `gh`, logged in. Check with `gh auth status`.
+- `claude` on your `PATH`
+- an `origin` remote pointing at GitHub
+
+Then, in Claude Code:
+
+```
+/skillworks-setup
+```
+
+Run it once per clone. Run it again any time to repair.
+
+It creates the `ready-for-agent` label, writes `docs/agents/`, points `CLAUDE.md` at it, installs
+the permission allowlist the loop needs to run unattended, and sets the `skillworks` output style.
+It asks before it overwrites anything you have edited.
+
+### The dev loop
 
 Two stages. A human drives the first. A script drives the second.
 
@@ -129,16 +180,20 @@ Two stages. A human drives the first. A script drives the second.
 /grill-with-docs        argue it out; CONTEXT.md and ADRs get written
 /to-spec                a SPEC: issue on GitHub; docs committed and pushed
 /spec-loop <spec#>      /to-tickets, then scripts/spec-loop.sh takes over
-                          └─ per ticket: fresh `claude -p "/implement <n>"`
-                                         commit, close ticket, next
+                          └─ per ticket, one fresh session:
+                               /implement <n> --stop-after-tests
+                               /comment-sweep
+                               /implement <n> --finish     review, commit, close
                           └─ at the end: /spec-drift against the spec, then ONE push
 ```
 
-The tickets are GitHub **sub-issues of the spec**. The driver reads one spec's children and nothing else, so two people running the loop on two specs never take each other's work.
+The tickets are GitHub sub-issues of the spec. The driver reads one spec's children and nothing
+else, so two people running the loop on two specs never take each other's work.
 
-The script picks the next ticket, never the model. Control flow you can read, stop and resume beats control flow inside a context window.
+The script picks the next ticket, never the model. You can read, stop and resume control flow that
+lives in a script. You cannot do that inside a context window.
 
-Lost? `/what-next` is a router over every skill here and tells you which one fits your situation.
+Lost? `/what-next` looks at where you are and tells you which skill fits.
 
 ## Licence
 
