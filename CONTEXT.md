@@ -74,12 +74,19 @@ _Avoid_: Lineage, delivery, history
 
 **Gap**:
 Which way an answer from the Events store fell short, when it did: the store was unreachable,
-telemetry was never switched on, the period was genuinely quiet, or a list held more events than
-one read takes. The first three arrive as nothing at all, so the Gap is the only thing that tells
-them apart, and each one means something different for the developer to do. Whether telemetry is
+telemetry was never switched on, or the period was genuinely quiet. Each can arrive as nothing at
+all, so the Gap is the only thing that tells them apart, and each one means something different for
+the developer to do. Whether telemetry is
 switched on is read from the machine Studio runs on, so that Gap speaks for this machine only. A
-period the Events store holds nothing for is labelled missing, never shown as none.
+period the Events store holds nothing for is labelled missing, never shown as none. A store that stops
+answering part way keeps the days already read, and the Gap names the days it could not read.
 _Avoid_: Error, empty, null
+
+**Arriving**:
+An answer from the Events store that has not finished reaching the screen. What has landed is shown at
+once, and its figures can still grow. It is **complete** when its last part lands. An arriving answer has
+not fallen short, so it is not a Gap, and a complete answer can still carry one.
+_Avoid_: Loading, pending, partial, streaming
 
 **Origin**:
 One way a Skill was delivered and set off: its Trigger, the place it was loaded from, and the Plugin
