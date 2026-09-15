@@ -15,13 +15,21 @@ A test body may mark its parts with `// Arrange`, `// Act` and `// Assert`.
 
 ## Doc comments
 
-A doc comment is a `///` line in C# or a `/**` block in TypeScript. A `/**` block that holds only `@`
-tags, such as `/** @type {Config} */`, is not one.
+In C#, a doc comment is a `///` line or a `/** */` block.
+
+In TypeScript, a doc comment is a `/**` that begins a line: the first characters after any whitespace
+are `/**`, and not `/**/`. It runs to the next `*/`. A `/**` later on a line never starts one, so a
+`/**` in a string or after `//` is not a doc comment.
+
+A TypeScript block that holds only tags is not a doc comment. A block holds only tags when every line
+between its `/**` and its `*/` that is not empty, with any leading `*` removed, starts with `@`. Text
+after a tag belongs to that tag, so `/** @type {Config} */` and `/** @deprecated Use b instead. */`
+hold only tags.
 
 `doc-comments` decides where they go:
 
 - `false`: no file has doc comments. The names of types and members document the code.
-- `true`: code files may have doc comments, and test files keep to ordinary comments.
+- `true`: code files may carry doc comments, and test files keep to ordinary comments.
 
 ```yaml
 doc-comments: false

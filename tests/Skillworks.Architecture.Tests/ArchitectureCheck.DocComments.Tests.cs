@@ -5,16 +5,12 @@ namespace Skillworks.Architecture.Tests;
 
 public sealed partial class ArchitectureCheckTests
 {
-    [Fact]
-    public void A_csharp_doc_comment_is_a_breach()
+    [Theory]
+    [InlineData("namespace App;\n\n/// <summary>Tells the time.</summary>\npublic sealed class Clock;\n")]
+    [InlineData("namespace App;\n\n/** <summary>Tells the time.</summary> */\npublic sealed class Clock;\n")]
+    public void A_csharp_doc_comment_is_a_breach(string content)
     {
-        using var tree = new RulesTree()
-            .Write("src/App/Clock.cs", """
-                namespace App;
-
-                /// <summary>Tells the time.</summary>
-                public sealed class Clock;
-                """);
+        using var tree = new RulesTree().Write("src/App/Clock.cs", content);
 
         Assert.Equal([("doc-comments", "src/App/Clock.cs")], tree.Breaches());
     }
@@ -141,13 +137,35 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Theory]
-    [InlineData("export const count = /** The count. */ 1;\n")]
-    [InlineData("export interface Row { count: number; /** Null when idle. */ }\n")]
-    public void A_doc_block_after_code_on_its_line_is_a_breach(string content)
+    [InlineData("/** The count. */\nexport const count = 1;\n")]
+    [InlineData("export interface Row {\n  count: number;\n  /** Null when idle. */\n  since: Date | null;\n}\n")]
+    public void A_block_mark_that_begins_its_line_is_a_breach(string content)
     {
         using var tree = new RulesTree().Write("web/src/row.ts", content);
 
         Assert.Equal([("doc-comments", "web/src/row.ts")], tree.Breaches());
+    }
+
+    [Theory]
+    [InlineData("export const banner = ' /** The count. */ ';\n")]
+    [InlineData("// Was: /** The count. */\nexport const count = 1;\n")]
+    [InlineData("export const count = /** The count. */ 1;\n")]
+    [InlineData("export interface Row { count: number; /** Null when idle. */ }\n")]
+    public void A_block_mark_that_does_not_begin_its_line_is_not_a_breach(string content)
+    {
+        using var tree = new RulesTree().Write("web/src/row.ts", content);
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Theory]
+    [InlineData("/** @type {number} */ export const count = /** The count. */ 1;\n")]
+    [InlineData("/**\n * @type {number}\n */ export const count = /** The count. */ 1;\n")]
+    public void A_block_mark_after_the_close_of_a_block_on_its_line_is_not_a_breach(string content)
+    {
+        using var tree = new RulesTree().Write("web/src/row.ts", content);
+
+        Assert.Empty(tree.Breaches());
     }
 
     [Theory]
@@ -156,6 +174,10 @@ public sealed partial class ArchitectureCheckTests
     [InlineData("/** @vitest-environment jsdom */\nit('renders', () => {});\n")]
     [InlineData("/** @typedef {{ skill: string, count: number }} Row */\nexport {};\n")]
     [InlineData("/**\n * @param {string} moment\n *\n * @returns {Date}\n */\nexport const parse = (moment) => new Date(moment);\n")]
+    [InlineData("/** @deprecated Use b instead. */\nexport const a = 1;\n")]
+    [InlineData("/** @description The config Vite reads. */\nexport default {};\n")]
+    [InlineData("/**\n * @param moment The moment to parse.\n */\nexport const parse = (moment) => new Date(moment);\n")]
+    [InlineData("/**\r\n * @param {string} moment\r\n *\r\n */\r\nexport const parse = (moment) => new Date(moment);\r\n")]
     public void A_block_that_holds_only_tags_is_not_a_breach(string content)
     {
         using var tree = new RulesTree().Write("web/src/config.ts", content);
@@ -165,9 +187,8 @@ public sealed partial class ArchitectureCheckTests
 
     [Theory]
     [InlineData("/**\n * @type {import('vite').UserConfig}\n * The config Vite reads.\n */\nexport default {};\n")]
-    [InlineData("/** @description The config Vite reads. */\nexport default {};\n")]
-    [InlineData("/**\n * @param moment The moment to parse.\n */\nexport const parse = (moment) => new Date(moment);\n")]
-    public void A_block_that_holds_text_beside_its_tags_is_a_breach(string content)
+    [InlineData("/**\n * @deprecated\n * Use b instead.\n */\nexport const a = 1;\n")]
+    public void A_block_with_a_line_that_does_not_start_with_a_tag_is_a_breach(string content)
     {
         using var tree = new RulesTree().Write("web/src/config.ts", content);
 

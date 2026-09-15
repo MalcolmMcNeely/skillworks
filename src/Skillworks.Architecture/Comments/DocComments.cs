@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis.CSharp;
 using Skillworks.Architecture.Placement;
 
@@ -7,14 +6,6 @@ namespace Skillworks.Architecture.Comments;
 internal static class DocComments
 {
     public const string Rule = "doc-comments";
-
-    // Only after a line start, a space or punctuation, so a glob such as 'src/**' in a string is not a block.
-    private static readonly Regex TypeScriptBlock = new(
-        @"(?<=^|[\s(\[{=,:;?!&|>])/\*\*(?!/)(.*?)\*/",
-        RegexOptions.Multiline | RegexOptions.Singleline);
-
-    // A tool reads a tag, a {type} and one name or value; any more words are prose for a person.
-    private static readonly Regex TagLine = new(@"^@[\w-]+(\s+\{.*\})?(\s+\S+)?$");
 
     public static IEnumerable<Breach> Check(
         string root,
@@ -60,18 +51,36 @@ internal static class DocComments
         ];
     }
 
-    private static IReadOnlyList<int> TypeScriptLines(string text) =>
-    [
-        .. TypeScriptBlock
-            .Matches(text)
-            .Where(block => !HoldsOnlyTags(block.Groups[1].Value))
-            .Select(block => text.AsSpan(0, block.Index).Count('\n') + 1),
-    ];
+    // Without a parser, a '/**' mid-line could be in a string or after '//', so only a line start counts.
+    private static IReadOnlyList<int> TypeScriptLines(string text)
+    {
+        var lines = text.Split('\n');
+        List<int> starts = [];
 
-    private static bool HoldsOnlyTags(string block) =>
+        for (var line = 0; line < lines.Length; line++)
+        {
+            var opening = lines[line].TrimStart();
+            if (!opening.StartsWith("/**", StringComparison.Ordinal) || opening.StartsWith("/**/", StringComparison.Ordinal))
+                continue;
+
+            var end = line;
+            List<string> block = [opening[3..]];
+            while (!block[^1].Contains("*/", StringComparison.Ordinal) && end + 1 < lines.Length)
+                block.Add(lines[++end]);
+            block[^1] = block[^1].Split("*/")[0];
+
+            if (!HoldsOnlyTags(block))
+                starts.Add(line + 1);
+
+            line = end;
+        }
+
+        return starts;
+    }
+
+    private static bool HoldsOnlyTags(IEnumerable<string> block) =>
         block
-            .Split('\n')
             .Select(line => line.Trim().TrimStart('*').Trim())
             .Where(line => line.Length > 0)
-            .All(TagLine.IsMatch);
+            .All(line => line.StartsWith('@'));
 }
