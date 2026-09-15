@@ -61,7 +61,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_an_events_store_that_is_down_as_broken_and_says_how_to_start_it()
     {
-        using var events = Events.Down();
+        using var events = BrokenEventsStore.Down();
         using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: events);
 
         var part = await studio.Part("Events store");
@@ -73,7 +73,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_an_events_store_that_answers_badly_as_broken_too()
     {
-        using var events = Events.Failing(HttpStatusCode.BadGateway);
+        using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
         using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: events);
 
         var part = await studio.Part("Events store");
@@ -81,6 +81,18 @@ public sealed class HealthEndpointsTests
         // Asked directly, so an events store that is up and unhappy never reads as one with nothing in it.
         Assert.Equal("broken", part.State);
         Assert.Contains("502", part.Detail);
+    }
+
+    [Fact]
+    public async Task Reports_a_multi_tenant_events_store_as_broken_when_studio_names_no_tenant()
+    {
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), tenanted: false);
+
+        var part = await studio.Part("Events store");
+
+        // The test Loki refuses a read that names no tenant, so this is Studio sending none.
+        Assert.Equal("broken", part.State);
+        Assert.Contains("401", part.Detail);
     }
 
     [Fact]
@@ -98,10 +110,9 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_is_switched_off()
     {
-        using var down = Events.Down();
-        using var quiet = Events.Holding();
+        using var down = BrokenEventsStore.Down();
         using var broken = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: down);
-        using var off = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: quiet, emitting: false);
+        using var off = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), emitting: false);
 
         var outage = await broken.Health();
         var never = await off.Health();
@@ -117,7 +128,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Keeps_the_transcript_half_healthy_when_the_containers_are_down()
     {
-        using var events = Events.Down();
+        using var events = BrokenEventsStore.Down();
         using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: events);
 
         var health = await studio.Health();

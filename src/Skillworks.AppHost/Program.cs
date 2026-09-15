@@ -1,3 +1,5 @@
+using Skillworks.AppHost;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // The catalogue is the folder beside us today; when it moves to its own repository, only this line changes.
@@ -7,7 +9,7 @@ var repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..
 const int collectorPort = 4318;
 var collectorAddress = "http://localhost:" + collectorPort;
 
-var loki = builder.AddContainer("loki", "grafana/loki", "3.5.9")
+var loki = builder.AddContainer("loki", LokiImage.Name, LokiImage.Tag)
     .WithLifetime(ContainerLifetime.Persistent)
     .WithVolume("skillworks-loki", "/loki")
     .WithHttpEndpoint(port: 3100, targetPort: 3100, name: "http", isProxied: false);

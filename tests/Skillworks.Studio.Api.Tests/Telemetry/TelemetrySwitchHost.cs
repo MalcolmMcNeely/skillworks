@@ -27,7 +27,8 @@ public sealed class TelemetrySwitchHost : IDisposable
         }
 
         _api = new StudioApiHost(
-            Events.Holding(),
+            events: null,
+            clock: null,
             ("ClaudeSettings:Path", _settingsPath),
             ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
             ("ClaudeSettings:CollectorEndpoint", Collector),

@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Provenance;
+namespace Skillworks.Core.EventsStore;
 
 public sealed class LokiOptions
 {
@@ -8,6 +8,8 @@ public sealed class LokiOptions
     public string Address { get; set; } = Pinned;
 
     private const string Pinned = "http://localhost:3100";
+
+    public string? Tenant { get; set; }
 
     // Short on purpose: a Loki container that is down must cost the provenance, not the page.
     public int TimeoutSeconds { get; set; } = 5;

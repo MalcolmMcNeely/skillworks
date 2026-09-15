@@ -13,12 +13,18 @@
     <!-- Only to clear SQLite's connection pool, so a test's temporary database file will delete. -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers" Version="4.15.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Skillworks.Studio.Api\Skillworks.Studio.Api.csproj" />
+  </ItemGroup>
+
+  <!-- Linked, not referenced, because the AppHost's Program collides with the API's. -->
+  <ItemGroup>
+    <Compile Include="..\..\src\Skillworks.AppHost\LokiImage.cs" Link="Harness\LokiImage.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +35,7 @@
        the transcript side, so the parser meets the shapes Claude Code actually writes. -->
   <ItemGroup>
     <Content Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Harness\loki.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

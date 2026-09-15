@@ -20,6 +20,11 @@ public sealed class StudioHost : IDisposable
     }.ToJsonString();
 
     private readonly TemporaryFolder _data = new();
+    private readonly PinnedClock _clock = new();
+
+    // Its own tenant, so no other test's events reach this host's answers.
+    private readonly string _tenant = Guid.NewGuid().ToString("N");
+
     private readonly StudioApiHost _api;
     private readonly HttpClient _client;
 
@@ -28,20 +33,25 @@ public sealed class StudioHost : IDisposable
         string? cataloguePath = null,
         // Zero, so no pass runs that a test did not ask for and the pass counts tests wait on stay exact.
         int sweepSeconds = 0,
-        Events? events = null,
+        // Only for a store that is down or failing; data comes from the test Loki.
+        BrokenEventsStore? events = null,
         int maxEvents = 5000,
         // Not the developer's settings, or provenance tests would pass or fail on this machine's telemetry.
         bool emitting = true,
-        string? settings = null)
+        string? settings = null,
+        bool tenanted = true)
     {
         var settingsPath = Path.Combine(_data.Path, "settings.json");
         File.WriteAllText(settingsPath, settings ?? (emitting ? EmittingSettings : "{}"));
 
         _api = new StudioApiHost(
-            events ?? Events.Holding(),
+            events,
+            _clock,
             ("Transcripts:Path", transcriptPath),
             ("TranscriptStore:DatabasePath", Path.Combine(_data.Path, "transcript-store.db")),
             ("TranscriptStore:SweepSeconds", sweepSeconds.ToString()),
+            ("Loki:Address", TestLoki.Address.ToString()),
+            ("Loki:Tenant", tenanted ? _tenant : null),
             ("Loki:MaxEvents", maxEvents.ToString()),
             ("ClaudeSettings:Path", settingsPath),
             ("ClaudeSettings:StampPath", Path.Combine(_data.Path, "telemetry-switch.json")),
@@ -51,6 +61,10 @@ public sealed class StudioHost : IDisposable
     }
 
     public HttpClient Client => _client;
+
+    public DateTimeOffset Now => _clock.GetUtcNow();
+
+    public Task Push(params SkillActivated[] events) => TestLoki.PushAsync(_tenant, events);
 
     public static string Fixture(string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "Transcripts", name);
 

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Ingest;
-using Skillworks.Core.Provenance;
 using Skillworks.Core.Telemetry;
 using Skillworks.Core.Transcripts;
 
@@ -11,30 +11,25 @@ public sealed class StudioHealth(
     TranscriptLocator transcripts,
     CatalogueLocator catalogue,
     IngestReport ingest,
-    SkillEvents events,
+    EventsStoreReader events,
     TelemetrySwitch telemetry,
-    IOptions<LokiOptions> loki,
-    TimeProvider clock)
+    IOptions<LokiOptions> loki)
 {
-    // The real provenance query over a short window: a readiness route would pass a store that refuses it.
-    private static readonly TimeSpan Probe = TimeSpan.FromMinutes(1);
-
     private const string PointAtTranscripts =
         "Point Transcripts:Path at the folder Claude Code writes its session files to.";
 
     public async Task<HealthReport> ReportAsync(CancellationToken cancellationToken)
     {
-        var now = clock.GetUtcNow();
         var sessions = transcripts.Locate();
         var store = await ingest.StatusAsync(cancellationToken);
-        var probed = await events.ReadAsync(now - Probe, now, cancellationToken);
+        var unreachable = await events.UnreachableAsync(cancellationToken);
         var emitting = telemetry.State();
 
         return new HealthReport(
             [
                 Transcripts(sessions),
                 TranscriptStore(store),
-                Events(probed.Unreachable),
+                Events(unreachable),
                 Switch(emitting),
                 Catalogue(catalogue.Locate()),
             ],

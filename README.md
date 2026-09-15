@@ -49,8 +49,9 @@ Studio finds your transcripts in `~/.claude/projects` on its own, and parses the
 your local application data. The first pass runs in the background, so the app is usable while it
 reads; later passes read only what changed. Set `Transcripts__Path` to read from somewhere else.
 
-Checks. The front-end ones must run from `src/Skillworks.Studio.Web`, so they pick up the local
-tools rather than anything installed globally:
+Checks. The API tests start Loki in a container, so Docker must be running. The front-end ones must
+run from `src/Skillworks.Studio.Web`, so they pick up the local tools rather than anything installed
+globally:
 
 ```
 dotnet test Skillworks.slnx

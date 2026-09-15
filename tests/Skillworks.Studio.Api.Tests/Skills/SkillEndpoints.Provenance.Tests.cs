@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Web;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Skills;
@@ -12,14 +11,15 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Names_the_plugin_and_the_marketplace_a_skill_was_delivered_by()
     {
-        using var events = Events.Holding(new Event(
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
+
+        await studio.Push(new SkillActivated(
             "grilling",
             GrilledAt,
             Trigger: "claude-proactive",
             Source: "plugin",
             Plugin: "probekit",
             Marketplace: "privateprobe"));
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
 
         var origin = Assert.Single((await studio.Skill("grilling")).Origins);
 
@@ -30,9 +30,9 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Leaves_a_plugin_and_marketplace_the_store_did_not_record_unnamed()
     {
-        using var events = Events.Holding(
-            new Event("grilling", GrilledAt, Trigger: "claude-proactive", Source: "projectSettings"));
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
+
+        await studio.Push(new SkillActivated("grilling", GrilledAt, Trigger: "claude-proactive", Source: "projectSettings"));
 
         var origin = Assert.Single((await studio.Skill("grilling")).Origins);
 
@@ -44,14 +44,15 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Joins_where_a_skill_came_from_to_what_it_spent_in_one_answer()
     {
-        using var events = Events.Holding(new Event(
+        using var studio = new StudioHost(StudioHost.Fixture("costly"));
+
+        await studio.Push(new SkillActivated(
             "comment-sweep",
             "2026-09-10T09:00:04.000Z",
             Trigger: "claude-proactive",
             Source: "plugin",
             Plugin: "probekit",
             Marketplace: "privateprobe"));
-        using var studio = new StudioHost(StudioHost.Fixture("costly"), events: events);
 
         var swept = await studio.Skill("comment-sweep");
 
@@ -63,10 +64,11 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Tells_two_skills_that_share_a_name_apart_by_where_they_came_from()
     {
-        using var events = Events.Holding(
-            new Event("grilling", "2026-09-02T14:48:23.100Z", Source: "plugin", Plugin: "probekit", Marketplace: "privateprobe"),
-            new Event("grilling", "2026-09-02T14:50:00.000Z", Source: "plugin", Plugin: "probekit", Marketplace: "skillworks"));
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-02T14:48:23.100Z", Source: "plugin", Plugin: "probekit", Marketplace: "privateprobe"),
+            new SkillActivated("grilling", "2026-09-02T14:50:00.000Z", Source: "plugin", Plugin: "probekit", Marketplace: "skillworks"));
 
         var origins = (await studio.Skill("grilling")).Origins;
 
@@ -77,18 +79,35 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_each_way_a_skill_was_delivered_once_however_often_it_fired()
     {
-        using var events = Events.Holding(
-            new Event("grilling", "2026-09-02T14:48:23.100Z", Trigger: "claude-proactive", Source: "projectSettings"),
-            new Event("grilling", "2026-09-02T14:52:00.000Z", Trigger: "claude-proactive", Source: "projectSettings"));
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-02T14:48:23.100Z", Trigger: "claude-proactive", Source: "projectSettings"),
+            new SkillActivated("grilling", "2026-09-02T14:52:00.000Z", Trigger: "claude-proactive", Source: "projectSettings"));
 
         Assert.Single((await studio.Skill("grilling")).Origins);
     }
 
     [Fact]
+    public async Task Reads_only_the_events_sent_to_its_own_tenant()
+    {
+        using var sent = new StudioHost(StudioHost.Fixture("ordinary"));
+        using var other = new StudioHost(StudioHost.Fixture("ordinary"));
+
+        await sent.Push(new SkillActivated("grilling", GrilledAt, Trigger: "claude-proactive"));
+
+        var elsewhere = await other.SkillTable();
+
+        // One Loki serves many teams, and another tenant's origins would be another team's skills.
+        Assert.NotEmpty((await sent.Skill("grilling")).Origins);
+        Assert.Equal("quiet", elsewhere.Provenance.Gap);
+        Assert.Empty(Assert.Single(elsewhere.Skills).Origins);
+    }
+
+    [Fact]
     public async Task Says_the_events_store_could_not_be_read_rather_than_that_nothing_fired()
     {
-        using var events = Events.Down();
+        using var events = BrokenEventsStore.Down();
         using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
 
         var answer = await studio.SkillTable();
@@ -105,7 +124,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_an_events_store_that_answers_badly_as_unreachable_rather_than_as_quiet()
     {
-        using var events = Events.Failing(HttpStatusCode.BadGateway);
+        using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
         using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
 
         var answer = await studio.SkillTable();
@@ -118,8 +137,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Labels_a_period_the_events_store_holds_nothing_for_as_missing()
     {
-        using var events = Events.Holding();
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
 
         var answer = await studio.SkillTable();
 
@@ -132,8 +150,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Says_telemetry_was_never_switched_on_rather_than_that_the_period_was_quiet()
     {
-        using var events = Events.Holding();
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events, emitting: false);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), emitting: false);
 
         var answer = await studio.SkillTable();
 
@@ -145,10 +162,9 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_was_never_switched_on()
     {
-        using var down = Events.Down();
-        using var quiet = Events.Holding();
+        using var down = BrokenEventsStore.Down();
         using var broken = new StudioHost(StudioHost.Fixture("ordinary"), events: down, emitting: true);
-        using var off = new StudioHost(StudioHost.Fixture("ordinary"), events: quiet, emitting: false);
+        using var off = new StudioHost(StudioHost.Fixture("ordinary"), emitting: false);
 
         var outage = (await broken.SkillTable()).Provenance;
         var never = (await off.SkillTable()).Provenance;
@@ -162,8 +178,9 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Says_telemetry_is_off_even_where_the_store_has_events_from_before_it_was()
     {
-        using var events = Events.Holding(new Event("grilling", GrilledAt, Trigger: "claude-proactive"));
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events, emitting: false);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), emitting: false);
+
+        await studio.Push(new SkillActivated("grilling", GrilledAt, Trigger: "claude-proactive"));
 
         var answer = await studio.SkillTable();
 
@@ -176,8 +193,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Says_it_cannot_tell_whether_telemetry_was_on_rather_than_saying_it_was_off()
     {
-        using var events = Events.Holding();
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events, settings: "{ not json");
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), settings: "{ not json");
 
         var answer = await studio.SkillTable();
 
@@ -189,10 +205,11 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Says_when_a_period_held_more_events_than_it_could_read_at_once()
     {
-        using var events = Events.Holding(
-            new Event("grilling", "2026-09-02T14:48:23.100Z", Trigger: "claude-proactive"),
-            new Event("grilling", "2026-09-02T14:50:00.000Z", Trigger: "user-slash"));
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events, maxEvents: 2);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), maxEvents: 2);
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-02T14:48:23.100Z", Trigger: "claude-proactive"),
+            new SkillActivated("grilling", "2026-09-02T14:50:00.000Z", Trigger: "user-slash"));
 
         var answer = await studio.SkillTable();
 
@@ -205,8 +222,9 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Says_nothing_is_missing_when_the_store_answered_with_events()
     {
-        using var events = Events.Holding(new Event("grilling", GrilledAt, Trigger: "claude-proactive"));
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
+
+        await studio.Push(new SkillActivated("grilling", GrilledAt, Trigger: "claude-proactive"));
 
         var answer = await studio.SkillTable();
 
@@ -215,27 +233,26 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Asks_the_events_store_for_the_skill_events_of_the_period_the_filter_names()
+    public async Task Takes_where_a_skill_came_from_only_from_the_whole_days_the_filter_names()
     {
-        using var events = Events.Holding();
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
 
-        await studio.SkillTable("?from=2026-09-05&to=2026-09-05");
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-04T23:59:59.999Z", Trigger: "agent-preload"),
+            new SkillActivated("grilling", "2026-09-05T00:00:00.000Z", Trigger: "claude-proactive"),
+            new SkillActivated("grilling", "2026-09-05T23:59:59.999Z", Trigger: "user-slash"),
+            new SkillActivated("grilling", "2026-09-06T00:00:00.000Z", Trigger: "nested-skill"));
 
-        var asked = HttpUtility.ParseQueryString(events.LastAsked!.Query);
-
-        Assert.Contains("skill_activated", asked["query"] ?? "");
+        var grilling = await studio.Skill("grilling", "?from=2026-09-05&to=2026-09-05");
 
         // Whole UTC days, both ends taken in, or a filtered screen would get unfiltered facts from the events store.
-        Assert.Equal(Nanoseconds("2026-09-05T00:00:00Z"), asked["start"]);
-        Assert.Equal(Nanoseconds("2026-09-06T00:00:00Z"), asked["end"]);
+        Assert.Equal(["claude-proactive", "user-slash"], grilling.Origins.Select(origin => origin.Trigger));
     }
 
     [Fact]
     public async Task Says_how_far_back_the_provenance_it_is_showing_reaches()
     {
-        using var events = Events.Holding();
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
 
         var answer = await studio.SkillTable("?from=2026-09-05&to=2026-09-05");
 
@@ -244,8 +261,4 @@ public sealed partial class SkillEndpointsTests
             DateTimeOffset.Parse("2026-09-05T00:00:00Z", CultureInfo.InvariantCulture),
             answer.Provenance.SinceUtc);
     }
-
-    private static string Nanoseconds(string moment) =>
-        (DateTimeOffset.Parse(moment, CultureInfo.InvariantCulture).ToUnixTimeMilliseconds() * 1_000_000)
-        .ToString(CultureInfo.InvariantCulture);
 }

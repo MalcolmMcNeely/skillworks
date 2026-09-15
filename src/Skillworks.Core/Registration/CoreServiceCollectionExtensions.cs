@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Health;
 using Skillworks.Core.Ingest;
 using Skillworks.Core.Ingest.Queries;
@@ -56,7 +57,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<PriceTable>();
 
         // A named client, not a typed one: a typed client held by a singleton keeps one handler for the app's life.
-        services.AddHttpClient(SkillEvents.ClientName, (provider, client) =>
+        services.AddHttpClient(EventsStoreReader.ClientName, (provider, client) =>
         {
             var loki = provider.GetRequiredService<IOptions<LokiOptions>>().Value;
 
@@ -66,10 +67,10 @@ public static class CoreServiceCollectionExtensions
 
         // Cleared wholesale, so no retry a shell adds, now or later, turns a down container's fast 502 into a slow timeout.
         services.Configure<HttpClientFactoryOptions>(
-            SkillEvents.ClientName,
+            EventsStoreReader.ClientName,
             options => options.HttpMessageHandlerBuilderActions.Clear());
 
-        services.AddSingleton<SkillEvents>();
+        services.AddSingleton<EventsStoreReader>();
         services.AddSingleton<ProvenanceReport>();
         services.AddSingleton<SkillReport>();
         services.AddSingleton<ActivationReport>();

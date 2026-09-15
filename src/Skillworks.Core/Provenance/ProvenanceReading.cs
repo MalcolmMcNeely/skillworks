@@ -1,3 +1,4 @@
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Core.Provenance;
@@ -12,6 +13,8 @@ public sealed class ProvenanceReading
     internal ProvenanceReading(EventReading reading, DateTimeOffset sinceUtc, bool? emitting)
     {
         _bySkill = reading.Events
+            .Select(SkillEvent.From)
+            .OfType<SkillEvent>()
             .GroupBy(recorded => recorded.Skill)
             .ToDictionary(group => group.Key, IReadOnlyList<SkillEvent> (group) => [.. group]);
 

@@ -34,14 +34,13 @@ public sealed partial class IngestEndpointsTests
     [Fact]
     public async Task Reports_when_the_data_on_screen_was_last_refreshed()
     {
-        var before = DateTimeOffset.UtcNow;
         using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
 
         await studio.WaitForIngestPasses(1);
         var refreshed = (await studio.Status()).LastRefreshUtc;
 
         Assert.NotNull(refreshed);
-        Assert.InRange(refreshed.Value, before, DateTimeOffset.UtcNow);
+        Assert.InRange(refreshed.Value, PinnedClock.Today, studio.Now);
     }
 
     [Fact]

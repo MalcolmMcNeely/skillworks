@@ -1,0 +1,48 @@
+# Multi-tenant, so tests in parallel, each with its own tenant, never see each other's events.
+auth_enabled: true
+
+server:
+  http_listen_port: 3100
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /tmp/loki
+  storage:
+    filesystem:
+      chunks_directory: /tmp/loki/chunks
+      rules_directory: /tmp/loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # Tests push events with fixed past dates.
+  reject_old_samples: false
+  # The default hour splits a month's read into 720 queries, and every test reads a month.
+  split_queries_by_interval: 24h
+
+query_range:
+  # A cached answer for a past period would hide events a test pushed after an earlier read.
+  cache_results: false
+  cache_index_stats_results: false
+
+ingester:
+  # Events stay in the ingester all run, and by default only reads of the last few hours ask it.
+  query_store_max_look_back_period: -1
+  # Loki refuses an entry over half this age behind its stream's newest, and one test's events span days.
+  max_chunk_age: 17520h
+  lifecycler:
+    min_ready_duration: 0s
+    final_sleep: 0s

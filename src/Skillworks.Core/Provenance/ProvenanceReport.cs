@@ -1,11 +1,12 @@
 using Microsoft.Extensions.Options;
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Core.Provenance;
 
 public sealed class ProvenanceReport(
-    SkillEvents events,
+    EventsStoreReader events,
     TelemetrySwitch telemetry,
     IOptions<LokiOptions> options,
     TimeProvider clock)
@@ -17,7 +18,7 @@ public sealed class ProvenanceReport(
         var from = filter.FromUtc ?? until - TimeSpan.FromDays(options.Value.LookbackDays);
 
         return new ProvenanceReading(
-            await events.ReadAsync(from, until, cancellationToken),
+            await events.ReadAsync(SkillEvent.EventName, from, until, cancellationToken),
             from,
             Emitting());
     }
@@ -27,7 +28,7 @@ public sealed class ProvenanceReport(
         var from = moment - ProvenanceReading.Tolerance;
 
         return new ProvenanceReading(
-            await events.ReadAsync(from, moment + ProvenanceReading.Tolerance, cancellationToken),
+            await events.ReadAsync(SkillEvent.EventName, from, moment + ProvenanceReading.Tolerance, cancellationToken),
             from,
             Emitting());
     }
