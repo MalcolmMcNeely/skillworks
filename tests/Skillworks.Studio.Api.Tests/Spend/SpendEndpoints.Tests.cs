@@ -16,6 +16,6 @@ public sealed class SpendEndpointsTests
         await studio.Reprice(opus with { OutputPerMillion = opus.OutputPerMillion * 2 });
 
         // The organisation gives Claude Code its prices, so a price held in Studio would be a second opinion.
-        Assert.Equal(0.42m, (await studio.Skill("grilling")).Spend.Cost);
+        Assert.Equal(0.42m, (await studio.Skill("grilling")).Spend?.Cost);
     }
 }

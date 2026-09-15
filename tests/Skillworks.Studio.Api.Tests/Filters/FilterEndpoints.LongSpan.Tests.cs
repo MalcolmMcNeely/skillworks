@@ -41,9 +41,9 @@ public sealed partial class FilterEndpointsTests
 
         var grilling = await studio.Skill("grilling", TenDays);
 
-        Assert.Equal(0.7m, grilling.Spend.Cost);
-        Assert.Equal(700, grilling.Spend.OutputTokens);
-        Assert.Equal(["claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models);
+        Assert.Equal(0.7m, grilling.Spend?.Cost);
+        Assert.Equal(700, grilling.Spend?.OutputTokens);
+        Assert.Equal(["claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models!);
     }
 
     [Fact]

@@ -7,4 +7,5 @@ public sealed record SpendTally(
     IReadOnlyDictionary<string, SkillSpend> Spend,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Models,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Efforts,
+    SkillSpend Unnamed,
     EventTotals Period);

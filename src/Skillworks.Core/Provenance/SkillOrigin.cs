@@ -11,8 +11,12 @@ public sealed record SkillOrigin(string? Trigger, string? Source, string? Plugin
 
     private const string MarketplaceAttribute = "marketplace.name";
 
+    private const string PluginSource = "plugin";
+
     internal static readonly IReadOnlyList<string> Attributes =
         [TriggerAttribute, SourceAttribute, PluginAttribute, MarketplaceAttribute];
+
+    internal bool DeliveredByPlugin => Source == PluginSource;
 
     internal static SkillOrigin Of(Func<string, string?> attribute) =>
         new(attribute(TriggerAttribute), attribute(SourceAttribute), attribute(PluginAttribute), attribute(MarketplaceAttribute));

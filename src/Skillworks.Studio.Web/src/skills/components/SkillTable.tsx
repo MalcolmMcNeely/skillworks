@@ -55,14 +55,18 @@ const columns = column.columns([
     header: 'Delivered by',
   }),
   // Sorts on the number and renders the words, so the heading ranks skills by what they cost.
-  column.accessor((skill) => skill.spend.cost, {
+  column.accessor((skill) => skill.spend?.cost, {
     id: 'cost',
     header: 'Cost',
-    cell: (cell) => describeMoney(cell.getValue()),
+    // Undefined, not null: a cost not named is neither cheap nor dear, and only undefined sorts last both ways.
+    sortUndefined: 'last',
+    cell: (cell) => describeMoney(cell.getValue() ?? null),
   }),
-  column.accessor('averageCost', {
+  column.accessor((skill) => skill.averageCost ?? undefined, {
+    id: 'averageCost',
     header: 'Per activation',
-    cell: (cell) => describeMoney(cell.getValue()),
+    sortUndefined: 'last',
+    cell: (cell) => describeMoney(cell.getValue() ?? null),
   }),
   column.accessor((skill) => describeSplit(skill.spend), {
     id: 'tokens',

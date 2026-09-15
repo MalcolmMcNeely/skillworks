@@ -10,6 +10,7 @@ import { describeProvenance } from '../../provenance/lib/provenance';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
 import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
 import { SkillTable } from '../components/SkillTable';
+import { describeUnnamedSpend } from '../lib/skills';
 import { readSort, withSort, type Sort } from '../lib/sorting';
 
 export function Home() {
@@ -75,6 +76,11 @@ export function Home() {
 
           {/* Not in the table: the gap is one fact about the period, and a column would repeat it as many. */}
           <p data-testid="provenance-note">{describeProvenance(skills.provenance)}</p>
+
+          {/* Not a row: no skill is named for it, and a row would read as a skill. */}
+          {skills.unnamedSpend !== null && (
+            <p data-testid="unnamed-spend">{describeUnnamedSpend(skills.unnamedSpend)}</p>
+          )}
 
           {skills.skills.length === 0 ? (
             // Held back until health settles, or a reader may act on the filter before the missing source shows.

@@ -1,3 +1,4 @@
+using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.Filters;
@@ -46,19 +47,31 @@ public sealed class SkillReport(
         return new SkillTable(
             [
                 .. counts
-                    .Select(skill => new SkillSummary(
-                        skill.Key,
-                        skill.Value,
-                        tally.Repositories.GetValueOrDefault(skill.Key, []),
-                        spent.Models.GetValueOrDefault(skill.Key, []),
-                        spent.Efforts.GetValueOrDefault(skill.Key, []),
-                        spent.Spend.GetValueOrDefault(skill.Key, SkillSpend.Nothing),
-                        tally.Origins.GetValueOrDefault(skill.Key, [])))
+                    .Select(skill => Summary(skill.Key, skill.Value, tally, spent))
                     .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
             ],
+            // Some of it may be another skill's, and on this skill's page all of it would read as its own.
+            filter.Skill is null ? spent.Unnamed : null,
             // Turns count beside firings, so a period that only spent is not called quiet.
             provenance.NoteOn(tally.Period.Plus(spent.Period), span),
             span);
+    }
+
+    private static SkillSummary Summary(string name, int activations, ActivationTally tally, SpendTally spent)
+    {
+        var origins = tally.Origins.GetValueOrDefault(name, []);
+
+        // A plugin outside Anthropic's marketplaces has its Turns sent as "third-party", so none under its name is not a zero.
+        var spendNamed = spent.Spend.ContainsKey(name) || !origins.Any(origin => origin.DeliveredByPlugin);
+
+        return new SkillSummary(
+            name,
+            activations,
+            tally.Repositories.GetValueOrDefault(name, []),
+            spendNamed ? spent.Models.GetValueOrDefault(name, []) : null,
+            spendNamed ? spent.Efforts.GetValueOrDefault(name, []) : null,
+            spendNamed ? spent.Spend.GetValueOrDefault(name, SkillSpend.Nothing) : null,
+            origins);
     }
 
     // Offers what fired in the lookback, as the unnarrowed table does, so every choice has something behind it.

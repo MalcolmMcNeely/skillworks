@@ -19,8 +19,8 @@ public sealed partial class FilterEndpointsTests
         var grilling = await studio.Skill("grilling", "?from=2026-09-05&to=2026-09-05");
 
         // Narrowed as Activations are, or cost per activation would set one day's firings against other days' spend.
-        Assert.Equal(0.06m, grilling.Spend.Cost);
-        Assert.Equal(600, grilling.Spend.InputTokens);
+        Assert.Equal(0.06m, grilling.Spend?.Cost);
+        Assert.Equal(600, grilling.Spend?.InputTokens);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public sealed partial class FilterEndpointsTests
             new ApiRequest("2026-09-09T00:00:00.000Z", Skill: "grilling", CostUsd: 0.02m),
             new ApiRequest("2026-09-15T00:00:00.000Z", Skill: "grilling", CostUsd: 0.04m));
 
-        Assert.Equal(0.06m, (await studio.Skill("grilling")).Spend.Cost);
+        Assert.Equal(0.06m, (await studio.Skill("grilling")).Spend?.Cost);
     }
 
     [Fact]
@@ -51,9 +51,9 @@ public sealed partial class FilterEndpointsTests
         var inNu = await studio.Skill("grilling", "?repository=acme/nu");
 
         // A Turn with no Repository, or half of one, might have run anywhere, so it is not spend in acme/nu.
-        Assert.Equal(0.15m, everywhere.Spend.Cost);
-        Assert.Equal(0.01m, inNu.Spend.Cost);
-        Assert.Equal(100, inNu.Spend.InputTokens);
+        Assert.Equal(0.15m, everywhere.Spend?.Cost);
+        Assert.Equal(0.01m, inNu.Spend?.Cost);
+        Assert.Equal(100, inNu.Spend?.InputTokens);
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public sealed partial class FilterEndpointsTests
         var skills = await studio.Skills("?skill=grilling");
 
         Assert.Equal(["grilling"], skills.Select(skill => skill.Name));
-        Assert.Equal(0.01m, skills[0].Spend.Cost);
-        Assert.Equal(["claude-sonnet-5"], skills[0].Models);
+        Assert.Equal(0.01m, skills[0].Spend?.Cost);
+        Assert.Equal(["claude-sonnet-5"], skills[0].Models!);
     }
 }

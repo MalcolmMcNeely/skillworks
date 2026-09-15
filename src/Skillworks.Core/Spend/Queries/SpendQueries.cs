@@ -61,20 +61,22 @@ public sealed class SpendQueries(EventsStoreReader events)
         var cacheCreations = PerSkill(cacheCreation);
         var models = Names(model, ModelAttribute);
 
+        SkillSpend SpendOf(string skill) => new(
+            (long)inputs.GetValueOrDefault(skill),
+            (long)outputs.GetValueOrDefault(skill),
+            (long)cacheReads.GetValueOrDefault(skill),
+            (long)cacheCreations.GetValueOrDefault(skill),
+            costs.GetValueOrDefault(skill));
+
         return new SpendTally(
             models.Keys
                 .Concat(new[] { costs, inputs, outputs, cacheReads, cacheCreations }.SelectMany(sums => sums.Keys))
+                .Where(skill => skill != Unnamed)
                 .Distinct()
-                .ToDictionary(
-                    skill => skill,
-                    skill => new SkillSpend(
-                        (long)inputs.GetValueOrDefault(skill),
-                        (long)outputs.GetValueOrDefault(skill),
-                        (long)cacheReads.GetValueOrDefault(skill),
-                        (long)cacheCreations.GetValueOrDefault(skill),
-                        costs.GetValueOrDefault(skill))),
+                .ToDictionary(skill => skill, SpendOf),
             models,
             Names(effort, EffortAttribute),
+            SpendOf(Unnamed),
             period with
             {
                 Unreachable = period.Unreachable ?? cost.Unreachable ?? input.Unreachable ?? output.Unreachable ??
@@ -85,13 +87,12 @@ public sealed class SpendQueries(EventsStoreReader events)
     private static EventQuery Turns(DaySpan span) => new(EventName, span.FromUtc, span.UntilUtc);
 
     private static Dictionary<string, decimal> PerSkill(EventTotals totals) =>
-        Named(totals).ToDictionary(group => group.Key, group => group.Sum(total => total.Total));
+        totals.BySkill().ToDictionary(group => group.Key, group => group.Sum(total => total.Total));
 
     private static Dictionary<string, IReadOnlyList<string>> Names(EventTotals totals, string attribute) =>
-        Named(totals).ToDictionary(
-            group => group.Key,
-            IReadOnlyList<string> (group) => [.. group.Select(total => total.Attribute(attribute)).OfType<string>().Distinct().Order()]);
-
-    private static IEnumerable<IGrouping<string, EventTotal>> Named(EventTotals totals) =>
-        totals.BySkill().Where(group => group.Key != Unnamed);
+        totals.BySkill()
+            .Where(group => group.Key != Unnamed)
+            .ToDictionary(
+                group => group.Key,
+                IReadOnlyList<string> (group) => [.. group.Select(total => total.Attribute(attribute)).OfType<string>().Distinct().Order()]);
 }

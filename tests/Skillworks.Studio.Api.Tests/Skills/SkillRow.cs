@@ -9,13 +9,13 @@ public sealed record SkillRow
 
     public required string[] Repositories { get; init; }
 
-    public required string[] Models { get; init; }
+    public required string[]? Models { get; init; }
 
-    public required string[] Efforts { get; init; }
+    public required string[]? Efforts { get; init; }
 
-    public required SpendRow Spend { get; init; }
+    public required SpendRow? Spend { get; init; }
 
-    public required decimal AverageCost { get; init; }
+    public required decimal? AverageCost { get; init; }
 
     public required OriginRow[] Origins { get; init; }
 }

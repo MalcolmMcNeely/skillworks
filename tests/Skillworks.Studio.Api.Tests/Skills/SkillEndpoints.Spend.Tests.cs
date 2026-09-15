@@ -16,7 +16,7 @@ public sealed partial class SkillEndpointsTests
             new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", CostUsd: 0.2m));
 
         // Added in floating point these make 0.30000000000000004, which is not what the Turns cost.
-        Assert.Equal(0.3m, (await studio.Skill("grilling")).Spend.Cost);
+        Assert.Equal(0.3m, (await studio.Skill("grilling")).Spend?.Cost);
     }
 
     [Fact]
@@ -30,10 +30,10 @@ public sealed partial class SkillEndpointsTests
 
         var spend = (await studio.Skill("grilling")).Spend;
 
-        Assert.Equal(1_500, spend.InputTokens);
-        Assert.Equal(6_000, spend.OutputTokens);
-        Assert.Equal(3_000_000, spend.CacheReadTokens);
-        Assert.Equal(400_000, spend.CacheCreationTokens);
+        Assert.Equal(1_500, spend?.InputTokens);
+        Assert.Equal(6_000, spend?.OutputTokens);
+        Assert.Equal(3_000_000, spend?.CacheReadTokens);
+        Assert.Equal(400_000, spend?.CacheCreationTokens);
     }
 
     [Fact]
@@ -50,8 +50,8 @@ public sealed partial class SkillEndpointsTests
 
         // The Turn that chose grilling ran before grilling was in force, so it is no skill's.
         Assert.Equal("grilling", grilling.Name);
-        Assert.Equal(0.02m, grilling.Spend.Cost);
-        Assert.Equal(200, grilling.Spend.InputTokens);
+        Assert.Equal(0.02m, grilling.Spend?.Cost);
+        Assert.Equal(200, grilling.Spend?.InputTokens);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed partial class SkillEndpointsTests
 
         // third-party stands for any skill from a plugin outside Anthropic's marketplaces, so no one skill has that name.
         Assert.Equal(["grilling"], skills.Select(skill => skill.Name));
-        Assert.Equal(0.02m, skills[0].Spend.Cost);
+        Assert.Equal(0.02m, skills[0].Spend?.Cost);
     }
 
     [Fact]
@@ -85,9 +85,9 @@ public sealed partial class SkillEndpointsTests
 
         // The store adds up, so a busy organisation's spend is never cut to what one read takes.
         Assert.Equal("complete", answer.Provenance.Gap);
-        Assert.Equal(0.7m, grilling.Spend.Cost);
-        Assert.Equal(700, grilling.Spend.OutputTokens);
-        Assert.Equal(["claude-haiku-4-5", "claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models);
+        Assert.Equal(0.7m, grilling.Spend?.Cost);
+        Assert.Equal(700, grilling.Spend?.OutputTokens);
+        Assert.Equal(["claude-haiku-4-5", "claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models!);
     }
 
     [Fact]
@@ -104,8 +104,8 @@ public sealed partial class SkillEndpointsTests
         var grilling = await studio.Skill("grilling");
 
         // Its cost was charged at two models' rates, and naming one would hide the other.
-        Assert.Equal(["claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models);
-        Assert.Equal(["high", "medium"], grilling.Efforts);
+        Assert.Equal(["claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models!);
+        Assert.Equal(["high", "medium"], grilling.Efforts!);
     }
 
     [Fact]
@@ -138,8 +138,8 @@ public sealed partial class SkillEndpointsTests
         Assert.Equal(1, grilling.Activations);
         Assert.Equal(new SpendRow { InputTokens = 0, OutputTokens = 0, CacheReadTokens = 0, CacheCreationTokens = 0, Cost = 0m }, grilling.Spend);
         Assert.Equal(0m, grilling.AverageCost);
-        Assert.Empty(grilling.Models);
-        Assert.Empty(grilling.Efforts);
+        Assert.Empty(grilling.Models!);
+        Assert.Empty(grilling.Efforts!);
     }
 
     [Fact]
