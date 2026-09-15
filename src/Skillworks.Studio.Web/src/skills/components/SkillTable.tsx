@@ -76,10 +76,6 @@ const columns = column.columns([
     id: 'repositories',
     header: 'Repositories',
   }),
-  column.accessor((skill) => describeList(skill.branches), {
-    id: 'branches',
-    header: 'Branches',
-  }),
 ]);
 
 const rowHeight = 34;

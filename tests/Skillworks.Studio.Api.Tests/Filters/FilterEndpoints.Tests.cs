@@ -4,8 +4,10 @@ using Skillworks.Studio.Api.Tests.Skills;
 
 namespace Skillworks.Studio.Api.Tests.Filters;
 
-public sealed class FilterEndpointsTests
+public sealed partial class FilterEndpointsTests
 {
+    private const string BothDays = "?from=2026-09-01&to=2026-09-05";
+
     // At the rates the price table is seeded with for claude-sonnet-5.
     private const decimal GrillingInNu =
         (1_000m * 3m) / 1_000_000m +
@@ -16,11 +18,12 @@ public sealed class FilterEndpointsTests
         (1_000m * 15m) / 1_000_000m;
 
     [Fact]
-    public async Task Counts_every_activation_when_nothing_is_narrowed()
+    public async Task Counts_every_activation_inside_a_span()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        await PushNuAndXi(studio);
 
-        var skills = await studio.Skills();
+        var skills = await studio.Skills(BothDays);
 
         Assert.Equal(["grilling", "tdd", "unslop"], skills.Select(skill => skill.Name));
         Assert.Equal([2, 1, 2], skills.Select(skill => skill.Activations));
@@ -29,41 +32,82 @@ public sealed class FilterEndpointsTests
     [Fact]
     public async Task Narrows_to_the_activations_inside_a_date_range()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        await PushNuAndXi(studio);
 
         var skills = await studio.Skills("?from=2026-09-01&to=2026-09-01");
 
-        // Only the nu session falls in the range, so the xi firings are not in the answer at all.
+        // Only the nu firings fall in the range, so the xi firings are not in the answer at all.
         Assert.Equal(["grilling", "unslop"], skills.Select(skill => skill.Name));
         Assert.Equal([1, 1], skills.Select(skill => skill.Activations));
     }
 
     [Fact]
-    public async Task Takes_in_the_whole_of_the_last_day_of_a_range()
+    public async Task Takes_in_the_whole_of_both_days_at_the_ends_of_a_range()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
 
-        // tdd fired at 23:30 on the 5th, which a range ending at midnight on the 5th would drop.
-        Assert.Equal(1, await studio.ActivationsOf("tdd", "?from=2026-09-05&to=2026-09-05"));
+        await studio.Push(
+            new SkillActivated("before", "2026-09-04T23:59:59.999Z"),
+            new SkillActivated("first", "2026-09-05T00:00:00.000Z"),
+            new SkillActivated("last", "2026-09-05T23:59:59.999Z"),
+            new SkillActivated("after", "2026-09-06T00:00:00.000Z"));
+
+        var skills = await studio.Skills("?from=2026-09-05&to=2026-09-05");
+
+        // A range ending at midnight on the 5th would drop the firing late that evening.
+        Assert.Equal(["first", "last"], skills.Select(skill => skill.Name));
     }
 
     [Fact]
     public async Task Narrows_to_one_repository()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        await PushNuAndXi(studio);
 
-        var skills = await studio.Skills("?repository=xi");
+        var skills = await studio.Skills($"{BothDays}&repository=acme/xi");
 
         Assert.Equal(["grilling", "tdd", "unslop"], skills.Select(skill => skill.Name));
         Assert.Equal([1, 1, 1], skills.Select(skill => skill.Activations));
     }
 
     [Fact]
+    public async Task Leaves_out_a_firing_with_no_repository_when_a_repository_is_asked_for()
+    {
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z"),
+            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", RepositoryName: "xi"),
+            new SkillActivated("grilling", "2026-09-14T09:15:00.000Z", Owner: "acme"));
+
+        // A firing with half a name might have been anywhere, so it is not an answer about acme/xi.
+        Assert.Equal(1, await studio.ActivationsOf("grilling", "?repository=acme/xi"));
+        Assert.Empty(await studio.Skills("?repository=xi"));
+    }
+
+    [Fact]
+    public async Task Tells_two_owners_repositories_of_the_same_name_apart()
+    {
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Owner: "globex", RepositoryName: "xi"),
+            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", Owner: "globex", RepositoryName: "xi"));
+
+        Assert.Equal(1, await studio.ActivationsOf("grilling", "?repository=acme/xi"));
+        Assert.Equal(2, await studio.ActivationsOf("grilling", "?repository=globex/xi"));
+    }
+
+    [Fact]
     public async Task Narrows_to_one_skill()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        await PushNuAndXi(studio);
 
-        var skills = await studio.Skills("?skill=grilling");
+        var skills = await studio.Skills($"{BothDays}&skill=grilling");
 
         Assert.Equal(["grilling"], skills.Select(skill => skill.Name));
         Assert.Equal(2, skills.Single().Activations);
@@ -72,9 +116,10 @@ public sealed class FilterEndpointsTests
     [Fact]
     public async Task Narrows_by_the_date_the_repository_and_the_skill_at_once()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        await PushNuAndXi(studio);
 
-        var skills = await studio.Skills("?from=2026-09-05&to=2026-09-05&repository=xi&skill=grilling");
+        var skills = await studio.Skills("?from=2026-09-05&to=2026-09-05&repository=acme/xi&skill=grilling");
 
         Assert.Equal(["grilling"], skills.Select(skill => skill.Name));
         Assert.Equal(1, skills.Single().Activations);
@@ -85,8 +130,8 @@ public sealed class FilterEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Fixture("filtered"));
 
-        var everywhere = await studio.Skill("grilling");
-        var inNu = await studio.Skill("grilling", "?repository=nu");
+        var everywhere = await studio.Skill("grilling", BothDays);
+        var inNu = await studio.Skill("grilling", $"{BothDays}&repository=nu");
 
         // A filtered count beside an all-time cost would read as a skill that cost a fortune for one firing.
         Assert.Equal(GrillingInNu + GrillingInXi, everywhere.Spend.Cost);
@@ -95,18 +140,10 @@ public sealed class FilterEndpointsTests
     }
 
     [Fact]
-    public async Task Reports_the_branches_a_skill_fired_on_inside_the_filter_only()
-    {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
-
-        Assert.Equal(["main", "work"], (await studio.Skill("grilling")).Branches);
-        Assert.Equal(["work"], (await studio.Skill("grilling", "?repository=xi")).Branches);
-    }
-
-    [Fact]
     public async Task Answers_a_filter_that_matches_nothing_with_an_empty_list()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        await PushNuAndXi(studio);
 
         using var response = await studio.AskForSkills("?from=2020-01-01&to=2020-01-02");
 
@@ -118,27 +155,30 @@ public sealed class FilterEndpointsTests
     [Fact]
     public async Task Answers_a_skill_nothing_has_ever_heard_of_with_an_empty_list()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        await PushNuAndXi(studio);
 
-        Assert.Empty(await studio.Skills("?skill=no-such-skill"));
+        Assert.Empty(await studio.Skills($"{BothDays}&skill=no-such-skill"));
     }
 
     [Fact]
     public async Task Leaves_a_catalogue_skill_that_never_fired_out_of_a_narrowed_answer()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
 
-        // A never-fired skill's zero belongs to the unfiltered answer; it did not happen in nu, so it is not there.
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"));
+
+        // A never-fired skill's zero belongs to the unfiltered answer; it did not happen there.
         Assert.Contains("probekit:probe-local", (await studio.Skills()).Select(skill => skill.Name));
-        Assert.DoesNotContain(
-            "probekit:probe-local",
-            (await studio.Skills("?repository=nu")).Select(skill => skill.Name));
+        Assert.DoesNotContain("probekit:probe-local", (await studio.Skills("?repository=acme/nu")).Select(skill => skill.Name));
+        Assert.DoesNotContain("probekit:probe-local", (await studio.Skills("?from=2026-09-14&to=2026-09-14")).Select(skill => skill.Name));
     }
 
     [Fact]
     public async Task Keeps_a_catalogue_skill_that_never_fired_when_it_is_the_skill_asked_for()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
 
         var never = await studio.Skill("probekit:probe-local", "?skill=probekit:probe-local");
 
@@ -147,13 +187,26 @@ public sealed class FilterEndpointsTests
     }
 
     [Fact]
-    public async Task Offers_the_repositories_and_skills_a_filter_can_name()
+    public async Task Offers_the_repositories_and_skills_that_fired_and_the_catalogue_skills()
     {
+        // The transcripts hold other skills and folder-named repositories, so a choice read from them would show here.
         using var studio = new StudioHost(StudioHost.Fixture("filtered"), StudioHost.Catalogue());
+
+        await studio.Push(
+            new SkillActivated("research", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
+            new SkillActivated("tdd", "2026-09-14T09:05:00.000Z", Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("tdd", "2026-09-14T09:10:00.000Z"));
 
         var choices = await studio.Filters();
 
-        Assert.Equal(["nu", "xi"], choices.Repositories);
-        Assert.Equal(["grilling", "probekit:probe-local", "probekit:probe-plugin", "tdd", "unslop"], choices.Skills);
+        Assert.Equal(["acme/nu", "acme/xi"], choices.Repositories);
+        Assert.Equal(["probekit:probe-local", "probekit:probe-plugin", "research", "tdd"], choices.Skills);
     }
+
+    private static Task PushNuAndXi(StudioHost studio) => studio.Push(
+        new SkillActivated("grilling", "2026-09-01T10:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
+        new SkillActivated("unslop", "2026-09-01T10:05:00.000Z", Owner: "acme", RepositoryName: "nu"),
+        new SkillActivated("grilling", "2026-09-05T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
+        new SkillActivated("unslop", "2026-09-05T09:05:00.000Z", Owner: "acme", RepositoryName: "xi"),
+        new SkillActivated("tdd", "2026-09-05T23:30:00.000Z", Owner: "acme", RepositoryName: "xi"));
 }

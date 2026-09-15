@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   describeEmpty,
   describeFilter,
+  describeSpan,
   everything,
   filterParams,
   filterQuery,
@@ -98,6 +99,30 @@ describe('describeEmpty', () => {
     expect(describeEmpty(narrowed, 'There is no folder at /home/me/.claude/projects.')).toBe(
       'There is no folder at /home/me/.claude/projects.',
     );
+  });
+});
+
+describe('describeSpan', () => {
+  it('names the lookback by its length, so a zero says which week it is a zero for', () => {
+    expect(describeSpan({ from: '2026-09-09', to: '2026-09-15', lookback: true })).toBe('the last 7 days');
+  });
+
+  it('counts the days across the end of a month', () => {
+    expect(describeSpan({ from: '2026-08-30', to: '2026-09-02', lookback: true })).toBe('the last 4 days');
+  });
+
+  it('calls a lookback of one day today', () => {
+    expect(describeSpan({ from: '2026-09-15', to: '2026-09-15', lookback: true })).toBe('today');
+  });
+
+  it('names both ends of a span the filter chose', () => {
+    expect(describeSpan({ from: '2026-09-01', to: '2026-09-05', lookback: false })).toBe(
+      '2026-09-01 to 2026-09-05',
+    );
+  });
+
+  it('names a chosen span of one day once', () => {
+    expect(describeSpan({ from: '2026-09-05', to: '2026-09-05', lookback: false })).toBe('2026-09-05');
   });
 });
 

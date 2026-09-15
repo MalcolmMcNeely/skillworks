@@ -1,32 +1,50 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
+using Skillworks.Core.Provenance;
 using Skillworks.Core.TranscriptStore;
 
 namespace Skillworks.Core.Activations.Queries;
 
-public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext> contexts)
+public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext> contexts, EventsStoreReader events)
 {
+    private static readonly string[] ByRepository = [EventAttributes.Skill, EventAttributes.Owner, EventAttributes.RepositoryName];
+
     private readonly record struct SkillValue(string Skill, string? Value);
 
-    private readonly record struct SkillCount(string Skill, int Activations);
+    // Narrow counts, not one wide one: every pairing multiplies the series a store returns, and a store caps them.
+    public async Task<ActivationTally> TallyBySkillAsync(DaySpan span, Filter filter, CancellationToken cancellationToken)
+    {
+        var narrowed = Firings(span) with { Repository = filter.Repository, Skill = filter.Skill };
 
-    public async Task<ActivationTally> TallyBySkillAsync(Filter filter, CancellationToken cancellationToken)
+        var counting = events.CountAsync(narrowed, [EventAttributes.Skill], cancellationToken);
+        var placing = events.CountAsync(narrowed, ByRepository, cancellationToken);
+        var tracing = events.CountAsync(narrowed, [EventAttributes.Skill, .. SkillOrigin.Attributes], cancellationToken);
+        var surveying = events.CountAsync(Firings(span), [], cancellationToken);
+
+        var (counts, repositories, origins, period) = (await counting, await placing, await tracing, await surveying);
+
+        return new ActivationTally(
+            BySkill(counts).ToDictionary(group => group.Key, group => (int)group.Sum(count => count.Count)),
+            BySkill(repositories).ToDictionary(
+                group => group.Key,
+                IReadOnlyList<string> (group) => [.. group.Select(count => count.Repository).OfType<string>().Distinct().Order()]),
+            BySkill(origins).ToDictionary(
+                group => group.Key,
+                group => SkillOrigin.Ordered(group.Select(count => SkillOrigin.Of(count.Attribute)))),
+            period with { Unreachable = period.Unreachable ?? counts.Unreachable ?? repositories.Unreachable ?? origins.Unreachable });
+    }
+
+    public async Task<(IReadOnlyDictionary<string, IReadOnlyList<string>> Models, IReadOnlyDictionary<string, IReadOnlyList<string>> Efforts)> ModelsBySkillAsync(
+        Filter filter,
+        CancellationToken cancellationToken)
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);
 
         var activations = Narrowed(store.Activations, filter);
 
-        // Narrow reads beat one wide one: SQLite has no distinct-within-group, and a full history will not fold in memory.
-        var counts = await activations
-            .GroupBy(a => a.SkillName)
-            .Select(group => new SkillCount(group.Key, group.Count()))
-            .ToListAsync(cancellationToken);
-
-        return new ActivationTally(
-            counts.ToDictionary(count => count.Skill, count => count.Activations),
-            await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Repository), cancellationToken),
-            await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.GitBranch), cancellationToken),
+        return (
             await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Model), cancellationToken),
             await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
     }
@@ -73,24 +91,26 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
                 RecordedArguments.Read(activation.Arguments));
     }
 
-    // Not narrowed: a filter that has cut the answer to nothing must still offer the way back out.
+    // Not narrowed by a filter: a filter that has cut the answer to nothing must still offer the way back out.
     public async Task<(IReadOnlyList<string> Repositories, IReadOnlyList<string> Skills)> ChoicesAsync(
+        DaySpan span,
         CancellationToken cancellationToken)
     {
-        await using var store = await contexts.CreateDbContextAsync(cancellationToken);
+        var fired = await events.CountAsync(Firings(span), ByRepository, cancellationToken);
 
-        var repositories = await store.Activations
-            .Select(a => a.Repository)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        var skills = await store.Activations
-            .Select(a => a.SkillName)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        return (Sorted(repositories.OfType<string>()), Sorted(skills));
+        return (
+            Sorted(fired.Groups.Select(count => count.Repository).OfType<string>()),
+            Sorted(fired.Groups.Select(count => count.Attribute(EventAttributes.Skill)).OfType<string>()));
     }
+
+    private static EventQuery Firings(DaySpan span) => new(SkillEvent.EventName, span.FromUtc, span.UntilUtc);
+
+    // A count with no skill name is a firing Claude Code did not name, and it belongs to no skill.
+    private static IEnumerable<IGrouping<string, EventCount>> BySkill(EventCounts counts) =>
+        from count in counts.Groups
+        let skill = count.Attribute(EventAttributes.Skill)
+        where skill is not null
+        group count by skill;
 
     // Repeated in SpendQueries: sharing it means an interface EF cannot translate or hand-grafted expressions.
     private static IQueryable<Activation> Narrowed(IQueryable<Activation> activations, Filter filter)
@@ -119,7 +139,7 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
     }
 
     private static IReadOnlyList<string> Sorted(IEnumerable<string> names) =>
-        [.. names.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];
+        [.. names.Distinct().OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];
 
     // Nulls are dropped in memory because SQLite will not take a predicate over the pair.
     private static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> BySkillAsync(

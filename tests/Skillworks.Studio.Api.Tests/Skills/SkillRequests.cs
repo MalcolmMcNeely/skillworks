@@ -28,19 +28,4 @@ public static class SkillRequests
 
     public static async Task<int> ActivationsOf(this StudioHost studio, string name, string filter = "") =>
         (await studio.Skills(filter)).SingleOrDefault(skill => skill.Name == name)?.Activations ?? 0;
-
-    public static async Task WaitForSkill(this StudioHost studio, string name)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-
-        while (await studio.ActivationsOf(name) == 0)
-        {
-            if (DateTime.UtcNow > deadline)
-            {
-                throw new TimeoutException($"{name} never appeared.");
-            }
-
-            await Task.Delay(50);
-        }
-    }
 }

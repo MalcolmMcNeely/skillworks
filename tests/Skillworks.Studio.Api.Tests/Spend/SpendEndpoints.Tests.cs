@@ -96,6 +96,7 @@ public sealed class SpendEndpointsTests
     public async Task Reports_the_average_cost_of_an_activation_beside_the_total()
     {
         using var studio = new StudioHost(StudioHost.Fixture("costly"));
+        await PushCostlyFirings(studio);
 
         var sweep = await studio.Skill("comment-sweep");
 
@@ -107,6 +108,7 @@ public sealed class SpendEndpointsTests
     public async Task Ranks_skills_by_what_they_cost()
     {
         using var studio = new StudioHost(StudioHost.Fixture("costly"));
+        await PushCostlyFirings(studio);
 
         var skills = await studio.Skills();
 
@@ -150,6 +152,7 @@ public sealed class SpendEndpointsTests
     public async Task Charges_a_skill_nothing_when_no_request_was_made_under_it()
     {
         using var studio = new StudioHost(StudioHost.Fixture("costly"));
+        await PushCostlyFirings(studio);
 
         var grilling = await studio.Skill("grilling");
 
@@ -173,4 +176,12 @@ public sealed class SpendEndpointsTests
         Assert.Equal(HaikuCost, unslop.Spend.Cost);
         Assert.Equal(1_500, (await studio.Skill("comment-sweep")).Spend.InputTokens);
     }
+
+    // The costly transcript's firings as events, because the count comes from the events store.
+    private static Task PushCostlyFirings(StudioHost studio) => studio.Push(
+        new SkillActivated("comment-sweep", "2026-09-10T09:00:04.000Z"),
+        new SkillActivated("unslop", "2026-09-10T09:01:10.000Z"),
+        new SkillActivated("comment-sweep", "2026-09-10T09:05:03.000Z"),
+        new SkillActivated("tdd", "2026-09-10T09:20:02.000Z"),
+        new SkillActivated("grilling", "2026-09-10T09:40:03.000Z"));
 }

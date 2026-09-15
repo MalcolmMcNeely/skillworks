@@ -6,7 +6,6 @@ public sealed record SkillSummary(
     string Name,
     int Activations,
     IReadOnlyList<string> Repositories,
-    IReadOnlyList<string> Branches,
     IReadOnlyList<string> Models,
     IReadOnlyList<string> Efforts,
     SkillSpend Spend,

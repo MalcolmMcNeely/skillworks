@@ -15,12 +15,24 @@ public sealed record Filter
     // Skill is left out: it only picks which skills are listed, and a never-fired one still belongs there.
     public bool AsksWhatHappened => From is not null || To is not null || Repository is not null;
 
-    public DateTimeOffset? FromUtc =>
-        From is { } day ? new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero) : null;
+    public DateTimeOffset? FromUtc => From is { } day ? DaySpan.StartOf(day) : null;
 
-    // A day past To, so To is taken in whole and a session run that evening is not dropped.
-    public DateTimeOffset? UntilUtc =>
-        To is { } day ? new DateTimeOffset(day.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero) : null;
+    public DateTimeOffset? UntilUtc => To is { } day ? DaySpan.EndOf(day) : null;
 
     public bool Covers(string skill) => Skill is null || Skill == skill;
+
+    // With no span, the lookback, so a zero always has a period it is honest about.
+    public DaySpan Span(DateOnly today, int lookbackDays)
+    {
+        var days = Math.Max(1, lookbackDays);
+
+        if (From is null && To is null)
+        {
+            return new DaySpan(today.AddDays(1 - days), today, Lookback: true);
+        }
+
+        var to = To ?? today;
+
+        return new DaySpan(From ?? to.AddDays(1 - days), to, Lookback: false);
+    }
 }

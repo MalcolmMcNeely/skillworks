@@ -9,7 +9,9 @@ public sealed record SkillActivated(
     string? Trigger = null,
     string? Source = null,
     string? Plugin = null,
-    string? Marketplace = null)
+    string? Marketplace = null,
+    string? Owner = null,
+    string? RepositoryName = null)
 {
     internal const string EventName = "skill_activated";
 
@@ -22,5 +24,7 @@ public sealed record SkillActivated(
         ("skill.source", Source),
         ("plugin.name", Plugin),
         ("marketplace.name", Marketplace),
+        ("vcs.owner.name", Owner),
+        ("vcs.repository.name", RepositoryName),
     ];
 }

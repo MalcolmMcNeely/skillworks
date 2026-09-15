@@ -72,8 +72,8 @@ public sealed class StudioHealth(
             "Events store",
             PartState.Broken,
             unreachable,
-            "Start Studio's containers with aspire run. Counts and cost are unaffected: they come " +
-            "from the transcripts. Only where a skill came from is lost.");
+            "Start Studio's containers with aspire run. Until then, activation counts and where a " +
+            "skill came from are missing.");
 
     private static StudioPart Switch(TelemetrySwitchState state) => state switch
     {

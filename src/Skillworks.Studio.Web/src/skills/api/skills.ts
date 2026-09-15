@@ -1,4 +1,4 @@
-import { filterQuery, type Filter } from '../../filters/lib/filters';
+import { filterQuery, type Filter, type Span } from '../../filters/lib/filters';
 import { getJson } from '../../http/api/json';
 import type { Origin, Provenance } from '../../provenance/lib/provenance';
 import type { TokenSplit } from '../lib/skills';
@@ -15,7 +15,6 @@ export interface SkillSummary {
   name: string;
   activations: number;
   repositories: string[];
-  branches: string[];
   models: string[];
   efforts: string[];
   spend: SkillSpend;
@@ -26,6 +25,7 @@ export interface SkillSummary {
 export interface SkillTable {
   skills: SkillSummary[];
   provenance: Provenance;
+  span: Span;
 }
 
 export function fetchSkills(filter: Filter, signal: AbortSignal): Promise<SkillTable> {

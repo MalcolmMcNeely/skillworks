@@ -133,7 +133,7 @@ public sealed class HealthEndpointsTests
 
         var health = await studio.Health();
 
-        // The transcripts owe the containers nothing, so a docker problem costs the provenance view, not the app.
+        // The transcripts owe the containers nothing, so a docker problem costs what the events store holds, not the app.
         Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcripts").State);
         Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcript store").State);
         Assert.Null(health.WhyEmpty);

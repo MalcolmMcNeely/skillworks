@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Skillworks.Studio.Api.Tests.Activations;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Ingest;
@@ -21,5 +22,24 @@ public static class IngestRequests
         await studio.WaitForIngestPasses(1);
 
         return await studio.Client.GetFromJsonAsync<FaultRow[]>("/api/ingest/faults", StudioHost.Wire) ?? [];
+    }
+
+    // Read from the activations list, the one answer still drawn from what the ingest stored.
+    public static async Task<int> ListedActivationsOf(this StudioHost studio, string skill) =>
+        (await studio.Activations($"?skill={Uri.EscapeDataString(skill)}")).Count;
+
+    public static async Task WaitForSkill(this StudioHost studio, string skill)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+
+        while (await studio.ListedActivationsOf(skill) == 0)
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException($"{skill} never appeared.");
+            }
+
+            await Task.Delay(50);
+        }
     }
 }

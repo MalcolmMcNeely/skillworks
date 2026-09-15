@@ -8,6 +8,15 @@ export interface Filter {
 
 export const everything: Filter = { from: '', to: '', repository: '', skill: '' };
 
+// Both ends in, so a span of one day has from equal to to.
+export interface Span {
+  from: string;
+  to: string;
+  lookback: boolean;
+}
+
+const dayMilliseconds = 24 * 60 * 60 * 1000;
+
 export function readFilter(params: URLSearchParams): Filter {
   return {
     from: params.get('from') ?? '',
@@ -60,6 +69,17 @@ export function describeFilter(filter: Filter): string {
   }
 
   return parts.join(', ');
+}
+
+export function describeSpan(span: Span): string {
+  if (span.lookback) {
+    // Read as UTC midnights, so a daylight saving change cannot make a day 23 hours long.
+    const days = (Date.parse(`${span.to}T00:00:00Z`) - Date.parse(`${span.from}T00:00:00Z`)) / dayMilliseconds + 1;
+
+    return days === 1 ? 'today' : `the last ${days} days`;
+  }
+
+  return span.from === span.to ? span.from : `${span.from} to ${span.to}`;
 }
 
 // A missing source comes first, or a reader widens a date range that was never the problem.

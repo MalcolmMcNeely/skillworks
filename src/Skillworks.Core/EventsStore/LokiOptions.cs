@@ -14,8 +14,10 @@ public sealed class LokiOptions
     // Short on purpose: a Loki container that is down must cost the provenance, not the page.
     public int TimeoutSeconds { get; set; } = 5;
 
-    // Loki refuses a range longer than 721 hours by default, so "everything" has to be a window.
-    public int LookbackDays { get; set; } = 30;
+    public int LookbackDays { get; set; } = 7;
+
+    // Loki refuses a range longer than 721 hours by default.
+    public int MaxQueryDays { get; set; } = 30;
 
     // Matches Loki's own ceiling on one answer.
     public int MaxEvents { get; set; } = 5000;

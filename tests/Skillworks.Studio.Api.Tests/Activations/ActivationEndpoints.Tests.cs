@@ -85,6 +85,28 @@ public sealed partial class ActivationEndpointsTests
     }
 
     [Fact]
+    public async Task Names_the_repository_a_session_ran_in_when_it_started_in_a_subfolder()
+    {
+        using var machine = new TemporaryFolder();
+
+        // Started two folders down, where the working directory's leaf would answer "web" instead of "omega".
+        machine.Subfolder("omega", ".git");
+        var startedIn = machine.Subfolder("omega", "src", "web");
+
+        var transcripts = machine.Subfolder("transcripts", "C--Projects-omega-src-web");
+        var template = await File.ReadAllTextAsync(
+            Path.Combine(StudioHost.Fixture("in-a-subfolder"), "template.jsonl.part"));
+
+        await File.WriteAllTextAsync(
+            Path.Combine(transcripts, "0a9f1c2e-0000-4000-8000-000000000006.jsonl"),
+            template.Replace("__CWD__", startedIn.Replace("\\", "\\\\")));
+
+        using var studio = new StudioHost(machine.Subfolder("transcripts"));
+
+        Assert.Equal("omega", Assert.Single(await studio.Activations("?skill=comment-sweep")).Repository);
+    }
+
+    [Fact]
     public async Task Answers_a_filter_that_matches_nothing_with_an_empty_list()
     {
         using var studio = new StudioHost(StudioHost.Fixture("filtered"));

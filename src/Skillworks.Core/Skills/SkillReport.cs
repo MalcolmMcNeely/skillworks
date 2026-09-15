@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Options;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Provenance;
 using Skillworks.Core.Spend;
@@ -13,15 +15,22 @@ public sealed class SkillReport(
     SpendQueries spend,
     PriceTable prices,
     CatalogueSkills catalogue,
-    ProvenanceReport provenance)
+    ProvenanceReport provenance,
+    IOptions<LokiOptions> loki,
+    TimeProvider clock)
 {
     public async Task<SkillTable> SkillsAsync(
         Filter filter,
         CancellationToken cancellationToken)
     {
-        var tally = await activations.TallyBySkillAsync(filter, cancellationToken);
-        var tokens = await spend.TokensBySkillAsync(filter, cancellationToken);
-        var origins = await provenance.ForAsync(filter, cancellationToken);
+        var span = Span(filter);
+
+        // The transcript store is narrowed to the same days, or a week's count would sit beside an all-time cost.
+        var spanned = filter with { From = span.From, To = span.To };
+
+        var tally = await activations.TallyBySkillAsync(span, filter, cancellationToken);
+        var firedOn = await activations.ModelsBySkillAsync(spanned, cancellationToken);
+        var tokens = await spend.TokensBySkillAsync(spanned, cancellationToken);
 
         // Read now, not stored with the turns, so correcting a rate never means reading a transcript again.
         var rates = await prices.ByModelAsync(cancellationToken);
@@ -37,7 +46,7 @@ public sealed class SkillReport(
             }
         }
 
-        // A skill can own tokens with no firing in the transcript store: its transcript may be unread yet, or trimmed away.
+        // Spend still comes from the transcript store, so a skill can have spend and no firing in the events store.
         foreach (var name in tokens.Keys)
         {
             counts.TryAdd(name, 0);
@@ -54,20 +63,21 @@ public sealed class SkillReport(
                             skill.Key,
                             skill.Value,
                             tally.Repositories.GetValueOrDefault(skill.Key, []),
-                            tally.Branches.GetValueOrDefault(skill.Key, []),
-                            Together(tally.Models.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Model)),
-                            Together(tally.Efforts.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Effort)),
+                            Together(firedOn.Models.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Model)),
+                            Together(firedOn.Efforts.GetValueOrDefault(skill.Key, []), runs.Select(run => run.Effort)),
                             SkillSpend.Of(runs, rates),
-                            origins.Of(skill.Key));
+                            tally.Origins.GetValueOrDefault(skill.Key, []));
                     })
                     .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
             ],
-            origins.Note);
+            provenance.NoteOn(tally.Period, span),
+            span);
     }
 
+    // Offers what fired in the lookback, as the unnarrowed table does, so every choice has something behind it.
     public async Task<FilterChoices> ChoicesAsync(CancellationToken cancellationToken)
     {
-        var (repositories, fired) = await activations.ChoicesAsync(cancellationToken);
+        var (repositories, fired) = await activations.ChoicesAsync(Span(new Filter()), cancellationToken);
 
         return new FilterChoices(
             repositories,
@@ -79,6 +89,9 @@ public sealed class SkillReport(
                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             ]);
     }
+
+    private DaySpan Span(Filter filter) =>
+        filter.Span(DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime), loki.Value.LookbackDays);
 
     // The cost covers every request, so a skill billed at two rates must list both models.
     private static IReadOnlyList<string> Together(IReadOnlyList<string> chosen, IEnumerable<string?> ran) =>

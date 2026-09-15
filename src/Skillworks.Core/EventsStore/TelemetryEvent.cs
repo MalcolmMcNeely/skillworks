@@ -5,5 +5,5 @@ public sealed class TelemetryEvent(DateTimeOffset at, IReadOnlyDictionary<string
     public DateTimeOffset At => at;
 
     // Takes Claude Code's dotted name, so no caller has to know Loki's underscores.
-    public string? Attribute(string name) => labels.GetValueOrDefault(name.Replace('.', '_'));
+    public string? Attribute(string name) => labels.GetValueOrDefault(EventAttributes.LabelOf(name));
 }

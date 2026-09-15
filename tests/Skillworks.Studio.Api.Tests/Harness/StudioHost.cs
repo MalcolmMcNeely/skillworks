@@ -39,23 +39,30 @@ public sealed class StudioHost : IDisposable
         // Not the developer's settings, or provenance tests would pass or fail on this machine's telemetry.
         bool emitting = true,
         string? settings = null,
-        bool tenanted = true)
+        bool tenanted = true,
+        int? lookbackDays = null)
     {
         var settingsPath = Path.Combine(_data.Path, "settings.json");
         File.WriteAllText(settingsPath, settings ?? (emitting ? EmittingSettings : "{}"));
 
+        // Left out unless asked for, as an empty value binds as zero days and would hide the default.
+        (string Key, string? Value)[] lookback = lookbackDays is { } days ? [("Loki:LookbackDays", days.ToString())] : [];
+
         _api = new StudioApiHost(
             events,
             _clock,
-            ("Transcripts:Path", transcriptPath),
-            ("TranscriptStore:DatabasePath", Path.Combine(_data.Path, "transcript-store.db")),
-            ("TranscriptStore:SweepSeconds", sweepSeconds.ToString()),
-            ("Loki:Address", TestLoki.Address.ToString()),
-            ("Loki:Tenant", tenanted ? _tenant : null),
-            ("Loki:MaxEvents", maxEvents.ToString()),
-            ("ClaudeSettings:Path", settingsPath),
-            ("ClaudeSettings:StampPath", Path.Combine(_data.Path, "telemetry-switch.json")),
-            ("Catalogue:Path", cataloguePath ?? Path.Combine(_data.Path, "no-catalogue")));
+            [
+                ("Transcripts:Path", transcriptPath),
+                ("TranscriptStore:DatabasePath", Path.Combine(_data.Path, "transcript-store.db")),
+                ("TranscriptStore:SweepSeconds", sweepSeconds.ToString()),
+                ("Loki:Address", TestLoki.Address.ToString()),
+                ("Loki:Tenant", tenanted ? _tenant : null),
+                ("Loki:MaxEvents", maxEvents.ToString()),
+                ("ClaudeSettings:Path", settingsPath),
+                ("ClaudeSettings:StampPath", Path.Combine(_data.Path, "telemetry-switch.json")),
+                ("Catalogue:Path", cataloguePath ?? Path.Combine(_data.Path, "no-catalogue")),
+                .. lookback,
+            ]);
 
         _client = _api.CreateClient();
     }

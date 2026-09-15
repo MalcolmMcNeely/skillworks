@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Skills;
@@ -5,36 +7,57 @@ namespace Skillworks.Studio.Api.Tests.Skills;
 public sealed partial class SkillEndpointsTests
 {
     [Fact]
-    public async Task Reports_a_skill_that_fired_once_with_the_repository_and_branch_it_fired_in()
+    public async Task Counts_every_skill_activated_event_whatever_set_the_skill_off()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Trigger: "claude-proactive"),
+            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Trigger: "user-slash"),
+            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", Trigger: "nested-skill"),
+            new SkillActivated("grilling", "2026-09-14T09:15:00.000Z", Trigger: "agent-preload"),
+            new SkillActivated("tdd", "2026-09-14T09:20:00.000Z", Trigger: "claude-proactive"));
+
+        var skills = await studio.Skills();
+
+        // A typed skill is use too, so an entry point never reads as a skill nobody runs.
+        Assert.Equal(["grilling", "tdd"], skills.Select(skill => skill.Name));
+        Assert.Equal([4, 1], skills.Select(skill => skill.Activations));
+    }
+
+    [Fact]
+    public async Task Names_a_repository_by_its_owner_and_its_name()
+    {
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "malcolmania", RepositoryName: "skillworks"),
+            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Owner: "acme", RepositoryName: "skillworks"),
+            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", Owner: "acme", RepositoryName: "skillworks"));
+
+        // Two organisations can each have a skillworks, and one name for both would merge them.
+        Assert.Equal(["acme/skillworks", "malcolmania/skillworks"], (await studio.Skill("grilling")).Repositories);
+    }
+
+    [Fact]
+    public async Task Counts_a_firing_that_names_no_repository_without_naming_one_for_it()
+    {
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+
+        await studio.Push(
+            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
+            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Owner: "acme"),
+            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", RepositoryName: "skillworks"));
 
         var grilling = await studio.Skill("grilling");
 
-        Assert.Equal(1, grilling.Activations);
-        Assert.Equal(["alpha"], grilling.Repositories);
-        Assert.Equal(["main"], grilling.Branches);
+        // An older Claude Code, or a repository with no origin remote, still fired the skill.
+        Assert.Equal(3, grilling.Activations);
+        Assert.Empty(grilling.Repositories);
     }
 
     [Fact]
-    public async Task Reads_the_rest_of_a_transcript_that_holds_a_line_it_cannot_parse()
-    {
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
-
-        // The ordinary fixture carries one truncated line. One bad line must not cost the file.
-        Assert.Equal(1, await studio.ActivationsOf("grilling"));
-    }
-
-    [Fact]
-    public async Task Counts_every_firing_in_a_session_as_its_own_activation()
-    {
-        using var studio = new StudioHost(StudioHost.Fixture("repeated"));
-
-        Assert.Equal(3, await studio.ActivationsOf("unslop"));
-    }
-
-    [Fact]
-    public async Task Reports_nothing_for_a_session_in_which_no_skill_fired()
+    public async Task Reports_nothing_when_no_skill_fired()
     {
         using var studio = new StudioHost(StudioHost.Fixture("quiet"));
 
@@ -42,48 +65,35 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Reports_a_catalogue_skill_that_has_never_fired_with_no_activations()
+    public async Task Reports_a_catalogue_skill_that_did_not_fire_in_the_lookback_with_a_zero()
     {
         using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
 
-        var never = await studio.Skill("probekit:probe-local");
-
-        Assert.Equal(0, never.Activations);
-        Assert.Empty(never.Repositories);
-    }
-
-    [Fact]
-    public async Task Reports_a_catalogue_skill_that_has_fired_once_only()
-    {
-        using var studio = new StudioHost(StudioHost.Fixture("catalogue"), StudioHost.Catalogue());
+        await studio.Push(
+            new SkillActivated("probekit:probe-local", "2026-09-01T09:00:00.000Z"),
+            new SkillActivated("probekit:probe-plugin", "2026-09-14T09:00:00.000Z"),
+            new SkillActivated("probekit:probe-plugin", "2026-09-14T09:05:00.000Z"));
 
         var skills = await studio.Skills();
 
-        Assert.Equal(
-            ["probekit:probe-local", "probekit:probe-plugin"],
-            skills.Select(skill => skill.Name));
-        Assert.Equal(2, await studio.ActivationsOf("probekit:probe-plugin"));
+        // probe-local last fired before the lookback, and its zero says its description may have stopped working.
+        Assert.Equal(["probekit:probe-local", "probekit:probe-plugin"], skills.Select(skill => skill.Name));
+        Assert.Equal([0, 2], skills.Select(skill => skill.Activations));
+        Assert.Empty(skills[0].Repositories);
     }
 
     [Fact]
-    public async Task Names_the_repository_a_session_ran_in_when_it_started_in_a_subfolder()
+    public async Task Leaves_the_branch_out_of_the_answer()
     {
-        using var machine = new TemporaryFolder();
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
 
-        // Started two folders down, where the working directory's leaf would answer "web" instead of "omega".
-        machine.Subfolder("omega", ".git");
-        var startedIn = machine.Subfolder("omega", "src", "web");
+        await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
 
-        var transcripts = machine.Subfolder("transcripts", "C--Projects-omega-src-web");
-        var template = await File.ReadAllTextAsync(
-            Path.Combine(StudioHost.Fixture("in-a-subfolder"), "template.jsonl.part"));
+        using var response = await studio.AskForSkills("");
+        var grilling = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("skills")[0];
 
-        await File.WriteAllTextAsync(
-            Path.Combine(transcripts, "0a9f1c2e-0000-4000-8000-000000000006.jsonl"),
-            template.Replace("__CWD__", startedIn.Replace("\\", "\\\\")));
-
-        using var studio = new StudioHost(machine.Subfolder("transcripts"));
-
-        Assert.Equal(["omega"], (await studio.Skill("comment-sweep")).Repositories);
+        // No telemetry event carries a branch, so a field for one would stay empty for good.
+        Assert.Equal("grilling", grilling.GetProperty("name").GetString());
+        Assert.False(grilling.TryGetProperty("branches", out _));
     }
 }

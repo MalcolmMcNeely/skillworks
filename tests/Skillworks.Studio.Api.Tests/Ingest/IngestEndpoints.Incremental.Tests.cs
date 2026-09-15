@@ -1,5 +1,5 @@
+using Skillworks.Studio.Api.Tests.Activations;
 using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Skills;
 
 namespace Skillworks.Studio.Api.Tests.Ingest;
 
@@ -13,13 +13,13 @@ public sealed partial class IngestEndpointsTests
 
         using var studio = new StudioHost(machine.Subfolder("transcripts"));
 
-        Assert.Equal(1, await studio.ActivationsOf("implement"));
+        Assert.Equal(1, await studio.ListedActivationsOf("implement"));
 
         await File.AppendAllTextAsync(transcript, Appendix());
         await studio.IngestAgain();
 
-        Assert.Equal(1, await studio.ActivationsOf("implement"));
-        Assert.Equal(1, await studio.ActivationsOf("code-review"));
+        Assert.Equal(1, await studio.ListedActivationsOf("implement"));
+        Assert.Equal(1, await studio.ListedActivationsOf("code-review"));
     }
 
     [Fact]
@@ -42,8 +42,8 @@ public sealed partial class IngestEndpointsTests
         await File.WriteAllTextAsync(transcript, tampered + Appendix());
         await studio.IngestAgain();
 
-        Assert.Equal(0, await studio.ActivationsOf("tampering"));
-        Assert.Equal(1, await studio.ActivationsOf("code-review"));
+        Assert.Equal(0, await studio.ListedActivationsOf("tampering"));
+        Assert.Equal(1, await studio.ListedActivationsOf("code-review"));
     }
 
     private static string Appendix() =>

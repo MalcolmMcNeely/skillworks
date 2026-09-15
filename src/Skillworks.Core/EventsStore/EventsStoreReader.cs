@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
@@ -11,6 +12,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
     // A real query over a short window: a readiness route would pass a store that refuses queries.
     private static readonly TimeSpan Probe = TimeSpan.FromMinutes(1);
 
+    // A JSON string is a LogQL string, and relaxed escaping never writes the surrogate pairs LogQL rejects.
+    private static readonly JsonSerializerOptions LogQlString = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
     private const string AnyStream = "{service_name=~\".+\"}";
 
     public Task<EventReading> ReadAsync(
@@ -18,7 +22,30 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         DateTimeOffset from,
         DateTimeOffset until,
         CancellationToken cancellationToken) =>
-        QueryAsync($"{AnyStream} |= \"claude_code.{eventName}\"", from, until, options.Value.MaxEvents, cancellationToken);
+        QueryAsync(Selected(new EventQuery(eventName, from, until)), from, until, options.Value.MaxEvents, cancellationToken);
+
+    // Counted by Loki, so no read cap cuts a busy organisation's total short.
+    public Task<EventCounts> CountAsync(
+        EventQuery query,
+        IReadOnlyList<string> by,
+        CancellationToken cancellationToken)
+    {
+        if (query.Until <= query.From)
+        {
+            return Task.FromResult(EventCounts.Of([]));
+        }
+
+        var range = (long)(query.Until - query.From).TotalMilliseconds;
+        var sum = by.Count == 0 ? "sum" : $"sum by ({string.Join(", ", by.Select(EventAttributes.LabelOf))})";
+        var logql = $"{sum} (count_over_time({Selected(query)} [{range}ms]))";
+
+        // A range leaves out its start and takes in its end, so ending a nanosecond early takes From in and Until out.
+        var route =
+            $"loki/api/v1/query?query={Uri.EscapeDataString(logql)}" +
+            $"&time={Nanoseconds(query.Until) - 1}";
+
+        return AskAsync(route, root => EventCounts.Of(Counts(root)), EventCounts.Failed, cancellationToken);
+    }
 
     public async Task<string?> UnreachableAsync(CancellationToken cancellationToken)
     {
@@ -27,21 +54,66 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         return (await QueryAsync(AnyStream, now - Probe, now, 1, cancellationToken)).Unreachable;
     }
 
-    private async Task<EventReading> QueryAsync(
+    private static string Selected(EventQuery query)
+    {
+        var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\"";
+
+        if (query.Skill is { } skill)
+        {
+            logql += $" | {EventAttributes.LabelOf(EventAttributes.Skill)}={Quoted(skill)}";
+        }
+
+        if (query.Repository is { } repository)
+        {
+            var (owner, name) = EventAttributes.OwnerAndName(repository);
+            var ownerLabel = EventAttributes.LabelOf(EventAttributes.Owner);
+            var nameLabel = EventAttributes.LabelOf(EventAttributes.RepositoryName);
+
+            // An empty match would take in every event that has no Repository, which a Repository filter leaves out.
+            logql +=
+                $" | {ownerLabel}!=\"\" | {nameLabel}!=\"\"" +
+                $" | {ownerLabel}={Quoted(owner)} | {nameLabel}={Quoted(name)}";
+        }
+
+        return logql;
+    }
+
+    private static string Quoted(string value) => JsonSerializer.Serialize(value, LogQlString);
+
+    private Task<EventReading> QueryAsync(
         string query,
         DateTimeOffset from,
         DateTimeOffset until,
         int limit,
         CancellationToken cancellationToken)
     {
-        var loki = options.Value;
-        var address = loki.ResolvedAddress();
-        var client = clients.CreateClient(ClientName);
-
         // Newest first, so a period too big for one read keeps the part a reader is asking about.
         var route =
             $"loki/api/v1/query_range?query={Uri.EscapeDataString(query)}" +
             $"&start={Nanoseconds(from)}&end={Nanoseconds(until)}&limit={limit}&direction=backward";
+
+        return AskAsync(
+            route,
+            root =>
+            {
+                var read = Read(root);
+
+                // A full answer cannot be told from a capped one, and calling a cut period whole is the worse mistake.
+                return EventReading.Of(read, read.Count >= limit);
+            },
+            EventReading.Failed,
+            cancellationToken);
+    }
+
+    private async Task<T> AskAsync<T>(
+        string route,
+        Func<JsonElement, T> read,
+        Func<string, T> failed,
+        CancellationToken cancellationToken)
+    {
+        var loki = options.Value;
+        var address = loki.ResolvedAddress();
+        var client = clients.CreateClient(ClientName);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, route);
 
@@ -56,20 +128,17 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
             if (!response.IsSuccessStatusCode)
             {
-                return EventReading.Failed($"{address} answered {(int)response.StatusCode}");
+                return failed($"{address} answered {(int)response.StatusCode}");
             }
 
             await using var body = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var document = await JsonDocument.ParseAsync(body, cancellationToken: cancellationToken);
 
-            var read = Read(document.RootElement);
-
-            // A full answer cannot be told from a capped one, and calling a cut period whole is the worse mistake.
-            return EventReading.Of(read, read.Count >= limit);
+            return read(document.RootElement);
         }
         catch (Exception failure) when (Outside(failure, cancellationToken))
         {
-            return EventReading.Failed($"{address} could not be read: {failure.Message}");
+            return failed($"{address} could not be read: {failure.Message}");
         }
     }
 
@@ -80,16 +149,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private static IReadOnlyList<TelemetryEvent> Read(JsonElement root)
     {
-        if (!root.TryGetProperty("data", out var data) ||
-            !data.TryGetProperty("result", out var streams) ||
-            streams.ValueKind != JsonValueKind.Array)
-        {
-            return [];
-        }
-
         var events = new List<TelemetryEvent>();
 
-        foreach (var stream in streams.EnumerateArray())
+        foreach (var stream in Results(root))
         {
             if (!stream.TryGetProperty("values", out var entries) || entries.ValueKind != JsonValueKind.Array)
             {
@@ -97,7 +159,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             }
 
             // Loki answers a record's attributes as its stream's labels, not beside the entry.
-            var labels = Labels(stream);
+            var labels = Labels(stream, "stream");
 
             foreach (var entry in entries.EnumerateArray())
             {
@@ -111,11 +173,37 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         return events;
     }
 
-    private static Dictionary<string, string> Labels(JsonElement stream)
+    private static IReadOnlyList<EventCount> Counts(JsonElement root)
+    {
+        var counts = new List<EventCount>();
+
+        foreach (var sample in Results(root))
+        {
+            if (sample.TryGetProperty("value", out var value) &&
+                value.ValueKind == JsonValueKind.Array &&
+                value.GetArrayLength() >= 2 &&
+                value[1].ValueKind == JsonValueKind.String &&
+                decimal.TryParse(value[1].GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var count))
+            {
+                counts.Add(new EventCount(Labels(sample, "metric"), (long)count));
+            }
+        }
+
+        return counts;
+    }
+
+    private static IEnumerable<JsonElement> Results(JsonElement root) =>
+        root.TryGetProperty("data", out var data) &&
+        data.TryGetProperty("result", out var results) &&
+        results.ValueKind == JsonValueKind.Array
+            ? results.EnumerateArray()
+            : [];
+
+    private static Dictionary<string, string> Labels(JsonElement result, string property)
     {
         var labels = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        if (stream.TryGetProperty("stream", out var names) && names.ValueKind == JsonValueKind.Object)
+        if (result.TryGetProperty(property, out var names) && names.ValueKind == JsonValueKind.Object)
         {
             foreach (var label in names.EnumerateObject().Where(label => label.Value.ValueKind == JsonValueKind.String))
             {

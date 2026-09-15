@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { FilterBar } from '../../filters/components/FilterBar';
-import { describeEmpty, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
+import { describeEmpty, describeSpan, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
 import { HealthPanel } from '../../health/components/HealthPanel';
 import { useHealth } from '../../health/components/useHealth';
 import { describeFetchFailure } from '../../http/lib/errors';
@@ -70,6 +70,9 @@ export function Home() {
       {skillsError !== null && <p data-testid="skills-error">{skillsError}</p>}
       {skills !== null && (
         <>
+          {/* From the answer, not the filter, so the words name the days the API actually counted. */}
+          <p data-testid="skills-span">Covers {describeSpan(skills.span)}.</p>
+
           {/* Not in the table: the gap is one fact about the period, and a column would repeat it as many. */}
           <p data-testid="provenance-note">{describeProvenance(skills.provenance)}</p>
 
