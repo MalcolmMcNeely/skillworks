@@ -25,11 +25,14 @@ feature grew: it holds the types that turn a transcript line into rows.
 
 ## Files
 
-A file's **subject** is its name up to the first dot.
+A file's **subject** is its name up to the first dot. A **source file** is a file in `source-files`,
+tests included. A **code file** is a source file that is not a test. A **support file** is a code file
+that tests use: a host, a fake or a record a test reads a response into.
 
 - A C# file holds one top-level type, named as the subject. A private nested type or a `file` type
   can stay with the type it serves. Any other nested type gets its own file. A `Program.cs` with
   top-level statements is the one file with no type.
+- Global usings go in the project file as `<Using>` items, so no C# file holds only usings.
 - A large type splits across aspect files: `BlobRepository.Async.cs` holds `partial BlobRepository`.
 - A C# namespace is the project name, then the folder path: a file in
   `Skillworks.Core/<Feature>/<Concern>/` is in `Skillworks.Core.<Feature>.<Concern>`.
@@ -40,20 +43,19 @@ A file whose name matches a pattern in `test-files` is a test. Its subject drops
 any aspect, so `BlobRepository.Lease.Tests.cs` tests `BlobRepository`. It holds `partial
 BlobRepositoryTests`, and the other aspect files of that test class hold the other parts.
 
-- Test folders mirror source folders. A C# test in project `X.Tests` sits at the same relative path
-  as its subject's file in project `X`.
-- A front-end test sits beside its module.
-- Hosts, fakes and the records a test reads a response into are support files, not tests. Put them
-  beside the tests that use them, or in a folder named for what they do. The size limit, the name map
-  and the banned names apply to them too.
+- Test folders mirror the folders of the code files they test. A C# test in project `X.Tests` sits at
+  the same relative path as the code file it tests in project `X`.
+- A front-end test sits beside the code file it tests.
+- Support files sit beside the tests that use them, or in a folder named for what they do. The size
+  limit, the name map and the banned names apply to them too.
 
 ## Folder size
 
 A folder holds at most `max-types-per-folder` types. The count is the number of different subjects
-among the files in `source-files` that sit directly in the folder.
+among the source files that sit directly in the folder.
 
 - A type, its aspect files and the test beside it share a subject, so they take one place.
-- A test with no module beside it counts as one.
+- A test with no code file beside it counts as one.
 - Subfolders count for nothing, so splitting a full folder into feature or concern folders always
   makes room.
 

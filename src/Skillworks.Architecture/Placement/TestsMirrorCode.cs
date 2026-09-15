@@ -10,7 +10,7 @@ internal static class TestsMirrorCode
     {
         var tests = sourceFiles.Where(file => rules.IsTestFile(Path.GetFileName(file))).ToList();
 
-        var code = sourceFiles
+        var codeFiles = sourceFiles
             .Except(tests)
             .Select(file => (Folder: SourceTree.FolderOf(file), Subject: rules.SubjectOf(file), IsCSharp: CSharpFile.IsCSharp(file)))
             .ToHashSet();
@@ -25,8 +25,8 @@ internal static class TestsMirrorCode
 
             if (!CSharpFile.IsCSharp(test))
             {
-                if (!code.Contains((folder, subject, IsCSharp: false)))
-                    yield return new Breach(Rule, test, $"Move the test beside the `{subject}` module it tests, or delete it.");
+                if (!codeFiles.Contains((folder, subject, IsCSharp: false)))
+                    yield return new Breach(Rule, test, $"Move the test beside the `{subject}` code file it tests, or delete it.");
 
                 continue;
             }
@@ -44,16 +44,16 @@ internal static class TestsMirrorCode
                 yield return new Breach(
                     Rule,
                     test,
-                    $"Put the test in the project named for the code it tests, or delete it: no project `{codeProjectName}` holds code.");
+                    $"Put the test in the project named for the project that holds the code file it tests, or delete it: no project `{codeProjectName}` holds code files.");
 
                 continue;
             }
 
             var mirror = testProject.FolderMirroredIn(codeProject, folder);
-            if (code.Contains((mirror, subject, IsCSharp: true)))
+            if (codeFiles.Contains((mirror, subject, IsCSharp: true)))
                 continue;
 
-            var codeFolders = code
+            var codeFolders = codeFiles
                 .Where(entry => entry.Subject == subject && entry.IsCSharp && projects.GetValueOrDefault(entry.Folder) == codeProject)
                 .Select(entry => entry.Folder)
                 .ToList();
@@ -63,9 +63,9 @@ internal static class TestsMirrorCode
                 test,
                 codeFolders switch
                 {
-                    [] => $"No `{subject}` code sits at `{mirror}`. Move the test to mirror the code it tests, or delete it.",
-                    [var only] => $"Move the test to `{codeProject.FolderMirroredIn(testProject, only)}/{fileName}`, which mirrors the `{subject}` code in `{only}`.",
-                    _ => $"Move the test to the path that mirrors the `{subject}` code it tests in `{codeProject.Folder}`.",
+                    [] => $"No `{subject}` code file sits at `{mirror}`. Move the test to mirror the code file it tests, or delete it.",
+                    [var only] => $"Move the test to `{codeProject.FolderMirroredIn(testProject, only)}/{fileName}`, which mirrors the `{subject}` code file in `{only}`.",
+                    _ => $"Move the test to the path that mirrors the `{subject}` code file it tests in `{codeProject.Folder}`.",
                 });
         }
     }

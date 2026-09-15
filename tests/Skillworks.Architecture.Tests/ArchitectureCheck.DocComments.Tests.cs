@@ -104,7 +104,7 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void A_doc_comment_in_a_source_file_is_not_a_breach_when_doc_comments_are_allowed()
+    public void A_doc_comment_in_a_code_file_is_not_a_breach_when_doc_comments_are_allowed()
     {
         using var tree = new RulesTree()
             .Set(CommentsFile, "doc-comments", "true")

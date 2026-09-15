@@ -19,7 +19,7 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void Aspect_files_and_the_tests_beside_a_module_take_one_place()
+    public void Aspect_files_and_the_tests_beside_a_code_file_take_one_place()
     {
         using var tree = new RulesTree()
             .Set(PlacementFile, "max-types-per-folder", "2")
@@ -35,7 +35,7 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void A_test_with_no_module_beside_it_counts_as_one()
+    public void A_test_with_no_code_file_beside_it_counts_as_one()
     {
         using var tree = new RulesTree()
             .Set(PlacementFile, "max-types-per-folder", "2")
@@ -47,7 +47,7 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void Tests_of_one_subject_with_no_module_beside_them_take_one_place()
+    public void Tests_of_one_subject_with_no_code_file_beside_them_take_one_place()
     {
         using var tree = new RulesTree()
             .Set(PlacementFile, "max-types-per-folder", "2")

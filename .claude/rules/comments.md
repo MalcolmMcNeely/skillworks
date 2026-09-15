@@ -21,7 +21,7 @@ tags, such as `/** @type {Config} */`, is not one.
 `doc-comments` decides where they go:
 
 - `false`: no file has doc comments. The names of types and members document the code.
-- `true`: source files may have doc comments, and test files keep to ordinary comments.
+- `true`: code files may have doc comments, and test files keep to ordinary comments.
 
 ```yaml
 doc-comments: false
