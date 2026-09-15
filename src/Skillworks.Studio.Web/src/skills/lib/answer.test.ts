@@ -57,7 +57,18 @@ function spent(cost: number, tokens = 0): TurnTotals {
 function fired(name: string, activations: number, spend: TurnTotals | null, more: Partial<SkillOnDay> = {}): SkillOnDay {
   const named = spend === null ? null : [];
 
-  return { name, activations, hours: hours({}), repositories: [], models: named, efforts: named, spend, origins: [], ...more };
+  return {
+    name,
+    activations,
+    hours: hours({}),
+    triggers: [],
+    repositories: [],
+    models: named,
+    efforts: named,
+    spend,
+    origins: [],
+    ...more,
+  };
 }
 
 const complete: Gap = { kind: 'complete', missing: null };
@@ -160,6 +171,7 @@ describe('foldSkillsLine', () => {
       {
         name: 'grilling',
         activations: 4,
+        triggers: [],
         repositories: ['acme/nu', 'acme/xi'],
         models: ['claude-opus-5[1m]', 'claude-sonnet-5'],
         efforts: ['high'],
@@ -167,6 +179,7 @@ describe('foldSkillsLine', () => {
         each: 0.2,
         origins: [proactive, typed],
         lastFired: '2026-09-15T14:00:00Z',
+        spark: [0, 1, 0, 0, 0, 0, 3, 0],
       },
     ]);
   });
@@ -367,6 +380,82 @@ describe('foldSkillsLine', () => {
         ['tdd', '2026-09-14T23:00:00Z'],
       ],
     ]);
+  });
+
+  it('adds a skill\'s Activations by trigger across the days that landed', async () => {
+    const states = await statesOf(
+      wire(
+        head(),
+        day('2026-09-15', [
+          fired('grilling', 3, spent(1), {
+            triggers: [
+              { trigger: 'claude-proactive', activations: 2 },
+              { trigger: 'user-slash', activations: 1 },
+            ],
+          }),
+        ]),
+        day('2026-09-14', [
+          fired('grilling', 3, spent(1), {
+            triggers: [
+              { trigger: null, activations: 1 },
+              { trigger: 'user-slash', activations: 2 },
+            ],
+          }),
+        ]),
+      ),
+    );
+
+    expect(states.map((state) => state.skills[0]?.triggers ?? [])).toEqual([
+      [],
+      [
+        { trigger: 'claude-proactive', activations: 2 },
+        { trigger: 'user-slash', activations: 1 },
+      ],
+      // An absent trigger first, as the answer orders them, so a skill reads the same however many days it spans.
+      [
+        { trigger: null, activations: 1 },
+        { trigger: 'claude-proactive', activations: 2 },
+        { trigger: 'user-slash', activations: 3 },
+      ],
+    ]);
+  });
+
+  it('adds up to the skill\'s Activations however many days its triggers span', async () => {
+    const states = await statesOf(
+      wire(
+        head(),
+        day('2026-09-15', [fired('grilling', 2, spent(1), { triggers: [{ trigger: 'user-slash', activations: 2 }] })]),
+        day('2026-09-14', [fired('grilling', 1, spent(1), { triggers: [{ trigger: 'user-slash', activations: 1 }] })]),
+      ),
+    );
+
+    const grilling = states.at(-1)?.skills[0];
+
+    expect(grilling?.triggers.reduce((sum, trigger) => sum + trigger.activations, 0)).toBe(grilling?.activations);
+  });
+
+  it('fills a skill\'s chart slice by slice, in step with the activity strip', async () => {
+    const states = await statesOf(
+      wire(
+        head([], daysBack(7)),
+        day('2026-09-15', [fired('grilling', 3, spent(1), { hours: hours({ 5: 1, 6: 2 }) })]),
+        day('2026-09-14', [fired('grilling', 1, spent(1), { hours: hours({ 20: 1 }) })]),
+      ),
+    );
+
+    // One count per slice, so a bar of the chart covers the same six hours as the slice above it.
+    expect(states.map((state) => state.skills[0]?.spark.slice(20) ?? [])).toEqual([
+      [],
+      [0, 0, 0, 0, 1, 2, 0, 0],
+      [0, 0, 0, 1, 1, 2, 0, 0],
+    ]);
+    expect(states.at(-1)?.skills[0]?.spark).toHaveLength(states.at(-1)?.slices.length ?? 0);
+  });
+
+  it('gives a catalogue skill that never fired a chart of nothing rather than no chart', async () => {
+    const [atHead] = await statesOf(wire(head(['probekit:probe-local'], ['2026-09-15'])));
+
+    expect(atHead?.skills[0]?.spark).toEqual(Array.from({ length: 24 }, () => 0));
   });
 
   it('lands a day whose line the network split across chunks', async () => {

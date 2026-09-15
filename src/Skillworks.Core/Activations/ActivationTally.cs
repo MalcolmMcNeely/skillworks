@@ -8,6 +8,7 @@ public sealed record ActivationTally(
     IReadOnlyDictionary<string, int> Counts,
     // By UTC hour, as the Filter counts whole UTC days.
     IReadOnlyDictionary<string, IReadOnlyList<int>> Hours,
+    IReadOnlyDictionary<string, IReadOnlyList<TriggerCount>> Triggers,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Repositories,
     IReadOnlyDictionary<string, IReadOnlyList<SkillOrigin>> Origins,
     EventTotals Period)

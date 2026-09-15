@@ -33,19 +33,20 @@ export interface SkillTiles {
   each: { lowest: number; highest: number } | null;
 }
 
-export interface PlacedTile {
-  tile: MapTile;
-  x: number;
-  y: number;
+export interface Size {
   width: number;
   height: number;
 }
 
-interface Rectangle {
+export interface PlacedTile extends Size {
+  tile: MapTile;
   x: number;
   y: number;
-  width: number;
-  height: number;
+}
+
+interface Rectangle extends Size {
+  x: number;
+  y: number;
 }
 
 export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, view: MapView, order: MapOrder): SkillTiles {
@@ -137,7 +138,7 @@ function worstAspectRatio(areas: readonly number[], side: number): number {
 }
 
 // Squarified, but in the order given rather than largest first, so the reader's order decides what sits top left.
-export function layOut(tiles: readonly MapTile[], size: { width: number; height: number }): PlacedTile[] {
+export function layOut(tiles: readonly MapTile[], size: Size): PlacedTile[] {
   const total = tiles.reduce((sum, tile) => sum + tile.value, 0);
 
   if (total <= 0 || size.width <= 0 || size.height <= 0) {

@@ -66,17 +66,23 @@ export const surfaces: Record<string, Surface> = {
     ground: 'tileCool',
     text: ['ink', 'inkSoft', 'hud'],
     // The edge only on a cool tile: a hot tile stands out from the page by its own brightness.
-    marks: ['hud', 'inkFaint', 'line'],
+    marks: ['hud', 'inkFaint', 'line', 'failed'],
   },
   hotTile: {
     ground: 'tileHot',
     text: ['ink', 'inkSoft', 'hud'],
-    marks: ['hud', 'inkFaint'],
+    marks: ['hud', 'inkFaint', 'failed'],
   },
   unnamedTile: {
     ground: 'unnamedHatch',
     text: ['unnamed', 'inkSoft'],
     marks: [],
+  },
+  // A pinned readout lies over the map, so its labels, figures and trigger glyphs are held to the thresholds too.
+  tileReadout: {
+    ground: 'panel',
+    text: ['ink', 'inkSoft', 'inkFaint', 'hud'],
+    marks: ['line', 'hud'],
   },
 };
 

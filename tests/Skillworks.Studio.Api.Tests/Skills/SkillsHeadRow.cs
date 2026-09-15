@@ -1,3 +1,5 @@
+using Skillworks.Studio.Api.Tests.Filters;
+
 namespace Skillworks.Studio.Api.Tests.Skills;
 
 public sealed record SkillsHeadRow

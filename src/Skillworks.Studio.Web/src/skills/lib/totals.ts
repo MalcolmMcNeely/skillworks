@@ -9,7 +9,7 @@ export interface Totals {
   unnamedSpend: number | null;
 }
 
-function tokensIn(spend: TurnTotals | null): number {
+export function tokensIn(spend: TurnTotals | null): number {
   return spend === null
     ? 0
     : spend.inputTokens + spend.outputTokens + spend.cacheReadTokens + spend.cacheCreationTokens;

@@ -869,8 +869,10 @@ main {
 /* Brightness is a mix between the palette's two tile grounds, so every shade lies between two tested ends. */
 .tile-skin {
   background: color-mix(in srgb, var(--tile-hot) calc(var(--heat, 0) * 100%), var(--tile-cool));
+  border: none;
   box-shadow: inset 0 0 0 1px var(--line);
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  color: inherit;
   display: flex;
   flex-direction: column;
   gap: 0.12rem;
@@ -878,6 +880,15 @@ main {
   overflow: hidden;
   padding: 0.4rem 0.55rem 0.45rem;
   position: absolute;
+  text-align: left;
+}
+
+button.tile-skin {
+  cursor: pointer;
+}
+
+.tile.is-pinned .tile-skin {
+  box-shadow: inset 0 0 0 2px var(--hud);
 }
 
 .tile-skin:hover {
@@ -951,13 +962,55 @@ main {
   color: var(--hud);
 }
 
+/* Under the figure, so a tile reads as figure, then shape, then detail. */
+.tile-spark {
+  align-items: flex-end;
+  display: flex;
+  gap: 1px;
+  height: 20px;
+  margin-top: 0.3rem;
+}
+
+.tile-spark i {
+  background: var(--hud);
+  flex: 1;
+  /* A line, not nothing, so an empty slice reads as quiet and the span keeps its width. */
+  min-height: 1px;
+}
+
+.tile-spark i.is-idle {
+  background: var(--ink-faint);
+}
+
+.tile-spark i.is-arriving,
+.tile-spark i.is-missing {
+  height: 100%;
+}
+
+.tile-spark i.is-arriving {
+  background: repeating-linear-gradient(var(--ink-faint) 0 2px, transparent 2px 5px);
+}
+
+.tile-spark i.is-missing {
+  background: repeating-linear-gradient(var(--failed) 0 2px, transparent 2px 5px);
+}
+
 .tile-foot {
+  align-items: baseline;
   color: var(--ink-soft);
+  display: flex;
   font-family: var(--mono);
   font-size: 0.7rem;
+  gap: 0.5rem;
   margin-top: auto;
   padding-top: 0.2rem;
   white-space: nowrap;
+}
+
+.tile-triggers {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
 }
 
 .tile.is-unnamed .tile-skin {
@@ -986,6 +1039,20 @@ main {
 
 @container tile (max-height: 80px) {
   .tile-foot {
+    display: none;
+  }
+}
+
+/* A small tile keeps its figure whole rather than giving the room to a chart. */
+@container tile (max-height: 130px) {
+  .tile-spark {
+    display: none;
+  }
+}
+
+/* The exact figure comes first, so only a tile with no room left for them drops the trigger glyphs. */
+@container tile (max-width: 110px) {
+  .tile-triggers {
     display: none;
   }
 }
@@ -1021,6 +1088,64 @@ main {
   .tile-figure {
     font-size: 0.7rem;
   }
+}
+
+/* Over the map, so the detail arrives without the developer leaving the tile or the screen. */
+.readout {
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
+  clip-path: var(--cut);
+  padding: 0.5rem 0.6rem;
+  /* Never in the pointer's way, or the readout under it would take the hover off the tile it reads. */
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.readout.is-pinned {
+  box-shadow: inset 0 0 0 1px var(--hud);
+}
+
+.readout-name {
+  align-items: baseline;
+  color: var(--hud);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.35rem;
+  justify-content: space-between;
+  margin: 0 0 0.4rem;
+  overflow-wrap: anywhere;
+}
+
+.readout-pin {
+  flex: none;
+}
+
+.readout dl {
+  margin: 0;
+}
+
+.readout-row {
+  align-items: baseline;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 5.2rem minmax(0, 1fr);
+  padding-block: 0.06rem;
+}
+
+.readout dt {
+  color: var(--ink-faint);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.readout dd {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .panel {

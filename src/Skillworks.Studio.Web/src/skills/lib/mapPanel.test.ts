@@ -8,6 +8,7 @@ const noTokens = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCre
 const fired: SkillSummary = {
   name: 'grilling',
   activations: 3,
+  triggers: [],
   repositories: [],
   models: [],
   efforts: [],
@@ -15,6 +16,7 @@ const fired: SkillSummary = {
   each: 0.1,
   origins: [],
   lastFired: null,
+  spark: [],
 };
 
 const neverFired: SkillSummary = { ...fired, name: 'tdd', activations: 0, each: null, spend: { ...noTokens, cost: 0 } };

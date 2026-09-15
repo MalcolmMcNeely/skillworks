@@ -37,6 +37,10 @@ export function slicesOf(days: readonly string[]): StripSlice[] {
   );
 }
 
+function inSlice(slice: StripSlice, hours: readonly number[]): number {
+  return hours.slice(slice.startHour, slice.startHour + slice.lengthInHours).reduce((sum, count) => sum + count, 0);
+}
+
 export function withDayLanded(slices: readonly StripSlice[], line: SkillsDay): StripSlice[] {
   return slices.map((slice) =>
     slice.day !== line.day
@@ -44,16 +48,19 @@ export function withDayLanded(slices: readonly StripSlice[], line: SkillsDay): S
       : {
           ...slice,
           state: 'landed',
-          activations: line.skills.reduce(
-            (sum, skill) =>
-              sum +
-              skill.hours
-                .slice(slice.startHour, slice.startHour + slice.lengthInHours)
-                .reduce((inSlice, count) => inSlice + count, 0),
-            0,
-          ),
+          activations: line.skills.reduce((sum, skill) => sum + inSlice(slice, skill.hours), 0),
         },
   );
+}
+
+// One count per slice of the strip, so a tile's chart and the strip above it cut the span the same way.
+export function withHoursLanded(
+  counts: readonly number[],
+  slices: readonly StripSlice[],
+  day: string,
+  hours: readonly number[],
+): number[] {
+  return slices.map((slice, index) => (slice.day === day ? inSlice(slice, hours) : (counts[index] ?? 0)));
 }
 
 export function withDaysMissing(slices: readonly StripSlice[], missingDays: readonly string[]): StripSlice[] {

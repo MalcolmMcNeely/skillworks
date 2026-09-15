@@ -24,16 +24,22 @@ public sealed class ActivationQueries(EventsStoreReader events)
 
         var hours = timed.BySkill().ToDictionary(group => group.Key, IReadOnlyList<int> (group) => ByHour(group));
 
+        // One query answers both the Origins and the Activations by trigger, so each firing is read once.
+        var traced = origins.BySkill().ToDictionary(
+            group => group.Key,
+            group => group.Select(count => (Origin: SkillOrigin.Of(count.Attribute), count.Total)).ToArray());
+
         return new ActivationTally(
             // From the hours, so a day's Activations and its hours never disagree.
             hours.ToDictionary(skill => skill.Key, skill => skill.Value.Sum()),
             hours,
+            traced.ToDictionary(
+                skill => skill.Key,
+                skill => TriggerCount.Ordered(skill.Value.Select(traced => (traced.Origin.Trigger, traced.Total)))),
             repositories.BySkill().ToDictionary(
                 group => group.Key,
                 IReadOnlyList<string> (group) => [.. group.Select(count => count.Repository).OfType<string>().Distinct().Order()]),
-            origins.BySkill().ToDictionary(
-                group => group.Key,
-                group => SkillOrigin.Ordered(group.Select(count => SkillOrigin.Of(count.Attribute)))),
+            traced.ToDictionary(skill => skill.Key, skill => SkillOrigin.Ordered(skill.Value.Select(traced => traced.Origin))),
             period with { Unreachable = period.Unreachable ?? timed.Unreachable ?? repositories.Unreachable ?? origins.Unreachable });
     }
 

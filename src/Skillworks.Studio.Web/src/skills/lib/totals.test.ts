@@ -7,7 +7,19 @@ function spent(cost: number, tokens: number): TurnTotals {
 }
 
 function skill(name: string, activations: number, spend: TurnTotals | null): SkillSummary {
-  return { name, activations, repositories: [], models: [], efforts: [], spend, each: null, origins: [], lastFired: null };
+  return {
+    name,
+    activations,
+    triggers: [],
+    repositories: [],
+    models: [],
+    efforts: [],
+    spend,
+    each: null,
+    origins: [],
+    lastFired: null,
+    spark: [],
+  };
 }
 
 const skills = [skill('alpha', 3, spent(1.5, 10)), skill('beta', 1, spent(0.5, 5)), skill('gamma', 4, null)];

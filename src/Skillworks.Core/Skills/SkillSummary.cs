@@ -9,6 +9,7 @@ public sealed record SkillSummary(
     int Activations,
     // By UTC hour, as the Filter counts whole UTC days.
     IReadOnlyList<int> Hours,
+    IReadOnlyList<TriggerCount> Triggers,
     IReadOnlyList<string> Repositories,
     IReadOnlyList<string>? Models,
     IReadOnlyList<string>? Efforts,

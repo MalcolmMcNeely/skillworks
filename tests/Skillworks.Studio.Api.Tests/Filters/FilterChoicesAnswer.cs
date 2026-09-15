@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using Skillworks.Studio.Api.Tests.Gaps;
 using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Skills;
 
 namespace Skillworks.Studio.Api.Tests.Filters;
 

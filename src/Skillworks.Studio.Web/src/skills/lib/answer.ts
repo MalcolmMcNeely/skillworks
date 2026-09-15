@@ -1,7 +1,7 @@
 import type { Gap } from '../../gaps/lib/gaps';
-import type { Origin } from '../../provenance/lib/provenance';
+import type { Origin, TriggerCount } from '../../provenance/lib/provenance';
 import type { SkillOnDay, SkillsHead, SkillsLine, SkillSummary, TurnTotals } from './skills';
-import { slicesOf, startOfHour, withDaysMissing, withDayLanded, type StripSlice } from './strip';
+import { slicesOf, startOfHour, withDaysMissing, withDayLanded, withHoursLanded, type StripSlice } from './strip';
 import { totalsOf, type Totals } from './totals';
 
 export interface SkillsAnswer {
@@ -36,11 +36,12 @@ function later(instant: string | null, other: string | null): string | null {
 }
 
 // No Each with no Activations to share the Cost across, or with a Cost that went unnamed.
-function summaryOf(skill: SkillFigures, lastFired: string | null): SkillSummary {
+function summaryOf(skill: SkillFigures, lastFired: string | null, spark: number[]): SkillSummary {
   return {
     ...skill,
     each: skill.spend === null || skill.activations === 0 ? null : skill.spend.cost / skill.activations,
     lastFired,
+    spark,
   };
 }
 
@@ -74,6 +75,19 @@ function ignoringCase(name: string | null, other: string | null): number {
   return upper === otherUpper ? 0 : upper < otherUpper ? -1 : 1;
 }
 
+// Re-sorted, so a skill's triggers read the same however many days it spans.
+function addedTriggers(counts: readonly TriggerCount[], more: readonly TriggerCount[]): TriggerCount[] {
+  const summed = new Map<string | null, number>();
+
+  for (const count of [...counts, ...more]) {
+    summed.set(count.trigger, (summed.get(count.trigger) ?? 0) + count.activations);
+  }
+
+  return [...summed]
+    .map(([trigger, activations]) => ({ trigger, activations }))
+    .toSorted((a, b) => ignoringCase(a.trigger, b.trigger));
+}
+
 function orderedOrigins(origins: readonly Origin[], more: readonly Origin[]): Origin[] {
   const distinct = new Map<string, Origin>();
 
@@ -87,13 +101,14 @@ function orderedOrigins(origins: readonly Origin[], more: readonly Origin[]): Or
   );
 }
 
-function added(landed: SkillSummary, skill: SkillFigures, lastFired: string | null): SkillSummary {
+function added(landed: SkillSummary, skill: SkillFigures, lastFired: string | null, spark: number[]): SkillSummary {
   const spend = plus(landed.spend, skill.spend);
 
   return summaryOf(
     {
       name: landed.name,
       activations: landed.activations + skill.activations,
+      triggers: addedTriggers(landed.triggers, skill.triggers),
       repositories: sortedUnion(landed.repositories, skill.repositories),
       models: spend === null ? null : sortedUnion(landed.models, skill.models),
       efforts: spend === null ? null : sortedUnion(landed.efforts, skill.efforts),
@@ -101,6 +116,7 @@ function added(landed: SkillSummary, skill: SkillFigures, lastFired: string | nu
       origins: orderedOrigins(landed.origins, skill.origins),
     },
     later(landed.lastFired, lastFired),
+    spark,
   );
 }
 
@@ -115,14 +131,20 @@ export function showsFigures(answer: SkillsAnswer | null): answer is SkillsAnswe
 
 export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): SkillsAnswer {
   if (line.kind === 'head') {
+    const slices = slicesOf(line.days);
+
     return withTotals({
       span: line.span,
       days: line.days,
       landedDays: [],
       missingDays: [],
-      slices: slicesOf(line.days),
+      slices,
       skills: line.catalogueSkills.map((name) =>
-        summaryOf({ name, activations: 0, repositories: [], models: [], efforts: [], spend: nothingSpent, origins: [] }, null),
+        summaryOf(
+          { name, activations: 0, triggers: [], repositories: [], models: [], efforts: [], spend: nothingSpent, origins: [] },
+          null,
+          slices.map(() => 0),
+        ),
       ),
       unnamedSpend: null,
       arriving: true,
@@ -148,16 +170,17 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
   }
 
   const skills = new Map(answer.skills.map((skill) => [skill.name, skill]));
+  const nothingYet = answer.slices.map(() => 0);
 
   for (const { hours, ...figures } of line.skills) {
     const landed = skills.get(figures.name);
+    const earlier = landed === undefined || answer.catalogueAtZero.includes(figures.name) ? null : landed;
     const lastFired = lastFiredOn(line.day, hours);
+    const spark = withHoursLanded(earlier?.spark ?? nothingYet, answer.slices, line.day, hours);
 
     skills.set(
       figures.name,
-      landed === undefined || answer.catalogueAtZero.includes(figures.name)
-        ? summaryOf(figures, lastFired)
-        : added(landed, figures, lastFired),
+      earlier === null ? summaryOf(figures, lastFired, spark) : added(earlier, figures, lastFired, spark),
     );
   }
 

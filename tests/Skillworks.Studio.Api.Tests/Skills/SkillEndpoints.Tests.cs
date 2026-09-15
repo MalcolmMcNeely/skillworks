@@ -57,7 +57,7 @@ public sealed partial class SkillEndpointsTests
         // No Each: a day's Each would not add up across days, so the screen works it out from the totals.
         Assert.Equal(["day", "kind", "skills", "unnamedSpend", "unnarrowedEvents"], StudioHost.Fields(day));
         Assert.Equal(
-            ["activations", "efforts", "hours", "models", "name", "origins", "repositories", "spend"],
+            ["activations", "efforts", "hours", "models", "name", "origins", "repositories", "spend", "triggers"],
             StudioHost.Fields(day["skills"]?[0]));
     }
 

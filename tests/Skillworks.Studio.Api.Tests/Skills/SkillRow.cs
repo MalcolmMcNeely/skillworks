@@ -9,6 +9,8 @@ public sealed record SkillRow
 
     public required int[] Hours { get; init; }
 
+    public required TriggerRow[] Triggers { get; init; }
+
     public required string[] Repositories { get; init; }
 
     public required string[]? Models { get; init; }

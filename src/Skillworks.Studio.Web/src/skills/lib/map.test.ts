@@ -6,6 +6,7 @@ function skill(name: string, cost: number, activations: number): SkillSummary {
   return {
     name,
     activations,
+    triggers: [],
     repositories: [],
     models: [],
     efforts: [],
@@ -13,6 +14,7 @@ function skill(name: string, cost: number, activations: number): SkillSummary {
     each: activations === 0 ? null : cost / activations,
     origins: [],
     lastFired: null,
+    spark: [],
   };
 }
 

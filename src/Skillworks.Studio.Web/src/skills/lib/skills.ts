@@ -1,6 +1,6 @@
 import type { Span } from '../../filters/lib/filters';
 import type { AnswerEnd } from '../../gaps/lib/gaps';
-import type { Origin } from '../../provenance/lib/provenance';
+import type { Origin, TriggerCount } from '../../provenance/lib/provenance';
 
 export interface TokenSplit {
   inputTokens: number;
@@ -19,6 +19,7 @@ export interface SkillOnDay {
   activations: number;
   // By UTC hour, as the Filter counts whole UTC days.
   hours: number[];
+  triggers: TriggerCount[];
   repositories: string[];
   // Null where the skill's Turns went unnamed, as an empty list or a zero would say it spent nothing.
   models: string[] | null;
@@ -31,6 +32,8 @@ export interface SkillSummary extends Omit<SkillOnDay, 'hours'> {
   each: number | null;
   // Only to the hour, as a day line counts no finer.
   lastFired: string | null;
+  // One count per slice of the activity strip, for the chart on the skill's tile.
+  spark: number[];
 }
 
 export interface SkillsHead {
