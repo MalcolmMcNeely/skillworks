@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
 using Skillworks.Studio.Api.Tests.Harness;
 
@@ -55,7 +56,13 @@ public sealed class TelemetrySwitchHost : IDisposable
 
     public string SettingsText() => File.ReadAllText(_settingsPath);
 
-    public void RewriteSettings(string settings) => File.WriteAllText(_settingsPath, settings);
+    public void EditEnvironment(Action<JsonObject> edit)
+    {
+        var settings = JsonNode.Parse(SettingsText())!;
+        edit(settings["env"]!.AsObject());
+
+        File.WriteAllText(_settingsPath, settings.ToJsonString());
+    }
 
     public JsonElement Settings() => JsonDocument.Parse(SettingsText()).RootElement.Clone();
 

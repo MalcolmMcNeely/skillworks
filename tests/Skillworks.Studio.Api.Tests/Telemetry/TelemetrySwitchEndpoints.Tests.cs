@@ -5,15 +5,18 @@ namespace Skillworks.Studio.Api.Tests.Telemetry;
 
 public sealed class TelemetrySwitchEndpointsTests
 {
+    private const string RepositoryVariable = "OTEL_METRICS_INCLUDE_REPOSITORY";
+
     // Not shared with the code under test, so a rename has to be made twice on purpose.
-    private static readonly string[] Owned =
-    [
-        "CLAUDE_CODE_ENABLE_TELEMETRY",
-        "OTEL_LOGS_EXPORTER",
-        "OTEL_LOG_TOOL_DETAILS",
-        "OTEL_EXPORTER_OTLP_PROTOCOL",
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-    ];
+    private static readonly Dictionary<string, string> Owned = new()
+    {
+        ["CLAUDE_CODE_ENABLE_TELEMETRY"] = "1",
+        ["OTEL_LOGS_EXPORTER"] = "otlp",
+        ["OTEL_LOG_TOOL_DETAILS"] = "1",
+        ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf",
+        ["OTEL_EXPORTER_OTLP_ENDPOINT"] = TelemetrySwitchHost.Collector,
+        [RepositoryVariable] = "true",
+    };
 
     [Fact]
     public async Task Reports_telemetry_off_when_there_is_no_settings_file()
@@ -49,13 +52,36 @@ public sealed class TelemetrySwitchEndpointsTests
     }
 
     [Fact]
+    public async Task Reports_telemetry_on_when_the_environment_block_holds_every_variable_at_its_value()
+    {
+        using var studio = new TelemetrySwitchHost(SettingsWith(Owned));
+
+        var state = await studio.State();
+
+        Assert.True(state.GetProperty("emitting").GetBoolean());
+        Assert.Empty(state.GetProperty("changes").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Reports_telemetry_off_for_an_environment_block_written_before_the_repository_variable()
+    {
+        using var studio = new TelemetrySwitchHost(
+            SettingsWith(Owned.Where(variable => variable.Key != RepositoryVariable)));
+
+        var state = await studio.State();
+
+        Assert.False(state.GetProperty("emitting").GetBoolean());
+        Assert.Equal([RepositoryVariable], TelemetrySwitchHost.Changes(state).Keys);
+    }
+
+    [Fact]
     public async Task Shows_every_variable_it_would_write_before_it_writes_anything()
     {
         using var studio = new TelemetrySwitchHost("{}");
 
         var changes = TelemetrySwitchHost.Changes(await studio.State());
 
-        Assert.Equal(Owned.Order(), changes.Keys.Order());
+        Assert.Equal(Owned.Keys.Order(), changes.Keys.Order());
         Assert.Equal("{}", studio.SettingsText());
     }
 
@@ -108,6 +134,16 @@ public sealed class TelemetrySwitchEndpointsTests
         Assert.Equal("otlp", studio.Variable("OTEL_LOGS_EXPORTER"));
         Assert.Equal("1", studio.Variable("OTEL_LOG_TOOL_DETAILS"));
         Assert.Equal("http/protobuf", studio.Variable("OTEL_EXPORTER_OTLP_PROTOCOL"));
+    }
+
+    [Fact]
+    public async Task Writes_the_variable_that_puts_a_repository_on_every_event()
+    {
+        using var studio = new TelemetrySwitchHost("{}");
+
+        await studio.Turn(emitting: true);
+
+        Assert.Equal("true", studio.Variable(RepositoryVariable));
     }
 
     [Fact]
@@ -198,9 +234,37 @@ public sealed class TelemetrySwitchEndpointsTests
         var state = await studio.Turn(emitting: false);
 
         Assert.False(state.GetProperty("emitting").GetBoolean());
-        Assert.All(Owned, name => Assert.Null(studio.Variable(name)));
+        Assert.All(Owned.Keys, name => Assert.Null(studio.Variable(name)));
         Assert.Equal("less", studio.Variable("PAGER"));
         Assert.Equal("opus", studio.Settings().GetProperty("model").GetString());
+    }
+
+    [Fact]
+    public async Task Turning_on_again_brings_an_environment_block_from_before_the_repository_variable_up_to_date()
+    {
+        using var studio = new TelemetrySwitchHost("{}");
+
+        await studio.Turn(emitting: true);
+        studio.EditEnvironment(environment => environment.Remove(RepositoryVariable));
+        var state = await studio.Turn(emitting: true);
+
+        Assert.True(state.GetProperty("emitting").GetBoolean());
+        Assert.Equal("true", studio.Variable(RepositoryVariable));
+    }
+
+    [Fact]
+    public async Task Turning_off_an_environment_block_brought_up_to_date_leaves_no_repository_variable_behind()
+    {
+        using var studio = new TelemetrySwitchHost("{}");
+
+        await studio.Turn(emitting: true);
+        studio.EditEnvironment(environment => environment.Remove(RepositoryVariable));
+        await studio.Turn(emitting: true);
+        var written = studio.Variable(RepositoryVariable);
+        await studio.Turn(emitting: false);
+
+        Assert.Equal("true", written);
+        Assert.All(Owned.Keys, name => Assert.Null(studio.Variable(name)));
     }
 
     [Fact]
@@ -235,7 +299,7 @@ public sealed class TelemetrySwitchEndpointsTests
         using var studio = new TelemetrySwitchHost("{}");
 
         await studio.Turn(emitting: true);
-        Rewrite(studio, "OTEL_EXPORTER_OTLP_ENDPOINT", "http://mine:4318");
+        studio.EditEnvironment(environment => environment["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://mine:4318");
         await studio.Turn(emitting: false);
 
         Assert.Equal("http://mine:4318", studio.Variable("OTEL_EXPORTER_OTLP_ENDPOINT"));
@@ -290,11 +354,15 @@ public sealed class TelemetrySwitchEndpointsTests
         Assert.Equal("console", studio.Variable("OTEL_LOGS_EXPORTER"));
     }
 
-    private static void Rewrite(TelemetrySwitchHost studio, string name, string value)
+    private static string SettingsWith(IEnumerable<KeyValuePair<string, string>> variables)
     {
-        var settings = JsonNode.Parse(studio.SettingsText())!;
-        settings["env"]![name] = value;
+        var environment = new JsonObject();
 
-        studio.RewriteSettings(settings.ToJsonString());
+        foreach (var (name, value) in variables)
+        {
+            environment[name] = value;
+        }
+
+        return new JsonObject { ["env"] = environment }.ToJsonString();
     }
 }

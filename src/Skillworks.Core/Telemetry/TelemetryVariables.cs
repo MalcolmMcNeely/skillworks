@@ -13,5 +13,7 @@ public static class TelemetryVariables
         new("OTEL_LOG_TOOL_DETAILS", "1"),
         new("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf"),
         new("OTEL_EXPORTER_OTLP_ENDPOINT", collectorEndpoint),
+        // Despite its name, from Claude Code 2.1.269 this puts the vcs.* repository attributes on log events too.
+        new("OTEL_METRICS_INCLUDE_REPOSITORY", "true"),
     ];
 }
