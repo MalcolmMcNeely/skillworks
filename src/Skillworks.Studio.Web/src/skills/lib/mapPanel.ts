@@ -24,13 +24,13 @@ export function mapPanelOf(state: {
     return failure === null ? arriving : { glyph: '✕', word: noLink, tone: 'failed', busy: false };
   }
 
+  if (tileCount > 0) {
+    return null;
+  }
+
   // Ahead of the zero checks: never-fired skills are still listed, and No Cost would read as a quiet week.
   if (answer.gap?.kind === 'unreachable') {
     return { glyph: '✕', word: signalOf(answer.gap.kind).word, tone: 'failed', busy: false };
-  }
-
-  if (tileCount > 0) {
-    return null;
   }
 
   // The catalogue's zeros land before any day, and a day still to come may give them a tile.

@@ -5,8 +5,8 @@ namespace Skillworks.Studio.Api.Tests.Skills;
 
 public static class SkillRequests
 {
-    public static Task<IReadOnlyList<JsonObject>> SkillLines(this StudioHost studio, string filter = "") =>
-        studio.Lines($"/api/skills{filter}");
+    public static Task<IReadOnlyList<JsonObject>> SkillLines(this StudioHost studio, string filter = "", int count = int.MaxValue) =>
+        studio.Lines($"/api/skills{filter}", count);
 
     public static async Task<SkillsAnswer> SkillAnswer(this StudioHost studio, string filter = "") =>
         SkillsAnswer.Of(await studio.SkillLines(filter));

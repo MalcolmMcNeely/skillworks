@@ -5,8 +5,8 @@ namespace Skillworks.Core.Gaps;
 
 public sealed class GapReport(TelemetrySwitch telemetry)
 {
-    public Gap InTotals(EventTotals period) =>
-        Gap.Of(period.Unreachable, (long)period.Total, Emitting());
+    public Gap InTotals(EventTotals period, IReadOnlyList<DateOnly> unread) =>
+        Gap.Of(period.Unreachable, unread, (long)period.Total, Emitting());
 
     // The switch calls unreadable settings not emitting: safe for writing, but a lie on a screen.
     private bool? Emitting()

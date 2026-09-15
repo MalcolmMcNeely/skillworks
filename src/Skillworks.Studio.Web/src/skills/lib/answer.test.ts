@@ -54,6 +54,8 @@ function fired(name: string, activations: number, spend: TurnTotals | null, more
 
 const complete: Gap = { kind: 'complete', missing: null };
 
+const stopped: Gap = { kind: 'unreachable', missing: 'Studio could not read the events store. Nothing is shown for 2026-09-14.' };
+
 const proactive: Origin = { trigger: 'claude-proactive', source: 'projectSettings', plugin: null, marketplace: null };
 
 const typed: Origin = { ...proactive, trigger: 'user-slash' };
@@ -215,6 +217,24 @@ describe('foldSkillsLine', () => {
 
     expect([null, ...landing].map(showsFigures)).toEqual([false, false, true, true]);
     expect(down.map(showsFigures)).toEqual([false, false]);
+  });
+
+  it('keeps the landed days and marks the rest missing, not zero, when the store stops part way', async () => {
+    const states = await statesOf(wire(head(), day('2026-09-15', [fired('grilling', 2, spent(1))]), end(stopped)));
+
+    expect(states.map((state) => [state.landedDays, state.missingDays])).toEqual([
+      [[], []],
+      [['2026-09-15'], []],
+      [['2026-09-15'], ['2026-09-14']],
+    ]);
+    expect(states.at(-1)?.totals).toMatchObject({ cost: 1, activations: 2 });
+    expect(states.at(-1)?.gap).toEqual(stopped);
+  });
+
+  it('shows the figures of the days that landed when the store stops part way', async () => {
+    const states = await statesOf(wire(head(['probekit:probe-local']), day('2026-09-15', []), end(stopped)));
+
+    expect(states.map(showsFigures)).toEqual([false, true, true]);
   });
 
   it('lands a day whose line the network split across chunks', async () => {

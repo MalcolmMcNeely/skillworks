@@ -5,7 +5,10 @@ import { totalsOf, type Totals } from './totals';
 
 export interface SkillsAnswer {
   span: SkillsHead['span'];
+  days: string[];
   landedDays: string[];
+  // Named once the answer ends, as a day still to come may yet land.
+  missingDays: string[];
   skills: SkillSummary[];
   unnamedSpend: TurnTotals | null;
   totals: Totals;
@@ -84,16 +87,18 @@ function withTotals(answer: Omit<SkillsAnswer, 'totals'>): SkillsAnswer {
   return { ...answer, totals: totalsOf(answer) };
 }
 
-// The catalogue's zeros land with the head, and shown before a day or after an outage they would read as a quiet week.
+// The catalogue's zeros land with the head, and shown before a day lands they would read as a quiet week.
 export function showsFigures(answer: SkillsAnswer | null): answer is SkillsAnswer {
-  return answer !== null && answer.landedDays.length > 0 && answer.gap?.kind !== 'unreachable';
+  return answer !== null && answer.landedDays.length > 0;
 }
 
 export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): SkillsAnswer {
   if (line.kind === 'head') {
     return withTotals({
       span: line.span,
+      days: line.days,
       landedDays: [],
+      missingDays: [],
       skills: line.catalogueSkills.map((name) =>
         summaryOf({ name, activations: 0, repositories: [], models: [], efforts: [], spend: nothingSpent, origins: [] }),
       ),
@@ -109,7 +114,12 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
   }
 
   if (line.kind === 'end') {
-    return { ...answer, arriving: false, gap: line.gap };
+    return {
+      ...answer,
+      missingDays: answer.days.filter((day) => !answer.landedDays.includes(day)),
+      arriving: false,
+      gap: line.gap,
+    };
   }
 
   const skills = new Map(answer.skills.map((skill) => [skill.name, skill]));

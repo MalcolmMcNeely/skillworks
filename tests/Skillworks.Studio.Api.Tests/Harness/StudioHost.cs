@@ -28,7 +28,7 @@ public sealed class StudioHost : IDisposable
 
     public StudioHost(
         string? cataloguePath = null,
-        // Only for a store that is down or failing; data comes from the test Loki.
+        // Only for a store that is down, failing or stops part way; data comes from the test Loki.
         BrokenEventsStore? events = null,
         // Not the developer's settings, or Gap tests would pass or fail on this machine's telemetry.
         bool emitting = true,
@@ -65,7 +65,7 @@ public sealed class StudioHost : IDisposable
     public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);
 
     // Headers first and then one line at a time, as a browser reads an answer that arrives day by day.
-    public async Task<IReadOnlyList<JsonObject>> Lines(string path)
+    public async Task<IReadOnlyList<JsonObject>> Lines(string path, int count = int.MaxValue)
     {
         using var response = await _client.GetAsync(path, HttpCompletionOption.ResponseHeadersRead);
 
@@ -74,7 +74,7 @@ public sealed class StudioHost : IDisposable
         using var body = new StreamReader(await response.Content.ReadAsStreamAsync());
         var lines = new List<JsonObject>();
 
-        while (await body.ReadLineAsync() is { } line)
+        while (lines.Count < count && await body.ReadLineAsync() is { } line)
         {
             lines.Add(JsonNode.Parse(line)?.AsObject() ?? throw new InvalidOperationException("A line held null."));
         }

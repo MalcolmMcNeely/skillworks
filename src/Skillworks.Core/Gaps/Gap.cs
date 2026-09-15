@@ -1,17 +1,18 @@
+using System.Globalization;
 using Skillworks.Core.Telemetry;
 
 namespace Skillworks.Core.Gaps;
 
 public sealed record Gap(GapKind Kind, string? Missing)
 {
-    internal static Gap Of(string? unreachable, long events, bool? emitting)
+    internal static Gap Of(string? unreachable, IReadOnlyList<DateOnly> unread, long events, bool? emitting)
     {
         var (kind, missing) = (unreachable, events, emitting) switch
         {
+            // Only the unread days are short, as every day that landed is whole.
             ({ } reason, _, _) => (
                 GapKind.Unreachable,
-                $"Studio could not read the events store: {reason}. Nothing it reads from there can be " +
-                "shown until it can."),
+                $"Studio could not read the events store: {reason}. Nothing is shown for {Listed(unread)}."),
 
             // Asked of the switch, not guessed: "nobody turned it on" is a fix for the developer, "nothing happened" is not.
             (_, 0, false) => (
@@ -41,5 +42,12 @@ public sealed record Gap(GapKind Kind, string? Missing)
         };
 
         return new Gap(kind, missing);
+    }
+
+    private static string Listed(IReadOnlyList<DateOnly> days)
+    {
+        string[] names = [.. days.Select(day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))];
+
+        return names.Length > 1 ? $"{string.Join(", ", names[..^1])} and {names[^1]}" : string.Concat(names);
     }
 }

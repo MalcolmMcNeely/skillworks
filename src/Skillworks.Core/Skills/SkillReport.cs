@@ -35,7 +35,9 @@ public sealed class SkillReport(
                 : [.. catalogue.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
 
         var read = EventTotals.Of([]);
+        var landed = 0;
 
+        // No retry: the Gap names what failed, and the developer decides when to ask again.
         foreach (var day in days)
         {
             var (line, period) = await DayAsync(day, filter, cancellationToken);
@@ -48,9 +50,10 @@ public sealed class SkillReport(
             }
 
             yield return line;
+            landed++;
         }
 
-        yield return new AnswerEnd(gaps.InTotals(read));
+        yield return new AnswerEnd(gaps.InTotals(read, [.. days.Skip(landed)]));
     }
 
     // Every query for the day runs before the next day starts, so a day is whole when it lands.

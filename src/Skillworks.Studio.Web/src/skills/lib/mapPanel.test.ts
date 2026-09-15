@@ -41,6 +41,12 @@ describe('mapPanelOf', () => {
     expect([panel?.word, panel?.tone]).toEqual(['No signal', 'failed']);
   });
 
+  it('keeps the tiles of the days that landed when the store stops part way', () => {
+    const gap: Gap = { kind: 'unreachable', missing: 'Studio could not read the events store.' };
+
+    expect(mapPanelOf({ answer: { skills: [fired], gap }, failure: null, tileCount: 1, view: 'cost' })).toBeNull();
+  });
+
   it('says No link when the API itself did not answer', () => {
     const panel = mapPanelOf({ answer: null, failure: 'GET /api/skills returned 502', tileCount: 0, view: 'cost' });
 
