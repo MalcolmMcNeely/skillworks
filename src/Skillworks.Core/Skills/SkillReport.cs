@@ -1,11 +1,9 @@
-using System.Runtime.CompilerServices;
 using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Arriving;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
-using Skillworks.Core.Gaps;
 using Skillworks.Core.Spend;
 using Skillworks.Core.Spend.Queries;
 
@@ -16,17 +14,15 @@ public sealed class SkillReport(
     ActivationQueries activations,
     SpendQueries spend,
     CatalogueSkills catalogue,
-    GapReport gaps,
+    ArrivingDays arriving,
     Lookback lookback)
 {
-    public async IAsyncEnumerable<ArrivingLine> AnswerAsync(
-        Filter filter,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    public IAsyncEnumerable<ArrivingLine> AnswerAsync(Filter filter, CancellationToken cancellationToken)
     {
         var span = lookback.SpanOf(filter);
         var days = span.NewestFirst();
 
-        yield return new SkillsHead(
+        var head = new SkillsHead(
             span,
             days,
             // A never-fired skill's zero belongs to the unfiltered answer; a filter asks what happened, and it did not.
@@ -34,26 +30,25 @@ public sealed class SkillReport(
                 ? []
                 : [.. catalogue.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
 
-        var read = EventTotals.Of([]);
-        var landed = 0;
+        return arriving.AnswerAsync(head, days, (day, token) => DayAsync(day, filter, token), cancellationToken);
+    }
 
-        // No retry: the Gap names what failed, and the developer decides when to ask again.
-        foreach (var day in days)
-        {
-            var (line, period) = await DayAsync(day, filter, cancellationToken);
+    // Only the span narrows the choices, so picking a Repository never hides the others.
+    public IAsyncEnumerable<ArrivingLine> ChoicesAsync(Filter filter, CancellationToken cancellationToken)
+    {
+        var span = lookback.SpanOf(filter);
+        var days = span.NewestFirst();
 
-            read = read.Plus(period);
+        return arriving.AnswerAsync(new FilterChoicesHead(span, days), days, ChoicesDayAsync, cancellationToken);
+    }
 
-            if (period.Unreachable is not null)
-            {
-                break;
-            }
+    private async Task<(FilterChoicesDay Line, EventTotals Period)> ChoicesDayAsync(
+        DateOnly day,
+        CancellationToken cancellationToken)
+    {
+        var (repositories, period) = await activations.RepositoriesAsync(DaySpan.Of(day), cancellationToken);
 
-            yield return line;
-            landed++;
-        }
-
-        yield return new AnswerEnd(gaps.InTotals(read, [.. days.Skip(landed)]));
+        return (new FilterChoicesDay(day, repositories), period);
     }
 
     // Every query for the day runs before the next day starts, so a day is whole when it lands.
@@ -101,21 +96,5 @@ public sealed class SkillReport(
             spendNamed ? spent.Efforts.GetValueOrDefault(name, []) : null,
             spendNamed ? spent.Spend.GetValueOrDefault(name, TurnTotals.Nothing) : null,
             origins);
-    }
-
-    // Offers what fired in the lookback, the span of the unnarrowed answer, so every choice has something behind it.
-    public async Task<FilterChoices> ChoicesAsync(CancellationToken cancellationToken)
-    {
-        var (repositories, fired) = await activations.ChoicesAsync(lookback.SpanOf(new Filter()), cancellationToken);
-
-        return new FilterChoices(
-            repositories,
-            [
-                // Spellings are told apart exactly, as the filter matches them, or one choice would match half of what it names.
-                .. fired
-                    .Concat(catalogue.Names())
-                    .Distinct()
-                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            ]);
     }
 }

@@ -170,22 +170,6 @@ public sealed partial class FilterEndpointsTests
         Assert.Equal(["probekit:probe-local"], answer.Head.CatalogueSkills);
     }
 
-    [Fact]
-    public async Task Offers_the_repositories_and_skills_that_fired_and_the_catalogue_skills()
-    {
-        using var studio = new StudioHost(StudioHost.Catalogue());
-
-        await studio.Push(
-            new SkillActivated("research", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
-            new SkillActivated("tdd", "2026-09-14T09:05:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("tdd", "2026-09-14T09:10:00.000Z"));
-
-        var choices = await studio.Filters();
-
-        Assert.Equal(["acme/nu", "acme/xi"], choices.Repositories);
-        Assert.Equal(["probekit:probe-local", "probekit:probe-plugin", "research", "tdd"], choices.Skills);
-    }
-
     private static Task PushNuAndXi(StudioHost studio) => studio.Push(
         new SkillActivated("grilling", "2026-09-01T10:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
         new SkillActivated("unslop", "2026-09-01T10:05:00.000Z", Owner: "acme", RepositoryName: "nu"),

@@ -33,23 +33,25 @@ public sealed class ActivationQueries(EventsStoreReader events)
             period with { Unreachable = period.Unreachable ?? counts.Unreachable ?? repositories.Unreachable ?? origins.Unreachable });
     }
 
-    // Not narrowed by a filter: a filter that has cut the answer to nothing must still offer the way back out.
-    public async Task<(IReadOnlyList<string> Repositories, IReadOnlyList<string> Skills)> ChoicesAsync(
+    public async Task<(IReadOnlyList<string> Repositories, EventTotals Period)> RepositoriesAsync(
         DaySpan span,
         CancellationToken cancellationToken)
     {
-        var fired = await events.CountAsync(Firings(span), ByRepository, cancellationToken);
+        var fired = await events.CountAsync(Firings(span), [EventAttributes.Owner, EventAttributes.RepositoryName], cancellationToken);
 
         return (
-            Sorted(fired.Groups.Select(count => count.Repository).OfType<string>()),
-            Sorted(fired.Groups.Select(count => count.Attribute(EventAttributes.Skill)).OfType<string>()));
+            [
+                .. fired.Groups
+                    .Select(count => count.Repository)
+                    .OfType<string>()
+                    .Distinct()
+                    .OrderBy(repository => repository, StringComparer.OrdinalIgnoreCase)
+            ],
+            fired);
     }
 
     private static EventQuery Firings(DaySpan span) => new(EventName, span.FromUtc, span.UntilUtc);
 
     private static EventQuery Firings(DaySpan span, Filter filter) =>
         Firings(span) with { Repository = filter.Repository, Skill = filter.Skill };
-
-    private static IReadOnlyList<string> Sorted(IEnumerable<string> names) =>
-        [.. names.Distinct().OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];
 }

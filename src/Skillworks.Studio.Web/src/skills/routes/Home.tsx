@@ -89,7 +89,11 @@ export function Home() {
             options={spanKeys}
             onPress={(key) => show(withSpanKey(filter, key, today), choice)}
           />
-          <RepositoryPicker repository={filter.repository} onChange={(repository) => show({ ...filter, repository }, choice)} />
+          <RepositoryPicker
+            span={filter}
+            repository={filter.repository}
+            onChange={(repository) => show({ ...filter, repository }, choice)}
+          />
         </section>
 
         <RailTotals answer={showsFigures(answer) ? answer : null} arriving={arriving} />

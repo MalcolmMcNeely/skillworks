@@ -15,7 +15,7 @@ public sealed partial class SkillEndpointsTests
         var lines = await studio.SkillLines("?from=2026-09-12&to=2026-09-14");
 
         // Newest first, so the recent end a developer cares about lands before the rest.
-        Assert.Equal(["head", "day", "day", "day", "end"], lines.Select(SkillsAnswer.KindOf));
+        Assert.Equal(["head", "day", "day", "day", "end"], lines.Select(StudioHost.KindOf));
         Assert.Equal(["2026-09-14", "2026-09-13", "2026-09-12"], lines.Skip(1).SkipLast(1).Select(line => (string?)line["day"]));
     }
 

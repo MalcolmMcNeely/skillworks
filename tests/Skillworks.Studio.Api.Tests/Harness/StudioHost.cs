@@ -82,6 +82,11 @@ public sealed class StudioHost : IDisposable
         return lines;
     }
 
+    public static string? KindOf(JsonObject line) => (string?)line["kind"];
+
+    public static T Read<T>(JsonNode? line) =>
+        line.Deserialize<T>(Wire) ?? throw new InvalidOperationException($"A {typeof(T).Name} came back empty.");
+
     public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Fixtures", "Catalogue");
 
     public static IReadOnlyList<string> Fields(JsonNode? answer) =>

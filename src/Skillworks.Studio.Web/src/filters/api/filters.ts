@@ -1,11 +1,7 @@
-import { getJson } from '../../http/api/json';
+import { getLines } from '../../http/api/json';
+import type { FilterChoicesLine } from '../lib/choices';
+import { everything, filterQuery, type Span } from '../lib/filters';
 
-// Read from the whole history, so a filter that has emptied the table still offers the way back.
-export interface FilterChoices {
-  repositories: string[];
-  skills: string[];
-}
-
-export function fetchFilters(signal?: AbortSignal): Promise<FilterChoices> {
-  return getJson<FilterChoices>('/api/filters', signal);
+export function fetchFilterChoices(span: Span, signal: AbortSignal): AsyncGenerator<FilterChoicesLine> {
+  return getLines<FilterChoicesLine>(`/api/filters${filterQuery({ ...everything, from: span.from, to: span.to })}`, signal);
 }

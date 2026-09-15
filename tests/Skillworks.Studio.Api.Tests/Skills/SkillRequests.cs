@@ -22,5 +22,5 @@ public static class SkillRequests
 
     // Raw JSON, as a typed row silently drops a field the line should no longer carry.
     public static async Task<JsonObject> SkillLine(this StudioHost studio, string kind, string filter = "") =>
-        (await studio.SkillLines(filter)).First(line => SkillsAnswer.KindOf(line) == kind);
+        (await studio.SkillLines(filter)).First(line => StudioHost.KindOf(line) == kind);
 }

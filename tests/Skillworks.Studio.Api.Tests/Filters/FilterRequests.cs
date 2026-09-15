@@ -1,11 +1,16 @@
-using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Filters;
 
 public static class FilterRequests
 {
-    public static async Task<FilterChoiceRow> Filters(this StudioHost studio) =>
-        await studio.Client.GetFromJsonAsync<FilterChoiceRow>("/api/filters", StudioHost.Wire)
-            ?? throw new InvalidOperationException("The filter choices came back empty.");
+    public static Task<IReadOnlyList<JsonObject>> FilterChoiceLines(
+        this StudioHost studio,
+        string filter = "",
+        int count = int.MaxValue) =>
+        studio.Lines($"/api/filters{filter}", count);
+
+    public static async Task<FilterChoicesAnswer> FilterChoices(this StudioHost studio, string filter = "") =>
+        FilterChoicesAnswer.Of(await studio.FilterChoiceLines(filter));
 }

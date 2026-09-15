@@ -22,7 +22,7 @@ public sealed partial class SkillEndpointsTests
         var lines = await studio.SkillLines(FiveDays);
         var answer = SkillsAnswer.Of(lines);
 
-        Assert.Equal(["head", "day", "day", "end"], lines.Select(SkillsAnswer.KindOf));
+        Assert.Equal(["head", "day", "day", "end"], lines.Select(StudioHost.KindOf));
         Assert.Equal([1, 2], answer.Days.Select(day => Assert.Single(day.Skills).Activations));
         Assert.Equal("unreachable", answer.Gap.Kind);
     }
