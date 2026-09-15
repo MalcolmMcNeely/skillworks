@@ -27,6 +27,10 @@ gh api "repos/$REPO/issues/$N" --jq '.issue_dependencies_summary.blocked_by'
 
 Anything but `0` means stop, name the open blockers, and do nothing else.
 
+## Test runs
+
+Tests, typechecks and lints are deterministic validation: their result, not your expectation of it, decides the next step. Run each one in the foreground, with a timeout long enough for it to finish, and read its result before your next action. A caller may drive you with `claude -p`, which ends the session the moment your turn ends, so a run still going at that moment is lost, and so is the commit it would have allowed.
+
 ## Building
 
 Use /tdd where possible, at pre-agreed seams.
@@ -45,7 +49,7 @@ Run /comment-sweep on the uncommitted change.
 
 1. **Review.** Run /code-review on the uncommitted change, with the ticket as its spec.
 2. **Fix the findings.** Fix each one. If you judge a finding wrong, leave it and give the reason in the closing comment.
-3. **Run the full test suite.** A ticket is not done until the full suite runs and passes. A partial pass or a skipped suite leaves the ticket open.
+3. **Run the full test suite.** A ticket is done only once you have read the full suite's passing result. A partial pass or a skipped suite leaves the ticket open.
 4. **Commit to `main`.** Do NOT push. A spec loop pushes once at the end, after every ticket is done, so a half-finished spec never reaches the remote. This repo has no branches and no pull requests. Do not include "co-authored by" in the commit message.
 5. **Leave the working tree clean.** A caller may be driving you in a loop and will stop if it is not.
 6. **Close the ticket** with a comment saying what was done and which tests prove it.
