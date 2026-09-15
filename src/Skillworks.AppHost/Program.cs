@@ -26,7 +26,7 @@ builder.AddContainer("collector", "otel/opentelemetry-collector-contrib", "0.138
     .WithHttpEndpoint(port: collectorPort, targetPort: 4318, name: "otlp", isProxied: false)
     .WaitFor(loki);
 
-// No WaitFor on the containers: Studio degrades without them, because the transcripts stand on their own.
+// No WaitFor on the containers: Studio starts without Loki, and its Gaps say the Events store is unreachable.
 var api = builder.AddProject<Projects.Skillworks_Studio_Api>("api")
     .WithHttpHealthCheck("/health")
     .WithEnvironment("Catalogue__Path", Path.Combine(repositoryRoot, "plugins"))

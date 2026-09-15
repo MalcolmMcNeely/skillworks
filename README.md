@@ -8,8 +8,8 @@ Three parts are planned:
 - **MCP server** — C#, exposing the catalogue and its telemetry to an agent.
 - **Studio** — a local app for watching skill telemetry, authoring the catalogue, and running evals. React over an ASP.NET Core API, started by Aspire.
 
-Studio reads the transcripts Claude Code already writes and shows which skills fired, how often,
-and where. The vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in
+Studio reads Claude Code's telemetry from the Events store and shows which skills fired, how often,
+where, and what they cost. The vocabulary is in [CONTEXT.md](CONTEXT.md), the decisions so far in
 [docs/adr/](docs/adr/), and the research behind it in
 [skills-marketplace](https://github.com/MalcolmMcNeely/skills-marketplace).
 
@@ -35,22 +35,64 @@ Then go to [the dev loop](#the-dev-loop).
 
 ## Running Studio
 
-You need the .NET 10 SDK, Node 20 or later, and the Aspire CLI. Then, from the repo root:
+You need the .NET 10 SDK, Node 20 or later, the Aspire CLI, and Docker running. Then, from the repo
+root:
 
 ```
 aspire run
 ```
 
-That starts the API and the front end together, and prints the address of Aspire's own dashboard.
-Aspire runs `npm install` and `npm run dev` for the front end itself, and hands it the API's
-address, so there is no port to look up.
+That starts the API, the front end, an OpenTelemetry Collector and Loki, and prints the address of
+Aspire's own dashboard. The Collector and Loki run as Docker containers. Aspire runs `npm install`
+and `npm run dev` for the front end itself, and hands it the API's address, so there is no port to
+look up.
 
-Studio finds your transcripts in `~/.claude/projects` on its own, and parses them into SQLite under
-your local application data. The first pass runs in the background, so the app is usable while it
-reads; later passes read only what changed. Set `Transcripts__Path` to read from somewhere else.
+### Where Studio's numbers come from
 
-Checks. The API tests start Loki in a container, so Docker must be running. The front-end ones must
-run from `src/Skillworks.Studio.Web`, so they pick up the local tools rather than anything installed
+Studio reads everything it measures from the Events store, a Loki that Claude Code's telemetry
+reaches. It never reads the transcripts Claude Code writes to `~/.claude/projects`, and it keeps no
+database. In an organisation the Events store is the organisation's Loki, so every developer's
+Studio shows the same numbers. Until one exists, the AppHost's Collector and Loki stand in for it,
+and Studio shows only what this machine sent.
+
+Studio finds the Events store through these settings:
+
+| Setting | What it does | Default |
+|---|---|---|
+| `Loki__Address` | Where Studio reads Loki. The AppHost sets it to its own Loki. | `http://localhost:3100` |
+| `Loki__Tenant` | Sent as `X-Scope-OrgID`, for a Loki with several tenants. | Not sent |
+| `Loki__LookbackDays` | The lookback: how many days a list covers when the Filter has no start day. | `7` |
+| `Loki__MaxQueryDays` | The most days one Loki query may cover. Studio splits a longer span. | `30` |
+
+### The telemetry switch
+
+Claude Code sends nothing until telemetry is on. The Telemetry panel, at the foot of Studio's first
+page, turns it on for this machine. It lists what it will write to the `env` block of `~/.claude/settings.json`, and writes
+only when you say so:
+
+| Variable | Value |
+|---|---|
+| `CLAUDE_CODE_ENABLE_TELEMETRY` | `1` |
+| `OTEL_LOGS_EXPORTER` | `otlp` |
+| `OTEL_LOG_TOOL_DETAILS` | `1` |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | The Collector, `http://localhost:4318` |
+| `OTEL_METRICS_INCLUDE_REPOSITORY` | `true` |
+
+The panel says telemetry is on only when all six hold these values. Turning it off puts back what
+was there before. A Claude Code session that is already running picks up neither change, so restart
+it.
+
+The repository variable, `OTEL_METRICS_INCLUDE_REPOSITORY`, reaches past metrics despite its name.
+It names the session's `origin` remote on every event, and Studio shows that as a Repository,
+`owner/name`. Claude Code 2.1.269 is the first version that sends a Repository. An older Claude
+Code, or a session with no `origin` remote, sends none, and Studio shows the Repository as not
+recorded.
+
+### Checks
+
+The API tests start Loki in a container, so Docker must be running. The front-end ones must run
+from `src/Skillworks.Studio.Web`, so they pick up the local tools rather than anything installed
 globally:
 
 ```
@@ -72,7 +114,7 @@ npm test
 | `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
 | `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service-discovery setup. |
 | `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks the rules it checks. |
-| `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, asserting the JSON it returns. |
+| `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
 | `plugins/` | Where the catalogue will live. See [ADR 0003](docs/adr/0003-catalogue-lives-here-until-it-is-published.md). |
 | `.claude/skills/` | Dev tooling used while working in this repo. Mostly vendored, not shipped. |
