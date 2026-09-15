@@ -8,15 +8,6 @@ public sealed partial class FilterEndpointsTests
 {
     private const string BothDays = "?from=2026-09-01&to=2026-09-05";
 
-    // At the rates the price table is seeded with for claude-sonnet-5.
-    private const decimal GrillingInNu =
-        (1_000m * 3m) / 1_000_000m +
-        (2_000m * 15m) / 1_000_000m;
-
-    private const decimal GrillingInXi =
-        (500m * 3m) / 1_000_000m +
-        (1_000m * 15m) / 1_000_000m;
-
     [Fact]
     public async Task Counts_every_activation_inside_a_span()
     {
@@ -123,20 +114,6 @@ public sealed partial class FilterEndpointsTests
 
         Assert.Equal(["grilling"], skills.Select(skill => skill.Name));
         Assert.Equal(1, skills.Single().Activations);
-    }
-
-    [Fact]
-    public async Task Charges_a_skill_only_for_what_it_spent_inside_the_filter()
-    {
-        using var studio = new StudioHost(StudioHost.Fixture("filtered"));
-
-        var everywhere = await studio.Skill("grilling", BothDays);
-        var inNu = await studio.Skill("grilling", $"{BothDays}&repository=nu");
-
-        // A filtered count beside an all-time cost would read as a skill that cost a fortune for one firing.
-        Assert.Equal(GrillingInNu + GrillingInXi, everywhere.Spend.Cost);
-        Assert.Equal(GrillingInNu, inNu.Spend.Cost);
-        Assert.Equal(1_000, inNu.Spend.InputTokens);
     }
 
     [Fact]

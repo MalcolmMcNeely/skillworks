@@ -8,4 +8,4 @@ public sealed record ActivationTally(
     IReadOnlyDictionary<string, int> Counts,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Repositories,
     IReadOnlyDictionary<string, IReadOnlyList<SkillOrigin>> Origins,
-    EventCounts Period);
+    EventTotals Period);

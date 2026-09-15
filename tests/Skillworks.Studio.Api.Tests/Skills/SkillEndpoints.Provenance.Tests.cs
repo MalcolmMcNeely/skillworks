@@ -44,21 +44,20 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Joins_where_a_skill_came_from_to_what_it_spent_in_one_answer()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("costly"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
 
         await studio.Push(new SkillActivated(
             "comment-sweep",
             "2026-09-10T09:00:04.000Z",
             Trigger: "claude-proactive",
-            Source: "plugin",
-            Plugin: "probekit",
-            Marketplace: "privateprobe"));
+            Source: "projectSettings"));
+        await studio.Push(new ApiRequest("2026-09-10T09:00:10.000Z", Skill: "comment-sweep", CostUsd: 0.12m));
 
         var swept = await studio.Skill("comment-sweep");
 
-        // What fired, from where, and what it cost, in one row, is the join the two stores exist to make.
-        Assert.Equal("privateprobe", Assert.Single(swept.Origins).Marketplace);
-        Assert.True(swept.Spend.Cost > 0m);
+        // What fired, from where, and what it cost belong in one row, not on two screens.
+        Assert.Equal("projectSettings", Assert.Single(swept.Origins).Source);
+        Assert.Equal(0.12m, swept.Spend.Cost);
     }
 
     [Fact]
@@ -246,6 +245,21 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillTable();
 
+        Assert.Equal("complete", answer.Provenance.Gap);
+        Assert.Null(answer.Provenance.Missing);
+    }
+
+    [Fact]
+    public async Task Says_nothing_is_missing_when_the_period_holds_turns_but_no_firings()
+    {
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+
+        await studio.Push(new ApiRequest(GrilledAt, Skill: "grilling", CostUsd: 0.1m));
+
+        var answer = await studio.SkillTable();
+
+        // A skill that fired before the period can spend inside it, and a row of spend beside "quiet" contradicts itself.
+        Assert.Equal(0.1m, Assert.Single(answer.Skills).Spend.Cost);
         Assert.Equal("complete", answer.Provenance.Gap);
         Assert.Null(answer.Provenance.Missing);
     }

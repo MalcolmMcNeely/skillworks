@@ -4,11 +4,8 @@ import type { Origin, Provenance } from '../../provenance/lib/provenance';
 import type { TokenSplit } from '../lib/skills';
 
 export interface SkillSpend extends TokenSplit {
-  // Already inside outputTokens, because that is how thinking is billed.
-  thinkingTokens: number;
-  // US dollars, priced by the API at the moment of the question.
+  // US dollars, as Claude Code estimated them.
   cost: number;
-  costIsPartial: boolean;
 }
 
 export interface SkillSummary {

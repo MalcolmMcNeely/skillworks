@@ -13,10 +13,6 @@ public sealed class PriceTable(IDbContextFactory<TranscriptStoreDbContext> conte
         return await store.ModelPrices.OrderBy(price => price.Model).ToListAsync(cancellationToken);
     }
 
-    // Keyed exactly: a near miss is a row not written yet, and loose matching would have to guess the row.
-    public async Task<IReadOnlyDictionary<string, ModelPrice>> ByModelAsync(CancellationToken cancellationToken) =>
-        (await PricesAsync(cancellationToken)).ToDictionary(price => price.Model);
-
     public async Task<ModelPrice> SetAsync(ModelPrice price, CancellationToken cancellationToken)
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);

@@ -5,7 +5,7 @@ const spend: TokenSplit = {
   inputTokens: 1500,
   outputTokens: 6000,
   cacheReadTokens: 3000000,
-  cacheWriteTokens: 400000,
+  cacheCreationTokens: 400000,
 };
 
 describe('describeList', () => {
@@ -27,19 +27,11 @@ describe('describeMoney', () => {
   it('keeps a fraction of a penny rather than rounding it away to free', () => {
     expect(describeMoney(0.0022)).toBe('$0.0022');
   });
-
-  it('marks a cost the API could only partly work out', () => {
-    expect(describeMoney(1.5, true)).toBe('$1.50+');
-  });
 });
 
 describe('describeSplit', () => {
-  it('names each kind of token so a long skill and a cache buster read differently', () => {
-    expect(describeSplit(spend)).toBe('in 1,500 · out 6,000 · cache 3,000,000r · 400,000w');
-  });
-
-  it('leaves the thinking out, because it is already inside the output', () => {
-    expect(describeSplit(spend)).not.toContain('think');
+  it('names each kind of token Claude Code reports, so a long skill and a cache buster read differently', () => {
+    expect(describeSplit(spend)).toBe('in 1,500 · out 6,000 · cache read 3,000,000 · cache creation 400,000');
   });
 });
 

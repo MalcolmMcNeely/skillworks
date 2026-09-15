@@ -58,11 +58,11 @@ const columns = column.columns([
   column.accessor((skill) => skill.spend.cost, {
     id: 'cost',
     header: 'Cost',
-    cell: (cell) => describeMoney(cell.getValue(), cell.row.original.spend.costIsPartial),
+    cell: (cell) => describeMoney(cell.getValue()),
   }),
   column.accessor('averageCost', {
     header: 'Per activation',
-    cell: (cell) => describeMoney(cell.getValue(), cell.row.original.spend.costIsPartial),
+    cell: (cell) => describeMoney(cell.getValue()),
   }),
   column.accessor((skill) => describeSplit(skill.spend), {
     id: 'tokens',

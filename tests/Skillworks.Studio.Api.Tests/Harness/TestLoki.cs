@@ -27,12 +27,21 @@ public static class TestLoki
 
     public static Uri Address => StartedAddress.Value;
 
-    public static async Task PushAsync(string tenant, IReadOnlyList<SkillActivated> events)
+    public static Task PushAsync(string tenant, IReadOnlyList<SkillActivated> events) =>
+        PushAsync(
+            tenant,
+            events.Select(recorded =>
+                LogRecord(SkillActivated.EventName, recorded.Moment, recorded.Session, recorded.Sequence, recorded.Attributes)));
+
+    public static Task PushAsync(string tenant, IReadOnlyList<ApiRequest> turns) =>
+        PushAsync(tenant, turns.Select(turn => LogRecord(ApiRequest.EventName, turn.Moment, null, null, turn.Attributes)));
+
+    private static async Task PushAsync(string tenant, IEnumerable<JsonObject> records)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Address, "otlp/v1/logs"))
         {
             // Without a charset: Loki's OTLP route refuses "application/json; charset=utf-8".
-            Content = new StringContent(Logs(events).ToJsonString(), new MediaTypeHeaderValue("application/json")),
+            Content = new StringContent(Logs(records).ToJsonString(), new MediaTypeHeaderValue("application/json")),
         };
 
         request.Headers.Add("X-Scope-OrgID", tenant);
@@ -65,7 +74,7 @@ public static class TestLoki
         return new UriBuilder(Uri.UriSchemeHttp, container.Hostname, container.GetMappedPublicPort(Port)).Uri;
     }
 
-    private static JsonObject Logs(IReadOnlyList<SkillActivated> events) => new()
+    private static JsonObject Logs(IEnumerable<JsonObject> records) => new()
     {
         ["resourceLogs"] = new JsonArray(new JsonObject
         {
@@ -76,35 +85,38 @@ public static class TestLoki
             ["scopeLogs"] = new JsonArray(new JsonObject
             {
                 ["scope"] = new JsonObject { ["name"] = "com.anthropic.claude_code.events", ["version"] = ClaudeCodeVersion },
-                ["logRecords"] = new JsonArray([.. events.Select(LogRecord)]),
+                ["logRecords"] = new JsonArray([.. records]),
             }),
         }),
     };
 
-    private static JsonObject LogRecord(SkillActivated recorded)
+    private static JsonObject LogRecord(
+        string eventName,
+        DateTimeOffset at,
+        string? session,
+        long? sequence,
+        IEnumerable<(string Key, string? Value)> attributes)
     {
-        var at = recorded.Moment;
-        var sequence = recorded.Sequence ?? Interlocked.Increment(ref _sequence);
         var nanoseconds = ((at.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100).ToString(CultureInfo.InvariantCulture);
 
         return new JsonObject
         {
             ["timeUnixNano"] = nanoseconds,
             ["observedTimeUnixNano"] = nanoseconds,
-            ["body"] = new JsonObject { ["stringValue"] = $"claude_code.{SkillActivated.EventName}" },
+            ["body"] = new JsonObject { ["stringValue"] = $"claude_code.{eventName}" },
             ["attributes"] = Attributes(
             [
                 ("user.id", "a68801ea0000400080000000000000001"),
-                ("session.id", recorded.Session ?? Session),
+                ("session.id", session ?? Session),
                 ("app.version", ClaudeCodeVersion),
                 ("organization.id", "14451454-0000-4000-8000-000000000001"),
                 ("user.account_uuid", "784e9f9a-0000-4000-8000-000000000001"),
                 ("terminal.type", "windows-terminal"),
-                ("event.name", SkillActivated.EventName),
+                ("event.name", eventName),
                 ("event.timestamp", at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture)),
-                ("event.sequence", sequence.ToString(CultureInfo.InvariantCulture)),
+                ("event.sequence", (sequence ?? Interlocked.Increment(ref _sequence)).ToString(CultureInfo.InvariantCulture)),
                 ("prompt.id", "3b0537fa-0000-4000-8000-000000000001"),
-                .. recorded.Attributes,
+                .. attributes,
             ]),
         };
     }

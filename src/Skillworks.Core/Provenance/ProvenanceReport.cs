@@ -6,14 +6,14 @@ namespace Skillworks.Core.Provenance;
 
 public sealed class ProvenanceReport(TelemetrySwitch telemetry)
 {
-    public ProvenanceNote NoteOn(EventCounts period, DaySpan span) =>
-        ProvenanceNote.Of(period.Unreachable, period.Events, cappedAt: null, Emitting(), span.FromUtc);
+    public ProvenanceNote NoteOn(EventTotals period, DaySpan span) =>
+        ProvenanceNote.Of(period.Unreachable, (long)period.Total, cappedAt: null, Emitting(), span.FromUtc);
 
     // The whole period says whether anything fired, so a narrowed empty list is not quiet; only the read is ever cut.
-    public ProvenanceNote NoteOn(EventReading listed, EventCounts period, DaySpan span) =>
+    public ProvenanceNote NoteOn(EventReading listed, EventTotals period, DaySpan span) =>
         ProvenanceNote.Of(
             listed.Unreachable ?? period.Unreachable,
-            period.Events,
+            (long)period.Total,
             listed.Truncated ? listed.Events.Count : null,
             Emitting(),
             span.FromUtc);

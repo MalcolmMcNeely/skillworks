@@ -1,68 +1,97 @@
-using Microsoft.EntityFrameworkCore;
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
-using Skillworks.Core.TranscriptStore;
 
 namespace Skillworks.Core.Spend.Queries;
 
-public sealed class SpendQueries(IDbContextFactory<TranscriptStoreDbContext> contexts)
+public sealed class SpendQueries(EventsStoreReader events)
 {
-    private readonly record struct SkillTokens(string Skill, ModelTokens Tokens);
+    private const string EventName = "api_request";
 
-    public async Task<IReadOnlyDictionary<string, IReadOnlyList<ModelTokens>>> TokensBySkillAsync(
-        Filter filter,
-        CancellationToken cancellationToken)
+    // Sent in place of any skill from a plugin outside Anthropic's marketplaces, so it names no one skill.
+    private const string Unnamed = "third-party";
+
+    private const string CostAttribute = "cost_usd";
+
+    private const string InputAttribute = "input_tokens";
+
+    private const string OutputAttribute = "output_tokens";
+
+    private const string CacheReadAttribute = "cache_read_tokens";
+
+    private const string CacheCreationAttribute = "cache_creation_tokens";
+
+    private const string ModelAttribute = "model";
+
+    private const string EffortAttribute = "effort";
+
+    private static readonly string[] BySkillName = [EventAttributes.Skill];
+
+    // One query per attribute: Loki unwraps one at a time, and every pairing multiplies the series.
+    public async Task<SpendTally> TallyBySkillAsync(DaySpan span, Filter filter, CancellationToken cancellationToken)
     {
-        await using var store = await contexts.CreateDbContextAsync(cancellationToken);
+        var turns = Turns(span) with { Repository = filter.Repository, Skill = filter.Skill };
 
-        // Summed in the database, so hundreds of thousands of turns never cross the wire to be added up here.
-        var totals = await Narrowed(store.Turns, filter)
-            .GroupBy(turn => new { Skill = turn.SkillName!, turn.Model, turn.Effort })
-            .Select(group => new SkillTokens(
-                group.Key.Skill,
-                new ModelTokens(
-                    group.Key.Model,
-                    group.Key.Effort,
-                    group.Sum(turn => turn.InputTokens),
-                    group.Sum(turn => turn.OutputTokens),
-                    group.Sum(turn => turn.ThinkingTokens),
-                    group.Sum(turn => turn.CacheReadTokens),
-                    group.Sum(turn => turn.CacheWrite5mTokens),
-                    group.Sum(turn => turn.CacheWrite1hTokens))))
-            .ToListAsync(cancellationToken);
+        Task<EventTotals> Sum(string attribute) => events.SumAsync(turns, attribute, BySkillName, cancellationToken);
 
-        return totals
-            .GroupBy(total => total.Skill)
-            .ToDictionary(
-                group => group.Key,
-                IReadOnlyList<ModelTokens> (group) => [.. group.Select(total => total.Tokens)]);
+        Task<EventTotals> CountBy(string attribute) => events.CountAsync(turns, [EventAttributes.Skill, attribute], cancellationToken);
+
+        var costSum = Sum(CostAttribute);
+        var inputSum = Sum(InputAttribute);
+        var outputSum = Sum(OutputAttribute);
+        var cacheReadSum = Sum(CacheReadAttribute);
+        var cacheCreationSum = Sum(CacheCreationAttribute);
+        var modelCount = CountBy(ModelAttribute);
+        var effortCount = CountBy(EffortAttribute);
+        var surveying = events.CountAsync(Turns(span), [], cancellationToken);
+
+        var (cost, input, output, cacheRead, cacheCreation, model, effort, period) = (
+            await costSum,
+            await inputSum,
+            await outputSum,
+            await cacheReadSum,
+            await cacheCreationSum,
+            await modelCount,
+            await effortCount,
+            await surveying);
+
+        var costs = PerSkill(cost);
+        var inputs = PerSkill(input);
+        var outputs = PerSkill(output);
+        var cacheReads = PerSkill(cacheRead);
+        var cacheCreations = PerSkill(cacheCreation);
+        var models = Names(model, ModelAttribute);
+
+        return new SpendTally(
+            models.Keys
+                .Concat(new[] { costs, inputs, outputs, cacheReads, cacheCreations }.SelectMany(sums => sums.Keys))
+                .Distinct()
+                .ToDictionary(
+                    skill => skill,
+                    skill => new SkillSpend(
+                        (long)inputs.GetValueOrDefault(skill),
+                        (long)outputs.GetValueOrDefault(skill),
+                        (long)cacheReads.GetValueOrDefault(skill),
+                        (long)cacheCreations.GetValueOrDefault(skill),
+                        costs.GetValueOrDefault(skill))),
+            models,
+            Names(effort, EffortAttribute),
+            period with
+            {
+                Unreachable = period.Unreachable ?? cost.Unreachable ?? input.Unreachable ?? output.Unreachable ??
+                    cacheRead.Unreachable ?? cacheCreation.Unreachable ?? model.Unreachable ?? effort.Unreachable,
+            });
     }
 
-    // Narrowed like the activations, or a filtered count would sit beside an all-time cost.
-    private static IQueryable<Turn> Narrowed(IQueryable<Turn> turns, Filter filter)
-    {
-        // A turn charged to no skill was spent choosing one, so it belongs in no skill's total.
-        turns = turns.Where(turn => turn.SkillName != null);
+    private static EventQuery Turns(DaySpan span) => new(EventName, span.FromUtc, span.UntilUtc);
 
-        if (filter.FromUtc is { } from)
-        {
-            turns = turns.Where(turn => turn.TimestampUtc >= from);
-        }
+    private static Dictionary<string, decimal> PerSkill(EventTotals totals) =>
+        Named(totals).ToDictionary(group => group.Key, group => group.Sum(total => total.Total));
 
-        if (filter.UntilUtc is { } until)
-        {
-            turns = turns.Where(turn => turn.TimestampUtc < until);
-        }
+    private static Dictionary<string, IReadOnlyList<string>> Names(EventTotals totals, string attribute) =>
+        Named(totals).ToDictionary(
+            group => group.Key,
+            IReadOnlyList<string> (group) => [.. group.Select(total => total.Attribute(attribute)).OfType<string>().Distinct().Order()]);
 
-        if (filter.Repository is { } repository)
-        {
-            turns = turns.Where(turn => turn.Repository == repository);
-        }
-
-        if (filter.Skill is { } skill)
-        {
-            turns = turns.Where(turn => turn.SkillName == skill);
-        }
-
-        return turns;
-    }
+    private static IEnumerable<IGrouping<string, EventTotal>> Named(EventTotals totals) =>
+        totals.BySkill().Where(group => group.Key != Unnamed);
 }

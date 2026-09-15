@@ -6,7 +6,7 @@ public static class SpendEndpoints
 {
     public static IEndpointRouteBuilder MapSpendEndpoints(this IEndpointRouteBuilder api)
     {
-        // No filter: prices are configuration read on every skill query, not a record of what happened.
+        // No filter: prices are configuration, not a record of what happened.
         api.MapGet("prices", (PriceTable prices, CancellationToken cancellationToken) =>
             prices.PricesAsync(cancellationToken));
 

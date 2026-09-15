@@ -4,10 +4,10 @@ export interface TokenSplit {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
-  cacheWriteTokens: number;
+  cacheCreationTokens: number;
 }
 
-// Not the reader's locale: the price table is in US dollars, so figures group and point the way dollars do.
+// Not the reader's locale: costs are in US dollars, so figures group and point the way dollars do.
 const money = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
@@ -22,8 +22,8 @@ export function describeList(values: readonly string[]): string {
   return values.length === 0 ? '—' : values.join(', ');
 }
 
-export function describeMoney(amount: number, partial = false): string {
-  return partial ? `${money.format(amount)}+` : money.format(amount);
+export function describeMoney(amount: number): string {
+  return money.format(amount);
 }
 
 function describeTokens(count: number): string {
@@ -34,8 +34,8 @@ export function describeSplit(spend: TokenSplit): string {
   return [
     `in ${describeTokens(spend.inputTokens)}`,
     `out ${describeTokens(spend.outputTokens)}`,
-    `cache ${describeTokens(spend.cacheReadTokens)}r`,
-    `${describeTokens(spend.cacheWriteTokens)}w`,
+    `cache read ${describeTokens(spend.cacheReadTokens)}`,
+    `cache creation ${describeTokens(spend.cacheCreationTokens)}`,
   ].join(' · ');
 }
 

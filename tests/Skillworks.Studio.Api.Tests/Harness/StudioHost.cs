@@ -74,6 +74,8 @@ public sealed class StudioHost : IDisposable
 
     public Task Push(params SkillActivated[] events) => TestLoki.PushAsync(_tenant, events);
 
+    public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);
+
     public static string Fixture(string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "Transcripts", name);
 
     public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Fixtures", "Catalogue");

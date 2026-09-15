@@ -2,9 +2,9 @@ using System.Text.Json;
 
 namespace Skillworks.Core.EventsStore;
 
-public sealed class EventCount(IReadOnlyDictionary<string, string> labels, long count)
+public sealed class EventTotal(IReadOnlyDictionary<string, string> labels, decimal total)
 {
-    public long Count => count;
+    public decimal Total => total;
 
     public string? Repository =>
         EventAttributes.RepositoryOf(Attribute(EventAttributes.Owner), Attribute(EventAttributes.RepositoryName));
@@ -14,13 +14,13 @@ public sealed class EventCount(IReadOnlyDictionary<string, string> labels, long 
 
     public string? Attribute(string name) => labels.GetValueOrDefault(EventAttributes.LabelOf(name));
 
-    // A span counted in several queries answers as one query would.
-    internal static IReadOnlyList<EventCount> Joined(IEnumerable<EventCount> groups) =>
+    // A span totalled in several queries answers as one query would.
+    internal static IReadOnlyList<EventTotal> Joined(IEnumerable<EventTotal> groups) =>
     [
         .. groups
             .GroupBy(group => group.Group)
-            .Select(same => same.First().Counting(same.Sum(group => group.Count)))
+            .Select(same => same.First().Totalling(same.Sum(group => group.Total)))
     ];
 
-    private EventCount Counting(long total) => new(labels, total);
+    private EventTotal Totalling(decimal sum) => new(labels, sum);
 }
