@@ -36,7 +36,8 @@ _Avoid_: Slash command, manual skill
 
 **Studio**:
 The local app for watching, authoring and testing the catalogue. It runs on the developer's own
-machine because authoring writes files and evals start `claude`.
+machine because authoring writes files and evals start `claude`. What it measures it reads from the
+organisation's Events store, never from the machine it runs on.
 _Avoid_: Reader, console, dashboard, portal
 
 **Health**:
@@ -48,24 +49,36 @@ _Avoid_: Status, diagnostics, readiness
 
 ### Measurement
 
+**Telemetry**:
+The events Claude Code sends while it is switched on. Everything Studio measures is telemetry.
+_Avoid_: Usage data, metrics
+
+**Events store**:
+The organisation's store that Claude Code's telemetry events arrive in, once telemetry is switched
+on. It is the only place Studio reads what it measures. Studio keeps nothing of its own.
+_Avoid_: Event log, telemetry store, transcript store, database
+
 **Activation**:
-One occasion on which a skill fired.
+One occasion on which a skill fired. It holds only what Claude Code said when the skill fired: the
+skill, the time, its Origin, its session and its Repository.
 _Avoid_: Invocation, call, run, usage
 
 **Trigger**:
-What caused an activation: Claude chose the skill, or a developer typed it.
+What caused an activation: Claude chose the skill, a developer typed it, another skill called it, or
+an agent preloaded it. All four are Activations, but only Claude choosing a skill is evidence that
+its description works.
 
 **Provenance**:
-Where a Skill came from and what set it off. Only the Events store records it; a Transcript does
-not, which is the whole reason there are two stores. A period the Events store holds nothing for is
-labelled missing, never shown as none.
+Where a Skill came from and what set it off.
 _Avoid_: Lineage, delivery, history
 
 **Gap**:
-Which way Provenance fell short, when it did: the Events store was unreachable, telemetry was never
-switched on, the period was genuinely quiet, or it held more events than one read takes. All four
-arrive as no Origins at all, so the Gap is the only thing that tells them apart, and each one means
-something different for the developer to do.
+Which way an answer from the Events store fell short, when it did: the store was unreachable,
+telemetry was never switched on, the period was genuinely quiet, or a list held more events than
+one read takes. The first three arrive as nothing at all, so the Gap is the only thing that tells
+them apart, and each one means something different for the developer to do. Whether telemetry is
+switched on is read from the machine Studio runs on, so that Gap speaks for this machine only. A
+period the Events store holds nothing for is labelled missing, never shown as none.
 _Avoid_: Error, empty, null
 
 **Origin**:
@@ -73,70 +86,46 @@ One way a Skill was delivered and set off: its Trigger, the place it was loaded 
 and Marketplace behind it where a plugin delivered it. A Skill name with two Origins is two Skills
 sharing a name.
 
-**Transcript**:
-The session file Claude Code writes to disk. It records every activation with its real skill name
-and the tokens that turn spent.
-_Avoid_: Log, history, session log
-
-**Store**:
-One of the two places Studio keeps what it measures. Each is named for what fills it. Nothing else
-is a store.
-
-**Transcript store**:
-The Store the ingest fills from the Transcripts. It holds every Activation, Turn and Fault, and the
-Price table.
-_Avoid_: Telemetry store, database, Studio's own store
-
-**Events store**:
-The Store Claude Code's telemetry events arrive in, once telemetry is switched on. It is the only
-place Provenance can come from.
-_Avoid_: Event log, telemetry store
-
-**Telemetry**:
-The events Claude Code sends while it is switched on. Nothing Studio reads from a Transcript is
-telemetry.
-_Avoid_: Usage data, metrics
-
-**Ingest**:
-Reading the Transcripts into the Transcript store. One **pass** is one sweep of the folder; a pass
-reads only what changed unless it is asked to read everything again.
-_Avoid_: Import, sync, scrape
-
-**Fault**:
-A line, or a whole Transcript, the ingest could not read and stepped over. Faults are counted and
-kept, so a gap in the numbers is never read as a fact.
-_Avoid_: Error, failure, bad record
+**Repository**:
+The git repository a session ran in, named `owner/name` from its `origin` remote. A session with no
+`origin` remote has no Repository, and a Filter that asks for one leaves it out.
+_Avoid_: Project, folder, workspace
 
 **Turn**:
-One request to the model, and the tokens it spent. It is the unit of spend. A Transcript writes one
-record per content block and repeats the whole usage on each, so a turn is counted by its request id
-and never by its records.
+One request to the model, the tokens it spent and what it cost. It is the unit of spend.
 _Avoid_: Message, exchange, round trip
+
+**Cost**:
+What Claude Code estimates a Turn cost, at the prices it was sent with. Studio never prices a Turn
+itself, so a wrong price is corrected where Claude Code takes its prices, not in Studio.
+_Avoid_: Price, bill, spend total
 
 **Attribution**:
 The link from a unit of spend back to the skill that caused it. A Turn is attributed to the skill
-that was in force when the request was made, so the turn that chose a skill belongs to no skill.
+Claude Code says was in force when the request was made, so the turn that chose a skill belongs to
+no skill. Studio never infers a skill Claude Code did not name.
 
-**Price table**:
-What a million tokens of each kind costs on each model. It is read when a question is asked and
-never folded into a stored Turn, so correcting a price never means reading the Transcripts again.
-_Avoid_: Rate card, tariff
+**Unnamed spend**:
+The Turns whose skill was in force but that Claude Code will not name, because the skill came from
+a plugin outside Anthropic's marketplaces. It is shown as one amount of its own and never shared out
+among skills. It is not the same as a Turn that belongs to no skill.
+_Avoid_: Third-party, unattributed, unknown
 
 **Model**:
-Which model answered, as the Transcript spells it. It is what a row of the Price table is found by,
-and what makes two costs comparable.
+Which model answered, as telemetry spells it. It is what makes two costs comparable.
 _Avoid_: Engine, LLM
 
 **Effort**:
-How hard the model was asked to think on a Turn or an Activation. It moves the cost without moving
-the Model, so it is reported beside it.
+How hard the model was asked to think on a Turn. It moves the cost without moving the Model, so it
+is reported beside it.
 _Avoid_: Reasoning level, thinking budget
 
 **Filter**:
-The one way every list narrows: a span of days, a repository and a Skill. The span is counted in
-whole UTC days and takes both ends in. A Skill that never fired belongs in the unnarrowed answer,
-where its zero says the description may be broken; a filter that asks what happened in one week or
-one project leaves it out, because it did not happen there.
+The one way every list narrows: a span of days, a Repository and a Skill. The span is counted in
+whole UTC days and takes both ends in. With no span, a list covers the **lookback**, the last seven
+days, and says so. A Skill that never fired belongs in the unnarrowed answer, where its zero says
+the description may be broken; a filter that asks what happened in a chosen span or one Repository
+leaves it out, because it did not happen there.
 _Avoid_: Query, search, scope
 
 **Firing eval**:
