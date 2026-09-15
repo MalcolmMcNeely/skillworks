@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { describeEmpty, describeSpan, readFilter } from '../../filters/lib/filters';
+import { GapNote } from '../../gaps/components/GapNote';
+import { explainsEmpty } from '../../gaps/lib/gaps';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { describeMoment } from '../../moments/lib/moments';
-import { describeDelivery, describeProvenance, describeTrigger, explainsEmpty } from '../../provenance/lib/provenance';
+import { describeDelivery, describeTrigger } from '../../provenance/lib/provenance';
 import { fetchActivations, type ActivationList } from '../api/activations';
 import { activationPath, describeRecorded, skillsPath } from '../lib/activations';
 
@@ -49,10 +51,10 @@ export function Activations() {
         <>
           <p data-testid="activations-span">Covers {describeSpan(activations.span)}.</p>
 
-          <p data-testid="provenance-note">{describeProvenance(activations.provenance)}</p>
+          <GapNote gap={activations.gap} />
 
           {activations.activations.length === 0 ? (
-            !explainsEmpty(activations.provenance.gap) && (
+            !explainsEmpty(activations.gap.kind) && (
               <p data-testid="activations-empty">{describeEmpty(filter)}</p>
             )
           ) : (

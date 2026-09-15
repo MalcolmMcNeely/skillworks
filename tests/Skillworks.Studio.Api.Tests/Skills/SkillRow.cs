@@ -13,7 +13,7 @@ public sealed record SkillRow
 
     public required string[]? Efforts { get; init; }
 
-    public required SpendRow? Spend { get; init; }
+    public required TurnTotalsRow? Spend { get; init; }
 
     public required decimal? AverageCost { get; init; }
 

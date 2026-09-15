@@ -34,7 +34,7 @@ public sealed class ActivationQueries(EventsStoreReader events)
     }
 
     // Raw events, as a list shows each firing, so this is the one answer the read cap can cut.
-    public async Task<(IReadOnlyList<ActivationSummary> Activations, EventReading Read, EventTotals Period)> ListAsync(
+    public async Task<(IReadOnlyList<Activation> Activations, EventReading Read, EventTotals Period)> ListAsync(
         DaySpan span,
         Filter filter,
         CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ public sealed class ActivationQueries(EventsStoreReader events)
     }
 
     // Not narrowed by a filter: a reader who has a firing's id is asking about that firing, not a week.
-    public async Task<(ActivationSummary? Activation, EventReading Read)> OpenAsync(
+    public async Task<(Activation? Activation, EventReading Read)> OpenAsync(
         ActivationId id,
         CancellationToken cancellationToken)
     {
@@ -75,8 +75,8 @@ public sealed class ActivationQueries(EventsStoreReader events)
     private static EventQuery Firings(DaySpan span, Filter filter) =>
         Firings(span) with { Repository = filter.Repository, Skill = filter.Skill };
 
-    private static IEnumerable<ActivationSummary> Activations(IEnumerable<TelemetryEvent> recorded) =>
-        recorded.Select(ActivationSummary.From).OfType<ActivationSummary>();
+    private static IEnumerable<Activation> Activations(IEnumerable<TelemetryEvent> recorded) =>
+        recorded.Select(Activation.From).OfType<Activation>();
 
     private static IReadOnlyList<string> Sorted(IEnumerable<string> names) =>
         [.. names.Distinct().OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];

@@ -84,7 +84,7 @@ public sealed partial class SkillEndpointsTests
         var grilling = Assert.Single(answer.Skills);
 
         // The store adds up, so a busy organisation's spend is never cut to what one read takes.
-        Assert.Equal("complete", answer.Provenance.Gap);
+        Assert.Equal("complete", answer.Gap.Kind);
         Assert.Equal(0.7m, grilling.Spend?.Cost);
         Assert.Equal(700, grilling.Spend?.OutputTokens);
         Assert.Equal(["claude-haiku-4-5", "claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models!);
@@ -136,7 +136,7 @@ public sealed partial class SkillEndpointsTests
         var grilling = await studio.Skill("grilling");
 
         Assert.Equal(1, grilling.Activations);
-        Assert.Equal(new SpendRow { InputTokens = 0, OutputTokens = 0, CacheReadTokens = 0, CacheCreationTokens = 0, Cost = 0m }, grilling.Spend);
+        Assert.Equal(new TurnTotalsRow { InputTokens = 0, OutputTokens = 0, CacheReadTokens = 0, CacheCreationTokens = 0, Cost = 0m }, grilling.Spend);
         Assert.Equal(0m, grilling.AverageCost);
         Assert.Empty(grilling.Models!);
         Assert.Empty(grilling.Efforts!);

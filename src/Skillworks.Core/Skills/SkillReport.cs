@@ -2,7 +2,7 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.Filters;
-using Skillworks.Core.Provenance;
+using Skillworks.Core.Gaps;
 using Skillworks.Core.Spend;
 using Skillworks.Core.Spend.Queries;
 
@@ -13,7 +13,7 @@ public sealed class SkillReport(
     ActivationQueries activations,
     SpendQueries spend,
     CatalogueSkills catalogue,
-    ProvenanceReport provenance,
+    GapReport gaps,
     Lookback lookback)
 {
     public async Task<SkillTable> SkillsAsync(
@@ -53,7 +53,7 @@ public sealed class SkillReport(
             // Some of it may be another skill's, and on this skill's page all of it would read as its own.
             filter.Skill is null ? spent.Unnamed : null,
             // Turns count beside firings, so a period that only spent is not called quiet.
-            provenance.NoteOn(tally.Period.Plus(spent.Period), span),
+            gaps.InTotals(tally.Period.Plus(spent.Period)),
             span);
     }
 
@@ -70,7 +70,7 @@ public sealed class SkillReport(
             tally.Repositories.GetValueOrDefault(name, []),
             spendNamed ? spent.Models.GetValueOrDefault(name, []) : null,
             spendNamed ? spent.Efforts.GetValueOrDefault(name, []) : null,
-            spendNamed ? spent.Spend.GetValueOrDefault(name, SkillSpend.Nothing) : null,
+            spendNamed ? spent.Spend.GetValueOrDefault(name, TurnTotals.Nothing) : null,
             origins);
     }
 

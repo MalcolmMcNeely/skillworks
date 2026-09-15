@@ -31,7 +31,7 @@ public sealed class StudioHost : IDisposable
         // Only for a store that is down or failing; data comes from the test Loki.
         BrokenEventsStore? events = null,
         int maxEvents = 5000,
-        // Not the developer's settings, or provenance tests would pass or fail on this machine's telemetry.
+        // Not the developer's settings, or Gap tests would pass or fail on this machine's telemetry.
         bool emitting = true,
         string? settings = null,
         bool tenanted = true,
@@ -67,6 +67,9 @@ public sealed class StudioHost : IDisposable
     public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);
 
     public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Fixtures", "Catalogue");
+
+    public static IReadOnlyList<string> Fields(JsonNode? answer) =>
+        [.. (answer?.AsObject() ?? []).Select(field => field.Key).Order(StringComparer.Ordinal)];
 
     public void Dispose()
     {

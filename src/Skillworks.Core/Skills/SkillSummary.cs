@@ -10,7 +10,7 @@ public sealed record SkillSummary(
     IReadOnlyList<string> Repositories,
     IReadOnlyList<string>? Models,
     IReadOnlyList<string>? Efforts,
-    SkillSpend? Spend,
+    TurnTotals? Spend,
     IReadOnlyList<SkillOrigin> Origins)
 {
     public decimal? AverageCost => Spend switch

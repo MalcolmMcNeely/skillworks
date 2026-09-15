@@ -1,6 +1,6 @@
 namespace Skillworks.Studio.Api.Tests.Skills;
 
-public sealed record SpendRow
+public sealed record TurnTotalsRow
 {
     public required long InputTokens { get; init; }
 

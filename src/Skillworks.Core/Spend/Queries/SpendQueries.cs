@@ -61,7 +61,7 @@ public sealed class SpendQueries(EventsStoreReader events)
         var cacheCreations = PerSkill(cacheCreation);
         var models = Names(model, ModelAttribute);
 
-        SkillSpend SpendOf(string skill) => new(
+        TurnTotals SpendOf(string skill) => new(
             (long)inputs.GetValueOrDefault(skill),
             (long)outputs.GetValueOrDefault(skill),
             (long)cacheReads.GetValueOrDefault(skill),

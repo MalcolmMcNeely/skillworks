@@ -1,8 +1,9 @@
 import { filterQuery, type Filter, type Span } from '../../filters/lib/filters';
+import type { Gap } from '../../gaps/lib/gaps';
 import { getJson } from '../../http/api/json';
-import type { Origin, Provenance } from '../../provenance/lib/provenance';
+import type { Origin } from '../../provenance/lib/provenance';
 
-export interface ActivationSummary {
+export interface Activation {
   id: string;
   skill: string;
   sessionId: string | null;
@@ -12,15 +13,15 @@ export interface ActivationSummary {
 }
 
 export interface ActivationList {
-  activations: ActivationSummary[];
-  provenance: Provenance;
+  activations: Activation[];
+  gap: Gap;
   span: Span;
 }
 
 export interface ActivationOpened {
-  // Null only when the events store could not be read, and the provenance says why.
-  activation: ActivationSummary | null;
-  provenance: Provenance;
+  // Null only when the events store could not be read, and the Gap says why.
+  activation: Activation | null;
+  gap: Gap;
 }
 
 export function fetchActivations(filter: Filter, signal: AbortSignal): Promise<ActivationList> {

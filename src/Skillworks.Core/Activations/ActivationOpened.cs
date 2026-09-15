@@ -1,5 +1,5 @@
-using Skillworks.Core.Provenance;
+using Skillworks.Core.Gaps;
 
 namespace Skillworks.Core.Activations;
 
-public sealed record ActivationOpened(ActivationSummary? Activation, ProvenanceNote Provenance);
+public sealed record ActivationOpened(Activation? Activation, Gap Gap);

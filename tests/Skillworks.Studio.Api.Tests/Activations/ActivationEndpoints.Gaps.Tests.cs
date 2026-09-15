@@ -21,8 +21,8 @@ public sealed partial class ActivationEndpointsTests
         Assert.Equal(
             [Moment("2026-09-14T09:10:00Z"), Moment("2026-09-14T09:05:00Z")],
             answer.Activations.Select(activation => activation.TimestampUtc));
-        Assert.Equal("truncated", answer.Provenance.Gap);
-        Assert.Contains("newest 2", answer.Provenance.Missing ?? "");
+        Assert.Equal("truncated", answer.Gap.Kind);
+        Assert.Contains("newest 2", answer.Gap.Missing ?? "");
     }
 
     [Fact]
@@ -34,8 +34,8 @@ public sealed partial class ActivationEndpointsTests
         var answer = await studio.ActivationList();
 
         Assert.Empty(answer.Activations);
-        Assert.Equal("unreachable", answer.Provenance.Gap);
-        Assert.NotNull(answer.Provenance.Missing);
+        Assert.Equal("unreachable", answer.Gap.Kind);
+        Assert.NotNull(answer.Gap.Missing);
     }
 
     [Fact]
@@ -46,8 +46,8 @@ public sealed partial class ActivationEndpointsTests
 
         var answer = await studio.ActivationList();
 
-        Assert.Equal("unreachable", answer.Provenance.Gap);
-        Assert.Contains("502", answer.Provenance.Missing ?? "");
+        Assert.Equal("unreachable", answer.Gap.Kind);
+        Assert.Contains("502", answer.Gap.Missing ?? "");
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public sealed partial class ActivationEndpointsTests
         var answer = await studio.ActivationList();
 
         Assert.Empty(answer.Activations);
-        Assert.Equal("telemetryOff", answer.Provenance.Gap);
+        Assert.Equal("telemetryOff", answer.Gap.Kind);
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public sealed partial class ActivationEndpointsTests
 
         var answer = await studio.ActivationList();
 
-        Assert.Equal("telemetryUnknown", answer.Provenance.Gap);
+        Assert.Equal("telemetryUnknown", answer.Gap.Kind);
     }
 
     [Fact]
@@ -79,8 +79,8 @@ public sealed partial class ActivationEndpointsTests
         var answer = await studio.ActivationList();
 
         Assert.Empty(answer.Activations);
-        Assert.Equal("quiet", answer.Provenance.Gap);
-        Assert.NotNull(answer.Provenance.Missing);
+        Assert.Equal("quiet", answer.Gap.Kind);
+        Assert.NotNull(answer.Gap.Missing);
     }
 
     [Fact]
@@ -94,7 +94,32 @@ public sealed partial class ActivationEndpointsTests
 
         // Other skills fired this week, so "quiet" would send a reader looking for a telemetry fault.
         Assert.Empty(answer.Activations);
-        Assert.Equal("complete", answer.Provenance.Gap);
-        Assert.Null(answer.Provenance.Missing);
+        Assert.Equal("complete", answer.Gap.Kind);
+        Assert.Null(answer.Gap.Missing);
+    }
+
+    [Fact]
+    public async Task Answers_the_list_with_a_Gap_that_holds_only_its_kind_and_what_is_missing()
+    {
+        using var studio = new StudioHost();
+
+        var (answer, gap) = await studio.ListGapFields();
+
+        Assert.Equal(["activations", "gap", "span"], answer);
+        Assert.Equal(["kind", "missing"], gap);
+    }
+
+    [Fact]
+    public async Task Answers_the_page_with_a_Gap_that_holds_only_its_kind_and_what_is_missing()
+    {
+        using var studio = new StudioHost();
+
+        await studio.Push(new SkillActivated("grilling", GrilledAt));
+
+        var listed = Assert.Single(await studio.Activations());
+        var (answer, gap) = await studio.OpenedGapFields(listed.Id);
+
+        Assert.Equal(["activation", "gap"], answer);
+        Assert.Equal(["kind", "missing"], gap);
     }
 }

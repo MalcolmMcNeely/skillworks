@@ -19,7 +19,7 @@ public sealed partial class SkillEndpointsTests
 
         // A Turn under no skill hides no skill, so it is not unnamed.
         Assert.Equal(
-            new SpendRow { InputTokens = 1_500, OutputTokens = 6_000, CacheReadTokens = 3_000_000, CacheCreationTokens = 400_000, Cost = 0.3m },
+            new TurnTotalsRow { InputTokens = 1_500, OutputTokens = 6_000, CacheReadTokens = 3_000_000, CacheCreationTokens = 400_000, Cost = 0.3m },
             answer.UnnamedSpend);
     }
 
@@ -69,7 +69,7 @@ public sealed partial class SkillEndpointsTests
 
         // No firing says a plugin delivered it, so nothing says its Turns went unnamed.
         Assert.Equal(0, probe.Activations);
-        Assert.Equal(new SpendRow { InputTokens = 0, OutputTokens = 0, CacheReadTokens = 0, CacheCreationTokens = 0, Cost = 0m }, probe.Spend);
+        Assert.Equal(new TurnTotalsRow { InputTokens = 0, OutputTokens = 0, CacheReadTokens = 0, CacheCreationTokens = 0, Cost = 0m }, probe.Spend);
         Assert.Equal(0m, probe.AverageCost);
         Assert.Empty(probe.Models!);
         Assert.Empty(probe.Efforts!);

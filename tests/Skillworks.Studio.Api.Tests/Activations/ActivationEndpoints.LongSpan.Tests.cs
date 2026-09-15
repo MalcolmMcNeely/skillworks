@@ -17,7 +17,7 @@ public sealed partial class ActivationEndpointsTests
 
         var answer = await studio.ActivationList(TenDays);
 
-        Assert.Equal("complete", answer.Provenance.Gap);
+        Assert.Equal("complete", answer.Gap.Kind);
         Assert.Equal(
             [.. Enumerable.Range(0, 10).Select(day => Moment("2026-09-10T00:00:00Z").AddDays(-day))],
             answer.Activations.Select(activation => activation.TimestampUtc));
@@ -39,7 +39,7 @@ public sealed partial class ActivationEndpointsTests
         Assert.Equal(
             [Moment("2026-09-10T09:00:00Z"), Moment("2026-09-05T09:00:00Z")],
             answer.Activations.Select(activation => activation.TimestampUtc));
-        Assert.Equal("truncated", answer.Provenance.Gap);
-        Assert.Contains("newest 2", answer.Provenance.Missing ?? "");
+        Assert.Equal("truncated", answer.Gap.Kind);
+        Assert.Contains("newest 2", answer.Gap.Missing ?? "");
     }
 }

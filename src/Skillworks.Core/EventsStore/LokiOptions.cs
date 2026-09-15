@@ -11,7 +11,7 @@ public sealed class LokiOptions
 
     public string? Tenant { get; set; }
 
-    // Short on purpose: a Loki container that is down must cost the provenance, not the page.
+    // Short on purpose: a Loki container that is down must show as a Gap, not stall the page.
     public int TimeoutSeconds { get; set; } = 5;
 
     public int LookbackDays { get; set; } = 7;

@@ -106,7 +106,7 @@ public sealed partial class ActivationEndpointsTests
 
         // A not found here would tell a reader with a good link that the firing never happened.
         Assert.Null(opened.Activation);
-        Assert.Equal("unreachable", opened.Provenance.Gap);
+        Assert.Equal("unreachable", opened.Gap.Kind);
     }
 
     [Fact]
@@ -122,8 +122,8 @@ public sealed partial class ActivationEndpointsTests
         var opened = await studio.OpenActivation(listed.Id);
 
         Assert.Null(opened.Activation);
-        Assert.Equal("unreachable", opened.Provenance.Gap);
-        Assert.Contains("502", opened.Provenance.Missing ?? "");
+        Assert.Equal("unreachable", opened.Gap.Kind);
+        Assert.Contains("502", opened.Gap.Missing ?? "");
     }
 
     [Fact]
@@ -138,6 +138,6 @@ public sealed partial class ActivationEndpointsTests
 
         // The firing is real, but nothing has reached the events store since the switch went off.
         Assert.Equal(listed, opened.Activation);
-        Assert.Equal("telemetryOff", opened.Provenance.Gap);
+        Assert.Equal("telemetryOff", opened.Gap.Kind);
     }
 }

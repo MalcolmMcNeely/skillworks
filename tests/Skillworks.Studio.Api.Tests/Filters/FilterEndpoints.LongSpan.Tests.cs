@@ -22,7 +22,7 @@ public sealed partial class FilterEndpointsTests
         var answer = await studio.SkillTable(TenDays);
         var grilling = Assert.Single(answer.Skills);
 
-        Assert.Equal("complete", answer.Provenance.Gap);
+        Assert.Equal("complete", answer.Gap.Kind);
         Assert.Equal(3, grilling.Activations);
         Assert.Equal(["acme/nu", "acme/xi"], grilling.Repositories);
         Assert.Equal(["claude-proactive", "user-slash"], grilling.Origins.Select(origin => origin.Trigger).Order());

@@ -29,18 +29,31 @@ public static class ActivationRequests
     {
         var answer = await studio.Client.GetFromJsonAsync<JsonObject>("/api/activations", StudioHost.Wire);
 
-        return Fields(answer?["activations"]?.AsArray().FirstOrDefault());
+        return StudioHost.Fields(answer?["activations"]?.AsArray().FirstOrDefault());
     }
 
     public static async Task<IReadOnlyList<string>> OpenedFields(this StudioHost studio, string id)
     {
         var answer = await studio.Client.GetFromJsonAsync<JsonObject>(Opening(id), StudioHost.Wire);
 
-        return Fields(answer?["activation"]);
+        return StudioHost.Fields(answer?["activation"]);
+    }
+
+    public static async Task<(IReadOnlyList<string> Answer, IReadOnlyList<string> Gap)> ListGapFields(this StudioHost studio)
+    {
+        var answer = await studio.Client.GetFromJsonAsync<JsonObject>("/api/activations", StudioHost.Wire);
+
+        return (StudioHost.Fields(answer), StudioHost.Fields(answer?["gap"]));
+    }
+
+    public static async Task<(IReadOnlyList<string> Answer, IReadOnlyList<string> Gap)> OpenedGapFields(
+        this StudioHost studio,
+        string id)
+    {
+        var answer = await studio.Client.GetFromJsonAsync<JsonObject>(Opening(id), StudioHost.Wire);
+
+        return (StudioHost.Fields(answer), StudioHost.Fields(answer?["gap"]));
     }
 
     private static string Opening(string id) => $"/api/activations/{Uri.EscapeDataString(id)}";
-
-    private static IReadOnlyList<string> Fields(JsonNode? row) =>
-        [.. (row?.AsObject() ?? []).Select(field => field.Key).Order(StringComparer.Ordinal)];
 }

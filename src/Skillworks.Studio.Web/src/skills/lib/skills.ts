@@ -7,7 +7,7 @@ export interface TokenSplit {
   cacheCreationTokens: number;
 }
 
-export interface SkillSpend extends TokenSplit {
+export interface TurnTotals extends TokenSplit {
   // US dollars, as Claude Code estimated them.
   cost: number;
 }
@@ -55,7 +55,7 @@ export function describeSplit(spend: TokenSplit | null): string {
   ].join(' · ');
 }
 
-export function describeUnnamedSpend(spend: SkillSpend): string {
+export function describeUnnamedSpend(spend: TurnTotals): string {
   return (
     `Unnamed spend: ${describeMoney(spend.cost)} · ${describeSplit(spend)}. ` +
     'Claude Code does not name a skill from a plugin outside Anthropic’s marketplaces, so this spend is in no skill’s cost.'

@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   describeDeliveries,
   describeDelivery,
-  describeProvenance,
   describeTrigger,
   describeTriggers,
-  explainsEmpty,
   type Origin,
 } from './provenance';
 
@@ -68,40 +66,5 @@ describe('describeDeliveries', () => {
   it('says nothing was recorded when the store knew of no firing at all', () => {
     expect(describeDeliveries([])).toBe('Not recorded');
     expect(describeTriggers([])).toBe('Not recorded');
-  });
-});
-
-describe('explainsEmpty', () => {
-  it('lets a Gap under which nothing arrived explain an empty screen on its own', () => {
-    expect(explainsEmpty('unreachable')).toBe(true);
-    expect(explainsEmpty('quiet')).toBe(true);
-    expect(explainsEmpty('telemetryUnknown')).toBe(true);
-  });
-
-  it('leaves an empty screen to the filter when telemetry is off only on this machine', () => {
-    // The store can still hold other machines' events, so the filter may be why nothing matched.
-    expect(explainsEmpty('telemetryOff')).toBe(false);
-  });
-
-  it('leaves an empty screen to the filter when nothing is missing', () => {
-    expect(explainsEmpty('complete')).toBe(false);
-  });
-});
-
-describe('describeProvenance', () => {
-  it('says what is missing in the words the API gave for it', () => {
-    expect(
-      describeProvenance({
-        gap: 'unreachable',
-        missing: 'Studio could not read the events store.',
-        sinceUtc: '2026-09-05T00:00:00Z',
-      }),
-    ).toBe('Studio could not read the events store.');
-  });
-
-  it('says how far back the provenance on screen reaches when nothing is missing', () => {
-    expect(
-      describeProvenance({ gap: 'complete', missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
-    ).toBe('Where a skill came from is known for events since 2026-09-05 00:00:00 UTC.');
   });
 });

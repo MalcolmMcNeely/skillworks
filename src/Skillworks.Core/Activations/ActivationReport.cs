@@ -1,17 +1,17 @@
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Filters;
-using Skillworks.Core.Provenance;
+using Skillworks.Core.Gaps;
 
 namespace Skillworks.Core.Activations;
 
-public sealed class ActivationReport(ActivationQueries activations, ProvenanceReport provenance, Lookback lookback)
+public sealed class ActivationReport(ActivationQueries activations, GapReport gaps, Lookback lookback)
 {
     public async Task<ActivationList> ListAsync(Filter filter, CancellationToken cancellationToken)
     {
         var span = lookback.SpanOf(filter);
         var (listed, read, period) = await activations.ListAsync(span, filter, cancellationToken);
 
-        return new ActivationList(listed, provenance.NoteOn(read, period, span), span);
+        return new ActivationList(listed, gaps.InList(read, period), span);
     }
 
     public async Task<ActivationOpened?> OpenAsync(string id, CancellationToken cancellationToken)
@@ -29,6 +29,6 @@ public sealed class ActivationReport(ActivationQueries activations, ProvenanceRe
             return null;
         }
 
-        return new ActivationOpened(activation, provenance.NoteOn(read, activationId.ReadFrom));
+        return new ActivationOpened(activation, gaps.InRead(read));
     }
 }

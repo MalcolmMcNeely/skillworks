@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { FilterBar } from '../../filters/components/FilterBar';
 import { describeEmpty, describeSpan, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
+import { GapNote } from '../../gaps/components/GapNote';
+import { explainsEmpty } from '../../gaps/lib/gaps';
 import { HealthPanel } from '../../health/components/HealthPanel';
 import { describeFetchFailure } from '../../http/lib/errors';
-import { describeProvenance, explainsEmpty } from '../../provenance/lib/provenance';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
 import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
 import { SkillTable } from '../components/SkillTable';
@@ -62,7 +63,7 @@ export function Home() {
           <p data-testid="skills-span">Covers {describeSpan(skills.span)}.</p>
 
           {/* Not in the table: the gap is one fact about the period, and a column would repeat it as many. */}
-          <p data-testid="provenance-note">{describeProvenance(skills.provenance)}</p>
+          <GapNote gap={skills.gap} />
 
           {/* Not a row: no skill is named for it, and a row would read as a skill. */}
           {skills.unnamedSpend !== null && (
@@ -70,7 +71,7 @@ export function Home() {
           )}
 
           {skills.skills.length === 0 ? (
-            !explainsEmpty(skills.provenance.gap) && (
+            !explainsEmpty(skills.gap.kind) && (
               <p data-testid="skills-empty">{describeEmpty(filter)}</p>
             )
           ) : (

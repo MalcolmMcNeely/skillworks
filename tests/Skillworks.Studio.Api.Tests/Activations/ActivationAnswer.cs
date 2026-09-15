@@ -6,5 +6,5 @@ public sealed record ActivationAnswer
 {
     public required ActivationRow? Activation { get; init; }
 
-    public required ProvenanceRow Provenance { get; init; }
+    public required GapRow Gap { get; init; }
 }

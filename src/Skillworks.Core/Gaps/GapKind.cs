@@ -1,6 +1,6 @@
-namespace Skillworks.Core.Provenance;
+namespace Skillworks.Core.Gaps;
 
-public enum ProvenanceGap
+public enum GapKind
 {
     Complete,
     Unreachable,

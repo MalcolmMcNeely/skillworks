@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
+import { GapNote } from '../../gaps/components/GapNote';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { describeMoment } from '../../moments/lib/moments';
 import { describeDelivery, describeTrigger } from '../../provenance/lib/provenance';
@@ -48,9 +49,7 @@ export function Activation() {
       {activationError !== null && <p data-testid="activation-error">{activationError}</p>}
 
       {/* Outside the firing, as an unreadable events store leaves no firing to show it beside. */}
-      {opened !== null && opened.provenance.missing !== null && (
-        <p data-testid="provenance-note">{opened.provenance.missing}</p>
-      )}
+      {opened !== null && <GapNote gap={opened.gap} />}
 
       {activation !== null && (
         <>

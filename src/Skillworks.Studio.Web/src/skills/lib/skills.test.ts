@@ -6,10 +6,10 @@ import {
   describeSplit,
   describeUnnamedSpend,
   sortMark,
-  type SkillSpend,
+  type TurnTotals,
 } from './skills';
 
-const spend: SkillSpend = {
+const spend: TurnTotals = {
   inputTokens: 1500,
   outputTokens: 6000,
   cacheReadTokens: 3000000,

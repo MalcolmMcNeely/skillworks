@@ -8,8 +8,8 @@ using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
+using Skillworks.Core.Gaps;
 using Skillworks.Core.Health;
-using Skillworks.Core.Provenance;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Spend.Queries;
 using Skillworks.Core.Telemetry;
@@ -52,7 +52,7 @@ public static class CoreServiceCollectionExtensions
             options => options.HttpMessageHandlerBuilderActions.Clear());
 
         services.AddSingleton<EventsStoreReader>();
-        services.AddSingleton<ProvenanceReport>();
+        services.AddSingleton<GapReport>();
         services.AddSingleton<SkillReport>();
         services.AddSingleton<ActivationReport>();
         services.AddSingleton<StudioHealth>();
