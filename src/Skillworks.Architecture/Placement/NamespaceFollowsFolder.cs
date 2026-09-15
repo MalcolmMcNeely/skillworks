@@ -32,7 +32,7 @@ internal static class NamespaceFollowsFolder
             yield return new Breach(
                 Rule,
                 file,
-                $"Change the namespace to `{expected}`, which is the project name and then the folder path.");
+                $"Change the namespace to `{expected}`, which is the project's root namespace and then the folder path.");
         }
     }
 }

@@ -5,7 +5,7 @@ public sealed partial class ArchitectureCheckTests
     private const string ProjectFile = "<Project Sdk=\"Microsoft.NET.Sdk\" />\n";
 
     [Fact]
-    public void A_namespace_that_is_the_project_name_then_the_folder_path_is_not_a_breach()
+    public void A_namespace_that_is_the_root_namespace_then_the_folder_path_is_not_a_breach()
     {
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
@@ -62,6 +62,42 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
+    public void A_project_that_sets_a_root_namespace_names_its_namespaces_with_it()
+    {
+        using var tree = new RulesTree()
+            .Write("src/Studio/Skillworks.Studio.csproj", ProjectFileWithRootNamespace("Acme.Studio"))
+            .Write("src/Studio/Clock.cs", "namespace Acme.Studio;\n\npublic sealed class Clock;\n")
+            .Write("src/Studio/Catalogue/CatalogueLocator.cs", "namespace Acme.Studio.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_project_that_sets_a_root_namespace_breaches_a_namespace_named_for_the_project_file()
+    {
+        using var tree = new RulesTree()
+            .Write("src/Studio/Skillworks.Studio.csproj", ProjectFileWithRootNamespace("Acme.Studio"))
+            .Write("src/Studio/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
+
+        Assert.Equal([("namespace-follows-folder", "src/Studio/Catalogue/CatalogueLocator.cs")], tree.Breaches());
+    }
+
+    [Theory]
+    [InlineData(ProjectFile)]
+    [InlineData("<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <RootNamespace></RootNamespace>\n  </PropertyGroup>\n</Project>\n")]
+    [InlineData("<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <RootNamespace>   </RootNamespace>\n  </PropertyGroup>\n</Project>\n")]
+    [InlineData("<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <RootNamespace />\n  </PropertyGroup>\n</Project>\n")]
+    public void A_project_with_no_root_namespace_names_its_namespaces_with_the_project_file_name(string projectFile)
+    {
+        using var tree = new RulesTree()
+            .Write("src/Studio/Skillworks.Studio.csproj", projectFile)
+            .Write("src/Studio/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Catalogue;\n\npublic sealed class CatalogueLocator;\n")
+            .Write("src/Studio/Catalogue/CatalogueOptions.cs", "namespace Catalogue;\n\npublic sealed class CatalogueOptions;\n");
+
+        Assert.Equal([("namespace-follows-folder", "src/Studio/Catalogue/CatalogueOptions.cs")], tree.Breaches());
+    }
+
+    [Fact]
     public void A_file_in_no_project_has_no_namespace_to_follow()
     {
         using var tree = new RulesTree()
@@ -79,4 +115,12 @@ public sealed partial class ArchitectureCheckTests
 
         Assert.Empty(tree.Breaches());
     }
+
+    private static string ProjectFileWithRootNamespace(string rootNamespace) => $"""
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <RootNamespace>{rootNamespace}</RootNamespace>
+          </PropertyGroup>
+        </Project>
+        """;
 }

@@ -34,8 +34,11 @@ that tests use: a host, a fake or a record a test reads a response into.
   top-level statements is the one file with no type.
 - Global usings go in the project file as `<Using>` items, so no C# file holds only usings.
 - A large type splits across aspect files: `BlobRepository.Async.cs` holds `partial BlobRepository`.
-- A C# namespace is the project name, then the folder path: a file in
+- A C# namespace is the project's root namespace, then the folder path: a file in
   `Skillworks.Core/<Feature>/<Concern>/` is in `Skillworks.Core.<Feature>.<Concern>`.
+- The root namespace is the `<RootNamespace>` in the project file when it is set and not empty, and
+  the project file name otherwise. A `<RootNamespace>` in a shared build file, such as
+  `Directory.Build.props`, does not count.
 
 ## Tests
 

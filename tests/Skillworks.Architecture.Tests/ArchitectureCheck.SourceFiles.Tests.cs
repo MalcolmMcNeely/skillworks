@@ -9,7 +9,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/App/Clock.cs", "namespace App;\n\npublic sealed class Clock;\n")
-            .Write("src/App/App.csproj")
+            .Write("src/App/App.csproj", ProjectFile)
             .Write("web/src/main.tsx")
             .Write("web/src/format.ts")
             .Write("web/utils/build.js")
