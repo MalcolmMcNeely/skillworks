@@ -14,9 +14,7 @@ export function useHealth(): HealthReading {
   const [failure, setFailure] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
 
-  // A controller per read rather than one held in state. React remounts a component in development,
-  // so a controller that outlived its own cleanup would leave every read after the first aborted
-  // before it started — and this panel exists to stop a screen sitting silent.
+  // A controller per read: React remounts in development, so one held in state would abort every later read.
   useEffect(() => {
     const abort = new AbortController();
 
@@ -27,8 +25,7 @@ export function useHealth(): HealthReading {
         setSettled(true);
       },
       (problem: unknown) => {
-        // An abort is this effect tidying up after itself, not a failure worth showing. A real
-        // failure still settles: a view waiting on health must not wait for ever.
+        // An abort is this effect tidying up; a real failure still settles, so no view waits on health for ever.
         if (!abort.signal.aborted) {
           setFailure(describeFetchFailure(problem));
           setSettled(true);
@@ -39,8 +36,7 @@ export function useHealth(): HealthReading {
     return () => abort.abort();
   }, []);
 
-  // No signal on this one. A click is a deliberate act and the read it starts should finish; there
-  // is nothing to abandon it for.
+  // No signal: a click is a deliberate act, and the read it starts should finish.
   const recheck = () => {
     fetchHealth().then(
       (next) => {

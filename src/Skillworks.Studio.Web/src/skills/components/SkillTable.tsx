@@ -45,8 +45,7 @@ const columns = column.columns([
     header: 'Activations',
     cell: (cell) => <ActivationsLink skill={cell.row.original.name} count={cell.getValue()} />,
   }),
-  // Beside the count and before the money, so one row answers what fired, from where, and what it
-  // cost, which is the whole reason the two stores are joined.
+  // Beside the count and before the money, so one row answers what fired, from where, and what it cost.
   column.accessor((skill) => describeTriggers(skill.origins), {
     id: 'trigger',
     header: 'Trigger',
@@ -55,8 +54,7 @@ const columns = column.columns([
     id: 'delivery',
     header: 'Delivered by',
   }),
-  // The money columns sort on the number and render the words, so clicking the heading ranks
-  // skills by what they actually cost rather than by how the figure happens to read.
+  // Sorts on the number and renders the words, so the heading ranks skills by what they cost.
   column.accessor((skill) => skill.spend.cost, {
     id: 'cost',
     header: 'Cost',
@@ -95,8 +93,7 @@ export function SkillTable({
   sort: Sort;
   onSort: (sort: Sort) => void;
 }) {
-  // Keyed on the two values, not on the object: the sort is read fresh out of the address bar on
-  // every render, so an object identity would miss every time and re-sort every row with it.
+  // Keyed on the two values: the sort is a new object every render, so keying on it would re-sort every time.
   const sorting: SortingState = useMemo(
     () => [{ id: sort.column, desc: sort.desc }],
     [sort.column, sort.desc],
@@ -111,8 +108,7 @@ export function SkillTable({
       const chosen = typeof change === 'function' ? change(sorting) : change;
       const [first] = chosen;
 
-      // A third click clears the sort altogether, which would leave the table in whatever order the
-      // API happened to answer in. Going back to the starting rank says something instead.
+      // A third click clears the sort, and the starting rank says more than the API's order.
       onSort(first === undefined ? byActivations : { column: first.id, desc: first.desc });
     },
   });
@@ -120,9 +116,7 @@ export function SkillTable({
   const rows = table.getRowModel().rows;
   const scroller = useRef<HTMLDivElement>(null);
 
-  // Only the rows in view are in the DOM, so a catalogue of thousands scrolls like one of ten.
-  // The virtualizer hands back methods rather than values, so React Compiler will not memoize this
-  // component. Nothing downstream is memoized, so the cost is a skipped optimisation and no more.
+  // Virtualised for thousands of rows; React Compiler skips this component, and nothing downstream is memoized.
   // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
     count: rows.length,

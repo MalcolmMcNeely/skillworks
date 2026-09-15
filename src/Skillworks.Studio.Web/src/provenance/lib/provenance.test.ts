@@ -101,8 +101,7 @@ describe('describeMissingOrigin', () => {
   });
 
   it('points at the switch when the switch is what was never flipped', () => {
-    // A firing with no trigger beside it reads as "Claude did not choose this one" unless the
-    // screen says telemetry was never recording. The API gives the words; this passes them on.
+    // Unless the screen says telemetry was off, a firing with no trigger reads as "Claude did not choose it".
     expect(
       describeMissingOrigin({
         gap: 'telemetryOff',
@@ -113,8 +112,7 @@ describe('describeMissingOrigin', () => {
   });
 
   it('says one firing has nothing recorded when the store answered for others', () => {
-    // The store was read, and held events from that moment for other skills. Showing how far back
-    // it reaches would answer a question about one firing with a fact about a month.
+    // How far back the events store reaches is a fact about a month, not about this one firing.
     expect(
       describeMissingOrigin({ gap: 'complete', missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
     ).toBe('The events store has nothing recorded for this firing.');

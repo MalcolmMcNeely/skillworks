@@ -1,8 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
-// Aspire's AddViteApp injects API_HTTP(S) from the AppHost's `api` resource, so the address is
-// never written down here.
+// The AppHost's WithReference(api) injects API_HTTP(S), so no address is written here.
 const apiAddress = process.env.API_HTTPS ?? process.env.API_HTTP;
 
 // Without it every /api call would quietly 404 from this dev server instead of reaching the API.

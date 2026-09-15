@@ -14,8 +14,7 @@ public sealed class SpendQueries(IDbContextFactory<TranscriptStoreDbContext> con
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);
 
-        // Summed in the database, so a history of hundreds of thousands of turns never comes back
-        // over the wire to be added up here.
+        // Summed in the database, so hundreds of thousands of turns never cross the wire to be added up here.
         var totals = await Narrowed(store.Turns, filter)
             .GroupBy(turn => new { Skill = turn.SkillName!, turn.Model, turn.Effort })
             .Select(group => new SkillTokens(

@@ -17,9 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddSkillworksCore(builder.Configuration);
 
-// Enums by name, cased like every other name on the wire. A number would make "the events store is
-// down" and "telemetry was never switched on" a 1 and a 2, which is a thing to look up rather than
-// a thing to read.
+// Enums by name, so "events store down" and "telemetry never switched on" read as words, not a 1 and a 2.
 builder.Services.ConfigureHttpJsonOptions(json =>
     json.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 

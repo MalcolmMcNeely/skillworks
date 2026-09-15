@@ -16,8 +16,7 @@ public sealed class ClaudeSettingsFile
 
         try
         {
-            // Strict JSON on purpose. Comments and trailing commas would parse but could not be
-            // written back, so Studio refuses the file rather than quietly dropping them.
+            // Strict on purpose: comments and trailing commas could not be written back, so the file is refused.
             return JsonNode.Parse(File.ReadAllText(path)) is JsonObject root
                 ? new ClaudeSettingsDocument(root, Existed: true, Problem: null)
                 : new ClaudeSettingsDocument(null, Existed: true, Problem: "its top level is not an object");

@@ -45,9 +45,7 @@ public sealed class SpendEndpointsTests
 
         var spend = (await studio.Skill("comment-sweep")).Spend;
 
-        // Thinking is billed as output and is already inside that figure, so a skill that makes the
-        // model think hard is never reported as cheap. Reporting it separately says why output is
-        // high; adding it on top would charge for it twice.
+        // Thinking is billed inside output: reported apart it explains a high output, and added on it would charge twice.
         Assert.Equal(3_000, spend.ThinkingTokens);
         Assert.True(spend.ThinkingTokens < spend.OutputTokens);
     }
@@ -57,8 +55,7 @@ public sealed class SpendEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Fixture("costly"));
 
-        // The opus request in the fixture is three transcript records — thinking, text and a tool
-        // use — each repeating the whole usage block. Summing records would treble it.
+        // The fixture's opus request is three records, each repeating the whole usage, so summing them would treble it.
         Assert.Equal(6_000, (await studio.Skill("comment-sweep")).Spend.OutputTokens);
     }
 
@@ -69,9 +66,7 @@ public sealed class SpendEndpointsTests
 
         var sweep = await studio.Skill("comment-sweep");
 
-        // Chosen on opus at high effort, and its own requests ran on opus and on sonnet at medium.
-        // Naming only the model that chose it would report a cost charged at two rates as if it had
-        // been charged at one.
+        // It ran on opus and sonnet, and naming only the model that chose it would hide a cost charged at two rates.
         Assert.Equal(["claude-opus-5", "claude-sonnet-5"], sweep.Models);
         Assert.Equal(["high", "medium"], sweep.Efforts);
     }
@@ -115,9 +110,7 @@ public sealed class SpendEndpointsTests
 
         var skills = await studio.Skills();
 
-        // The API answers in name order, because which rank to read is the reader's to choose. What
-        // makes a rank by spend possible is a total against every skill, so the totals are what is
-        // asserted here; sorting them in the test would only assert that LINQ sorts.
+        // Name order, as the rank is the reader's to choose; sorting the totals here would only test that LINQ sorts.
         Assert.Equal(["comment-sweep", "grilling", "tdd", "unslop"], skills.Select(skill => skill.Name));
         Assert.Equal([SweepCost, 0m, 0m, HaikuCost], skills.Select(skill => skill.Spend.Cost));
     }
@@ -147,8 +140,7 @@ public sealed class SpendEndpointsTests
 
         var tdd = await studio.Skill("tdd");
 
-        // The tokens are real and the money is not known. Reporting zero without saying so would be
-        // the one lie a cost tool cannot afford.
+        // The tokens are real and the money unknown, and a silent zero is the one lie a cost tool cannot afford.
         Assert.Equal(100, tdd.Spend.InputTokens);
         Assert.Equal(0m, tdd.Spend.Cost);
         Assert.True(tdd.Spend.CostIsPartial);
@@ -176,9 +168,7 @@ public sealed class SpendEndpointsTests
 
         var unslop = await studio.Skill("unslop");
 
-        // unslop fired from inside comment-sweep. Its haiku request is its own; the opus request
-        // that fired it belongs to comment-sweep, and the four turns that chose a skill belong to
-        // no skill at all.
+        // unslop owns its haiku request; the opus request that fired it is comment-sweep's, and choosing turns are no skill's.
         Assert.Equal(200, unslop.Spend.InputTokens);
         Assert.Equal(HaikuCost, unslop.Spend.Cost);
         Assert.Equal(1_500, (await studio.Skill("comment-sweep")).Spend.InputTokens);

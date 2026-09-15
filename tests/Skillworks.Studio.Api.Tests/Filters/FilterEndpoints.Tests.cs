@@ -43,8 +43,7 @@ public sealed class FilterEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Fixture("filtered"));
 
-        // tdd fired at 23:30 on the 5th. A range that ended at midnight on the 5th would drop it,
-        // which is not what a reader asking about the 5th meant.
+        // tdd fired at 23:30 on the 5th, which a range ending at midnight on the 5th would drop.
         Assert.Equal(1, await studio.ActivationsOf("tdd", "?from=2026-09-05&to=2026-09-05"));
     }
 
@@ -89,8 +88,7 @@ public sealed class FilterEndpointsTests
         var everywhere = await studio.Skill("grilling");
         var inNu = await studio.Skill("grilling", "?repository=nu");
 
-        // The cost has to narrow with the count. A filtered count beside an all-time cost would read
-        // as a skill that cost a fortune for one firing.
+        // A filtered count beside an all-time cost would read as a skill that cost a fortune for one firing.
         Assert.Equal(GrillingInNu + GrillingInXi, everywhere.Spend.Cost);
         Assert.Equal(GrillingInNu, inNu.Spend.Cost);
         Assert.Equal(1_000, inNu.Spend.InputTokens);
@@ -112,8 +110,7 @@ public sealed class FilterEndpointsTests
 
         using var response = await studio.AskForSkills("?from=2020-01-01&to=2020-01-02");
 
-        // An empty answer is an answer. Reporting "nothing happened that week" as a failure would
-        // send the reader looking for a broken Studio instead of reading the fact.
+        // An empty week is an answer, and a failure would send the reader looking for a broken Studio.
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Empty(await studio.Skills("?from=2020-01-01&to=2020-01-02"));
     }
@@ -131,9 +128,7 @@ public sealed class FilterEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Fixture("filtered"), StudioHost.Catalogue());
 
-        // A skill that never fired belongs to the all-time, everywhere answer, where a zero says the
-        // description may be broken. Asking what happened in nu is asking what happened there, and a
-        // skill that did not happen there is not a zero in that answer.
+        // A never-fired skill's zero belongs to the unfiltered answer; it did not happen in nu, so it is not there.
         Assert.Contains("probekit:probe-local", (await studio.Skills()).Select(skill => skill.Name));
         Assert.DoesNotContain(
             "probekit:probe-local",

@@ -15,8 +15,7 @@ public sealed partial class ActivationEndpointsTests
 
         var opened = await studio.Activation(Grilling);
 
-        // Verbatim, as the store recorded it. The words a reader sees are the screen's business;
-        // what the API owes is the fact underneath them.
+        // Verbatim: putting the trigger into words is the screen's job, not the API's.
         Assert.Equal("user-slash", opened.Origin?.Trigger);
         Assert.Equal("userSettings", opened.Origin?.Source);
     }
@@ -41,8 +40,7 @@ public sealed partial class ActivationEndpointsTests
 
         var opened = await studio.OpenActivation(Grilling);
 
-        // The same question asked of one firing. A detail page that stayed silent would leave the
-        // empty trigger beside it to be read as "Claude did not choose this one".
+        // A silent detail page would leave its empty trigger to read as "Claude did not choose this one".
         Assert.Equal("telemetryOff", opened.Provenance.Gap);
         Assert.Null(opened.Activation.Origin);
     }
@@ -55,9 +53,7 @@ public sealed partial class ActivationEndpointsTests
 
         var opened = await studio.OpenActivation(Grilling);
 
-        // The store is up, telemetry is on and it holds a grilling hours away from this one. So the
-        // answer is whole: this firing has no origin because none was recorded near it, and a join
-        // on name alone would have handed it somebody else's trigger.
+        // The grilling the events store holds is hours away, and a join on name alone would hand its trigger to this firing.
         Assert.Equal("complete", opened.Provenance.Gap);
         Assert.Null(opened.Activation.Origin);
     }

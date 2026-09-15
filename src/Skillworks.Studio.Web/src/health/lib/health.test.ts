@@ -37,8 +37,7 @@ describe('describePart', () => {
   });
 
   it('marks a part that is deliberately off apart from one that is broken', () => {
-    // Both empty the same screen. Only one of them is a fault, and a reader who cannot tell them
-    // apart goes looking for a container problem that is not there.
+    // Both empty the same screen, but only one is a fault worth looking for.
     expect(describePart(off).startsWith('○')).toBe(true);
     expect(describePart(down).startsWith('✕')).toBe(true);
   });
@@ -50,8 +49,7 @@ describe('describePart', () => {
 
 describe('troubled', () => {
   it('counts a part that is off among the ones that need attention', () => {
-    // Nothing is broken and provenance is still missing, so a screen that only listed faults would
-    // leave an empty column unexplained.
+    // Nothing is broken, but a screen that listed only faults would leave the empty provenance column unexplained.
     expect(troubled([working, off])).toEqual([off]);
   });
 

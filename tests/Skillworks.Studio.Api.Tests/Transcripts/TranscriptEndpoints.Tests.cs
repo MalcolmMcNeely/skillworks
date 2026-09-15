@@ -13,8 +13,7 @@ public sealed class TranscriptEndpointsTests
 
         var body = await studio.Client.GetFromJsonAsync<JsonElement>("/api/transcripts");
 
-        // Claude Code writes every session under the user's own .claude folder, so this is the one
-        // place Studio never has to be told about.
+        // Claude Code writes every session under the user's own .claude folder, so Studio never has to be told where.
         Assert.Equal(
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),

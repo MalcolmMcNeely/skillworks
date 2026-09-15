@@ -36,8 +36,7 @@ public sealed partial class SkillEndpointsTests
 
         var origin = Assert.Single((await studio.Skill("grilling")).Origins);
 
-        // A skill loaded from a folder has no plugin behind it. That is a fact about the skill, so
-        // it is left empty rather than filled in with a stand-in name.
+        // A skill loaded from a folder has no plugin, so it stays empty rather than taking a stand-in name.
         Assert.Null(origin.Plugin);
         Assert.Null(origin.Marketplace);
     }
@@ -56,8 +55,7 @@ public sealed partial class SkillEndpointsTests
 
         var swept = await studio.Skill("comment-sweep");
 
-        // One row, both halves: what fired, from where, and what it cost. That is the join the two
-        // stores exist to make.
+        // What fired, from where, and what it cost, in one row, is the join the two stores exist to make.
         Assert.Equal("privateprobe", Assert.Single(swept.Origins).Marketplace);
         Assert.True(swept.Spend.Cost > 0m);
     }
@@ -72,8 +70,7 @@ public sealed partial class SkillEndpointsTests
 
         var origins = (await studio.Skill("grilling")).Origins;
 
-        // One name, two skills. The count cannot tell them apart and the provenance can, which is
-        // the point of keeping both.
+        // One name, two skills: the count cannot tell them apart, and the provenance can.
         Assert.Equal(["privateprobe", "skillworks"], origins.Select(origin => origin.Marketplace));
     }
 
@@ -100,8 +97,7 @@ public sealed partial class SkillEndpointsTests
         Assert.Equal("unreachable", answer.Provenance.Gap);
         Assert.NotNull(answer.Provenance.Missing);
 
-        // The transcript half is the durable record and stands on its own, so the count and the
-        // cost are still there. Only the provenance is gone.
+        // The transcripts stand on their own, so the count and the cost remain and only the provenance is gone.
         Assert.Equal(1, grilling.Activations);
         Assert.Empty(grilling.Origins);
     }
@@ -114,8 +110,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillTable();
 
-        // A store that is up and unhappy is an outage. Reading it as silence would report the
-        // provenance as genuinely absent, which is the one thing this half must never do.
+        // An events store that is up and unhappy is an outage, or missing provenance would read as none.
         Assert.Equal("unreachable", answer.Provenance.Gap);
         Assert.Contains("502", answer.Provenance.Missing ?? "");
     }
@@ -128,8 +123,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillTable();
 
-        // The store answered and telemetry is on, so nothing is broken, and there is still no
-        // provenance for this period. Saying so is the difference between "not recorded" and "none".
+        // Nothing is broken and nothing was recorded, and saying so tells "none" from "not recorded".
         Assert.Equal("quiet", answer.Provenance.Gap);
         Assert.NotNull(answer.Provenance.Missing);
         Assert.Empty(Assert.Single(answer.Skills).Origins);
@@ -143,8 +137,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillTable();
 
-        // The store is up and empty, and the reason is that nothing was ever sent to it. A reader
-        // told the period was quiet would go looking for a fault that is not there.
+        // Empty because nothing was ever sent, and a reader told "quiet" would look for a fault that is not there.
         Assert.Equal("telemetryOff", answer.Provenance.Gap);
         Assert.Contains("Telemetry panel", answer.Provenance.Missing ?? "");
     }
@@ -160,8 +153,7 @@ public sealed partial class SkillEndpointsTests
         var outage = (await broken.SkillTable()).Provenance;
         var never = (await off.SkillTable()).Provenance;
 
-        // Two empty answers, two different problems, two different things to do about them. A
-        // caller that only counted the events it got back could not tell these apart at all.
+        // Both answers are empty, and a caller that only counted events could not tell the two problems apart.
         Assert.Equal("unreachable", outage.Gap);
         Assert.Equal("telemetryOff", never.Gap);
         Assert.NotEqual(outage.Missing, never.Missing);
@@ -175,9 +167,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillTable();
 
-        // The origins on screen are real and were recorded earlier. The period runs up to now, and
-        // nothing has reached the store since the switch went off, so a whole-looking answer would
-        // be read as covering a stretch it does not.
+        // The earlier origins are real, but nothing has reached the events store since the switch went off.
         Assert.Equal("telemetryOff", answer.Provenance.Gap);
         Assert.Contains("Telemetry panel", answer.Provenance.Missing ?? "");
         Assert.NotEmpty(Assert.Single(answer.Skills).Origins);
@@ -191,9 +181,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillTable();
 
-        // Studio refuses to write a settings file it could not parse, and reports one as not
-        // emitting so it never writes it by accident. Repeating that on a screen would tell a
-        // developer to flip a switch Studio has already refused to touch.
+        // Not "off": that would tell a developer to flip a switch Studio has refused to touch.
         Assert.Equal("telemetryUnknown", answer.Provenance.Gap);
         Assert.Contains("cannot read", answer.Provenance.Missing ?? "");
     }
@@ -209,7 +197,6 @@ public sealed partial class SkillEndpointsTests
         var answer = await studio.SkillTable();
 
         // A full answer and a cut one look the same from here, so a full one is reported as cut.
-        // The origins on screen are real; what is not said is whether they are all of them.
         Assert.Equal("truncated", answer.Provenance.Gap);
         Assert.NotNull(answer.Provenance.Missing);
         Assert.Equal(2, Assert.Single(answer.Skills).Origins.Length);
@@ -239,8 +226,7 @@ public sealed partial class SkillEndpointsTests
 
         Assert.Contains("skill_activated", asked["query"] ?? "");
 
-        // Whole UTC days, both ends taken in, exactly as every other view narrows. A store asked
-        // for a wider period than the table would answer a filtered screen with unfiltered facts.
+        // Whole UTC days, both ends taken in, or a filtered screen would get unfiltered facts from the events store.
         Assert.Equal(Nanoseconds("2026-09-05T00:00:00Z"), asked["start"]);
         Assert.Equal(Nanoseconds("2026-09-06T00:00:00Z"), asked["end"]);
     }
@@ -253,8 +239,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillTable("?from=2026-09-05&to=2026-09-05");
 
-        // A gap read as a fact is the failure this half is most prone to, so every answer names
-        // the earliest moment it covers.
+        // A gap read as a fact is provenance's likeliest failure, so every answer names the earliest moment it covers.
         Assert.Equal(
             DateTimeOffset.Parse("2026-09-05T00:00:00Z", CultureInfo.InvariantCulture),
             answer.Provenance.SinceUtc);

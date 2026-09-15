@@ -16,8 +16,7 @@ export function FilterBar({
   useEffect(() => {
     const abort = new AbortController();
 
-    // A failure here is not worth a message. The choices are a convenience; the filter still works
-    // typed into the address bar, and the table beside this has its own say about the API.
+    // No message: the choices are a convenience, and the table beside this reports the API's failures.
     fetchFilters(abort.signal).then(setChoices, () => {});
 
     return () => abort.abort();

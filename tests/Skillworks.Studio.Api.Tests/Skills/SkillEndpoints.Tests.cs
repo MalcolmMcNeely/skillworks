@@ -70,8 +70,7 @@ public sealed partial class SkillEndpointsTests
     {
         using var machine = new TemporaryFolder();
 
-        // A repository with a session started two folders down, which is where the leaf of the
-        // working directory would answer "web" instead of "omega".
+        // Started two folders down, where the working directory's leaf would answer "web" instead of "omega".
         machine.Subfolder("omega", ".git");
         var startedIn = machine.Subfolder("omega", "src", "web");
 

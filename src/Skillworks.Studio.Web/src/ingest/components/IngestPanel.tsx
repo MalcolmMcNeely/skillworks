@@ -23,9 +23,7 @@ export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) 
   const [failure, setFailure] = useState<string | null>(null);
   const [faults, setFaults] = useState<TranscriptFault[] | null>(null);
 
-  // A controller per poll rather than one for the panel's life. React remounts a component in
-  // development, so a controller held in state outlives its own cleanup and would leave the panel
-  // stuck on "Asking the API…" with nothing to say about why.
+  // A controller per poll: React remounts in development, so one held in state would leave the panel stuck.
   useEffect(() => {
     const abort = new AbortController();
     let told = -1;
@@ -36,8 +34,7 @@ export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) 
           setStatus(next);
           setFailure(null);
 
-          // Only when a pass has actually finished, so the rest of the page re-reads once rather
-          // than on every poll.
+          // Only when a pass has finished, so the rest of the page re-reads once rather than on every poll.
           if (next.completedPasses !== told) {
             told = next.completedPasses;
             onPassFinished();
@@ -60,7 +57,7 @@ export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) 
     };
   }, [onPassFinished]);
 
-  // For the reads a click starts. Those carry no signal, because a deliberate act should finish.
+  // For the reads a click starts, which carry no signal because a deliberate act should finish.
   function show(problem: unknown) {
     setFailure(describeFetchFailure(problem));
   }
@@ -68,8 +65,7 @@ export function IngestPanel({ onPassFinished }: { onPassFinished: () => void }) 
   function ask(request: () => Promise<IngestStatus>) {
     setFailure(null);
 
-    // The faults on screen belong to the passes already run, so they are dropped rather than left
-    // to be read as the answer for the pass that is starting.
+    // The faults on screen belong to earlier passes, and must not read as the answer for this one.
     setFaults(null);
 
     request().then(setStatus, show);

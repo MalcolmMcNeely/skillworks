@@ -15,9 +15,7 @@ public sealed class StudioApi(HttpMessageHandler events, params (string Key, str
         builder.ConfigureAppConfiguration(configuration =>
             configuration.AddInMemoryCollection(settings.Select(s => new KeyValuePair<string, string?>(s.Key, s.Value))));
 
-        // The events store is substituted at the HTTP boundary and nowhere above it, so the query
-        // Studio builds and the answer it parses are both the real ones. Configuring the same named
-        // client again only replaces its handler: the address and the timeout stay as Core set them.
+        // Only the handler is replaced, so Studio's real query, parsing, address and timeout stay under test.
         builder.ConfigureTestServices(services =>
             services.AddHttpClient(SkillEvents.ClientName).ConfigurePrimaryHttpMessageHandler(() => events));
     }

@@ -7,14 +7,12 @@ export interface TokenSplit {
   cacheWriteTokens: number;
 }
 
-// Pinned to one locale rather than the reader's, because the price table is in US dollars and a
-// figure that reads as dollars should be grouped and pointed the way dollars are.
+// Not the reader's locale: the price table is in US dollars, so figures group and point the way dollars do.
 const money = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
   minimumFractionDigits: 2,
-  // Four places, because a cheap skill on a cheap model can cost a fraction of a cent a firing and
-  // rounding it to the penny would report it as free.
+  // Four places, or a firing that costs a fraction of a cent would round to free.
   maximumFractionDigits: 4,
 });
 

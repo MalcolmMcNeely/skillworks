@@ -23,8 +23,7 @@ export function HealthPanel({ reading }: { reading: HealthReading }) {
             ))}
           </ul>
 
-          {/* Asked for rather than polled. A developer who has just started the containers is the
-              only one who knows the answer has changed. */}
+          {/* Asked for, not polled: only a developer who just started the containers knows it changed. */}
           <button type="button" onClick={recheck}>
             Check again
           </button>

@@ -5,8 +5,7 @@ import { Home } from './skills/routes/Home';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Home /> },
-  // The skill is a path segment rather than a filter, so coming back from here cannot hand the
-  // reader a table narrowed to a skill they never chose.
+  // The skill is a path segment, not a filter, so coming back never leaves the table narrowed to it.
   { path: '/skills/:skill/activations', element: <Activations /> },
   { path: '/activations/:id', element: <Activation /> },
 ]);

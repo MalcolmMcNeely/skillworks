@@ -13,15 +13,12 @@ export function Activations() {
   const [activations, setActivations] = useState<ActivationList | null>(null);
   const [activationsError, setActivationsError] = useState<string | null>(null);
 
-  // The same reading the home page takes, and never narrowed: Studio's health is the same whatever
-  // this page is asking about. It is here so an empty list can name the missing source too, rather
-  // than sending a reader back to the page that holds the panel to find out why.
+  // Read here, never narrowed, so an empty list can name the missing source without the home page's panel.
   const health = useHealth();
 
   const [params] = useSearchParams();
 
-  // Carried on whole rather than rebuilt, so the sort the reader set on the table is still there
-  // when they come back to it.
+  // Carried on whole, so the sort the reader set on the table is still there when they come back.
   const view = params.toString();
   const filter = { ...readFilter(params), skill };
 
@@ -57,17 +54,14 @@ export function Activations() {
           <p data-testid="provenance-note">{describeProvenance(activations.provenance)}</p>
 
           {activations.activations.length === 0 ? (
-            // Held back until the health read has come back one way or the other, so a reader is
-            // never handed the filter as the reason and the missing source a moment afterwards.
+            // Held back until health settles, so the filter is never blamed a moment before the missing source.
             health.settled && (
               <p data-testid="activations-empty">
                 {describeEmpty(filter, health.report?.whyEmpty ?? null)}
               </p>
             )
           ) : (
-            // Plain rather than virtualised, unlike the skill table. This list is one skill's firings
-            // inside a filter, which is hundreds where the table is thousands, and nothing here sorts
-            // or re-renders once it has arrived.
+            // Plain, not virtualised: one skill's firings in a filter run to hundreds, and nothing here sorts.
             <table className="activations">
               <thead>
                 <tr>

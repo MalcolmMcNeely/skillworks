@@ -27,8 +27,7 @@ public sealed partial class ActivationEndpointsTests
 
         var opened = await studio.Activation(Grilling);
 
-        // Everything the Skill block held, under the names it held them under. Reading it as
-        // recorded is what lets a firing be judged, and what stops a new field going unnoticed.
+        // Read as recorded, so a firing can be judged and a new field never goes unnoticed.
         Assert.Equal(["skill", "args"], opened.Arguments.Select(argument => argument.Name));
         Assert.Equal(["grilling", "the rollout plan"], opened.Arguments.Select(argument => argument.Value));
     }
@@ -55,8 +54,7 @@ public sealed partial class ActivationEndpointsTests
 
         var opened = await studio.Activation((await studio.Activations()).First().Id);
 
-        // The repeated fixture records the skill and nothing else, which is the ordinary shape of a
-        // skill Claude picked up on its own.
+        // The repeated fixture records only the skill, as a skill Claude picked up on its own does.
         Assert.Equal(["skill"], opened.Arguments.Select(argument => argument.Name));
     }
 
@@ -101,8 +99,7 @@ public sealed partial class ActivationEndpointsTests
 
         using var response = await studio.AskForActivation("toolu_no_such_firing");
 
-        // A link to a firing the ingest has not read is missing, not empty. Answering it with a
-        // blank page would read as a firing that happened and carried nothing.
+        // Missing, not empty: a blank page would read as a firing that happened and carried nothing.
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

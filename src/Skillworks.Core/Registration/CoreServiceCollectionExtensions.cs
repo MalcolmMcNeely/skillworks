@@ -55,8 +55,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<SpendQueries>();
         services.AddSingleton<PriceTable>();
 
-        // A named client rather than a typed one: everything else here is a singleton, and a typed
-        // client held by one would keep a single handler for the life of the app.
+        // A named client, not a typed one: a typed client held by a singleton keeps one handler for the app's life.
         services.AddHttpClient(SkillEvents.ClientName, (provider, client) =>
         {
             var loki = provider.GetRequiredService<IOptions<LokiOptions>>().Value;
@@ -65,11 +64,7 @@ public static class CoreServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(loki.TimeoutSeconds);
         });
 
-        // A shell hands every outbound client retries and a long total timeout. This one read wants
-        // neither: the screen already holds the transcript half, and three more attempts at a
-        // container that is down turn a fast answer into a slow one that says less — a retried 502
-        // comes back as a timeout, which is a worse thing to put on a screen. Everything is cleared
-        // rather than one named handler removed, so the rule holds whatever a shell adds later.
+        // Cleared wholesale, so no retry a shell adds, now or later, turns a down container's fast 502 into a slow timeout.
         services.Configure<HttpClientFactoryOptions>(
             SkillEvents.ClientName,
             options => options.HttpMessageHandlerBuilderActions.Clear());

@@ -36,8 +36,7 @@ public sealed partial class IngestEndpointsTests
             .Replace("\"skill\":\"implement\"", "\"skill\":\"tampering\"")
             .Replace("toolu_04EAt7jnkYt1D63phjpVUB01", "toolu_04EAt7jnkYt1D63phjpVUB99");
 
-        // Same length, so the stored offset still lands on the same line boundary. A pass that
-        // reads the file again would find "tampering"; a pass that seeks past it cannot.
+        // Same length, so the stored offset still lands on a line boundary and only a re-read would find "tampering".
         Assert.Equal(alreadyRead.Length, tampered.Length);
 
         await File.WriteAllTextAsync(transcript, tampered + Appendix());

@@ -10,8 +10,6 @@ using OpenTelemetry.Trace;
 
 namespace Skillworks.ServiceDefaults;
 
-// Service discovery, resilience, health checks and OpenTelemetry, shared by every service project.
-// https://aka.ms/aspire/service-defaults
 public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
@@ -89,7 +87,6 @@ public static class Extensions
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         // Exposing these outside development has security implications, and Studio is local only.
-        // https://aka.ms/aspire/healthchecks
         if (app.Environment.IsDevelopment())
         {
             app.MapHealthChecks(HealthEndpointPath);

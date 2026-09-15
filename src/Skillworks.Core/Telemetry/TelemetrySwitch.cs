@@ -49,9 +49,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         {
             var held = Held(environment, name);
 
-            // A variable already at its target is either Studio's own value from last time or the
-            // developer's own, and only the earlier stamp tells the two apart. Without one it is
-            // theirs, and recording it as absent would delete it on the way back out.
+            // Without an earlier stamp the value is the developer's, and recording it absent would delete it on turning off.
             displaced[name] = held == value && previous.Displaced.TryGetValue(name, out var earlier)
                 ? earlier
                 : held;
@@ -63,12 +61,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
             root["env"] = environment;
         }
 
-        // The stamp goes down first, and deliberately. A crash between these two writes then leaves
-        // a record of a write that never happened, which turning off ignores because the settings
-        // never took Studio's values. The other order would lose the undo record instead.
-        //
-        // Studio owns the environment block from the moment it first created it, however many times
-        // the switch is flipped afterwards.
+        // Stamp first, or a crash between the writes loses the undo; an env block Studio once created stays Studio's.
         TelemetryStamp.Write(
             options.Value.ResolvedStampPath(),
             new TelemetryStamp(displaced, created || previous.CreatedEnvironment));
@@ -88,8 +81,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
             return Refused(problem);
         }
 
-        // No file means nothing was ever added, so there is nothing to take away and no reason to
-        // create one.
+        // No file means nothing was ever added, so there is nothing to take away and no reason to create one.
         if (!document.Existed)
         {
             return new TelemetrySwitchResult(State(), null);

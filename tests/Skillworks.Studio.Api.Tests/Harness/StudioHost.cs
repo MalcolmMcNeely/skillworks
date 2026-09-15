@@ -86,8 +86,7 @@ public sealed class StudioHost : IDisposable
         _client.Dispose();
         _api.Dispose();
 
-        // SQLite pools its connections, so the file stays open past the host and the directory
-        // will not delete.
+        // SQLite pools its connections, so the file stays open past the host and the directory will not delete.
         SqliteConnection.ClearAllPools();
         _data.Dispose();
     }

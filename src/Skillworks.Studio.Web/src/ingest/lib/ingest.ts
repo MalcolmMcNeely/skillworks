@@ -19,8 +19,6 @@ export function describeIngest(status: {
     return 'There are no transcripts to read.';
   }
 
-  // Named as a full read when that is what finished, so a developer who asked for one is told it
-  // is the one that came back.
   return status.lastPassWasFull
     ? `Read all ${status.transcriptsTotal} transcripts again, from scratch.`
     : `Read all ${status.transcriptsTotal} transcripts.`;

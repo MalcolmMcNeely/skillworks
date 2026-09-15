@@ -11,8 +11,7 @@ internal static class RecordedArguments
             return [];
         }
 
-        // Nothing writes this but the ingest, so it parses and it is an object. If it ever is not,
-        // the text itself is still the evidence, and showing it beats showing nothing.
+        // Only the ingest writes this, but if it is ever not a JSON object, the raw text is still the evidence.
         if (Parse(recorded) is not { } block)
         {
             return [new ActivationArgument("recorded", recorded)];

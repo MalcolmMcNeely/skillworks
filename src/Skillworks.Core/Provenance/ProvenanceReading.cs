@@ -49,29 +49,25 @@ public sealed class ProvenanceReading
             $"Studio could not read the events store, so it cannot say where a skill came from: " +
             $"{reason}. What each skill did and what it cost come from the transcripts and are unaffected."),
 
-        // Ahead of the switch, because a cut answer is about what is on the screen now and a switch
-        // that is off is about what will never arrive.
+        // Ahead of the switch: a cut answer is about what is on screen now, a switch off about what never arrives.
         { Truncated: true } => (
             ProvenanceGap.Truncated,
             $"This period holds more events than Studio reads at once, so only the newest " +
             $"{reading.Events.Count} of them are counted here. Narrow the dates to see the rest."),
 
-        // Asked of the switch rather than guessed at. "Nobody turned it on" and "nothing happened"
-        // are different problems with different answers, and only one of them a developer can fix.
+        // Asked of the switch, not guessed: "nobody turned it on" is a fix for the developer, "nothing happened" is not.
         { Events.Count: 0 } when emitting is false => (
             ProvenanceGap.TelemetryOff,
             "Claude Code is not emitting telemetry, so where these skills came from was never " +
             $"recorded. {TelemetrySwitch.TurnOnNote}"),
 
-        // Said even where the answer is full, because the period runs up to now and nothing has
-        // reached the store since the switch went off.
+        // Said even for a full answer, because nothing has reached the events store since the switch went off.
         _ when emitting is false => (
             ProvenanceGap.TelemetryOff,
             "Claude Code is not emitting telemetry, so nothing has reached the events store since " +
             $"the switch was turned off. What is here was recorded before then. {TelemetrySwitch.TurnOnNote}"),
 
-        // The switch reports settings it could not parse as not emitting, which is the safe answer
-        // for writing them and would be a lie on a screen. Studio does not know, and says so.
+        // Unreadable settings count as not emitting only for writing; on a screen Studio does not know, and says so.
         { Events.Count: 0 } when emitting is null => (
             ProvenanceGap.TelemetryUnknown,
             "The events store holds nothing for this period, and Studio cannot read Claude Code's " +

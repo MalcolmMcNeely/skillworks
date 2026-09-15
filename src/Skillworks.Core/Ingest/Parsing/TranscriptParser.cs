@@ -23,8 +23,7 @@ internal static class TranscriptParser
         }
         catch (JsonException failure)
         {
-            // A line Studio cannot read is one line, never the other 1,470. Its own message names
-            // the column it gave up at, which is what makes the fault worth reporting.
+            // One bad line must not cost the file, and the parser's message names the column it gave up at.
             return new LineReading([], null, failure.Message);
         }
 
@@ -56,8 +55,7 @@ internal static class TranscriptParser
             return [];
         }
 
-        // Left null until something is found: almost every line of 678 MB reaches here and holds
-        // no skill at all.
+        // Null until something is found: almost every line of 678 MB reaches here and holds no skill.
         List<Activation>? activations = null;
 
         foreach (var block in content.EnumerateArray())
@@ -98,9 +96,7 @@ internal static class TranscriptParser
             return null;
         }
 
-        // The message id is the same request under another name, and stands in for the rare record
-        // written without one. Without either there is no way to tell a repeat from a new request,
-        // and counting it would be worse than dropping it.
+        // Without a request id or a message id a repeat looks new, and dropping the turn beats counting it twice.
         if ((Text(record, "requestId") ?? Text(message, "id")) is not { } requestId)
         {
             return null;
@@ -110,8 +106,7 @@ internal static class TranscriptParser
         var written5m = cacheWritten;
         var written1h = 0L;
 
-        // Absent on older records. The cache then lasted the API's default five minutes, so putting
-        // the lot in that bucket prices it as it was actually billed.
+        // Absent on older records, which were billed at the API's default five-minute cache.
         if (usage.TryGetProperty("cache_creation", out var split) && split.ValueKind == JsonValueKind.Object)
         {
             written5m = Count(split, "ephemeral_5m_input_tokens");

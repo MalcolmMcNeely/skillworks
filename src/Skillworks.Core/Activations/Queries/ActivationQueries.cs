@@ -17,8 +17,7 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
 
         var activations = Narrowed(store.Activations, filter);
 
-        // Narrow reads beat one wide one. SQLite has no distinct-within-group, and pulling every
-        // activation back to fold it in memory would not survive a full transcript folder.
+        // Narrow reads beat one wide one: SQLite has no distinct-within-group, and a full history will not fold in memory.
         var counts = await activations
             .GroupBy(a => a.SkillName)
             .Select(group => new SkillCount(group.Key, group.Count()))

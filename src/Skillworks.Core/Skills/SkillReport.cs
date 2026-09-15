@@ -23,15 +23,12 @@ public sealed class SkillReport(
         var tokens = await spend.TokensBySkillAsync(filter, cancellationToken);
         var origins = await provenance.ForAsync(filter, cancellationToken);
 
-        // Read now rather than stored with the turns, so yesterday's spend is costed at today's
-        // prices and correcting a rate never means reading a transcript again.
+        // Read now, not stored with the turns, so correcting a rate never means reading a transcript again.
         var rates = await prices.ByModelAsync(cancellationToken);
 
         var counts = new Dictionary<string, int>(tally.Counts);
 
-        // A skill that never fired belongs to the all-time, everywhere answer, where its zero is the
-        // point. A filter that asks what happened in one week or one project is asking about events,
-        // and a skill with no events there is not a zero in that answer: it is not in it.
+        // A never-fired skill's zero belongs to the unfiltered answer; a filter asks what happened, and it did not.
         if (!filter.AsksWhatHappened)
         {
             foreach (var name in catalogue.Names().Where(filter.Covers))
@@ -40,8 +37,7 @@ public sealed class SkillReport(
             }
         }
 
-        // A skill can own tokens without a firing of its own in the store: the transcript that held
-        // the firing may not have been read yet, or may have been trimmed away.
+        // A skill can own tokens with no firing in the transcript store: its transcript may be unread yet, or trimmed away.
         foreach (var name in tokens.Keys)
         {
             counts.TryAdd(name, 0);
@@ -76,9 +72,7 @@ public sealed class SkillReport(
         return new FilterChoices(
             repositories,
             [
-                // Told apart exactly, because that is how the filter matches them. Folding two
-                // spellings into one choice would offer a name that then matches only half of what
-                // it appears to name.
+                // Spellings are told apart exactly, as the filter matches them, or one choice would match half of what it names.
                 .. fired
                     .Concat(catalogue.Names())
                     .Distinct()

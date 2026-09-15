@@ -85,7 +85,7 @@ public sealed class TranscriptIngestor(
         var offset = cursor?.Offset ?? 0;
         var lines = cursor?.Lines ?? 0;
 
-        // Shorter than we left it means the file was replaced, not appended to. Start over.
+        // Shorter than we left it means the file was replaced, not appended to.
         var restarted = file.Length < offset;
 
         if (restarted)
@@ -131,8 +131,7 @@ public sealed class TranscriptIngestor(
                     }
                 }
 
-                // Several lines report the same request in full, and they say the same thing, so
-                // the first one wins and the rest are already paid for.
+                // Every record of a request repeats its whole usage, so the first one wins.
                 if (reading.Turn is { } turn &&
                     !known.Charged.Contains(turn.RequestId) &&
                     chargedHere.Add(turn.RequestId))
@@ -143,8 +142,7 @@ public sealed class TranscriptIngestor(
         }
         catch (Exception failure) when (failure is not OperationCanceledException)
         {
-            // Nothing was written and the cursor has not moved, so the file is left exactly as it
-            // was. One transcript that will not open must not cost the other 1,470.
+            // The file is left exactly as it was, and one transcript that will not open must not cost the others.
             await RefuseAsync(store, known, Fault(path, TranscriptFault.WholeFile, failure.Message), cancellationToken);
 
             return default;
@@ -154,14 +152,12 @@ public sealed class TranscriptIngestor(
 
         if (restarted)
         {
-            // Every line is about to be read again, so the faults from the old contents would
-            // collide with the ones this pass is finding.
+            // Every line is read again, so the old contents' faults would collide with this pass's.
             await store.TranscriptFaults.Where(f => f.Path == path).ExecuteDeleteAsync(cancellationToken);
         }
         else if (opened)
         {
-            // Only the standing "would not open" goes. Lines this file lost earlier were never
-            // re-read, so dropping them here would quietly undercount them for good.
+            // Only "would not open" goes: lines lost earlier are never re-read, so dropping them undercounts for good.
             await store.TranscriptFaults
                 .Where(f => f.Path == path && f.Line == TranscriptFault.WholeFile)
                 .ExecuteDeleteAsync(cancellationToken);
@@ -183,9 +179,7 @@ public sealed class TranscriptIngestor(
             cursor.Lines = lines;
         }
 
-        // One save per transcript. The activations, the faults and the cursor land together or not
-        // at all, so no file is ever half ingested, and the screen fills while the first pass runs
-        // rather than only at the end of it.
+        // One save per transcript, so no file is half ingested and the screen fills while the first pass runs.
         await store.SaveChangesAsync(cancellationToken);
         known.Counted.UnionWith(firstSeenHere);
         known.Charged.UnionWith(chargedHere);

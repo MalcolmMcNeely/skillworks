@@ -11,9 +11,7 @@ public sealed class HealthEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue());
 
-        // Ordered here and not in the report. Which parts are covered is the answer; the order they
-        // are listed in is a choice about the screen, and a test that pinned it would break on a
-        // rearrangement that changed nothing a reader could observe.
+        // Sorted here, because the report's order is the screen's choice and not part of the answer.
         var parts = (await studio.Health()).Parts.Select(part => part.Name).Order();
 
         // A part missing from here is a part a developer has to go and check by hand.
@@ -25,8 +23,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Says_every_part_is_working_and_leaves_nothing_to_do_when_nothing_is_wrong()
     {
-        // A fixture with nothing in it the ingest has to step over, so "nothing to do" means the
-        // whole of Studio is healthy rather than only most of it.
+        // A fixture with nothing for the ingest to step over, so "nothing to do" means all of Studio is healthy.
         using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
 
         var health = await studio.Health();
@@ -43,8 +40,7 @@ public sealed class HealthEndpointsTests
 
         var part = await studio.Part("Transcript store");
 
-        // Still working: a fault is a gap in the numbers, not a broken store. The count is here so
-        // a total that looks low is explained rather than trusted.
+        // Still working: a fault is a gap in the numbers, not a broken store, and the count explains a low total.
         Assert.Equal("working", part.State);
         Assert.Contains("could not parse", part.Detail);
         Assert.Contains("ingest panel", part.Action ?? "");
@@ -57,8 +53,7 @@ public sealed class HealthEndpointsTests
 
         var part = await studio.Part("Claude Code telemetry");
 
-        // Broken, not off. Studio does not know whether the switch was ever flipped, and a panel
-        // that guessed "off" would send a developer to write a file Studio has already refused.
+        // Broken, not off: a panel that guessed "off" would send a developer to write a file Studio has refused.
         Assert.Equal("broken", part.State);
         Assert.Contains("cannot read", part.Detail);
     }
@@ -83,8 +78,7 @@ public sealed class HealthEndpointsTests
 
         var part = await studio.Part("Events store");
 
-        // Asked directly rather than inferred from an empty list of events, so a store that is up
-        // and unhappy cannot be read as a store with nothing in it.
+        // Asked directly, so an events store that is up and unhappy never reads as one with nothing in it.
         Assert.Equal("broken", part.State);
         Assert.Contains("502", part.Detail);
     }
@@ -96,8 +90,7 @@ public sealed class HealthEndpointsTests
 
         var part = await studio.Part("Claude Code telemetry");
 
-        // A switch nobody flipped is not a fault. Reporting it as one would send a developer
-        // looking for a container problem that does not exist.
+        // Not a fault: reporting one would send a developer after a container problem that does not exist.
         Assert.Equal("off", part.State);
         Assert.Contains("Telemetry panel", part.Action ?? "");
     }
@@ -113,8 +106,7 @@ public sealed class HealthEndpointsTests
         var outage = await broken.Health();
         var never = await off.Health();
 
-        // The same screen goes empty either way. The two states differ in which part is at fault
-        // and in what a developer does next, and both are here to be read.
+        // The same screen goes empty either way, but the part at fault and the developer's next step differ.
         Assert.Equal("broken", outage.Parts.Single(part => part.Name == "Events store").State);
         Assert.Equal("working", outage.Parts.Single(part => part.Name == "Claude Code telemetry").State);
 
@@ -130,8 +122,7 @@ public sealed class HealthEndpointsTests
 
         var health = await studio.Health();
 
-        // The transcripts are the durable record and owe the containers nothing. A docker problem
-        // costs the provenance view and not the app.
+        // The transcripts owe the containers nothing, so a docker problem costs the provenance view, not the app.
         Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcripts").State);
         Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcript store").State);
         Assert.Null(health.WhyEmpty);
@@ -149,8 +140,7 @@ public sealed class HealthEndpointsTests
         Assert.Equal("broken", part.State);
         Assert.Contains("Transcripts:Path", part.Action ?? "");
 
-        // The same fact again as the reason a view is empty, so a screen with no rows on it can say
-        // which source is missing without a reader going looking for the panel that knows.
+        // Repeated as the reason a view is empty, so an empty screen names the missing source itself.
         Assert.Contains("no folder", health.WhyEmpty ?? "");
         Assert.Contains("Transcripts:Path", health.WhyEmpty ?? "");
     }
@@ -163,8 +153,7 @@ public sealed class HealthEndpointsTests
 
         var health = await studio.Health();
 
-        // The folder is there and holds nothing. Studio is healthy, and a reader still needs to be
-        // told the difference between "no skill has ever fired" and "there is nothing to read".
+        // Healthy, but a reader must still tell "no skill has fired" from "there is nothing to read".
         Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcripts").State);
         Assert.Contains("no transcripts in", health.WhyEmpty ?? "");
     }

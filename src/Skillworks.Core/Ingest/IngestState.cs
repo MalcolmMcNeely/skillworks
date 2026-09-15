@@ -18,8 +18,7 @@ public sealed class IngestState(TimeProvider clock)
         lock (_gate)
         {
             return new IngestStatus(
-                // A pass that has been asked for but has not woken up yet is still the ingest being
-                // busy. Reporting it as idle invites a second click on a 678 MB re-read.
+                // A pass asked for but not yet woken is still busy; idle would invite a second click on a 678 MB re-read.
                 _running || _asked > 0,
                 _completedPasses,
                 _progress.TranscriptsSeen,

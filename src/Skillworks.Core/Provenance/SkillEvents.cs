@@ -39,8 +39,7 @@ public sealed class SkillEvents(IHttpClientFactory clients, IOptions<LokiOptions
 
             var read = Read(document.RootElement);
 
-            // A full answer is the one shape that cannot be told from a capped one, so it is taken
-            // as capped. Reporting a period as whole when it was cut is the failure worth avoiding.
+            // A full answer cannot be told from a capped one, and calling a cut period whole is the worse mistake.
             return EventReading.Of(read, read.Count >= limit);
         }
         catch (Exception failure) when (Outside(failure, cancellationToken))

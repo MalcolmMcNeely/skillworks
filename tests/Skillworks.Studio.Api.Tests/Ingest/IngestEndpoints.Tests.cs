@@ -66,8 +66,7 @@ public sealed partial class IngestEndpointsTests
 
         Assert.Equal(1, await studio.ActivationsOf("implement"));
 
-        // A bad parse corrected in place. The bytes already read are the ones that changed, so an
-        // incremental pass cannot see it and only a full re-ingest can.
+        // The changed bytes were already read, so only a full re-ingest can see this repair.
         await File.WriteAllTextAsync(
             transcript,
             (await File.ReadAllTextAsync(transcript)).Replace("\"skill\":\"implement\"", "\"skill\":\"repaired\""));
@@ -153,8 +152,7 @@ public sealed partial class IngestEndpointsTests
         var shut = Directory.EnumerateFiles(transcripts, "*.jsonl", SearchOption.AllDirectories)
             .Single(path => path.Contains("kappa"));
 
-        // Windows honours the refusal to share, which is how one transcript is made unreadable
-        // without making it unreadable for everyone from now on.
+        // Windows honours the refusal to share, so one transcript is made unreadable without changing it for good.
         using (new FileStream(shut, FileMode.Open, FileAccess.Read, FileShare.None))
         {
             using var studio = new StudioHost(transcripts);
@@ -177,8 +175,7 @@ public sealed partial class IngestEndpointsTests
 
         var shut = Directory.EnumerateFiles(transcripts, "*.jsonl", SearchOption.AllDirectories).Single();
 
-        // Closed by hand halfway through, and again on the way out so a failed assertion above does
-        // not leave the temporary folder locked.
+        // Closed by hand halfway through, and again on the way out so a failed assertion leaves no folder locked.
         using var handle = new FileStream(shut, FileMode.Open, FileAccess.Read, FileShare.None);
 
         using var studio = new StudioHost(transcripts);
@@ -216,7 +213,6 @@ public sealed partial class IngestEndpointsTests
 
         await File.AppendAllLinesAsync(transcript, lines[2..]);
 
-        // The session grew, and the file is shut while the next pass goes looking at it.
         using (new FileStream(transcript, FileMode.Open, FileAccess.Read, FileShare.None))
         {
             await studio.IngestAgain();
@@ -227,8 +223,7 @@ public sealed partial class IngestEndpointsTests
 
         Assert.Equal(1, await studio.ActivationsOf("unslop"));
 
-        // The file opening again clears only its own standing fault. The line it could not parse
-        // was never read a second time, so dropping it here would drop it for good.
+        // Reopening clears only the "would not open" fault; the unparsed line is never re-read, so it stays.
         Assert.Equal(2, (await studio.Faults()).Single().Line);
     }
 
@@ -242,8 +237,7 @@ public sealed partial class IngestEndpointsTests
             "C--Projects-beta",
             "0a9f1c2e-0000-4000-8000-000000000002.jsonl");
 
-        // Enough files that a pass cannot begin and end inside the moment between the request being
-        // queued and the reply being written.
+        // Enough files that a pass cannot finish between the request being queued and the reply being written.
         for (var session = 0; session < 200; session++)
         {
             File.Copy(source, Path.Combine(project, $"0a9f1c2e-0000-4000-8000-{session:D12}.jsonl"));

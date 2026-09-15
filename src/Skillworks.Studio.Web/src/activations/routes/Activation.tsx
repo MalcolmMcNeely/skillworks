@@ -13,9 +13,7 @@ export function Activation() {
 
   const [params] = useSearchParams();
 
-  // A link rather than a step back through history, so a firing reached from a bookmark or a fresh
-  // tab has a way out too. It carries the view along, so the table at the end of it is the one the
-  // reader built.
+  // A link, not a step back, so a firing opened from a bookmark still has a way out to the reader's view.
   const view = params.toString();
 
   useEffect(() => {
@@ -57,8 +55,6 @@ export function Activation() {
             <dt>When</dt>
             <dd>{describeMoment(activation.timestampUtc)}</dd>
 
-            {/* What set this firing off, which is the fact a count cannot carry: a skill the model
-                reached for and one a developer had to ask for are not the same success. */}
             <dt>Trigger</dt>
             <dd>{describeTrigger(activation.origin?.trigger ?? null)}</dd>
 
@@ -83,16 +79,13 @@ export function Activation() {
             <dd>{describeRecorded(activation.sessionId)}</dd>
           </dl>
 
-          {/* Why the two rows above may be empty. A firing older than the events store, or one made
-              while telemetry was off, is not a firing that came from nowhere. */}
+          {/* A firing older than the events store, or made with telemetry off, did not come from nowhere. */}
           {activation.origin === null && (
             <p data-testid="provenance-note">{describeMissingOrigin(opened.provenance)}</p>
           )}
 
           <h2>Arguments</h2>
 
-          {/* Everything the transcript recorded, under the names it recorded them under. A firing
-              that carried nothing says so, because that is a fact about it. */}
           {activation.arguments.length === 0 ? (
             <p data-testid="arguments-empty">Nothing was recorded for this activation.</p>
           ) : (
