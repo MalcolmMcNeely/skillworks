@@ -9,7 +9,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Counts_today_and_the_six_days_before_it_when_no_span_is_given()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-08T23:59:59.999Z"),
@@ -26,7 +26,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Takes_the_length_of_the_lookback_from_configuration()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), lookbackDays: 2);
+        using var studio = new StudioHost(lookbackDays: 2);
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-13T23:59:59.999Z"),
@@ -41,7 +41,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Covers_the_span_a_filter_names_in_place_of_the_lookback()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-03T09:00:00.000Z"),
@@ -56,7 +56,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Covers_the_lookback_when_a_filter_names_only_a_repository_or_a_skill()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-01T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
@@ -72,7 +72,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Runs_a_span_with_no_end_to_today_and_one_with_no_start_back_a_lookback()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         Assert.Equal(Span("2026-09-10", "2026-09-15", lookback: false), (await studio.SkillTable("?from=2026-09-10")).Span);
         Assert.Equal(Span("2026-08-30", "2026-09-05", lookback: false), (await studio.SkillTable("?to=2026-09-05")).Span);

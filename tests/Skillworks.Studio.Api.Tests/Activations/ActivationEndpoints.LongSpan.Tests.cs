@@ -10,7 +10,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Lists_each_firing_of_a_span_longer_than_one_query_may_cover_once_newest_first()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         // One at every midnight, so wherever the span is cut, a firing sits on the cut.
         await studio.Push(SkillActivated.AtEveryMidnight("grilling", "2026-08-31", "2026-09-11"));
@@ -26,7 +26,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Keeps_the_newest_firings_of_a_span_longer_than_one_query_may_cover_when_it_holds_more_than_one_read_takes()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), maxEvents: 2);
+        using var studio = new StudioHost(maxEvents: 2);
 
         // Days apart, so no one query holds all three.
         await studio.Push(

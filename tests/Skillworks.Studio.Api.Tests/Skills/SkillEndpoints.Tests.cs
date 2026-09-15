@@ -9,7 +9,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Counts_every_skill_activated_event_whatever_set_the_skill_off()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Trigger: "claude-proactive"),
@@ -28,7 +28,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Names_a_repository_by_its_owner_and_its_name()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "malcolmania", RepositoryName: "skillworks"),
@@ -42,7 +42,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Counts_a_firing_that_names_no_repository_without_naming_one_for_it()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
@@ -59,7 +59,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_nothing_when_no_skill_fired()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         Assert.Empty(await studio.Skills());
     }
@@ -67,7 +67,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_a_catalogue_skill_that_did_not_fire_in_the_lookback_with_a_zero()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Catalogue());
 
         await studio.Push(
             new SkillActivated("probekit:probe-local", "2026-09-01T09:00:00.000Z"),
@@ -85,7 +85,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Leaves_the_branch_out_of_the_answer()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
 

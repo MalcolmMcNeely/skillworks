@@ -8,7 +8,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Counts_unnamed_spend_only_for_the_turns_inside_the_whole_days_a_span_names()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-04T23:59:59.999Z", Skill: "third-party", CostUsd: 0.01m),
@@ -25,7 +25,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Counts_unnamed_spend_only_for_the_turns_in_the_repository_asked_for()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "third-party", CostUsd: 0.01m, Owner: "acme", RepositoryName: "nu"),
@@ -42,7 +42,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Leaves_unnamed_spend_out_when_the_filter_names_a_skill()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "third-party", CostUsd: 0.07m),

@@ -18,7 +18,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Lists_one_row_per_firing_in_the_span_newest_first()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-02T09:00:00.000Z", Trigger: "claude-proactive"),
@@ -38,7 +38,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Shows_the_skill_moment_origin_session_and_repository_its_event_recorded()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated(
             "grilling",
@@ -63,7 +63,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Leaves_the_repository_of_a_firing_whose_event_named_none_unrecorded()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
@@ -79,7 +79,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Answers_with_nothing_an_event_does_not_carry()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", GrilledAt, Trigger: "claude-proactive"));
 
@@ -89,7 +89,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Takes_each_firings_origin_from_its_own_event_and_never_from_one_beside_it()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-14T14:48:00.000Z", Trigger: "user-slash", Source: "userSettings"),
@@ -105,7 +105,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Narrows_the_list_by_the_span_the_repository_and_the_skill_at_once()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-05T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
@@ -123,7 +123,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Covers_the_lookback_when_the_filter_names_no_span()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-08T23:59:59.999Z"),
@@ -142,7 +142,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Names_the_span_a_filter_gave_in_place_of_the_lookback()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         var answer = await studio.ActivationList(BothDays);
 

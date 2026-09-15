@@ -6,8 +6,5 @@ public sealed class TemporaryFolder : IDisposable
 
     public string Path => _folder.FullName;
 
-    public string Subfolder(params string[] parts) =>
-        Directory.CreateDirectory(System.IO.Path.Combine([Path, .. parts])).FullName;
-
     public void Dispose() => _folder.Delete(recursive: true);
 }

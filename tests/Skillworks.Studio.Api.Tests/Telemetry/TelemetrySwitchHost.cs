@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.Data.Sqlite;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Telemetry;
@@ -32,9 +31,6 @@ public sealed class TelemetrySwitchHost : IDisposable
             ("ClaudeSettings:Path", _settingsPath),
             ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
             ("ClaudeSettings:CollectorEndpoint", Collector),
-            ("Transcripts:Path", _folder.Subfolder("no-transcripts")),
-            ("TranscriptStore:DatabasePath", Path.Combine(_folder.Path, "transcript-store.db")),
-            ("TranscriptStore:SweepSeconds", "0"),
             ("Catalogue:Path", Path.Combine(_folder.Path, "no-catalogue")));
 
         _client = _api.CreateClient();
@@ -88,9 +84,6 @@ public sealed class TelemetrySwitchHost : IDisposable
     {
         _client.Dispose();
         _api.Dispose();
-
-        // SQLite pools its connections, so the file stays open past the API host and the folder will not delete.
-        SqliteConnection.ClearAllPools();
         _folder.Dispose();
     }
 }

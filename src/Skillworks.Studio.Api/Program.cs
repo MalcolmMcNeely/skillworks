@@ -6,11 +6,8 @@ using Skillworks.Studio.Api.Activations;
 using Skillworks.Studio.Api.Catalogue;
 using Skillworks.Studio.Api.Filters;
 using Skillworks.Studio.Api.Health;
-using Skillworks.Studio.Api.Ingest;
 using Skillworks.Studio.Api.Skills;
-using Skillworks.Studio.Api.Spend;
 using Skillworks.Studio.Api.Telemetry;
-using Skillworks.Studio.Api.Transcripts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,12 +25,9 @@ app.MapDefaultEndpoints();
 app.MapGroup("/api")
     .MapHealthEndpoints()
     .MapCatalogueEndpoints()
-    .MapTranscriptEndpoints()
     .MapSkillEndpoints()
     .MapActivationEndpoints()
     .MapFilterEndpoints()
-    .MapSpendEndpoints()
-    .MapIngestEndpoints()
     .MapTelemetrySwitchEndpoints();
 
 app.Run();

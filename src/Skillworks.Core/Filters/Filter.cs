@@ -1,6 +1,6 @@
 namespace Skillworks.Core.Filters;
 
-// Days are UTC days, as transcripts timestamp them; a local day would move late sessions to the wrong day.
+// Days are UTC days, as Claude Code timestamps its events; a local day would move late sessions to the wrong day.
 public sealed record Filter
 {
     public DateOnly? From { get; init; }

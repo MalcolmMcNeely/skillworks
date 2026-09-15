@@ -7,7 +7,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Adds_the_turns_Claude_Code_will_not_name_a_skill_for_into_one_unnamed_amount()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "third-party", CostUsd: 0.1m, InputTokens: 1_000, OutputTokens: 4_000, CacheReadTokens: 2_000_000, CacheCreationTokens: 100_000),
@@ -26,7 +26,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_the_spend_of_a_plugin_skill_with_no_turns_under_its_name_as_not_named()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("probekit:probe-plugin", "2026-09-14T09:00:00.000Z", Source: "plugin", Plugin: "probekit", Marketplace: "privateprobe"));
         await studio.Push(new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "third-party", Model: "claude-sonnet-5", Effort: "high", CostUsd: 0.1m));
@@ -44,7 +44,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_what_a_plugin_skill_spent_when_its_turns_carry_its_name()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("skill-creator:skill-creator", "2026-09-14T09:00:00.000Z", Source: "plugin", Plugin: "skill-creator", Marketplace: "claude-plugins-official"));
         await studio.Push(new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "skill-creator:skill-creator", Model: "claude-sonnet-5", Effort: "high", CostUsd: 0.1m));
@@ -61,7 +61,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Charges_a_catalogue_skill_that_never_fired_nothing_rather_than_leaving_it_not_named()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Catalogue());
 
         await studio.Push(new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "third-party", CostUsd: 0.1m));
 

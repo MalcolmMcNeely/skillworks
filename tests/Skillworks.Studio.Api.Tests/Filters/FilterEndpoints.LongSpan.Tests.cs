@@ -11,7 +11,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Totals_a_span_longer_than_one_query_may_cover_as_if_it_were_one()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         // At both ends of the span, so no one query holds both.
         await studio.Push(
@@ -31,7 +31,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Totals_spend_over_a_span_longer_than_one_query_may_cover_as_if_it_were_one()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         // At both ends of the span, so no one query holds both.
         await studio.Push(
@@ -49,7 +49,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Counts_a_firing_on_a_cut_between_queries_once()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         // One at every midnight, so wherever the span is cut, a firing sits on the cut.
         await studio.Push(SkillActivated.AtEveryMidnight("grilling", "2026-08-31", "2026-09-11"));

@@ -8,7 +8,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Says_the_list_is_cut_short_when_the_period_holds_more_firings_than_one_read_takes()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), maxEvents: 2);
+        using var studio = new StudioHost(maxEvents: 2);
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
@@ -29,7 +29,7 @@ public sealed partial class ActivationEndpointsTests
     public async Task Says_the_events_store_could_not_be_read_rather_than_that_nothing_fired()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), events: events);
+        using var studio = new StudioHost(events: events);
 
         var answer = await studio.ActivationList();
 
@@ -42,7 +42,7 @@ public sealed partial class ActivationEndpointsTests
     public async Task Reports_an_events_store_that_answers_badly_as_unreachable_rather_than_as_quiet()
     {
         using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), events: events);
+        using var studio = new StudioHost(events: events);
 
         var answer = await studio.ActivationList();
 
@@ -53,7 +53,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Says_telemetry_was_never_switched_on_beside_an_empty_list()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), emitting: false);
+        using var studio = new StudioHost(emitting: false);
 
         var answer = await studio.ActivationList();
 
@@ -64,7 +64,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Says_it_cannot_tell_whether_telemetry_was_on_beside_an_empty_list()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), settings: "{ not json");
+        using var studio = new StudioHost(settings: "{ not json");
 
         var answer = await studio.ActivationList();
 
@@ -74,7 +74,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Labels_a_period_the_events_store_holds_nothing_for_as_quiet()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         var answer = await studio.ActivationList();
 
@@ -86,7 +86,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Says_nothing_is_missing_when_only_the_filter_matched_nothing()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", GrilledAt));
 

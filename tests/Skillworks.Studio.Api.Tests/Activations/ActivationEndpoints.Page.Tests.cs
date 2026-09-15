@@ -10,7 +10,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Opens_one_activation_by_the_id_the_list_gave_for_it()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated(
             "grilling",
@@ -30,7 +30,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Opens_the_same_firing_every_time_however_close_the_firings_beside_it()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         // A millisecond apart, one skill: only the session and the sequence tell these three apart.
         await studio.Push(
@@ -53,7 +53,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Opens_a_firing_from_long_before_the_lookback()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", "2026-08-01T09:00:00.000Z", Trigger: "claude-proactive"));
 
@@ -66,7 +66,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Answers_nothing_on_the_page_an_event_does_not_carry()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", GrilledAt, Trigger: "claude-proactive"));
 
@@ -78,7 +78,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Answers_an_activation_it_cannot_find_with_a_not_found()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", GrilledAt, Session: Session));
 
@@ -95,9 +95,9 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Says_the_events_store_could_not_be_read_rather_than_that_a_firing_does_not_exist()
     {
-        using var sent = new StudioHost(StudioHost.Fixture("quiet"));
+        using var sent = new StudioHost();
         using var down = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), events: down);
+        using var studio = new StudioHost(events: down);
 
         await sent.Push(new SkillActivated("grilling", GrilledAt));
 
@@ -112,9 +112,9 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Reports_an_events_store_that_answers_a_page_badly_as_unreachable()
     {
-        using var sent = new StudioHost(StudioHost.Fixture("quiet"));
+        using var sent = new StudioHost();
         using var failing = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), events: failing);
+        using var studio = new StudioHost(events: failing);
 
         await sent.Push(new SkillActivated("grilling", GrilledAt));
 
@@ -129,7 +129,7 @@ public sealed partial class ActivationEndpointsTests
     [Fact]
     public async Task Says_telemetry_is_off_beside_one_firing_as_well_as_beside_the_list()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), emitting: false);
+        using var studio = new StudioHost(emitting: false);
 
         await studio.Push(new SkillActivated("grilling", GrilledAt, Trigger: "claude-proactive"));
 

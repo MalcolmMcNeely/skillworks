@@ -10,8 +10,6 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
-    <!-- Only to clear SQLite's connection pool, so a test's temporary database file will delete. -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Testcontainers" Version="4.15.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -31,8 +29,6 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <!-- Real-shaped session files, checked in. They are the only stand-in for the outside world on
-       the transcript side, so the parser meets the shapes Claude Code actually writes. -->
   <ItemGroup>
     <Content Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Harness\loki.yaml" CopyToOutputDirectory="PreserveNewest" />

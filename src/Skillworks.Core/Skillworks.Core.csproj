@@ -9,19 +9,10 @@
   <!-- Core is the domain. It may take DI and configuration, but never anything that speaks HTTP
        inbound: the API and the planned MCP server are both shells over this. -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
     <!-- Outbound only: the events store is read over HTTP, because Loki has no C# client. -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
-  </ItemGroup>
-
-  <!-- EF Core 10.0.8 still pulls SQLitePCLRaw 2.1.11, which carries GHSA-2m69-gcr7-jv3q. 2.1.13 is
-       the patched build of the same minor, so this lifts the native library without a major bump. -->
-  <ItemGroup>
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
   </ItemGroup>
 
 </Project>

@@ -9,16 +9,6 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
   return (await response.json()) as T;
 }
 
-export async function postJson<T>(path: string): Promise<T> {
-  const response = await fetch(path, { method: 'POST' });
-
-  if (!response.ok) {
-    throw new Error(`POST ${path} returned ${response.status}`);
-  }
-
-  return (await response.json()) as T;
-}
-
 // Studio says in the problem document why it refused a write, so that reason is the message.
 export async function putJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(path, {

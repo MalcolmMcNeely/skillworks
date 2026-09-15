@@ -8,7 +8,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Charges_a_skill_only_for_the_turns_inside_the_whole_days_a_span_names()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-04T23:59:59.999Z", Skill: "grilling", CostUsd: 0.01m),
@@ -26,7 +26,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Charges_a_skill_for_the_turns_in_the_lookback_when_no_span_is_given()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-08T23:59:59.999Z", Skill: "grilling", CostUsd: 0.01m),
@@ -39,7 +39,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Charges_a_skill_only_for_the_turns_in_the_repository_asked_for()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", CostUsd: 0.01m, InputTokens: 100, Owner: "acme", RepositoryName: "nu"),
@@ -59,7 +59,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Lists_only_the_spend_of_the_skill_asked_for()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", CostUsd: 0.01m, Model: "claude-sonnet-5"),

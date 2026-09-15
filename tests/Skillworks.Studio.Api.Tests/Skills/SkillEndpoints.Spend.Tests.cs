@@ -9,7 +9,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_a_skills_cost_as_the_sum_of_what_Claude_Code_estimated_for_its_turns()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", CostUsd: 0.1m),
@@ -22,7 +22,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_a_skills_tokens_as_input_output_cache_read_and_cache_creation()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", InputTokens: 1_000, OutputTokens: 4_000, CacheReadTokens: 2_000_000, CacheCreationTokens: 100_000),
@@ -39,7 +39,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Leaves_a_turn_that_names_no_skill_out_of_every_skills_spend()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
         await studio.Push(
@@ -57,7 +57,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Leaves_a_turn_under_a_skill_Claude_Code_will_not_name_out_of_every_skills_spend()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "third-party", CostUsd: 0.07m, OutputTokens: 700),
@@ -73,7 +73,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Totals_every_turn_in_a_period_that_holds_more_events_than_one_read_takes()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), maxEvents: 2);
+        using var studio = new StudioHost(maxEvents: 2);
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", Model: "claude-opus-5[1m]", CostUsd: 0.1m, OutputTokens: 100),
@@ -93,7 +93,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Names_the_models_and_efforts_a_skills_turns_ran_on()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", Model: "claude-opus-5[1m]", Effort: "high"),
@@ -111,7 +111,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_the_cost_of_an_activation_as_the_skills_cost_over_its_activations()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
@@ -129,7 +129,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Charges_a_skill_nothing_when_no_turn_ran_under_it()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
 
@@ -145,7 +145,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_spend_as_only_the_token_kinds_telemetry_sends_and_the_cost()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         await studio.Push(new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", CostUsd: 0.1m));
 

@@ -8,20 +8,12 @@ public static class SkillRequests
     public static async Task<IReadOnlyList<SkillRow>> Skills(this StudioHost studio, string filter = "") =>
         (await studio.SkillTable(filter)).Skills;
 
-    public static async Task<SkillsAnswer> SkillTable(this StudioHost studio, string filter = "")
-    {
-        await studio.WaitForIngestPasses(1);
-
-        return await studio.Client.GetFromJsonAsync<SkillsAnswer>($"/api/skills{filter}", StudioHost.Wire)
+    public static async Task<SkillsAnswer> SkillTable(this StudioHost studio, string filter = "") =>
+        await studio.Client.GetFromJsonAsync<SkillsAnswer>($"/api/skills{filter}", StudioHost.Wire)
             ?? throw new InvalidOperationException("The skill table came back empty.");
-    }
 
-    public static async Task<HttpResponseMessage> AskForSkills(this StudioHost studio, string filter)
-    {
-        await studio.WaitForIngestPasses(1);
-
-        return await studio.Client.GetAsync($"/api/skills{filter}");
-    }
+    public static Task<HttpResponseMessage> AskForSkills(this StudioHost studio, string filter) =>
+        studio.Client.GetAsync($"/api/skills{filter}");
 
     public static async Task<SkillRow> Skill(this StudioHost studio, string name, string filter = "") =>
         (await studio.Skills(filter)).Single(skill => skill.Name == name);

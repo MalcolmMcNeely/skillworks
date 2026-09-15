@@ -8,7 +8,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_every_part_of_studio_in_one_answer()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Catalogue());
 
         // Sorted here, because the report's order is the screen's choice and not part of the answer.
         var parts = (await studio.Health()).Parts.Select(part => part.Name).Order();
@@ -20,7 +20,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Answers_with_its_parts_alone()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Catalogue());
 
         // An empty screen is explained by its Gap, so health carries no reason for one.
         Assert.Equal(["parts"], await studio.HealthFields());
@@ -29,7 +29,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Says_every_part_is_working_and_leaves_nothing_to_do_when_nothing_is_wrong()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Catalogue());
 
         var health = await studio.Health();
 
@@ -40,7 +40,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Says_the_events_store_answered_when_it_did()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Catalogue());
 
         var part = await studio.Part("Events store");
 
@@ -52,7 +52,7 @@ public sealed class HealthEndpointsTests
     public async Task Points_no_part_at_transcripts_or_the_ingest_when_every_part_needs_attention()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), cataloguePath: null, events: events, emitting: false);
+        using var studio = new StudioHost(events: events, emitting: false);
 
         var health = await studio.Health();
 
@@ -71,7 +71,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Says_it_cannot_tell_whether_telemetry_is_on_when_it_cannot_read_the_settings()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), settings: "{ not json");
+        using var studio = new StudioHost(StudioHost.Catalogue(), settings: "{ not json");
 
         var part = await studio.Part("Claude Code telemetry");
 
@@ -84,7 +84,7 @@ public sealed class HealthEndpointsTests
     public async Task Reports_an_events_store_that_is_down_as_broken_and_says_how_to_start_it()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), events: events);
+        using var studio = new StudioHost(StudioHost.Catalogue(), events: events);
 
         var part = await studio.Part("Events store");
 
@@ -96,7 +96,7 @@ public sealed class HealthEndpointsTests
     public async Task Reports_an_events_store_that_answers_badly_as_broken_too()
     {
         using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), events: events);
+        using var studio = new StudioHost(StudioHost.Catalogue(), events: events);
 
         var part = await studio.Part("Events store");
 
@@ -108,7 +108,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_a_multi_tenant_events_store_as_broken_when_studio_names_no_tenant()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), tenanted: false);
+        using var studio = new StudioHost(StudioHost.Catalogue(), tenanted: false);
 
         var part = await studio.Part("Events store");
 
@@ -120,7 +120,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_telemetry_that_was_never_switched_on_as_off_rather_than_as_broken()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), emitting: false);
+        using var studio = new StudioHost(StudioHost.Catalogue(), emitting: false);
 
         var part = await studio.Part("Claude Code telemetry");
 
@@ -133,8 +133,8 @@ public sealed class HealthEndpointsTests
     public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_is_switched_off()
     {
         using var down = BrokenEventsStore.Down();
-        using var broken = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), events: down);
-        using var off = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), emitting: false);
+        using var broken = new StudioHost(StudioHost.Catalogue(), events: down);
+        using var off = new StudioHost(StudioHost.Catalogue(), emitting: false);
 
         var outage = await broken.Health();
         var never = await off.Health();
@@ -150,7 +150,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Names_the_missing_catalogue_and_what_it_costs()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
+        using var studio = new StudioHost();
 
         var part = await studio.Part("Catalogue");
 
