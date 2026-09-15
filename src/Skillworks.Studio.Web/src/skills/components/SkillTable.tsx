@@ -76,6 +76,10 @@ const columns = column.columns([
     id: 'models',
     header: 'Models',
   }),
+  column.accessor((skill) => describeList(skill.efforts), {
+    id: 'efforts',
+    header: 'Efforts',
+  }),
   column.accessor((skill) => describeList(skill.repositories), {
     id: 'repositories',
     header: 'Repositories',

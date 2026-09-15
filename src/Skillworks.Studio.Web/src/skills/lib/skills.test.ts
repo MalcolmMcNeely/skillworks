@@ -19,10 +19,10 @@ const spend: TurnTotals = {
 
 describe('describeList', () => {
   it('joins the values it was given', () => {
-    expect(describeList(['alpha', 'beta'])).toBe('alpha, beta');
+    expect(describeList(['high', 'medium'])).toBe('high, medium');
   });
 
-  it('shows a dash when a skill has never fired anywhere', () => {
+  it('shows a dash when there is nothing to list', () => {
     expect(describeList([])).toBe('—');
   });
 
