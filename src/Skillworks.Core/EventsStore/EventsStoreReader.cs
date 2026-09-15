@@ -17,30 +17,65 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private const string AnyStream = "{service_name=~\".+\"}";
 
-    public Task<EventReading> ReadAsync(EventQuery query, CancellationToken cancellationToken) =>
-        QueryAsync(Selected(query), query.From, query.Until, options.Value.MaxEvents, cancellationToken);
+    public async Task<EventReading> ReadAsync(EventQuery query, CancellationToken cancellationToken)
+    {
+        var selected = Selected(query);
+        var limit = options.Value.MaxEvents;
+        var events = new List<TelemetryEvent>();
+
+        foreach (var (from, until) in Windows(query))
+        {
+            var read = await QueryAsync(selected, from, until, limit - events.Count, cancellationToken);
+
+            if (read.Unreachable is not null)
+            {
+                return read;
+            }
+
+            events.AddRange(read.Events);
+
+            if (events.Count >= limit)
+            {
+                break;
+            }
+        }
+
+        // A full answer cannot be told from a capped one, and calling a cut period whole is the worse mistake.
+        return EventReading.Of(events, events.Count >= limit);
+    }
 
     // Counted by Loki, so no read cap cuts a busy organisation's total short.
-    public Task<EventCounts> CountAsync(
+    public async Task<EventCounts> CountAsync(
         EventQuery query,
         IReadOnlyList<string> by,
         CancellationToken cancellationToken)
     {
-        if (query.Until <= query.From)
+        var selected = Selected(query);
+        var sum = by.Count == 0 ? "sum" : $"sum by ({string.Join(", ", by.Select(EventAttributes.LabelOf))})";
+        var groups = new List<EventCount>();
+
+        // One after another, so a long span asks no more of the store at once than a short one.
+        foreach (var (from, until) in Windows(query))
         {
-            return Task.FromResult(EventCounts.Of([]));
+            var range = (long)(until - from).TotalMilliseconds;
+            var logql = $"{sum} (count_over_time({selected} [{range}ms]))";
+
+            // A range leaves out its start and takes in its end, so ending a nanosecond early takes From in and Until out.
+            var route =
+                $"loki/api/v1/query?query={Uri.EscapeDataString(logql)}" +
+                $"&time={Nanoseconds(until) - 1}";
+
+            var counted = await AskAsync(route, root => EventCounts.Of(Counts(root)), EventCounts.Failed, cancellationToken);
+
+            if (counted.Unreachable is not null)
+            {
+                return counted;
+            }
+
+            groups.AddRange(counted.Groups);
         }
 
-        var range = (long)(query.Until - query.From).TotalMilliseconds;
-        var sum = by.Count == 0 ? "sum" : $"sum by ({string.Join(", ", by.Select(EventAttributes.LabelOf))})";
-        var logql = $"{sum} (count_over_time({Selected(query)} [{range}ms]))";
-
-        // A range leaves out its start and takes in its end, so ending a nanosecond early takes From in and Until out.
-        var route =
-            $"loki/api/v1/query?query={Uri.EscapeDataString(logql)}" +
-            $"&time={Nanoseconds(query.Until) - 1}";
-
-        return AskAsync(route, root => EventCounts.Of(Counts(root)), EventCounts.Failed, cancellationToken);
+        return EventCounts.Of(EventCount.Joined(groups));
     }
 
     public async Task<string?> UnreachableAsync(CancellationToken cancellationToken)
@@ -84,6 +119,23 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         return logql;
     }
 
+    // Newest first, as a read runs backward; abutting, so an event on a cut is read once.
+    private IEnumerable<(DateTimeOffset From, DateTimeOffset Until)> Windows(EventQuery query)
+    {
+        // At least a day, as a window of none would never move back.
+        var longest = TimeSpan.FromDays(Math.Max(1, options.Value.MaxQueryDays));
+        var until = query.Until;
+
+        while (until > query.From)
+        {
+            var from = until - query.From > longest ? until - longest : query.From;
+
+            yield return (from, until);
+
+            until = from;
+        }
+    }
+
     private static string Quoted(string value) => JsonSerializer.Serialize(value, LogQlString);
 
     private Task<EventReading> QueryAsync(
@@ -98,17 +150,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             $"loki/api/v1/query_range?query={Uri.EscapeDataString(query)}" +
             $"&start={Nanoseconds(from)}&end={Nanoseconds(until)}&limit={limit}&direction=backward";
 
-        return AskAsync(
-            route,
-            root =>
-            {
-                var read = Read(root);
-
-                // A full answer cannot be told from a capped one, and calling a cut period whole is the worse mistake.
-                return EventReading.Of(read, read.Count >= limit);
-            },
-            EventReading.Failed,
-            cancellationToken);
+        return AskAsync(route, root => EventReading.Of(Read(root), truncated: false), EventReading.Failed, cancellationToken);
     }
 
     private async Task<T> AskAsync<T>(

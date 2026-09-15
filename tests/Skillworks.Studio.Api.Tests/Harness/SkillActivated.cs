@@ -29,4 +29,17 @@ public sealed record SkillActivated(
         ("vcs.owner.name", Owner),
         ("vcs.repository.name", RepositoryName),
     ];
+
+    internal static SkillActivated[] AtEveryMidnight(string skill, string firstDay, string lastDay)
+    {
+        var first = DateOnly.Parse(firstDay, CultureInfo.InvariantCulture);
+        var last = DateOnly.Parse(lastDay, CultureInfo.InvariantCulture);
+
+        return
+        [
+            .. Enumerable
+                .Range(0, last.DayNumber - first.DayNumber + 1)
+                .Select(day => new SkillActivated(skill, first.AddDays(day).ToString("yyyy-MM-dd'T00:00:00.000Z'", CultureInfo.InvariantCulture)))
+        ];
+    }
 }

@@ -58,6 +58,7 @@ public sealed class StudioHost : IDisposable
                 ("Loki:Address", TestLoki.Address.ToString()),
                 ("Loki:Tenant", tenanted ? _tenant : null),
                 ("Loki:MaxEvents", maxEvents.ToString()),
+                ("Loki:MaxQueryDays", TestLoki.MaxQueryDays.ToString()),
                 ("ClaudeSettings:Path", settingsPath),
                 ("ClaudeSettings:StampPath", Path.Combine(_data.Path, "telemetry-switch.json")),
                 ("Catalogue:Path", cataloguePath ?? Path.Combine(_data.Path, "no-catalogue")),
