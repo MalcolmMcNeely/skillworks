@@ -11,12 +11,4 @@ public sealed record SkillSummary(
     IReadOnlyList<string>? Models,
     IReadOnlyList<string>? Efforts,
     TurnTotals? Spend,
-    IReadOnlyList<SkillOrigin> Origins)
-{
-    public decimal? AverageCost => Spend switch
-    {
-        null => null,
-        _ when Activations == 0 => 0m,
-        _ => Spend.Cost / Activations,
-    };
-}
+    IReadOnlyList<SkillOrigin> Origins);

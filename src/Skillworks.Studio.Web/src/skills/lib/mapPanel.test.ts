@@ -12,11 +12,11 @@ const fired: SkillSummary = {
   models: [],
   efforts: [],
   spend: { ...noTokens, cost: 0.3 },
-  averageCost: 0.1,
+  each: 0.1,
   origins: [],
 };
 
-const neverFired: SkillSummary = { ...fired, name: 'tdd', activations: 0, averageCost: 0, spend: { ...noTokens, cost: 0 } };
+const neverFired: SkillSummary = { ...fired, name: 'tdd', activations: 0, each: null, spend: { ...noTokens, cost: 0 } };
 
 const complete: Gap = { kind: 'complete', missing: null };
 
@@ -27,6 +27,10 @@ function wordOf(panel: ReturnType<typeof mapPanelOf>): string | undefined {
 describe('mapPanelOf', () => {
   it('shows no panel once there are tiles to show', () => {
     expect(mapPanelOf({ answer: { skills: [fired], gap: complete }, failure: null, tileCount: 1, view: 'cost' })).toBeNull();
+  });
+
+  it('shows the tiles that have landed while the rest of the answer arrives', () => {
+    expect(mapPanelOf({ answer: { skills: [fired], gap: null }, failure: null, tileCount: 1, view: 'cost' })).toBeNull();
   });
 
   it('says No signal when the store cannot be read, even with never-fired skills listed at zero', () => {
@@ -45,6 +49,12 @@ describe('mapPanelOf', () => {
 
   it('says Arriving while the first answer is on its way', () => {
     const panel = mapPanelOf({ answer: null, failure: null, tileCount: 0, view: 'cost' });
+
+    expect([panel?.word, panel?.busy]).toEqual(['Arriving', true]);
+  });
+
+  it('says Arriving, not No Cost, while no landed day has given a tile', () => {
+    const panel = mapPanelOf({ answer: { skills: [neverFired], gap: null }, failure: null, tileCount: 0, view: 'cost' });
 
     expect([panel?.word, panel?.busy]).toEqual(['Arriving', true]);
   });

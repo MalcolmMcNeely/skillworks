@@ -11,6 +11,11 @@ export interface Gap {
   missing: string | null;
 }
 
+export interface AnswerEnd {
+  kind: 'end';
+  gap: Gap;
+}
+
 export interface Signal {
   word: string;
   tone: 'live' | 'quiet' | 'warned' | 'failed';

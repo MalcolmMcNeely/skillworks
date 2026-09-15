@@ -443,6 +443,10 @@ main {
   font-size: 0.66rem;
 }
 
+.legend.is-arriving .legend-figure {
+  color: var(--ink-soft);
+}
+
 .legend-bar {
   background: linear-gradient(90deg, var(--tile-cool), var(--tile-hot));
   border: 1px solid var(--line);

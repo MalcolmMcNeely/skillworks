@@ -1,10 +1,11 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { describeDay } from '../../filters/lib/filters';
 import { Keys } from '../../keys/components/Keys';
+import { showsFigures, type SkillsAnswer } from '../lib/answer';
 import { describeTile, heatStep, layOut, tilesOf, viewWords, type MapView, type PlacedTile } from '../lib/map';
 import type { MapChoice } from '../lib/mapChoice';
 import { mapPanelOf } from '../lib/mapPanel';
-import { describeCount, describeMoney, notNamed, type SkillsAnswer, type SkillSummary } from '../lib/skills';
+import { describeCount, describeMoney, notNamed, type SkillSummary } from '../lib/skills';
 
 function Tile({ placed, view }: { placed: PlacedTile; view: MapView }) {
   const { tile, x, y, width, height } = placed;
@@ -127,7 +128,7 @@ export function SkillMap({
         <Keys label="Order" pressed={choice.order} options={orders} onPress={(order) => onChoose({ ...choice, order })} />
 
         {panel === null && each !== null && (
-          <p className="legend">
+          <p className={`legend${arriving ? ' is-arriving' : ''}`}>
             <span className="micro">Each</span>
             <span className="legend-figure">{describeMoney(each.lowest)}</span>
             <span className="legend-bar" aria-hidden="true" />
@@ -173,7 +174,7 @@ export function SkillMap({
         </div>
       </div>
 
-      {answer !== null && answer.gap.kind !== 'unreachable' && unsized.length > 0 && (
+      {showsFigures(answer) && unsized.length > 0 && (
         <Strip skills={unsized} view={choice.view} />
       )}
     </section>

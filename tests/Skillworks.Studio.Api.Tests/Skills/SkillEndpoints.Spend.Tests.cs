@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-using System.Text.Json;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Skills;
@@ -16,7 +14,7 @@ public sealed partial class SkillEndpointsTests
             new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", CostUsd: 0.2m));
 
         // Added in floating point these make 0.30000000000000004, which is not what the Turns cost.
-        Assert.Equal(0.3m, (await studio.Skill("grilling")).Spend?.Cost);
+        Assert.Equal(0.3m, (await studio.SkillOn("2026-09-14", "grilling")).Spend?.Cost);
     }
 
     [Fact]
@@ -28,7 +26,7 @@ public sealed partial class SkillEndpointsTests
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", InputTokens: 1_000, OutputTokens: 4_000, CacheReadTokens: 2_000_000, CacheCreationTokens: 100_000),
             new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", InputTokens: 500, OutputTokens: 2_000, CacheReadTokens: 1_000_000, CacheCreationTokens: 300_000));
 
-        var spend = (await studio.Skill("grilling")).Spend;
+        var spend = (await studio.SkillOn("2026-09-14", "grilling")).Spend;
 
         Assert.Equal(1_500, spend?.InputTokens);
         Assert.Equal(6_000, spend?.OutputTokens);
@@ -46,7 +44,7 @@ public sealed partial class SkillEndpointsTests
             new ApiRequest("2026-09-14T08:59:58.000Z", CostUsd: 0.05m, InputTokens: 900),
             new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "grilling", CostUsd: 0.02m, InputTokens: 200));
 
-        var grilling = Assert.Single(await studio.Skills());
+        var grilling = Assert.Single(await studio.SkillsOn("2026-09-14"));
 
         // The Turn that chose grilling ran before grilling was in force, so it is no skill's.
         Assert.Equal("grilling", grilling.Name);
@@ -63,7 +61,7 @@ public sealed partial class SkillEndpointsTests
             new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "third-party", CostUsd: 0.07m, OutputTokens: 700),
             new ApiRequest("2026-09-14T09:02:00.000Z", Skill: "grilling", CostUsd: 0.02m));
 
-        var skills = await studio.Skills();
+        var skills = await studio.SkillsOn("2026-09-14");
 
         // third-party stands for any skill from a plugin outside Anthropic's marketplaces, so no one skill has that name.
         Assert.Equal(["grilling"], skills.Select(skill => skill.Name));
@@ -81,29 +79,11 @@ public sealed partial class SkillEndpointsTests
             new ApiRequest("2026-09-14T09:02:00.000Z", Skill: "grilling", Model: "claude-sonnet-5"),
             new ApiRequest("2026-09-14T09:03:00.000Z", Skill: "tdd", Model: "claude-haiku-4-5", Effort: "low"));
 
-        var grilling = await studio.Skill("grilling");
+        var grilling = await studio.SkillOn("2026-09-14", "grilling");
 
         // Its cost was charged at two models' rates, and naming one would hide the other.
         Assert.Equal(["claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models!);
         Assert.Equal(["high", "medium"], grilling.Efforts!);
-    }
-
-    [Fact]
-    public async Task Reports_the_cost_of_an_activation_as_the_skills_cost_over_its_activations()
-    {
-        using var studio = new StudioHost();
-
-        await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T10:00:00.000Z"));
-        await studio.Push(
-            new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "grilling", CostUsd: 0.1m),
-            new ApiRequest("2026-09-14T10:00:10.000Z", Skill: "grilling", CostUsd: 0.2m));
-
-        var grilling = await studio.Skill("grilling");
-
-        Assert.Equal(2, grilling.Activations);
-        Assert.Equal(0.15m, grilling.AverageCost);
     }
 
     [Fact]
@@ -113,11 +93,10 @@ public sealed partial class SkillEndpointsTests
 
         await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
 
-        var grilling = await studio.Skill("grilling");
+        var grilling = await studio.SkillOn("2026-09-14", "grilling");
 
         Assert.Equal(1, grilling.Activations);
         Assert.Equal(new TurnTotalsRow { InputTokens = 0, OutputTokens = 0, CacheReadTokens = 0, CacheCreationTokens = 0, Cost = 0m }, grilling.Spend);
-        Assert.Equal(0m, grilling.AverageCost);
         Assert.Empty(grilling.Models!);
         Assert.Empty(grilling.Efforts!);
     }
@@ -129,12 +108,11 @@ public sealed partial class SkillEndpointsTests
 
         await studio.Push(new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", CostUsd: 0.1m));
 
-        using var response = await studio.AskForSkills("");
-        var spend = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("skills")[0].GetProperty("spend");
+        var spend = (await studio.SkillLine("day", OnlyTheFourteenth))["skills"]?[0]?["spend"];
 
         // Telemetry sends no thinking tokens and no split of cache writes, so a field for either would stay empty for good.
         Assert.Equal(
-            ["inputTokens", "outputTokens", "cacheReadTokens", "cacheCreationTokens", "cost"],
-            spend.EnumerateObject().Select(field => field.Name));
+            ["cacheCreationTokens", "cacheReadTokens", "cost", "inputTokens", "outputTokens"],
+            StudioHost.Fields(spend));
     }
 }

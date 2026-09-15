@@ -7,7 +7,7 @@ namespace Skillworks.Studio.Api.Tests.Filters;
 public sealed partial class FilterEndpointsTests
 {
     [Fact]
-    public async Task Counts_today_and_the_six_days_before_it_when_no_span_is_given()
+    public async Task Reads_today_and_the_six_days_before_it_when_no_span_is_given()
     {
         using var studio = new StudioHost();
 
@@ -16,11 +16,13 @@ public sealed partial class FilterEndpointsTests
             new SkillActivated("grilling", "2026-09-09T00:00:00.000Z"),
             new SkillActivated("grilling", "2026-09-15T00:00:00.000Z"));
 
-        var answer = await studio.SkillTable();
+        var answer = await studio.SkillAnswer();
 
-        // Named in the answer, so a zero on screen says which week it is a zero for.
-        Assert.Equal(2, Assert.Single(answer.Skills).Activations);
-        Assert.Equal(Span("2026-09-09", "2026-09-15", lookback: true), answer.Span);
+        // Named in the head, so a zero on screen says which week it is a zero for.
+        Assert.Equal(Span("2026-09-09", "2026-09-15", lookback: true), SpanOf(answer));
+        Assert.Equal(7, answer.Days.Count);
+        Assert.Equal(1, Assert.Single(answer.Day("2026-09-15").Skills).Activations);
+        Assert.Equal(1, Assert.Single(answer.Day("2026-09-09").Skills).Activations);
     }
 
     [Fact]
@@ -32,10 +34,11 @@ public sealed partial class FilterEndpointsTests
             new SkillActivated("grilling", "2026-09-13T23:59:59.999Z"),
             new SkillActivated("grilling", "2026-09-14T00:00:00.000Z"));
 
-        var answer = await studio.SkillTable();
+        var answer = await studio.SkillAnswer();
 
-        Assert.Equal(1, Assert.Single(answer.Skills).Activations);
-        Assert.Equal(Span("2026-09-14", "2026-09-15", lookback: true), answer.Span);
+        Assert.Equal(Span("2026-09-14", "2026-09-15", lookback: true), SpanOf(answer));
+        Assert.Equal(2, answer.Days.Count);
+        Assert.Equal(1, Assert.Single(answer.Day("2026-09-14").Skills).Activations);
     }
 
     [Fact]
@@ -47,10 +50,11 @@ public sealed partial class FilterEndpointsTests
             new SkillActivated("grilling", "2026-09-03T09:00:00.000Z"),
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
 
-        var answer = await studio.SkillTable(BothDays);
+        var answer = await studio.SkillAnswer(BothDays);
 
-        Assert.Equal(1, Assert.Single(answer.Skills).Activations);
-        Assert.Equal(Span("2026-09-01", "2026-09-05", lookback: false), answer.Span);
+        Assert.Equal(Span("2026-09-01", "2026-09-05", lookback: false), SpanOf(answer));
+        Assert.Equal(1, answer.Skills.Sum(skill => skill.Activations));
+        Assert.Equal(1, Assert.Single(answer.Day("2026-09-03").Skills).Activations);
     }
 
     [Fact]
@@ -62,11 +66,13 @@ public sealed partial class FilterEndpointsTests
             new SkillActivated("grilling", "2026-09-01T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
             new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"));
 
-        var inXi = await studio.SkillTable("?repository=acme/xi");
+        var inXi = await studio.SkillAnswer("?repository=acme/xi");
+        var grilling = await studio.SkillAnswer("?skill=grilling");
 
-        Assert.Equal(1, Assert.Single(inXi.Skills).Activations);
-        Assert.True(inXi.Span.Lookback);
-        Assert.Equal(1, await studio.ActivationsOf("grilling", "?skill=grilling"));
+        Assert.True(inXi.Head.Span.Lookback);
+        Assert.Equal(1, inXi.Skills.Sum(skill => skill.Activations));
+        Assert.True(grilling.Head.Span.Lookback);
+        Assert.Equal(1, grilling.Skills.Sum(skill => skill.Activations));
     }
 
     [Fact]
@@ -74,14 +80,13 @@ public sealed partial class FilterEndpointsTests
     {
         using var studio = new StudioHost();
 
-        Assert.Equal(Span("2026-09-10", "2026-09-15", lookback: false), (await studio.SkillTable("?from=2026-09-10")).Span);
-        Assert.Equal(Span("2026-08-30", "2026-09-05", lookback: false), (await studio.SkillTable("?to=2026-09-05")).Span);
+        Assert.Equal(Span("2026-09-10", "2026-09-15", lookback: false), SpanOf(await studio.SkillAnswer("?from=2026-09-10")));
+        Assert.Equal(Span("2026-08-30", "2026-09-05", lookback: false), SpanOf(await studio.SkillAnswer("?to=2026-09-05")));
     }
 
-    private static SpanRow Span(string from, string to, bool lookback) => new()
-    {
-        From = DateOnly.Parse(from, CultureInfo.InvariantCulture),
-        To = DateOnly.Parse(to, CultureInfo.InvariantCulture),
-        Lookback = lookback,
-    };
+    private static (DateOnly From, DateOnly To, bool Lookback) Span(string from, string to, bool lookback) =>
+        (DateOnly.Parse(from, CultureInfo.InvariantCulture), DateOnly.Parse(to, CultureInfo.InvariantCulture), lookback);
+
+    private static (DateOnly From, DateOnly To, bool Lookback) SpanOf(SkillsAnswer answer) =>
+        (answer.Head.Span.From, answer.Head.Span.To, answer.Head.Span.Lookback);
 }

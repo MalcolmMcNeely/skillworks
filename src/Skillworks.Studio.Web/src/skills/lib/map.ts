@@ -1,4 +1,5 @@
-import { describeCount, describeMoney, type SkillsAnswer, type SkillSummary, type TurnTotals } from './skills';
+import type { SkillsAnswer } from './answer';
+import { describeCount, describeMoney, type SkillSummary, type TurnTotals } from './skills';
 
 export type MapView = 'cost' | 'activations';
 
@@ -13,7 +14,6 @@ export type MapTile =
       rank: number;
       value: number;
       skill: SkillSummary;
-      each: number | null;
       // Scaled to this map's lowest and highest Each, so the legend's two ends match the dimmest and brightest tile.
       heat: number | null;
     }
@@ -48,11 +48,6 @@ interface Rectangle {
   height: number;
 }
 
-// The API counts an Each of nothing for a skill that spent but never fired, which would read as the cheapest on the map.
-function eachOf(skill: SkillSummary): number | null {
-  return skill.activations === 0 ? null : skill.averageCost;
-}
-
 export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, view: MapView, order: MapOrder): SkillTiles {
   const valued = answer.skills.map((skill) => ({
     skill,
@@ -60,26 +55,21 @@ export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, v
   }));
 
   const onMap = valued.filter((entry) => entry.value > 0);
-  const eaches = onMap.flatMap((entry) => eachOf(entry.skill) ?? []);
+  const eaches = onMap.flatMap((entry) => entry.skill.each ?? []);
   const each = eaches.length === 0 ? null : { lowest: Math.min(...eaches), highest: Math.max(...eaches) };
 
-  const sized: Unranked<MapTile>[] = onMap.map(({ skill, value }) => {
-    const skillEach = eachOf(skill);
-
-    return {
-      kind: 'skill',
-      key: `skill:${skill.name}`,
-      value,
-      skill,
-      each: skillEach,
-      heat:
-        skillEach === null || each === null
-          ? null
-          : each.highest === each.lowest
-            ? 0
-            : (skillEach - each.lowest) / (each.highest - each.lowest),
-    };
-  });
+  const sized: Unranked<MapTile>[] = onMap.map(({ skill, value }) => ({
+    kind: 'skill',
+    key: `skill:${skill.name}`,
+    value,
+    skill,
+    heat:
+      skill.each === null || each === null
+        ? null
+        : each.highest === each.lowest
+          ? 0
+          : (skill.each - each.lowest) / (each.highest - each.lowest),
+  }));
 
   // Never shared out among skills, and it has no Activations, so it is sized only when the map shows Cost.
   if (view === 'cost' && answer.unnamedSpend !== null && answer.unnamedSpend.cost > 0) {
@@ -106,7 +96,7 @@ export function describeTile(tile: MapTile): string {
   const { skill } = tile;
   const read = `${tile.rank}. ${skill.name}. Cost ${describeMoney(skill.spend?.cost ?? null)}. Activations ${describeCount(skill.activations)}.`;
 
-  return skill.activations === 0 ? read : `${read} Each ${describeMoney(tile.each)}.`;
+  return skill.activations === 0 ? read : `${read} Each ${describeMoney(skill.each)}.`;
 }
 
 // Steps as well as brightness, so a reader who cannot tell the shades apart can still count the heat.

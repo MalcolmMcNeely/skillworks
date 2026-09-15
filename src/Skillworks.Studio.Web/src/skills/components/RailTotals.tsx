@@ -1,11 +1,11 @@
-import { describeCount, describeMoney, describeTokens, type SkillsAnswer } from '../lib/skills';
-import { totalsOf } from '../lib/totals';
+import type { SkillsAnswer } from '../lib/answer';
+import { describeCount, describeMoney, describeTokens } from '../lib/skills';
 
 // A dash, not a zero, while there is no answer to count, so an outage never reads as a quiet week.
 const noAnswer = '—';
 
 export function RailTotals({ answer, arriving }: { answer: SkillsAnswer | null; arriving: boolean }) {
-  const totals = answer === null ? null : totalsOf(answer);
+  const totals = answer?.totals ?? null;
 
   return (
     <section className={`rail-block totals${arriving ? ' is-arriving' : ''}`} aria-label="Totals" aria-busy={arriving}>

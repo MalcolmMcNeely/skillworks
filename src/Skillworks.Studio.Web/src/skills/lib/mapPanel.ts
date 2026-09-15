@@ -1,7 +1,7 @@
 import { signalOf } from '../../gaps/lib/gaps';
 import { noLink } from '../../http/lib/errors';
+import type { SkillsAnswer } from './answer';
 import { viewWords, type MapView } from './map';
-import type { SkillsAnswer } from './skills';
 
 export interface MapPanel {
   glyph: string;
@@ -9,6 +9,8 @@ export interface MapPanel {
   tone: 'failed' | 'hud' | 'dim';
   busy: boolean;
 }
+
+const arriving: MapPanel = { glyph: '◌', word: 'Arriving', tone: 'hud', busy: true };
 
 export function mapPanelOf(state: {
   answer: Pick<SkillsAnswer, 'skills' | 'gap'> | null;
@@ -19,18 +21,21 @@ export function mapPanelOf(state: {
   const { answer, failure, tileCount, view } = state;
 
   if (answer === null) {
-    return failure === null
-      ? { glyph: '◌', word: 'Arriving', tone: 'hud', busy: true }
-      : { glyph: '✕', word: noLink, tone: 'failed', busy: false };
+    return failure === null ? arriving : { glyph: '✕', word: noLink, tone: 'failed', busy: false };
   }
 
   // Ahead of the zero checks: never-fired skills are still listed, and No Cost would read as a quiet week.
-  if (answer.gap.kind === 'unreachable') {
+  if (answer.gap?.kind === 'unreachable') {
     return { glyph: '✕', word: signalOf(answer.gap.kind).word, tone: 'failed', busy: false };
   }
 
   if (tileCount > 0) {
     return null;
+  }
+
+  // The catalogue's zeros land before any day, and a day still to come may give them a tile.
+  if (answer.gap === null) {
+    return arriving;
   }
 
   if (answer.skills.length === 0) {

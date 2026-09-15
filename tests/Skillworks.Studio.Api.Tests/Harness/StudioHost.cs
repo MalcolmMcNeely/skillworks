@@ -64,6 +64,24 @@ public sealed class StudioHost : IDisposable
 
     public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);
 
+    // Headers first and then one line at a time, as a browser reads an answer that arrives day by day.
+    public async Task<IReadOnlyList<JsonObject>> Lines(string path)
+    {
+        using var response = await _client.GetAsync(path, HttpCompletionOption.ResponseHeadersRead);
+
+        response.EnsureSuccessStatusCode();
+
+        using var body = new StreamReader(await response.Content.ReadAsStreamAsync());
+        var lines = new List<JsonObject>();
+
+        while (await body.ReadLineAsync() is { } line)
+        {
+            lines.Add(JsonNode.Parse(line)?.AsObject() ?? throw new InvalidOperationException("A line held null."));
+        }
+
+        return lines;
+    }
+
     public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Fixtures", "Catalogue");
 
     public static IReadOnlyList<string> Fields(JsonNode? answer) =>

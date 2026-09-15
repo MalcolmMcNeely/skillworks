@@ -11,8 +11,8 @@ import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
 import { fetchSkills } from '../api/skills';
 import { RailTotals } from '../components/RailTotals';
 import { SkillMap } from '../components/SkillMap';
+import { foldSkillsLine, showsFigures, type SkillsAnswer } from '../lib/answer';
 import { readMapChoice, withMapChoice, type MapChoice } from '../lib/mapChoice';
-import type { SkillsAnswer } from '../lib/skills';
 
 interface Reading {
   // The filter the answer was asked for, as text, so the screen can tell an answer for an older filter.
@@ -36,26 +36,34 @@ export function Home() {
   useEffect(() => {
     const abort = new AbortController();
 
-    // Read back out of the text, so the effect depends only on what it is keyed on.
-    fetchSkills(readFilter(new URLSearchParams(narrowing)), abort.signal).then(
-      (answer) => setReading({ narrowing, answer, failure: null }),
-      (failure: unknown) => {
-        // An abort is the page tidying up after itself, not a failure worth showing.
-        if (!abort.signal.aborted) {
-          setReading({ narrowing, answer: null, failure: describeFetchFailure(failure) });
-        }
-      },
-    );
+    const read = async () => {
+      let answer: SkillsAnswer | null = null;
 
+      // Read back out of the text, so the effect depends only on what it is keyed on.
+      for await (const line of fetchSkills(readFilter(new URLSearchParams(narrowing)), abort.signal)) {
+        answer = foldSkillsLine(answer, line);
+        setReading({ narrowing, answer, failure: null });
+      }
+    };
+
+    read().catch((failure: unknown) => {
+      // An abort is the page tidying up after itself, not a failure worth showing.
+      if (!abort.signal.aborted) {
+        setReading({ narrowing, answer: null, failure: describeFetchFailure(failure) });
+      }
+    });
+
+    // A changed filter stops the old answer, so its days never land in the new view.
     return () => abort.abort();
   }, [narrowing]);
 
   const answer = reading?.answer ?? null;
-  const arriving = reading !== null && reading.narrowing !== narrowing;
+  const forOlderFilter = reading !== null && reading.narrowing !== narrowing;
+  const arriving = forOlderFilter || (answer?.arriving ?? false);
   const today = todayUtc(new Date());
 
   // With no dates asked, the answer names the lookback, whose length only the API knows.
-  const shownSpan = filter.from !== '' || filter.to !== '' ? filter : arriving ? null : (answer?.span ?? null);
+  const shownSpan = filter.from !== '' || filter.to !== '' ? filter : forOlderFilter ? null : (answer?.span ?? null);
 
   // Replaced, not pushed, so trying four spans does not cost four presses of the back button.
   const show = (nextFilter: Filter, nextChoice: MapChoice) =>
@@ -79,8 +87,7 @@ export function Home() {
           <RepositoryPicker repository={filter.repository} onChange={(repository) => show({ ...filter, repository }, choice)} />
         </section>
 
-        {/* No figures from a store that could not be read, as never-fired skills would total a quiet zero. */}
-        <RailTotals answer={answer?.gap.kind === 'unreachable' ? null : answer} arriving={arriving} />
+        <RailTotals answer={showsFigures(answer) ? answer : null} arriving={arriving} />
 
         <section className="rail-block rail-systems" aria-label="Systems">
           <HealthPanel />

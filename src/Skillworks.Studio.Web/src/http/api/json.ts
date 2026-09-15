@@ -1,12 +1,26 @@
+import { readLines } from '../lib/lines';
+
 // The status stays in the message: a 404 on a dev server usually means the proxy is not wired.
-export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+async function get(path: string, signal?: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal });
 
   if (!response.ok) {
     throw new Error(`GET ${path} returned ${response.status}`);
   }
 
-  return (await response.json()) as T;
+  return response;
+}
+
+export async function* getLines<T>(path: string, signal: AbortSignal): AsyncGenerator<T> {
+  const { body } = await get(path, signal);
+
+  if (body !== null) {
+    yield* readLines<T>(body, signal);
+  }
+}
+
+export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return (await (await get(path, signal)).json()) as T;
 }
 
 // Studio says in the problem document why it refused a write, so that reason is the message.

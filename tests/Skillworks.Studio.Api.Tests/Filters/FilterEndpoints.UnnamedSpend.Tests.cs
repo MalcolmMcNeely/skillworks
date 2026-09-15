@@ -16,7 +16,7 @@ public sealed partial class FilterEndpointsTests
             new ApiRequest("2026-09-05T23:59:59.999Z", Skill: "third-party", CostUsd: 0.04m, OutputTokens: 400),
             new ApiRequest("2026-09-06T00:00:00.000Z", Skill: "third-party", CostUsd: 0.08m));
 
-        var unnamed = (await studio.SkillTable("?from=2026-09-05&to=2026-09-05")).UnnamedSpend;
+        var unnamed = Assert.Single((await studio.SkillAnswer("?from=2026-09-05&to=2026-09-05")).Days).UnnamedSpend;
 
         Assert.Equal(0.06m, unnamed?.Cost);
         Assert.Equal(600, unnamed?.OutputTokens);
@@ -32,8 +32,8 @@ public sealed partial class FilterEndpointsTests
             new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "third-party", CostUsd: 0.02m, Owner: "acme", RepositoryName: "xi"),
             new ApiRequest("2026-09-14T09:02:00.000Z", Skill: "third-party", CostUsd: 0.04m));
 
-        var everywhere = await studio.SkillTable();
-        var inNu = await studio.SkillTable("?repository=acme/nu");
+        var everywhere = (await studio.SkillAnswer()).Day("2026-09-14");
+        var inNu = (await studio.SkillAnswer("?repository=acme/nu")).Day("2026-09-14");
 
         Assert.Equal(0.07m, everywhere.UnnamedSpend?.Cost);
         Assert.Equal(0.01m, inNu.UnnamedSpend?.Cost);
@@ -48,11 +48,11 @@ public sealed partial class FilterEndpointsTests
             new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "third-party", CostUsd: 0.07m),
             new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", CostUsd: 0.02m));
 
-        var forGrilling = await studio.SkillTable("?skill=grilling");
-        var forThirdParty = await studio.SkillTable("?skill=third-party");
+        var forGrilling = await studio.SkillAnswer("?skill=grilling");
+        var forThirdParty = await studio.SkillAnswer("?skill=third-party");
 
-        Assert.Null(forGrilling.UnnamedSpend);
-        Assert.Null(forThirdParty.UnnamedSpend);
+        Assert.All(forGrilling.Days, day => Assert.Null(day.UnnamedSpend));
+        Assert.All(forThirdParty.Days, day => Assert.Null(day.UnnamedSpend));
         Assert.Empty(forThirdParty.Skills);
     }
 }

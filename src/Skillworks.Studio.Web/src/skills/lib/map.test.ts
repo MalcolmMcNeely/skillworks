@@ -10,7 +10,7 @@ function skill(name: string, cost: number, activations: number): SkillSummary {
     models: [],
     efforts: [],
     spend: { cost, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
-    averageCost: activations === 0 ? 0 : cost / activations,
+    each: activations === 0 ? null : cost / activations,
     origins: [],
   };
 }
@@ -65,7 +65,7 @@ describe('tilesOf', () => {
   });
 
   it('leaves a skill with no Cost off the Cost map, and lists it under the map instead', () => {
-    const unnamed = { ...skill('delta', 0, 7), spend: null, averageCost: null };
+    const unnamed = { ...skill('delta', 0, 7), spend: null, each: null };
     const skills = [skill('alpha', 0, 3), skill('beta', 2, 1), unnamed];
 
     const { tiles, unsized } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'most');
@@ -117,7 +117,7 @@ describe('tilesOf', () => {
 
     const { tiles, each } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'most');
 
-    expect(tiles.map((tile) => (tile.kind === 'skill' ? [tile.skill.name, tile.each, tile.heat] : null))).toEqual([
+    expect(tiles.map((tile) => (tile.kind === 'skill' ? [tile.skill.name, tile.skill.each, tile.heat] : null))).toEqual([
       ['beta', 3, 1],
       ['gamma', 2, 0.5],
       ['alpha', 1, 0],
@@ -126,12 +126,12 @@ describe('tilesOf', () => {
   });
 
   it('leaves a tile unheated, and off the legend, when its spend was not named', () => {
-    const unnamed = { ...skill('delta', 0, 90), spend: null, averageCost: null };
+    const unnamed = { ...skill('delta', 0, 90), spend: null, each: null };
     const skills = [skill('alpha', 10, 10), skill('beta', 30, 10), unnamed];
 
     const { tiles, each } = tilesOf({ skills, unnamedSpend: null }, 'activations', 'most');
 
-    expect(tiles.map((tile) => (tile.kind === 'skill' ? [tile.skill.name, tile.each, tile.heat] : null))).toEqual([
+    expect(tiles.map((tile) => (tile.kind === 'skill' ? [tile.skill.name, tile.skill.each, tile.heat] : null))).toEqual([
       ['delta', null, null],
       ['alpha', 1, 0],
       ['beta', 3, 1],
@@ -144,7 +144,7 @@ describe('tilesOf', () => {
 
     const { tiles, each } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'most');
 
-    expect(tiles.map((tile) => (tile.kind === 'skill' ? [tile.skill.name, tile.each, tile.heat] : null))).toEqual([
+    expect(tiles.map((tile) => (tile.kind === 'skill' ? [tile.skill.name, tile.skill.each, tile.heat] : null))).toEqual([
       ['beta', 3, 1],
       ['alpha', 1, 0],
       ['gamma', null, null],
@@ -181,7 +181,7 @@ describe('describeTile', () => {
   });
 
   it('says not named, never free, for a skill whose spend Claude Code did not name', () => {
-    const skills = [{ ...skill('probe', 0, 3), spend: null, averageCost: null }];
+    const skills = [{ ...skill('probe', 0, 3), spend: null, each: null }];
 
     const [first] = tilesOf({ skills, unnamedSpend: null }, 'activations', 'most').tiles;
 

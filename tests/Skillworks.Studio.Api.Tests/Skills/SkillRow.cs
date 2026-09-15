@@ -15,7 +15,5 @@ public sealed record SkillRow
 
     public required TurnTotalsRow? Spend { get; init; }
 
-    public required decimal? AverageCost { get; init; }
-
     public required OriginRow[] Origins { get; init; }
 }

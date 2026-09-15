@@ -1,5 +1,5 @@
 import type { Span } from '../../filters/lib/filters';
-import type { Gap } from '../../gaps/lib/gaps';
+import type { AnswerEnd } from '../../gaps/lib/gaps';
 import type { Origin } from '../../provenance/lib/provenance';
 
 export interface TokenSplit {
@@ -14,7 +14,7 @@ export interface TurnTotals extends TokenSplit {
   cost: number;
 }
 
-export interface SkillSummary {
+export interface SkillOnDay {
   name: string;
   activations: number;
   repositories: string[];
@@ -22,17 +22,31 @@ export interface SkillSummary {
   models: string[] | null;
   efforts: string[] | null;
   spend: TurnTotals | null;
-  averageCost: number | null;
   origins: Origin[];
 }
 
-export interface SkillsAnswer {
-  skills: SkillSummary[];
+export interface SkillSummary extends SkillOnDay {
+  each: number | null;
+}
+
+export interface SkillsHead {
+  kind: 'head';
+  span: Span & { lookback: boolean; fromUtc: string; untilUtc: string };
+  // Newest first, the order the days arrive in.
+  days: string[];
+  catalogueSkills: string[];
+}
+
+export interface SkillsDay {
+  kind: 'day';
+  day: string;
+  skills: SkillOnDay[];
   // Null when the filter names a skill, as some of it may not be that skill's.
   unnamedSpend: TurnTotals | null;
-  gap: Gap;
-  span: Span;
+  unnarrowedEvents: number;
 }
+
+export type SkillsLine = SkillsHead | SkillsDay | AnswerEnd;
 
 // Words, not a zero or a dash: a plugin outside Anthropic's marketplaces has its Turns sent unnamed, so what it spent is not known.
 export const notNamed = 'Not named';

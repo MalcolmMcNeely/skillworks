@@ -1,4 +1,4 @@
-import type { SkillsAnswer, TurnTotals } from './skills';
+import type { SkillSummary, TurnTotals } from './skills';
 
 export interface Totals {
   cost: number;
@@ -16,7 +16,7 @@ function tokensIn(spend: TurnTotals | null): number {
 }
 
 // Unnamed spend is in the Cost, because its Activations are in the count beside it.
-export function totalsOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>): Totals {
+export function totalsOf(answer: { skills: readonly SkillSummary[]; unnamedSpend: TurnTotals | null }): Totals {
   const unnamed = answer.unnamedSpend?.cost ?? 0;
   const cost = answer.skills.reduce((sum, skill) => sum + (skill.spend?.cost ?? 0), unnamed);
   const activations = answer.skills.reduce((sum, skill) => sum + skill.activations, 0);
