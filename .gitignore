@@ -28,3 +28,6 @@ docs/research/
 
 # Spec loop run logs. Transient, per-machine.
 .spec-loop/
+
+# Handoff documents from one agent session to the next. Transient, per-machine.
+.handoff/
