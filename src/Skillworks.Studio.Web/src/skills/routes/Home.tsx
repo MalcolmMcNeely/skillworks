@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { describeFetchFailure } from '../../fetching/lib/errors';
 import { FilterBar } from '../../filters/components/FilterBar';
 import { describeEmpty, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
 import { HealthPanel } from '../../health/components/HealthPanel';
 import { useHealth } from '../../health/components/useHealth';
+import { describeFetchFailure } from '../../http/lib/errors';
 import { IngestPanel } from '../../ingest/components/IngestPanel';
 import { describeProvenance } from '../../provenance/lib/provenance';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';

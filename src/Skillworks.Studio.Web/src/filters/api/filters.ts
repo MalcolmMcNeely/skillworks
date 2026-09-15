@@ -1,4 +1,4 @@
-import { getJson } from '../../fetching/api/json';
+import { getJson } from '../../http/api/json';
 
 // Read from the whole history, so a filter that has emptied the table still offers the way back.
 export interface FilterChoices {

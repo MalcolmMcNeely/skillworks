@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
-import { describeFetchFailure } from '../../fetching/lib/errors';
 import { describeEmpty, readFilter } from '../../filters/lib/filters';
 import { useHealth } from '../../health/components/useHealth';
+import { describeFetchFailure } from '../../http/lib/errors';
 import { describeMoment } from '../../moments/lib/moments';
 import { describeProvenance, describeTrigger } from '../../provenance/lib/provenance';
 import { fetchActivations, type ActivationList } from '../api/activations';

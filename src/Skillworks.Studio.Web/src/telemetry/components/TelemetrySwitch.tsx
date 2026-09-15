@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { describeFetchFailure } from '../../fetching/lib/errors';
+import { describeFetchFailure } from '../../http/lib/errors';
 import { fetchTelemetry, setTelemetry, type TelemetryState } from '../api/telemetry';
 import { describeChange, describeTelemetry } from '../lib/telemetry';
 

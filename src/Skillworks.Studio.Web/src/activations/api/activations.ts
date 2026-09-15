@@ -1,5 +1,5 @@
-import { getJson } from '../../fetching/api/json';
 import { filterQuery, type Filter } from '../../filters/lib/filters';
+import { getJson } from '../../http/api/json';
 import type { Origin, Provenance } from '../../provenance/lib/provenance';
 
 export interface ActivationSummary {
