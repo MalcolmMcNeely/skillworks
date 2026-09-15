@@ -1,7 +1,7 @@
 namespace Skillworks.Core.Filters;
 
 // Days are UTC days, as transcripts timestamp them; a local day would move late sessions to the wrong day.
-public sealed record TelemetryFilter
+public sealed record Filter
 {
     public DateOnly? From { get; init; }
 

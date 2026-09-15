@@ -5,7 +5,7 @@ using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Telemetry;
 
-public sealed class TelemetryStudio : IDisposable
+public sealed class TelemetrySwitchHost : IDisposable
 {
     public const string Collector = "http://localhost:4318";
 
@@ -16,7 +16,7 @@ public sealed class TelemetryStudio : IDisposable
     private readonly HttpClient _client;
     private readonly string _settingsPath;
 
-    public TelemetryStudio(string? settings = null)
+    public TelemetrySwitchHost(string? settings = null)
     {
         _settingsPath = Path.Combine(_folder.Path, "settings.json");
 
@@ -81,8 +81,7 @@ public sealed class TelemetryStudio : IDisposable
         _client.Dispose();
         _api.Dispose();
 
-        // SQLite pools its connections, so the file stays open past the host and the directory
-        // will not delete.
+        // SQLite pools its connections, so the file stays open past the API host and the folder will not delete.
         SqliteConnection.ClearAllPools();
         _folder.Dispose();
     }

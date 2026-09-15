@@ -7,7 +7,7 @@ public static class ActivationEndpoints
 {
     public static IEndpointRouteBuilder MapActivationEndpoints(this IEndpointRouteBuilder api)
     {
-        api.MapGet("activations", ([AsParameters] TelemetryFilter filter, ActivationReport activations, CancellationToken cancellationToken) =>
+        api.MapGet("activations", ([AsParameters] Filter filter, ActivationReport activations, CancellationToken cancellationToken) =>
             activations.ListAsync(filter, cancellationToken));
 
         // No filter: narrowing a firing opened by its id would answer the link with a blank page once the filter moved on.

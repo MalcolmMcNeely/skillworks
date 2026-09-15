@@ -9,7 +9,7 @@ public sealed class SpendQueries(IDbContextFactory<TranscriptStoreDbContext> con
     private readonly record struct SkillTokens(string Skill, ModelTokens Tokens);
 
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<ModelTokens>>> TokensBySkillAsync(
-        TelemetryFilter filter,
+        Filter filter,
         CancellationToken cancellationToken)
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);
@@ -39,7 +39,7 @@ public sealed class SpendQueries(IDbContextFactory<TranscriptStoreDbContext> con
     }
 
     // Narrowed like the activations, or a filtered count would sit beside an all-time cost.
-    private static IQueryable<Turn> Narrowed(IQueryable<Turn> turns, TelemetryFilter filter)
+    private static IQueryable<Turn> Narrowed(IQueryable<Turn> turns, Filter filter)
     {
         // A turn charged to no skill was spent choosing one, so it belongs in no skill's total.
         turns = turns.Where(turn => turn.SkillName != null);

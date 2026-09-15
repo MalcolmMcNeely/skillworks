@@ -11,7 +11,7 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
 
     private readonly record struct SkillCount(string Skill, int Activations);
 
-    public async Task<ActivationTally> TallyBySkillAsync(TelemetryFilter filter, CancellationToken cancellationToken)
+    public async Task<ActivationTally> TallyBySkillAsync(Filter filter, CancellationToken cancellationToken)
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);
 
@@ -33,7 +33,7 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
     }
 
     public async Task<IReadOnlyList<ActivationSummary>> ListAsync(
-        TelemetryFilter filter,
+        Filter filter,
         CancellationToken cancellationToken)
     {
         await using var store = await contexts.CreateDbContextAsync(cancellationToken);
@@ -94,7 +94,7 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
     }
 
     // Repeated in SpendQueries: sharing it means an interface EF cannot translate or hand-grafted expressions.
-    private static IQueryable<Activation> Narrowed(IQueryable<Activation> activations, TelemetryFilter filter)
+    private static IQueryable<Activation> Narrowed(IQueryable<Activation> activations, Filter filter)
     {
         if (filter.FromUtc is { } from)
         {

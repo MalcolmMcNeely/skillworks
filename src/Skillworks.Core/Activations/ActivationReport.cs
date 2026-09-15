@@ -6,7 +6,7 @@ namespace Skillworks.Core.Activations;
 
 public sealed class ActivationReport(ActivationQueries activations, ProvenanceReport provenance)
 {
-    public async Task<ActivationList> ListAsync(TelemetryFilter filter, CancellationToken cancellationToken)
+    public async Task<ActivationList> ListAsync(Filter filter, CancellationToken cancellationToken)
     {
         var listed = await activations.ListAsync(filter, cancellationToken);
         var origins = await provenance.ForAsync(filter, cancellationToken);

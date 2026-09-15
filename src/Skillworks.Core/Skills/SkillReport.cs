@@ -16,7 +16,7 @@ public sealed class SkillReport(
     ProvenanceReport provenance)
 {
     public async Task<SkillTable> SkillsAsync(
-        TelemetryFilter filter,
+        Filter filter,
         CancellationToken cancellationToken)
     {
         var tally = await activations.TallyBySkillAsync(filter, cancellationToken);

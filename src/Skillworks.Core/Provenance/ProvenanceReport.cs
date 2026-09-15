@@ -11,7 +11,7 @@ public sealed class ProvenanceReport(
     TimeProvider clock)
 {
     // Period only: an event carries no repository, so a project filter cannot narrow the origins.
-    public async Task<ProvenanceReading> ForAsync(TelemetryFilter filter, CancellationToken cancellationToken)
+    public async Task<ProvenanceReading> ForAsync(Filter filter, CancellationToken cancellationToken)
     {
         var until = filter.UntilUtc ?? clock.GetUtcNow();
         var from = filter.FromUtc ?? until - TimeSpan.FromDays(options.Value.LookbackDays);
