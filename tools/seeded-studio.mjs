@@ -1,10 +1,4 @@
-// PROTOTYPE — wipe me. Runs Studio against a throwaway Loki filled with a made-up month of telemetry, so
-// the at-a-glance variants can be judged against realistic volume. The real `skillworks-loki` is never touched.
-//
-//   node scripts/prototype-glance.mjs              start Loki, seed it, run the API and the web app
-//   node scripts/prototype-glance.mjs --seed-only  start Loki and seed it, then exit and leave it running
-//
-// Ctrl+C stops the API and the web app and removes the Loki container, and its events with it.
+// A throwaway Loki on its own port, so a screen is judged at real volume without touching real telemetry.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -12,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const container = 'skillworks-prototype-wipe-me-loki';
+const container = 'skillworks-seeded-loki';
 const lokiPort = 3101;
 const apiPort = 5199;
 const webPort = 5173;
@@ -36,8 +30,8 @@ async function startLoki() {
   docker(
     'run', '-d', '--rm', '--name', container,
     '-p', `127.0.0.1:${lokiPort}:3100`,
-    '-v', `${join(root, 'scripts', 'prototype-glance-loki.yaml')}:/etc/loki/prototype.yaml:ro`,
-    'grafana/loki:3.5.9', '-config.file=/etc/loki/prototype.yaml',
+    '-v', `${join(root, 'tools', 'seeded-studio-loki.yaml')}:/etc/loki/seeded.yaml:ro`,
+    'grafana/loki:3.5.9', '-config.file=/etc/loki/seeded.yaml',
   );
 
   for (let attempt = 0; attempt < 120; attempt++) {
@@ -49,10 +43,8 @@ async function startLoki() {
     await sleep(500);
   }
 
-  throw new Error('The prototype Loki never became ready');
+  throw new Error('The seeded Loki never became ready');
 }
-
-// ---- the made-up month ----
 
 // Seeded, so every run draws the same month relative to now.
 let state = 20260915;
@@ -90,11 +82,11 @@ const opus = 'claude-opus-5';
 const sonnet = 'claude-sonnet-5';
 const haiku = 'claude-haiku-4-5-20251001';
 
-// Dollars per million tokens: input, output, cache read, cache creation. Made up for the seed, not a price list.
-const rates = {
-  [opus]: [5, 25, 0.5, 6.25],
-  [sonnet]: [3, 15, 0.3, 3.75],
-  [haiku]: [1, 5, 0.1, 1.25],
+// Made up for the seed, not a price list.
+const dollarsPerMillionTokens = {
+  [opus]: { input: 5, output: 25, cacheRead: 0.5, cacheCreation: 6.25 },
+  [sonnet]: { input: 3, output: 15, cacheRead: 0.3, cacheCreation: 3.75 },
+  [haiku]: { input: 1, output: 5, cacheRead: 0.1, cacheCreation: 1.25 },
 };
 
 const skills = [
@@ -128,7 +120,7 @@ const repositories = {
 const dayMs = 24 * 60 * 60 * 1000;
 
 function turnsFor(model, count, startMs, context) {
-  const [inRate, outRate, readRate, writeRate] = rates[model];
+  const price = dollarsPerMillionTokens[model];
   const turns = [];
   let cache = between(20000, 60000);
 
@@ -139,7 +131,8 @@ function turnsFor(model, count, startMs, context) {
     const cacheRead = Math.round(cache);
     cache = Math.min(400000, cache + cacheCreation * 0.8);
 
-    const cost = (input * inRate + output * outRate + cacheRead * readRate + cacheCreation * writeRate) / 1e6;
+    const cost =
+      (input * price.input + output * price.output + cacheRead * price.cacheRead + cacheCreation * price.cacheCreation) / 1e6;
 
     turns.push({
       at: startMs + (index + 1) * between(8000, 40000),
@@ -170,7 +163,6 @@ function month(now) {
     const day = today - back * dayMs;
     const weekday = new Date(day).getUTCDay();
     const weekend = weekday === 0 ? 0.12 : weekday === 6 ? 0.25 : 1;
-    // Usage grows through the month, and one week in the middle is a holiday.
     const growth = 0.55 + (0.65 * (29 - back)) / 29;
     const holiday = back >= 16 && back <= 19 ? 0.2 : 1;
     const volume = weekend * growth * holiday;
@@ -238,7 +230,7 @@ function record(eventName, at, session, attributes) {
     observedTimeUnixNano: nanoseconds,
     body: { stringValue: `claude_code.${eventName}` },
     attributes: Object.entries({
-      'user.id': 'prototype-user',
+      'user.id': 'seeded-user',
       'session.id': session.id,
       'app.version': '2.1.268',
       'terminal.type': 'windows-terminal',
@@ -289,8 +281,6 @@ async function seed() {
   console.log(`Seeded ${firings.length} firings and ${turns.length} turns ($${cost.toFixed(2)}) into ${loki}`);
 }
 
-// ---- run ----
-
 const children = [];
 
 function stop() {
@@ -336,4 +326,4 @@ children.push(
   }),
 );
 
-console.log(`\nOpen http://localhost:${webPort}/?variant=A  (← → flips variants). Ctrl+C stops everything and wipes the Loki.\n`);
+console.log(`\nOpen http://localhost:${webPort}/  Ctrl+C stops everything and wipes the Loki.\n`);

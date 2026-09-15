@@ -11,13 +11,10 @@ import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
 import { SkillTable } from '../components/SkillTable';
 import { describeUnnamedSpend } from '../lib/skills';
 import { readSort, withSort, type Sort } from '../lib/sorting';
-import { GlancePrototype } from '../prototype/GlancePrototype';
 
 export function Home() {
   const [skills, setSkills] = useState<SkillsAnswer | null>(null);
   const [skillsError, setSkillsError] = useState<string | null>(null);
-  // PROTOTYPE — which narrowing the answer on screen is for, so a variant can show a read still running.
-  const [answeredFor, setAnsweredFor] = useState<string | null>(null);
 
   // Filter and sort live in the address bar, so a reload, a bookmark or the back button lands on the same view.
   const [params, setParams] = useSearchParams();
@@ -35,36 +32,23 @@ export function Home() {
       .then((next) => {
         setSkills(next);
         setSkillsError(null);
-        setAnsweredFor(narrowing);
       })
       .catch((failure: unknown) => {
         // An abort is the page tidying up after itself, not a failure worth showing.
         if (!abort.signal.aborted) {
           setSkillsError(describeFetchFailure(failure));
-          setAnsweredFor(narrowing);
         }
       });
 
     return () => abort.abort();
   }, [narrowing]);
 
-  // PROTOTYPE — keeps the variant being tried when a filter or sort rewrites the address.
-  const keepVariant = (next: URLSearchParams) => {
-    const variant = params.get('variant');
-
-    if (variant !== null) {
-      next.set('variant', variant);
-    }
-
-    return next;
-  };
-
   // Replaced, not pushed, so trying four filters does not cost four presses of the back button.
-  const narrow = (next: Filter) => setParams(keepVariant(withSort(filterParams(next), sort)), { replace: true });
+  const narrow = (next: Filter) => setParams(withSort(filterParams(next), sort), { replace: true });
 
-  const rank = (next: Sort) => setParams(keepVariant(withSort(filterParams(filter), next)), { replace: true });
+  const rank = (next: Sort) => setParams(withSort(filterParams(filter), next), { replace: true });
 
-  const page = (
+  return (
     <main>
       <h1>Skillworks Studio</h1>
 
@@ -98,18 +82,5 @@ export function Home() {
 
       <TelemetrySwitch />
     </main>
-  );
-
-  // PROTOTYPE — the variants and their switcher exist only in a development build.
-  return import.meta.env.DEV ? (
-    <GlancePrototype
-      current={page}
-      skills={skills}
-      skillsError={skillsError}
-      pending={answeredFor !== narrowing}
-      onFilter={narrow}
-    />
-  ) : (
-    page
   );
 }

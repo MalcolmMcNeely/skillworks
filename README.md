@@ -119,6 +119,26 @@ It names the session's `origin` remote on every event, and Studio shows that as 
 Code, or a session with no `origin` remote, sends none, and Studio shows the Repository as not
 recorded.
 
+### Studio on a seeded month
+
+To judge a screen at real volume without your own telemetry, run Studio against a throwaway Loki.
+Docker must be running. The tool runs the front end from its `node_modules`, so run `npm install` in
+`src/Skillworks.Studio.Web` once first. Then, from the repo root:
+
+```
+node tools/seeded-studio.mjs
+```
+
+It starts a Loki container, `skillworks-seeded-loki`, on port 3101. It fills it with a made-up month
+of telemetry that ends now. Then it runs the API on port 5199 and the front end on port 5173, both
+pointed at that Loki. Open `http://localhost:5173/`. Ctrl+C stops all three and removes the
+container, and the seeded events with it.
+
+To seed the Loki and nothing else, add `--seed-only`. The container keeps running after the tool
+exits. Remove it with `docker rm -f skillworks-seeded-loki`.
+
+The tool never touches the AppHost's Loki, so your real telemetry stays as it is.
+
 ### Checks
 
 The API tests start Loki in a container, so Docker must be running. Run the front-end checks from
@@ -148,6 +168,8 @@ npm test
 | `plugins/` | The folder of plugins Studio reads by default. Empty for now. |
 | `.claude/skills/` | Dev tooling for working in this repo. Mostly vendored, not shipped. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
+| `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
+| `prototypes/` | Prototypes kept as a record once their question is settled. The web app never builds, lints or tests them, but the architecture check still scans them. |
 | `docs/agents/` | Written by `/skillworks-setup`. The tracker, label and domain doc references the skills read. |
 
 ## Working on Skillworks

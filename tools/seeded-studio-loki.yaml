@@ -1,5 +1,4 @@
-# PROTOTYPE — wipe me. A throwaway Loki for the at-a-glance screen prototype. No volume: removing the
-# container removes the seeded events. Based on the API tests' loki.yaml, single-tenant like the AppHost's.
+# No volume, so removing the container wipes the seeded events. Single-tenant, like the AppHost's Loki.
 auth_enabled: false
 
 server:
