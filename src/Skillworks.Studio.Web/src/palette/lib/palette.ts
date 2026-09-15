@@ -50,6 +50,12 @@ export const surfaces: Record<string, Surface> = {
     text: ['ink', 'inkSoft', 'inkFaint', 'hud', 'warned', 'failed'],
     marks: ['line', 'hud', 'inkFaint'],
   },
+  // Dotted and hatched slices are marks that carry meaning, and the ✕ on a missing slice is text.
+  activityStrip: {
+    ground: 'void',
+    text: ['inkFaint', 'inkSoft', 'failed'],
+    marks: ['hud', 'line', 'inkFaint', 'inkSoft', 'failed'],
+  },
   pressedKey: {
     ground: 'pressed',
     text: ['ink', 'inkSoft', 'hud'],

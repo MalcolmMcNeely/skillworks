@@ -9,6 +9,7 @@ import { describeFetchFailure } from '../../http/lib/errors';
 import { Keys } from '../../keys/components/Keys';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
 import { fetchSkills } from '../api/skills';
+import { ActivityStrip } from '../components/ActivityStrip';
 import { RailTotals } from '../components/RailTotals';
 import { SkillMap } from '../components/SkillMap';
 import { foldSkillsLine, showsFigures, type SkillsAnswer } from '../lib/answer';
@@ -99,13 +100,16 @@ export function Home() {
         <RailTotals answer={showsFigures(answer) ? answer : null} arriving={arriving} />
       </aside>
 
-      <SkillMap
-        answer={answer}
-        failure={reading?.failure ?? null}
-        arriving={arriving}
-        choice={choice}
-        onChoose={(next) => show(filter, next)}
-      />
+      <div className="board">
+        <ActivityStrip answer={answer} failure={reading?.failure ?? null} arriving={arriving} />
+        <SkillMap
+          answer={answer}
+          failure={reading?.failure ?? null}
+          arriving={arriving}
+          choice={choice}
+          onChoose={(next) => show(filter, next)}
+        />
+      </div>
     </main>
   );
 }

@@ -91,6 +91,7 @@ public sealed class SkillReport(
         return new SkillSummary(
             name,
             tally.Counts.GetValueOrDefault(name),
+            tally.HoursOf(name),
             tally.Repositories.GetValueOrDefault(name, []),
             spendNamed ? spent.Models.GetValueOrDefault(name, []) : null,
             spendNamed ? spent.Efforts.GetValueOrDefault(name, []) : null,

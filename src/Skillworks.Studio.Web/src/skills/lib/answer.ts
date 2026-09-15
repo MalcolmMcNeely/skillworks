@@ -1,6 +1,7 @@
 import type { Gap } from '../../gaps/lib/gaps';
 import type { Origin } from '../../provenance/lib/provenance';
 import type { SkillOnDay, SkillsHead, SkillsLine, SkillSummary, TurnTotals } from './skills';
+import { slicesOf, startOfHour, withDaysMissing, withDayLanded, type StripSlice } from './strip';
 import { totalsOf, type Totals } from './totals';
 
 export interface SkillsAnswer {
@@ -9,6 +10,7 @@ export interface SkillsAnswer {
   landedDays: string[];
   // Named once the answer ends, as a day still to come may yet land.
   missingDays: string[];
+  slices: StripSlice[];
   skills: SkillSummary[];
   unnamedSpend: TurnTotals | null;
   totals: Totals;
@@ -21,9 +23,25 @@ export interface SkillsAnswer {
 
 const nothingSpent: TurnTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, cost: 0 };
 
+type SkillFigures = Omit<SkillOnDay, 'hours'>;
+
+function lastFiredOn(day: string, hours: readonly number[]): string | null {
+  const hour = hours.findLastIndex((count) => count > 0);
+
+  return hour < 0 ? null : startOfHour(day, hour);
+}
+
+function later(instant: string | null, other: string | null): string | null {
+  return instant === null || (other !== null && other > instant) ? other : instant;
+}
+
 // No Each with no Activations to share the Cost across, or with a Cost that went unnamed.
-function summaryOf(skill: SkillOnDay): SkillSummary {
-  return { ...skill, each: skill.spend === null || skill.activations === 0 ? null : skill.spend.cost / skill.activations };
+function summaryOf(skill: SkillFigures, lastFired: string | null): SkillSummary {
+  return {
+    ...skill,
+    each: skill.spend === null || skill.activations === 0 ? null : skill.spend.cost / skill.activations,
+    lastFired,
+  };
 }
 
 // Unnamed only while neither side named the spend.
@@ -69,18 +87,21 @@ function orderedOrigins(origins: readonly Origin[], more: readonly Origin[]): Or
   );
 }
 
-function added(landed: SkillSummary, skill: SkillOnDay): SkillSummary {
+function added(landed: SkillSummary, skill: SkillFigures, lastFired: string | null): SkillSummary {
   const spend = plus(landed.spend, skill.spend);
 
-  return summaryOf({
-    name: landed.name,
-    activations: landed.activations + skill.activations,
-    repositories: sortedUnion(landed.repositories, skill.repositories),
-    models: spend === null ? null : sortedUnion(landed.models, skill.models),
-    efforts: spend === null ? null : sortedUnion(landed.efforts, skill.efforts),
-    spend,
-    origins: orderedOrigins(landed.origins, skill.origins),
-  });
+  return summaryOf(
+    {
+      name: landed.name,
+      activations: landed.activations + skill.activations,
+      repositories: sortedUnion(landed.repositories, skill.repositories),
+      models: spend === null ? null : sortedUnion(landed.models, skill.models),
+      efforts: spend === null ? null : sortedUnion(landed.efforts, skill.efforts),
+      spend,
+      origins: orderedOrigins(landed.origins, skill.origins),
+    },
+    later(landed.lastFired, lastFired),
+  );
 }
 
 function withTotals(answer: Omit<SkillsAnswer, 'totals'>): SkillsAnswer {
@@ -99,8 +120,9 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
       days: line.days,
       landedDays: [],
       missingDays: [],
+      slices: slicesOf(line.days),
       skills: line.catalogueSkills.map((name) =>
-        summaryOf({ name, activations: 0, repositories: [], models: [], efforts: [], spend: nothingSpent, origins: [] }),
+        summaryOf({ name, activations: 0, repositories: [], models: [], efforts: [], spend: nothingSpent, origins: [] }, null),
       ),
       unnamedSpend: null,
       arriving: true,
@@ -114,9 +136,12 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
   }
 
   if (line.kind === 'end') {
+    const missingDays = answer.days.filter((day) => !answer.landedDays.includes(day));
+
     return {
       ...answer,
-      missingDays: answer.days.filter((day) => !answer.landedDays.includes(day)),
+      missingDays,
+      slices: withDaysMissing(answer.slices, missingDays),
       arriving: false,
       gap: line.gap,
     };
@@ -124,18 +149,22 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
 
   const skills = new Map(answer.skills.map((skill) => [skill.name, skill]));
 
-  for (const skill of line.skills) {
-    const landed = skills.get(skill.name);
+  for (const { hours, ...figures } of line.skills) {
+    const landed = skills.get(figures.name);
+    const lastFired = lastFiredOn(line.day, hours);
 
     skills.set(
-      skill.name,
-      landed === undefined || answer.catalogueAtZero.includes(skill.name) ? summaryOf(skill) : added(landed, skill),
+      figures.name,
+      landed === undefined || answer.catalogueAtZero.includes(figures.name)
+        ? summaryOf(figures, lastFired)
+        : added(landed, figures, lastFired),
     );
   }
 
   return withTotals({
     ...answer,
     landedDays: [...answer.landedDays, line.day],
+    slices: withDayLanded(answer.slices, line),
     skills: [...skills.values()].toSorted((a, b) => a.name.localeCompare(b.name)),
     unnamedSpend: plus(answer.unnamedSpend, line.unnamedSpend),
     catalogueAtZero: answer.catalogueAtZero.filter((name) => !line.skills.some((skill) => skill.name === name)),

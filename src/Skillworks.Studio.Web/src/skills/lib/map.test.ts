@@ -12,6 +12,7 @@ function skill(name: string, cost: number, activations: number): SkillSummary {
     spend: { cost, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
     each: activations === 0 ? null : cost / activations,
     origins: [],
+    lastFired: null,
   };
 }
 

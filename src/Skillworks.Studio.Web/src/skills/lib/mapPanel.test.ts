@@ -14,6 +14,7 @@ const fired: SkillSummary = {
   spend: { ...noTokens, cost: 0.3 },
   each: 0.1,
   origins: [],
+  lastFired: null,
 };
 
 const neverFired: SkillSummary = { ...fired, name: 'tdd', activations: 0, each: null, spend: { ...noTokens, cost: 0 } };

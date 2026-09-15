@@ -30,8 +30,16 @@ const span = {
   untilUtc: '2026-09-16T00:00:00+00:00',
 };
 
-function head(catalogueSkills: string[] = []): SkillsLine {
-  return { kind: 'head', span, days: ['2026-09-15', '2026-09-14'], catalogueSkills };
+function head(catalogueSkills: string[] = [], days = ['2026-09-15', '2026-09-14']): SkillsLine {
+  return { kind: 'head', span, days, catalogueSkills };
+}
+
+function daysBack(count: number): string[] {
+  return Array.from({ length: count }, (_, back) => `2026-09-${String(15 - back).padStart(2, '0')}`);
+}
+
+function hours(counts: Record<number, number>): number[] {
+  return Array.from({ length: 24 }, (_, hour) => counts[hour] ?? 0);
 }
 
 function day(date: string, skills: SkillOnDay[], unnamedSpend: TurnTotals | null = null): SkillsLine {
@@ -49,7 +57,7 @@ function spent(cost: number, tokens = 0): TurnTotals {
 function fired(name: string, activations: number, spend: TurnTotals | null, more: Partial<SkillOnDay> = {}): SkillOnDay {
   const named = spend === null ? null : [];
 
-  return { name, activations, repositories: [], models: named, efforts: named, spend, origins: [], ...more };
+  return { name, activations, hours: hours({}), repositories: [], models: named, efforts: named, spend, origins: [], ...more };
 }
 
 const complete: Gap = { kind: 'complete', missing: null };
@@ -128,10 +136,17 @@ describe('foldSkillsLine', () => {
       wire(
         head(),
         day('2026-09-15', [
-          fired('grilling', 3, spent(0.3), { repositories: ['acme/xi'], models: ['claude-sonnet-5'], efforts: ['high'], origins: [proactive] }),
+          fired('grilling', 3, spent(0.3), {
+            hours: hours({ 14: 3 }),
+            repositories: ['acme/xi'],
+            models: ['claude-sonnet-5'],
+            efforts: ['high'],
+            origins: [proactive],
+          }),
         ]),
         day('2026-09-14', [
           fired('grilling', 1, spent(0.5), {
+            hours: hours({ 8: 1 }),
             repositories: ['acme/nu', 'acme/xi'],
             models: ['claude-opus-5[1m]'],
             efforts: ['high'],
@@ -151,6 +166,7 @@ describe('foldSkillsLine', () => {
         spend: spent(0.8),
         each: 0.2,
         origins: [proactive, typed],
+        lastFired: '2026-09-15T14:00:00Z',
       },
     ]);
   });
@@ -235,6 +251,122 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(wire(head(['probekit:probe-local']), day('2026-09-15', []), end(stopped)));
 
     expect(states.map(showsFigures)).toEqual([false, true, true]);
+  });
+
+  it('cuts a span of one day into hour slices of every skill\'s Activations', async () => {
+    const [atHead, afterDay] = await statesOf(
+      wire(
+        head([], ['2026-09-15']),
+        day('2026-09-15', [
+          fired('grilling', 3, spent(1), { hours: hours({ 9: 2, 17: 1 }) }),
+          fired('tdd', 1, spent(1), { hours: hours({ 9: 1 }) }),
+        ]),
+      ),
+    );
+
+    expect(atHead?.slices).toHaveLength(24);
+    expect(atHead?.slices.every((slice) => slice.state === 'arriving')).toBe(true);
+    expect(afterDay?.slices.map((slice) => [slice.startHour, slice.lengthInHours, slice.state, slice.activations])).toEqual(
+      Array.from({ length: 24 }, (_, hour) => [hour, 1, 'landed', hour === 9 ? 3 : hour === 17 ? 1 : 0]),
+    );
+  });
+
+  it('cuts a span of up to a week into six-hour slices, oldest first, and fills them from the right as days land', async () => {
+    const states = await statesOf(
+      wire(
+        head([], daysBack(7)),
+        day('2026-09-15', [fired('grilling', 4, spent(1), { hours: hours({ 0: 1, 5: 1, 6: 1, 23: 1 }) })]),
+      ),
+    );
+
+    const slices = states.at(-1)?.slices ?? [];
+
+    expect(slices).toHaveLength(28);
+    expect(slices.slice(0, 4).map((slice) => [slice.day, slice.startHour, slice.lengthInHours])).toEqual([
+      ['2026-09-09', 0, 6],
+      ['2026-09-09', 6, 6],
+      ['2026-09-09', 12, 6],
+      ['2026-09-09', 18, 6],
+    ]);
+    expect(slices.slice(0, 24).every((slice) => slice.state === 'arriving' && slice.activations === null)).toBe(true);
+    expect(slices.slice(24).map((slice) => [slice.day, slice.state, slice.activations])).toEqual([
+      ['2026-09-15', 'landed', 2],
+      ['2026-09-15', 'landed', 1],
+      ['2026-09-15', 'landed', 0],
+      ['2026-09-15', 'landed', 1],
+    ]);
+  });
+
+  it('cuts a span longer than a week into day slices', async () => {
+    const states = await statesOf(
+      wire(
+        head([], daysBack(8)),
+        day('2026-09-15', [fired('grilling', 3, spent(1), { hours: hours({ 2: 1, 20: 2 }) })]),
+        day('2026-09-14', []),
+      ),
+    );
+
+    expect(states.at(-1)?.slices.map((slice) => [slice.day, slice.startHour, slice.lengthInHours, slice.activations])).toEqual([
+      ...daysBack(8)
+        .slice(2)
+        .toReversed()
+        .map((date) => [date, 0, 24, null]),
+      ['2026-09-14', 0, 24, 0],
+      ['2026-09-15', 0, 24, 3],
+    ]);
+  });
+
+  it('marks the slices of days the store never gave missing, with no count, once the answer ends', async () => {
+    const states = await statesOf(wire(head(), day('2026-09-15', [fired('grilling', 2, spent(1), { hours: hours({ 9: 2 }) })]), end(stopped)));
+
+    expect(states.map((state) => state.slices.map((slice) => [slice.day, slice.state, slice.activations]))).toEqual([
+      [...Array.from({ length: 4 }, () => ['2026-09-14', 'arriving', null]), ...Array.from({ length: 4 }, () => ['2026-09-15', 'arriving', null])],
+      [
+        ...Array.from({ length: 4 }, () => ['2026-09-14', 'arriving', null]),
+        ['2026-09-15', 'landed', 0],
+        ['2026-09-15', 'landed', 2],
+        ['2026-09-15', 'landed', 0],
+        ['2026-09-15', 'landed', 0],
+      ],
+      [
+        ...Array.from({ length: 4 }, () => ['2026-09-14', 'missing', null]),
+        ['2026-09-15', 'landed', 0],
+        ['2026-09-15', 'landed', 2],
+        ['2026-09-15', 'landed', 0],
+        ['2026-09-15', 'landed', 0],
+      ],
+    ]);
+  });
+
+  it('keeps the start of the last UTC hour each skill fired in, across the days that landed', async () => {
+    const states = await statesOf(
+      wire(
+        head(['probekit:probe-local']),
+        day('2026-09-15', [
+          fired('grilling', 2, spent(1), { hours: hours({ 3: 1, 9: 1 }) }),
+          fired('spender', 0, spent(1)),
+        ]),
+        day('2026-09-14', [
+          fired('grilling', 1, spent(1), { hours: hours({ 22: 1 }) }),
+          fired('tdd', 1, spent(1), { hours: hours({ 23: 1 }) }),
+        ]),
+      ),
+    );
+
+    expect(states.map((state) => state.skills.map((skill) => [skill.name, skill.lastFired]))).toEqual([
+      [['probekit:probe-local', null]],
+      [
+        ['grilling', '2026-09-15T09:00:00Z'],
+        ['probekit:probe-local', null],
+        ['spender', null],
+      ],
+      [
+        ['grilling', '2026-09-15T09:00:00Z'],
+        ['probekit:probe-local', null],
+        ['spender', null],
+        ['tdd', '2026-09-14T23:00:00Z'],
+      ],
+    ]);
   });
 
   it('lands a day whose line the network split across chunks', async () => {

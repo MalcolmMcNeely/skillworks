@@ -2,15 +2,18 @@ using System.Text.Json;
 
 namespace Skillworks.Core.EventsStore;
 
-public sealed class EventTotal(IReadOnlyDictionary<string, string> labels, decimal total)
+public sealed class EventTotal(IReadOnlyDictionary<string, string> labels, decimal total, DateTimeOffset? startOfHour = null)
 {
     public decimal Total => total;
+
+    public DateTimeOffset? StartOfHour => startOfHour;
 
     public string? Repository =>
         EventAttributes.RepositoryOf(Attribute(EventAttributes.Owner), Attribute(EventAttributes.RepositoryName));
 
     // Serialized in key order, so the same labels from two queries make one key whatever characters they hold.
-    private string Group => JsonSerializer.Serialize(labels.OrderBy(label => label.Key, StringComparer.Ordinal));
+    private string Group =>
+        JsonSerializer.Serialize(new { startOfHour, labels = labels.OrderBy(label => label.Key, StringComparer.Ordinal) });
 
     public string? Attribute(string name) => labels.GetValueOrDefault(EventAttributes.LabelOf(name));
 
@@ -22,5 +25,5 @@ public sealed class EventTotal(IReadOnlyDictionary<string, string> labels, decim
             .Select(same => same.First().Totalling(same.Sum(group => group.Total)))
     ];
 
-    private EventTotal Totalling(decimal sum) => new(labels, sum);
+    private EventTotal Totalling(decimal sum) => new(labels, sum, startOfHour);
 }

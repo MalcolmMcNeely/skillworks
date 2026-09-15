@@ -17,6 +17,8 @@ export interface TurnTotals extends TokenSplit {
 export interface SkillOnDay {
   name: string;
   activations: number;
+  // By UTC hour, as the Filter counts whole UTC days.
+  hours: number[];
   repositories: string[];
   // Null where the skill's Turns went unnamed, as an empty list or a zero would say it spent nothing.
   models: string[] | null;
@@ -25,8 +27,10 @@ export interface SkillOnDay {
   origins: Origin[];
 }
 
-export interface SkillSummary extends SkillOnDay {
+export interface SkillSummary extends Omit<SkillOnDay, 'hours'> {
   each: number | null;
+  // Only to the hour, as a day line counts no finer.
+  lastFired: string | null;
 }
 
 export interface SkillsHead {

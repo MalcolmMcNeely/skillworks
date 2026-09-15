@@ -73,11 +73,15 @@ public sealed class BrokenEventsStore : DelegatingHandler
         throw new UnreachableException();
     }
 
-    // An instant query's time ends its range, and Studio ends a day's range just before midnight.
-    private static DateOnly? DayOf(Uri route) =>
-        long.TryParse(HttpUtility.ParseQueryString(route.Query)["time"], CultureInfo.InvariantCulture, out var nanoseconds)
+    // Studio ends an instant query's day just before midnight, and starts an hour-by-hour query at its day's first step.
+    private static DateOnly? DayOf(Uri route)
+    {
+        var query = HttpUtility.ParseQueryString(route.Query);
+
+        return long.TryParse(query["time"] ?? query["start"], CultureInfo.InvariantCulture, out var nanoseconds)
             ? DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds(nanoseconds / 1_000_000).UtcDateTime)
             : null;
+    }
 
     private static DateOnly Day(string day) => DateOnly.Parse(day, CultureInfo.InvariantCulture);
 }

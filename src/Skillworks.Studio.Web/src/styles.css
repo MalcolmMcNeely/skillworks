@@ -626,8 +626,144 @@ main {
   color: var(--hud);
 }
 
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.3rem, 1vh, 0.55rem);
+  min-height: 0;
+  min-width: 0;
+}
+
+.activity {
+  --plot: clamp(1.8rem, 7vh, 4rem);
+
+  flex: none;
+}
+
+.activity.is-waiting {
+  border-bottom: 1px solid var(--rule);
+  height: calc(var(--plot) + 1.1rem);
+}
+
+.activity-plot {
+  border-bottom: 1px solid var(--line);
+  height: var(--plot);
+  position: relative;
+}
+
+.slices {
+  display: flex;
+  gap: 2px;
+  height: 100%;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.slice {
+  flex: 1;
+  min-width: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.slice.is-landed::before {
+  background: var(--hud);
+  bottom: 0;
+  content: '';
+  height: max(3px, calc(var(--level) * 100%));
+  inset-inline: 0;
+  position: absolute;
+  transition: height 0.45s ease;
+}
+
+.slice.is-idle::before {
+  background: var(--line);
+  height: 2px;
+}
+
+.slice.is-arriving {
+  border: 1px dotted var(--ink-faint);
+}
+
+.slice.is-arriving::after {
+  animation: home-scan 1.6s linear infinite;
+  background: var(--hud);
+  content: '';
+  height: 1px;
+  inset-inline: 0;
+  position: absolute;
+  top: 100%;
+}
+
+@keyframes home-scan {
+  from {
+    top: 100%;
+  }
+
+  to {
+    top: 0;
+  }
+}
+
+/* Hatched and crossed, where an arriving slice is dotted, so the two never differ by colour alone. */
+.slice.is-missing {
+  background: repeating-linear-gradient(135deg, var(--failed) 0 1px, transparent 1px 5px);
+  border: 1px solid var(--failed);
+  display: grid;
+  place-items: center;
+}
+
+.slice-cross {
+  background: var(--void);
+  color: var(--failed);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  line-height: 1;
+  padding: 1px;
+}
+
+.activity-now {
+  border-left: 1px dashed var(--ink-soft);
+  bottom: 0;
+  position: absolute;
+  top: -0.3rem;
+}
+
+.activity-now-word {
+  background: var(--void);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  left: 0.2rem;
+  letter-spacing: 0.1em;
+  padding-inline: 0.15rem;
+  position: absolute;
+  text-transform: uppercase;
+  top: 0;
+}
+
+.activity-axis {
+  color: var(--ink-faint);
+  font: 0.6rem var(--mono);
+  height: 1.1rem;
+  letter-spacing: 0.08em;
+  overflow: hidden;
+  position: relative;
+  text-transform: uppercase;
+}
+
+.activity-axis span {
+  border-left: 1px solid var(--rule);
+  padding-left: 0.3rem;
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
 .deck {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: clamp(0.3rem, 1vh, 0.55rem);
   min-height: 0;
@@ -711,9 +847,23 @@ main {
   position: absolute;
 }
 
+/* Slides and grows as each day re-lays the map, so the eye can follow a tile to its new place. */
 .tile {
+  animation: home-grow 0.45s ease-out;
   container: tile / size;
   position: absolute;
+  transition:
+    left 0.45s ease,
+    top 0.45s ease,
+    width 0.45s ease,
+    height 0.45s ease;
+}
+
+@keyframes home-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
 }
 
 /* Brightness is a mix between the palette's two tile grounds, so every shade lies between two tested ends. */

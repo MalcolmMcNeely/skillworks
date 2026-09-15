@@ -15,22 +15,41 @@ public sealed class ActivationQueries(EventsStoreReader events)
     {
         var narrowed = Firings(span, filter);
 
-        var counting = events.CountAsync(narrowed, [EventAttributes.Skill], cancellationToken);
+        var timing = events.CountByHourAsync(narrowed, [EventAttributes.Skill], cancellationToken);
         var placing = events.CountAsync(narrowed, ByRepository, cancellationToken);
         var tracing = events.CountAsync(narrowed, [EventAttributes.Skill, .. SkillOrigin.Attributes], cancellationToken);
         var surveying = events.CountAsync(Firings(span), [], cancellationToken);
 
-        var (counts, repositories, origins, period) = (await counting, await placing, await tracing, await surveying);
+        var (timed, repositories, origins, period) = (await timing, await placing, await tracing, await surveying);
+
+        var hours = timed.BySkill().ToDictionary(group => group.Key, IReadOnlyList<int> (group) => ByHour(group));
 
         return new ActivationTally(
-            counts.BySkill().ToDictionary(group => group.Key, group => (int)group.Sum(count => count.Total)),
+            // From the hours, so a day's Activations and its hours never disagree.
+            hours.ToDictionary(skill => skill.Key, skill => skill.Value.Sum()),
+            hours,
             repositories.BySkill().ToDictionary(
                 group => group.Key,
                 IReadOnlyList<string> (group) => [.. group.Select(count => count.Repository).OfType<string>().Distinct().Order()]),
             origins.BySkill().ToDictionary(
                 group => group.Key,
                 group => SkillOrigin.Ordered(group.Select(count => SkillOrigin.Of(count.Attribute)))),
-            period with { Unreachable = period.Unreachable ?? counts.Unreachable ?? repositories.Unreachable ?? origins.Unreachable });
+            period with { Unreachable = period.Unreachable ?? timed.Unreachable ?? repositories.Unreachable ?? origins.Unreachable });
+    }
+
+    private static int[] ByHour(IEnumerable<EventTotal> counts)
+    {
+        var hours = new int[ActivationTally.HoursInDay];
+
+        foreach (var count in counts)
+        {
+            if (count.StartOfHour is { } startOfHour)
+            {
+                hours[startOfHour.Hour] += (int)count.Total;
+            }
+        }
+
+        return hours;
     }
 
     public async Task<(IReadOnlyList<string> Repositories, EventTotals Period)> RepositoriesAsync(

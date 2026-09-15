@@ -7,6 +7,8 @@ namespace Skillworks.Core.Skills;
 public sealed record SkillSummary(
     string Name,
     int Activations,
+    // By UTC hour, as the Filter counts whole UTC days.
+    IReadOnlyList<int> Hours,
     IReadOnlyList<string> Repositories,
     IReadOnlyList<string>? Models,
     IReadOnlyList<string>? Efforts,

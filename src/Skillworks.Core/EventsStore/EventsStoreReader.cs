@@ -17,11 +17,19 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private const string AnyStream = "{service_name=~\".+\"}";
 
+    private static readonly TimeSpan Hour = TimeSpan.FromHours(1);
+
+    // One cut for every query, so no figure puts an event on another day; Loki counts nothing hour by hour cut finer.
+    private static readonly TimeSpan Cut = TimeSpan.FromMilliseconds(1);
+
     public Task<EventTotals> CountAsync(
         EventQuery query,
         IReadOnlyList<string> by,
         CancellationToken cancellationToken) =>
-        TotalAsync(query, by, (selected, range) => $"count_over_time({selected} [{range}])", cancellationToken);
+        TotalAsync(
+            query,
+            (from, until) => Instant($"{SumBy(by)} (count_over_time({Selected(query)} [{Range(from, until)}]))", until),
+            cancellationToken);
 
     // Loki fails the whole query on one value that is not a number, so such an event adds nothing.
     public Task<EventTotals> SumAsync(
@@ -31,9 +39,22 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         CancellationToken cancellationToken) =>
         TotalAsync(
             query,
-            by,
-            (selected, range) =>
-                $"sum_over_time({selected} | unwrap {EventAttributes.LabelOf(attribute)} | __error__=\"\" [{range}])",
+            (from, until) => Instant(
+                $"{SumBy(by)} (sum_over_time({Selected(query)} | unwrap {EventAttributes.LabelOf(attribute)} | __error__=\"\" [{Range(from, until)}]))",
+                until),
+            cancellationToken);
+
+    // A range query, as 24 instant queries cost 24 times as much and an hour label multiplies the series a store caps.
+    public Task<EventTotals> CountByHourAsync(
+        EventQuery query,
+        IReadOnlyList<string> by,
+        CancellationToken cancellationToken) =>
+        TotalAsync(
+            query,
+            (from, until) =>
+                // Each step takes in its end, so the offset takes an hour's first instant in and its end out.
+                $"loki/api/v1/query_range?query={Uri.EscapeDataString($"{SumBy(by)} (count_over_time({Selected(query)} [1h] offset {Range(Cut)}))")}" +
+                $"&start={Nanoseconds(from + Hour)}&end={Nanoseconds(until)}&step={(long)Hour.TotalSeconds}",
             cancellationToken);
 
     public Task<string?> UnreachableAsync(CancellationToken cancellationToken)
@@ -49,25 +70,19 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private async Task<EventTotals> TotalAsync(
         EventQuery query,
-        IReadOnlyList<string> by,
-        Func<string, string, string> overRange,
+        Func<DateTimeOffset, DateTimeOffset, string> routeOf,
         CancellationToken cancellationToken)
     {
-        var selected = Selected(query);
-        var sum = by.Count == 0 ? "sum" : $"sum by ({string.Join(", ", by.Select(EventAttributes.LabelOf))})";
         var groups = new List<EventTotal>();
 
         // One after another, so a long span asks no more of the store at once than a short one.
         foreach (var (from, until) in Windows(query))
         {
-            var logql = $"{sum} ({overRange(selected, $"{(long)(until - from).TotalMilliseconds}ms")})";
-
-            // A range leaves out its start and takes in its end, so ending a nanosecond early takes From in and Until out.
-            var route =
-                $"loki/api/v1/query?query={Uri.EscapeDataString(logql)}" +
-                $"&time={Nanoseconds(until) - 1}";
-
-            var totalled = await AskAsync(route, root => EventTotals.Of(Totals(root)), EventTotals.Failed, cancellationToken);
+            var totalled = await AskAsync(
+                routeOf(from, until),
+                root => EventTotals.Of(Totals(root)),
+                EventTotals.Failed,
+                cancellationToken);
 
             if (totalled.Unreachable is not null)
             {
@@ -79,6 +94,17 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
         return EventTotals.Of(EventTotal.Joined(groups));
     }
+
+    // A range leaves out its start and takes in its end, so ending a cut early takes From in and Until out.
+    private static string Instant(string logql, DateTimeOffset until) =>
+        $"loki/api/v1/query?query={Uri.EscapeDataString(logql)}&time={Nanoseconds(until - Cut)}";
+
+    private static string SumBy(IReadOnlyList<string> by) =>
+        by.Count == 0 ? "sum" : $"sum by ({string.Join(", ", by.Select(EventAttributes.LabelOf))})";
+
+    private static string Range(DateTimeOffset from, DateTimeOffset until) => Range(until - from);
+
+    private static string Range(TimeSpan length) => $"{(long)length.TotalMilliseconds}ms";
 
     private static string Selected(EventQuery query)
     {
@@ -171,20 +197,36 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
         foreach (var sample in Results(root))
         {
-            if (sample.TryGetProperty("value", out var value) &&
-                value.ValueKind == JsonValueKind.Array &&
-                value.GetArrayLength() >= 2 &&
-                value[1].ValueKind == JsonValueKind.String &&
-                double.TryParse(value[1].GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var total) &&
-                double.IsFinite(total))
+            if (sample.TryGetProperty("value", out var value) && Point(value) is (_, var total))
             {
-                // Loki adds in floating point, and a decimal from a double keeps 15 digits, so 0.1 and 0.2 make 0.3.
-                totals.Add(new EventTotal(Labels(sample), (decimal)total));
+                totals.Add(new EventTotal(Labels(sample), total));
+            }
+
+            if (sample.TryGetProperty("values", out var values) && values.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var (at, stepTotal) in values.EnumerateArray().Select(Point).OfType<(double, decimal)>())
+                {
+                    // Each step ends the hour it counts.
+                    var startOfHour = DateTimeOffset.FromUnixTimeMilliseconds((long)Math.Round(at * 1000)) - Hour;
+
+                    totals.Add(new EventTotal(Labels(sample), stepTotal, startOfHour));
+                }
             }
         }
 
         return totals;
     }
+
+    private static (double At, decimal Total)? Point(JsonElement point) =>
+        point.ValueKind == JsonValueKind.Array &&
+        point.GetArrayLength() >= 2 &&
+        point[0].ValueKind == JsonValueKind.Number &&
+        point[1].ValueKind == JsonValueKind.String &&
+        double.TryParse(point[1].GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var total) &&
+        double.IsFinite(total)
+            // Loki adds in floating point, and a decimal from a double keeps 15 digits, so 0.1 and 0.2 make 0.3.
+            ? (point[0].GetDouble(), (decimal)total)
+            : null;
 
     private static IEnumerable<JsonElement> Results(JsonElement root) =>
         root.TryGetProperty("data", out var data) &&
