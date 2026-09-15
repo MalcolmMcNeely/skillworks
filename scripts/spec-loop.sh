@@ -9,6 +9,7 @@
 # here so a run is inspectable, stoppable and resumable.
 #
 # A model can skip a step a skill asks for, so each step is its own call here.
+# A step can exit 0 and do nothing, so the script checks facts after each one.
 #
 # Env:
 #   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits)
@@ -32,6 +33,14 @@ main() {
     esac
   }
 
+  step_checks() {
+    case "$1" in
+      build)  printf 'no-error command-loaded ticket-open tree-changed' ;;
+      sweep)  printf 'no-error command-loaded ticket-open' ;;
+      finish) printf 'no-error command-loaded new-commit tree-clean ticket-closed' ;;
+    esac
+  }
+
   # Git Bash would pass "/comment-sweep" to claude as "C:/Program Files/Git/comment-sweep".
   claude_p() {
     MSYS_NO_PATHCONV=1 env -u CLAUDECODE claude -p "$@" \
@@ -39,13 +48,76 @@ main() {
       --output-format json
   }
 
+  # Git Bash has no jq. Path conversion would also rewrite "/implement" here.
+  node_e() { MSYS_NO_PATHCONV=1 node -e "$@"; }
+
+  json_field() {
+    node_e '
+      const [file, field] = process.argv.slice(1)
+      console.log(JSON.parse(require("fs").readFileSync(file, "utf8"))[field] ?? "")' "$1" "$2"
+  }
+
+  # Only a user prompt counts, since a tool result can quote the command tags.
+  command_loaded() {
+    node_e '
+      const fs = require("fs"), os = require("os"), path = require("path")
+      const [session, command, args] = process.argv.slice(1)
+      const projects = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"), "projects")
+      const transcript = fs.readdirSync(projects)
+        .map(folder => path.join(projects, folder, `${session}.jsonl`))
+        .find(file => fs.existsSync(file))
+      if (!transcript) {
+        console.error(`No transcript for session "${session}" in ${projects}`)
+        process.exit(1)
+      }
+      const loaded = fs.readFileSync(transcript, "utf8").split("\n").filter(Boolean)
+        .map(line => JSON.parse(line))
+        .some(entry => entry.type === "user" && typeof entry.message?.content === "string"
+          && entry.message.content.includes(`<command-name>${command}</command-name>`)
+          && (args === "" || entry.message.content.includes(`<command-args>${args}</command-args>`)))
+      if (!loaded) console.error(`"${`${command} ${args}`.trim()}" did not load as a command in ${transcript}`)
+      process.exit(loaded ? 0 : 1)' "$@"
+  }
+
+  issue_state() { gh api "repos/$REPO/issues/$1" --jq .state; }
+
+  check_passes() {
+    local ticket="$1" step="$2" check="$3" json="$4" command args
+    case "$check" in
+      no-error)      [ "$(json_field "$json" is_error)" = false ] ;;
+      command-loaded)
+        read -r command args <<<"$(step_prompt "$ticket" "$step")"
+        command_loaded "$(json_field "$json" session_id)" "$command" "$args" ;;
+      ticket-open)   [ "$(issue_state "$ticket")" = open ] ;;
+      ticket-closed) [ "$(issue_state "$ticket")" = closed ] ;;
+      tree-changed)  [ -n "$(git status --porcelain)" ] ;;
+      tree-clean)    [ -z "$(git status --porcelain)" ] ;;
+      new-commit)    [ "$(git rev-parse HEAD)" != "$TICKET_BASE" ] ;;
+      *)             return 1 ;;
+    esac
+  }
+
+  # The loop picks only open tickets, so a rerun would skip a closed one.
+  stop_step() {
+    local ticket="$1" step="$2" reason="$3" log="$4"
+    if [ "$(issue_state "$ticket")" = closed ]; then
+      gh issue reopen "$ticket" >/dev/null \
+        || say "WARN  #$ticket is closed and did not reopen. Reopen it by hand."
+    fi
+    die "FAIL  #$ticket step $step $reason. See $log"
+  }
+
   run_step() {
-    local ticket="$1" step="$2" out
+    local ticket="$1" step="$2" out check
     shift 2
     out=$(step_log "$ticket" "$step")
     say "STEP  #$ticket $step"
     claude_p "$(step_prompt "$ticket" "$step")" "$@" >"$out.json" 2>"$out.err" \
-      || die "FAIL  #$ticket step $step exited non-zero. See $out.err and $out.json"
+      || stop_step "$ticket" "$step" "exited non-zero" "$out.err and $out.json"
+    for check in $(step_checks "$step"); do
+      check_passes "$ticket" "$step" "$check" "$out.json" 2>>"$out.err" \
+        || stop_step "$ticket" "$step" "failed check $check" "$out.json and $out.err"
+    done
   }
 
   SPEC="${1:-}"
@@ -68,12 +140,13 @@ main() {
 
   command -v gh >/dev/null || die "ABORT gh is not installed"
   command -v claude >/dev/null || die "ABORT claude is not on PATH"
+  command -v node >/dev/null || die "ABORT node is not on PATH"
   gh auth status >/dev/null 2>&1 || die "ABORT gh is not authenticated. Run: gh auth login"
 
   REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
   ME=$(gh api user --jq .login)
 
-  spec_state=$(gh api "repos/$REPO/issues/$SPEC" --jq .state) \
+  spec_state=$(issue_state "$SPEC") \
     || die "ABORT cannot read $REPO#$SPEC"
   spec_title=$(gh api "repos/$REPO/issues/$SPEC" --jq .title)
   [ "$spec_state" = "open" ] || die "ABORT spec #$SPEC is $spec_state. The loop needs it open."
@@ -97,9 +170,11 @@ main() {
       while IFS=$'\t' read -r n state title; do
         printf '  #%s [%s] %s\n' "$n" "$state" "$title"
         [ "$state" = "open" ] || continue
-        printf '      build   claude -p "%s"\n' "$(step_prompt "$n" build)"
-        printf '      sweep   claude -p "%s" --resume <build session>\n' "$(step_prompt "$n" sweep)"
-        printf '      finish  claude -p "%s" --resume <build session>\n' "$(step_prompt "$n" finish)"
+        for step in build sweep finish; do
+          printf '      %-7s claude -p "%s"' "$step" "$(step_prompt "$n" "$step")"
+          [ "$step" = build ] || printf ' --resume <build session>'
+          printf '\n              checks: %s\n' "$(step_checks "$step")"
+        done
       done | tee -a "$LOG"
     say "DRY   no sessions were run"
     exit 0
@@ -160,24 +235,14 @@ main() {
     fi
 
     say "START #$next $title"
+    TICKET_BASE=$(git rev-parse HEAD)
 
     run_step "$next" build
     build_json=$(step_log "$next" build).json
-    # Git Bash has no jq.
-    session=$(grep -oE '"session_id" *: *"[0-9a-f-]+"' "$build_json" \
-                | head -1 | grep -oE '[0-9a-f-]{36}') \
+    session=$(json_field "$build_json" session_id) && [ -n "$session" ] \
       || die "FAIL  #$next step build gave no session id. See $build_json"
     run_step "$next" sweep --resume "$session"
     run_step "$next" finish --resume "$session"
-
-    if [ -n "$(git status --porcelain)" ]; then
-      die "FAIL  #$next left uncommitted changes. See git status."
-    fi
-
-    state=$(gh api "repos/$REPO/issues/$next" --jq .state)
-    if [ "$state" != "closed" ]; then
-      die "FAIL  #$next still open after step finish. Tests probably failed."
-    fi
 
     # No push here. The loop pushes once at the end, so a half-finished spec
     # never reaches the remote.

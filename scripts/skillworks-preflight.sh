@@ -26,6 +26,7 @@ die() { printf 'FAIL  %s\n' "$*" >&2; exit 1; }
 command -v git >/dev/null || die "git is not installed"
 command -v gh >/dev/null || die "gh is not installed. https://cli.github.com"
 command -v claude >/dev/null || die "claude is not on PATH. The loop shells out to it."
+command -v node >/dev/null || die "node is not on PATH. The loop reads step results with it."
 
 gh auth status >/dev/null 2>&1 || die "gh is not authenticated. Run: gh auth login"
 ok "gh authenticated as $(gh api user --jq .login)"
