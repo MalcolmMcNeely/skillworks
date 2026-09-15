@@ -1,7 +1,5 @@
-using Microsoft.Extensions.Options;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
-using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Provenance;
 using Skillworks.Core.Spend;
@@ -16,14 +14,13 @@ public sealed class SkillReport(
     PriceTable prices,
     CatalogueSkills catalogue,
     ProvenanceReport provenance,
-    IOptions<LokiOptions> loki,
-    TimeProvider clock)
+    Lookback lookback)
 {
     public async Task<SkillTable> SkillsAsync(
         Filter filter,
         CancellationToken cancellationToken)
     {
-        var span = Span(filter);
+        var span = lookback.SpanOf(filter);
 
         // The transcript store is narrowed to the same days, or a week's count would sit beside an all-time cost.
         var spanned = filter with { From = span.From, To = span.To };
@@ -77,7 +74,7 @@ public sealed class SkillReport(
     // Offers what fired in the lookback, as the unnarrowed table does, so every choice has something behind it.
     public async Task<FilterChoices> ChoicesAsync(CancellationToken cancellationToken)
     {
-        var (repositories, fired) = await activations.ChoicesAsync(Span(new Filter()), cancellationToken);
+        var (repositories, fired) = await activations.ChoicesAsync(lookback.SpanOf(new Filter()), cancellationToken);
 
         return new FilterChoices(
             repositories,
@@ -89,9 +86,6 @@ public sealed class SkillReport(
                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             ]);
     }
-
-    private DaySpan Span(Filter filter) =>
-        filter.Span(DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime), loki.Value.LookbackDays);
 
     // The cost covers every request, so a skill billed at two rates must list both models.
     private static IReadOnlyList<string> Together(IReadOnlyList<string> chosen, IEnumerable<string?> ran) =>

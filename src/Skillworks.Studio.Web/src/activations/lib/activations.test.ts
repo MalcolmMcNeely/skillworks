@@ -35,11 +35,11 @@ describe('skillsPath', () => {
 
 describe('describeRecorded', () => {
   it('shows what was recorded', () => {
-    expect(describeRecorded('main')).toBe('main');
+    expect(describeRecorded('acme/xi')).toBe('acme/xi');
   });
 
-  it('shows a dash for something the transcript never recorded', () => {
-    expect(describeRecorded(null)).toBe('—');
-    expect(describeRecorded('')).toBe('—');
+  it('says so in words when the event never recorded it', () => {
+    expect(describeRecorded(null)).toBe('Not recorded');
+    expect(describeRecorded('')).toBe('Not recorded');
   });
 });

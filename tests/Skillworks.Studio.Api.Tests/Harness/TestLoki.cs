@@ -19,6 +19,9 @@ public static class TestLoki
 
     private static readonly HttpClient Client = new();
 
+    // Shared across pushes, so no two events in a session share a sequence, as in Claude Code.
+    private static long _sequence;
+
     public static Uri Address => StartedAddress.Value;
 
     public static async Task PushAsync(string tenant, IReadOnlyList<SkillActivated> events)
@@ -69,14 +72,15 @@ public static class TestLoki
             ["scopeLogs"] = new JsonArray(new JsonObject
             {
                 ["scope"] = new JsonObject { ["name"] = "com.anthropic.claude_code.events", ["version"] = ClaudeCodeVersion },
-                ["logRecords"] = new JsonArray([.. events.Select((recorded, index) => LogRecord(recorded, index + 1))]),
+                ["logRecords"] = new JsonArray([.. events.Select(LogRecord)]),
             }),
         }),
     };
 
-    private static JsonObject LogRecord(SkillActivated recorded, int sequence)
+    private static JsonObject LogRecord(SkillActivated recorded)
     {
         var at = recorded.Moment;
+        var sequence = recorded.Sequence ?? Interlocked.Increment(ref _sequence);
         var nanoseconds = ((at.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100).ToString(CultureInfo.InvariantCulture);
 
         return new JsonObject
@@ -87,7 +91,7 @@ public static class TestLoki
             ["attributes"] = Attributes(
             [
                 ("user.id", "a68801ea0000400080000000000000001"),
-                ("session.id", Session),
+                ("session.id", recorded.Session ?? Session),
                 ("app.version", ClaudeCodeVersion),
                 ("organization.id", "14451454-0000-4000-8000-000000000001"),
                 ("user.account_uuid", "784e9f9a-0000-4000-8000-000000000001"),

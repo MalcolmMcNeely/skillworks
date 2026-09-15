@@ -4,29 +4,31 @@ using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Activations;
 
-public sealed class ActivationReport(ActivationQueries activations, ProvenanceReport provenance)
+public sealed class ActivationReport(ActivationQueries activations, ProvenanceReport provenance, Lookback lookback)
 {
     public async Task<ActivationList> ListAsync(Filter filter, CancellationToken cancellationToken)
     {
-        var listed = await activations.ListAsync(filter, cancellationToken);
-        var origins = await provenance.ForAsync(filter, cancellationToken);
+        var span = lookback.SpanOf(filter);
+        var (listed, read, period) = await activations.ListAsync(span, filter, cancellationToken);
 
-        return new ActivationList(
-            [.. listed.Select(a => a with { Origin = origins.Nearest(a.Skill, a.TimestampUtc) })],
-            origins.Note);
+        return new ActivationList(listed, provenance.NoteOn(read, period, span), span);
     }
 
     public async Task<ActivationOpened?> OpenAsync(string id, CancellationToken cancellationToken)
     {
-        if (await activations.OpenAsync(id, cancellationToken) is not { } activation)
+        if (ActivationId.Parse(id) is not { } activationId)
         {
             return null;
         }
 
-        var origins = await provenance.AroundAsync(activation.TimestampUtc, cancellationToken);
+        var (activation, read) = await activations.OpenAsync(activationId, cancellationToken);
 
-        return new ActivationOpened(
-            activation with { Origin = origins.Nearest(activation.Skill, activation.TimestampUtc) },
-            origins.Note);
+        // An outage is not a not found, or a good link would say its firing never happened.
+        if (activation is null && read.Unreachable is null)
+        {
+            return null;
+        }
+
+        return new ActivationOpened(activation, provenance.NoteOn(read, activationId.ReadFrom));
     }
 }

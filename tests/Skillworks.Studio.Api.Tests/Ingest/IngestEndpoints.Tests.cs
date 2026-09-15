@@ -1,4 +1,3 @@
-using Skillworks.Studio.Api.Tests.Activations;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Ingest;
@@ -63,7 +62,7 @@ public sealed partial class IngestEndpointsTests
 
         using var studio = new StudioHost(machine.Subfolder("transcripts"));
 
-        Assert.Equal(1, await studio.ListedActivationsOf("implement"));
+        Assert.Equal(1, await studio.ActivationsAdded());
 
         // The changed bytes were already read, so only a full re-ingest can see this repair.
         await File.WriteAllTextAsync(
@@ -71,12 +70,11 @@ public sealed partial class IngestEndpointsTests
             (await File.ReadAllTextAsync(transcript)).Replace("\"skill\":\"implement\"", "\"skill\":\"repaired\""));
 
         await studio.IngestAgain();
-        Assert.Equal(0, await studio.ListedActivationsOf("repaired"));
+        Assert.Equal(0, await studio.ActivationsAdded());
 
         await studio.FullIngest();
 
-        Assert.Equal(1, await studio.ListedActivationsOf("repaired"));
-        Assert.Equal(0, await studio.ListedActivationsOf("implement"));
+        Assert.Equal(1, await studio.ActivationsAdded());
     }
 
     [Fact]
@@ -99,7 +97,8 @@ public sealed partial class IngestEndpointsTests
 
         await studio.FullIngest();
 
-        Assert.Equal(3, await studio.ListedActivationsOf("unslop"));
+        // The repeated fixture fires unslop three times.
+        Assert.Equal(3, await studio.ActivationsAdded());
     }
 
     [Fact]
@@ -107,10 +106,8 @@ public sealed partial class IngestEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Fixture("malformed"));
 
-        // kappa and mu are whole; lambda carries a truncated line above a skill that fired.
-        Assert.Equal(1, await studio.ListedActivationsOf("tdd"));
-        Assert.Equal(1, await studio.ListedActivationsOf("research"));
-        Assert.Equal(1, await studio.ListedActivationsOf("unslop"));
+        // One firing in each: kappa and mu are whole, and lambda has a truncated line above its firing.
+        Assert.Equal(3, await studio.ActivationsAdded());
     }
 
     [Fact]
@@ -156,9 +153,8 @@ public sealed partial class IngestEndpointsTests
         {
             using var studio = new StudioHost(transcripts);
 
-            Assert.Equal(0, await studio.ListedActivationsOf("tdd"));
-            Assert.Equal(1, await studio.ListedActivationsOf("research"));
-            Assert.Equal(1, await studio.ListedActivationsOf("unslop"));
+            // research in mu and unslop in lambda; tdd in kappa is shut.
+            Assert.Equal(2, await studio.ActivationsAdded());
 
             var whole = (await studio.Faults()).Single(fault => fault.Line == 0);
             Assert.Equal(shut, whole.Path);
@@ -179,13 +175,13 @@ public sealed partial class IngestEndpointsTests
 
         using var studio = new StudioHost(transcripts);
 
-        Assert.Equal(0, await studio.ListedActivationsOf("tdd"));
+        Assert.Equal(0, await studio.ActivationsAdded());
         Assert.Single(await studio.Faults());
 
         handle.Dispose();
         await studio.IngestAgain();
 
-        Assert.Equal(1, await studio.ListedActivationsOf("tdd"));
+        Assert.Equal(1, await studio.ActivationsAdded());
         Assert.Empty(await studio.Faults());
     }
 
@@ -220,7 +216,7 @@ public sealed partial class IngestEndpointsTests
 
         await studio.IngestAgain();
 
-        Assert.Equal(1, await studio.ListedActivationsOf("unslop"));
+        Assert.Equal(1, await studio.ActivationsAdded());
 
         // Reopening clears only the "would not open" fault; the unparsed line is never re-read, so it stays.
         Assert.Equal(2, (await studio.Faults()).Single().Line);
@@ -259,7 +255,7 @@ public sealed partial class IngestEndpointsTests
 
         CopyInto(Path.Combine(StudioHost.Fixture("malformed"), "C--Projects-mu"), transcripts);
 
-        await studio.WaitForSkill("research");
+        await studio.WaitForActivationsAdded();
     }
 
     private static string Plant(TemporaryFolder machine)

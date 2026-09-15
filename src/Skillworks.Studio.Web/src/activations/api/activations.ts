@@ -1,36 +1,25 @@
-import { filterQuery, type Filter } from '../../filters/lib/filters';
+import { filterQuery, type Filter, type Span } from '../../filters/lib/filters';
 import { getJson } from '../../http/api/json';
 import type { Origin, Provenance } from '../../provenance/lib/provenance';
 
 export interface ActivationSummary {
   id: string;
   skill: string;
+  sessionId: string | null;
   repository: string | null;
-  branch: string | null;
-  model: string | null;
-  effort: string | null;
   timestampUtc: string;
-  // Null when no event sits near enough to this firing to be it.
-  origin: Origin | null;
-}
-
-export interface ActivationArgument {
-  name: string;
-  value: string;
-}
-
-export interface ActivationDetail extends ActivationSummary {
-  sessionId: string;
-  arguments: ActivationArgument[];
+  origin: Origin;
 }
 
 export interface ActivationList {
   activations: ActivationSummary[];
   provenance: Provenance;
+  span: Span;
 }
 
 export interface ActivationOpened {
-  activation: ActivationDetail;
+  // Null only when the events store could not be read, and the provenance says why.
+  activation: ActivationSummary | null;
   provenance: Provenance;
 }
 

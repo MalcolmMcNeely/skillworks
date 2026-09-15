@@ -7,11 +7,11 @@ public sealed record ProvenanceNote(ProvenanceGap Gap, string? Missing, DateTime
     internal static ProvenanceNote Of(
         string? unreachable,
         long events,
-        bool truncated,
+        int? cappedAt,
         bool? emitting,
         DateTimeOffset sinceUtc)
     {
-        var (gap, missing) = (unreachable, events, truncated, emitting) switch
+        var (gap, missing) = (unreachable, events, cappedAt, emitting) switch
         {
             ({ } reason, _, _, _) => (
                 ProvenanceGap.Unreachable,
@@ -19,10 +19,10 @@ public sealed record ProvenanceNote(ProvenanceGap Gap, string? Missing, DateTime
                 "shown until it can."),
 
             // Ahead of the switch: a cut answer is about what is on screen now, a switch off about what never arrives.
-            (_, _, true, _) => (
+            (_, _, { } read, _) => (
                 ProvenanceGap.Truncated,
                 $"This period holds more events than Studio reads at once, so only the newest " +
-                $"{events} of them are counted here. Narrow the dates to see the rest."),
+                $"{read} of them were read here. Narrow the dates to see the rest."),
 
             // Asked of the switch, not guessed: "nobody turned it on" is a fix for the developer, "nothing happened" is not.
             (_, 0, _, false) => (

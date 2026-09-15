@@ -17,12 +17,8 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private const string AnyStream = "{service_name=~\".+\"}";
 
-    public Task<EventReading> ReadAsync(
-        string eventName,
-        DateTimeOffset from,
-        DateTimeOffset until,
-        CancellationToken cancellationToken) =>
-        QueryAsync(Selected(new EventQuery(eventName, from, until)), from, until, options.Value.MaxEvents, cancellationToken);
+    public Task<EventReading> ReadAsync(EventQuery query, CancellationToken cancellationToken) =>
+        QueryAsync(Selected(query), query.From, query.Until, options.Value.MaxEvents, cancellationToken);
 
     // Counted by Loki, so no read cap cuts a busy organisation's total short.
     public Task<EventCounts> CountAsync(
@@ -58,9 +54,19 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
     {
         var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\"";
 
-        if (query.Skill is { } skill)
+        (string Attribute, string? Value)[] exactly =
+        [
+            (EventAttributes.Skill, query.Skill),
+            (EventAttributes.Session, query.Session),
+            (EventAttributes.Sequence, query.Sequence),
+        ];
+
+        foreach (var (attribute, value) in exactly)
         {
-            logql += $" | {EventAttributes.LabelOf(EventAttributes.Skill)}={Quoted(skill)}";
+            if (value is not null)
+            {
+                logql += $" | {EventAttributes.LabelOf(attribute)}={Quoted(value)}";
+            }
         }
 
         if (query.Repository is { } repository)

@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using Skillworks.Studio.Api.Tests.Activations;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Ingest;
@@ -24,22 +23,27 @@ public static class IngestRequests
         return await studio.Client.GetFromJsonAsync<FaultRow[]>("/api/ingest/faults", StudioHost.Wire) ?? [];
     }
 
-    // Read from the activations list, the one answer still drawn from what the ingest stored.
-    public static async Task<int> ListedActivationsOf(this StudioHost studio, string skill) =>
-        (await studio.Activations($"?skill={Uri.EscapeDataString(skill)}")).Count;
+    // The ingest's own count, as the activations list reads the events store, not what the ingest stored.
+    public static async Task<int> ActivationsAdded(this StudioHost studio)
+    {
+        await studio.WaitForIngestPasses(1);
 
-    public static async Task WaitForSkill(this StudioHost studio, string skill)
+        return (await studio.Status()).ActivationsAdded;
+    }
+
+    // Polled often, as the next pass reports nothing added and would hide the pass that did.
+    public static async Task WaitForActivationsAdded(this StudioHost studio)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
 
-        while (await studio.ListedActivationsOf(skill) == 0)
+        while (await studio.ActivationsAdded() == 0)
         {
             if (DateTime.UtcNow > deadline)
             {
-                throw new TimeoutException($"{skill} never appeared.");
+                throw new TimeoutException("No pass ever added an activation.");
             }
 
-            await Task.Delay(50);
+            await Task.Delay(20);
         }
     }
 }

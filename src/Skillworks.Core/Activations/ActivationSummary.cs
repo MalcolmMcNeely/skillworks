@@ -1,16 +1,25 @@
+using Skillworks.Core.EventsStore;
 using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Activations;
 
+// Only what the one event says: filling a field from another event would be a guess shown as a fact.
 public sealed record ActivationSummary(
     string Id,
     string Skill,
+    string? SessionId,
     string? Repository,
-    string? Branch,
-    string? Model,
-    string? Effort,
-    DateTimeOffset TimestampUtc)
+    DateTimeOffset TimestampUtc,
+    SkillOrigin Origin)
 {
-    // Joined on afterwards: transcripts, which ActivationQueries reads, do not record where a firing came from.
-    public SkillOrigin? Origin { get; init; }
+    // A firing Claude Code did not name belongs to no skill, as it does in the skill table.
+    internal static ActivationSummary? From(TelemetryEvent recorded) => recorded.Attribute(EventAttributes.Skill) is { } skill
+        ? new ActivationSummary(
+            ActivationId.Of(recorded).ToString(),
+            skill,
+            recorded.Attribute(EventAttributes.Session),
+            recorded.Repository,
+            recorded.At,
+            SkillOrigin.Of(recorded.Attribute))
+        : null;
 }

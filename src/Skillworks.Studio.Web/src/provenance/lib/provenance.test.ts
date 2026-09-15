@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   describeDeliveries,
   describeDelivery,
-  describeMissingOrigin,
   describeProvenance,
   describeTrigger,
   describeTriggers,
@@ -86,35 +85,5 @@ describe('describeProvenance', () => {
     expect(
       describeProvenance({ gap: 'complete', missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
     ).toBe('Where a skill came from is known for events since 2026-09-05 00:00:00 UTC.');
-  });
-});
-
-describe('describeMissingOrigin', () => {
-  it('blames the store when the store is what failed', () => {
-    expect(
-      describeMissingOrigin({
-        gap: 'unreachable',
-        missing: 'Studio could not read the events store.',
-        sinceUtc: '2026-09-05T00:00:00Z',
-      }),
-    ).toBe('Studio could not read the events store.');
-  });
-
-  it('points at the switch when the switch is what was never flipped', () => {
-    // Unless the screen says telemetry was off, a firing with no trigger reads as "Claude did not choose it".
-    expect(
-      describeMissingOrigin({
-        gap: 'telemetryOff',
-        missing: 'Claude Code is not emitting telemetry. Turn it on in the Telemetry panel.',
-        sinceUtc: '2026-09-05T00:00:00Z',
-      }),
-    ).toBe('Claude Code is not emitting telemetry. Turn it on in the Telemetry panel.');
-  });
-
-  it('says one firing has nothing recorded when the store answered for others', () => {
-    // How far back the events store reaches is a fact about a month, not about this one firing.
-    expect(
-      describeMissingOrigin({ gap: 'complete', missing: null, sinceUtc: '2026-09-05T00:00:00Z' }),
-    ).toBe('The events store has nothing recorded for this firing.');
   });
 });

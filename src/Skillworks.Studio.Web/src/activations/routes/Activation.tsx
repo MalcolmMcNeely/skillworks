@@ -1,8 +1,8 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { describeMoment } from '../../moments/lib/moments';
-import { describeDelivery, describeMissingOrigin, describeTrigger } from '../../provenance/lib/provenance';
+import { describeDelivery, describeTrigger } from '../../provenance/lib/provenance';
 import { fetchActivation, type ActivationOpened } from '../api/activations';
 import { activationsPath, describeRecorded, skillsPath } from '../lib/activations';
 
@@ -47,7 +47,12 @@ export function Activation() {
 
       {activationError !== null && <p data-testid="activation-error">{activationError}</p>}
 
-      {opened !== null && activation !== null && (
+      {/* Outside the firing, as an unreadable events store leaves no firing to show it beside. */}
+      {opened !== null && opened.provenance.missing !== null && (
+        <p data-testid="provenance-note">{opened.provenance.missing}</p>
+      )}
+
+      {activation !== null && (
         <>
           <h1>{activation.skill}</h1>
 
@@ -56,48 +61,17 @@ export function Activation() {
             <dd>{describeMoment(activation.timestampUtc)}</dd>
 
             <dt>Trigger</dt>
-            <dd>{describeTrigger(activation.origin?.trigger ?? null)}</dd>
+            <dd>{describeTrigger(activation.origin.trigger)}</dd>
 
             <dt>Delivered by</dt>
-            <dd>
-              {activation.origin === null ? 'Not recorded' : describeDelivery(activation.origin)}
-            </dd>
-
-            <dt>Model</dt>
-            <dd>{describeRecorded(activation.model)}</dd>
-
-            <dt>Effort</dt>
-            <dd>{describeRecorded(activation.effort)}</dd>
+            <dd>{describeDelivery(activation.origin)}</dd>
 
             <dt>Repository</dt>
             <dd>{describeRecorded(activation.repository)}</dd>
 
-            <dt>Branch</dt>
-            <dd>{describeRecorded(activation.branch)}</dd>
-
             <dt>Session</dt>
             <dd>{describeRecorded(activation.sessionId)}</dd>
           </dl>
-
-          {/* A firing older than the events store, or made with telemetry off, did not come from nowhere. */}
-          {activation.origin === null && (
-            <p data-testid="provenance-note">{describeMissingOrigin(opened.provenance)}</p>
-          )}
-
-          <h2>Arguments</h2>
-
-          {activation.arguments.length === 0 ? (
-            <p data-testid="arguments-empty">Nothing was recorded for this activation.</p>
-          ) : (
-            <dl className="activation arguments">
-              {activation.arguments.map((argument) => (
-                <Fragment key={argument.name}>
-                  <dt>{argument.name}</dt>
-                  <dd>{argument.value}</dd>
-                </Fragment>
-              ))}
-            </dl>
-          )}
         </>
       )}
     </main>

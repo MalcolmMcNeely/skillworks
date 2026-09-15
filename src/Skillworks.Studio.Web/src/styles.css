@@ -150,10 +150,3 @@ main {
 .activation dd {
   margin: 0;
 }
-
-/* An argument can be a paragraph the developer typed, newlines and all, and reading it is the
-   whole point of this page. */
-.activation.arguments dd {
-  font-family: ui-monospace, monospace;
-  white-space: pre-wrap;
-}

@@ -9,6 +9,7 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.EventsStore;
+using Skillworks.Core.Filters;
 using Skillworks.Core.Health;
 using Skillworks.Core.Ingest;
 using Skillworks.Core.Ingest.Queries;
@@ -36,6 +37,9 @@ public static class CoreServiceCollectionExtensions
 
         services.AddSingleton<CatalogueLocator>();
         services.AddSingleton<CatalogueSkills>();
+        services.AddSingleton(provider => new Lookback(
+            provider.GetRequiredService<IOptions<LokiOptions>>().Value.LookbackDays,
+            provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<TranscriptLocator>();
         services.AddSingleton<RepositoryNames>();
         services.AddSingleton<ClaudeSettingsFile>();

@@ -9,6 +9,8 @@ namespace Skillworks.Core.Activations.Queries;
 
 public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext> contexts, EventsStoreReader events)
 {
+    private const string EventName = "skill_activated";
+
     private static readonly string[] ByRepository = [EventAttributes.Skill, EventAttributes.Owner, EventAttributes.RepositoryName];
 
     private readonly record struct SkillValue(string Skill, string? Value);
@@ -16,7 +18,7 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
     // Narrow counts, not one wide one: every pairing multiplies the series a store returns, and a store caps them.
     public async Task<ActivationTally> TallyBySkillAsync(DaySpan span, Filter filter, CancellationToken cancellationToken)
     {
-        var narrowed = Firings(span) with { Repository = filter.Repository, Skill = filter.Skill };
+        var narrowed = Firings(span, filter);
 
         var counting = events.CountAsync(narrowed, [EventAttributes.Skill], cancellationToken);
         var placing = events.CountAsync(narrowed, ByRepository, cancellationToken);
@@ -49,46 +51,29 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
             await BySkillAsync(activations, a => new SkillValue(a.SkillName, a.Effort), cancellationToken));
     }
 
-    public async Task<IReadOnlyList<ActivationSummary>> ListAsync(
+    // Raw events, as a list shows each firing, so this is the one answer the read cap can cut.
+    public async Task<(IReadOnlyList<ActivationSummary> Activations, EventReading Read, EventCounts Period)> ListAsync(
+        DaySpan span,
         Filter filter,
         CancellationToken cancellationToken)
     {
-        await using var store = await contexts.CreateDbContextAsync(cancellationToken);
+        var reading = events.ReadAsync(Firings(span, filter), cancellationToken);
+        var surveying = events.CountAsync(Firings(span), [], cancellationToken);
 
-        return await Narrowed(store.Activations, filter)
-            .OrderByDescending(a => a.TimestampUtc)
-            .Select(a => new ActivationSummary(
-                a.ToolUseId,
-                a.SkillName,
-                a.Repository,
-                a.GitBranch,
-                a.Model,
-                a.Effort,
-                a.TimestampUtc))
-            .ToListAsync(cancellationToken);
+        var (read, period) = (await reading, await surveying);
+
+        return ([.. Activations(read.Events).OrderByDescending(activation => activation.TimestampUtc)], read, period);
     }
 
     // Not narrowed by a filter: a reader who has a firing's id is asking about that firing, not a week.
-    public async Task<ActivationDetail?> OpenAsync(string id, CancellationToken cancellationToken)
+    public async Task<(ActivationSummary? Activation, EventReading Read)> OpenAsync(
+        ActivationId id,
+        CancellationToken cancellationToken)
     {
-        await using var store = await contexts.CreateDbContextAsync(cancellationToken);
+        var around = new EventQuery(EventName, id.ReadFrom, id.ReadUntil) { Session = id.Session, Sequence = id.Sequence };
+        var read = await events.ReadAsync(around, cancellationToken);
 
-        var activation = await store.Activations
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.ToolUseId == id, cancellationToken);
-
-        return activation is null
-            ? null
-            : new ActivationDetail(
-                activation.ToolUseId,
-                activation.SkillName,
-                activation.SessionId,
-                activation.Repository,
-                activation.GitBranch,
-                activation.Model,
-                activation.Effort,
-                activation.TimestampUtc,
-                RecordedArguments.Read(activation.Arguments));
+        return (Activations(read.Events.Where(recorded => ActivationId.Of(recorded) == id)).FirstOrDefault(), read);
     }
 
     // Not narrowed by a filter: a filter that has cut the answer to nothing must still offer the way back out.
@@ -103,7 +88,13 @@ public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext
             Sorted(fired.Groups.Select(count => count.Attribute(EventAttributes.Skill)).OfType<string>()));
     }
 
-    private static EventQuery Firings(DaySpan span) => new(SkillEvent.EventName, span.FromUtc, span.UntilUtc);
+    private static EventQuery Firings(DaySpan span) => new(EventName, span.FromUtc, span.UntilUtc);
+
+    private static EventQuery Firings(DaySpan span, Filter filter) =>
+        Firings(span) with { Repository = filter.Repository, Skill = filter.Skill };
+
+    private static IEnumerable<ActivationSummary> Activations(IEnumerable<TelemetryEvent> recorded) =>
+        recorded.Select(ActivationSummary.From).OfType<ActivationSummary>();
 
     // A count with no skill name is a firing Claude Code did not name, and it belongs to no skill.
     private static IEnumerable<IGrouping<string, EventCount>> BySkill(EventCounts counts) =>

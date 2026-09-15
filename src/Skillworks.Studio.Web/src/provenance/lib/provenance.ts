@@ -60,10 +60,6 @@ export function describeProvenance(provenance: Provenance): string {
   );
 }
 
-export function describeMissingOrigin(provenance: Provenance): string {
-  return provenance.missing ?? 'The events store has nothing recorded for this firing.';
-}
-
 function join(described: readonly string[]): string {
   const distinct = [...new Set(described)];
 

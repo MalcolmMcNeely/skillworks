@@ -11,7 +11,9 @@ public sealed record SkillActivated(
     string? Plugin = null,
     string? Marketplace = null,
     string? Owner = null,
-    string? RepositoryName = null)
+    string? RepositoryName = null,
+    string? Session = null,
+    long? Sequence = null)
 {
     internal const string EventName = "skill_activated";
 
