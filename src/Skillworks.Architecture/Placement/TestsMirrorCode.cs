@@ -44,7 +44,7 @@ internal static class TestsMirrorCode
                 yield return new Breach(
                     Rule,
                     test,
-                    $"Put the test in the project named for the project that holds the code file it tests, or delete it: no project `{codeProjectName}` holds code files.");
+                    $"Put the test in the `.Tests` project of the project that holds the code file it tests, or delete it: no project `{codeProjectName}` holds code files.");
 
                 continue;
             }
