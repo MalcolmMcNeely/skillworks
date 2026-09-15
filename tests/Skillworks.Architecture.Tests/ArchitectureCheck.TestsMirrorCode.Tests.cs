@@ -43,6 +43,7 @@ public sealed partial class ArchitectureCheckTests
 
         var breach = Assert.Single(tree.Check().Breaches);
 
+        Assert.Equal(("tests-mirror-code", "tests/App.Tests/Clock.Tests.cs"), (breach.Rule, breach.Path));
         Assert.Contains("`tests/App.Tests/Timers/Clock.Tests.cs`", breach.Message);
     }
 
@@ -81,6 +82,17 @@ public sealed partial class ArchitectureCheckTests
             .Write("web/src/skills/lib/format.test.ts");
 
         Assert.Equal([("tests-mirror-code", "web/src/skills/lib/format.test.ts")], tree.Breaches());
+    }
+
+    [Fact]
+    public void A_tsx_test_is_a_breach_only_without_a_code_file_of_its_subject_beside_it()
+    {
+        using var tree = new RulesTree()
+            .Write("web/src/clock/Clock.tsx")
+            .Write("web/src/clock/Clock.test.tsx")
+            .Write("web/src/clock/Alarm.test.tsx");
+
+        Assert.Equal([("tests-mirror-code", "web/src/clock/Alarm.test.tsx")], tree.Breaches());
     }
 
     [Fact]

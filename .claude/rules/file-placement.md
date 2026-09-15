@@ -80,6 +80,7 @@ source-files:
 test-files:
   - "*.Tests.cs"
   - "*.test.ts"
+  - "*.test.tsx"
 skip-folders:
   - Migrations
   - bin

@@ -38,6 +38,21 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
+    public void A_support_file_in_a_folder_with_a_banned_name_is_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Write("tests/App.Tests/Clock.Tests.cs")
+            .Write("tests/App.Tests/Helpers/AppHost.cs")
+            .Write("web/src/clock/clock.ts")
+            .Write("web/src/clock/clock.test.ts")
+            .Write("web/src/clock/helpers/clockHost.tsx");
+
+        Assert.Equal(
+            [("banned-folder-names", "tests/App.Tests/Helpers"), ("banned-folder-names", "web/src/clock/helpers")],
+            tree.Breaches());
+    }
+
+    [Fact]
     public void A_folder_whose_name_only_contains_a_banned_name_is_not_a_breach()
     {
         using var tree = new RulesTree()

@@ -105,7 +105,11 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Set(CommentsFile, "doc-comments", "true")
             .Write("src/App/Clock.cs", "/// <summary>Tells the time.</summary>\npublic sealed class Clock;\n")
-            .Write("web/src/format.ts", "/** Formats a moment. */\nexport const format = 1;\n");
+            .Write("web/src/format.ts", "/** Formats a moment. */\nexport const format = 1;\n")
+            .Write("tests/App.Tests/Clock.Tests.cs")
+            .Write("tests/App.Tests/Hosts/AppHost.cs", "/// <summary>Hosts the app.</summary>\npublic sealed class AppHost;\n")
+            .Write("web/src/format.test.ts")
+            .Write("web/src/fakeClock.ts", "/** Stands in for the clock. */\nexport const fakeClock = 1;\n");
 
         Assert.Empty(tree.Breaches());
     }
@@ -117,10 +121,16 @@ public sealed partial class ArchitectureCheckTests
             .Set(CommentsFile, "doc-comments", "true")
             .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n")
             .Write("web/src/format.ts")
-            .Write("web/src/format.test.ts", "/** Formats a moment. */\nit('formats', () => {});\n");
+            .Write("web/src/format.test.ts", "/** Formats a moment. */\nit('formats', () => {});\n")
+            .Write("web/src/Clock.tsx")
+            .Write("web/src/Clock.test.tsx", "/** Renders the time. */\nit('renders', () => {});\n");
 
         Assert.Equal(
-            [("doc-comments", "tests/App.Tests/Clock.Tests.cs"), ("doc-comments", "web/src/format.test.ts")],
+            [
+                ("doc-comments", "tests/App.Tests/Clock.Tests.cs"),
+                ("doc-comments", "web/src/Clock.test.tsx"),
+                ("doc-comments", "web/src/format.test.ts"),
+            ],
             tree.Breaches());
     }
 

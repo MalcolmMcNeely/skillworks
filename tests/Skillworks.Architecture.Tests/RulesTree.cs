@@ -13,7 +13,7 @@ public sealed class RulesTree : IDisposable
         {
             ["max-types-per-folder"] = "10",
             ["source-files"] = "[.cs, .ts, .tsx]",
-            ["test-files"] = "[\"*.Tests.cs\", \"*.test.ts\"]",
+            ["test-files"] = "[\"*.Tests.cs\", \"*.test.ts\", \"*.test.tsx\"]",
             ["skip-folders"] = "[Migrations, bin, obj, node_modules]",
             ["banned-folder-names"] = "[utils, helpers, common, shared, misc]",
             ["name-map"] = "{\"*Queries\": Queries}",

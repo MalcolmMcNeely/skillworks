@@ -35,7 +35,7 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void A_test_with_no_code_file_beside_it_counts_as_one()
+    public void A_csharp_test_with_no_code_file_beside_it_counts_as_one()
     {
         using var tree = new RulesTree()
             .Set(PlacementFile, "max-types-per-folder", "2")
@@ -47,7 +47,22 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void Tests_of_one_subject_with_no_code_file_beside_them_take_one_place()
+    public void A_front_end_test_with_no_code_file_beside_it_counts_as_one()
+    {
+        using var tree = new RulesTree()
+            .Set(PlacementFile, "max-types-per-folder", "2")
+            .Write("web/src/clock/clock.ts")
+            .Write("web/src/clock/clock.test.ts")
+            .Write("web/src/clock/timer.ts")
+            .Write("web/src/clock/alarm.test.ts");
+
+        Assert.Equal(
+            [("max-types-per-folder", "web/src/clock"), ("tests-mirror-code", "web/src/clock/alarm.test.ts")],
+            tree.Breaches());
+    }
+
+    [Fact]
+    public void Csharp_tests_of_one_subject_with_no_code_file_beside_them_take_one_place()
     {
         using var tree = new RulesTree()
             .Set(PlacementFile, "max-types-per-folder", "2")
@@ -56,6 +71,38 @@ public sealed partial class ArchitectureCheckTests
             .Write("tests/App.Tests/Timer.Tests.cs");
 
         Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void Front_end_tests_of_one_subject_with_no_code_file_beside_them_take_one_place()
+    {
+        using var tree = new RulesTree()
+            .Set(PlacementFile, "max-types-per-folder", "2")
+            .Write("web/src/clock/clock.ts")
+            .Write("web/src/clock/alarm.test.ts")
+            .Write("web/src/clock/alarm.ring.test.ts");
+
+        Assert.Equal(
+            [("tests-mirror-code", "web/src/clock/alarm.ring.test.ts"), ("tests-mirror-code", "web/src/clock/alarm.test.ts")],
+            tree.Breaches());
+    }
+
+    [Fact]
+    public void Support_files_count_toward_a_folders_size()
+    {
+        using var tree = new RulesTree()
+            .Set(PlacementFile, "max-types-per-folder", "2")
+            .Write("tests/App.Tests/Clock.Tests.cs")
+            .Write("tests/App.Tests/AppHost.cs")
+            .Write("tests/App.Tests/FakeClock.cs")
+            .Write("web/src/clock/clock.ts")
+            .Write("web/src/clock/clock.test.ts")
+            .Write("web/src/clock/fakeClock.ts")
+            .Write("web/src/clock/clockHost.tsx");
+
+        Assert.Equal(
+            [("max-types-per-folder", "tests/App.Tests"), ("max-types-per-folder", "web/src/clock")],
+            tree.Breaches());
     }
 
     [Fact]
