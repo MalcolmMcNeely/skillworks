@@ -20,7 +20,7 @@ public sealed class StudioHost : IDisposable
     }.ToJsonString();
 
     private readonly TemporaryFolder _data = new();
-    private readonly StudioApi _api;
+    private readonly StudioApiHost _api;
     private readonly HttpClient _client;
 
     public StudioHost(
@@ -37,7 +37,7 @@ public sealed class StudioHost : IDisposable
         var settingsPath = Path.Combine(_data.Path, "settings.json");
         File.WriteAllText(settingsPath, settings ?? (emitting ? EmittingSettings : "{}"));
 
-        _api = new StudioApi(
+        _api = new StudioApiHost(
             events ?? Events.Holding(),
             ("Transcripts:Path", transcriptPath),
             ("TranscriptStore:DatabasePath", Path.Combine(_data.Path, "transcript-store.db")),

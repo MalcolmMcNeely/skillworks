@@ -7,7 +7,7 @@ using Skillworks.Core.Provenance;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 
-public sealed class StudioApi(HttpMessageHandler events, params (string Key, string? Value)[] settings)
+public sealed class StudioApiHost(HttpMessageHandler events, params (string Key, string? Value)[] settings)
     : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)

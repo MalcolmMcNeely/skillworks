@@ -44,9 +44,10 @@ public sealed class CatalogueEndpointsTests
 
     private static async Task<JsonElement> GetCatalogue(string cataloguePath)
     {
-        using var api = new StudioApi(Events.Holding(), ("Catalogue:Path", cataloguePath));
-        using var client = api.CreateClient();
+        // A folder that is not there, because the first ingest pass would otherwise read the developer's own transcripts.
+        var noTranscripts = Path.Combine(Path.GetTempPath(), $"skillworks-missing-{Guid.NewGuid():N}");
+        using var studio = new StudioHost(noTranscripts, cataloguePath);
 
-        return await client.GetFromJsonAsync<JsonElement>("/api/catalogue");
+        return await studio.Client.GetFromJsonAsync<JsonElement>("/api/catalogue");
     }
 }

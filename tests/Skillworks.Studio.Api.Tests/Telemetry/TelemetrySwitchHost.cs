@@ -12,7 +12,7 @@ public sealed class TelemetrySwitchHost : IDisposable
     private static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web);
 
     private readonly TemporaryFolder _folder = new();
-    private readonly StudioApi _api;
+    private readonly StudioApiHost _api;
     private readonly HttpClient _client;
     private readonly string _settingsPath;
 
@@ -25,7 +25,7 @@ public sealed class TelemetrySwitchHost : IDisposable
             File.WriteAllText(_settingsPath, settings);
         }
 
-        _api = new StudioApi(
+        _api = new StudioApiHost(
             Events.Holding(),
             ("ClaudeSettings:Path", _settingsPath),
             ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
