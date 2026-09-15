@@ -82,12 +82,7 @@ export function describeSpan(span: Span): string {
   return span.from === span.to ? span.from : `${span.from} to ${span.to}`;
 }
 
-// A missing source comes first, or a reader widens a date range that was never the problem.
-export function describeEmpty(filter: Filter, whyEmpty: string | null = null): string {
-  if (whyEmpty !== null) {
-    return whyEmpty;
-  }
-
+export function describeEmpty(filter: Filter): string {
   return isEverything(filter)
     ? 'No skill has fired yet.'
     : `Nothing matched ${describeFilter(filter)}.`;

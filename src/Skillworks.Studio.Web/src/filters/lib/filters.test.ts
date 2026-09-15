@@ -88,18 +88,6 @@ describe('describeEmpty', () => {
   it('says the history is empty when nothing was narrowed at all', () => {
     expect(describeEmpty(everything)).toBe('No skill has fired yet.');
   });
-
-  it('names the missing source instead, when there is one', () => {
-    expect(describeEmpty(everything, 'There is no folder at /home/me/.claude/projects.')).toBe(
-      'There is no folder at /home/me/.claude/projects.',
-    );
-  });
-
-  it('blames the missing source rather than the filter, so nobody widens a date range for nothing', () => {
-    expect(describeEmpty(narrowed, 'There is no folder at /home/me/.claude/projects.')).toBe(
-      'There is no folder at /home/me/.claude/projects.',
-    );
-  });
 });
 
 describe('describeSpan', () => {

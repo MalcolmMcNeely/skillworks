@@ -1,8 +1,8 @@
 import { describeHealth, describePart } from '../lib/health';
-import { type HealthReading } from './useHealth';
+import { useHealth } from './useHealth';
 
-export function HealthPanel({ reading }: { reading: HealthReading }) {
-  const { report, failure, recheck } = reading;
+export function HealthPanel() {
+  const { report, failure, recheck } = useHealth();
 
   return (
     <section className="health">

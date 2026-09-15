@@ -2,17 +2,15 @@ import { useEffect, useState } from 'react';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { fetchHealth, type Health } from '../api/health';
 
-export interface HealthReading {
+interface HealthReading {
   report: Health | null;
   failure: string | null;
-  settled: boolean;
   recheck: () => void;
 }
 
 export function useHealth(): HealthReading {
   const [report, setReport] = useState<Health | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [settled, setSettled] = useState(false);
 
   // A controller per read: React remounts in development, so one held in state would abort every later read.
   useEffect(() => {
@@ -22,13 +20,11 @@ export function useHealth(): HealthReading {
       (next) => {
         setReport(next);
         setFailure(null);
-        setSettled(true);
       },
       (problem: unknown) => {
-        // An abort is this effect tidying up; a real failure still settles, so no view waits on health for ever.
+        // An abort is this effect tidying up, not a failure worth showing.
         if (!abort.signal.aborted) {
           setFailure(describeFetchFailure(problem));
-          setSettled(true);
         }
       },
     );
@@ -47,5 +43,5 @@ export function useHealth(): HealthReading {
     );
   };
 
-  return { report, failure, settled, recheck };
+  return { report, failure, recheck };
 }

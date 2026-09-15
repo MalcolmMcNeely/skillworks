@@ -53,6 +53,11 @@ export function describeDeliveries(origins: readonly Origin[]): string {
   return join(origins.map(describeDelivery));
 }
 
+// Not telemetry off: it speaks for this machine only, so the store may still hold events a filter left out.
+export function explainsEmpty(gap: ProvenanceGap): boolean {
+  return gap === 'unreachable' || gap === 'quiet' || gap === 'telemetryUnknown';
+}
+
 export function describeProvenance(provenance: Provenance): string {
   return (
     provenance.missing ??

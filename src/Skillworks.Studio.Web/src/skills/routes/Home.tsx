@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { FilterBar } from '../../filters/components/FilterBar';
 import { describeEmpty, describeSpan, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
 import { HealthPanel } from '../../health/components/HealthPanel';
-import { useHealth } from '../../health/components/useHealth';
 import { describeFetchFailure } from '../../http/lib/errors';
-import { IngestPanel } from '../../ingest/components/IngestPanel';
-import { describeProvenance } from '../../provenance/lib/provenance';
+import { describeProvenance, explainsEmpty } from '../../provenance/lib/provenance';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
 import { fetchSkills, type SkillTable as SkillsAnswer } from '../api/skills';
 import { SkillTable } from '../components/SkillTable';
@@ -16,21 +14,14 @@ import { readSort, withSort, type Sort } from '../lib/sorting';
 export function Home() {
   const [skills, setSkills] = useState<SkillsAnswer | null>(null);
   const [skillsError, setSkillsError] = useState<string | null>(null);
-  const [passes, setPasses] = useState(0);
-
-  // Read here, not in the panel, because the same answer tells an empty table which source is missing.
-  const health = useHealth();
 
   // Filter and sort live in the address bar, so a reload, a bookmark or the back button lands on the same view.
   const [params, setParams] = useSearchParams();
   const filter = readFilter(params);
   const sort = readSort(params);
 
-  // `params` is a new object every render, so the effect keys on its text or it would re-read every time.
-  const narrowing = params.toString();
-
-  // Counting passes keeps this callback stable, so changing a filter never restarts the ingest poll.
-  const countPass = useCallback(() => setPasses((counted) => counted + 1), []);
+  // Text, as a filter object is new every render; the sort is left out as it needs no new answer.
+  const narrowing = filterParams(filter).toString();
 
   useEffect(() => {
     const abort = new AbortController();
@@ -49,10 +40,7 @@ export function Home() {
       });
 
     return () => abort.abort();
-
-    // `passes` is a nudge nothing reads: a finished pass may have put a new session in the transcript store.
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [narrowing, passes]);
+  }, [narrowing]);
 
   // Replaced, not pushed, so trying four filters does not cost four presses of the back button.
   const narrow = (next: Filter) => setParams(withSort(filterParams(next), sort), { replace: true });
@@ -63,8 +51,7 @@ export function Home() {
     <main>
       <h1>Skillworks Studio</h1>
 
-      {/* Above the table, so a reader who finds nothing meets the reason on the way down. */}
-      <HealthPanel reading={health} />
+      <HealthPanel />
 
       <FilterBar filter={filter} onChange={narrow} />
 
@@ -83,11 +70,8 @@ export function Home() {
           )}
 
           {skills.skills.length === 0 ? (
-            // Held back until health settles, or a reader may act on the filter before the missing source shows.
-            health.settled && (
-              <p data-testid="skills-empty">
-                {describeEmpty(filter, health.report?.whyEmpty ?? null)}
-              </p>
+            !explainsEmpty(skills.provenance.gap) && (
+              <p data-testid="skills-empty">{describeEmpty(filter)}</p>
             )
           ) : (
             <SkillTable skills={skills.skills} sort={sort} onSort={rank} />
@@ -95,7 +79,6 @@ export function Home() {
         </>
       )}
 
-      <IngestPanel onPassFinished={countPass} />
       <TelemetrySwitch />
     </main>
   );

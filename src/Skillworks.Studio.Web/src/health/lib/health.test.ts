@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { describeHealth, describePart, troubled, type Part } from './health';
 
 const working: Part = {
-  name: 'Transcripts',
+  name: 'Catalogue',
   state: 'working',
-  detail: 'Reading session files from /home/me/.claude/projects.',
+  detail: 'Reading skills from /home/me/skillworks/plugins.',
   action: null,
 };
 
@@ -24,9 +24,7 @@ const off: Part = {
 
 describe('describePart', () => {
   it('says what is true and leaves it there when there is nothing to do', () => {
-    expect(describePart(working)).toBe(
-      '✓ Transcripts: Reading session files from /home/me/.claude/projects.',
-    );
+    expect(describePart(working)).toBe('✓ Catalogue: Reading skills from /home/me/skillworks/plugins.');
   });
 
   it('says what to do next when there is something to do', () => {

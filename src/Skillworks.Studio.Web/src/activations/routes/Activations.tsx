@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router';
 import { describeEmpty, describeSpan, readFilter } from '../../filters/lib/filters';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { describeMoment } from '../../moments/lib/moments';
-import { describeDelivery, describeProvenance, describeTrigger } from '../../provenance/lib/provenance';
+import { describeDelivery, describeProvenance, describeTrigger, explainsEmpty } from '../../provenance/lib/provenance';
 import { fetchActivations, type ActivationList } from '../api/activations';
 import { activationPath, describeRecorded, skillsPath } from '../lib/activations';
 
@@ -52,8 +52,7 @@ export function Activations() {
           <p data-testid="provenance-note">{describeProvenance(activations.provenance)}</p>
 
           {activations.activations.length === 0 ? (
-            // A Gap's note above already explains the empty list, and blaming the filter would contradict it.
-            activations.provenance.missing === null && (
+            !explainsEmpty(activations.provenance.gap) && (
               <p data-testid="activations-empty">{describeEmpty(filter)}</p>
             )
           ) : (

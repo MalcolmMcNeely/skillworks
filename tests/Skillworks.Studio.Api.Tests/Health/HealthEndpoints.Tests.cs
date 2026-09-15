@@ -1,6 +1,5 @@
 using System.Net;
 using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Skills;
 
 namespace Skillworks.Studio.Api.Tests.Health;
 
@@ -9,47 +8,70 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_every_part_of_studio_in_one_answer()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
 
         // Sorted here, because the report's order is the screen's choice and not part of the answer.
         var parts = (await studio.Health()).Parts.Select(part => part.Name).Order();
 
         // A part missing from here is a part a developer has to go and check by hand.
-        Assert.Equal(
-            ["Catalogue", "Claude Code telemetry", "Events store", "Transcript store", "Transcripts"],
-            parts);
+        Assert.Equal(["Catalogue", "Claude Code telemetry", "Events store"], parts);
+    }
+
+    [Fact]
+    public async Task Answers_with_its_parts_alone()
+    {
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
+
+        // An empty screen is explained by its Gap, so health carries no reason for one.
+        Assert.Equal(["parts"], await studio.HealthFields());
     }
 
     [Fact]
     public async Task Says_every_part_is_working_and_leaves_nothing_to_do_when_nothing_is_wrong()
     {
-        // A fixture with nothing for the ingest to step over, so "nothing to do" means all of Studio is healthy.
         using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
 
         var health = await studio.Health();
 
         Assert.All(health.Parts, part => Assert.Equal("working", part.State));
         Assert.All(health.Parts, part => Assert.Null(part.Action));
-        Assert.Null(health.WhyEmpty);
     }
 
     [Fact]
-    public async Task Says_what_the_ingest_stepped_over_and_where_to_go_and_read_it()
+    public async Task Says_the_events_store_answered_when_it_did()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("malformed"), StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue());
 
-        var part = await studio.Part("Transcript store");
+        var part = await studio.Part("Events store");
 
-        // Still working: a fault is a gap in the numbers, not a broken store, and the count explains a low total.
         Assert.Equal("working", part.State);
-        Assert.Contains("could not parse", part.Detail);
-        Assert.Contains("ingest panel", part.Action ?? "");
+        Assert.Contains("answered", part.Detail);
+    }
+
+    [Fact]
+    public async Task Points_no_part_at_transcripts_or_the_ingest_when_every_part_needs_attention()
+    {
+        using var events = BrokenEventsStore.Down();
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), cataloguePath: null, events: events, emitting: false);
+
+        var health = await studio.Health();
+
+        Assert.All(health.Parts, part => Assert.NotEqual("working", part.State));
+
+        // Studio reads neither, so a developer sent after one would chase something that is not there.
+        Assert.All(health.Parts, part =>
+        {
+            var said = $"{part.Detail} {part.Action}";
+
+            Assert.DoesNotContain("transcript", said, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("ingest", said, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     [Fact]
     public async Task Says_it_cannot_tell_whether_telemetry_is_on_when_it_cannot_read_the_settings()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), settings: "{ not json");
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), settings: "{ not json");
 
         var part = await studio.Part("Claude Code telemetry");
 
@@ -62,7 +84,7 @@ public sealed class HealthEndpointsTests
     public async Task Reports_an_events_store_that_is_down_as_broken_and_says_how_to_start_it()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), events: events);
 
         var part = await studio.Part("Events store");
 
@@ -74,7 +96,7 @@ public sealed class HealthEndpointsTests
     public async Task Reports_an_events_store_that_answers_badly_as_broken_too()
     {
         using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: events);
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), events: events);
 
         var part = await studio.Part("Events store");
 
@@ -86,7 +108,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_a_multi_tenant_events_store_as_broken_when_studio_names_no_tenant()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), tenanted: false);
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), tenanted: false);
 
         var part = await studio.Part("Events store");
 
@@ -98,7 +120,7 @@ public sealed class HealthEndpointsTests
     [Fact]
     public async Task Reports_telemetry_that_was_never_switched_on_as_off_rather_than_as_broken()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), emitting: false);
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), emitting: false);
 
         var part = await studio.Part("Claude Code telemetry");
 
@@ -111,8 +133,8 @@ public sealed class HealthEndpointsTests
     public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_is_switched_off()
     {
         using var down = BrokenEventsStore.Down();
-        using var broken = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: down);
-        using var off = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), emitting: false);
+        using var broken = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), events: down);
+        using var off = new StudioHost(StudioHost.Fixture("quiet"), StudioHost.Catalogue(), emitting: false);
 
         var outage = await broken.Health();
         var never = await off.Health();
@@ -126,60 +148,13 @@ public sealed class HealthEndpointsTests
     }
 
     [Fact]
-    public async Task Keeps_the_transcript_half_healthy_when_the_containers_are_down()
-    {
-        using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"), StudioHost.Catalogue(), events: events);
-
-        var health = await studio.Health();
-
-        // The transcripts owe the containers nothing, so a docker problem costs what the events store holds, not the app.
-        Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcripts").State);
-        Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcript store").State);
-        Assert.Null(health.WhyEmpty);
-        Assert.NotEmpty(await studio.Skills());
-    }
-
-    [Fact]
-    public async Task Names_the_missing_transcript_folder_and_the_setting_that_points_at_it()
-    {
-        using var studio = new StudioHost("no-such-folder", StudioHost.Catalogue());
-
-        var health = await studio.Health();
-        var part = health.Parts.Single(p => p.Name == "Transcripts");
-
-        Assert.Equal("broken", part.State);
-        Assert.Contains("Transcripts:Path", part.Action ?? "");
-
-        // Repeated as the reason a view is empty, so an empty screen names the missing source itself.
-        Assert.Contains("no folder", health.WhyEmpty ?? "");
-        Assert.Contains("Transcripts:Path", health.WhyEmpty ?? "");
-    }
-
-    [Fact]
-    public async Task Blames_an_empty_folder_on_the_folder_rather_than_on_the_history()
-    {
-        using var folder = new TemporaryFolder();
-        using var studio = new StudioHost(folder.Subfolder("no-sessions"), StudioHost.Catalogue());
-
-        var health = await studio.Health();
-
-        // Healthy, but a reader must still tell "no skill has fired" from "there is nothing to read".
-        Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcripts").State);
-        Assert.Contains("no transcripts in", health.WhyEmpty ?? "");
-    }
-
-    [Fact]
     public async Task Names_the_missing_catalogue_and_what_it_costs()
     {
-        using var studio = new StudioHost(StudioHost.Fixture("ordinary"));
+        using var studio = new StudioHost(StudioHost.Fixture("quiet"));
 
         var part = await studio.Part("Catalogue");
 
         Assert.Equal("broken", part.State);
         Assert.Contains("Catalogue:Path", part.Action ?? "");
-
-        // A missing catalogue empties no view, so it is not the reason a table has no rows in it.
-        Assert.Null((await studio.Health()).WhyEmpty);
     }
 }
