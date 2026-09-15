@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 namespace Skillworks.Core.Ingest;
 
 public sealed class TranscriptIngestService(
     TranscriptIngestor ingestor,
     IngestState state,
-    IOptions<TelemetryOptions> options,
+    IOptions<TranscriptStoreOptions> options,
     ILogger<TranscriptIngestService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

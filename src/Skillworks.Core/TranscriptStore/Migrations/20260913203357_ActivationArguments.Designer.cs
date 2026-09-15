@@ -4,15 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 #nullable disable
 
-namespace Skillworks.Core.TelemetryStore.Migrations
+namespace Skillworks.Core.TranscriptStore.Migrations
 {
-    [DbContext(typeof(TelemetryDbContext))]
-    [Migration("20260913194015_Spend")]
-    partial class Spend
+    [DbContext(typeof(TranscriptStoreDbContext))]
+    [Migration("20260913203357_ActivationArguments")]
+    partial class ActivationArguments
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,6 +23,9 @@ namespace Skillworks.Core.TelemetryStore.Migrations
             modelBuilder.Entity("Skillworks.Core.Telemetry.Activation", b =>
                 {
                     b.Property<string>("ToolUseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Arguments")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Effort")
@@ -45,12 +48,16 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("TimestampUtc")
+                    b.Property<DateTime>("TimestampUtc")
                         .HasColumnType("TEXT");
 
                     b.HasKey("ToolUseId");
 
+                    b.HasIndex("Repository");
+
                     b.HasIndex("SkillName");
+
+                    b.HasIndex("TimestampUtc");
 
                     b.ToTable("Activations");
                 });
@@ -133,7 +140,7 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                     b.Property<long>("Line")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset>("NoticedUtc")
+                    b.Property<DateTime>("NoticedUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Reason")
@@ -188,12 +195,16 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                     b.Property<long>("ThinkingTokens")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset>("TimestampUtc")
+                    b.Property<DateTime>("TimestampUtc")
                         .HasColumnType("TEXT");
 
                     b.HasKey("RequestId");
 
+                    b.HasIndex("Repository");
+
                     b.HasIndex("SkillName");
+
+                    b.HasIndex("TimestampUtc");
 
                     b.ToTable("Turns");
                 });

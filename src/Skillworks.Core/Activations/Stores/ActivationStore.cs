@@ -1,11 +1,11 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Skillworks.Core.Filters;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 namespace Skillworks.Core.Activations.Stores;
 
-public sealed class ActivationStore(IDbContextFactory<TelemetryDbContext> contexts)
+public sealed class ActivationStore(IDbContextFactory<TranscriptStoreDbContext> contexts)
 {
     private readonly record struct SkillValue(string Skill, string? Value);
 

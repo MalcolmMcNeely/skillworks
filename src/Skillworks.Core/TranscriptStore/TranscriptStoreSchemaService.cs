@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
-namespace Skillworks.Core.TelemetryStore;
+namespace Skillworks.Core.TranscriptStore;
 
-public sealed class TelemetrySchemaService(IDbContextFactory<TelemetryDbContext> contexts) : IHostedService
+public sealed class TranscriptStoreSchemaService(IDbContextFactory<TranscriptStoreDbContext> contexts) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {

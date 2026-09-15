@@ -4,9 +4,9 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Ingest;
 using Skillworks.Core.Spend;
 
-namespace Skillworks.Core.TelemetryStore;
+namespace Skillworks.Core.TranscriptStore;
 
-public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> options) : DbContext(options)
+public sealed class TranscriptStoreDbContext(DbContextOptions<TranscriptStoreDbContext> options) : DbContext(options)
 {
     // EF can't compare DateTimeOffset text on SQLite; every instant is UTC, so dropping the offset is safe.
     private static readonly ValueConverter<DateTimeOffset, DateTime> AsUtc = new(
@@ -30,8 +30,7 @@ public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> opti
             activation.HasKey(a => a.ToolUseId);
             activation.HasIndex(a => a.SkillName);
 
-            // The two columns a filter narrows by, so asking about one week of a long history costs
-            // a seek rather than a scan of all of it.
+            // The two columns a filter narrows by, so one week of a long history is a seek, not a scan.
             activation.HasIndex(a => a.TimestampUtc);
             activation.HasIndex(a => a.Repository);
             activation.Property(a => a.TimestampUtc).HasConversion(AsUtc);
@@ -56,12 +55,10 @@ public sealed class TelemetryDbContext(DbContextOptions<TelemetryDbContext> opti
 
         model.Entity<TranscriptFault>(fault =>
         {
-            // Where the fault is found is what identifies it, so reading the same line twice cannot
-            // report it twice.
+            // Reading the same line twice must not report the fault twice.
             fault.HasKey(f => new { f.Path, f.Line });
 
-            // Stored the same way as the others. One database that writes an instant two ways is a
-            // trap for whoever reads it next.
+            // A database that stores instants two ways is a trap for whoever reads it next.
             fault.Property(f => f.NoticedUtc).HasConversion(AsUtc);
         });
     }

@@ -2,27 +2,27 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 #nullable disable
 
-namespace Skillworks.Core.TelemetryStore.Migrations
+namespace Skillworks.Core.TranscriptStore.Migrations
 {
-    [DbContext(typeof(TelemetryDbContext))]
-    partial class TelemetryDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(TranscriptStoreDbContext))]
+    [Migration("20260913194015_Spend")]
+    partial class Spend
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
 
-            modelBuilder.Entity("Skillworks.Core.Activations.Activation", b =>
+            modelBuilder.Entity("Skillworks.Core.Telemetry.Activation", b =>
                 {
                     b.Property<string>("ToolUseId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Arguments")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Effort")
@@ -45,21 +45,17 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("TimestampUtc")
+                    b.Property<DateTimeOffset>("TimestampUtc")
                         .HasColumnType("TEXT");
 
                     b.HasKey("ToolUseId");
 
-                    b.HasIndex("Repository");
-
                     b.HasIndex("SkillName");
-
-                    b.HasIndex("TimestampUtc");
 
                     b.ToTable("Activations");
                 });
 
-            modelBuilder.Entity("Skillworks.Core.Ingest.IngestedTranscript", b =>
+            modelBuilder.Entity("Skillworks.Core.Telemetry.IngestedTranscript", b =>
                 {
                     b.Property<string>("Path")
                         .HasColumnType("TEXT");
@@ -75,27 +71,7 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                     b.ToTable("IngestedTranscripts");
                 });
 
-            modelBuilder.Entity("Skillworks.Core.Ingest.TranscriptFault", b =>
-                {
-                    b.Property<string>("Path")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("Line")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("NoticedUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Path", "Line");
-
-                    b.ToTable("TranscriptFaults");
-                });
-
-            modelBuilder.Entity("Skillworks.Core.Spend.ModelPrice", b =>
+            modelBuilder.Entity("Skillworks.Core.Telemetry.ModelPrice", b =>
                 {
                     b.Property<string>("Model")
                         .HasColumnType("TEXT");
@@ -149,7 +125,27 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Skillworks.Core.Spend.Turn", b =>
+            modelBuilder.Entity("Skillworks.Core.Telemetry.TranscriptFault", b =>
+                {
+                    b.Property<string>("Path")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Line")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("NoticedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Path", "Line");
+
+                    b.ToTable("TranscriptFaults");
+                });
+
+            modelBuilder.Entity("Skillworks.Core.Telemetry.Turn", b =>
                 {
                     b.Property<string>("RequestId")
                         .HasColumnType("TEXT");
@@ -192,16 +188,12 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                     b.Property<long>("ThinkingTokens")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("TimestampUtc")
+                    b.Property<DateTimeOffset>("TimestampUtc")
                         .HasColumnType("TEXT");
 
                     b.HasKey("RequestId");
 
-                    b.HasIndex("Repository");
-
                     b.HasIndex("SkillName");
-
-                    b.HasIndex("TimestampUtc");
 
                     b.ToTable("Turns");
                 });

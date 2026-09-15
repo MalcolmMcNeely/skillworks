@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Skillworks.Core.TelemetryStore.Migrations
+namespace Skillworks.Core.TranscriptStore.Migrations
 {
     /// <inheritdoc />
     public partial class IngestFaults : Migration

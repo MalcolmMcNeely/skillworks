@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace Skillworks.Core.TelemetryStore.Migrations
+namespace Skillworks.Core.TranscriptStore.Migrations
 {
     /// <inheritdoc />
     public partial class FilterableInstants : Migration

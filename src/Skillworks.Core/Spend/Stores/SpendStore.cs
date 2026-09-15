@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Skillworks.Core.Filters;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 namespace Skillworks.Core.Spend.Stores;
 
-public sealed class SpendStore(IDbContextFactory<TelemetryDbContext> contexts)
+public sealed class SpendStore(IDbContextFactory<TranscriptStoreDbContext> contexts)
 {
     private readonly record struct SkillTokens(string Skill, ModelTokens Tokens);
 

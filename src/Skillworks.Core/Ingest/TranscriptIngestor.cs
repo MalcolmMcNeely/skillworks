@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skillworks.Core.Activations;
 using Skillworks.Core.Ingest.Parsing;
 using Skillworks.Core.Spend;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Ingest;
@@ -10,7 +10,7 @@ namespace Skillworks.Core.Ingest;
 public sealed class TranscriptIngestor(
     TranscriptLocator locator,
     RepositoryNames repositories,
-    IDbContextFactory<TelemetryDbContext> contexts,
+    IDbContextFactory<TranscriptStoreDbContext> contexts,
     TimeProvider clock)
 {
     private readonly record struct TranscriptRead(bool HadNewContent, int ActivationsAdded);
@@ -68,7 +68,7 @@ public sealed class TranscriptIngestor(
     }
 
     private async Task<TranscriptRead> ReadAsync(
-        TelemetryDbContext store,
+        TranscriptStoreDbContext store,
         Known known,
         string path,
         CancellationToken cancellationToken)
@@ -203,7 +203,7 @@ public sealed class TranscriptIngestor(
 
     // Replaces rather than adds: the cursor never passes a file that would not open, so every pass meets it.
     private static async Task RefuseAsync(
-        TelemetryDbContext store,
+        TranscriptStoreDbContext store,
         Known known,
         TranscriptFault fault,
         CancellationToken cancellationToken)

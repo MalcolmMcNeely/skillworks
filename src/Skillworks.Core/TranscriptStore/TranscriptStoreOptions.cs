@@ -1,8 +1,8 @@
-namespace Skillworks.Core.TelemetryStore;
+namespace Skillworks.Core.TranscriptStore;
 
-public sealed class TelemetryOptions
+public sealed class TranscriptStoreOptions
 {
-    public const string SectionName = "Telemetry";
+    public const string SectionName = "TranscriptStore";
 
     public string DatabasePath { get; set; } = "";
 
@@ -13,7 +13,7 @@ public sealed class TelemetryOptions
         ? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Skillworks",
-            "telemetry.db")
+            "transcript-store.db")
         : Path.GetFullPath(DatabasePath);
 
     public TimeSpan SweepInterval() =>

@@ -16,11 +16,9 @@ public sealed class HealthEndpointsTests
         // rearrangement that changed nothing a reader could observe.
         var parts = (await studio.Health()).Parts.Select(part => part.Name).Order();
 
-        // Both sources, Studio's own store, the switch that fills one of the sources, and the
-        // catalogue a never-fired skill comes from. A part missing from here is a part a developer
-        // has to go and check by hand.
+        // A part missing from here is a part a developer has to go and check by hand.
         Assert.Equal(
-            ["Catalogue", "Claude Code telemetry", "Events store", "Telemetry store", "Transcripts"],
+            ["Catalogue", "Claude Code telemetry", "Events store", "Transcript store", "Transcripts"],
             parts);
     }
 
@@ -43,7 +41,7 @@ public sealed class HealthEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Fixture("malformed"), StudioHost.Catalogue());
 
-        var part = await studio.Part("Telemetry store");
+        var part = await studio.Part("Transcript store");
 
         // Still working: a fault is a gap in the numbers, not a broken store. The count is here so
         // a total that looks low is explained rather than trusted.
@@ -135,7 +133,7 @@ public sealed class HealthEndpointsTests
         // The transcripts are the durable record and owe the containers nothing. A docker problem
         // costs the provenance view and not the app.
         Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcripts").State);
-        Assert.Equal("working", health.Parts.Single(part => part.Name == "Telemetry store").State);
+        Assert.Equal("working", health.Parts.Single(part => part.Name == "Transcript store").State);
         Assert.Null(health.WhyEmpty);
         Assert.NotEmpty(await studio.Skills());
     }

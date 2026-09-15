@@ -40,8 +40,8 @@ public sealed class StudioHost : IDisposable
         _api = new StudioApi(
             events ?? Events.Holding(),
             ("Transcripts:Path", transcriptPath),
-            ("Telemetry:DatabasePath", Path.Combine(_data.Path, "telemetry.db")),
-            ("Telemetry:SweepSeconds", sweepSeconds.ToString()),
+            ("TranscriptStore:DatabasePath", Path.Combine(_data.Path, "transcript-store.db")),
+            ("TranscriptStore:SweepSeconds", sweepSeconds.ToString()),
             ("Loki:MaxEvents", maxEvents.ToString()),
             ("ClaudeSettings:Path", settingsPath),
             ("ClaudeSettings:StampPath", Path.Combine(_data.Path, "telemetry-switch.json")),

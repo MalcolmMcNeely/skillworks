@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 #nullable disable
 
-namespace Skillworks.Core.TelemetryStore.Migrations
+namespace Skillworks.Core.TranscriptStore.Migrations
 {
-    [DbContext(typeof(TelemetryDbContext))]
+    [DbContext(typeof(TranscriptStoreDbContext))]
     [Migration("20260913174411_Telemetry")]
     partial class Telemetry
     {

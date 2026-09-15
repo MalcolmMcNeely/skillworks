@@ -2,27 +2,27 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 #nullable disable
 
-namespace Skillworks.Core.TelemetryStore.Migrations
+namespace Skillworks.Core.TranscriptStore.Migrations
 {
-    [DbContext(typeof(TelemetryDbContext))]
-    [Migration("20260913201745_FilterableInstants")]
-    partial class FilterableInstants
+    [DbContext(typeof(TranscriptStoreDbContext))]
+    partial class TranscriptStoreDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
 
-            modelBuilder.Entity("Skillworks.Core.Telemetry.Activation", b =>
+            modelBuilder.Entity("Skillworks.Core.Activations.Activation", b =>
                 {
                     b.Property<string>("ToolUseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Arguments")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Effort")
@@ -59,7 +59,7 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                     b.ToTable("Activations");
                 });
 
-            modelBuilder.Entity("Skillworks.Core.Telemetry.IngestedTranscript", b =>
+            modelBuilder.Entity("Skillworks.Core.Ingest.IngestedTranscript", b =>
                 {
                     b.Property<string>("Path")
                         .HasColumnType("TEXT");
@@ -75,7 +75,27 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                     b.ToTable("IngestedTranscripts");
                 });
 
-            modelBuilder.Entity("Skillworks.Core.Telemetry.ModelPrice", b =>
+            modelBuilder.Entity("Skillworks.Core.Ingest.TranscriptFault", b =>
+                {
+                    b.Property<string>("Path")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Line")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("NoticedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Path", "Line");
+
+                    b.ToTable("TranscriptFaults");
+                });
+
+            modelBuilder.Entity("Skillworks.Core.Spend.ModelPrice", b =>
                 {
                     b.Property<string>("Model")
                         .HasColumnType("TEXT");
@@ -129,27 +149,7 @@ namespace Skillworks.Core.TelemetryStore.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Skillworks.Core.Telemetry.TranscriptFault", b =>
-                {
-                    b.Property<string>("Path")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("Line")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("NoticedUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Path", "Line");
-
-                    b.ToTable("TranscriptFaults");
-                });
-
-            modelBuilder.Entity("Skillworks.Core.Telemetry.Turn", b =>
+            modelBuilder.Entity("Skillworks.Core.Spend.Turn", b =>
                 {
                     b.Property<string>("RequestId")
                         .HasColumnType("TEXT");

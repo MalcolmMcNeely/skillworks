@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 namespace Skillworks.Core.Ingest.Stores;
 
-public sealed class TranscriptFaultStore(IDbContextFactory<TelemetryDbContext> contexts)
+public sealed class TranscriptFaultStore(IDbContextFactory<TranscriptStoreDbContext> contexts)
 {
     // "One bad line" and "every file is corrupt" call for the same action; the second need not be a download.
     public const int Cap = 200;

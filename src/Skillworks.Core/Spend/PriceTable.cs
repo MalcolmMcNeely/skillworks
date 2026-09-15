@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 namespace Skillworks.Core.Spend;
 
 // Not cached: one row per model is cheap to read, and a corrected price must show in the next answer.
-public sealed class PriceTable(IDbContextFactory<TelemetryDbContext> contexts)
+public sealed class PriceTable(IDbContextFactory<TranscriptStoreDbContext> contexts)
 {
     public async Task<IReadOnlyList<ModelPrice>> PricesAsync(CancellationToken cancellationToken)
     {

@@ -33,7 +33,7 @@ public sealed class StudioHealth(
         return new HealthReport(
             [
                 Transcripts(sessions),
-                Store(store),
+                TranscriptStore(store),
                 Events(probed.Unreachable),
                 Switch(emitting),
                 Catalogue(catalogue.Locate()),
@@ -45,23 +45,23 @@ public sealed class StudioHealth(
         ? new StudioPart("Transcripts", PartState.Working, $"Reading session files from {sessions.Path}.", null)
         : new StudioPart("Transcripts", PartState.Broken, NoFolderAt(sessions.Path), PointAtTranscripts);
 
-    private static StudioPart Store(IngestStatus status) => status switch
+    private static StudioPart TranscriptStore(IngestStatus status) => status switch
     {
         { CompletedPasses: 0 } => new StudioPart(
-            "Telemetry store",
+            "Transcript store",
             PartState.Starting,
             "The first read of the transcripts has not finished, so the numbers are not all in yet.",
             null),
 
         { Faults: > 0 } => new StudioPart(
-            "Telemetry store",
+            "Transcript store",
             PartState.Working,
             $"{Counted(status.TranscriptsTotal, "transcript")} read, stepping over " +
             $"{Counted(status.Faults, "piece")} it could not parse.",
             "Open the ingest panel to read what was skipped."),
 
         _ => new StudioPart(
-            "Telemetry store",
+            "Transcript store",
             PartState.Working,
             $"{Counted(status.TranscriptsTotal, "transcript")} read.",
             null),

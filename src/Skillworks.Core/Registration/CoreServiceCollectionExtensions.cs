@@ -16,7 +16,7 @@ using Skillworks.Core.Skills;
 using Skillworks.Core.Spend;
 using Skillworks.Core.Spend.Stores;
 using Skillworks.Core.Telemetry;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 using Skillworks.Core.Transcripts;
 
 namespace Skillworks.Core.Registration;
@@ -27,7 +27,7 @@ public static class CoreServiceCollectionExtensions
     {
         services.Configure<CatalogueOptions>(configuration.GetSection(CatalogueOptions.SectionName));
         services.Configure<TranscriptOptions>(configuration.GetSection(TranscriptOptions.SectionName));
-        services.Configure<TelemetryOptions>(configuration.GetSection(TelemetryOptions.SectionName));
+        services.Configure<TranscriptStoreOptions>(configuration.GetSection(TranscriptStoreOptions.SectionName));
         services.Configure<ClaudeSettingsOptions>(configuration.GetSection(ClaudeSettingsOptions.SectionName));
         services.Configure<LokiOptions>(configuration.GetSection(LokiOptions.SectionName));
 
@@ -40,9 +40,9 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<ClaudeSettingsFile>();
         services.AddSingleton<TelemetrySwitch>();
 
-        services.AddDbContextFactory<TelemetryDbContext>((provider, builder) =>
+        services.AddDbContextFactory<TranscriptStoreDbContext>((provider, builder) =>
         {
-            var path = provider.GetRequiredService<IOptions<TelemetryOptions>>().Value.ResolvedDatabasePath();
+            var path = provider.GetRequiredService<IOptions<TranscriptStoreOptions>>().Value.ResolvedDatabasePath();
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             builder.UseSqlite($"Data Source={path}");
         });
@@ -81,7 +81,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<StudioHealth>();
 
         // Order matters: the schema is in place before the first pass and before the first query.
-        services.AddHostedService<TelemetrySchemaService>();
+        services.AddHostedService<TranscriptStoreSchemaService>();
         services.AddHostedService<TranscriptIngestService>();
 
         return services;

@@ -4,15 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Skillworks.Core.TelemetryStore;
+using Skillworks.Core.TranscriptStore;
 
 #nullable disable
 
-namespace Skillworks.Core.TelemetryStore.Migrations
+namespace Skillworks.Core.TranscriptStore.Migrations
 {
-    [DbContext(typeof(TelemetryDbContext))]
-    [Migration("20260913203357_ActivationArguments")]
-    partial class ActivationArguments
+    [DbContext(typeof(TranscriptStoreDbContext))]
+    [Migration("20260913201745_FilterableInstants")]
+    partial class FilterableInstants
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,9 +23,6 @@ namespace Skillworks.Core.TelemetryStore.Migrations
             modelBuilder.Entity("Skillworks.Core.Telemetry.Activation", b =>
                 {
                     b.Property<string>("ToolUseId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Arguments")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Effort")
