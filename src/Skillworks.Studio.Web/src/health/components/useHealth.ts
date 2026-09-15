@@ -5,12 +5,14 @@ import { fetchHealth, type Health } from '../api/health';
 interface HealthReading {
   report: Health | null;
   failure: string | null;
+  checking: boolean;
   recheck: () => void;
 }
 
 export function useHealth(): HealthReading {
   const [report, setReport] = useState<Health | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
   // A controller per read: React remounts in development, so one held in state would abort every later read.
   useEffect(() => {
@@ -34,14 +36,18 @@ export function useHealth(): HealthReading {
 
   // No signal: a click is a deliberate act, and the read it starts should finish.
   const recheck = () => {
-    fetchHealth().then(
-      (next) => {
-        setReport(next);
-        setFailure(null);
-      },
-      (problem: unknown) => setFailure(describeFetchFailure(problem)),
-    );
+    setChecking(true);
+
+    fetchHealth()
+      .then(
+        (next) => {
+          setReport(next);
+          setFailure(null);
+        },
+        (problem: unknown) => setFailure(describeFetchFailure(problem)),
+      )
+      .finally(() => setChecking(false));
   };
 
-  return { report, failure, recheck };
+  return { report, failure, checking, recheck };
 }

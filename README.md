@@ -96,7 +96,7 @@ amount, Unnamed spend, and never splits it among skills.
 
 ### The telemetry switch
 
-Claude Code sends nothing until telemetry is on. The Telemetry panel, at the foot of Studio's first
+Claude Code sends nothing until telemetry is on. The Telemetry switch, on the rail of Studio's first
 page, turns it on for this machine. It lists what it will write to the `env` block of
 `~/.claude/settings.json`, and writes only when you say so:
 
@@ -109,7 +109,7 @@ page, turns it on for this machine. It lists what it will write to the `env` blo
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | The Collector, `http://localhost:4318` |
 | `OTEL_METRICS_INCLUDE_REPOSITORY` | `true` |
 
-The panel says telemetry is on only when all six hold these values. Turning it off puts back what
+The switch says telemetry is on only when all six hold these values. Turning it off puts back what
 was there before. A Claude Code session that is already running picks up neither change, so
 restart it.
 

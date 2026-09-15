@@ -4,7 +4,7 @@ import { RepositoryPicker } from '../../filters/components/RepositoryPicker';
 import { filterParams, readFilter, type Filter } from '../../filters/lib/filters';
 import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../filters/lib/spanKeys';
 import { SignalWord } from '../../gaps/components/SignalWord';
-import { HealthPanel } from '../../health/components/HealthPanel';
+import { HealthLamps } from '../../health/components/HealthLamps';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { Keys } from '../../keys/components/Keys';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
@@ -77,6 +77,11 @@ export function Home() {
           <SignalWord gap={answer?.gap ?? null} failure={reading?.failure ?? null} />
         </div>
 
+        <section className="rail-block systems" aria-label="Systems">
+          <HealthLamps />
+          <TelemetrySwitch />
+        </section>
+
         <section className="rail-block" aria-label="Narrow">
           <Keys
             label="Span"
@@ -88,11 +93,6 @@ export function Home() {
         </section>
 
         <RailTotals answer={showsFigures(answer) ? answer : null} arriving={arriving} />
-
-        <section className="rail-block rail-systems" aria-label="Systems">
-          <HealthPanel />
-          <TelemetrySwitch />
-        </section>
       </aside>
 
       <SkillMap

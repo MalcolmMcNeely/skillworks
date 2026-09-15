@@ -38,6 +38,18 @@ export const surfaces: Record<string, Surface> = {
     text: ['ink', 'inkSoft', 'inkFaint', 'hud', 'live', 'failed', 'warned', 'unnamed'],
     marks: ['hud', 'line', 'live', 'failed', 'warned', 'unnamed'],
   },
+  // A lamp's glyph is text that carries a state, so each state's colour must clear 4.5:1.
+  lamps: {
+    ground: 'panel',
+    text: ['inkSoft', 'live', 'hud', 'inkFaint', 'failed'],
+    marks: ['line', 'hud'],
+  },
+  // The knob is a shape whose place says on or off, so its colours need only a mark's 3:1.
+  telemetrySwitch: {
+    ground: 'panel',
+    text: ['ink', 'inkSoft', 'inkFaint', 'hud', 'warned', 'failed'],
+    marks: ['line', 'hud', 'inkFaint'],
+  },
   pressedKey: {
     ground: 'pressed',
     text: ['ink', 'inkSoft', 'hud'],

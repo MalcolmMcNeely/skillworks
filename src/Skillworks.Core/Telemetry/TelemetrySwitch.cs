@@ -8,7 +8,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
     public const string RestartNote =
         "A Claude Code session that is already running will not pick this up. Restart it.";
 
-    public const string TurnOnNote = "Turn telemetry on in the Telemetry panel. " + RestartNote;
+    public const string TurnOnNote = "Turn telemetry on with the Telemetry switch. " + RestartNote;
 
     public TelemetrySwitchState State()
     {

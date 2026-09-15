@@ -7,32 +7,49 @@ export interface Part {
   action: string | null;
 }
 
-const marks: Record<PartState, string> = {
-  working: '✓',
-  starting: '…',
-  off: '○',
-  broken: '✕',
+export interface Lamp {
+  callSign: string;
+  state: PartState;
+  glyph: string;
+  word: string;
+  opens: Pick<Part, 'detail' | 'action'> | null;
+}
+
+const lampMarks: Record<PartState, { glyph: string; word: string }> = {
+  working: { glyph: '●', word: 'Working' },
+  starting: { glyph: '◌', word: 'Starting' },
+  off: { glyph: '○', word: 'Off' },
+  broken: { glyph: '✕', word: 'Broken' },
 };
 
-export function describePart(part: Part): string {
-  const said = `${marks[part.state]} ${part.name}: ${part.detail}`;
+const callSigns: Record<string, string> = {
+  'Events store': 'Store',
+};
 
-  return part.action === null ? said : `${said} ${part.action}`;
+// The telemetry switch shows this part's state, so a lamp for it would say the same thing twice.
+const shownBySwitch = 'Claude Code telemetry';
+
+function lamp(callSign: string, state: PartState, opens: Lamp['opens']): Lamp {
+  return { callSign, state, ...lampMarks[state], opens };
 }
 
-// A part deliberately off counts: nothing is broken, but a screen is still missing something.
-export function troubled(parts: readonly Part[]): Part[] {
-  return parts.filter((part) => part.state !== 'working');
-}
-
-export function describeHealth(parts: readonly Part[]): string {
-  const trouble = troubled(parts);
-
-  if (trouble.length === 0) {
-    return 'Every part of Studio is working.';
+export function lampsOf(report: { parts: readonly Part[] } | null, failure: string | null): Lamp[] {
+  // Ahead of the report: parts read before the API stopped answering may no longer hold.
+  if (failure !== null) {
+    return [lamp('API', 'broken', { detail: failure, action: 'Start Studio with aspire run.' })];
   }
 
-  return trouble.length === 1
-    ? `1 part of Studio needs attention: ${trouble[0]!.name}.`
-    : `${trouble.length} parts of Studio need attention: ${trouble.map((part) => part.name).join(', ')}.`;
+  if (report === null) {
+    return [lamp('API', 'starting', null)];
+  }
+
+  return report.parts
+    .filter((part) => part.name !== shownBySwitch)
+    .map((part) =>
+      lamp(
+        callSigns[part.name] ?? part.name,
+        part.state,
+        part.state === 'broken' || part.state === 'off' ? { detail: part.detail, action: part.action } : null,
+      ),
+    );
 }

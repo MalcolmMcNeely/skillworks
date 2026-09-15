@@ -126,7 +126,7 @@ public sealed class HealthEndpointsTests
 
         // Not a fault: reporting one would send a developer after a container problem that does not exist.
         Assert.Equal("off", part.State);
-        Assert.Contains("Telemetry panel", part.Action ?? "");
+        Assert.Contains("Telemetry switch", part.Action ?? "");
     }
 
     [Fact]

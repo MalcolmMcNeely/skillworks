@@ -1,73 +1,104 @@
 import { describe, expect, it } from 'vitest';
-import { describeHealth, describePart, troubled, type Part } from './health';
+import { lampsOf, type Part } from './health';
 
-const working: Part = {
+const catalogue: Part = {
   name: 'Catalogue',
   state: 'working',
   detail: 'Reading skills from /home/me/skillworks/plugins.',
   action: null,
 };
 
-const down: Part = {
+const store: Part = {
   name: 'Events store',
   state: 'broken',
   detail: 'http://localhost:3100/ could not be read: connection refused.',
   action: 'Start Studio’s containers with aspire run.',
 };
 
-const off: Part = {
-  name: 'Claude Code telemetry',
-  state: 'off',
-  detail: 'Claude Code is not emitting telemetry.',
-  action: 'Turn telemetry on in the Telemetry panel.',
-};
-
-describe('describePart', () => {
-  it('says what is true and leaves it there when there is nothing to do', () => {
-    expect(describePart(working)).toBe('✓ Catalogue: Reading skills from /home/me/skillworks/plugins.');
+describe('lampsOf', () => {
+  it('shows a working part as a lamp with a glyph and a call sign, and opens nothing from it', () => {
+    expect(lampsOf({ parts: [catalogue] }, null)).toEqual([
+      { callSign: 'Catalogue', state: 'working', glyph: '●', word: 'Working', opens: null },
+    ]);
   });
 
-  it('says what to do next when there is something to do', () => {
-    expect(describePart(down)).toBe(
-      '✕ Events store: http://localhost:3100/ could not be read: connection refused. ' +
-        'Start Studio’s containers with aspire run.',
+  it('opens the detail and the action from the lamp of a broken part', () => {
+    expect(lampsOf({ parts: [store] }, null)).toEqual([
+      {
+        callSign: 'Store',
+        state: 'broken',
+        glyph: '✕',
+        word: 'Broken',
+        opens: {
+          detail: 'http://localhost:3100/ could not be read: connection refused.',
+          action: 'Start Studio’s containers with aspire run.',
+        },
+      },
+    ]);
+  });
+
+  it('opens the detail and the action from the lamp of a part that is off', () => {
+    // Off is not a fault, but it still has an action for the developer to take.
+    const [lamp] = lampsOf({ parts: [{ ...store, state: 'off' }] }, null);
+
+    expect(lamp?.opens).toEqual({ detail: store.detail, action: store.action });
+  });
+
+  it('opens nothing from the lamp of a part that is still starting', () => {
+    const [lamp] = lampsOf({ parts: [{ ...store, state: 'starting' }] }, null);
+
+    expect(lamp?.opens).toBeNull();
+  });
+
+  it('gives each state a glyph of its own, so colour is never the only signal', () => {
+    const glyphs = (['working', 'starting', 'off', 'broken'] as const).map(
+      (state) => lampsOf({ parts: [{ ...catalogue, state }] }, null)[0]?.glyph,
     );
+
+    expect(new Set(glyphs).size).toBe(4);
   });
 
-  it('marks a part that is deliberately off apart from one that is broken', () => {
-    // Both empty the same screen, but only one is a fault worth looking for.
-    expect(describePart(off).startsWith('○')).toBe(true);
-    expect(describePart(down).startsWith('✕')).toBe(true);
+  it('leaves telemetry to the switch beside the lamps, so the one fact has one control', () => {
+    const telemetry: Part = {
+      name: 'Claude Code telemetry',
+      state: 'off',
+      detail: 'Claude Code is not emitting telemetry.',
+      action: 'Turn telemetry on with the Telemetry switch.',
+    };
+
+    expect(lampsOf({ parts: [store, telemetry, catalogue] }, null).map((lamp) => lamp.callSign)).toEqual([
+      'Store',
+      'Catalogue',
+    ]);
   });
 
-  it('marks a part that is still starting apart from one that has nothing to show', () => {
-    expect(describePart({ ...working, state: 'starting' }).startsWith('…')).toBe(true);
-  });
-});
+  it('keeps the name of a part it has no call sign for', () => {
+    const [lamp] = lampsOf({ parts: [{ ...catalogue, name: 'Collector' }] }, null);
 
-describe('troubled', () => {
-  it('counts a part that is off among the ones that need attention', () => {
-    // Nothing is broken, but a screen that listed only faults would leave the empty provenance column unexplained.
-    expect(troubled([working, off])).toEqual([off]);
+    expect(lamp?.callSign).toBe('Collector');
   });
 
-  it('is empty when every part is doing its job', () => {
-    expect(troubled([working])).toEqual([]);
-  });
-});
-
-describe('describeHealth', () => {
-  it('says so plainly when there is nothing to attend to', () => {
-    expect(describeHealth([working])).toBe('Every part of Studio is working.');
+  it('shows one API lamp, starting, while the API has not answered', () => {
+    expect(lampsOf(null, null)).toEqual([
+      { callSign: 'API', state: 'starting', glyph: '◌', word: 'Starting', opens: null },
+    ]);
   });
 
-  it('names the one part that needs attention', () => {
-    expect(describeHealth([working, down])).toBe('1 part of Studio needs attention: Events store.');
+  it('shows one broken API lamp that opens the failure when the API could not be read', () => {
+    expect(lampsOf(null, 'GET /api/health returned 502')).toEqual([
+      {
+        callSign: 'API',
+        state: 'broken',
+        glyph: '✕',
+        word: 'Broken',
+        opens: { detail: 'GET /api/health returned 502', action: 'Start Studio with aspire run.' },
+      },
+    ]);
   });
 
-  it('names every part that needs attention when more than one does', () => {
-    expect(describeHealth([working, down, off])).toBe(
-      '2 parts of Studio need attention: Events store, Claude Code telemetry.',
-    );
+  it('drops the parts of an earlier answer when checking again fails, as they may no longer hold', () => {
+    const lamps = lampsOf({ parts: [catalogue] }, 'Failed to fetch');
+
+    expect(lamps.map((lamp) => [lamp.callSign, lamp.state])).toEqual([['API', 'broken']]);
   });
 });

@@ -30,7 +30,7 @@ public sealed record Gap(GapKind Kind, string? Missing)
             (_, 0, null) => (
                 GapKind.TelemetryUnknown,
                 "The events store holds nothing for this period, and Studio cannot read Claude Code's " +
-                "settings, so it cannot say whether telemetry was ever switched on. The Studio panel " +
+                "settings, so it cannot say whether telemetry was ever switched on. The Telemetry switch " +
                 "names the file and what is wrong with it."),
 
             (_, 0, _) => (

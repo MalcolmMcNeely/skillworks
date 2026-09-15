@@ -73,7 +73,7 @@ public sealed partial class SkillEndpointsTests
 
         // Empty because nothing was ever sent, and a reader told "quiet" would look for a fault that is not there.
         Assert.Equal("telemetryOff", answer.Gap.Kind);
-        Assert.Contains("Telemetry panel", answer.Gap.Missing ?? "");
+        Assert.Contains("Telemetry switch", answer.Gap.Missing ?? "");
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public sealed partial class SkillEndpointsTests
 
         // The earlier firings are real, but nothing has reached the events store since the switch went off.
         Assert.Equal("telemetryOff", answer.Gap.Kind);
-        Assert.Contains("Telemetry panel", answer.Gap.Missing ?? "");
+        Assert.Contains("Telemetry switch", answer.Gap.Missing ?? "");
         Assert.NotEmpty(Assert.Single(answer.Day("2026-09-14").Skills).Origins);
     }
 
@@ -117,6 +117,7 @@ public sealed partial class SkillEndpointsTests
         // Not "off": that would tell a developer to flip a switch Studio has refused to touch.
         Assert.Equal("telemetryUnknown", answer.Gap.Kind);
         Assert.Contains("cannot read", answer.Gap.Missing ?? "");
+        Assert.Contains("Telemetry switch", answer.Gap.Missing ?? "");
     }
 
     [Fact]

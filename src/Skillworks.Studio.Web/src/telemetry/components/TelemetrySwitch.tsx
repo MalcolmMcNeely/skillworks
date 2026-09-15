@@ -1,12 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { fetchTelemetry, setTelemetry, type TelemetryState } from '../api/telemetry';
-import { describeChange, describeTelemetry } from '../lib/telemetry';
+import { describeChange, switchOf, type SwitchReading } from '../lib/telemetry';
+
+function Face({ reading }: { reading: SwitchReading }) {
+  return (
+    <>
+      <span className="switch-glyph" aria-hidden="true">
+        ⏻
+      </span>
+      <span className="switch-word">Telemetry</span>
+      <span className="switch-track" aria-hidden="true">
+        <span className="switch-knob" />
+      </span>
+      <span className="switch-mark" aria-hidden="true">
+        {reading.mark}
+      </span>
+    </>
+  );
+}
 
 export function TelemetrySwitch() {
   const [state, setState] = useState<TelemetryState | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [asking, setAsking] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const key = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -23,68 +41,96 @@ export function TelemetrySwitch() {
     return () => abort.abort();
   }, []);
 
-  function flip(emitting: boolean) {
+  const show = (next: TelemetryState) => {
+    setState(next);
     setFailure(null);
-    setAsking(false);
+  };
 
-    setTelemetry(emitting)
-      .then(setState)
-      .catch((problem: unknown) => {
-        setFailure(describeFetchFailure(problem));
+  // Back to the switch, or a keyboard user is left on nothing once the box is gone.
+  const close = () => {
+    setConfirming(false);
+    key.current?.focus();
+  };
 
-        // A refused write means the settings changed under Studio, so show what is on disk now.
-        fetchTelemetry().then(setState, () => undefined);
-      });
+  function flip(emitting: boolean) {
+    setTelemetry(emitting).then(show, (problem: unknown) => {
+      const refusal = describeFetchFailure(problem);
+
+      // Settings that became unreadable say why themselves; any other refusal would otherwise leave the switch silent.
+      fetchTelemetry().then(
+        (next) => {
+          setState(next);
+          setFailure(next.readable ? refusal : null);
+        },
+        () => setFailure(refusal),
+      );
+    });
   }
 
+  const reading = switchOf(state, failure);
+
+  // A disclosure, not a tooltip, so why the switch will not flip opens by keyboard as well as by click.
+  if (reading.why !== null) {
+    return (
+      <details className={`switch is-${reading.position}`}>
+        <summary>
+          <Face reading={reading} />
+          <span className="visually-hidden">{reading.word}</span>
+        </summary>
+        <p className="switch-sentence">{reading.why}</p>
+      </details>
+    );
+  }
+
+  const on = reading.position === 'on';
+
   return (
-    <section className="telemetry">
-      <h2>Telemetry</h2>
+    <div className={`switch is-${reading.position}`}>
+      <button
+        ref={key}
+        type="button"
+        className="switch-key"
+        aria-pressed={on}
+        disabled={reading.position === 'asking'}
+        onClick={() => (on ? flip(false) : setConfirming((open) => !open))}
+      >
+        <Face reading={reading} />
+      </button>
 
-      {failure !== null && <p data-testid="telemetry-error">{failure}</p>}
-      {state === null && failure === null && <p>Asking the API…</p>}
-
-      {state !== null && (
-        <>
-          <p data-testid="telemetry-status">{describeTelemetry(state)}</p>
+      {confirming && !on && state !== null && (
+        <div
+          className="switch-confirm"
+          role="group"
+          aria-label="Turn telemetry on"
+          onKeyDown={(event) => event.key === 'Escape' && close()}
+        >
+          <span className="micro">Writes</span>
+          <code className="switch-path">{state.settingsPath}</code>
+          <ul className="switch-changes">
+            {state.changes.map((change) => (
+              <li key={change.name}>
+                <code>{describeChange(change)}</code>
+              </li>
+            ))}
+          </ul>
           <p>{state.restartNote}</p>
-
-          {state.emitting && (
-            <button type="button" onClick={() => flip(false)}>
-              Turn telemetry off
+          <div className="switch-confirm-keys">
+            <button
+              type="button"
+              className="key is-go"
+              onClick={() => {
+                flip(true);
+                close();
+              }}
+            >
+              <span aria-hidden="true">⏻ </span>On
             </button>
-          )}
-
-          {!state.emitting && state.readable && (
-            <>
-              <p>
-                Turning it on writes these to <code>{state.settingsPath}</code>:
-              </p>
-
-              <ul data-testid="telemetry-changes">
-                {state.changes.map((change) => (
-                  <li key={change.name}>{describeChange(change)}</li>
-                ))}
-              </ul>
-
-              {asking ? (
-                <>
-                  <button type="button" onClick={() => flip(true)}>
-                    Write them
-                  </button>
-                  <button type="button" onClick={() => setAsking(false)}>
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button type="button" onClick={() => setAsking(true)}>
-                  Turn telemetry on
-                </button>
-              )}
-            </>
-          )}
-        </>
+            <button type="button" className="key" onClick={close}>
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
-    </section>
+    </div>
   );
 }
