@@ -1,10 +1,10 @@
-using Skillworks.Core.Activations.Stores;
+using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Activations;
 
-public sealed class ActivationReport(ActivationStore activations, ProvenanceReport provenance)
+public sealed class ActivationReport(ActivationQueries activations, ProvenanceReport provenance)
 {
     public async Task<ActivationList> ListAsync(TelemetryFilter filter, CancellationToken cancellationToken)
     {

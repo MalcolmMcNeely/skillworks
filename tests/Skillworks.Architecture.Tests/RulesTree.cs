@@ -16,7 +16,7 @@ public sealed class RulesTree : IDisposable
             ["test-files"] = "[\"*.Tests.cs\", \"*.test.ts\"]",
             ["skip-folders"] = "[Migrations, bin, obj, node_modules]",
             ["banned-folder-names"] = "[utils, helpers, common, shared, misc]",
-            ["name-map"] = "{\"*Store\": Stores}",
+            ["name-map"] = "{\"*Queries\": Queries}",
         },
         [CommentsFile] = new()
         {

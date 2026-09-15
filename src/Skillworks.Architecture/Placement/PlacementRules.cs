@@ -22,7 +22,7 @@ internal sealed record PlacementRules(
         var bannedFolderNames = file.RequireList("banned-folder-names");
         var nameMap = file.RequireMap(
             "name-map",
-            "a map from a name with `*` at the start or the end to a folder name, such as {\"*Store\": Stores}",
+            "a map from a name with `*` at the start or the end to a folder name, such as {\"*Queries\": Queries}",
             IsNamePattern);
 
         return new(maxTypesPerFolder, sourceFiles, testFiles, skipFolders, bannedFolderNames, nameMap);

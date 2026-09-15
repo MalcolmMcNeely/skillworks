@@ -20,7 +20,7 @@ C# and TypeScript share one shape: feature folders first, concern folders beneat
   too.
 
 Copy the shape of `src/Skillworks.Core/Ingest`. The feature folder holds the types of the ingest.
-`Stores` beneath it holds `TranscriptFaultStore`, as `name-map` says. `Parsing` is a concern the
+`Queries` beneath it holds `TranscriptFaultQueries`, as `name-map` says. `Parsing` is a concern the
 feature grew: it holds the types that turn a transcript line into rows.
 
 ## Files
@@ -59,8 +59,8 @@ among the files in `source-files` that sit directly in the folder.
 
 ## Name map
 
-Each pattern in `name-map` is a name with `*` at the start or the end, such as `*Store` or `Store*`.
-It matches the subject, and letter case counts.
+Each pattern in `name-map` is a name with `*` at the start or the end, such as `*Queries` or
+`Queries*`. It matches the subject, and letter case counts.
 
 - A subject that matches one pattern sits in that pattern's folder.
 - A subject that matches several patterns sits in the folder of any one of them.
@@ -87,5 +87,5 @@ banned-folder-names:
   - shared
   - misc
 name-map:
-  "*Store": Stores
+  "*Queries": Queries
 ```

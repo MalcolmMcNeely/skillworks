@@ -4,12 +4,12 @@ namespace Skillworks.Architecture.Tests;
 
 public sealed partial class ArchitectureCheckTests
 {
-    private const string TwoPatterns = "{\"*Extensions\": Extensions, \"Store*\": Stores}";
+    private const string TwoPatterns = "{\"*Extensions\": Extensions, \"Query*\": Queries}";
 
     [Theory]
-    [InlineData("src/App/Stores/ActivationStore.cs")]
-    [InlineData("src/App/Activations/Stores/ActivationStore.cs")]
-    [InlineData("src/App/Activations/Stores/ActivationStore.Async.cs")]
+    [InlineData("src/App/Queries/ActivationQueries.cs")]
+    [InlineData("src/App/Activations/Queries/ActivationQueries.cs")]
+    [InlineData("src/App/Activations/Queries/ActivationQueries.Async.cs")]
     public void A_name_that_matches_a_pattern_is_not_a_breach_in_that_patterns_folder(string file)
     {
         using var tree = new RulesTree().Write(file);
@@ -18,11 +18,11 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Theory]
-    [InlineData("src/App/Activations/ActivationStore.cs")]
-    [InlineData("src/App/Stores/Activations/ActivationStore.cs")]
-    [InlineData("src/App/stores/ActivationStore.cs")]
-    [InlineData("tests/App.Tests/Activations/FakeActivationStore.cs")]
-    [InlineData("web/src/activations/lib/activationStore.ts")]
+    [InlineData("src/App/Activations/ActivationQueries.cs")]
+    [InlineData("src/App/Queries/Activations/ActivationQueries.cs")]
+    [InlineData("src/App/queries/ActivationQueries.cs")]
+    [InlineData("tests/App.Tests/Activations/FakeActivationQueries.cs")]
+    [InlineData("web/src/activations/lib/activationQueries.ts")]
     public void A_name_that_matches_a_pattern_is_a_breach_outside_that_patterns_folder(string file)
     {
         using var tree = new RulesTree().Write(file);
@@ -31,8 +31,8 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Theory]
-    [InlineData("src/App/Extensions/StoreLoggerExtensions.cs")]
-    [InlineData("src/App/Stores/StoreLoggerExtensions.cs")]
+    [InlineData("src/App/Extensions/QueryLoggerExtensions.cs")]
+    [InlineData("src/App/Queries/QueryLoggerExtensions.cs")]
     public void A_name_that_matches_two_patterns_is_not_a_breach_in_either_folder(string file)
     {
         using var tree = new RulesTree()
@@ -47,16 +47,16 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Set(PlacementFile, "name-map", TwoPatterns)
-            .Write("src/App/Logging/StoreLoggerExtensions.cs");
+            .Write("src/App/Logging/QueryLoggerExtensions.cs");
 
-        Assert.Equal([("name-map", "src/App/Logging/StoreLoggerExtensions.cs")], tree.Breaches());
+        Assert.Equal([("name-map", "src/App/Logging/QueryLoggerExtensions.cs")], tree.Breaches());
     }
 
     [Theory]
     [InlineData("src/App/Activations/Clock.cs")]
-    [InlineData("src/App/Stores/Clock.cs")]
-    [InlineData("src/App/Activations/ActivationSTORE.cs")]
-    [InlineData("src/App/Activations/StoreFront.cs")]
+    [InlineData("src/App/Queries/Clock.cs")]
+    [InlineData("src/App/Activations/ActivationQUERIES.cs")]
+    [InlineData("src/App/Activations/QueriesPanel.cs")]
     public void A_name_that_matches_no_pattern_is_not_a_breach_anywhere(string file)
     {
         using var tree = new RulesTree().Write(file);

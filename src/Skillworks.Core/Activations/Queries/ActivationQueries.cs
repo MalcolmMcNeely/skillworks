@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.TranscriptStore;
 
-namespace Skillworks.Core.Activations.Stores;
+namespace Skillworks.Core.Activations.Queries;
 
-public sealed class ActivationStore(IDbContextFactory<TranscriptStoreDbContext> contexts)
+public sealed class ActivationQueries(IDbContextFactory<TranscriptStoreDbContext> contexts)
 {
     private readonly record struct SkillValue(string Skill, string? Value);
 
@@ -93,7 +93,7 @@ public sealed class ActivationStore(IDbContextFactory<TranscriptStoreDbContext> 
         return (Sorted(repositories.OfType<string>()), Sorted(skills));
     }
 
-    // Repeated in SpendStore: sharing it means an interface EF cannot translate or hand-grafted expressions.
+    // Repeated in SpendQueries: sharing it means an interface EF cannot translate or hand-grafted expressions.
     private static IQueryable<Activation> Narrowed(IQueryable<Activation> activations, TelemetryFilter filter)
     {
         if (filter.FromUtc is { } from)

@@ -1,8 +1,8 @@
-using Skillworks.Core.Ingest.Stores;
+using Skillworks.Core.Ingest.Queries;
 
 namespace Skillworks.Core.Ingest;
 
-public sealed class IngestReport(IngestState state, TranscriptFaultStore faults)
+public sealed class IngestReport(IngestState state, TranscriptFaultQueries faults)
 {
     public async Task<IngestStatus> StatusAsync(CancellationToken cancellationToken) =>
         state.Status(await faults.CountAsync(cancellationToken));

@@ -11,6 +11,6 @@ public sealed record ActivationSummary(
     string? Effort,
     DateTimeOffset TimestampUtc)
 {
-    // Joined on afterwards: transcripts, which ActivationStore reads, do not record where a firing came from.
+    // Joined on afterwards: transcripts, which ActivationQueries reads, do not record where a firing came from.
     public SkillOrigin? Origin { get; init; }
 }

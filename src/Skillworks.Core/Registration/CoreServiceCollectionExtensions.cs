@@ -6,15 +6,15 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Activations;
-using Skillworks.Core.Activations.Stores;
+using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.Health;
 using Skillworks.Core.Ingest;
-using Skillworks.Core.Ingest.Stores;
+using Skillworks.Core.Ingest.Queries;
 using Skillworks.Core.Provenance;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Spend;
-using Skillworks.Core.Spend.Stores;
+using Skillworks.Core.Spend.Queries;
 using Skillworks.Core.Telemetry;
 using Skillworks.Core.TranscriptStore;
 using Skillworks.Core.Transcripts;
@@ -49,10 +49,10 @@ public static class CoreServiceCollectionExtensions
 
         services.AddSingleton<TranscriptIngestor>();
         services.AddSingleton<IngestState>();
-        services.AddSingleton<TranscriptFaultStore>();
+        services.AddSingleton<TranscriptFaultQueries>();
         services.AddSingleton<IngestReport>();
-        services.AddSingleton<ActivationStore>();
-        services.AddSingleton<SpendStore>();
+        services.AddSingleton<ActivationQueries>();
+        services.AddSingleton<SpendQueries>();
         services.AddSingleton<PriceTable>();
 
         // A named client rather than a typed one: everything else here is a singleton, and a typed

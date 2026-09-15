@@ -1,16 +1,16 @@
-using Skillworks.Core.Activations.Stores;
+using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Provenance;
 using Skillworks.Core.Spend;
-using Skillworks.Core.Spend.Stores;
+using Skillworks.Core.Spend.Queries;
 
 namespace Skillworks.Core.Skills;
 
 // Lists catalogue skills that never fired, so a broken description shows up as a zero rather than a gap.
 public sealed class SkillReport(
-    ActivationStore activations,
-    SpendStore spend,
+    ActivationQueries activations,
+    SpendQueries spend,
     PriceTable prices,
     CatalogueSkills catalogue,
     ProvenanceReport provenance)

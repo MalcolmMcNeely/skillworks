@@ -2,9 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.TranscriptStore;
 
-namespace Skillworks.Core.Spend.Stores;
+namespace Skillworks.Core.Spend.Queries;
 
-public sealed class SpendStore(IDbContextFactory<TranscriptStoreDbContext> contexts)
+public sealed class SpendQueries(IDbContextFactory<TranscriptStoreDbContext> contexts)
 {
     private readonly record struct SkillTokens(string Skill, ModelTokens Tokens);
 
