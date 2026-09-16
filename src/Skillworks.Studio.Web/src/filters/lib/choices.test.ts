@@ -26,7 +26,7 @@ function day(date: string, repositories: string[]): FilterChoicesLine {
   return { kind: 'day', day: date, repositories };
 }
 
-const end: FilterChoicesLine = { kind: 'end', gap: { kind: 'complete', missing: null } };
+const end: FilterChoicesLine = { kind: 'end' };
 
 describe('foldFilterChoicesLine', () => {
   it('grows the list as each day lands, each repository once and in order', async () => {
@@ -66,13 +66,8 @@ describe('foldFilterChoicesLine', () => {
     ]);
   });
 
-  it('keeps the repositories of the days that landed when the store stops part way', async () => {
-    const stopped: FilterChoicesLine = {
-      kind: 'end',
-      gap: { kind: 'unreachable', missing: 'Studio could not read the events store. Nothing is shown for 2026-09-14.' },
-    };
-
-    const states = await statesOf(wire(head, day('2026-09-15', ['acme/xi']), stopped));
+  it('offers only the repositories of the days that landed when the answer stops early', async () => {
+    const states = await statesOf(wire(head, day('2026-09-15', ['acme/xi']), end));
 
     expect(states.at(-1)).toEqual(['acme/xi']);
   });

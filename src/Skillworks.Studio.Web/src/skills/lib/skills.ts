@@ -1,6 +1,6 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import type { Span } from '../../filters/lib/filters';
-import type { AnswerEnd } from '../../gaps/lib/gaps';
+import type { GapEnd } from '../../gaps/lib/gaps';
 import type { Origin, TriggerCount } from '../../provenance/lib/provenance';
 
 export interface TokenSplit {
@@ -54,7 +54,7 @@ export interface SkillsDay {
   unnarrowedEvents: number;
 }
 
-export type SkillsLine = SkillsHead | SkillsDay | AnswerEnd;
+export type SkillsLine = SkillsHead | SkillsDay | GapEnd;
 
 export const missingWords = {
   // A word, not a dash, which a screen reader reads as a pause or not at all.

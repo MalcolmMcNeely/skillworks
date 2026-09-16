@@ -32,8 +32,13 @@ behind the developer's back.
 
 ## Consequences
 
-A store that stops answering part way keeps the days that landed. The answer ends complete with an
-unreachable Gap that names the days it could not read. Nothing retries by itself.
+A store that stops answering part way keeps the days that landed. The answer ends complete, and where
+it carries a Gap that Gap is unreachable and names the days it could not read. Nothing retries by
+itself.
+
+An answer built from one query a day counts firings alone, so its Gap would call a period that only
+spent quiet. An answer no screen reads a Gap from ends without one, rather than buy a true Gap with a
+second query a day.
 
 A screen reads one answer, so it has one Arriving state. The skills table carries each day's counts
 by skill, by trigger and by hour, and the latest firing. No screen reads a list of individual

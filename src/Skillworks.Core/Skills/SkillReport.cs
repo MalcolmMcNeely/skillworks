@@ -34,12 +34,13 @@ public sealed class SkillReport(
     }
 
     // Only the span narrows the choices, so picking a Repository never hides the others.
+    // A Gap here would count firings alone, so a period that only spent would read as quiet.
     public IAsyncEnumerable<ArrivingLine> ChoicesAsync(Filter filter, CancellationToken cancellationToken)
     {
         var span = lookback.SpanOf(filter);
         var days = span.NewestFirst();
 
-        return arriving.AnswerAsync(new FilterChoicesHead(span, days), days, ChoicesDayAsync, cancellationToken);
+        return arriving.AnswerWithoutGapAsync(new FilterChoicesHead(span, days), days, ChoicesDayAsync, cancellationToken);
     }
 
     private async Task<(FilterChoicesDay Line, EventTotals Period)> ChoicesDayAsync(

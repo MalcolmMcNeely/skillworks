@@ -1,16 +1,14 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
-using Skillworks.Studio.Api.Tests.Gaps;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Filters;
 
-public sealed record FilterChoicesAnswer(IReadOnlyList<DateOnly> HeadDays, IReadOnlyList<FilterChoicesDayRow> Days, GapRow Gap)
+public sealed record FilterChoicesAnswer(IReadOnlyList<DateOnly> HeadDays, IReadOnlyList<FilterChoicesDayRow> Days)
 {
     public static FilterChoicesAnswer Of(IReadOnlyList<JsonObject> lines) => new(
         StudioHost.Read<DateOnly[]>(lines.Single(line => StudioHost.KindOf(line) == "head")["days"]),
-        [.. lines.Where(line => StudioHost.KindOf(line) == "day").Select(StudioHost.Read<FilterChoicesDayRow>)],
-        StudioHost.Read<GapRow>(lines.Single(line => StudioHost.KindOf(line) == "end")["gap"]));
+        [.. lines.Where(line => StudioHost.KindOf(line) == "day").Select(StudioHost.Read<FilterChoicesDayRow>)]);
 
     public IEnumerable<string> Repositories => Days.SelectMany(day => day.Repositories);
 

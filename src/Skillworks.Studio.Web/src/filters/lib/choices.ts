@@ -1,4 +1,4 @@
-import type { AnswerEnd } from '../../gaps/lib/gaps';
+import type { PlainEnd } from '../../gaps/lib/gaps';
 
 export interface FilterChoicesHead {
   kind: 'head';
@@ -10,7 +10,7 @@ export interface FilterChoicesDay {
   repositories: string[];
 }
 
-export type FilterChoicesLine = FilterChoicesHead | FilterChoicesDay | AnswerEnd;
+export type FilterChoicesLine = FilterChoicesHead | FilterChoicesDay | PlainEnd;
 
 // As the API orders them, ignoring case, so an owner spelled with a capital does not jump ahead of the rest.
 function ignoringCase(repository: string, other: string): number {

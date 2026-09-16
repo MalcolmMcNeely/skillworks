@@ -11,9 +11,14 @@ export interface Gap {
   missing: string | null;
 }
 
-export interface AnswerEnd {
+export interface GapEnd {
   kind: 'end';
   gap: Gap;
+}
+
+// A Gap counting firings alone would call a period that only spent quiet, so an answer may end without one.
+export interface PlainEnd {
+  kind: 'end';
 }
 
 export interface Signal {

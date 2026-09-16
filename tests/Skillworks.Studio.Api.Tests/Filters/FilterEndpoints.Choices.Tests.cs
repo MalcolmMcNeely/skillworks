@@ -33,7 +33,6 @@ public sealed partial class FilterEndpointsTests
         Assert.Equal(["acme/nu", "acme/xi"], answer.Day("2026-09-05").Repositories);
         Assert.Equal(["acme/nu"], answer.Day("2026-09-01").Repositories);
         Assert.All(answer.Days.Skip(1).Take(3), day => Assert.Empty(day.Repositories));
-        Assert.Equal("complete", answer.Gap.Kind);
     }
 
     [Fact]
@@ -63,7 +62,6 @@ public sealed partial class FilterEndpointsTests
 
         var answer = await studio.FilterChoices(TenDays);
 
-        Assert.Equal("complete", answer.Gap.Kind);
         Assert.Equal(10, answer.Days.Count);
         Assert.Equal(["acme/xi"], answer.Day("2026-09-10").Repositories);
         Assert.Equal(["acme/nu"], answer.Day("2026-09-01").Repositories);
@@ -81,23 +79,22 @@ public sealed partial class FilterEndpointsTests
         // No screen offers a skill dropdown, so a list of skills would be read for nothing.
         Assert.Equal(["days", "kind", "span"], StudioHost.Fields(lines[0]));
         Assert.Equal(["day", "kind", "repositories"], StudioHost.Fields(lines[1]));
-        Assert.Equal(["gap", "kind"], StudioHost.Fields(lines[2]));
+        Assert.Equal(["kind"], StudioHost.Fields(lines[2]));
     }
 
     [Fact]
-    public async Task Ends_with_no_day_and_the_unreachable_Gap_when_the_store_cannot_offer_choices_from_the_start()
+    public async Task Offers_no_day_at_all_when_the_store_cannot_offer_choices_from_the_start()
     {
         using var events = BrokenEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
-        var answer = await studio.FilterChoices(FiveDays);
+        var lines = await studio.FilterChoiceLines(FiveDays);
 
-        Assert.Empty(answer.Days);
-        Assert.Equal("unreachable", answer.Gap.Kind);
+        Assert.Equal(["head", "end"], lines.Select(StudioHost.KindOf));
     }
 
     [Fact]
-    public async Task Keeps_the_choices_already_sent_and_ends_with_the_unreachable_Gap_when_the_store_fails_part_way()
+    public async Task Keeps_the_choices_already_sent_and_leaves_out_the_day_it_could_not_read_when_the_store_fails_part_way()
     {
         using var events = BrokenEventsStore.DownBefore("2026-09-14");
         using var studio = new StudioHost(events: events);
@@ -106,12 +103,13 @@ public sealed partial class FilterEndpointsTests
             new SkillActivated("grilling", "2026-09-15T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
             new SkillActivated("grilling", "2026-09-13T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"));
 
-        var answer = await studio.FilterChoices(FiveDays);
+        var lines = await studio.FilterChoiceLines(FiveDays);
+        var answer = FilterChoicesAnswer.Of(lines);
 
         Assert.Equal([Day("2026-09-15"), Day("2026-09-14")], answer.Days.Select(day => day.Day));
         Assert.Equal(["acme/nu"], answer.Day("2026-09-15").Repositories);
-        Assert.Equal("unreachable", answer.Gap.Kind);
         Assert.DoesNotContain("acme/xi", answer.Repositories);
+        Assert.Equal(["kind"], StudioHost.Fields(lines[^1]));
     }
 
     [Fact]
