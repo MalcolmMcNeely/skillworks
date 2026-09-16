@@ -15,6 +15,10 @@ public sealed record SkillActivated(
 {
     internal const string EventName = "skill_activated";
 
+    public string Session { get; init; } = TestLoki.Session;
+
+    public string? Person { get; init; } = TestLoki.Person;
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>

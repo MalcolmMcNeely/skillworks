@@ -1381,6 +1381,98 @@ a.home-panel-face:hover::before {
   padding: clamp(0.6rem, 2vh, 1rem) 0.7rem;
 }
 
+.sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100dvh;
+  padding: clamp(0.75rem, 2vh, 1.25rem) clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.sessions-head {
+  align-items: baseline;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  padding-bottom: clamp(0.3rem, 1vh, 0.55rem);
+  position: relative;
+}
+
+.sessions-head h1 {
+  color: var(--hud);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.sessions-span {
+  margin: 0;
+}
+
+.session-word {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.sessions-table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  width: 100%;
+}
+
+.sessions-table th {
+  background: var(--panel);
+  color: var(--ink-soft);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.sessions-table td,
+.sessions-table th {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.4rem 0.6rem;
+}
+
+.sessions-table td {
+  color: var(--ink-soft);
+}
+
+.session-started,
+.session-length {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.session-length {
+  text-align: right;
+}
+
+/* The one column a reader scans, so it carries the page's brightest ink and takes the space left over. */
+.session-name {
+  color: var(--ink);
+  width: 100%;
+}
+
+/* A word, never colour alone, so a half-finished run is marked for a reader who cannot see green. */
+.session-running {
+  border: 1px solid var(--live);
+  color: var(--live);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.3rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 @media (max-width: 640px) {
   .watch {
     grid-template-columns: minmax(0, 1fr);

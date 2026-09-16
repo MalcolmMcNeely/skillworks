@@ -43,6 +43,7 @@ function page<Above extends Page | null>(
 export const pageGlyphs = {
   home: '⌂',
   watch: '▦',
+  sessions: '▤',
   author: '✎',
   test: '✓',
   publish: '↑',
@@ -54,10 +55,13 @@ export const home = page('/', 'Home', pageGlyphs.home, null, true);
 
 export const watch: PageBelowHome = page('/watch', 'Watch', pageGlyphs.watch, home, true);
 
+export const sessions: PageBelowHome = page('/sessions', 'Sessions', pageGlyphs.sessions, home, true);
+
 // Home shows a panel for every job, so a job still to come is listed before it is built.
 export const pages: readonly Page[] = [
   home,
   watch,
+  sessions,
   page('/author', 'Author', pageGlyphs.author, home, false),
   page('/test', 'Test', pageGlyphs.test, home, false),
   page('/publish', 'Publish', pageGlyphs.publish, home, false),

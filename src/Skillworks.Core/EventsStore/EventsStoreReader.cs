@@ -22,6 +22,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
     // One cut for every query, so no figure puts an event on another day; Loki counts nothing hour by hour cut finer.
     private static readonly TimeSpan Cut = TimeSpan.FromMilliseconds(1);
 
+    // An event carries the instant it happened only as text, so the line's own timestamp is unwrapped instead.
+    private const string AsMoment = "| label_format at=`{{ __timestamp__ | unixEpochMillis }}` | unwrap at";
+
     public Task<EventTotals> CountAsync(
         EventQuery query,
         IReadOnlyList<string> by,
@@ -29,6 +32,34 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         TotalAsync(
             query,
             (from, until) => Instant($"{SumBy(by)} (count_over_time({Selected(query)} [{Range(from, until)}]))", until),
+            Enumerable.Sum,
+            cancellationToken);
+
+    // The total is a moment, as milliseconds since the epoch, and not a count.
+    public Task<EventTotals> EarliestAsync(
+        EventQuery query,
+        IReadOnlyList<string> by,
+        CancellationToken cancellationToken) =>
+        OverTimeAsync(query, "min_over_time", by, Enumerable.Min, cancellationToken);
+
+    public Task<EventTotals> LatestAsync(
+        EventQuery query,
+        IReadOnlyList<string> by,
+        CancellationToken cancellationToken) =>
+        OverTimeAsync(query, "max_over_time", by, Enumerable.Max, cancellationToken);
+
+    private Task<EventTotals> OverTimeAsync(
+        EventQuery query,
+        string over,
+        IReadOnlyList<string> by,
+        Func<IEnumerable<decimal>, decimal> join,
+        CancellationToken cancellationToken) =>
+        TotalAsync(
+            query,
+            (from, until) => Instant(
+                $"{over}({Selected(query)} {AsMoment} [{Range(from, until)}]){GroupedBy(by)}",
+                until),
+            join,
             cancellationToken);
 
     // Loki fails the whole query on one value that is not a number, so such an event adds nothing.
@@ -42,6 +73,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             (from, until) => Instant(
                 $"{SumBy(by)} (sum_over_time({Selected(query)} | unwrap {EventAttributes.LabelOf(attribute)} | __error__=\"\" [{Range(from, until)}]))",
                 until),
+            Enumerable.Sum,
             cancellationToken);
 
     // A range query, as 24 instant queries cost 24 times as much and an hour label multiplies the series a store caps.
@@ -55,6 +87,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
                 // Each step takes in its end, so the offset takes an hour's first instant in and its end out.
                 $"loki/api/v1/query_range?query={Uri.EscapeDataString($"{SumBy(by)} (count_over_time({Selected(query)} [1h] offset {Range(Cut)}))")}" +
                 $"&start={Nanoseconds(from + Hour)}&end={Nanoseconds(until)}&step={(long)Hour.TotalSeconds}",
+            Enumerable.Sum,
             cancellationToken);
 
     public Task<string?> UnreachableAsync(CancellationToken cancellationToken)
@@ -71,6 +104,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
     private async Task<EventTotals> TotalAsync(
         EventQuery query,
         Func<DateTimeOffset, DateTimeOffset, string> routeOf,
+        Func<IEnumerable<decimal>, decimal> join,
         CancellationToken cancellationToken)
     {
         var groups = new List<EventTotal>();
@@ -92,15 +126,17 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             groups.AddRange(totalled.Groups);
         }
 
-        return EventTotals.Of(EventTotal.Joined(groups));
+        return EventTotals.Of(EventTotal.Joined(groups, join));
     }
 
     // A range leaves out its start and takes in its end, so ending a cut early takes From in and Until out.
     private static string Instant(string logql, DateTimeOffset until) =>
         $"loki/api/v1/query?query={Uri.EscapeDataString(logql)}&time={Nanoseconds(until - Cut)}";
 
-    private static string SumBy(IReadOnlyList<string> by) =>
-        by.Count == 0 ? "sum" : $"sum by ({string.Join(", ", by.Select(EventAttributes.LabelOf))})";
+    private static string SumBy(IReadOnlyList<string> by) => $"sum{GroupedBy(by)}";
+
+    private static string GroupedBy(IReadOnlyList<string> by) =>
+        by.Count == 0 ? "" : $" by ({string.Join(", ", by.Select(EventAttributes.LabelOf))})";
 
     private static string Range(DateTimeOffset from, DateTimeOffset until) => Range(until - from);
 
@@ -113,6 +149,11 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         if (query.Skill is { } skill)
         {
             logql += $" | {EventAttributes.LabelOf(EventAttributes.Skill)}={Quoted(skill)}";
+        }
+
+        if (query.QuerySource is { } source)
+        {
+            logql += $" | {EventAttributes.LabelOf(EventAttributes.QuerySource)}={Quoted(source)}";
         }
 
         if (query.Repository is { } repository)

@@ -77,6 +77,8 @@ public sealed class StudioHost : IDisposable
 
     public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);
 
+    public Task Push(params SessionEvent[] events) => TestLoki.PushAsync(_tenant, events);
+
     // Headers first and then one line at a time, as a browser reads an answer that arrives day by day.
     public async Task<IReadOnlyList<JsonObject>> Lines(string path, int count = int.MaxValue)
     {

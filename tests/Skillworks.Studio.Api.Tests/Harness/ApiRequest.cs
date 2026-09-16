@@ -18,6 +18,10 @@ public sealed record ApiRequest(
 {
     internal const string EventName = "api_request";
 
+    public string Session { get; init; } = TestLoki.Session;
+
+    public string? Person { get; init; } = TestLoki.Person;
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>

@@ -5,6 +5,7 @@ using Skillworks.ServiceDefaults;
 using Skillworks.Studio.Api.Catalogue;
 using Skillworks.Studio.Api.Filters;
 using Skillworks.Studio.Api.Health;
+using Skillworks.Studio.Api.Sessions;
 using Skillworks.Studio.Api.Skills;
 using Skillworks.Studio.Api.Telemetry;
 
@@ -25,6 +26,7 @@ app.MapGroup("/api")
     .MapHealthEndpoints()
     .MapCatalogueEndpoints()
     .MapSkillEndpoints()
+    .MapSessionEndpoints()
     .MapFilterEndpoints()
     .MapTelemetrySwitchEndpoints();
 

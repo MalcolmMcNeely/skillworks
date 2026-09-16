@@ -18,11 +18,13 @@ public sealed class EventTotal(IReadOnlyDictionary<string, string> labels, decim
     public string? Attribute(string name) => labels.GetValueOrDefault(EventAttributes.LabelOf(name));
 
     // A span totalled in several queries answers as one query would.
-    internal static IReadOnlyList<EventTotal> Joined(IEnumerable<EventTotal> groups) =>
+    internal static IReadOnlyList<EventTotal> Joined(
+        IEnumerable<EventTotal> groups,
+        Func<IEnumerable<decimal>, decimal> join) =>
     [
         .. groups
             .GroupBy(group => group.Group)
-            .Select(same => same.First().Totalling(same.Sum(group => group.Total)))
+            .Select(same => same.First().Totalling(join(same.Select(group => group.Total))))
     ];
 
     private EventTotal Totalling(decimal sum) => new(labels, sum, startOfHour);

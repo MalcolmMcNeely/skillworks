@@ -9,6 +9,17 @@ public static class EventAttributes
 
     public const string RepositoryName = "vcs.repository.name";
 
+    public const string Session = "session.id";
+
+    // The signed-in address, on every event and with no switch of its own to leave it off.
+    public const string Person = "user.email";
+
+    public const string Prompt = "prompt";
+
+    public const string Response = "response";
+
+    public const string QuerySource = "query_source";
+
     // Loki gives OTLP attributes with their dots turned into underscores.
     internal static string LabelOf(string attribute) => attribute.Replace('.', '_');
 

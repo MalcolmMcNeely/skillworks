@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { home, noSuchPageName, pageGlyphs, pageSymbols, pages, pagesBelow, tabTitleOf, watch } from './pages';
+import { home, noSuchPageName, pageGlyphs, pageSymbols, pages, pagesBelow, sessions, tabTitleOf, watch } from './pages';
 
 describe('pages', () => {
   it('lists every page of Studio in the order Home shows them', () => {
-    expect(pages.map((page) => page.name)).toEqual(['Home', 'Watch', 'Author', 'Test', 'Publish']);
+    expect(pages.map((page) => page.name)).toEqual(['Home', 'Watch', 'Sessions', 'Author', 'Test', 'Publish']);
   });
 
   it('gives every page an address, a name, a glyph and a tab title', () => {
@@ -21,11 +21,11 @@ describe('pages', () => {
 
   it('puts nothing above Home and Home above every other page, so the up button always leads somewhere', () => {
     expect(home.parent).toBeNull();
-    expect(pages.filter((page) => page !== home).map((page) => page.parent)).toEqual(Array(4).fill(home));
+    expect(pages.filter((page) => page !== home).map((page) => page.parent)).toEqual(Array(5).fill(home));
   });
 
-  it('marks Home and Watch built and the jobs still to come not built', () => {
-    expect(pages.filter((page) => page.built)).toEqual([home, watch]);
+  it('marks Home, Watch and Sessions built and the jobs still to come not built', () => {
+    expect(pages.filter((page) => page.built)).toEqual([home, watch, sessions]);
   });
 
   it('opens Studio at the plain address', () => {
@@ -34,6 +34,10 @@ describe('pages', () => {
 
   it('gives Watch an address of its own', () => {
     expect(watch.address).toBe('/watch');
+  });
+
+  it('gives Sessions an address of its own', () => {
+    expect(sessions.address).toBe('/sessions');
   });
 
   it('titles the tab Skillworks on Home, so the tab never changes name on load', () => {
@@ -47,13 +51,14 @@ describe('pages', () => {
 
 describe('pageGlyphs', () => {
   it('gives each page the symbol a reader sees on Home', () => {
-    expect(pageGlyphs).toEqual({ home: '⌂', watch: '▦', author: '✎', test: '✓', publish: '↑' });
+    expect(pageGlyphs).toEqual({ home: '⌂', watch: '▦', sessions: '▤', author: '✎', test: '✓', publish: '↑' });
   });
 
   it('is the one place the pages take their symbols from', () => {
     expect(pages.map((page) => page.glyph)).toEqual([
       pageGlyphs.home,
       pageGlyphs.watch,
+      pageGlyphs.sessions,
       pageGlyphs.author,
       pageGlyphs.test,
       pageGlyphs.publish,
@@ -73,7 +78,7 @@ describe('tabTitleOf', () => {
 
 describe('pagesBelow', () => {
   it('names the jobs Home shows, in the order the list holds them', () => {
-    expect(pagesBelow(home).map((page) => page.name)).toEqual(['Watch', 'Author', 'Test', 'Publish']);
+    expect(pagesBelow(home).map((page) => page.name)).toEqual(['Watch', 'Sessions', 'Author', 'Test', 'Publish']);
   });
 
   it('leaves out the page asked about, so Home never leads back to Home', () => {
