@@ -111,6 +111,7 @@ export function Sessions() {
         answer={answer}
         failure={failure}
         noRuns={describeNoSessions(filter)}
+        asked={new URLSearchParams(asked)}
         onSort={(sort: SessionSort) => show(filter, nextOrder(answer, sort))}
       />
     </main>

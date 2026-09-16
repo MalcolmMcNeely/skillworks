@@ -78,6 +78,12 @@ export const surfaces: Record<string, Surface> = {
     text: ['unnamed', 'inkSoft'],
     marks: [],
   },
+  // A timeline's strips and marks sit on a panel ground, and the tip beside the cursor lies on one too.
+  timeline: {
+    ground: 'panel',
+    text: ['ink', 'inkSoft', 'inkFaint', 'hud'],
+    marks: ['hud', 'line', 'failed', 'warned'],
+  },
   // A pinned readout lies over the map, so its labels, figures and trigger glyphs are held to the thresholds too.
   tileReadout: {
     ground: 'panel',

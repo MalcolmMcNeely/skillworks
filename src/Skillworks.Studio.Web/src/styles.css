@@ -1407,7 +1407,8 @@ a.home-panel-face:hover::before {
   padding: clamp(0.6rem, 2vh, 1rem) 0.7rem;
 }
 
-.sessions {
+.sessions,
+.session {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1564,6 +1565,320 @@ a.home-panel-face:hover::before {
   margin-left: 0.5rem;
   padding: 0.05rem 0.3rem;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.session-crumb {
+  margin: 0;
+}
+
+.session-name a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.session-name a:hover,
+.session-name a:focus-visible {
+  color: var(--hud);
+  text-decoration: underline;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.timeline-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+
+.timeline-readout,
+.timeline-hint {
+  margin: 0;
+}
+
+.timeline-clear {
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  padding: 0.05rem 0.4rem;
+  text-transform: uppercase;
+}
+
+.timeline-clear:hover:enabled,
+.timeline-clear:focus-visible {
+  border-color: var(--hud);
+  color: var(--ink);
+}
+
+.timeline-clear:disabled {
+  color: var(--ink-faint);
+  cursor: default;
+}
+
+/* The tip is placed from the cursor, so the frame it is placed in must be the thing it is measured against. */
+.timeline-frame {
+  position: relative;
+  width: 100%;
+}
+
+.timeline-overview,
+.timeline-lanes {
+  display: block;
+  touch-action: none;
+}
+
+.timeline-label {
+  fill: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+}
+
+.timeline-axis,
+.timeline-fold-word {
+  fill: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+}
+
+.timeline-ground {
+  fill: var(--panel);
+}
+
+.timeline-track {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+
+.timeline-grid {
+  stroke: var(--rule);
+  stroke-dasharray: 2 4;
+  stroke-width: 1;
+}
+
+/* A fold is a stretch of the run that was cut out, so it is drawn as a break and never as a divider. */
+.timeline-fold {
+  stroke: var(--line);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+}
+
+.timeline-strip.is-model,
+.timeline-mark.is-model {
+  fill: var(--hud);
+}
+
+.timeline-strip.is-tool,
+.timeline-mark.is-tool {
+  fill: var(--line);
+}
+
+.timeline-strip.is-fault,
+.timeline-mark.is-fault {
+  fill: var(--failed);
+}
+
+.timeline-strip.is-refused,
+.timeline-mark.is-refused {
+  fill: var(--warned);
+}
+
+.timeline-shade {
+  fill: var(--void);
+  opacity: 0.66;
+}
+
+.timeline-brush {
+  fill: var(--hud);
+  opacity: 0.12;
+}
+
+.timeline-handle {
+  fill: var(--hud);
+}
+
+.timeline-exchange {
+  cursor: pointer;
+  fill: var(--rule);
+}
+
+.timeline-exchange:hover {
+  fill: var(--pressed);
+}
+
+.timeline-mark {
+  cursor: pointer;
+}
+
+.timeline-mark.is-open {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.timeline-mark:hover {
+  fill: var(--ink);
+}
+
+/* The tip must not take the cursor off the mark it stands for, or the two would flicker against each other. */
+.timeline-tip {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  font-size: 0.75rem;
+  max-width: 24rem;
+  padding: 0.35rem 0.5rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.timeline-tip p {
+  margin: 0;
+}
+
+.timeline-tip-head {
+  color: var(--ink);
+  font-family: var(--mono);
+}
+
+.timeline-tip-note,
+.step-note {
+  color: var(--warned);
+  margin-left: 0.5rem;
+}
+
+.timeline-tip-words,
+.step-words {
+  color: var(--ink-soft);
+  margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.steps-panel {
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.5rem;
+}
+
+.steps-panel-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+
+.steps-panel-head h2 {
+  color: var(--hud);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.steps-figure {
+  margin: 0;
+}
+
+.step-open {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  font-size: 0.75rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.step-open p {
+  margin: 0;
+}
+
+.step-open-head {
+  align-items: baseline;
+  color: var(--ink);
+  display: flex;
+  font-family: var(--mono);
+  gap: 0.5rem;
+}
+
+.step-close {
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  margin-left: auto;
+  padding: 0.05rem 0.4rem;
+  text-transform: uppercase;
+}
+
+.step-close:hover,
+.step-close:focus-visible {
+  border-color: var(--hud);
+  color: var(--ink);
+}
+
+.step-list {
+  list-style: none;
+  margin: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.step-row {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  font-size: 0.75rem;
+  gap: 0.6rem;
+  grid-template-columns: 5rem 8rem minmax(0, 1fr) 5rem;
+  padding: 0.25rem 0.4rem;
+  text-align: left;
+  width: 100%;
+}
+
+.step-row:hover,
+.step-row:focus-visible,
+.step-row.is-open {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.step-clock,
+.step-spell {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.step-spell {
+  text-align: right;
+}
+
+.step-title {
+  color: var(--ink);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-said {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

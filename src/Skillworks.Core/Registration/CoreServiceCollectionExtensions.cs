@@ -12,6 +12,7 @@ using Skillworks.Core.Gaps;
 using Skillworks.Core.Health;
 using Skillworks.Core.Sessions;
 using Skillworks.Core.Sessions.Queries;
+using Skillworks.Core.Sessions.Steps;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Spend.Queries;
 using Skillworks.Core.Telemetry;
@@ -41,6 +42,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<ActivationQueries>();
         services.AddSingleton<SpendQueries>();
         services.AddSingleton<SessionQueries>();
+        services.AddSingleton<StepQueries>();
 
         // A named client, not a typed one: a typed client held by a singleton keeps one handler for the app's life.
         services.AddHttpClient(EventsStoreReader.ClientName, (provider, client) =>
@@ -74,6 +76,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<ArrivingDays>();
         services.AddSingleton<SkillReport>();
         services.AddSingleton<SessionReport>();
+        services.AddSingleton<StepReport>();
         services.AddSingleton<StudioHealth>();
 
         return services;

@@ -8,6 +8,9 @@ public sealed class GapReport(TelemetrySwitch telemetry)
     public Gap InTotals(EventTotals period, IReadOnlyList<DateOnly> unread) =>
         Gap.Of(period.Unreachable, unread, (long)period.Total, Emitting());
 
+    public Gap InLines(EventLines read, IReadOnlyList<DateOnly> unread) =>
+        Gap.Of(read.Unreachable, unread, read.Lines.Count, Emitting());
+
     // The switch calls unreadable settings not emitting: safe for writing, but a lie on a screen.
     private bool? Emitting()
     {

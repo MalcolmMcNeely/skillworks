@@ -1,5 +1,6 @@
 using Skillworks.Core.Filters;
 using Skillworks.Core.Sessions;
+using Skillworks.Core.Sessions.Steps;
 using Skillworks.Studio.Api.Arriving;
 
 namespace Skillworks.Studio.Api.Sessions;
@@ -16,6 +17,15 @@ public static class SessionEndpoints
                 SessionReport report,
                 CancellationToken cancellationToken) =>
                 new ArrivingAnswer(report.AnswerAsync(filter, order, cancellationToken)));
+
+        // The span narrows the read, so opening a run from a table narrowed to a day reads that day alone.
+        api.MapGet(
+            "sessions/{id}",
+            (string id,
+                [AsParameters] Filter filter,
+                StepReport steps,
+                CancellationToken cancellationToken) =>
+                new ArrivingAnswer(steps.AnswerAsync(id, filter, cancellationToken)));
 
         return api;
     }

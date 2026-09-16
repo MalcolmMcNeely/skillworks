@@ -19,6 +19,12 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private static readonly TimeSpan Hour = TimeSpan.FromHours(1);
 
+    // Under Loki's own cap, so the store never refuses a page.
+    private const int Page = 1000;
+
+    // One person's run in one repository ends long before this, so the read is bounded rather than endless.
+    private const int MostLines = 50_000;
+
     // One cut for every query, so no figure puts an event on another day; Loki counts nothing hour by hour cut finer.
     private static readonly TimeSpan Cut = TimeSpan.FromMilliseconds(1);
 
@@ -90,6 +96,48 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             Enumerable.Sum,
             cancellationToken);
 
+    // The store caps both the days one query may span and the entries it may answer with.
+    public async Task<EventLines> LinesAsync(EventQuery query, CancellationToken cancellationToken)
+    {
+        var lines = new List<EventLine>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var (start, until) in Windows(query))
+        {
+            var from = start;
+
+            while (from < until && lines.Count < MostLines)
+            {
+                var read = await AskAsync(
+                    $"loki/api/v1/query_range?query={Uri.EscapeDataString(Selected(query))}" +
+                    $"&start={Nanoseconds(from)}&end={Nanoseconds(until)}&limit={Page}&direction=forward",
+                    root => EventLines.Of(Entries(root)),
+                    EventLines.Failed,
+                    cancellationToken);
+
+                if (read.Unreachable is not null)
+                {
+                    return read;
+                }
+
+                var fresh = read.Lines.Where(line => seen.Add(line.Key)).ToList();
+
+                lines.AddRange(fresh);
+
+                // A page that fills up and adds nothing new would ask for the same instant for ever.
+                if (read.Lines.Count < Page || fresh.Count == 0)
+                {
+                    break;
+                }
+
+                from = read.Lines.Max(line => line.At);
+            }
+        }
+
+        // Loki answers stream by stream, and each event of a run is a stream of its own.
+        return EventLines.Of([.. lines.OrderBy(line => line.At)]);
+    }
+
     public Task<string?> UnreachableAsync(CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
@@ -145,6 +193,11 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
     private static string Selected(EventQuery query)
     {
         var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\"";
+
+        if (query.Session is { } session)
+        {
+            logql += $" | {EventAttributes.LabelOf(EventAttributes.Session)}={Quoted(session)}";
+        }
 
         if (query.Skill is { } skill)
         {
@@ -258,6 +311,34 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         return totals;
     }
 
+    // Loki hands back every attribute of an event as a label on its stream, so one entry is one event.
+    private static IReadOnlyList<EventLine> Entries(JsonElement root)
+    {
+        var lines = new List<EventLine>();
+
+        foreach (var stream in Results(root))
+        {
+            if (!stream.TryGetProperty("values", out var values) || values.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            var labels = Labels(stream, "stream");
+
+            lines.AddRange(values.EnumerateArray().Select(Moment).OfType<DateTimeOffset>().Select(at => new EventLine(labels, at)));
+        }
+
+        return lines;
+    }
+
+    private static DateTimeOffset? Moment(JsonElement entry) =>
+        entry.ValueKind == JsonValueKind.Array &&
+        entry.GetArrayLength() >= 1 &&
+        entry[0].ValueKind == JsonValueKind.String &&
+        long.TryParse(entry[0].GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var nanoseconds)
+            ? DateTimeOffset.FromUnixTimeMilliseconds(nanoseconds / 1_000_000)
+            : null;
+
     private static (double At, decimal Total)? Point(JsonElement point) =>
         point.ValueKind == JsonValueKind.Array &&
         point.GetArrayLength() >= 2 &&
@@ -276,11 +357,11 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             ? results.EnumerateArray()
             : [];
 
-    private static Dictionary<string, string> Labels(JsonElement sample)
+    private static Dictionary<string, string> Labels(JsonElement sample, string property = "metric")
     {
         var labels = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        if (sample.TryGetProperty("metric", out var names) && names.ValueKind == JsonValueKind.Object)
+        if (sample.TryGetProperty(property, out var names) && names.ValueKind == JsonValueKind.Object)
         {
             foreach (var label in names.EnumerateObject().Where(label => label.Value.ValueKind == JsonValueKind.String))
             {

@@ -20,4 +20,16 @@ public static class SessionRequests
     // Raw JSON, as a typed row silently drops a field the line should no longer carry.
     public static async Task<JsonObject> SessionLine(this StudioHost studio, string kind, string filter = "") =>
         (await studio.SessionLines(filter)).First(line => StudioHost.KindOf(line) == kind);
+
+    public static Task<IReadOnlyList<JsonObject>> StepLines(this StudioHost studio, string id, string filter = "") =>
+        studio.Lines($"/api/sessions/{id}{filter}");
+
+    public static async Task<StepsAnswer> StepAnswer(this StudioHost studio, string id, string filter = "") =>
+        StepsAnswer.Of(await studio.StepLines(id, filter));
+
+    public static async Task<IReadOnlyList<StepRow>> StepsIn(this StudioHost studio, string id, string filter = "") =>
+        (await studio.StepAnswer(id, filter)).Steps;
+
+    public static async Task<JsonObject> StepLine(this StudioHost studio, string kind, string id) =>
+        (await studio.StepLines(id)).First(line => StudioHost.KindOf(line) == kind);
 }

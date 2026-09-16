@@ -33,6 +33,12 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? DecisionSource { get; init; }
 
+    public string? DurationMs { get; init; }
+
+    public string? Model { get; init; }
+
+    public string? CostUsd { get; init; }
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>
@@ -45,6 +51,9 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("error_type", ErrorType),
         ("decision", Decision),
         ("source", DecisionSource),
+        ("duration_ms", DurationMs),
+        ("model", Model),
+        ("cost_usd", CostUsd),
         ("vcs.owner.name", Owner),
         ("vcs.repository.name", RepositoryName),
     ];
@@ -55,13 +64,31 @@ public sealed record SessionEvent(string Session, string EventName, string At)
     internal static SessionEvent Titled(string session, string at, string title) =>
         new(session, "assistant_response", at) { Response = title, QuerySource = TitleSource };
 
-    internal static SessionEvent ToolRan(string session, string at, string tool = "Bash") =>
-        new(session, ToolResult, at) { ToolName = tool, Success = "true", DecisionSource = "config" };
+    internal static SessionEvent Answered(string session, string at, string response) =>
+        new(session, "assistant_response", at) { Response = response };
+
+    internal static SessionEvent Turned(string session, string at, int lengthMs = 0, decimal cost = 0m) =>
+        new(session, "api_request", at)
+        {
+            Model = "claude-opus-5",
+            DurationMs = Figure(lengthMs),
+            CostUsd = cost.ToString(CultureInfo.InvariantCulture),
+        };
+
+    internal static SessionEvent ToolRan(string session, string at, string tool = "Bash", int lengthMs = 0) =>
+        new(session, ToolResult, at)
+        {
+            ToolName = tool,
+            Success = "true",
+            DecisionSource = "config",
+            DurationMs = Figure(lengthMs),
+        };
 
     internal static SessionEvent ToolFailed(string session, string at, string tool = "Bash") =>
         new(session, ToolResult, at) { ToolName = tool, Success = "false", ErrorType = "ShellError", DecisionSource = "config" };
 
-    internal static SessionEvent ModelFailed(string session, string at) => new(session, "api_error", at);
+    internal static SessionEvent ModelFailed(string session, string at) =>
+        new(session, "api_error", at) { ErrorType = "RateLimited" };
 
     internal static SessionEvent Refused(string session, string at, string tool = "Bash") =>
         Decided(session, at, tool, "reject", "user_reject");
@@ -71,6 +98,8 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     internal static SessionEvent Allowed(string session, string at, string tool = "Bash") =>
         Decided(session, at, tool, "accept", "config");
+
+    private static string Figure(int value) => value.ToString(CultureInfo.InvariantCulture);
 
     private static SessionEvent Decided(string session, string at, string tool, string decision, string source) =>
         new(session, "tool_decision", at) { ToolName = tool, Decision = decision, DecisionSource = source };

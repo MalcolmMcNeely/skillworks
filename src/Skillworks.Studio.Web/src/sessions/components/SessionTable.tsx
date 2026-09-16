@@ -1,4 +1,6 @@
+import { Link } from 'react-router';
 import { describeCount, describeMoney } from '../../figures/lib/figures';
+import { sessionAddress } from '../lib/where';
 import {
   describeLength,
   describeStarted,
@@ -13,14 +15,14 @@ import {
   type SortedBy,
 } from '../lib/sessions';
 
-function Row({ session }: { session: Session }) {
+function Row({ session, asked }: { session: Session; asked: URLSearchParams }) {
   return (
     <tr>
       <td className="session-started">{describeStarted(session.startedUtc)}</td>
       <td>{session.repository ?? noRepository}</td>
       <td>{session.person ?? notKnown}</td>
       <td className="session-name">
-        <span>{session.name}</span>
+        <Link to={sessionAddress(session.id, { exchange: null, step: null }, asked)}>{session.name}</Link>
         {session.running ? <span className="session-running">Running</span> : null}
       </td>
       <td className="session-figure">{describeLength(session.lengthMs)}</td>
@@ -61,11 +63,14 @@ export function SessionTable({
   answer,
   failure,
   noRuns,
+  asked,
   onSort,
 }: {
   answer: SessionsAnswer | null;
   failure: string | null;
   noRuns: string;
+  // What the table was asked for, so a run opens with the span and the order a reader can come back to.
+  asked: URLSearchParams;
   onSort: (sort: SessionSort) => void;
 }) {
   if (failure !== null) {
@@ -92,7 +97,7 @@ export function SessionTable({
       </thead>
       <tbody>
         {answer.sessions.map((session) => (
-          <Row key={session.id} session={session} />
+          <Row key={session.id} session={session} asked={asked} />
         ))}
       </tbody>
     </table>
