@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lampSymbols } from '../../health/lib/health';
 import { pageSymbols } from '../../pages/lib/pages';
 import { triggerSymbols } from '../../provenance/lib/triggers';
-import { mapPanelSymbols } from '../../skills/lib/mapPanel';
+import { mapNoticeSymbols } from '../../skills/lib/mapNotice';
 import { readoutSymbols } from '../../skills/lib/readout';
 import { missingSymbols } from '../../skills/lib/skills';
 import { sliceSymbols } from '../../skills/lib/strip';
@@ -13,7 +13,7 @@ import { crossings, type SymbolTable } from './alphabets';
 const tables: Record<string, SymbolTable> = {
   pages: pageSymbols,
   lamps: lampSymbols,
-  mapPanel: mapPanelSymbols,
+  mapNotice: mapNoticeSymbols,
   missing: missingSymbols,
   readout: readoutSymbols,
   slices: sliceSymbols,
@@ -27,7 +27,7 @@ describe('the symbols on screen', () => {
   });
 
   it('lets one symbol mean broken wherever something is broken', () => {
-    for (const name of ['lamps', 'mapPanel', 'slices', 'telemetrySwitch']) {
+    for (const name of ['lamps', 'mapNotice', 'slices', 'telemetrySwitch']) {
       expect(tables[name]?.glyphs).toContain('✕');
     }
   });

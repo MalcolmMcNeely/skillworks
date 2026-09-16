@@ -5,7 +5,7 @@ import { triggerMarks } from '../../provenance/lib/triggers';
 import { showsFigures, type SkillsAnswer } from '../lib/answer';
 import { describeTile, heatStep, layOut, tilesOf, unnamedWord, viewWords, type MapView, type PlacedTile, type Sizing } from '../lib/map';
 import type { MapChoice } from '../lib/mapChoice';
-import { mapPanelOf } from '../lib/mapPanel';
+import { mapNoticeOf } from '../lib/mapNotice';
 import { describeCount, describeMoney, missingWords, type SkillSummary } from '../lib/skills';
 import type { StripSlice } from '../lib/strip';
 import { TileReadout } from './TileReadout';
@@ -250,7 +250,7 @@ export function SkillMap({
   }, [pinned]);
 
   const { tiles, unsized, beyond, each } = tilesOf(answer ?? { skills: [], unnamedSpend: null }, choice.view, choice.order);
-  const panel = mapPanelOf({ answer, failure, tileCount: tiles.length, view: choice.view });
+  const notice = mapNoticeOf({ answer, failure, tileCount: tiles.length, view: choice.view });
   const placed = layOut(tiles, size);
   const shown = placed.find((entry) => entry.tile.key === (probed ?? pinned)) ?? null;
   const slices = answer?.slices ?? [];
@@ -262,7 +262,7 @@ export function SkillMap({
         <Keys label="Size by" pressed={choice.view} options={views} onPress={(view) => onChoose({ ...choice, view })} />
         <Keys label="Order" pressed={choice.order} options={orders} onPress={(order) => onChoose({ ...choice, order })} />
 
-        {panel === null && each !== null && (
+        {notice === null && each !== null && (
           <p className={`legend${arriving ? ' is-arriving' : ''}`}>
             <span className="micro">Each</span>
             <span className="legend-figure">{describeMoney(each.lowest)}</span>
@@ -290,7 +290,7 @@ export function SkillMap({
 
       <div className="frame">
         <div className={`field${arriving ? ' is-arriving' : ''}`} ref={field} aria-busy={arriving}>
-          {panel === null ? (
+          {notice === null ? (
             <>
               <ol className="tiles" aria-label={`Skills by ${viewWords[choice.view]}, ${choice.order} first`}>
                 {placed.map((entry) => (
@@ -314,12 +314,12 @@ export function SkillMap({
               )}
             </>
           ) : (
-            <div className={`panel is-${panel.tone}${panel.busy ? ' is-busy' : ''}`} role="status">
-              <div className="panel-box">
-                <span className="panel-glyph" aria-hidden="true">
-                  {panel.glyph}
+            <div className={`map-notice is-${notice.tone}${notice.busy ? ' is-busy' : ''}`} role="status">
+              <div className="map-notice-box">
+                <span className="map-notice-glyph" aria-hidden="true">
+                  {notice.glyph}
                 </span>
-                <span className="panel-word">{panel.word}</span>
+                <span className="map-notice-word">{notice.word}</span>
               </div>
             </div>
           )}

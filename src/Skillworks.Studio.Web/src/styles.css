@@ -1174,7 +1174,7 @@ button.tile-skin {
   overflow-wrap: anywhere;
 }
 
-.panel {
+.map-notice {
   background-image:
     linear-gradient(var(--rule) 1px, transparent 1px),
     linear-gradient(90deg, var(--rule) 1px, transparent 1px);
@@ -1185,7 +1185,7 @@ button.tile-skin {
   position: absolute;
 }
 
-.panel-box {
+.map-notice-box {
   align-items: center;
   background: var(--void);
   border: 1px solid currentColor;
@@ -1195,29 +1195,29 @@ button.tile-skin {
   padding: 1.4rem 2.6rem;
 }
 
-.panel.is-failed .panel-box {
+.map-notice.is-failed .map-notice-box {
   color: var(--failed);
 }
 
-.panel.is-hud .panel-box {
+.map-notice.is-hud .map-notice-box {
   color: var(--hud);
 }
 
-.panel.is-dim .panel-box {
+.map-notice.is-dim .map-notice-box {
   color: var(--ink-faint);
 }
 
-.panel-glyph {
+.map-notice-glyph {
   font-family: var(--mono);
   font-size: 2.4rem;
   line-height: 1;
 }
 
-.panel.is-busy .panel-glyph {
+.map-notice.is-busy .map-notice-glyph {
   animation: hud-spin 1.6s linear infinite;
 }
 
-.panel-word {
+.map-notice-word {
   font-family: var(--mono);
   font-size: 1.1rem;
   font-weight: 500;
