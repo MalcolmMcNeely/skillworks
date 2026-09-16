@@ -19,18 +19,25 @@ export type MapTile =
     }
   | { kind: 'unnamed'; key: string; rank: number; value: number; spend: TurnTotals };
 
-type Unranked<T> = T extends unknown ? Omit<T, 'rank'> : never;
+export type Sizing =
+  | { kind: 'skill'; key: string; value: number; skill: SkillSummary }
+  | { kind: 'unnamed'; key: string; value: number; spend: TurnTotals };
+
+type EachRange = { lowest: number; highest: number } | null;
+
+export const unnamedWord = 'Unnamed spend';
 
 // Every tile gets at least this share of the map, so a skill ranked last is still big enough to read and to reach.
 const floorShare = 0.02;
 
-// Raised tiles never take more than this much of the map, so a map of many skills is still sized by their figures.
-const mostFloored = 0.5;
+// Floored tiles take at most half the map at this count, so the figures still shape the other half.
+const mapCap = 25;
 
 export interface SkillTiles {
   tiles: MapTile[];
   unsized: SkillSummary[];
-  each: { lowest: number; highest: number } | null;
+  beyond: Sizing[];
+  each: EachRange;
 }
 
 export interface Size {
@@ -49,28 +56,34 @@ interface Rectangle extends Size {
   y: number;
 }
 
+function rankedTile(sizing: Sizing, rank: number, range: EachRange): MapTile {
+  if (sizing.kind === 'unnamed') {
+    return { ...sizing, rank };
+  }
+
+  const own = sizing.skill.each;
+
+  return {
+    ...sizing,
+    rank,
+    heat:
+      own === null || range === null
+        ? null
+        : range.highest === range.lowest
+          ? 0
+          : (own - range.lowest) / (range.highest - range.lowest),
+  };
+}
+
 export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, view: MapView, order: MapOrder): SkillTiles {
   const valued = answer.skills.map((skill) => ({
     skill,
     value: view === 'cost' ? (skill.spend?.cost ?? 0) : skill.activations,
   }));
 
-  const onMap = valued.filter((entry) => entry.value > 0);
-  const eaches = onMap.flatMap((entry) => entry.skill.each ?? []);
-  const each = eaches.length === 0 ? null : { lowest: Math.min(...eaches), highest: Math.max(...eaches) };
-
-  const sized: Unranked<MapTile>[] = onMap.map(({ skill, value }) => ({
-    kind: 'skill',
-    key: `skill:${skill.name}`,
-    value,
-    skill,
-    heat:
-      skill.each === null || each === null
-        ? null
-        : each.highest === each.lowest
-          ? 0
-          : (skill.each - each.lowest) / (each.highest - each.lowest),
-  }));
+  const sized: Sizing[] = valued
+    .filter((entry) => entry.value > 0)
+    .map(({ skill, value }) => ({ kind: 'skill', key: `skill:${skill.name}`, value, skill }));
 
   // Never shared out among skills, and it has no Activations, so it is sized only when the map shows Cost.
   if (view === 'cost' && answer.unnamedSpend !== null && answer.unnamedSpend.cost > 0) {
@@ -81,9 +94,14 @@ export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, v
     a.value === b.value ? a.key.localeCompare(b.key) : order === 'most' ? b.value - a.value : a.value - b.value,
   );
 
+  const drawn = ordered.slice(0, mapCap);
+  const eaches = drawn.flatMap((sizing) => (sizing.kind === 'skill' ? (sizing.skill.each ?? []) : []));
+  const each = eaches.length === 0 ? null : { lowest: Math.min(...eaches), highest: Math.max(...eaches) };
+
   return {
-    tiles: ordered.map((tile, index) => ({ ...tile, rank: index + 1 })),
+    tiles: drawn.map((sizing, index) => rankedTile(sizing, index + 1, each)),
     unsized: valued.filter((entry) => entry.value <= 0).map((entry) => entry.skill),
+    beyond: ordered.slice(mapCap),
     each,
   };
 }
@@ -91,7 +109,7 @@ export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, v
 // The whole reading in words, because a screen reader cannot see a tile's size, place or brightness.
 export function describeTile(tile: MapTile): string {
   if (tile.kind === 'unnamed') {
-    return `${tile.rank}. Unnamed spend. Cost ${describeMoney(tile.spend.cost)}.`;
+    return `${tile.rank}. ${unnamedWord}. Cost ${describeMoney(tile.spend.cost)}.`;
   }
 
   const { skill } = tile;
@@ -111,18 +129,17 @@ export function heatStep(heat: number): 1 | 2 | 3 {
 
 // Raising a small tile to the minimum shrinks the rest, which can push another under it, so this repeats until none is.
 function sharesOf(tiles: readonly MapTile[], total: number): number[] {
-  const floor = Math.min(floorShare, mostFloored / tiles.length);
   const floored = new Set<number>();
 
   for (;;) {
-    const spare = 1 - floor * floored.size;
+    const spare = 1 - floorShare * floored.size;
     const unfloored = total - tiles.reduce((sum, tile, index) => sum + (floored.has(index) ? tile.value : 0), 0);
     const under = tiles.flatMap((tile, index) =>
-      !floored.has(index) && (tile.value / unfloored) * spare < floor ? [index] : [],
+      !floored.has(index) && (tile.value / unfloored) * spare < floorShare ? [index] : [],
     );
 
     if (under.length === 0) {
-      return tiles.map((tile, index) => (floored.has(index) ? floor : (tile.value / unfloored) * spare));
+      return tiles.map((tile, index) => (floored.has(index) ? floorShare : (tile.value / unfloored) * spare));
     }
 
     for (const index of under) {

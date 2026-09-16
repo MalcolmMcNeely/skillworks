@@ -1231,7 +1231,7 @@ button.tile-skin {
   }
 }
 
-.strip {
+.offmap {
   align-items: baseline;
   border-top: 1px solid var(--rule);
   display: flex;
@@ -1242,7 +1242,7 @@ button.tile-skin {
   padding-top: 0.4rem;
 }
 
-.strip-label {
+.offmap-label {
   color: var(--ink-soft);
   flex: none;
   font-family: var(--mono);
@@ -1251,7 +1251,7 @@ button.tile-skin {
   text-transform: uppercase;
 }
 
-.strip ul {
+.offmap ul {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;

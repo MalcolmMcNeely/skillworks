@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeTile, heatStep, layOut, tilesOf, type MapTile, type PlacedTile } from './map';
+import { describeTile, heatStep, layOut, tilesOf, type PlacedTile, type Sizing } from './map';
 import type { SkillSummary } from './skills';
 
 function skill(name: string, cost: number, activations: number): SkillSummary {
@@ -29,12 +29,16 @@ function overlap(a: PlacedTile, b: PlacedTile): number {
 
 const answered = [skill('alpha', 10, 40), skill('beta', 30, 10), skill('gamma', 20, 25)];
 
-function nameOf(tile: MapTile | undefined): string | undefined {
-  return tile?.kind === 'skill' ? tile.skill.name : undefined;
+function named(index: number): string {
+  return `skill-${String(index).padStart(2, '0')}`;
 }
 
-function names(tiles: readonly MapTile[]): (string | undefined)[] {
-  return tiles.map(nameOf);
+function nameOf(sizing: Sizing | undefined): string | undefined {
+  return sizing?.kind === 'skill' ? sizing.skill.name : undefined;
+}
+
+function names(sizings: readonly Sizing[]): (string | undefined)[] {
+  return sizings.map(nameOf);
 }
 
 describe('tilesOf', () => {
@@ -172,6 +176,43 @@ describe('tilesOf', () => {
 
     expect(tiles.map((tile) => tile.rank)).toEqual([1, 2, 3]);
   });
+
+  it('keeps the first 25 of the chosen order and reports the rest as beyond the map', () => {
+    const skills = Array.from({ length: 30 }, (_, index) => skill(named(index), index + 1, 1));
+
+    const { tiles, beyond } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'most');
+
+    expect(names(tiles)).toEqual(Array.from({ length: 25 }, (_, place) => named(29 - place)));
+    expect(names(beyond)).toEqual([named(4), named(3), named(2), named(1), named(0)]);
+  });
+
+  it('keeps the smallest 25 when the reader flips the order to least', () => {
+    const skills = Array.from({ length: 30 }, (_, index) => skill(named(index), index + 1, 1));
+
+    const { tiles, beyond } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'least');
+
+    expect(names(tiles)).toEqual(Array.from({ length: 25 }, (_, place) => named(place)));
+    expect(names(beyond)).toEqual([named(25), named(26), named(27), named(28), named(29)]);
+  });
+
+  it('scales the legend to the tiles on the map, and not to a skill beyond the cap', () => {
+    const shown = Array.from({ length: 25 }, (_, index) => skill(named(index), 2 * (100 + index), 100 + index));
+    const tail = skill('tail', 50, 1);
+
+    const { each, beyond } = tilesOf({ skills: [...shown, tail], unnamedSpend: null }, 'activations', 'most');
+
+    expect(names(beyond)).toEqual(['tail']);
+    expect(each).toEqual({ lowest: 2, highest: 2 });
+  });
+
+  it('leaves a skill with no figure out of the beyond row, as it belongs to the unsized row instead', () => {
+    const skills = [...Array.from({ length: 30 }, (_, index) => skill(named(index), index + 1, 1)), skill('quiet', 0, 0)];
+
+    const { beyond, unsized } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'most');
+
+    expect(names(beyond)).not.toContain('quiet');
+    expect(unsized.map((each) => each.name)).toEqual(['quiet']);
+  });
 });
 
 describe('describeTile', () => {
@@ -243,13 +284,40 @@ describe('layOut', () => {
     expect(beta).toBeGreaterThan(gamma ?? 0);
   });
 
-  it('still sizes tiles by their figures on a map of more than fifty skills', () => {
-    const skills = Array.from({ length: 60 }, (_, index) => skill(`skill-${String(index).padStart(2, '0')}`, index === 0 ? 500 : 0.01, 1));
+  it('draws 25 of sixty skills, leaves the other 35 off, and still sizes the 25 by their figures', () => {
+    const skills = Array.from({ length: 60 }, (_, index) => skill(named(index), index === 0 ? 500 : 0.01, 1));
 
-    const placed = layOut(tilesOf({ skills, unnamedSpend: null }, 'cost', 'most').tiles, size);
+    const { tiles, beyond } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'most');
+    const placed = layOut(tiles, size);
+
+    expect([placed.length, beyond.length]).toEqual([25, 35]);
 
     const [biggest, smallest] = [placed[0], placed.at(-1)].map((tile) => (tile ? tile.width * tile.height : 0));
     expect(biggest).toBeGreaterThan(10 * (smallest ?? 0));
+  });
+
+  it('gives every tile at least a fiftieth of the map at every count up to the cap', () => {
+    for (let count = 1; count <= 25; count += 1) {
+      const skills = [skill('alpha', 1000, 1), ...Array.from({ length: count - 1 }, (_, index) => skill(named(index), 0.001, 1))];
+
+      const placed = layOut(tilesOf({ skills, unnamedSpend: null }, 'cost', 'most').tiles, size);
+
+      expect(placed).toHaveLength(count);
+
+      for (const tile of placed) {
+        expect(tile.width * tile.height).toBeGreaterThanOrEqual(0.02 * 400 * 300 - 1e-6);
+      }
+    }
+  });
+
+  it('still fills the whole map once the cap has cut the tiles down to 25', () => {
+    const skills = Array.from({ length: 40 }, (_, index) => skill(named(index), 40 - index, 1));
+
+    const placed = layOut(tilesOf({ skills, unnamedSpend: null }, 'cost', 'most').tiles, size);
+
+    const area = placed.reduce((sum, tile) => sum + tile.width * tile.height, 0);
+    expect(placed).toHaveLength(25);
+    expect(area / (400 * 300)).toBeCloseTo(1, 9);
   });
 
   it('lays out nothing when there is nothing to size', () => {

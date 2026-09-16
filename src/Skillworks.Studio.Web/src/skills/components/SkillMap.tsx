@@ -3,7 +3,7 @@ import { describeDay } from '../../filters/lib/filters';
 import { Keys } from '../../keys/components/Keys';
 import { triggerMarks } from '../../provenance/lib/triggers';
 import { showsFigures, type SkillsAnswer } from '../lib/answer';
-import { describeTile, heatStep, layOut, tilesOf, viewWords, type MapView, type PlacedTile } from '../lib/map';
+import { describeTile, heatStep, layOut, tilesOf, unnamedWord, viewWords, type MapView, type PlacedTile, type Sizing } from '../lib/map';
 import type { MapChoice } from '../lib/mapChoice';
 import { mapPanelOf } from '../lib/mapPanel';
 import { describeCount, describeMoney, notNamed, type SkillSummary } from '../lib/skills';
@@ -60,7 +60,7 @@ function Tile({
         <div className="tile-skin" role="img" tabIndex={0} aria-label={describeTile(tile)}>
           <span className="tile-top">
             <span className="tile-rank">{tile.rank}</span>
-            <span className="tile-name">Unnamed spend</span>
+            <span className="tile-name">{unnamedWord}</span>
           </span>
           <span className="tile-figure">{describeMoney(tile.spend.cost)}</span>
         </div>
@@ -118,27 +118,62 @@ function Tile({
   );
 }
 
-function Strip({ skills, view }: { skills: readonly SkillSummary[]; view: MapView }) {
-  const word = `No ${viewWords[view]}`;
+interface Chip {
+  key: string;
+  name: string;
+  figure: string;
+}
 
+// One shape for both rows, so the two reasons a skill is off the map never drift apart on screen.
+function OffMap({ word, label, chips }: { word: string; label: string; chips: readonly Chip[] }) {
   return (
-    <section className="strip" aria-label={`Skills with ${word}`}>
-      <span className="strip-label" aria-hidden="true">
+    <section className="offmap" aria-label={label}>
+      <span className="offmap-label" aria-hidden="true">
         {word}
       </span>
       <ul>
-        {skills.map((skill) => (
-          <li key={skill.name} className="chip">
-            {skill.name}
-            <span className="chip-figure">
-              {view === 'cost'
-                ? `×${describeCount(skill.activations)}${skill.spend === null ? ` · ${notNamed}` : ''}`
-                : describeMoney(skill.spend?.cost ?? null)}
-            </span>
+        {chips.map((chip) => (
+          <li key={chip.key} className="chip">
+            {chip.name}
+            <span className="chip-figure">{chip.figure}</span>
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+function Unsized({ skills, view }: { skills: readonly SkillSummary[]; view: MapView }) {
+  const word = `No ${viewWords[view]}`;
+
+  return (
+    <OffMap
+      word={word}
+      label={`Skills with ${word}`}
+      chips={skills.map((skill) => ({
+        key: skill.name,
+        name: skill.name,
+        figure:
+          view === 'cost'
+            ? `×${describeCount(skill.activations)}${skill.spend === null ? ` · ${notNamed}` : ''}`
+            : describeMoney(skill.spend?.cost ?? null),
+      }))}
+    />
+  );
+}
+
+// Having a figure and missing the map is a different fact from having no figure at all.
+function Beyond({ sized, view }: { sized: readonly Sizing[]; view: MapView }) {
+  return (
+    <OffMap
+      word="Did not fit"
+      label="Skills that did not fit the map"
+      chips={sized.map((sizing) => ({
+        key: sizing.key,
+        name: sizing.kind === 'skill' ? sizing.skill.name : unnamedWord,
+        figure: view === 'cost' ? describeMoney(sizing.value) : `×${describeCount(sizing.value)}`,
+      }))}
+    />
   );
 }
 
@@ -214,7 +249,7 @@ export function SkillMap({
     return () => window.removeEventListener('keydown', letGo);
   }, [pinned]);
 
-  const { tiles, unsized, each } = tilesOf(answer ?? { skills: [], unnamedSpend: null }, choice.view, choice.order);
+  const { tiles, unsized, beyond, each } = tilesOf(answer ?? { skills: [], unnamedSpend: null }, choice.view, choice.order);
   const panel = mapPanelOf({ answer, failure, tileCount: tiles.length, view: choice.view });
   const placed = layOut(tiles, size);
   const shown = placed.find((entry) => entry.tile.key === (probed ?? pinned)) ?? null;
@@ -291,9 +326,8 @@ export function SkillMap({
         </div>
       </div>
 
-      {showsFigures(answer) && unsized.length > 0 && (
-        <Strip skills={unsized} view={choice.view} />
-      )}
+      {showsFigures(answer) && unsized.length > 0 && <Unsized skills={unsized} view={choice.view} />}
+      {showsFigures(answer) && beyond.length > 0 && <Beyond sized={beyond} view={choice.view} />}
     </section>
   );
 }
