@@ -24,7 +24,7 @@ main {
 }
 
 /* Every colour here is a custom property set from the palette, which the contrast test reads. */
-.home {
+.watch {
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
   --cut: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
 
@@ -44,19 +44,19 @@ main {
   padding: clamp(0.5rem, 1.6vh, 1rem) clamp(0.5rem, 1.2vw, 1rem);
 }
 
-.home *,
-.home *::before,
-.home *::after {
+.watch *,
+.watch *::before,
+.watch *::after {
   box-sizing: border-box;
 }
 
 /* Zero specificity, so each control's own font rule still wins. */
-:where(.home) button,
-:where(.home) select {
+:where(.watch) button,
+:where(.watch) select {
   font: inherit;
 }
 
-.home :focus-visible {
+.watch :focus-visible {
   outline: 2px solid var(--hud);
   outline-offset: 2px;
 }
@@ -136,7 +136,7 @@ main {
 }
 
 .signal.is-live .signal-dot {
-  animation: home-pulse 2.6s ease-in-out infinite;
+  animation: hud-pulse 2.6s ease-in-out infinite;
   background: currentColor;
 }
 
@@ -173,7 +173,7 @@ main {
   top: calc(100% + 0.35rem);
 }
 
-@keyframes home-pulse {
+@keyframes hud-pulse {
   0%,
   100% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 45%, transparent);
@@ -420,7 +420,7 @@ main {
 }
 
 .lamp.is-starting .lamp-glyph {
-  animation: home-blink 1.2s steps(2) infinite;
+  animation: hud-blink 1.2s steps(2) infinite;
   color: var(--hud);
 }
 
@@ -433,7 +433,7 @@ main {
 }
 
 /* Between two tested colours, not a fade, which would take the glyph under its tested contrast. */
-@keyframes home-blink {
+@keyframes hud-blink {
   50% {
     color: var(--ink-soft);
   }
@@ -460,7 +460,7 @@ main {
 }
 
 .recheck[aria-busy='true'] span {
-  animation: home-spin 0.9s linear infinite;
+  animation: hud-spin 0.9s linear infinite;
 }
 
 .switch {
@@ -687,7 +687,7 @@ main {
 }
 
 .slice.is-arriving::after {
-  animation: home-scan 1.6s linear infinite;
+  animation: hud-scan 1.6s linear infinite;
   background: var(--hud);
   content: '';
   height: 1px;
@@ -696,7 +696,7 @@ main {
   top: 100%;
 }
 
-@keyframes home-scan {
+@keyframes hud-scan {
   from {
     top: 100%;
   }
@@ -849,7 +849,7 @@ main {
 
 /* Slides and grows as each day re-lays the map, so the eye can follow a tile to its new place. */
 .tile {
-  animation: home-grow 0.45s ease-out;
+  animation: hud-grow 0.45s ease-out;
   container: tile / size;
   position: absolute;
   transition:
@@ -859,7 +859,7 @@ main {
     height 0.45s ease;
 }
 
-@keyframes home-grow {
+@keyframes hud-grow {
   from {
     opacity: 0;
     transform: scale(0.6);
@@ -1188,7 +1188,7 @@ button.tile-skin {
 }
 
 .panel.is-busy .panel-glyph {
-  animation: home-spin 1.6s linear infinite;
+  animation: hud-spin 1.6s linear infinite;
 }
 
 .panel-word {
@@ -1199,7 +1199,7 @@ button.tile-skin {
   text-transform: uppercase;
 }
 
-@keyframes home-spin {
+@keyframes hud-spin {
   to {
     transform: rotate(360deg);
   }
@@ -1255,7 +1255,7 @@ button.tile-skin {
 }
 
 @media (max-width: 640px) {
-  .home {
+  .watch {
     grid-template-columns: minmax(0, 1fr);
     height: auto;
     min-height: 100dvh;
@@ -1283,9 +1283,9 @@ button.tile-skin {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home *,
-  .home *::before,
-  .home *::after {
+  .watch *,
+  .watch *::before,
+  .watch *::after {
     animation: none !important;
     transition: none !important;
   }

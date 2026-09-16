@@ -7,6 +7,8 @@ import { SignalWord } from '../../gaps/components/SignalWord';
 import { HealthLamps } from '../../health/components/HealthLamps';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { Keys } from '../../keys/components/Keys';
+import { useTabTitle } from '../../pages/components/useTabTitle';
+import { watch } from '../../pages/lib/pages';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
 import { fetchSkills } from '../api/skills';
 import { ActivityStrip } from '../components/ActivityStrip';
@@ -22,12 +24,14 @@ interface Reading {
   failure: string | null;
 }
 
-export function Home() {
+export function Watch() {
   const [reading, setReading] = useState<Reading | null>(null);
+
+  useTabTitle(watch);
 
   // Filter, view and order live in the address bar, so a reload, a bookmark or the back button lands on the same map.
   const [params, setParams] = useSearchParams();
-  // No skill: Home offers no way to see or clear one, so an old link naming a skill must not narrow it unseen.
+  // No skill: Watch offers no way to see or clear one, so an old link naming a skill must not narrow it unseen.
   const filter: Filter = { ...readFilter(params), skill: '' };
   const choice = readMapChoice(params);
 
@@ -71,7 +75,7 @@ export function Home() {
     setParams(withMapChoice(filterParams(nextFilter), nextChoice), { replace: true });
 
   return (
-    <main className="home">
+    <main className="watch">
       <aside className="rail" aria-label="Instruments">
         <div className="rail-brand">
           <h1>Skillworks</h1>
