@@ -8,12 +8,14 @@ public sealed record StepsAnswer(
     SessionRow? Run,
     IReadOnlyList<StepRow> Steps,
     IReadOnlyList<ExchangeRow> Exchanges,
+    IReadOnlyList<SkillCallRow> SkillCalls,
     GapRow Gap)
 {
     public static StepsAnswer Of(IReadOnlyList<JsonObject> lines) => new(
         Opened(lines.Single(line => StudioHost.KindOf(line) == "head")),
         Held<StepRow>(lines, "steps"),
         Held<ExchangeRow>(lines, "exchanges"),
+        Held<SkillCallRow>(lines, "skillCalls"),
         StudioHost.Read<GapRow>(lines.Single(line => StudioHost.KindOf(line) == "end")["gap"]));
 
     private static IReadOnlyList<T> Held<T>(IReadOnlyList<JsonObject> lines, string kind) =>

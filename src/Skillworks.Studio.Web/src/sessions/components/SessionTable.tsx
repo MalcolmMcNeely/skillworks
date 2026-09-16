@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { describeCount, describeMoney } from '../../figures/lib/figures';
-import { sessionAddress } from '../lib/where';
+import { nowhere, sessionAddress } from '../lib/where';
 import {
   describeLength,
   describeStarted,
@@ -22,7 +22,7 @@ function Row({ session, asked }: { session: Session; asked: URLSearchParams }) {
       <td>{session.repository ?? noRepository}</td>
       <td>{session.person ?? notKnown}</td>
       <td className="session-name">
-        <Link to={sessionAddress(session.id, { exchange: null, step: null }, asked)}>{session.name}</Link>
+        <Link to={sessionAddress(session.id, nowhere, asked)}>{session.name}</Link>
         {session.running ? <span className="session-running">Running</span> : null}
       </td>
       <td className="session-figure">{describeLength(session.lengthMs)}</td>

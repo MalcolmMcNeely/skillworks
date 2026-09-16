@@ -4,7 +4,7 @@ using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Activations.Queries;
 
-public sealed class ActivationQueries(EventsStoreReader events)
+public sealed partial class ActivationQueries(EventsStoreReader events)
 {
     private const string EventName = "skill_activated";
 

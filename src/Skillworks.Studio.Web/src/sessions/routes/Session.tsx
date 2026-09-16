@@ -9,11 +9,13 @@ import { useTabTitle } from '../../pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { ConversationPanel } from '../components/ConversationPanel';
+import { SkillCallPanel } from '../components/SkillCallPanel';
 import { StepPanel } from '../components/StepPanel';
 import { Timeline } from '../components/Timeline';
-import { readRange, widened, withRange } from '../lib/brush';
+import { rangeOf, readRange, widened, withRange } from '../lib/brush';
 import { bandsOf, type Band } from '../lib/conversation';
 import { describeLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
+import { firingsOf, type Firing } from '../lib/skillCalls';
 import { foldSessionLine, marksOf, runSpan, type Mark, type Range, type SessionAnswer } from '../lib/steps';
 import { readWhere, withWhere, type Where } from '../lib/where';
 
@@ -72,20 +74,26 @@ export function Session() {
 
   const steps = answer?.steps;
   const exchanges = answer?.exchanges;
+  const skillCalls = answer?.skillCalls;
   const marks = useMemo(() => marksOf(steps ?? []), [steps]);
   const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
+  const firings = useMemo(() => firingsOf(skillCalls ?? []), [skillCalls]);
   const whole = runSpan(marks);
 
   // Replaced, not pushed, so brushing four stretches does not cost four presses of the back button.
   const write = (written: URLSearchParams) => setParams(written, { replace: true });
 
-  const brush = (stretch: Range | null, exchange: number | null) =>
-    write(withRange(withWhere(params, { ...where, exchange }), stretch));
+  const brush = (stretch: Range | null, opened: Partial<Where>) =>
+    write(withRange(withWhere(params, { ...where, ...opened }), stretch));
 
   const open = (step: string | null) => write(withWhere(params, { ...where, step }));
 
   const onExchange = (band: Band) =>
-    whole === null ? undefined : brush(widened([band.startMs, band.endMs], whole), band.exchange.index);
+    whole === null ? undefined : brush(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index });
+
+  // Unpadded, unlike an Exchange: a call's stretch abuts the next call's, and padding would pull that one in too.
+  const onCall = (firing: Firing) =>
+    whole === null ? undefined : brush(rangeOf(firing.atMs, firing.followedToMs, whole), { call: firing.call.id });
 
   // What the table was asked for, so going up lands on the list the reader left rather than a fresh one.
   const table = withOrder(filterParams(filter), readOrder(params)).toString();
@@ -111,12 +119,14 @@ export function Session() {
         failure={failure}
         marks={marks}
         bands={bands}
+        firings={firings}
         whole={whole}
         range={range}
         where={where}
-        onRange={(stretch) => brush(stretch, stretch === null ? null : where.exchange)}
+        onRange={(stretch) => brush(stretch, stretch === null ? { exchange: null, call: null } : {})}
         onOpen={open}
         onExchange={onExchange}
+        onCall={onCall}
       />
     </main>
   );
@@ -127,23 +137,27 @@ function Body({
   failure,
   marks,
   bands,
+  firings,
   whole,
   range,
   where,
   onRange,
   onOpen,
   onExchange,
+  onCall,
 }: {
   answer: SessionAnswer | null;
   failure: string | null;
   marks: readonly Mark[];
   bands: readonly Band[];
+  firings: readonly Firing[];
   whole: Range | null;
   range: Range | null;
   where: Where;
   onRange: (range: Range | null) => void;
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
+  onCall: (firing: Firing) => void;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
@@ -174,6 +188,7 @@ function Body({
         onExchange={onExchange}
       />
       <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
+      <SkillCallPanel firings={firings} range={range} opened={where.call} onOpen={onCall} />
       <StepPanel marks={marks} range={range} selected={where.step} onOpen={onOpen} />
     </>
   );

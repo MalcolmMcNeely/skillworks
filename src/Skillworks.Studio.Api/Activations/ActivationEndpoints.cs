@@ -1,0 +1,16 @@
+using Skillworks.Core.Activations;
+using Skillworks.Core.Filters;
+using Skillworks.Studio.Api.Arriving;
+
+namespace Skillworks.Studio.Api.Activations;
+
+public static class ActivationEndpoints
+{
+    public static IEndpointRouteBuilder MapActivationEndpoints(this IEndpointRouteBuilder api)
+    {
+        api.MapGet("activations", ([AsParameters] Filter filter, ActivationReport report, CancellationToken cancellationToken) =>
+            new ArrivingAnswer(report.AnswerAsync(filter, cancellationToken)));
+
+        return api;
+    }
+}

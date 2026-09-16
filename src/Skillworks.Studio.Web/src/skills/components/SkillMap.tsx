@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { describeCount, describeMoney } from '../../figures/lib/figures';
-import { describeDay } from '../../filters/lib/filters';
+import { describeDay, type Filter } from '../../filters/lib/filters';
 import { Keys } from '../../keys/components/Keys';
 import { triggerMarks } from '../../provenance/lib/triggers';
 import { showsFigures, type SkillsAnswer } from '../lib/answer';
@@ -9,6 +9,7 @@ import type { MapChoice } from '../lib/mapChoice';
 import { mapNoticeOf } from '../lib/mapNotice';
 import { describeSpend, missingWords, type SkillSummary } from '../lib/skills';
 import type { StripSlice } from '../lib/strip';
+import { Firings } from './Firings';
 import { TileReadout } from './TileReadout';
 
 // One scale across the whole map, so a busy hour on one tile is not drawn the height of a quiet one on another.
@@ -195,12 +196,14 @@ export function SkillMap({
   failure,
   arriving,
   choice,
+  filter,
   onChoose,
 }: {
   answer: SkillsAnswer | null;
   failure: string | null;
   arriving: boolean;
   choice: MapChoice;
+  filter: Filter;
   onChoose: (choice: MapChoice) => void;
 }) {
   const field = useRef<HTMLDivElement>(null);
@@ -254,6 +257,8 @@ export function SkillMap({
   const notice = mapNoticeOf({ answer, failure, tileCount: tiles.length, view: choice.view });
   const placed = layOut(tiles, size);
   const shown = placed.find((entry) => entry.tile.key === (probed ?? pinned)) ?? null;
+  // Pinned, never probed: a list of links has to stay still long enough for the pointer to reach it.
+  const held = placed.find((entry) => entry.tile.key === pinned)?.tile ?? null;
   const slices = answer?.slices ?? [];
   const peak = Math.max(1, ...tiles.flatMap((tile) => (tile.kind === 'skill' ? tile.skill.spark : [])));
 
@@ -327,6 +332,7 @@ export function SkillMap({
         </div>
       </div>
 
+      {held?.kind === 'skill' && <Firings skill={held.skill.name} filter={filter} />}
       {showsFigures(answer) && unsized.length > 0 && <Unsized skills={unsized} view={choice.view} />}
       {showsFigures(answer) && beyond.length > 0 && <Beyond sized={beyond} view={choice.view} />}
     </section>

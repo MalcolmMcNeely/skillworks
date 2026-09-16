@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Exchange } from './conversation';
 import type { Session } from './sessions';
+import type { SkillCall } from './skillCalls';
 import {
   describeClock,
   describeSpell,
@@ -49,6 +50,14 @@ const said: Exchange = {
   cost: 0.42,
 };
 
+const fired: SkillCall = {
+  id: '7',
+  skill: 'tdd',
+  atUtc: '2026-09-14T09:00:00.000Z',
+  followedMs: 300_000,
+  trigger: 'user-slash',
+};
+
 const opened: SessionAnswer = foldSessionLine(null, { kind: 'head', session: run });
 
 describe('foldSessionLine', () => {
@@ -78,6 +87,16 @@ describe('foldSessionLine', () => {
     });
 
     expect(answer.exchanges).toEqual([said]);
+    expect(answer.steps).toEqual([prompt]);
+  });
+
+  it('takes the skill calls, so the panel reads what the timeline is already drawing', () => {
+    const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
+      kind: 'skillCalls',
+      skillCalls: [fired],
+    });
+
+    expect(answer.skillCalls).toEqual([fired]);
     expect(answer.steps).toEqual([prompt]);
   });
 

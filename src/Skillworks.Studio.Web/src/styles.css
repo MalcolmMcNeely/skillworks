@@ -1306,6 +1306,70 @@ button.tile-skin {
   white-space: nowrap;
 }
 
+.firings {
+  align-items: baseline;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex: none;
+  gap: 0.5rem;
+  max-height: 5.5rem;
+  overflow-y: auto;
+  padding-top: 0.4rem;
+}
+
+.firings-label {
+  color: var(--hud);
+  flex: none;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+}
+
+.firings-word {
+  margin: 0;
+}
+
+.firings ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.firing a {
+  align-items: baseline;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: 0.7rem;
+  gap: 0.4rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.12rem 0.5rem;
+  text-decoration: none;
+}
+
+.firing a:hover,
+.firing a:focus-visible {
+  border-color: var(--hud);
+  color: var(--ink);
+}
+
+.firing-clock {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.firing-where,
+.firing-trigger {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+}
+
 .home,
 .no-such-page {
   align-content: start;
@@ -1827,12 +1891,60 @@ a.home-panel-face:hover::before {
   color: var(--ink);
 }
 
+.call-list,
 .step-list {
   list-style: none;
   margin: 0;
   max-height: 40vh;
   overflow-y: auto;
   padding: 0;
+}
+
+.call-row {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  font-size: 0.75rem;
+  gap: 0.6rem;
+  grid-template-columns: 5rem minmax(0, 1fr) 1.2rem 5rem;
+  padding: 0.25rem 0.4rem;
+  text-align: left;
+  width: 100%;
+}
+
+.call-row:hover,
+.call-row:focus-visible,
+.call-row.is-open {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.call-name {
+  color: var(--ink);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.call-clock,
+.call-spell,
+.call-trigger {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.call-trigger {
+  color: var(--hud);
+  text-align: center;
+}
+
+.call-spell {
+  text-align: right;
 }
 
 .step-row {

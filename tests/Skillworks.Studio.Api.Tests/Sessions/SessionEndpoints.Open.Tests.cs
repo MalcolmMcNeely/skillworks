@@ -8,7 +8,7 @@ public sealed partial class SessionEndpointsTests
     private const int MoreEventsThanOnePageHolds = 1_100;
 
     [Fact]
-    public async Task Answers_one_run_with_a_head_then_its_exchanges_then_its_steps_then_an_end()
+    public async Task Answers_one_run_with_a_head_then_the_panels_then_its_steps_then_an_end()
     {
         using var studio = new StudioHost();
 
@@ -17,7 +17,7 @@ public sealed partial class SessionEndpointsTests
         var lines = await studio.StepLines(Morning);
 
         // A screen draws once the steps land, so everything it draws beside them has to be there already.
-        Assert.Equal(["head", "exchanges", "steps", "end"], lines.Select(StudioHost.KindOf));
+        Assert.Equal(["head", "exchanges", "skillCalls", "steps", "end"], lines.Select(StudioHost.KindOf));
     }
 
     [Fact]

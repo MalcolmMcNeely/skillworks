@@ -1,6 +1,7 @@
 import type { Gap, GapEnd } from '../../gaps/lib/gaps';
 import type { Exchange, ExchangesPage } from './conversation';
 import type { Session } from './sessions';
+import type { SkillCall, SkillCallsPage } from './skillCalls';
 
 export type StepKind = 'prompt' | 'turn' | 'answer' | 'tool' | 'refused' | 'fault';
 
@@ -26,12 +27,13 @@ export interface StepsPage {
   steps: Step[];
 }
 
-export type SessionLine = SessionHead | StepsPage | ExchangesPage | GapEnd;
+export type SessionLine = SessionHead | StepsPage | ExchangesPage | SkillCallsPage | GapEnd;
 
 export interface SessionAnswer {
   session: Session | null;
   steps: Step[];
   exchanges: Exchange[];
+  skillCalls: SkillCall[];
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -40,7 +42,15 @@ export interface SessionAnswer {
 
 export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine): SessionAnswer {
   if (line.kind === 'head') {
-    return { session: line.session, steps: [], exchanges: [], landed: false, arriving: true, gap: null };
+    return {
+      session: line.session,
+      steps: [],
+      exchanges: [],
+      skillCalls: [],
+      landed: false,
+      arriving: true,
+      gap: null,
+    };
   }
 
   if (answer === null) {
@@ -53,6 +63,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
 
   if (line.kind === 'exchanges') {
     return { ...answer, exchanges: line.exchanges };
+  }
+
+  if (line.kind === 'skillCalls') {
+    return { ...answer, skillCalls: line.skillCalls };
   }
 
   return { ...answer, steps: line.steps, landed: true };

@@ -4,6 +4,7 @@ using Skillworks.Core.Filters;
 using Skillworks.Core.Gaps;
 using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Queries;
+using Skillworks.Core.Sessions.SkillCalls;
 
 namespace Skillworks.Core.Sessions.Steps;
 
@@ -15,17 +16,19 @@ public sealed class StepReport(StepQueries steps, GapReport gaps, Lookback lookb
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var span = lookback.SpanOf(filter);
-        var (run, opened, said, read) = await steps.OpenAsync(id, span, cancellationToken);
+        var opened = await steps.OpenAsync(id, span, cancellationToken);
 
-        yield return new StepsHead(run);
+        yield return new StepsHead(opened.Run);
 
-        if (read.Unreachable is null)
+        if (opened.Read.Unreachable is null)
         {
-            // Ahead of the steps, so a screen that draws on the steps landing has the conversation already.
-            yield return new ExchangesPage(said);
-            yield return new StepsPage(opened);
+            // Ahead of the steps, so a screen that draws on the steps landing has every panel already.
+            yield return new ExchangesPage(opened.Said);
+            yield return new SkillCallsPage(opened.Fired);
+            yield return new StepsPage(opened.Steps);
         }
 
-        yield return new GapEnd(gaps.InLines(read, read.Unreachable is null ? [] : span.NewestFirst()));
+        yield return new GapEnd(
+            gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst()));
     }
 }

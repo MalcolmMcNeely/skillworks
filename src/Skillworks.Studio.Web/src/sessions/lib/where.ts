@@ -4,8 +4,11 @@ import { sessions as page } from '../../pages/lib/pages';
 export interface Where {
   // Null where the reader has opened no Exchange, which the whole run is.
   exchange: number | null;
+  call: string | null;
   step: string | null;
 }
+
+export const nowhere: Where = { exchange: null, call: null, step: null };
 
 export function readWhere(params: URLSearchParams): Where {
   const exchange = Number(params.get('exchange'));
@@ -13,6 +16,7 @@ export function readWhere(params: URLSearchParams): Where {
   return {
     // A hand-typed address can name an Exchange that is not a whole count, and none is better than the first.
     exchange: params.has('exchange') && Number.isInteger(exchange) && exchange >= 0 ? exchange : null,
+    call: params.get('call'),
     step: params.get('step'),
   };
 }
@@ -21,6 +25,7 @@ export function withWhere(params: URLSearchParams, where: Where): URLSearchParam
   const written = new URLSearchParams(params);
 
   write(written, 'exchange', where.exchange === null ? null : String(where.exchange));
+  write(written, 'call', where.call);
   write(written, 'step', where.step);
 
   return written;

@@ -34,6 +34,11 @@ export function inRange<T extends { startMs: number; endMs: number }>(stretches:
   return stretches.filter((stretch) => holds(range, stretch.startMs, stretch.endMs));
 }
 
+// A Skill fires at an instant, so a stretch holds the calls made in it and not the ones still working through it.
+export function madeIn<T extends { atMs: number }>(instants: readonly T[], range: Range | null): T[] {
+  return instants.filter((instant) => range === null || (instant.atMs >= range[0] && instant.atMs < range[1]));
+}
+
 const at = 'at';
 
 const until = 'until';

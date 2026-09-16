@@ -50,10 +50,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
     private const int Opening = 200;
 
     // Every event of one run, as a timeline draws the run itself and not a total over it.
-    public async Task<(Session? Run, IReadOnlyList<Step> Steps, IReadOnlyList<Exchange> Said, EventLines Read)> OpenAsync(
-        string id,
-        DaySpan span,
-        CancellationToken cancellationToken)
+    public async Task<OpenedRun> OpenAsync(string id, DaySpan span, CancellationToken cancellationToken)
     {
         var read = await events.LinesAsync(
             new EventQuery(EventQuery.AnyEvent, span.FromUtc, span.UntilUtc) { Session = id },
@@ -61,12 +58,17 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
 
         if (read.Unreachable is not null || read.Lines.Count == 0)
         {
-            return (null, [], [], read);
+            return new OpenedRun(null, [], [], [], read);
         }
 
         var drawn = Stepped(read.Lines);
 
-        return (Run(id, read.Lines), [.. drawn.Select(each => each.Step)], Said(drawn), read);
+        return new OpenedRun(
+            Run(id, read.Lines),
+            [.. drawn.Select(each => each.Step)],
+            Said(drawn),
+            Fired(read.Lines),
+            read);
     }
 
     private Session Run(string id, IReadOnlyList<EventLine> lines)

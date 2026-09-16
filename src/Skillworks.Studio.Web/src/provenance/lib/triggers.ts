@@ -23,7 +23,7 @@ export const triggerSymbols: SymbolTable = {
 };
 
 // A trigger Claude Code adds later keeps its own name, so a firing is never dropped or read as another trigger.
-function markOf(trigger: string | null): Omit<TriggerMark, 'activations'> {
+export function triggerMark(trigger: string | null): Omit<TriggerMark, 'activations'> {
   if (trigger === null) {
     return unrecorded;
   }
@@ -35,6 +35,6 @@ function markOf(trigger: string | null): Omit<TriggerMark, 'activations'> {
 export function triggerMarks(counts: readonly TriggerCount[]): TriggerMark[] {
   return counts
     .filter((count) => count.activations > 0)
-    .map((count) => ({ ...markOf(count.trigger), activations: count.activations }))
+    .map((count) => ({ ...triggerMark(count.trigger), activations: count.activations }))
     .toSorted((a, b) => b.activations - a.activations);
 }

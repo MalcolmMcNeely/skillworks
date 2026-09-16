@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, holds, inRange, moved, rangeOf, readRange, widened, withRange } from './brush';
+import { clamp, holds, inRange, madeIn, moved, rangeOf, readRange, widened, withRange } from './brush';
 import type { Range } from './steps';
 
 const whole: Range = [1_000, 101_000];
@@ -82,6 +82,27 @@ describe('inRange', () => {
 
   it('narrows to nothing where the brush holds nothing, rather than falling back to everything', () => {
     expect(inRange(stretches, [31_000, 35_000])).toEqual([]);
+  });
+});
+
+describe('madeIn', () => {
+  const instants = [
+    { name: 'before', atMs: 5_000 },
+    { name: 'inside', atMs: 22_000 },
+    { name: 'on the end', atMs: 30_000 },
+    { name: 'after', atMs: 40_000 },
+  ];
+
+  it('narrows to what happened in the brushed stretch', () => {
+    expect(madeIn(instants, [20_000, 30_000]).map((each) => each.name)).toEqual(['inside']);
+  });
+
+  it('leaves out what happened where the stretch ends, so one stretch and the next never both hold it', () => {
+    expect(madeIn(instants, [30_000, 50_000]).map((each) => each.name)).toEqual(['on the end', 'after']);
+  });
+
+  it('keeps everything while nothing is brushed', () => {
+    expect(madeIn(instants, null)).toHaveLength(4);
   });
 });
 

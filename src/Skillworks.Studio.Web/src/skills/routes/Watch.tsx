@@ -113,6 +113,7 @@ export function Watch() {
           failure={reading?.failure ?? null}
           arriving={arriving}
           choice={choice}
+          filter={filter}
           onChoose={(next) => show(filter, next)}
         />
       </div>
