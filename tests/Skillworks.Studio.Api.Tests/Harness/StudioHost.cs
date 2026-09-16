@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Skillworks.Core.Telemetry;
+// Owned by the test project of the reader it serves, and linked into this one.
+using Skillworks.Core.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 
@@ -8,14 +10,19 @@ public sealed class StudioHost : IDisposable
 {
     public static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web);
 
-    // Shares the switch's list, so this fixture cannot claim telemetry is on while Studio reads it as off.
-    private static readonly string EmittingSettings = new JsonObject
+    // Shares the switch's lists, so this fixture cannot claim telemetry is on while Studio reads it as off.
+    private static string Settings(bool emitting, bool tracing) => new JsonObject
     {
         ["env"] = new JsonObject(
-            TelemetryVariables
-                .For(new ClaudeSettingsOptions().CollectorEndpoint)
+            Owned(emitting, tracing)
                 .Select(variable => KeyValuePair.Create(variable.Key, (JsonNode?)JsonValue.Create(variable.Value)))),
     }.ToJsonString();
+
+    private static IEnumerable<KeyValuePair<string, string>> Owned(bool emitting, bool tracing) =>
+    [
+        .. emitting ? TelemetryVariables.For(new ClaudeSettingsOptions().CollectorEndpoint) : [],
+        .. tracing ? TelemetryVariables.Traces : [],
+    ];
 
     private readonly TemporaryFolder _folder = new();
     private readonly PinnedClock _clock = new();
@@ -30,25 +37,31 @@ public sealed class StudioHost : IDisposable
         string? cataloguePath = null,
         // Only for a store that is down, failing or stops part way; data comes from the test Loki.
         BrokenEventsStore? events = null,
+        // Only for a store that is down, failing or still starting; spans come from the test Tempo.
+        BrokenTraceStore? traces = null,
         // Not the developer's settings, or Gap tests would pass or fail on this machine's telemetry.
         bool emitting = true,
+        bool tracing = true,
         string? settings = null,
         bool tenanted = true,
         int? lookbackDays = null)
     {
         var settingsPath = Path.Combine(_folder.Path, "settings.json");
-        File.WriteAllText(settingsPath, settings ?? (emitting ? EmittingSettings : "{}"));
+        File.WriteAllText(settingsPath, settings ?? Settings(emitting, tracing));
 
         // Left out unless asked for, as an empty value binds as zero days and would hide the default.
         (string Key, string? Value)[] lookback = lookbackDays is { } days ? [("Loki:LookbackDays", days.ToString())] : [];
 
         _api = new StudioApiHost(
             events,
+            traces,
             _clock,
             [
                 ("Loki:Address", TestLoki.Address.ToString()),
                 ("Loki:Tenant", tenanted ? _tenant : null),
                 ("Loki:MaxQueryDays", TestLoki.MaxQueryDays.ToString()),
+                ("Tempo:Address", TestTempo.Address.ToString()),
+                ("Tempo:Tenant", tenanted ? _tenant : null),
                 ("ClaudeSettings:Path", settingsPath),
                 ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
                 ("Catalogue:Path", cataloguePath ?? Path.Combine(_folder.Path, "no-catalogue")),

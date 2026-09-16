@@ -13,6 +13,7 @@ using Skillworks.Core.Health;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Spend.Queries;
 using Skillworks.Core.Telemetry;
+using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Registration;
 
@@ -23,6 +24,7 @@ public static class CoreServiceCollectionExtensions
         services.Configure<CatalogueOptions>(configuration.GetSection(CatalogueOptions.SectionName));
         services.Configure<ClaudeSettingsOptions>(configuration.GetSection(ClaudeSettingsOptions.SectionName));
         services.Configure<LokiOptions>(configuration.GetSection(LokiOptions.SectionName));
+        services.Configure<TempoOptions>(configuration.GetSection(TempoOptions.SectionName));
 
         services.TryAddSingleton(TimeProvider.System);
 
@@ -46,12 +48,25 @@ public static class CoreServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(loki.TimeoutSeconds);
         });
 
+        // Its own address and its own timeout: the two stores fall short apart from each other.
+        services.AddHttpClient(TraceStoreReader.ClientName, (provider, client) =>
+        {
+            var tempo = provider.GetRequiredService<IOptions<TempoOptions>>().Value;
+
+            client.BaseAddress = tempo.ResolvedAddress();
+            client.Timeout = TimeSpan.FromSeconds(tempo.TimeoutSeconds);
+        });
+
         // Cleared wholesale, so no retry a shell adds, now or later, turns a down container's fast 502 into a slow timeout.
-        services.Configure<HttpClientFactoryOptions>(
-            EventsStoreReader.ClientName,
-            options => options.HttpMessageHandlerBuilderActions.Clear());
+        foreach (var store in new[] { EventsStoreReader.ClientName, TraceStoreReader.ClientName })
+        {
+            services.Configure<HttpClientFactoryOptions>(
+                store,
+                options => options.HttpMessageHandlerBuilderActions.Clear());
+        }
 
         services.AddSingleton<EventsStoreReader>();
+        services.AddSingleton<TraceStoreReader>();
         services.AddSingleton<GapReport>();
         services.AddSingleton<ArrivingDays>();
         services.AddSingleton<SkillReport>();

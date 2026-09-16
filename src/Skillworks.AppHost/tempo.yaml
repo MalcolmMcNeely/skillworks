@@ -1,0 +1,37 @@
+# Tempo ships no usable default configuration, so unlike Loki it receives nothing without this file.
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  # A span older than half an hour is found only once its block has reached the store.
+  max_block_duration: 5m
+
+query_frontend:
+  search:
+    # A Filter may ask for a month, and the default refuses a read longer than a week.
+    max_duration: 0s
+
+compactor:
+  compaction:
+    # Twice the lookback, so a reader who widens the span still finds spans behind it.
+    block_retention: 336h
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+usage_report:
+  # Studio runs on a developer's machine, and what they measure is theirs.
+  reporting_enabled: false

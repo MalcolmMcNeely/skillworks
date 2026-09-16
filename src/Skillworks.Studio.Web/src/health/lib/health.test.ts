@@ -15,6 +15,13 @@ const store: Part = {
   action: 'Start Studio’s containers with aspire run.',
 };
 
+const traces: Part = {
+  name: 'Trace store',
+  state: 'working',
+  detail: 'http://localhost:3200/ answered.',
+  action: null,
+};
+
 describe('lampsOf', () => {
   it('shows a working part as a lamp with a glyph and a call sign, and opens nothing from it', () => {
     expect(lampsOf({ parts: [catalogue] }, null)).toEqual([
@@ -25,7 +32,7 @@ describe('lampsOf', () => {
   it('opens the detail and the action from the lamp of a broken part', () => {
     expect(lampsOf({ parts: [store] }, null)).toEqual([
       {
-        callSign: 'Store',
+        callSign: 'Events',
         state: 'broken',
         glyph: '✕',
         word: 'Broken',
@@ -67,8 +74,15 @@ describe('lampsOf', () => {
     };
 
     expect(lampsOf({ parts: [store, telemetry, catalogue] }, null).map((lamp) => lamp.callSign)).toEqual([
-      'Store',
+      'Events',
       'Catalogue',
+    ]);
+  });
+
+  it('tells the two stores apart, so a broken one names itself', () => {
+    expect(lampsOf({ parts: [store, traces] }, null).map((lamp) => [lamp.callSign, lamp.state])).toEqual([
+      ['Events', 'broken'],
+      ['Traces', 'working'],
     ]);
   });
 

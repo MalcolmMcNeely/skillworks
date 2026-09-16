@@ -9,7 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Testcontainers" Version="4.15.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -17,19 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Skillworks.Studio.Api\Skillworks.Studio.Api.csproj" />
+    <ProjectReference Include="..\..\src\Skillworks.Core\Skillworks.Core.csproj" />
   </ItemGroup>
 
   <!-- Linked, not referenced, because the AppHost's Program collides with the API's. -->
   <ItemGroup>
-    <Compile Include="..\..\src\Skillworks.AppHost\LokiImage.cs" Link="Harness\LokiImage.cs" />
     <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Harness\TempoImage.cs" />
-  </ItemGroup>
-
-  <!-- Its subject is the reader in Core, so it is owned there and borrowed here, never the other way about. -->
-  <ItemGroup>
-    <Compile Include="..\Skillworks.Core.Tests\Harness\TestTempo.cs" Link="Harness\TestTempo.cs" />
-    <Content Include="..\Skillworks.Core.Tests\Harness\tempo.yaml" Link="Harness\tempo.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,8 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Harness\loki.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Harness\tempo.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

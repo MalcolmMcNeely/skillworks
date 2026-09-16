@@ -27,6 +27,10 @@ exporters:
     endpoint: http://loki:3100/otlp
     sending_queue:
       storage: file_storage
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+    sending_queue:
+      storage: file_storage
 
 service:
   extensions: [file_storage]
@@ -35,3 +39,7 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlphttp/loki]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/tempo]

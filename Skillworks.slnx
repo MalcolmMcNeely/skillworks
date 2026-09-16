@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Skillworks.Architecture.Tests/Skillworks.Architecture.Tests.csproj" />
+    <Project Path="tests/Skillworks.Core.Tests/Skillworks.Core.Tests.csproj" />
     <Project Path="tests/Skillworks.Studio.Api.Tests/Skillworks.Studio.Api.Tests.csproj" />
   </Folder>
 </Solution>

@@ -19,7 +19,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
             return Report(emitting: false, readable: false, [], problem);
         }
 
-        var environment = document.Root!["env"] as JsonObject;
+        var environment = Environment(document);
 
         var changes = Owned()
             .Where(variable => Held(environment, variable.Key) != variable.Value)
@@ -28,6 +28,19 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
 
         return Report(emitting: changes.Length == 0, readable: true, changes, problem: null);
     }
+
+    // A guess of off would send a developer to write a file Studio has refused.
+    public bool? TracesOn()
+    {
+        var document = file.Read(options.Value.ResolvedPath());
+
+        return Unusable(document) is null
+            ? TelemetryVariables.Traces.All(variable => Held(Environment(document), variable.Key) == variable.Value)
+            : null;
+    }
+
+    // Asked only once Unusable has passed, which is what says the document has a root at all.
+    private static JsonObject? Environment(ClaudeSettingsDocument document) => document.Root!["env"] as JsonObject;
 
     public TelemetrySwitchResult TurnOn()
     {
