@@ -44,4 +44,8 @@ describe('totalsOf', () => {
   it('has no Each when nothing fired, rather than dividing by zero', () => {
     expect(totalsOf({ skills: [skill('alpha', 0, spent(1, 1))], unnamedSpend: null }).each).toBeNull();
   });
+
+  it('has no Each when nothing it counted named its spend, rather than reading a hidden cost as free', () => {
+    expect(totalsOf({ skills: [skill('gamma', 4, null)], unnamedSpend: null }).each).toBeNull();
+  });
 });

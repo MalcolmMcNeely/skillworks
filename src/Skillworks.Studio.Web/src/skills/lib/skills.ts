@@ -1,3 +1,4 @@
+import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import type { Span } from '../../filters/lib/filters';
 import type { AnswerEnd } from '../../gaps/lib/gaps';
 import type { Origin, TriggerCount } from '../../provenance/lib/provenance';
@@ -55,8 +56,17 @@ export interface SkillsDay {
 
 export type SkillsLine = SkillsHead | SkillsDay | AnswerEnd;
 
-// Words, not a zero or a dash: a plugin outside Anthropic's marketplaces has its Turns sent unnamed, so what it spent is not known.
-export const notNamed = 'Not named';
+export const missingWords = {
+  // A word, not a dash, which a screen reader reads as a pause or not at all.
+  none: 'None',
+  // A plugin outside Anthropic's marketplaces has its Turns sent unnamed, so the cost is hidden, not absent.
+  notNamed: 'Not named',
+  // Never a zero, so an outage never reads as a quiet week.
+  noAnswer: '—',
+} as const;
+
+// The dash is drawn, so it answers to the alphabets as any other mark on screen does.
+export const missingSymbols: SymbolTable = { alphabet: 'condition', glyphs: [missingWords.noAnswer] };
 
 // Not the reader's locale: costs are in US dollars, so figures group and point the way dollars do.
 const money = new Intl.NumberFormat('en-US', {
@@ -72,7 +82,16 @@ const counts = new Intl.NumberFormat('en-US');
 const tokenCounts = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 
 export function describeMoney(amount: number | null): string {
-  return amount === null ? notNamed : money.format(amount);
+  return amount === null ? missingWords.notNamed : money.format(amount);
+}
+
+// A Cost with nothing to share it across is not a Cost that went unnamed.
+export function describeEach(figures: { each: number | null; activations: number } | null): string {
+  if (figures === null) {
+    return missingWords.noAnswer;
+  }
+
+  return figures.activations === 0 ? missingWords.none : describeMoney(figures.each);
 }
 
 export function describeCount(count: number): string {

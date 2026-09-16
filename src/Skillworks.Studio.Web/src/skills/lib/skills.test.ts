@@ -1,5 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { describeCount, describeMoney, describeTokens } from './skills';
+import { readoutRows } from './readout';
+import { describeCount, describeEach, describeMoney, describeTokens, type SkillSummary, type TurnTotals } from './skills';
+import { totalsOf } from './totals';
+
+const spent: TurnTotals = { cost: 1, inputTokens: 100, outputTokens: 200, cacheReadTokens: 300, cacheCreationTokens: 400 };
+
+const now = Date.parse('2026-09-15T12:00:00Z');
+
+function skill(more: Partial<SkillSummary> = {}): SkillSummary {
+  return {
+    name: 'grilling',
+    activations: 4,
+    triggers: [],
+    repositories: [],
+    models: [],
+    efforts: [],
+    spend: spent,
+    origins: [],
+    each: 0.25,
+    lastFired: '2026-09-15T09:00:00Z',
+    spark: [],
+    ...more,
+  };
+}
+
+function railEach(only: SkillSummary): string {
+  return describeEach(totalsOf({ skills: [only], unnamedSpend: null }));
+}
+
+function readoutEach(only: SkillSummary): string | undefined {
+  return readoutRows(only, now).find((row) => row.label === 'Each')?.value;
+}
 
 describe('describeMoney', () => {
   it('shows the pennies', () => {
@@ -13,6 +44,44 @@ describe('describeMoney', () => {
 
   it('says not named, never $0.00, when Claude Code did not name the skill on its Turns', () => {
     expect(describeMoney(null)).toBe('Not named');
+  });
+});
+
+describe('describeEach', () => {
+  it('says None for a figure that never fired, so the reader looks at its description', () => {
+    expect(describeEach({ each: null, activations: 0 })).toBe('None');
+  });
+
+  it('says Not named for a figure that fired on spend Claude Code will not name', () => {
+    expect(describeEach({ each: null, activations: 3 })).toBe('Not named');
+  });
+
+  it('shows the figure when there is one', () => {
+    expect(describeEach({ each: 0.25, activations: 4 })).toBe('$0.25');
+  });
+
+  it('keeps the dash for no answer at all, so an outage never reads as a quiet week', () => {
+    expect(describeEach(null)).toBe('—');
+  });
+});
+
+describe('the Each the rail and the readout read', () => {
+  it('agrees for a skill that spent but never fired', () => {
+    const never = skill({ activations: 0, each: null, lastFired: null });
+
+    expect([railEach(never), readoutEach(never)]).toEqual(['None', 'None']);
+  });
+
+  it('agrees for a skill whose Turns went unnamed', () => {
+    const hidden = skill({ spend: null, models: null, efforts: null, each: null });
+
+    expect([railEach(hidden), readoutEach(hidden)]).toEqual(['Not named', 'Not named']);
+  });
+
+  it('agrees for a skill that fired', () => {
+    const fired = skill();
+
+    expect([railEach(fired), readoutEach(fired)]).toEqual(['$0.25', '$0.25']);
   });
 });
 

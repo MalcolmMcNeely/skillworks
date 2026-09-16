@@ -1,8 +1,5 @@
 import type { SkillsAnswer } from '../lib/answer';
-import { describeCount, describeMoney, describeTokens } from '../lib/skills';
-
-// A dash, not a zero, while there is no answer to count, so an outage never reads as a quiet week.
-const noAnswer = '—';
+import { describeCount, describeEach, describeMoney, describeTokens, missingWords } from '../lib/skills';
 
 export function RailTotals({ answer, arriving }: { answer: SkillsAnswer | null; arriving: boolean }) {
   const totals = answer?.totals ?? null;
@@ -12,23 +9,23 @@ export function RailTotals({ answer, arriving }: { answer: SkillsAnswer | null; 
       <dl>
         <div className="total is-hero">
           <dt>Cost</dt>
-          <dd>{totals === null ? noAnswer : describeMoney(totals.cost)}</dd>
+          <dd>{totals === null ? missingWords.noAnswer : describeMoney(totals.cost)}</dd>
         </div>
         <div className="total">
           <dt>Activations</dt>
-          <dd>{totals === null ? noAnswer : describeCount(totals.activations)}</dd>
+          <dd>{totals === null ? missingWords.noAnswer : describeCount(totals.activations)}</dd>
         </div>
         <div className="total">
           <dt>Skills</dt>
-          <dd>{totals === null ? noAnswer : describeCount(totals.skills)}</dd>
+          <dd>{totals === null ? missingWords.noAnswer : describeCount(totals.skills)}</dd>
         </div>
         <div className="total">
           <dt>Tokens</dt>
-          <dd>{totals === null ? noAnswer : describeTokens(totals.tokens)}</dd>
+          <dd>{totals === null ? missingWords.noAnswer : describeTokens(totals.tokens)}</dd>
         </div>
         <div className="total">
           <dt>Each</dt>
-          <dd>{totals?.each == null ? noAnswer : describeMoney(totals.each)}</dd>
+          <dd>{describeEach(totals)}</dd>
         </div>
         {totals?.unnamedSpend != null && (
           <div className="total is-unnamed">

@@ -20,13 +20,15 @@ export function totalsOf(answer: { skills: readonly SkillSummary[]; unnamedSpend
   const unnamed = answer.unnamedSpend?.cost ?? 0;
   const cost = answer.skills.reduce((sum, skill) => sum + (skill.spend?.cost ?? 0), unnamed);
   const activations = answer.skills.reduce((sum, skill) => sum + skill.activations, 0);
+  // Sharing out a Cost that nothing named would read a hidden cost as free, so there is no Each to give.
+  const named = answer.unnamedSpend !== null || answer.skills.some((skill) => skill.spend !== null);
 
   return {
     cost,
     activations,
     skills: answer.skills.length,
     tokens: answer.skills.reduce((sum, skill) => sum + tokensIn(skill.spend), tokensIn(answer.unnamedSpend)),
-    each: activations === 0 ? null : cost / activations,
+    each: activations === 0 || !named ? null : cost / activations,
     unnamedSpend: unnamed > 0 ? unnamed : null,
   };
 }

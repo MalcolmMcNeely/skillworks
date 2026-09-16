@@ -4,6 +4,7 @@ import { pageSymbols } from '../../pages/lib/pages';
 import { triggerSymbols } from '../../provenance/lib/triggers';
 import { mapPanelSymbols } from '../../skills/lib/mapPanel';
 import { readoutSymbols } from '../../skills/lib/readout';
+import { missingSymbols } from '../../skills/lib/skills';
 import { sliceSymbols } from '../../skills/lib/strip';
 import { switchSymbols } from '../../telemetry/lib/telemetry';
 import { crossings, type SymbolTable } from './alphabets';
@@ -13,6 +14,7 @@ const tables: Record<string, SymbolTable> = {
   pages: pageSymbols,
   lamps: lampSymbols,
   mapPanel: mapPanelSymbols,
+  missing: missingSymbols,
   readout: readoutSymbols,
   slices: sliceSymbols,
   telemetrySwitch: switchSymbols,

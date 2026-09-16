@@ -232,10 +232,10 @@ describe('describeTile', () => {
     expect(first && describeTile(first)).toBe('1. probe. Cost Not named. Activations 3. Each Not named.');
   });
 
-  it('leaves Each out for a skill that spent but never fired, as there is nothing to share its Cost across', () => {
+  it('says None for a skill that spent but never fired, rather than leaving the row out', () => {
     const [first] = tilesOf({ skills: [skill('gamma', 5, 0)], unnamedSpend: null }, 'cost', 'most').tiles;
 
-    expect(first && describeTile(first)).toBe('1. gamma. Cost $5.00. Activations 0.');
+    expect(first && describeTile(first)).toBe('1. gamma. Cost $5.00. Activations 0. Each None.');
   });
 
   it('announces Unnamed spend by rank and Cost, as it has no Activations', () => {

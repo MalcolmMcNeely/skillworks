@@ -6,7 +6,7 @@ import { showsFigures, type SkillsAnswer } from '../lib/answer';
 import { describeTile, heatStep, layOut, tilesOf, unnamedWord, viewWords, type MapView, type PlacedTile, type Sizing } from '../lib/map';
 import type { MapChoice } from '../lib/mapChoice';
 import { mapPanelOf } from '../lib/mapPanel';
-import { describeCount, describeMoney, notNamed, type SkillSummary } from '../lib/skills';
+import { describeCount, describeMoney, missingWords, type SkillSummary } from '../lib/skills';
 import type { StripSlice } from '../lib/strip';
 import { TileReadout } from './TileReadout';
 
@@ -155,7 +155,7 @@ function Unsized({ skills, view }: { skills: readonly SkillSummary[]; view: MapV
         name: skill.name,
         figure:
           view === 'cost'
-            ? `×${describeCount(skill.activations)}${skill.spend === null ? ` · ${notNamed}` : ''}`
+            ? `×${describeCount(skill.activations)}${skill.spend === null ? ` · ${missingWords.notNamed}` : ''}`
             : describeMoney(skill.spend?.cost ?? null),
       }))}
     />

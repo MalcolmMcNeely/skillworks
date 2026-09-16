@@ -1,7 +1,7 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { triggerMarks } from '../../provenance/lib/triggers';
 import type { PlacedTile, Size } from './map';
-import { describeCount, describeMoney, describeTokens, notNamed, type SkillSummary } from './skills';
+import { describeCount, describeEach, describeMoney, describeTokens, missingWords, type SkillSummary } from './skills';
 import { tokensIn } from './totals';
 
 // A readout follows the pointer until it is pinned, and only the mark says which of the two it is.
@@ -15,9 +15,6 @@ export interface ReadoutRow {
   // Words for a value written in glyphs, as a screen reader reads ✦ as nothing or as its Unicode name.
   reading: string | null;
 }
-
-// A word, not a dash, which a screen reader reads as a pause or not at all.
-const nothing = 'None';
 
 const hourMs = 60 * 60 * 1000;
 
@@ -34,10 +31,10 @@ export function describeAgo(instant: string, now: number): string {
 
 function listed(names: readonly string[] | null): string {
   if (names === null) {
-    return notNamed;
+    return missingWords.notNamed;
   }
 
-  return names.length === 0 ? nothing : names.join(', ');
+  return names.length === 0 ? missingWords.none : names.join(', ');
 }
 
 function inWords(label: string, value: string): ReadoutRow {
@@ -50,15 +47,14 @@ export function readoutRows(skill: SkillSummary, now: number): ReadoutRow[] {
   return [
     inWords('Cost', describeMoney(skill.spend?.cost ?? null)),
     inWords('Activations', describeCount(skill.activations)),
-    // A Cost with nothing to share it across is not a Cost that went unnamed.
-    inWords('Each', skill.activations === 0 ? nothing : describeMoney(skill.each)),
-    inWords('Tokens', skill.spend === null ? notNamed : describeTokens(tokensIn(skill.spend))),
+    inWords('Each', describeEach(skill)),
+    inWords('Tokens', skill.spend === null ? missingWords.notNamed : describeTokens(tokensIn(skill.spend))),
     inWords('Model', listed(skill.models)),
     inWords('Effort', listed(skill.efforts)),
-    inWords('Last', skill.lastFired === null ? nothing : describeAgo(skill.lastFired, now)),
+    inWords('Last', skill.lastFired === null ? missingWords.none : describeAgo(skill.lastFired, now)),
     {
       label: 'Via',
-      value: marks.map((mark) => `${mark.glyph}${describeCount(mark.activations)}`).join(' ') || nothing,
+      value: marks.map((mark) => `${mark.glyph}${describeCount(mark.activations)}`).join(' ') || missingWords.none,
       reading: marks.map((mark) => `${mark.word} ${describeCount(mark.activations)}`).join('. ') || null,
     },
     inWords('Repositories', listed(skill.repositories)),
