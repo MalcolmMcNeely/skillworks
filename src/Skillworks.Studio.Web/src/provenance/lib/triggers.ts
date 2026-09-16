@@ -1,3 +1,4 @@
+import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import type { TriggerCount } from './provenance';
 
 export interface TriggerMark {
@@ -15,6 +16,11 @@ const marks: Record<string, Omit<TriggerMark, 'activations'>> = {
 };
 
 const unrecorded: Omit<TriggerMark, 'activations'> = { glyph: '?', word: 'Not recorded' };
+
+export const triggerSymbols: SymbolTable = {
+  alphabet: 'cause',
+  glyphs: [...Object.values(marks).map((mark) => mark.glyph), unrecorded.glyph],
+};
 
 // A trigger Claude Code adds later keeps its own name, so a firing is never dropped or read as another trigger.
 function markOf(trigger: string | null): Omit<TriggerMark, 'activations'> {

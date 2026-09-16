@@ -1,7 +1,13 @@
+import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { describeDay } from '../../filters/lib/filters';
 import { describeCount, type SkillsDay, type SkillsHead } from './skills';
 
 const hoursInDay = 24;
+
+// A missing slice is drawn like an idle one, so only the mark tells the two apart.
+export const sliceGlyphs = { missing: '✕' } as const;
+
+export const sliceSymbols: SymbolTable = { alphabet: 'condition', glyphs: Object.values(sliceGlyphs) };
 
 export type StripSlice = {
   day: string;

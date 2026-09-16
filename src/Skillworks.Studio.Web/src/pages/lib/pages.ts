@@ -1,3 +1,5 @@
+import type { SymbolTable } from '../../alphabets/lib/alphabets';
+
 export interface Page {
   address: string;
   name: string;
@@ -38,17 +40,27 @@ function page<Above extends Page | null>(
   };
 }
 
-export const home = page('/', 'Home', '◈', null, true);
+export const pageGlyphs = {
+  home: '⌂',
+  watch: '▦',
+  author: '✎',
+  test: '✓',
+  publish: '↑',
+} as const;
 
-export const watch: PageBelowHome = page('/watch', 'Watch', '●', home, true);
+export const pageSymbols: SymbolTable = { alphabet: 'identity', glyphs: Object.values(pageGlyphs) };
+
+export const home = page('/', 'Home', pageGlyphs.home, null, true);
+
+export const watch: PageBelowHome = page('/watch', 'Watch', pageGlyphs.watch, home, true);
 
 // Home shows a panel for every job, so a job still to come is listed before it is built.
 export const pages: readonly Page[] = [
   home,
   watch,
-  page('/author', 'Author', '✦', home, false),
-  page('/test', 'Test', '✓', home, false),
-  page('/publish', 'Publish', '↑', home, false),
+  page('/author', 'Author', pageGlyphs.author, home, false),
+  page('/test', 'Test', pageGlyphs.test, home, false),
+  page('/publish', 'Publish', pageGlyphs.publish, home, false),
 ];
 
 export function pagesBelow(parent: Page): readonly Page[] {

@@ -1,3 +1,5 @@
+import type { SymbolTable } from '../../alphabets/lib/alphabets';
+
 export type PartState = 'working' | 'starting' | 'off' | 'broken';
 
 export interface Part {
@@ -20,6 +22,11 @@ const lampMarks: Record<PartState, { glyph: string; word: string }> = {
   starting: { glyph: '◌', word: 'Starting' },
   off: { glyph: '○', word: 'Off' },
   broken: { glyph: '✕', word: 'Broken' },
+};
+
+export const lampSymbols: SymbolTable = {
+  alphabet: 'condition',
+  glyphs: Object.values(lampMarks).map((mark) => mark.glyph),
 };
 
 const callSigns: Record<string, string> = {

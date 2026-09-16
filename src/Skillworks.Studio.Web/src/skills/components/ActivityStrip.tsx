@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { SkillsAnswer } from '../lib/answer';
-import { describeSlice, nowAt, stripLabels } from '../lib/strip';
+import { describeSlice, nowAt, sliceGlyphs, stripLabels } from '../lib/strip';
 
 const minute = 60 * 1000;
 
@@ -43,7 +43,7 @@ export function ActivityStrip({
               <span className="visually-hidden">{describeSlice(slice)}</span>
               {slice.state === 'missing' && (
                 <span className="slice-cross" aria-hidden="true">
-                  ✕
+                  {sliceGlyphs.missing}
                 </span>
               )}
             </li>

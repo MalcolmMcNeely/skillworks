@@ -1,5 +1,5 @@
 import type { PlacedTile, Size } from '../lib/map';
-import { readoutAt, readoutRows, readoutSize } from '../lib/readout';
+import { readoutAt, readoutGlyphs, readoutRows, readoutSize } from '../lib/readout';
 
 export function TileReadout({
   placed,
@@ -28,7 +28,7 @@ export function TileReadout({
         {skill.name}
         {pinned && (
           <span className="readout-pin" aria-hidden="true">
-            ◆
+            {readoutGlyphs.pinned}
           </span>
         )}
       </p>

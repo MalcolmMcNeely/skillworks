@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { home, noSuchPageName, pages, pagesBelow, tabTitleOf, watch } from './pages';
+import { home, noSuchPageName, pageGlyphs, pageSymbols, pages, pagesBelow, tabTitleOf, watch } from './pages';
 
 describe('pages', () => {
   it('lists every page of Studio in the order Home shows them', () => {
@@ -42,6 +42,26 @@ describe('pages', () => {
 
   it('titles the tab with the page name on every page below Home', () => {
     expect(watch.tabTitle).toBe('Watch · Skillworks');
+  });
+});
+
+describe('pageGlyphs', () => {
+  it('gives each page the symbol a reader sees on Home', () => {
+    expect(pageGlyphs).toEqual({ home: '⌂', watch: '▦', author: '✎', test: '✓', publish: '↑' });
+  });
+
+  it('is the one place the pages take their symbols from', () => {
+    expect(pages.map((page) => page.glyph)).toEqual([
+      pageGlyphs.home,
+      pageGlyphs.watch,
+      pageGlyphs.author,
+      pageGlyphs.test,
+      pageGlyphs.publish,
+    ]);
+  });
+
+  it('names a page and nothing else, so no page reads as a state or a cause', () => {
+    expect(pageSymbols.alphabet).toBe('identity');
   });
 });
 

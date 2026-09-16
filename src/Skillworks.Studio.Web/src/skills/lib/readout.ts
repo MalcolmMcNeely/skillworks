@@ -1,7 +1,13 @@
+import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { triggerMarks } from '../../provenance/lib/triggers';
 import type { PlacedTile, Size } from './map';
 import { describeCount, describeMoney, describeTokens, notNamed, type SkillSummary } from './skills';
 import { tokensIn } from './totals';
+
+// A readout follows the pointer until it is pinned, and only the mark says which of the two it is.
+export const readoutGlyphs = { pinned: '◆' } as const;
+
+export const readoutSymbols: SymbolTable = { alphabet: 'condition', glyphs: Object.values(readoutGlyphs) };
 
 export interface ReadoutRow {
   label: string;
