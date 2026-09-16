@@ -47,6 +47,11 @@ them is the developer's to fix. Every part that is not working names the action 
 it.
 _Avoid_: Status, diagnostics, readiness
 
+**Lamp**:
+What Health shows for one part: a symbol, a word and a colour. The symbol alone says which state the
+part is in, so colour is never the only signal.
+_Avoid_: Indicator, light, badge
+
 **Home**:
 The page Studio opens on. It holds a panel for each of Studio's jobs, Watch, Author, Test and
 Publish, and leads to the ones that are built.
@@ -56,6 +61,17 @@ _Avoid_: Landing page, start page, index
 Studio's first job, and the page that does it: which skills fire, how often, in which Repositories,
 and what they cost.
 _Avoid_: Dashboard, summary, overview
+
+**Map**:
+The picture Watch draws: one Tile for each Skill, sized by the figure the reader picked. It shows
+the largest 25 Skills, so every Tile's area is true. A Skill it leaves out is named beneath it, with
+the reason.
+_Avoid_: Treemap, chart, grid
+
+**Tile**:
+One Skill's place on the Map. Its area is that Skill's share of the figure the Map is sized by, and
+never less than a fiftieth of the Map, so no Skill is too small to read or to click.
+_Avoid_: Cell, box, block
 
 ### Measurement
 
@@ -119,7 +135,9 @@ _Avoid_: Price, bill, spend total
 
 **Each**:
 The Cost of a skill's Activations divided by how many there were. A skill with no Activations has no
-Each, and a skill whose spend Claude Code will not name has none either.
+Each and reads **None**. A skill whose spend Claude Code will not name has none either and reads
+**Not named**, because the first says the description may be broken and the second says a real cost
+is hidden. A dash means there is no answer at all, so it never stands for a missing Each.
 _Avoid_: Per activation, per firing
 
 **Attribution**:
