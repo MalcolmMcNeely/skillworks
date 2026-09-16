@@ -6,7 +6,7 @@ an answer is Arriving until its last day lands and complete after that. Studio h
 load. Health, the telemetry switch and the catalogue read the machine Studio runs on, so they stay
 plain answers.
 
-The reason is a month of realistic volume. A 30-day skills table asks Loki 12 aggregate queries, each
+The reason is a month of realistic volume. A 30-day skills answer asks Loki 12 aggregate queries, each
 about a second over 30 days. Loki runs 4 at a time, so the screen stayed empty for 13 to 15 seconds
 and passed the API's 5 second Loki timeout. The same 12 queries over the newest single day come back
 in about half a second, and 30 one-day queries cost about the same in total as one 30-day query. A
@@ -40,7 +40,7 @@ An answer built from one query a day counts firings alone, so its Gap would call
 spent quiet. An answer no screen reads a Gap from ends without one, rather than buy a true Gap with a
 second query a day.
 
-A screen reads one answer, so it has one Arriving state. The skills table carries each day's counts
+A screen reads one answer, so it has one Arriving state. The skills answer carries each day's counts
 by skill, by trigger and by hour, and the latest firing. No screen reads a list of individual
 events, so the activation list and its pages were deleted, and no answer can hit the read cap.
 

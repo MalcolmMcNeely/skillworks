@@ -1,4 +1,3 @@
-// The stylesheet and the contrast test both read these, so no colour reaches the screen untested.
 export const palette = {
   void: '#04070c',
   panel: '#07111a',
@@ -27,6 +26,7 @@ export interface Surface {
   marks: readonly PaletteColour[];
 }
 
+// The palette test checks only the pairs hand-written here, so a new pairing on screen needs one added.
 export const surfaces: Record<string, Surface> = {
   page: {
     ground: 'void',

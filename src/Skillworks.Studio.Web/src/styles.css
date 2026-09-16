@@ -27,7 +27,7 @@ main {
   width: 1px;
 }
 
-/* Every colour here is a custom property set from the palette, which the contrast test reads. */
+/* The palette test checks only the pairs hand-written in palette.ts, so a new pairing here needs one added there. */
 .page {
   background: var(--void);
   box-sizing: border-box;
