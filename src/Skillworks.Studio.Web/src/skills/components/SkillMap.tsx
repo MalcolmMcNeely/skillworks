@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { describeCount, describeMoney } from '../../figures/lib/figures';
 import { describeDay } from '../../filters/lib/filters';
 import { Keys } from '../../keys/components/Keys';
 import { triggerMarks } from '../../provenance/lib/triggers';
@@ -6,7 +7,7 @@ import { showsFigures, type SkillsAnswer } from '../lib/answer';
 import { describeTile, heatStep, layOut, tilesOf, unnamedWord, viewWords, type MapView, type PlacedTile, type Sizing } from '../lib/map';
 import type { MapChoice } from '../lib/mapChoice';
 import { mapNoticeOf } from '../lib/mapNotice';
-import { describeCount, describeMoney, missingWords, type SkillSummary } from '../lib/skills';
+import { describeSpend, missingWords, type SkillSummary } from '../lib/skills';
 import type { StripSlice } from '../lib/strip';
 import { TileReadout } from './TileReadout';
 
@@ -69,7 +70,7 @@ function Tile({
   }
 
   const { skill } = tile;
-  const cost = describeMoney(skill.spend?.cost ?? null);
+  const cost = describeSpend(skill.spend?.cost ?? null);
   const activations = `×${describeCount(skill.activations)}`;
 
   return (
@@ -156,7 +157,7 @@ function Unsized({ skills, view }: { skills: readonly SkillSummary[]; view: MapV
         figure:
           view === 'cost'
             ? `×${describeCount(skill.activations)}${skill.spend === null ? ` · ${missingWords.notNamed}` : ''}`
-            : describeMoney(skill.spend?.cost ?? null),
+            : describeSpend(skill.spend?.cost ?? null),
       }))}
     />
   );

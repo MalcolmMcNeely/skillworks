@@ -1472,13 +1472,43 @@ a.home-panel-face:hover::before {
 }
 
 .session-started,
-.session-length {
+.session-figure {
   font-family: var(--mono);
   white-space: nowrap;
 }
 
-.session-length {
+.session-figure {
   text-align: right;
+}
+
+/* A heading is the control that sorts its column, so it carries the heading's own look and no other. */
+.session-sort {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+
+.session-sort:hover,
+.session-sort:focus-visible {
+  color: var(--ink);
+}
+
+.sessions-table th[aria-sort='ascending'] .session-sort,
+.sessions-table th[aria-sort='descending'] .session-sort {
+  color: var(--ink);
+}
+
+/* Held open whether a column is sorted or not, so the headings do not shift when a reader clicks one. */
+.session-sort-mark {
+  display: inline-block;
+  min-width: 1em;
+  text-align: center;
 }
 
 /* The one column a reader scans, so it carries the page's brightest ink and takes the space left over. */

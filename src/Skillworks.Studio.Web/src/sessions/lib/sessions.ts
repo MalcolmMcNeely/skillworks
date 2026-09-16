@@ -1,3 +1,4 @@
+import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import type { Span } from '../../filters/lib/filters';
 import type { Gap, GapEnd } from '../../gaps/lib/gaps';
 
@@ -10,11 +11,41 @@ export interface Session {
   name: string;
   lengthMs: number;
   running: boolean;
+  toolCalls: number;
+  cost: number;
+  faults: number;
+  // Never added to Faults: somebody chose a refusal and a hook block, so a clean run still reads clean.
+  friction: number;
 }
+
+export type SessionSort = 'started' | 'repository' | 'person' | 'name' | 'length' | 'toolCalls' | 'cost' | 'faults';
+
+export interface SessionColumn {
+  sort: SessionSort;
+  heading: string;
+}
+
+export const sessionColumns: readonly SessionColumn[] = [
+  { sort: 'started', heading: 'Started' },
+  { sort: 'repository', heading: 'Repository' },
+  { sort: 'person', heading: 'Person' },
+  { sort: 'name', heading: 'Session' },
+  { sort: 'length', heading: 'Length' },
+  { sort: 'toolCalls', heading: 'Tool calls' },
+  { sort: 'cost', heading: 'Cost' },
+  { sort: 'faults', heading: 'Faults' },
+];
+
+export const sortGlyphs = { ascending: '▲', descending: '▼' } as const;
+
+// Which way a column runs is a job of its own, so its two marks are an alphabet of their own.
+export const sortSymbols: SymbolTable = { alphabet: 'order', glyphs: Object.values(sortGlyphs) };
 
 export interface SessionsHead {
   kind: 'head';
   span: Span & { lookback: boolean; fromUtc: string; untilUtc: string };
+  sort: SessionSort;
+  descending: boolean;
 }
 
 export interface SessionsPage {
@@ -26,6 +57,9 @@ export type SessionsLine = SessionsHead | SessionsPage | GapEnd;
 
 export interface SessionsAnswer {
   span: SessionsHead['span'];
+  // The order the answer was read in, which is the only order a heading may mark.
+  sort: SessionSort;
+  descending: boolean;
   sessions: Session[];
   // No rows yet is not the same as no runs, so the table waits for this rather than for the answer to end.
   landed: boolean;
@@ -36,7 +70,15 @@ export interface SessionsAnswer {
 
 export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLine): SessionsAnswer {
   if (line.kind === 'head') {
-    return { span: line.span, sessions: [], landed: false, arriving: true, gap: null };
+    return {
+      span: line.span,
+      sort: line.sort,
+      descending: line.descending,
+      sessions: [],
+      landed: false,
+      arriving: true,
+      gap: null,
+    };
   }
 
   if (answer === null) {
@@ -48,6 +90,52 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
   }
 
   return { ...answer, sessions: line.sessions, landed: true };
+}
+
+export interface SessionOrder {
+  sort: SessionSort;
+  // Null leaves the direction to the answer, which opens a column the way a reader wants it first.
+  descending: boolean | null;
+}
+
+export type SortedBy = Pick<SessionsAnswer, 'sort' | 'descending'>;
+
+export const opensOn: SessionOrder = { sort: 'started', descending: null };
+
+export function nextOrder(shown: SortedBy | null, sort: SessionSort): SessionOrder {
+  return shown !== null && shown.sort === sort ? { sort, descending: !shown.descending } : { sort, descending: null };
+}
+
+// The address bar can name a column the table lacks, and the answer would sort on another without saying so.
+export function readOrder(params: URLSearchParams): SessionOrder {
+  const asked = params.get('sort');
+  const known = sessionColumns.find((column) => column.sort === asked);
+  const descending = params.get('descending');
+
+  return {
+    sort: known?.sort ?? opensOn.sort,
+    descending: descending === null ? null : descending === 'true',
+  };
+}
+
+// The address bar and the API take the same parameters, and the opening order is left out, so an
+// untouched table has a clean address to share.
+export function withOrder(params: URLSearchParams, order: SessionOrder): URLSearchParams {
+  const written = new URLSearchParams(params);
+
+  if (order.sort === opensOn.sort && order.descending === null) {
+    written.delete('sort');
+  } else {
+    written.set('sort', order.sort);
+  }
+
+  if (order.descending === null) {
+    written.delete('descending');
+  } else {
+    written.set('descending', String(order.descending));
+  }
+
+  return written;
 }
 
 // A run with no origin remote has no Repository, which is a thing Studio knows rather than one it cannot say.

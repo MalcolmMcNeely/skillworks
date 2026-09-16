@@ -1,4 +1,4 @@
-export type Alphabet = 'identity' | 'condition' | 'cause';
+export type Alphabet = 'identity' | 'condition' | 'cause' | 'order';
 
 export interface SymbolTable {
   alphabet: Alphabet;

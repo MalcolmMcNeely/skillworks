@@ -4,8 +4,15 @@ import {
   describeSpan,
   describeStarted,
   foldSessionsLine,
+  nextOrder,
   noRepository,
   notKnown,
+  opensOn,
+  readOrder,
+  sessionColumns,
+  sortGlyphs,
+  sortSymbols,
+  withOrder,
   type Session,
   type SessionsHead,
 } from './sessions';
@@ -13,6 +20,8 @@ import {
 const head: SessionsHead = {
   kind: 'head',
   span: { from: '2026-09-09', to: '2026-09-15', lookback: true, fromUtc: '2026-09-09T00:00:00+00:00', untilUtc: '2026-09-16T00:00:00+00:00' },
+  sort: 'started',
+  descending: true,
 };
 
 const run: Session = {
@@ -23,13 +32,31 @@ const run: Session = {
   name: 'Fixing the failing build',
   lengthMs: 2_460_000,
   running: false,
+  toolCalls: 42,
+  cost: 1.25,
+  faults: 3,
+  friction: 2,
 };
 
 describe('foldSessionsLine', () => {
   it('opens on the span and no rows, so the page says which days it covers before they land', () => {
     const answer = foldSessionsLine(null, head);
 
-    expect(answer).toEqual({ span: head.span, sessions: [], landed: false, arriving: true, gap: null });
+    expect(answer).toEqual({
+      span: head.span,
+      sort: 'started',
+      descending: true,
+      sessions: [],
+      landed: false,
+      arriving: true,
+      gap: null,
+    });
+  });
+
+  it('takes the order from the head, so a heading marks the column the answer was sorted on', () => {
+    const answer = foldSessionsLine(null, { ...head, sort: 'cost', descending: false });
+
+    expect([answer.sort, answer.descending]).toEqual(['cost', false]);
   });
 
   it('takes the rows from the sessions line and marks them landed, so the table draws before the answer ends', () => {
@@ -91,6 +118,85 @@ describe('the words for what a row does not carry', () => {
   it('says a run with no origin remote has no Repository, which is not the same as not knowing', () => {
     expect(noRepository).toBe('None');
     expect(notKnown).not.toBe(noRepository);
+  });
+});
+
+describe('nextOrder', () => {
+  it('leaves the direction to the answer on a column not yet sorted on', () => {
+    expect(nextOrder({ sort: 'started', descending: true }, 'faults')).toEqual({ sort: 'faults', descending: null });
+  });
+
+  it('turns a column round on a second click, so both ways are one click apart', () => {
+    expect(nextOrder({ sort: 'faults', descending: true }, 'faults')).toEqual({ sort: 'faults', descending: false });
+    expect(nextOrder({ sort: 'faults', descending: false }, 'faults')).toEqual({ sort: 'faults', descending: true });
+  });
+
+  it('leaves the direction to the answer before one has arrived', () => {
+    expect(nextOrder(null, 'cost')).toEqual({ sort: 'cost', descending: null });
+  });
+
+  it('opens on the started column with the direction left to the answer', () => {
+    expect(opensOn).toEqual({ sort: 'started', descending: null });
+  });
+});
+
+describe('the order in the address bar', () => {
+  it('reads a column and a direction a link named', () => {
+    expect(readOrder(new URLSearchParams('sort=cost&descending=false'))).toEqual({ sort: 'cost', descending: false });
+  });
+
+  it('leaves the direction to the answer when a link names only a column', () => {
+    expect(readOrder(new URLSearchParams('sort=faults'))).toEqual({ sort: 'faults', descending: null });
+  });
+
+  it('opens on the started column when the address bar names none', () => {
+    expect(readOrder(new URLSearchParams(''))).toEqual(opensOn);
+  });
+
+  it('falls back to the started column when the address bar names one the table lacks', () => {
+    expect(readOrder(new URLSearchParams('sort=weather')).sort).toBe('started');
+  });
+
+  it('writes the same parameters the API takes, so the address shows what was asked', () => {
+    const written = withOrder(new URLSearchParams(''), { sort: 'cost', descending: true });
+
+    expect(written.toString()).toBe('sort=cost&descending=true');
+  });
+
+  it('leaves the opening order out, so an untouched table has a clean address to share', () => {
+    expect(withOrder(new URLSearchParams('sort=cost&descending=true'), opensOn).toString()).toBe('');
+  });
+
+  it('keeps the parameters it was given, so sorting never throws a filter away', () => {
+    const written = withOrder(new URLSearchParams('repository=acme%2Fxi'), { sort: 'cost', descending: null });
+
+    expect(written.toString()).toBe('repository=acme%2Fxi&sort=cost');
+  });
+});
+
+describe('sessionColumns', () => {
+  it('names every column the table sorts on, in the order they are read', () => {
+    expect(sessionColumns.map((column) => column.sort)).toEqual([
+      'started',
+      'repository',
+      'person',
+      'name',
+      'length',
+      'toolCalls',
+      'cost',
+      'faults',
+    ]);
+  });
+
+  it('heads the name column Session and the count of calls Tool calls', () => {
+    const headings = new Map(sessionColumns.map((column) => [column.sort, column.heading]));
+
+    expect(headings.get('name')).toBe('Session');
+    expect(headings.get('toolCalls')).toBe('Tool calls');
+  });
+
+  it('gives the two order marks an alphabet of their own', () => {
+    expect(sortSymbols).toEqual({ alphabet: 'order', glyphs: [sortGlyphs.ascending, sortGlyphs.descending] });
   });
 });
 

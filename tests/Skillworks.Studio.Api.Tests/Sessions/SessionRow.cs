@@ -15,4 +15,12 @@ public sealed record SessionRow
     public required long LengthMs { get; init; }
 
     public required bool Running { get; init; }
+
+    public required int ToolCalls { get; init; }
+
+    public required decimal Cost { get; init; }
+
+    public required int Faults { get; init; }
+
+    public required int Friction { get; init; }
 }

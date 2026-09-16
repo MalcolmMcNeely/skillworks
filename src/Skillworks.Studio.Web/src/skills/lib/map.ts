@@ -1,5 +1,6 @@
+import { describeCount, describeMoney } from '../../figures/lib/figures';
 import type { SkillsAnswer } from './answer';
-import { describeCount, describeEach, describeMoney, type SkillSummary, type TurnTotals } from './skills';
+import { describeEach, describeSpend, type SkillSummary, type TurnTotals } from './skills';
 
 export type MapView = 'cost' | 'activations';
 
@@ -114,7 +115,7 @@ export function describeTile(tile: MapTile): string {
 
   const { skill } = tile;
 
-  return `${tile.rank}. ${skill.name}. Cost ${describeMoney(skill.spend?.cost ?? null)}. Activations ${describeCount(skill.activations)}. Each ${describeEach(skill)}.`;
+  return `${tile.rank}. ${skill.name}. Cost ${describeSpend(skill.spend?.cost ?? null)}. Activations ${describeCount(skill.activations)}. Each ${describeEach(skill)}.`;
 }
 
 // Steps as well as brightness, so a reader who cannot tell the shades apart can still count the heat.

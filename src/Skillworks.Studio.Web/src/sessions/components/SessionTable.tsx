@@ -1,10 +1,16 @@
+import { describeCount, describeMoney } from '../../figures/lib/figures';
 import {
   describeLength,
   describeStarted,
   noRepository,
   notKnown,
+  sessionColumns,
+  sortGlyphs,
   type Session,
+  type SessionColumn,
+  type SessionSort,
   type SessionsAnswer,
+  type SortedBy,
 } from '../lib/sessions';
 
 function Row({ session }: { session: Session }) {
@@ -17,13 +23,49 @@ function Row({ session }: { session: Session }) {
         <span>{session.name}</span>
         {session.running ? <span className="session-running">Running</span> : null}
       </td>
-      <td className="session-length">{describeLength(session.lengthMs)}</td>
+      <td className="session-figure">{describeLength(session.lengthMs)}</td>
+      <td className="session-figure">{describeCount(session.toolCalls)}</td>
+      <td className="session-figure">{describeMoney(session.cost)}</td>
+      <td className="session-figure">{describeCount(session.faults)}</td>
     </tr>
   );
 }
 
+// The mark comes from the answer, never from what was asked, so a heading never claims an order that did not happen.
+function Heading({
+  column,
+  sortedBy,
+  onSort,
+}: {
+  column: SessionColumn;
+  sortedBy: SortedBy;
+  onSort: (sort: SessionSort) => void;
+}) {
+  const sorted = sortedBy.sort === column.sort;
+  const glyph = sortedBy.descending ? sortGlyphs.descending : sortGlyphs.ascending;
+
+  return (
+    <th scope="col" aria-sort={sorted ? (sortedBy.descending ? 'descending' : 'ascending') : 'none'}>
+      <button type="button" className="session-sort" onClick={() => onSort(column.sort)}>
+        {column.heading}
+        <span className="session-sort-mark" aria-hidden="true">
+          {sorted ? glyph : ''}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 // The rows draw as soon as they land, and the head above says whether the answer has ended.
-export function SessionTable({ answer, failure }: { answer: SessionsAnswer | null; failure: string | null }) {
+export function SessionTable({
+  answer,
+  failure,
+  onSort,
+}: {
+  answer: SessionsAnswer | null;
+  failure: string | null;
+  onSort: (sort: SessionSort) => void;
+}) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
   }
@@ -38,14 +80,12 @@ export function SessionTable({ answer, failure }: { answer: SessionsAnswer | nul
 
   return (
     <table className="sessions-table">
-      <caption className="visually-hidden">Sessions, newest first</caption>
+      <caption className="visually-hidden">Sessions, sorted on any column</caption>
       <thead>
         <tr>
-          <th scope="col">Started</th>
-          <th scope="col">Repository</th>
-          <th scope="col">Person</th>
-          <th scope="col">Session</th>
-          <th scope="col">Length</th>
+          {sessionColumns.map((column) => (
+            <Heading key={column.sort} column={column} sortedBy={answer} onSort={onSort} />
+          ))}
         </tr>
       </thead>
       <tbody>

@@ -1,6 +1,7 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
+import { describeCount } from '../../figures/lib/figures';
 import { describeDay } from '../../filters/lib/filters';
-import { describeCount, type SkillsDay, type SkillsHead } from './skills';
+import type { SkillsDay, SkillsHead } from './skills';
 
 const hoursInDay = 24;
 

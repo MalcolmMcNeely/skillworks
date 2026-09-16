@@ -9,8 +9,27 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
 
     private const string PromptEvent = "user_prompt";
 
+    private const string ToolCallEvent = "tool_result";
+
+    // Claude Code writes no tool_result for a call that never ran, so a refusal is only ever a decision.
+    private const string DecisionEvent = "tool_decision";
+
+    private const string ModelErrorEvent = "api_error";
+
+    private const string TurnEvent = "api_request";
+
     // The one Turn whose answer is the Session's name.
     private const string TitleSource = "generate_session_title";
+
+    private const string SuccessAttribute = "success";
+
+    private const string DecisionAttribute = "decision";
+
+    private const string CostAttribute = "cost_usd";
+
+    private const string Unsuccessful = "false";
+
+    private const string Rejected = "reject";
 
     private static readonly string[] BySession = [EventAttributes.Session];
 
@@ -26,9 +45,15 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
 
     private static readonly string[] ByPrompt = [EventAttributes.Session, EventAttributes.Prompt];
 
+    // One read answers how many Tool calls a run made and how many of them failed.
+    private static readonly string[] ByOutcome = [EventAttributes.Session, SuccessAttribute];
+
+    private static readonly string[] ByDecision = [EventAttributes.Session, DecisionAttribute];
+
     // Totals, never a list of events: a busy organisation's week is more lines than one read holds.
     public async Task<(IReadOnlyList<Session> Sessions, EventTotals Period)> ListAsync(
         DaySpan span,
+        SessionOrder order,
         CancellationToken cancellationToken)
     {
         var everything = Events(span);
@@ -38,20 +63,38 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
         var ending = events.LatestAsync(everything, BySession, cancellationToken);
         var titling = events.EarliestAsync(Titles(span), ByTitle, cancellationToken);
         var prompting = events.EarliestAsync(everything with { EventName = PromptEvent }, ByPrompt, cancellationToken);
+        var calling = events.CountAsync(everything with { EventName = ToolCallEvent }, ByOutcome, cancellationToken);
+        var deciding = events.CountAsync(everything with { EventName = DecisionEvent }, ByDecision, cancellationToken);
+        var erring = events.CountAsync(everything with { EventName = ModelErrorEvent }, BySession, cancellationToken);
+        var costing = events.SumAsync(everything with { EventName = TurnEvent }, CostAttribute, BySession, cancellationToken);
 
-        var read = new Readings(await placing, await starting, await ending, await titling, await prompting);
+        var read = new Readings(
+            await placing,
+            await starting,
+            await ending,
+            await titling,
+            await prompting,
+            await calling,
+            await deciding,
+            await erring,
+            await costing);
 
         // The whereabouts count every event of the span, so it is the period the Gap is judged on.
         var period = read.Placed with { Unreachable = read.Unreachable };
 
-        return (period.Unreachable is null ? Rows(read) : [], period);
+        return (period.Unreachable is null ? Rows(read, order) : [], period);
     }
 
-    private IReadOnlyList<Session> Rows(Readings read)
+    private IReadOnlyList<Session> Rows(Readings read, SessionOrder order)
     {
         var (firstEvent, lastEvent) = (MomentsOf(read.Started), MomentsOf(read.Ended));
         var titles = WordsOf(read.Titled, EventAttributes.Response);
         var prompts = WordsOf(read.Prompted, EventAttributes.Prompt);
+        var toolCalls = CountedIn(read.Called.Groups);
+        var toolFaults = CountedIn(read.Called.Groups.Where(Failed));
+        var modelFaults = CountedIn(read.Erred.Groups);
+        var friction = CountedIn(read.Decided.Groups.Where(Refused));
+        var costs = SummedIn(read.Cost);
         var now = clock.GetUtcNow();
 
         var sessions =
@@ -67,10 +110,13 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
                 MostlySaid(run, total => total.Attribute(EventAttributes.Person)),
                 SessionName.Of(titles.GetValueOrDefault(id), prompts.GetValueOrDefault(id), repository, startedAt),
                 (long)(lastEvent[id] - startedAt).TotalMilliseconds,
-                RunningWindow.Covers(lastEvent[id], now));
+                RunningWindow.Covers(lastEvent[id], now),
+                toolCalls.GetValueOrDefault(id),
+                costs.GetValueOrDefault(id),
+                toolFaults.GetValueOrDefault(id) + modelFaults.GetValueOrDefault(id),
+                friction.GetValueOrDefault(id));
 
-        // The id breaks a tie, so two runs that started in one millisecond read the same way twice.
-        return [.. sessions.OrderByDescending(session => session.StartedUtc).ThenBy(session => session.Id, StringComparer.Ordinal)];
+        return order.Sorted(sessions);
     }
 
     // An older Claude Code puts the repository on no event, and a run with no origin remote has none.
@@ -92,6 +138,16 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
         Identified(totals.Groups.Where(total => total.Attribute(attribute) is { Length: > 0 }))
             .ToDictionary(run => run.Key, run => run.MinBy(said => said.Total)!.Attribute(attribute)!);
 
+    private static bool Failed(EventTotal call) => call.Attribute(SuccessAttribute) == Unsuccessful;
+
+    private static bool Refused(EventTotal decision) => decision.Attribute(DecisionAttribute) == Rejected;
+
+    private static Dictionary<string, int> CountedIn(IEnumerable<EventTotal> groups) =>
+        Identified(groups).ToDictionary(run => run.Key, run => (int)run.Sum(total => total.Total));
+
+    private static Dictionary<string, decimal> SummedIn(EventTotals totals) =>
+        Identified(totals.Groups).ToDictionary(run => run.Key, run => run.Sum(total => total.Total));
+
     private static IEnumerable<IGrouping<string, EventTotal>> Identified(IEnumerable<EventTotal> groups) =>
         from total in groups
         let id = total.Attribute(EventAttributes.Session)
@@ -109,9 +165,14 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
         EventTotals Started,
         EventTotals Ended,
         EventTotals Titled,
-        EventTotals Prompted)
+        EventTotals Prompted,
+        EventTotals Called,
+        EventTotals Decided,
+        EventTotals Erred,
+        EventTotals Cost)
     {
         public string? Unreachable =>
-            Placed.Unreachable ?? Started.Unreachable ?? Ended.Unreachable ?? Titled.Unreachable ?? Prompted.Unreachable;
+            Placed.Unreachable ?? Started.Unreachable ?? Ended.Unreachable ?? Titled.Unreachable ??
+            Prompted.Unreachable ?? Called.Unreachable ?? Decided.Unreachable ?? Erred.Unreachable ?? Cost.Unreachable;
     }
 }

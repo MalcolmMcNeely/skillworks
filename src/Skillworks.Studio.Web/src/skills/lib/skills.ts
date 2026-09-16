@@ -1,4 +1,5 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
+import { describeMoney } from '../../figures/lib/figures';
 import type { Span } from '../../filters/lib/filters';
 import type { GapEnd } from '../../gaps/lib/gaps';
 import type { Origin, TriggerCount } from '../../provenance/lib/provenance';
@@ -68,21 +69,9 @@ export const missingWords = {
 // The dash is drawn, so it answers to the alphabets as any other mark on screen does.
 export const missingSymbols: SymbolTable = { alphabet: 'condition', glyphs: [missingWords.noAnswer] };
 
-// Not the reader's locale: costs are in US dollars, so figures group and point the way dollars do.
-const money = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 2,
-  // Four places, or a firing that costs a fraction of a cent would round to free.
-  maximumFractionDigits: 4,
-});
-
-const counts = new Intl.NumberFormat('en-US');
-
-const tokenCounts = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
-
-export function describeMoney(amount: number | null): string {
-  return amount === null ? missingWords.notNamed : money.format(amount);
+// A Turn sent unnamed has a Cost nobody can attribute, which is hidden rather than absent.
+export function describeSpend(amount: number | null): string {
+  return amount === null ? missingWords.notNamed : describeMoney(amount);
 }
 
 // A Cost with nothing to share it across is not a Cost that went unnamed.
@@ -91,13 +80,5 @@ export function describeEach(figures: { each: number | null; activations: number
     return missingWords.noAnswer;
   }
 
-  return figures.activations === 0 ? missingWords.none : describeMoney(figures.each);
-}
-
-export function describeCount(count: number): string {
-  return counts.format(count);
-}
-
-export function describeTokens(count: number): string {
-  return tokenCounts.format(count);
+  return figures.activations === 0 ? missingWords.none : describeSpend(figures.each);
 }

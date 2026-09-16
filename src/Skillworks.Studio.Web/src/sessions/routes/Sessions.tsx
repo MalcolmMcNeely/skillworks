@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { everything } from '../../filters/lib/filters';
 import { SignalWord } from '../../gaps/components/SignalWord';
 import { describeFetchFailure } from '../../http/lib/errors';
@@ -7,7 +8,15 @@ import { useTabTitle } from '../../pages/components/useTabTitle';
 import { sessions as page } from '../../pages/lib/pages';
 import { fetchSessions } from '../api/sessions';
 import { SessionTable } from '../components/SessionTable';
-import { describeSpan, foldSessionsLine, type SessionsAnswer } from '../lib/sessions';
+import {
+  describeSpan,
+  foldSessionsLine,
+  nextOrder,
+  readOrder,
+  withOrder,
+  type SessionSort,
+  type SessionsAnswer,
+} from '../lib/sessions';
 
 interface Reading {
   answer: SessionsAnswer | null;
@@ -20,13 +29,21 @@ export function Sessions() {
 
   useTabTitle(page.tabTitle);
 
+  // The order lives in the address bar, so a reload, a bookmark or a link a colleague sent lands on the same table.
+  const [params, setParams] = useSearchParams();
+
+  // Text, as an order object is new every render.
+  const asked = withOrder(params, readOrder(params)).toString();
+
   useEffect(() => {
     const abort = new AbortController();
+    // Read back out of the text, so the effect depends only on what it is keyed on.
+    const order = readOrder(new URLSearchParams(asked));
 
     const read = async () => {
       let answer: SessionsAnswer | null = null;
 
-      for await (const line of fetchSessions(everything, abort.signal)) {
+      for await (const line of fetchSessions(everything, order, abort.signal)) {
         answer = foldSessionsLine(answer, line);
         setReading({ answer, failure: null });
       }
@@ -39,10 +56,14 @@ export function Sessions() {
       }
     });
 
+    // A changed order stops the old answer, so its rows never land under the new heading.
     return () => abort.abort();
-  }, []);
+  }, [asked]);
 
   const answer = reading?.answer ?? null;
+
+  // Replaced, not pushed, so trying four columns does not cost four presses of the back button.
+  const sortOn = (sort: SessionSort) => setParams(withOrder(params, nextOrder(answer, sort)), { replace: true });
 
   return (
     <main className="page sessions">
@@ -56,7 +77,7 @@ export function Sessions() {
         {answer === null ? 'The lookback' : `${answer.span.lookback ? 'The lookback, ' : ''}${describeSpan(answer.span)}`}
       </p>
 
-      <SessionTable answer={answer} failure={reading?.failure ?? null} />
+      <SessionTable answer={answer} failure={reading?.failure ?? null} onSort={sortOn} />
     </main>
   );
 }

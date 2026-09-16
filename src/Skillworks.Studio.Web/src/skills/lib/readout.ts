@@ -1,7 +1,8 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
+import { describeCount, describeTokens } from '../../figures/lib/figures';
 import { triggerMarks } from '../../provenance/lib/triggers';
 import type { PlacedTile, Size } from './map';
-import { describeCount, describeEach, describeMoney, describeTokens, missingWords, type SkillSummary } from './skills';
+import { describeEach, describeSpend, missingWords, type SkillSummary } from './skills';
 import { tokensIn } from './totals';
 
 // A readout follows the pointer until it is pinned, and only the mark says which of the two it is.
@@ -45,7 +46,7 @@ export function readoutRows(skill: SkillSummary, now: number): ReadoutRow[] {
   const marks = triggerMarks(skill.triggers);
 
   return [
-    inWords('Cost', describeMoney(skill.spend?.cost ?? null)),
+    inWords('Cost', describeSpend(skill.spend?.cost ?? null)),
     inWords('Activations', describeCount(skill.activations)),
     inWords('Each', describeEach(skill)),
     inWords('Tokens', skill.spend === null ? missingWords.notNamed : describeTokens(tokensIn(skill.spend))),

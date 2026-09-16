@@ -41,12 +41,12 @@ public sealed partial class SessionEndpointsTests
         var head = await studio.SessionLine("head");
         var page = await studio.SessionLine("sessions");
 
-        Assert.Equal(["kind", "span"], StudioHost.Fields(head));
+        Assert.Equal(["descending", "kind", "sort", "span"], StudioHost.Fields(head));
         Assert.Equal(["from", "fromUtc", "lookback", "to", "untilUtc"], StudioHost.Fields(head["span"]));
 
         Assert.Equal(["kind", "sessions"], StudioHost.Fields(page));
         Assert.Equal(
-            ["id", "lengthMs", "name", "person", "repository", "running", "startedUtc"],
+            ["cost", "faults", "friction", "id", "lengthMs", "name", "person", "repository", "running", "startedUtc", "toolCalls"],
             StudioHost.Fields(page["sessions"]?[0]));
     }
 
