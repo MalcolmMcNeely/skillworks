@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
-import { describeClock, describeSpell, noteOf, titleOf, type Exchange, type Mark, type Range } from '../lib/steps';
+import type { Band } from '../lib/conversation';
+import { describeClock, describeSpell, noteOf, titleOf, type Mark, type Range } from '../lib/steps';
 import { Lanes } from './Lanes';
 import { Overview } from './Overview';
 
@@ -56,7 +57,7 @@ function Tip({ pointed }: { pointed: Pointed }) {
 
 export function Timeline({
   marks,
-  exchanges,
+  bands,
   whole,
   range,
   selected,
@@ -65,13 +66,13 @@ export function Timeline({
   onExchange,
 }: {
   marks: readonly Mark[];
-  exchanges: readonly Exchange[];
+  bands: readonly Band[];
   whole: Range;
   range: Range | null;
   selected: string | null;
   onRange: (range: Range | null) => void;
   onOpen: (step: string | null) => void;
-  onExchange: (exchange: Exchange) => void;
+  onExchange: (band: Band) => void;
 }) {
   const [frame, width] = useWidth<HTMLDivElement>();
   const [pointed, setPointed] = useState<Pointed | null>(null);
@@ -107,7 +108,7 @@ export function Timeline({
         <Overview marks={marks} whole={whole} range={range} left={left} width={width} onRange={onRange} />
         <Lanes
           marks={marks}
-          exchanges={exchanges}
+          bands={bands}
           range={inView}
           selected={selected}
           left={left}

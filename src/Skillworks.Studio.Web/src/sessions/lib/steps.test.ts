@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { Exchange } from './conversation';
 import type { Session } from './sessions';
 import {
   describeClock,
   describeSpell,
-  exchangesOf,
   foldSessionLine,
   lanes,
   lanesOf,
@@ -36,6 +36,19 @@ function step(fields: Partial<Step> & Pick<Step, 'id' | 'kind' | 'atUtc'>): Step
 
 const prompt = step({ id: '1', kind: 'prompt', atUtc: '2026-09-14T09:00:00.000Z', words: 'Fix the build' });
 
+const said: Exchange = {
+  index: 0,
+  atUtc: '2026-09-14T09:00:00.000Z',
+  lengthMs: 10_000,
+  prompt: 'Fix the build',
+  promptLength: 13,
+  answer: 'Built.',
+  answerLength: 6,
+  turns: 1,
+  toolCalls: 2,
+  cost: 0.42,
+};
+
 const opened: SessionAnswer = foldSessionLine(null, { kind: 'head', session: run });
 
 describe('foldSessionLine', () => {
@@ -56,6 +69,16 @@ describe('foldSessionLine', () => {
 
   it('marks a run with no steps landed too, so an empty timeline is told apart from one still to come', () => {
     expect(foldSessionLine(opened, { kind: 'steps', steps: [] }).landed).toBe(true);
+  });
+
+  it('takes the exchanges, so the conversation reads what the timeline is already drawing', () => {
+    const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
+      kind: 'exchanges',
+      exchanges: [said],
+    });
+
+    expect(answer.exchanges).toEqual([said]);
+    expect(answer.steps).toEqual([prompt]);
   });
 
   it('ends the answer and keeps its gap', () => {
@@ -178,45 +201,6 @@ describe('toneOf', () => {
 
   it('draws a prompt as a tool rather than as nothing, so no mark is ever unpainted', () => {
     expect(toneOf(prompt)).toBe('tool');
-  });
-});
-
-describe('exchangesOf', () => {
-  const conversation = marksOf([
-    prompt,
-    step({ id: '2', kind: 'tool', atUtc: '2026-09-14T09:00:02.000Z', lengthMs: 3_000, tool: 'Bash' }),
-    step({ id: '3', kind: 'answer', atUtc: '2026-09-14T09:00:10.000Z' }),
-    step({ id: '4', kind: 'prompt', atUtc: '2026-09-14T09:05:00.000Z', words: 'Now the docs' }),
-    step({ id: '5', kind: 'answer', atUtc: '2026-09-14T09:06:00.000Z' }),
-  ]);
-
-  it('opens an exchange at each prompt', () => {
-    expect(exchangesOf(conversation).map((each) => each.index)).toEqual([0, 1]);
-    expect(exchangesOf(conversation)[1].startMs).toBe(Date.parse('2026-09-14T09:05:00.000Z'));
-  });
-
-  it('closes an exchange at the answer that followed', () => {
-    expect(exchangesOf(conversation)[0].endMs).toBe(Date.parse('2026-09-14T09:00:10.000Z'));
-  });
-
-  it('closes an exchange with no answer at the last step that followed it', () => {
-    const unanswered = marksOf([
-      prompt,
-      step({ id: '2', kind: 'tool', atUtc: '2026-09-14T09:00:02.000Z', lengthMs: 3_000, tool: 'Bash' }),
-    ]);
-
-    expect(exchangesOf(unanswered)[0].endMs).toBe(Date.parse('2026-09-14T09:00:05.000Z'));
-  });
-
-  it('leaves work before the first prompt out, as nobody had asked for it yet', () => {
-    const early = marksOf([step({ id: '0', kind: 'turn', atUtc: '2026-09-14T08:59:00.000Z' }), prompt]);
-
-    expect(exchangesOf(early)).toHaveLength(1);
-    expect(exchangesOf(early)[0].startMs).toBe(Date.parse('2026-09-14T09:00:00.000Z'));
-  });
-
-  it('finds no exchange in a run nobody typed into', () => {
-    expect(exchangesOf(marksOf([step({ id: '1', kind: 'turn', atUtc: '2026-09-14T09:00:00.000Z' })]))).toEqual([]);
   });
 });
 

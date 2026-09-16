@@ -20,6 +20,13 @@ public static class EventAttributes
 
     public const string QuerySource = "query_source";
 
+    public const string PromptLength = "prompt_length";
+
+    public const string ResponseLength = "response_length";
+
+    // Claude Code writes this in place of the words when the prompt and response switches are off.
+    public const string Withheld = "<REDACTED>";
+
     // Loki gives OTLP attributes with their dots turned into underscores.
     internal static string LabelOf(string attribute) => attribute.Replace('.', '_');
 

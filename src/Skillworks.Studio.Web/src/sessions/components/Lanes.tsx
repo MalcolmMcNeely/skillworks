@@ -1,7 +1,8 @@
 import { useMemo, type PointerEvent } from 'react';
-import { holds } from '../lib/brush';
+import { inRange } from '../lib/brush';
+import type { Band } from '../lib/conversation';
 import { foldScale, ticksOf } from '../lib/fold';
-import { describeClock, describeSpell, lanes, lanesOf, toneOf, type Exchange, type Lane, type Mark, type Range } from '../lib/steps';
+import { describeClock, describeSpell, lanes, lanesOf, toneOf, type Lane, type Mark, type Range } from '../lib/steps';
 
 // Narrow marks are common and a cursor is not, so every mark is drawn at least this wide to stay reachable.
 const leastPx = 3;
@@ -23,7 +24,7 @@ interface Placed {
 
 export function Lanes({
   marks,
-  exchanges,
+  bands,
   range,
   selected,
   left,
@@ -33,18 +34,18 @@ export function Lanes({
   onHover,
 }: {
   marks: readonly Mark[];
-  exchanges: readonly Exchange[];
+  bands: readonly Band[];
   range: Range;
   selected: string | null;
   left: number;
   width: number;
   onOpen: (step: string) => void;
-  onExchange: (exchange: Exchange) => void;
+  onExchange: (band: Band) => void;
   onHover: (mark: Mark | null, event: PointerEvent) => void;
 }) {
   const right = Math.max(left + 10, width - 8);
   const height = top + lanes.length * (laneHeight + gap) + axis;
-  const shown = useMemo(() => marks.filter((mark) => holds(range, mark.startMs, mark.endMs)), [marks, range]);
+  const shown = useMemo(() => inRange(marks, range), [marks, range]);
 
   const scale = useMemo(
     () => foldScale(shown.map((mark) => [Math.max(range[0], mark.startMs), Math.min(range[1], mark.endMs)]), left, right),
@@ -65,7 +66,7 @@ export function Lanes({
     [shown, scale, range],
   );
 
-  const opened = exchanges.filter((each) => holds(range, each.startMs, each.endMs));
+  const opened = inRange(bands, range);
 
   return (
     <svg width={width} height={height} className="timeline-lanes" role="img" aria-label="The steps in the stretch in view">
@@ -102,21 +103,21 @@ export function Lanes({
         </g>
       ))}
 
-      {opened.map((exchange) => {
-        const x1 = scale.map(Math.max(range[0], exchange.startMs));
-        const x2 = scale.map(Math.min(range[1], exchange.endMs));
+      {opened.map((band) => {
+        const x1 = scale.map(Math.max(range[0], band.startMs));
+        const x2 = scale.map(Math.min(range[1], band.endMs));
 
         return (
           <rect
-            key={exchange.index}
+            key={band.exchange.index}
             x={x1}
             y={laneY(0)}
             width={Math.max(leastPx, x2 - x1)}
             height={laneHeight}
             className="timeline-exchange"
-            onClick={() => onExchange(exchange)}
+            onClick={() => onExchange(band)}
           >
-            <title>{`Exchange ${exchange.index + 1}`}</title>
+            <title>{`Exchange ${band.exchange.index + 1}`}</title>
           </rect>
         );
       })}

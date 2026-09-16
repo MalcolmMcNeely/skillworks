@@ -4,17 +4,25 @@ using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 
-public sealed record StepsAnswer(SessionRow? Run, IReadOnlyList<StepRow> Steps, GapRow Gap)
+public sealed record StepsAnswer(
+    SessionRow? Run,
+    IReadOnlyList<StepRow> Steps,
+    IReadOnlyList<ExchangeRow> Exchanges,
+    GapRow Gap)
 {
     public static StepsAnswer Of(IReadOnlyList<JsonObject> lines) => new(
         Opened(lines.Single(line => StudioHost.KindOf(line) == "head")),
-        [
-            .. lines
-                .Where(line => StudioHost.KindOf(line) == "steps")
-                .SelectMany(line => line["steps"]?.AsArray() ?? [])
-                .Select(StudioHost.Read<StepRow>)
-        ],
+        Held<StepRow>(lines, "steps"),
+        Held<ExchangeRow>(lines, "exchanges"),
         StudioHost.Read<GapRow>(lines.Single(line => StudioHost.KindOf(line) == "end")["gap"]));
+
+    private static IReadOnlyList<T> Held<T>(IReadOnlyList<JsonObject> lines, string kind) =>
+    [
+        .. lines
+            .Where(line => StudioHost.KindOf(line) == kind)
+            .SelectMany(line => line[kind]?.AsArray() ?? [])
+            .Select(StudioHost.Read<T>)
+    ];
 
     private static SessionRow? Opened(JsonObject head) =>
         head["session"] is { } session ? StudioHost.Read<SessionRow>(session) : null;

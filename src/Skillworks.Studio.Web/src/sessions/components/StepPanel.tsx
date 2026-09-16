@@ -1,5 +1,5 @@
 import { describeCount } from '../../figures/lib/figures';
-import { holds } from '../lib/brush';
+import { inRange } from '../lib/brush';
 import { describeClock, describeSpell, noteOf, titleOf, type Mark, type Range } from '../lib/steps';
 
 // A stretch can hold thousands of Steps, and a list that long is no more readable than the timeline above it.
@@ -38,16 +38,16 @@ export function StepPanel({
   selected: string | null;
   onOpen: (id: string | null) => void;
 }) {
-  const shown = marks.filter((mark) => holds(range, mark.startMs, mark.endMs));
+  const shown = inRange(marks, range);
   const toolCalls = shown.filter((mark) => mark.step.kind === 'tool').length;
   const faults = shown.filter((mark) => mark.step.fault).length;
   const open = selected === null ? null : (marks.find((mark) => mark.step.id === selected) ?? null);
 
   return (
-    <section className="steps-panel" aria-label="Steps">
-      <header className="steps-panel-head">
+    <section className="session-panel" aria-label="Steps">
+      <header className="panel-head">
         <h2>Steps</h2>
-        <p className="micro steps-figure">
+        <p className="micro panel-figure">
           {describeCount(shown.length)} steps · {describeCount(toolCalls)} tool calls · {describeCount(faults)} faults
           {range === null ? '' : ' in the stretch in view'}
         </p>
@@ -77,7 +77,7 @@ export function StepPanel({
       )}
 
       {shown.length > mostRows ? (
-        <p className="micro steps-figure">
+        <p className="micro panel-figure">
           The first {describeCount(mostRows)} are listed. Brush a shorter stretch to read the rest.
         </p>
       ) : null}

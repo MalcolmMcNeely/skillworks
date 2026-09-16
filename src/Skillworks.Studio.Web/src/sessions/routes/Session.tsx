@@ -8,11 +8,13 @@ import { UpButton } from '../../pages/components/UpButton';
 import { useTabTitle } from '../../pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../pages/lib/pages';
 import { fetchSession } from '../api/sessions';
+import { ConversationPanel } from '../components/ConversationPanel';
 import { StepPanel } from '../components/StepPanel';
 import { Timeline } from '../components/Timeline';
 import { readRange, widened, withRange } from '../lib/brush';
+import { bandsOf, type Band } from '../lib/conversation';
 import { describeLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
-import { exchangesOf, foldSessionLine, marksOf, runSpan, type Exchange, type Mark, type Range, type SessionAnswer } from '../lib/steps';
+import { foldSessionLine, marksOf, runSpan, type Mark, type Range, type SessionAnswer } from '../lib/steps';
 import { readWhere, withWhere, type Where } from '../lib/where';
 
 interface Reading {
@@ -69,8 +71,9 @@ export function Session() {
   useTabTitle(run === null ? page.tabTitle : tabTitleOf(run.name));
 
   const steps = answer?.steps;
+  const exchanges = answer?.exchanges;
   const marks = useMemo(() => marksOf(steps ?? []), [steps]);
-  const exchanges = useMemo(() => exchangesOf(marks), [marks]);
+  const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
   const whole = runSpan(marks);
 
   // Replaced, not pushed, so brushing four stretches does not cost four presses of the back button.
@@ -81,8 +84,8 @@ export function Session() {
 
   const open = (step: string | null) => write(withWhere(params, { ...where, step }));
 
-  const onExchange = (exchange: Exchange) =>
-    whole === null ? undefined : brush(widened([exchange.startMs, exchange.endMs], whole), exchange.index);
+  const onExchange = (band: Band) =>
+    whole === null ? undefined : brush(widened([band.startMs, band.endMs], whole), band.exchange.index);
 
   // What the table was asked for, so going up lands on the list the reader left rather than a fresh one.
   const table = withOrder(filterParams(filter), readOrder(params)).toString();
@@ -107,7 +110,7 @@ export function Session() {
         answer={answer}
         failure={failure}
         marks={marks}
-        exchanges={exchanges}
+        bands={bands}
         whole={whole}
         range={range}
         where={where}
@@ -123,7 +126,7 @@ function Body({
   answer,
   failure,
   marks,
-  exchanges,
+  bands,
   whole,
   range,
   where,
@@ -134,13 +137,13 @@ function Body({
   answer: SessionAnswer | null;
   failure: string | null;
   marks: readonly Mark[];
-  exchanges: Exchange[];
+  bands: readonly Band[];
   whole: Range | null;
   range: Range | null;
   where: Where;
   onRange: (range: Range | null) => void;
   onOpen: (step: string | null) => void;
-  onExchange: (exchange: Exchange) => void;
+  onExchange: (band: Band) => void;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
@@ -162,7 +165,7 @@ function Body({
     <>
       <Timeline
         marks={marks}
-        exchanges={exchanges}
+        bands={bands}
         whole={whole}
         range={range}
         selected={where.step}
@@ -170,6 +173,7 @@ function Body({
         onOpen={onOpen}
         onExchange={onExchange}
       />
+      <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
       <StepPanel marks={marks} range={range} selected={where.step} onOpen={onOpen} />
     </>
   );

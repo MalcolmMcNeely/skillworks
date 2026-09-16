@@ -1,4 +1,5 @@
 import type { Gap, GapEnd } from '../../gaps/lib/gaps';
+import type { Exchange, ExchangesPage } from './conversation';
 import type { Session } from './sessions';
 
 export type StepKind = 'prompt' | 'turn' | 'answer' | 'tool' | 'refused' | 'fault';
@@ -25,11 +26,12 @@ export interface StepsPage {
   steps: Step[];
 }
 
-export type SessionLine = SessionHead | StepsPage | GapEnd;
+export type SessionLine = SessionHead | StepsPage | ExchangesPage | GapEnd;
 
 export interface SessionAnswer {
   session: Session | null;
   steps: Step[];
+  exchanges: Exchange[];
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -38,7 +40,7 @@ export interface SessionAnswer {
 
 export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine): SessionAnswer {
   if (line.kind === 'head') {
-    return { session: line.session, steps: [], landed: false, arriving: true, gap: null };
+    return { session: line.session, steps: [], exchanges: [], landed: false, arriving: true, gap: null };
   }
 
   if (answer === null) {
@@ -47,6 +49,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
 
   if (line.kind === 'end') {
     return { ...answer, arriving: false, gap: line.gap };
+  }
+
+  if (line.kind === 'exchanges') {
+    return { ...answer, exchanges: line.exchanges };
   }
 
   return { ...answer, steps: line.steps, landed: true };
@@ -138,51 +144,6 @@ export function toneOf(step: Step): Tone {
   }
 
   return step.kind === 'turn' || step.kind === 'answer' ? 'model' : 'tool';
-}
-
-export interface Exchange {
-  index: number;
-  startMs: number;
-  endMs: number;
-}
-
-interface Opened extends Exchange {
-  reachMs: number;
-  answeredMs: number | null;
-}
-
-export function exchangesOf(marks: readonly Mark[]): Exchange[] {
-  const ordered = marks.toSorted((one, other) => one.startMs - other.startMs);
-  const opened: Opened[] = [];
-
-  for (const mark of ordered) {
-    if (mark.step.kind === 'prompt') {
-      opened.push({
-        index: opened.length,
-        startMs: mark.startMs,
-        endMs: mark.endMs,
-        reachMs: mark.endMs,
-        answeredMs: null,
-      });
-
-      continue;
-    }
-
-    const open = opened.at(-1);
-
-    // Anything before the first Prompt belongs to no Exchange, as nobody had asked for it yet.
-    if (open === undefined) {
-      continue;
-    }
-
-    open.reachMs = Math.max(open.reachMs, mark.endMs);
-
-    if (mark.step.kind === 'answer') {
-      open.answeredMs = mark.endMs;
-    }
-  }
-
-  return opened.map(({ index, startMs, reachMs, answeredMs }) => ({ index, startMs, endMs: answeredMs ?? reachMs }));
 }
 
 const stepWords: Record<StepKind, string> = {

@@ -19,7 +19,11 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? Prompt { get; init; }
 
+    public string? PromptLength { get; init; }
+
     public string? Response { get; init; }
+
+    public string? ResponseLength { get; init; }
 
     public string? QuerySource { get; init; }
 
@@ -44,7 +48,9 @@ public sealed record SessionEvent(string Session, string EventName, string At)
     internal (string Key, string? Value)[] Attributes =>
     [
         ("prompt", Prompt),
+        ("prompt_length", PromptLength),
         ("response", Response),
+        ("response_length", ResponseLength),
         ("query_source", QuerySource),
         ("tool_name", ToolName),
         ("success", Success),
@@ -58,14 +64,21 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("vcs.repository.name", RepositoryName),
     ];
 
+    // Claude Code counts the characters on the event whether or not the switch lets the words through.
     internal static SessionEvent Prompted(string session, string at, string prompt) =>
-        new(session, "user_prompt", at) { Prompt = prompt };
+        new(session, "user_prompt", at) { Prompt = prompt, PromptLength = Figure(prompt.Length) };
+
+    internal static SessionEvent PromptWithheld(string session, string at, int length) =>
+        new(session, "user_prompt", at) { Prompt = Withheld, PromptLength = Figure(length) };
 
     internal static SessionEvent Titled(string session, string at, string title) =>
         new(session, "assistant_response", at) { Response = title, QuerySource = TitleSource };
 
     internal static SessionEvent Answered(string session, string at, string response) =>
-        new(session, "assistant_response", at) { Response = response };
+        new(session, "assistant_response", at) { Response = response, ResponseLength = Figure(response.Length) };
+
+    internal static SessionEvent AnswerWithheld(string session, string at, int length) =>
+        new(session, "assistant_response", at) { Response = Withheld, ResponseLength = Figure(length) };
 
     internal static SessionEvent Turned(string session, string at, int lengthMs = 0, decimal cost = 0m) =>
         new(session, "api_request", at)

@@ -29,6 +29,11 @@ export function holds(range: Range | null, startMs: number, endMs: number): bool
   return range === null || (endMs >= range[0] && startMs <= range[1]);
 }
 
+// A Step's mark and an Exchange's band alike, so every panel beneath the brush narrows the same way.
+export function inRange<T extends { startMs: number; endMs: number }>(stretches: readonly T[], range: Range | null): T[] {
+  return stretches.filter((stretch) => holds(range, stretch.startMs, stretch.endMs));
+}
+
 const at = 'at';
 
 const until = 'until';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, holds, moved, rangeOf, readRange, widened, withRange } from './brush';
+import { clamp, holds, inRange, moved, rangeOf, readRange, widened, withRange } from './brush';
 import type { Range } from './steps';
 
 const whole: Range = [1_000, 101_000];
@@ -61,6 +61,27 @@ describe('holds', () => {
   it('leaves out a step wholly before or after the brushed stretch', () => {
     expect(holds([20_000, 30_000], 5_000, 10_000)).toBe(false);
     expect(holds([20_000, 30_000], 40_000, 50_000)).toBe(false);
+  });
+});
+
+describe('inRange', () => {
+  const stretches = [
+    { name: 'early', startMs: 5_000, endMs: 10_000 },
+    { name: 'across', startMs: 15_000, endMs: 21_000 },
+    { name: 'inside', startMs: 22_000, endMs: 28_000 },
+    { name: 'late', startMs: 40_000, endMs: 50_000 },
+  ];
+
+  it('narrows to the stretches the brush holds, so a panel shows only what is in view', () => {
+    expect(inRange(stretches, [20_000, 30_000]).map((each) => each.name)).toEqual(['across', 'inside']);
+  });
+
+  it('keeps everything while no stretch is brushed, so clearing the brush returns the whole run', () => {
+    expect(inRange(stretches, null)).toHaveLength(4);
+  });
+
+  it('narrows to nothing where the brush holds nothing, rather than falling back to everything', () => {
+    expect(inRange(stretches, [31_000, 35_000])).toEqual([]);
   });
 });
 

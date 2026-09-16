@@ -1,4 +1,5 @@
 using System.Globalization;
+using Skillworks.Core.EventsStore;
 
 namespace Skillworks.Core.Sessions;
 
@@ -8,15 +9,12 @@ public static class SessionName
     // A prompt is a page of text and a row is a line, so only the opening words go on screen.
     private const int Opening = 120;
 
-    // Written in place of the words when the prompt and response switches are off.
-    private const string Withheld = "<REDACTED>";
-
     public static string Of(string? title, string? prompt, string? repository, DateTimeOffset started) =>
         Words(title) ?? Words(prompt) ?? Placed(repository, started);
 
     private static string? Words(string? said)
     {
-        if (said is null || said == Withheld)
+        if (said is null || said == EventAttributes.Withheld)
         {
             return null;
         }

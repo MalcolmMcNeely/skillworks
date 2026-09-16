@@ -1,11 +1,12 @@
 using System.Globalization;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
+using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Steps;
 
 namespace Skillworks.Core.Sessions.Queries;
 
-public sealed class StepQueries(EventsStoreReader events, TimeProvider clock)
+public sealed partial class StepQueries(EventsStoreReader events, TimeProvider clock)
 {
     private const string EventNameAttribute = "event.name";
 
@@ -49,7 +50,7 @@ public sealed class StepQueries(EventsStoreReader events, TimeProvider clock)
     private const int Opening = 200;
 
     // Every event of one run, as a timeline draws the run itself and not a total over it.
-    public async Task<(Session? Run, IReadOnlyList<Step> Steps, EventLines Read)> OpenAsync(
+    public async Task<(Session? Run, IReadOnlyList<Step> Steps, IReadOnlyList<Exchange> Said, EventLines Read)> OpenAsync(
         string id,
         DaySpan span,
         CancellationToken cancellationToken)
@@ -60,10 +61,12 @@ public sealed class StepQueries(EventsStoreReader events, TimeProvider clock)
 
         if (read.Unreachable is not null || read.Lines.Count == 0)
         {
-            return (null, [], read);
+            return (null, [], [], read);
         }
 
-        return (Run(id, read.Lines), Stepped(read.Lines), read);
+        var drawn = Stepped(read.Lines);
+
+        return (Run(id, read.Lines), [.. drawn.Select(each => each.Step)], Said(drawn), read);
     }
 
     private Session Run(string id, IReadOnlyList<EventLine> lines)
@@ -93,8 +96,13 @@ public sealed class StepQueries(EventsStoreReader events, TimeProvider clock)
             lines.Count(line => Named(DecisionEvent)(line) && Refused(line)));
     }
 
-    private static IReadOnlyList<Step> Stepped(IReadOnlyList<EventLine> lines) =>
-        [.. lines.Select((line, place) => Stepped(line, Identity(line, place))).OfType<Step>()];
+    // Paired with the event it came from, so an Exchange and a timeline band cover exactly one stretch.
+    private static IReadOnlyList<Drawn> Stepped(IReadOnlyList<EventLine> lines) =>
+        [
+            .. lines
+                .Select((line, place) => Stepped(line, Identity(line, place)) is { } step ? new Drawn(line, step) : null)
+                .OfType<Drawn>()
+        ];
 
     private static Step? Stepped(EventLine line, string id)
     {
@@ -164,9 +172,7 @@ public sealed class StepQueries(EventsStoreReader events, TimeProvider clock)
 
     private static string? Words(EventLine line, string attribute)
     {
-        var said = line.Attribute(attribute);
-
-        if (said is null)
+        if (Recorded(line, attribute) is not { } said)
         {
             return null;
         }
@@ -175,4 +181,6 @@ public sealed class StepQueries(EventsStoreReader events, TimeProvider clock)
 
         return phrase.Length > Opening ? phrase[..Opening] + '…' : phrase;
     }
+
+    private sealed record Drawn(EventLine Line, Step Step);
 }
