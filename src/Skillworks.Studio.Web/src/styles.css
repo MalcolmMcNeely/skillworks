@@ -28,43 +28,63 @@ main {
 }
 
 /* Every colour here is a custom property set from the palette, which the contrast test reads. */
-.watch {
+.page {
   background: var(--void);
   box-sizing: border-box;
   color: var(--ink);
   color-scheme: dark;
-  column-gap: clamp(0.6rem, 1.2vw, 1rem);
-  display: grid;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  grid-template-columns: clamp(188px, 17vw, 236px) minmax(0, 1fr);
-  height: 100dvh;
   line-height: 1.3;
   margin: 0;
   max-width: none;
-  overflow: hidden;
-  padding: clamp(0.5rem, 1.6vh, 1rem) clamp(0.5rem, 1.2vw, 1rem);
 }
 
-.watch *,
-.watch *::before,
-.watch *::after,
-.home *,
-.home *::before,
-.home *::after {
+.page *,
+.page *::before,
+.page *::after {
   box-sizing: border-box;
 }
 
 /* Zero specificity, so each control's own font rule still wins. */
-:where(.watch) button,
-:where(.watch) select,
-:where(.home) button {
+:where(.page) button,
+:where(.page) select {
   font: inherit;
 }
 
-.watch :focus-visible,
-.home :focus-visible {
+.page :focus-visible {
   outline: 2px solid var(--hud);
   outline-offset: 2px;
+}
+
+/* Smaller than the heading beside it, so the row it joins keeps its height and its one baseline. */
+.up {
+  align-items: baseline;
+  color: var(--ink-soft);
+  display: inline-flex;
+  flex: none;
+  font-size: 0.62rem;
+  gap: 0.3rem;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.up:hover {
+  color: var(--hud);
+}
+
+.up-chevron {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.watch {
+  column-gap: clamp(0.6rem, 1.2vw, 1rem);
+  display: grid;
+  grid-template-columns: clamp(188px, 17vw, 236px) minmax(0, 1fr);
+  height: 100dvh;
+  overflow: hidden;
+  padding: clamp(0.5rem, 1.6vh, 1rem) clamp(0.5rem, 1.2vw, 1rem);
 }
 
 .micro {
@@ -1260,23 +1280,26 @@ button.tile-skin {
   white-space: nowrap;
 }
 
-.home {
+.home,
+.no-such-page {
   align-content: start;
-  background: var(--void);
-  box-sizing: border-box;
-  color: var(--ink);
-  color-scheme: dark;
   display: grid;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  gap: clamp(1rem, 4vh, 2rem);
-  line-height: 1.3;
-  margin: 0;
-  max-width: none;
   min-height: 100dvh;
   padding: clamp(1.5rem, 6vh, 3rem) clamp(1rem, 4vw, 2.5rem);
 }
 
-.home h1 {
+.home {
+  gap: clamp(1rem, 4vh, 2rem);
+}
+
+/* A grid stretches its items, and a stretched link would take clicks far from its words. */
+.no-such-page {
+  gap: 0.9rem;
+  justify-items: start;
+}
+
+.home h1,
+.no-such-page h1 {
   color: var(--hud);
   font-size: clamp(1.1rem, 3.5vw, 1.6rem);
   font-weight: 500;
@@ -1392,12 +1415,9 @@ a.home-panel-face:hover::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .watch *,
-  .watch *::before,
-  .watch *::after,
-  .home *,
-  .home *::before,
-  .home *::after {
+  .page *,
+  .page *::before,
+  .page *::after {
     animation: none !important;
     transition: none !important;
   }

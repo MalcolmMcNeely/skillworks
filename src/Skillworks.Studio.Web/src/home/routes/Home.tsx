@@ -37,10 +37,10 @@ function Panel({ page }: { page: Page }) {
 
 // Health and nothing else: a read of the Events store would open Home on an Arriving answer.
 export function Home() {
-  useTabTitle(home);
+  useTabTitle(home.tabTitle);
 
   return (
-    <main className="home">
+    <main className="page home">
       <h1>Skillworks</h1>
 
       <ul className="home-panels" aria-label="Jobs">

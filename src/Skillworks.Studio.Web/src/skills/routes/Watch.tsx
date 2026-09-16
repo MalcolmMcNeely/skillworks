@@ -7,6 +7,7 @@ import { SignalWord } from '../../gaps/components/SignalWord';
 import { HealthLamps } from '../../health/components/HealthLamps';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { Keys } from '../../keys/components/Keys';
+import { UpButton } from '../../pages/components/UpButton';
 import { useTabTitle } from '../../pages/components/useTabTitle';
 import { watch } from '../../pages/lib/pages';
 import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
@@ -27,7 +28,7 @@ interface Reading {
 export function Watch() {
   const [reading, setReading] = useState<Reading | null>(null);
 
-  useTabTitle(watch);
+  useTabTitle(watch.tabTitle);
 
   // Filter, view and order live in the address bar, so a reload, a bookmark or the back button lands on the same map.
   const [params, setParams] = useSearchParams();
@@ -75,10 +76,11 @@ export function Watch() {
     setParams(withMapChoice(filterParams(nextFilter), nextChoice), { replace: true });
 
   return (
-    <main className="watch">
+    <main className="page watch">
       <aside className="rail" aria-label="Instruments">
         <div className="rail-brand">
-          <h1>Skillworks</h1>
+          <UpButton parent={watch.parent} />
+          <h1>{watch.name}</h1>
           <SignalWord gap={answer?.gap ?? null} failure={reading?.failure ?? null} />
         </div>
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { home, pages, pagesBelow, watch } from './pages';
+import { home, noSuchPageName, pages, pagesBelow, tabTitleOf, watch } from './pages';
 
 describe('pages', () => {
   it('lists every page of Studio in the order Home shows them', () => {
@@ -42,6 +42,12 @@ describe('pages', () => {
 
   it('titles the tab with the page name on every page below Home', () => {
     expect(watch.tabTitle).toBe('Watch · Skillworks');
+  });
+});
+
+describe('tabTitleOf', () => {
+  it('titles the screen an address that goes nowhere lands on, which no page list names', () => {
+    expect(tabTitleOf(noSuchPageName)).toBe('No such page · Skillworks');
   });
 });
 
