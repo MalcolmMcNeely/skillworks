@@ -1,0 +1,1881 @@
+/* PROTOTYPE — throwaway. Variant B, Scrub. Every colour is a palette custom property, and every class starts scrub-. */
+
+.scrub {
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --cut: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  --hud-wash: color-mix(in srgb, var(--hud) 13%, transparent);
+
+  background: var(--void);
+  color: var(--ink);
+  color-scheme: dark;
+  display: grid;
+  font: 13px/1.35 var(--sans);
+  grid-template-columns: 264px minmax(0, 1fr);
+  inset: 0;
+  overflow: hidden;
+  position: fixed;
+}
+
+.scrub.is-rail-shut {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.scrub *,
+.scrub *::before,
+.scrub *::after {
+  box-sizing: border-box;
+}
+
+:where(.scrub) button {
+  font: inherit;
+}
+
+.scrub :focus-visible {
+  outline: 2px solid var(--hud);
+  outline-offset: 1px;
+}
+
+.scrub-micro {
+  color: var(--ink-faint);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.scrub-quiet {
+  color: var(--ink-faint);
+  font-size: 0.74rem;
+  margin: 0;
+}
+
+/* ---- rail ---- */
+
+.scrub-rail {
+  background: var(--panel);
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  padding: 0.6rem 0.55rem;
+}
+
+.scrub-rail.is-shut {
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.scrub-rail-shut-label {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  margin-top: 0.6rem;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+}
+
+.scrub-brand {
+  align-items: baseline;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 0.2rem 0.45rem;
+}
+
+.scrub-brand h2 {
+  color: var(--hud);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.scrub-rail-toggle {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  height: 1.5rem;
+  margin-left: auto;
+  width: 1.5rem;
+}
+
+.scrub-rail.is-shut .scrub-rail-toggle {
+  margin: 0;
+}
+
+.scrub-rail-toggle:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-block {
+  display: grid;
+  gap: 0.35rem;
+  isolation: isolate;
+  padding: 0.5rem 0.55rem;
+  position: relative;
+}
+
+.scrub-block::before,
+.scrub-block::after {
+  clip-path: var(--cut);
+  content: '';
+  position: absolute;
+  z-index: -1;
+}
+
+.scrub-block::before {
+  background: var(--rule);
+  inset: 0;
+}
+
+.scrub-block::after {
+  background: var(--void);
+  inset: 1px;
+}
+
+.scrub-repos,
+.scrub-tree ul,
+.scrub-empty-list {
+  display: grid;
+  gap: 1px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scrub-repo,
+.scrub-session,
+.scrub-empty-row {
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: grid;
+  gap: 0.08rem;
+  padding: 0.3rem 0.4rem;
+  text-align: left;
+  width: 100%;
+}
+
+.scrub-repo:hover,
+.scrub-session:hover,
+.scrub-empty-row:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-repo.is-chosen,
+.scrub-session.is-chosen {
+  background: var(--pressed);
+  border-left-color: var(--hud);
+  color: var(--hud);
+}
+
+.scrub-repo-name {
+  align-items: center;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.35rem;
+}
+
+.scrub-repo-meta,
+.scrub-session-meta {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+}
+
+.scrub-session.is-chosen .scrub-session-meta {
+  color: var(--ink-soft);
+}
+
+.scrub-session-name {
+  align-items: center;
+  display: flex;
+  font-size: 0.76rem;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.scrub-session-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrub-length {
+  background: color-mix(in srgb, var(--rule) 60%, transparent);
+  display: block;
+  height: 2px;
+  margin-top: 0.12rem;
+}
+
+.scrub-length i {
+  background: var(--line);
+  display: block;
+  height: 100%;
+}
+
+.scrub-session.is-chosen .scrub-length i {
+  background: var(--hud);
+}
+
+.scrub-pulse {
+  animation: scrub-pulse 2.4s ease-in-out infinite;
+  background: var(--live);
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+  height: 0.45rem;
+  width: 0.45rem;
+}
+
+@keyframes scrub-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 50%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+.scrub-fault-dot {
+  background: var(--failed);
+  display: inline-block;
+  flex: none;
+  height: 0.4rem;
+  transform: rotate(45deg);
+  width: 0.4rem;
+}
+
+.scrub-tree {
+  flex: 1;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.scrub-tree-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--rule) transparent;
+  scrollbar-width: thin;
+}
+
+.scrub-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.scrub-key {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  padding: 0.22rem 0.4rem;
+}
+
+.scrub-key + .scrub-key {
+  border-left: 0;
+}
+
+.scrub-key[aria-pressed='true'] {
+  background: var(--pressed);
+  box-shadow: inset 0 -2px 0 var(--hud);
+  color: var(--hud);
+}
+
+.scrub-group {
+  margin-bottom: 0.35rem;
+}
+
+.scrub-group-head,
+.scrub-person {
+  align-items: baseline;
+  background: var(--void);
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-faint);
+  display: flex;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  justify-content: space-between;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.15rem;
+  padding: 0.3rem 0.2rem 0.2rem;
+  position: sticky;
+  text-transform: uppercase;
+  top: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.scrub-person {
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-transform: none;
+}
+
+.scrub-person.is-open {
+  color: var(--hud);
+}
+
+/* ---- empty ---- */
+
+.scrub-empty {
+  display: grid;
+  overflow-y: auto;
+  padding: 3rem 2rem;
+  place-items: start center;
+}
+
+.scrub-empty-box {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 44rem;
+  width: 100%;
+}
+
+.scrub-empty-word {
+  color: var(--hud);
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  letter-spacing: 0.3em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.scrub-empty-note {
+  color: var(--ink-soft);
+  margin: 0 0 0.6rem;
+}
+
+.scrub-empty-row {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.5rem 0.6rem;
+}
+
+.scrub-empty-row .scrub-session-name {
+  font-size: 0.9rem;
+}
+
+/* ---- main ---- */
+
+.scrub-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.scrub-head {
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  flex: none;
+  gap: 0.3rem;
+  padding: 0.45rem 0.8rem 0.4rem;
+}
+
+.scrub-head-line {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem 0.9rem;
+  min-width: 0;
+}
+
+.scrub-head h1 {
+  color: var(--ink);
+  flex: 0 1 auto;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0;
+  min-width: min(22rem, 30%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrub-head-meta {
+  color: var(--ink-faint);
+  flex: 1 1 0;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrub-live {
+  align-items: center;
+  border: 1px solid var(--live);
+  color: var(--live);
+  display: inline-flex;
+  flex: none;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  gap: 0.35rem;
+  letter-spacing: 0.12em;
+  padding: 0.1rem 0.45rem;
+  text-transform: uppercase;
+}
+
+.scrub-head-figures {
+  display: flex;
+  flex: none;
+  gap: 0.9rem;
+  margin: 0 0 0 auto;
+}
+
+.scrub-head-figures div {
+  display: grid;
+}
+
+.scrub-head-figures dt {
+  color: var(--ink-faint);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.scrub-head-figures dd {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  line-height: 1.1;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.scrub-head-figures dd small {
+  color: var(--ink-faint);
+  font-size: 0.66rem;
+  margin-left: 0.15rem;
+}
+
+.scrub-head-figures dd.is-hero {
+  color: var(--hud);
+}
+
+.scrub-head-figures.is-range dt {
+  color: var(--hud);
+}
+
+.scrub-head-figures .is-failed dd {
+  color: var(--failed);
+}
+
+.scrub-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scrub-flag {
+  align-items: center;
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.68rem;
+  gap: 0.35rem;
+  padding: 0.08rem 0.45rem;
+}
+
+.scrub-flag:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-flag i {
+  background: var(--ink-faint);
+  border-radius: 50%;
+  height: 0.4rem;
+  width: 0.4rem;
+}
+
+.scrub-flag.is-failed {
+  border-color: color-mix(in srgb, var(--failed) 55%, transparent);
+}
+
+.scrub-flag.is-failed i {
+  background: var(--failed);
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.scrub-flag.is-warned {
+  border-color: color-mix(in srgb, var(--warned) 45%, transparent);
+}
+
+.scrub-flag.is-warned i {
+  background: var(--warned);
+  border-radius: 0;
+}
+
+/* ---- instrument ---- */
+
+.scrub-instrument {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 190px;
+  padding: 0.3rem 0.4rem 0;
+}
+
+.scrub-instrument-head {
+  align-items: baseline;
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  padding: 0 0.4rem 0.2rem;
+}
+
+.scrub-range-readout {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
+.scrub-hint {
+  color: var(--ink-faint);
+  font-size: 0.66rem;
+}
+
+.scrub-small-button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  padding: 0.1rem 0.45rem;
+}
+
+.scrub-small-button:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-legend {
+  color: var(--ink-soft);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.64rem;
+  gap: 0.15rem 0.7rem;
+  margin: 0 0 0 auto;
+}
+
+.scrub-legend span {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.scrub-legend i {
+  display: inline-block;
+  height: 7px;
+  width: 12px;
+}
+
+.scrub-legend .scrub-sw-main {
+  background: var(--hud);
+}
+
+.scrub-legend .scrub-sw-sub {
+  background: var(--line);
+}
+
+.scrub-legend .scrub-sw-agent {
+  background: var(--hud-wash);
+  box-shadow: inset 0 0 0 1px var(--hud);
+}
+
+.scrub-legend .scrub-sw-tool {
+  background: var(--ink-soft);
+}
+
+.scrub-legend .scrub-sw-wait {
+  box-shadow: inset 0 0 0 1px var(--warned);
+}
+
+.scrub-legend .scrub-sw-hook {
+  background: var(--ink-faint);
+}
+
+.scrub-legend .scrub-sw-fail {
+  background: var(--failed);
+  transform: rotate(45deg) scale(0.8);
+  width: 7px;
+}
+
+.scrub-legend .scrub-sw-zone {
+  background: var(--pressed);
+}
+
+.scrub-legend .scrub-sw-flag {
+  border-left: 1px solid var(--ink);
+  height: 10px;
+  width: 6px;
+}
+
+.scrub-legend .scrub-sw-ring {
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--warned);
+  height: 9px;
+  width: 9px;
+}
+
+.scrub-overview {
+  cursor: crosshair;
+  display: block;
+  flex: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.scrub-overview-ground {
+  fill: var(--panel);
+  stroke: var(--rule);
+}
+
+.scrub-overview-prompt {
+  fill: color-mix(in srgb, var(--tile-hot) 45%, transparent);
+}
+
+.scrub-overview .is-main {
+  fill: var(--hud);
+}
+
+.scrub-overview .is-sub {
+  fill: var(--line);
+}
+
+.scrub-overview .is-tool {
+  fill: var(--ink-faint);
+}
+
+.scrub-overview .is-failed {
+  fill: var(--failed);
+}
+
+.scrub-brush-shade {
+  fill: color-mix(in srgb, var(--void) 62%, transparent);
+  pointer-events: none;
+}
+
+.scrub-brush {
+  cursor: grab;
+  fill: var(--hud-wash);
+  stroke: var(--hud);
+  stroke-width: 1;
+}
+
+.scrub-brush-handle {
+  cursor: ew-resize;
+  fill: var(--hud);
+  stroke: var(--void);
+  stroke-width: 1.5;
+}
+
+.scrub-lanes {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scrub-detail {
+  display: block;
+}
+
+.scrub-detail.is-pointing {
+  cursor: pointer;
+}
+
+.scrub svg text {
+  font-family: var(--mono);
+}
+
+.scrub-lane-label {
+  fill: var(--ink-faint);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scrub-lane-label.is-fault {
+  fill: var(--failed);
+}
+
+.scrub-axis {
+  fill: var(--ink-soft);
+  font-size: 10px;
+}
+
+.scrub-track {
+  stroke: color-mix(in srgb, var(--rule) 55%, transparent);
+  stroke-width: 1;
+}
+
+.scrub-grid {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+
+.scrub-fold {
+  stroke: var(--ink-faint);
+  stroke-dasharray: 2 3;
+  stroke-width: 1;
+}
+
+.scrub-fold-label {
+  fill: var(--ink-faint);
+  font-size: 9px;
+}
+
+.scrub-prompt-band {
+  fill: color-mix(in srgb, var(--tile-hot) 55%, transparent);
+  stroke: var(--rule);
+}
+
+.scrub-prompt-mark {
+  fill: var(--ink);
+}
+
+.scrub-band-label {
+  fill: var(--ink-soft);
+  font-size: 9px;
+  pointer-events: none;
+}
+
+.scrub-skill-band {
+  fill: var(--pressed);
+}
+
+.scrub-skill-flag {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.scrub-mark.is-main {
+  fill: var(--hud);
+}
+
+.scrub-mark.is-sub {
+  fill: var(--line);
+}
+
+.scrub-mark.is-side {
+  fill: var(--ink-faint);
+}
+
+.scrub-mark.is-agent {
+  fill: var(--hud-wash);
+  stroke: var(--hud);
+  stroke-width: 1;
+}
+
+.scrub-mark.is-tool {
+  fill: var(--ink-soft);
+}
+
+.scrub-mark.is-tool-failed,
+.scrub-mark.is-failed {
+  fill: var(--failed);
+}
+
+.scrub-mark.is-warned {
+  fill: var(--warned);
+}
+
+.scrub-mark.is-hook {
+  fill: var(--ink-faint);
+}
+
+.scrub-mark.is-wait {
+  fill: none;
+  stroke: var(--warned);
+  stroke-width: 1;
+}
+
+.scrub-selected {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--hud);
+  stroke-width: 1.5;
+}
+
+.scrub-hovered {
+  fill: color-mix(in srgb, var(--ink) 8%, transparent);
+  pointer-events: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+}
+
+.scrub-cursor {
+  pointer-events: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+}
+
+.scrub-cursor-box {
+  fill: var(--panel);
+  stroke: var(--line);
+}
+
+.scrub-cursor-text {
+  fill: var(--ink);
+  font-size: 10px;
+}
+
+.scrub-crosshair {
+  pointer-events: none;
+}
+
+/* ---- dock ---- */
+
+.scrub-grip {
+  cursor: ns-resize;
+  display: grid;
+  flex: none;
+  height: 9px;
+  place-items: center;
+  touch-action: none;
+}
+
+.scrub-grip i {
+  background: var(--rule);
+  height: 1px;
+  width: 100%;
+}
+
+.scrub-grip:hover i {
+  background: var(--hud);
+}
+
+.scrub-grip i::after {
+  background: var(--line);
+  content: '';
+  display: block;
+  height: 3px;
+  margin: -1px auto 0;
+  width: 40px;
+}
+
+.scrub-dock {
+  background: var(--panel);
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.scrub-tabs {
+  align-items: stretch;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex: none;
+  overflow-x: auto;
+}
+
+.scrub-tab {
+  background: none;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 0.38rem 0.8rem;
+  white-space: nowrap;
+}
+
+.scrub-tab:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-tab[aria-selected='true'] {
+  background: var(--void);
+  box-shadow: inset 0 2px 0 var(--hud);
+  color: var(--hud);
+}
+
+.scrub-tab-count {
+  color: var(--ink-faint);
+  margin-left: 0.4rem;
+}
+
+.scrub-tabs-note {
+  align-self: center;
+  color: var(--ink-faint);
+  font-size: 0.66rem;
+  margin-left: auto;
+  padding: 0 0.8rem;
+  white-space: nowrap;
+}
+
+.scrub-dock-body {
+  background: var(--void);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scrub-dock-empty {
+  align-content: start;
+  display: grid;
+  gap: 0.3rem;
+  padding: 1.2rem;
+}
+
+.scrub-dock-empty p:first-child {
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ---- words ---- */
+
+.scrub-said {
+  border-left: 2px solid var(--live);
+  color: var(--ink);
+  font-size: 0.8rem;
+  margin: 0.15rem 0 0.35rem;
+  overflow-wrap: anywhere;
+  padding: 0.1rem 0 0.1rem 0.6rem;
+  white-space: pre-wrap;
+}
+
+.scrub-withheld {
+  align-items: center;
+  background: repeating-linear-gradient(135deg, var(--unnamed-hatch) 0 2px, transparent 2px 8px);
+  border: 1px dashed var(--unnamed);
+  color: var(--unnamed);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  gap: 0.2rem 0.8rem;
+  justify-content: space-between;
+  margin: 0.15rem 0 0.35rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.scrub-withheld code {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+}
+
+.scrub-pre {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  margin: 0.15rem 0 0.4rem;
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.35rem 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.scrub-pre.is-failed {
+  border-color: color-mix(in srgb, var(--failed) 60%, transparent);
+}
+
+.scrub-error {
+  color: var(--failed);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  margin: 0.2rem 0;
+}
+
+.scrub-link {
+  background: none;
+  border: 0;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  overflow: hidden;
+  padding: 0.05rem 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.scrub-link:hover {
+  color: var(--hud);
+  text-decoration: underline;
+}
+
+.scrub-link.is-failed {
+  color: var(--failed);
+}
+
+.scrub-tool-list .scrub-link {
+  display: block;
+  width: 100%;
+}
+
+.scrub-link-list,
+.scrub-tool-list {
+  display: grid;
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+}
+
+.scrub-chip {
+  border: 1px dashed var(--line);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  padding: 0 0.35rem;
+  white-space: nowrap;
+}
+
+.scrub-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.2rem 0 0.4rem;
+}
+
+/* ---- trace ---- */
+
+.scrub-trace {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(300px, 4fr);
+  height: 100%;
+}
+
+.scrub-waterfall {
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.scrub-waterfall-head {
+  align-items: baseline;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 40% minmax(0, 1fr) 4.5rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.scrub-axis-row {
+  color: var(--ink-faint);
+  display: flex;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  justify-content: space-between;
+}
+
+.scrub-spans {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.scrub-spans button {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 40% minmax(0, 1fr) 4.5rem;
+  padding: 0.1rem 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+
+.scrub-spans button:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-spans li.is-chosen button {
+  background: var(--pressed);
+  box-shadow: inset 2px 0 0 var(--hud);
+  color: var(--hud);
+}
+
+.scrub-spans li.is-failed .scrub-span-name {
+  color: var(--failed);
+}
+
+.scrub-spans li.is-outside:not(.is-chosen) .scrub-span-name {
+  color: var(--ink-faint);
+}
+
+/* Room under every scrolling panel, so its last lines can scroll clear of the prototype's floating bar. */
+.scrub-spans,
+.scrub-span-detail,
+.scrub-activations,
+.scrub-activation-detail,
+.scrub-conversation,
+.scrub-time {
+  padding-bottom: 4rem !important;
+}
+
+.scrub-span-name {
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrub-span-name b {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 400;
+}
+
+.scrub-span-track {
+  background: color-mix(in srgb, var(--rule) 35%, transparent);
+  display: block;
+  height: 12px;
+  position: relative;
+}
+
+.scrub-span-track i {
+  bottom: 2px;
+  min-width: 2px;
+  position: absolute;
+  top: 2px;
+}
+
+.scrub-span-track .is-interaction {
+  background: var(--hud-wash);
+  box-shadow: inset 0 0 0 1px var(--hud);
+}
+
+.scrub-span-track .is-llm {
+  background: var(--hud);
+}
+
+.scrub-span-track .is-tool,
+.scrub-span-track .is-run {
+  background: var(--ink-soft);
+}
+
+.scrub-span-track .is-wait {
+  box-shadow: inset 0 0 0 1px var(--warned);
+}
+
+.scrub-span-track .is-hook {
+  background: var(--ink-faint);
+}
+
+.scrub-span-track .is-agent {
+  background: var(--hud-wash);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.scrub-span-track i.is-failed {
+  background: var(--failed);
+}
+
+.scrub-span-ms {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  text-align: right;
+}
+
+.scrub-span-detail {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 0.8rem 1rem;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.scrub-span-head {
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  gap: 0.15rem;
+  justify-items: start;
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.scrub-span-head h3 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.scrub-span-detail.is-failed .scrub-span-head h3 {
+  color: var(--failed);
+}
+
+.scrub-span-when {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  margin: 0 0 0.2rem;
+}
+
+.scrub-attributes {
+  display: grid;
+  gap: 0.05rem 0.8rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0 0 0.5rem;
+}
+
+.scrub-attributes div {
+  display: contents;
+}
+
+.scrub-attributes dt {
+  color: var(--ink-faint);
+  font-size: 0.7rem;
+}
+
+.scrub-attributes dd {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.scrub-io {
+  display: grid;
+}
+
+/* ---- skill calls ---- */
+
+.scrub-skills {
+  display: grid;
+  grid-template-columns: minmax(220px, 3fr) minmax(0, 8fr);
+  height: 100%;
+}
+
+.scrub-activations {
+  border-right: 1px solid var(--rule);
+  list-style: none;
+  margin: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.scrub-activation {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
+  border-left: 2px solid transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: grid;
+  gap: 0.05rem;
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+
+.scrub-activation:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-activation[aria-pressed='true'] {
+  background: var(--pressed);
+  border-left-color: var(--hud);
+  color: var(--hud);
+}
+
+.scrub-activation-name {
+  align-items: center;
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.4rem;
+}
+
+.scrub-activation-name b {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 400;
+  min-width: 1.2rem;
+}
+
+.scrub-activation-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 0.8rem 1rem;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.scrub-activation-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+}
+
+.scrub-activation-head h3 {
+  color: var(--hud);
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0 0 0 0.3rem;
+}
+
+.scrub-step {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  padding: 0.05rem 0.5rem;
+}
+
+.scrub-step:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  margin: 0;
+}
+
+.scrub-figures div {
+  display: grid;
+}
+
+.scrub-figures dt {
+  color: var(--ink-faint);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.scrub-figures dd {
+  font-family: var(--mono);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.scrub-figures .is-failed dd {
+  color: var(--failed);
+}
+
+.scrub-strip-wrap {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 4rem minmax(0, 1fr);
+}
+
+.scrub-strip-labels {
+  color: var(--ink-faint);
+  display: grid;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  grid-template-rows: repeat(4, 15px);
+  letter-spacing: 0.08em;
+  line-height: 12px;
+  text-transform: uppercase;
+}
+
+.scrub-strip {
+  display: block;
+  height: 60px;
+  width: 100%;
+}
+
+.scrub-strip rect {
+  cursor: pointer;
+}
+
+.scrub-activation-columns {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.scrub-files {
+  display: grid;
+  font-size: 0.72rem;
+  gap: 0.1rem;
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+
+.scrub-files li {
+  display: flex;
+  justify-content: space-between;
+}
+
+.scrub-files li span:last-child {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+}
+
+.scrub-files li.is-warned span {
+  color: var(--warned);
+}
+
+.scrub-tool-name {
+  color: var(--ink-faint);
+  display: inline-block;
+  min-width: 5.5rem;
+}
+
+/* ---- conversation ---- */
+
+.scrub-conversation {
+  height: 100%;
+  list-style: none;
+  margin: 0;
+  overflow-y: auto;
+  padding: 0 0 2rem;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.scrub-exchange {
+  border-bottom: 1px solid var(--rule);
+  border-left: 2px solid transparent;
+}
+
+.scrub-exchange.is-in-view {
+  border-left-color: var(--hud);
+}
+
+.scrub-exchange-head {
+  align-items: baseline;
+  background: var(--panel);
+  border: 0;
+  color: var(--ink-faint);
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  gap: 0.2rem 0.9rem;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.8rem;
+  position: sticky;
+  text-align: left;
+  top: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.scrub-exchange-head:hover {
+  color: var(--ink);
+}
+
+.scrub-exchange-head b {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.scrub-exchange.is-in-view .scrub-exchange-head b,
+.scrub-in-view {
+  color: var(--hud);
+}
+
+.scrub-exchange-head .is-failed {
+  color: var(--failed);
+}
+
+.scrub-exchange-body {
+  display: grid;
+  justify-items: start;
+  padding: 0.35rem 0.8rem 0.6rem 1.4rem;
+}
+
+.scrub-exchange-body > * {
+  max-width: min(100%, 72rem);
+  width: 100%;
+}
+
+.scrub-exchange-body > .scrub-small-button {
+  margin: 0.1rem 0 0.3rem;
+  width: auto;
+}
+
+.scrub-speaker {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  margin: 0.15rem 0 0;
+  text-transform: uppercase;
+}
+
+.scrub-speaker.is-model {
+  color: var(--hud);
+}
+
+.scrub-turns {
+  border-left: 1px solid var(--rule);
+  display: grid;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0 0 0 0.6rem;
+}
+
+.scrub-turn-head {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.scrub-turn-tools {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scrub-tool-row {
+  align-items: baseline;
+  background: none;
+  border: 0;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: grid;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  gap: 0.5rem;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 4.5rem;
+  padding: 0.05rem 0.2rem;
+  text-align: left;
+  width: 100%;
+}
+
+.scrub-tool-row:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.scrub-tool-row .scrub-tool-name {
+  min-width: 0;
+}
+
+.scrub-tool-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrub-tool-ms {
+  color: var(--ink-faint);
+  text-align: right;
+}
+
+.scrub-turn-tools li.is-failed .scrub-tool-ms,
+.scrub-turn-tools li.is-failed .scrub-tool-summary {
+  color: var(--failed);
+}
+
+.scrub-tool-open {
+  border-left: 1px solid var(--line);
+  margin: 0.2rem 0 0.4rem 0.3rem;
+  padding-left: 0.6rem;
+}
+
+/* ---- where the time went ---- */
+
+.scrub-time {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  height: 100%;
+  overflow-y: auto;
+  padding: 0.7rem 1rem 1rem;
+}
+
+.scrub-time-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  margin: 0 0 0.5rem;
+}
+
+.scrub-time-head b {
+  font-family: var(--mono);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.scrub-stack {
+  display: flex;
+  gap: 2px;
+  height: 16px;
+  margin-bottom: 0.7rem;
+}
+
+.scrub-stack i {
+  flex-basis: 0;
+  min-width: 2px;
+}
+
+.scrub-part-waiting {
+  background: var(--warned);
+}
+
+.scrub-part-tool {
+  background: var(--ink-soft);
+}
+
+.scrub-part-hook {
+  background: var(--ink-faint);
+}
+
+.scrub-part-model {
+  background: var(--hud);
+}
+
+.scrub-part-subagent {
+  background: var(--hud-wash);
+  box-shadow: inset 0 0 0 1px var(--hud);
+}
+
+.scrub-part-side {
+  background: var(--line);
+}
+
+.scrub-part-quiet {
+  background: repeating-linear-gradient(135deg, var(--line) 0 1px, transparent 1px 5px);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.scrub-part-yourTurn {
+  background: var(--rule);
+}
+
+.scrub-bars {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.scrub-bars div {
+  align-items: center;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr) 7.5rem;
+}
+
+.scrub-bars.is-kinds div {
+  grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr) 5rem;
+}
+
+.scrub-bars div.is-zero {
+  opacity: 0.55;
+}
+
+.scrub-bars dt {
+  align-items: center;
+  color: var(--ink-soft);
+  display: flex;
+  font-size: 0.74rem;
+  gap: 0.4rem;
+}
+
+.scrub-swatch {
+  display: inline-block;
+  flex: none;
+  height: 8px;
+  width: 12px;
+}
+
+.scrub-bars dd {
+  margin: 0;
+}
+
+.scrub-bar-track {
+  background: color-mix(in srgb, var(--rule) 40%, transparent);
+  height: 8px;
+}
+
+.scrub-bar-track i {
+  border-radius: 0 3px 3px 0;
+  display: block;
+  height: 100%;
+  min-width: 1px;
+}
+
+.scrub-bar-track i.scrub-kind {
+  background: var(--line);
+}
+
+.scrub-bar-value {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.scrub-bar-value span {
+  color: var(--ink-faint);
+  display: inline-block;
+  min-width: 2.6rem;
+}
+
+/* ---- context ---- */
+
+.scrub-context {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.3rem 0.6rem 0.2rem;
+}
+
+/* The plot is sized from its box, and the svg sits out of flow, so the svg can never push the box taller. */
+.scrub-context-plot {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.scrub-context-plot > svg {
+  display: block;
+  inset: 0;
+  position: absolute;
+}
+
+.scrub-context-legend {
+  flex: none;
+  margin: 0;
+  padding: 0.25rem 0 3.4rem 3.5rem;
+}
+
+.scrub-skill-zone {
+  fill: var(--pressed);
+  opacity: 0.8;
+}
+
+.scrub-skill-zone.is-alt {
+  fill: var(--tile-hot);
+  opacity: 0.55;
+}
+
+.scrub-activation-tick {
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+}
+
+.scrub-context-area {
+  fill: var(--hud-wash);
+}
+
+.scrub-context-line {
+  fill: none;
+  stroke: var(--hud);
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.scrub-context-end {
+  fill: var(--hud);
+  stroke: var(--void);
+  stroke-width: 2;
+}
+
+.scrub-context-ring {
+  fill: var(--void);
+  stroke: var(--warned);
+  stroke-width: 1.5;
+}
+
+.scrub-context-compact {
+  fill: var(--ink);
+  stroke: var(--void);
+  stroke-width: 1.5;
+}
+
+.scrub-cost-bar {
+  fill: var(--ink-soft);
+}
+
+.scrub-cost-bar.is-rebuilt {
+  fill: var(--warned);
+}
+
+.scrub-selected-line {
+  stroke: var(--hud);
+  stroke-dasharray: none;
+  stroke-width: 1.5;
+}
+
+.scrub-cursor-dot {
+  fill: var(--hud);
+  pointer-events: none;
+  stroke: var(--void);
+  stroke-width: 2;
+}
+
+.scrub-hit {
+  cursor: crosshair;
+  fill: transparent;
+}
+
+@media (max-width: 1100px) {
+  .scrub {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .scrub-head-line {
+    flex-wrap: wrap;
+  }
+
+  .scrub-head-figures {
+    margin-left: 0;
+  }
+
+  .scrub-hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrub * {
+    animation: none !important;
+  }
+}
