@@ -24,15 +24,15 @@ export function ActivityStrip({
 
   if (answer === null) {
     // Not busy once the read has failed, or the strip would say an answer is still on its way.
-    return <section className="activity is-waiting" aria-label="Activations over the span" aria-busy={failure === null} />;
+    return <section className="strip is-waiting" aria-label="Activations over the span" aria-busy={failure === null} />;
   }
 
   const peak = Math.max(1, ...answer.slices.map((slice) => slice.activations ?? 0));
   const at = nowAt(answer.span, now);
 
   return (
-    <section className="activity" aria-label="Activations over the span" aria-busy={arriving}>
-      <div className="activity-plot">
+    <section className="strip" aria-label="Activations over the span" aria-busy={arriving}>
+      <div className="strip-plot">
         <ol className="slices">
           {answer.slices.map((slice) => (
             <li
@@ -51,13 +51,13 @@ export function ActivityStrip({
         </ol>
 
         {at !== null && (
-          <span className="activity-now" style={{ left: `${at * 100}%` }} aria-hidden="true">
-            <span className="activity-now-word">Now</span>
+          <span className="strip-now" style={{ left: `${at * 100}%` }} aria-hidden="true">
+            <span className="strip-now-word">Now</span>
           </span>
         )}
       </div>
 
-      <div className="activity-axis" aria-hidden="true">
+      <div className="strip-axis" aria-hidden="true">
         {stripLabels(answer.slices).map((label) => (
           <span key={label.at} style={{ left: `${label.at * 100}%` }}>
             {label.text}

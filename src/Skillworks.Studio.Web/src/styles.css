@@ -660,18 +660,18 @@ main {
   min-width: 0;
 }
 
-.activity {
+.strip {
   --plot: clamp(1.8rem, 7vh, 4rem);
 
   flex: none;
 }
 
-.activity.is-waiting {
+.strip.is-waiting {
   border-bottom: 1px solid var(--rule);
   height: calc(var(--plot) + 1.1rem);
 }
 
-.activity-plot {
+.strip-plot {
   border-bottom: 1px solid var(--line);
   height: var(--plot);
   position: relative;
@@ -749,14 +749,14 @@ main {
   padding: 1px;
 }
 
-.activity-now {
+.strip-now {
   border-left: 1px dashed var(--ink-soft);
   bottom: 0;
   position: absolute;
   top: -0.3rem;
 }
 
-.activity-now-word {
+.strip-now-word {
   background: var(--void);
   color: var(--ink-soft);
   font-family: var(--mono);
@@ -769,7 +769,7 @@ main {
   top: 0;
 }
 
-.activity-axis {
+.strip-axis {
   color: var(--ink-faint);
   font: 0.6rem var(--mono);
   height: 1.1rem;
@@ -779,7 +779,7 @@ main {
   text-transform: uppercase;
 }
 
-.activity-axis span {
+.strip-axis span {
   border-left: 1px solid var(--rule);
   padding-left: 0.3rem;
   position: absolute;
