@@ -36,7 +36,7 @@ export function HealthLamps() {
 
   return (
     <div className="lamps">
-      <ul aria-label="Health">
+      <ul>
         {lampsOf(report, failure).map((lamp) => (
           <HealthLamp key={lamp.callSign} lamp={lamp} />
         ))}

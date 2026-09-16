@@ -387,7 +387,7 @@ main {
 }
 
 /* Under the brand and over the blocks below, so an opened sentence is never painted under the next block. */
-.systems {
+.health {
   z-index: 1;
 }
 
@@ -1376,7 +1376,7 @@ a.home-panel-face:hover::before {
 }
 
 /* The lamps are tested against the panel ground, so Home seats them on it as the rail does. */
-.home-systems {
+.home-health {
   background: var(--panel);
   padding: clamp(0.6rem, 2vh, 1rem) 0.7rem;
 }

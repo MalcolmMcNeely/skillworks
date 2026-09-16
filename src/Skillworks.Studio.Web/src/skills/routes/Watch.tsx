@@ -84,7 +84,7 @@ export function Watch() {
           <SignalWord gap={answer?.gap ?? null} failure={reading?.failure ?? null} />
         </div>
 
-        <section className="rail-block systems" aria-label="Systems">
+        <section className="rail-block health" aria-label="Health">
           <HealthLamps />
           <TelemetrySwitch />
         </section>

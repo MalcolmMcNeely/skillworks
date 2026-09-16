@@ -49,7 +49,7 @@ export function Home() {
         ))}
       </ul>
 
-      <section className="home-systems" aria-label="Systems">
+      <section className="home-health" aria-label="Health">
         <HealthLamps />
       </section>
     </main>
