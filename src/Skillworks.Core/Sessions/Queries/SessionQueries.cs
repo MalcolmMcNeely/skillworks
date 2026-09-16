@@ -18,6 +18,9 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
 
     private const string TurnEvent = "api_request";
 
+    // The only event a Skill's name reaches, so the runs it fired in are read from these alone.
+    private const string FiringEvent = "skill_activated";
+
     // The one Turn whose answer is the Session's name.
     private const string TitleSource = "generate_session_title";
 
@@ -53,20 +56,28 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
     // Totals, never a list of events: a busy organisation's week is more lines than one read holds.
     public async Task<(IReadOnlyList<Session> Sessions, EventTotals Period)> ListAsync(
         DaySpan span,
+        Filter filter,
         SessionOrder order,
         CancellationToken cancellationToken)
     {
-        var everything = Events(span);
+        var everything = Events(span, filter);
 
         var placing = events.CountAsync(everything, ByWhereabouts, cancellationToken);
         var starting = events.EarliestAsync(everything, BySession, cancellationToken);
         var ending = events.LatestAsync(everything, BySession, cancellationToken);
-        var titling = events.EarliestAsync(Titles(span), ByTitle, cancellationToken);
+        var titling = events.EarliestAsync(Titles(span, filter), ByTitle, cancellationToken);
         var prompting = events.EarliestAsync(everything with { EventName = PromptEvent }, ByPrompt, cancellationToken);
         var calling = events.CountAsync(everything with { EventName = ToolCallEvent }, ByOutcome, cancellationToken);
         var deciding = events.CountAsync(everything with { EventName = DecisionEvent }, ByDecision, cancellationToken);
         var erring = events.CountAsync(everything with { EventName = ModelErrorEvent }, BySession, cancellationToken);
         var costing = events.SumAsync(everything with { EventName = TurnEvent }, CostAttribute, BySession, cancellationToken);
+
+        var firing = filter.Skill is null
+            ? Task.FromResult(EventTotals.Of([]))
+            : events.CountAsync(Firings(span, filter), BySession, cancellationToken);
+
+        // Judged on the period, not on what was asked, or a Repository with no runs would read as a quiet week.
+        var surveying = filter.Repository is null ? placing : events.CountAsync(Events(span), [], cancellationToken);
 
         var read = new Readings(
             await placing,
@@ -77,15 +88,16 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
             await calling,
             await deciding,
             await erring,
-            await costing);
+            await costing,
+            await firing,
+            await surveying);
 
-        // The whereabouts count every event of the span, so it is the period the Gap is judged on.
-        var period = read.Placed with { Unreachable = read.Unreachable };
+        var period = read.Surveyed with { Unreachable = read.Unreachable };
 
-        return (period.Unreachable is null ? Rows(read, order) : [], period);
+        return (period.Unreachable is null ? Rows(read, filter, order) : [], period);
     }
 
-    private IReadOnlyList<Session> Rows(Readings read, SessionOrder order)
+    private IReadOnlyList<Session> Rows(Readings read, Filter filter, SessionOrder order)
     {
         var (firstEvent, lastEvent) = (MomentsOf(read.Started), MomentsOf(read.Ended));
         var titles = WordsOf(read.Titled, EventAttributes.Response);
@@ -97,10 +109,14 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
         var costs = SummedIn(read.Cost);
         var now = clock.GetUtcNow();
 
+        // A Skill says which runs are listed, never how much of a run is counted.
+        var firedIn = filter.Skill is null ? null : Keyed(read.Fired);
+
         var sessions =
             from run in Identified(read.Placed.Groups)
             let id = run.Key
             where firstEvent.ContainsKey(id) && lastEvent.ContainsKey(id)
+            where firedIn is null || firedIn.Contains(id)
             let repository = MostlySaid(run, total => total.Repository)
             let startedAt = firstEvent[id]
             select new Session(
@@ -148,6 +164,9 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
     private static Dictionary<string, decimal> SummedIn(EventTotals totals) =>
         Identified(totals.Groups).ToDictionary(run => run.Key, run => run.Sum(total => total.Total));
 
+    private static HashSet<string> Keyed(EventTotals totals) =>
+        [.. Identified(totals.Groups).Select(run => run.Key)];
+
     private static IEnumerable<IGrouping<string, EventTotal>> Identified(IEnumerable<EventTotal> groups) =>
         from total in groups
         let id = total.Attribute(EventAttributes.Session)
@@ -156,8 +175,15 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
 
     private static EventQuery Events(DaySpan span) => new(EventQuery.AnyEvent, span.FromUtc, span.UntilUtc);
 
-    private static EventQuery Titles(DaySpan span) =>
-        Events(span) with { EventName = TitleEvent, QuerySource = TitleSource };
+    // Claude Code names a Repository on every event of a run or on none, so no run is left half read.
+    private static EventQuery Events(DaySpan span, Filter filter) => Events(span) with { Repository = filter.Repository };
+
+    private static EventQuery Titles(DaySpan span, Filter filter) =>
+        Events(span, filter) with { EventName = TitleEvent, QuerySource = TitleSource };
+
+    // The Repository is left off, as the rows this narrows are narrowed by it already.
+    private static EventQuery Firings(DaySpan span, Filter filter) =>
+        Events(span) with { EventName = FiringEvent, Skill = filter.Skill };
 
     // One short of an answer is no answer, as a run missing its name or its length would read as a lie.
     private sealed record Readings(
@@ -169,10 +195,13 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
         EventTotals Called,
         EventTotals Decided,
         EventTotals Erred,
-        EventTotals Cost)
+        EventTotals Cost,
+        EventTotals Fired,
+        EventTotals Surveyed)
     {
         public string? Unreachable =>
             Placed.Unreachable ?? Started.Unreachable ?? Ended.Unreachable ?? Titled.Unreachable ??
-            Prompted.Unreachable ?? Called.Unreachable ?? Decided.Unreachable ?? Erred.Unreachable ?? Cost.Unreachable;
+            Prompted.Unreachable ?? Called.Unreachable ?? Decided.Unreachable ?? Erred.Unreachable ??
+            Cost.Unreachable ?? Fired.Unreachable ?? Surveyed.Unreachable;
     }
 }

@@ -9,6 +9,8 @@ public sealed partial class SessionEndpointsTests
 
     private const string Afternoon = "8f1c0a9e-0000-4000-8000-000000000002";
 
+    private const string Evening = "8f1c0a9e-0000-4000-8000-000000000003";
+
     [Fact]
     public async Task Answers_with_a_head_then_the_sessions_then_an_end()
     {

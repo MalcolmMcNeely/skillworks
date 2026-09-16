@@ -5,8 +5,6 @@ namespace Skillworks.Studio.Api.Tests.Sessions;
 
 public sealed partial class SessionEndpointsTests
 {
-    private const string Evening = "8f1c0a9e-0000-4000-8000-000000000003";
-
     private static readonly string[] EveryColumn =
         ["started", "repository", "person", "name", "length", "toolCalls", "cost", "faults"];
 

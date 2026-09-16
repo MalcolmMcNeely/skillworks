@@ -60,10 +60,12 @@ function Heading({
 export function SessionTable({
   answer,
   failure,
+  noRuns,
   onSort,
 }: {
   answer: SessionsAnswer | null;
   failure: string | null;
+  noRuns: string;
   onSort: (sort: SessionSort) => void;
 }) {
   if (failure !== null) {
@@ -75,7 +77,7 @@ export function SessionTable({
   }
 
   if (answer.sessions.length === 0) {
-    return <p className="session-word">No runs in this period.</p>;
+    return <p className="session-word">{noRuns}</p>;
   }
 
   return (

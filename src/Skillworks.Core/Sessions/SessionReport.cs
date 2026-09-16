@@ -18,7 +18,7 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
 
         yield return new SessionsHead(span, order.SortedOn, order.HighestFirst);
 
-        var (rows, period) = await sessions.ListAsync(span, order, cancellationToken);
+        var (rows, period) = await sessions.ListAsync(span, filter, order, cancellationToken);
 
         if (period.Unreachable is null)
         {

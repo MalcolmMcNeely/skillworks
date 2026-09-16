@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { everything } from '../../filters/lib/filters';
 import {
   describeLength,
+  describeNoSessions,
+  describePeriod,
   describeSpan,
   describeStarted,
   foldSessionsLine,
@@ -207,5 +210,40 @@ describe('describeSpan', () => {
 
   it('names one day once', () => {
     expect(describeSpan({ ...head.span, from: '2026-09-14', to: '2026-09-14' })).toBe('2026-09-14');
+  });
+});
+
+describe('describePeriod', () => {
+  it('says the answer covers the lookback, and which days that was', () => {
+    expect(describePeriod(head.span, null)).toBe('The lookback, 2026-09-09 to 2026-09-15');
+  });
+
+  it('names the days alone when a span was asked for', () => {
+    const span = { ...head.span, from: '2026-09-13', to: '2026-09-14', lookback: false };
+
+    expect(describePeriod(span, { from: '2026-09-13', to: '2026-09-14' })).toBe('2026-09-13 to 2026-09-14');
+  });
+
+  it('says the lookback before an answer lands when no span was asked for', () => {
+    expect(describePeriod(null, null)).toBe('The lookback');
+  });
+
+  it('names the asked days before an answer lands, so a narrowed table never claims the lookback', () => {
+    expect(describePeriod(null, { from: '2026-09-13', to: '2026-09-14' })).toBe('2026-09-13 to 2026-09-14');
+  });
+});
+
+describe('describeNoSessions', () => {
+  it('calls an empty unnarrowed table a quiet period', () => {
+    expect(describeNoSessions(everything)).toBe('No runs in this period.');
+  });
+
+  it('calls a table narrowed only by a span a quiet period too, as the span is the period', () => {
+    expect(describeNoSessions({ ...everything, from: '2026-09-13', to: '2026-09-14' })).toBe('No runs in this period.');
+  });
+
+  it('says a table narrowed by a Repository or a Skill matched nothing, never reading as a blank page', () => {
+    expect(describeNoSessions({ ...everything, repository: 'acme/nu' })).toBe('No runs match this filter.');
+    expect(describeNoSessions({ ...everything, skill: 'tdd' })).toBe('No runs match this filter.');
   });
 });

@@ -1,5 +1,5 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
-import type { Span } from '../../filters/lib/filters';
+import type { Filter, Span } from '../../filters/lib/filters';
 import type { Gap, GapEnd } from '../../gaps/lib/gaps';
 
 export interface Session {
@@ -164,6 +164,20 @@ export function describeStarted(startedUtc: string): string {
   return startedUtc.replace('T', ' ').slice(0, 16);
 }
 
-export function describeSpan(span: SessionsHead['span']): string {
+export function describeSpan(span: Span): string {
   return span.from === span.to ? span.from : `${span.from} to ${span.to}`;
+}
+
+// The API decides the lookback's length, so before an answer lands only a span a reader asked for is known.
+export function describePeriod(span: SessionsHead['span'] | null, shown: Span | null): string {
+  if (span !== null) {
+    return `${span.lookback ? 'The lookback, ' : ''}${describeSpan(span)}`;
+  }
+
+  return shown === null ? 'The lookback' : describeSpan(shown);
+}
+
+// A span is the period itself, so only a Repository or a Skill turns an empty table from a quiet week into no match.
+export function describeNoSessions(filter: Filter): string {
+  return filter.repository !== '' || filter.skill !== '' ? 'No runs match this filter.' : 'No runs in this period.';
 }
