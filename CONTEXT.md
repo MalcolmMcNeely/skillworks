@@ -47,6 +47,16 @@ them is the developer's to fix. Every part that is not working names the action 
 it.
 _Avoid_: Status, diagnostics, readiness
 
+**Home**:
+The page Studio opens on. It holds a panel for each of Studio's jobs, Watch, Author, Test and
+Publish, and leads to the ones that are built.
+_Avoid_: Landing page, start page, index
+
+**Watch**:
+Studio's first job, and the page that does it: which skills fire, how often, in which Repositories,
+and what they cost.
+_Avoid_: Dashboard, summary, overview
+
 ### Measurement
 
 **Telemetry**:
