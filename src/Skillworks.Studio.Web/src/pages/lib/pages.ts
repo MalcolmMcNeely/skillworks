@@ -33,3 +33,7 @@ export const pages: readonly Page[] = [
   page('/test', 'Test', '✓', home, false),
   page('/publish', 'Publish', '↑', home, false),
 ];
+
+export function pagesBelow(parent: Page): readonly Page[] {
+  return pages.filter((below) => below.parent === parent);
+}

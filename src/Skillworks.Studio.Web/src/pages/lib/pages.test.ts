@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { home, pages, watch } from './pages';
+import { home, pages, pagesBelow, watch } from './pages';
 
 describe('pages', () => {
   it('lists every page of Studio in the order Home shows them', () => {
@@ -42,5 +42,19 @@ describe('pages', () => {
 
   it('titles the tab with the page name on every page below Home', () => {
     expect(watch.tabTitle).toBe('Watch · Skillworks');
+  });
+});
+
+describe('pagesBelow', () => {
+  it('names the jobs Home shows, in the order the list holds them', () => {
+    expect(pagesBelow(home).map((page) => page.name)).toEqual(['Watch', 'Author', 'Test', 'Publish']);
+  });
+
+  it('leaves out the page asked about, so Home never leads back to Home', () => {
+    expect(pagesBelow(home)).not.toContain(home);
+  });
+
+  it('gives a page with nothing under it an empty list', () => {
+    expect(pagesBelow(watch)).toEqual([]);
   });
 });

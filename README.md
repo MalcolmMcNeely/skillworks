@@ -15,7 +15,7 @@ Then it goes round again. Once the plugin is out, the telemetry shows whether it
 
 | Job | Built? |
 |---|---|
-| Watch | Yes. Home lists every skill with its Activations, Cost, Tokens, Models, Efforts and Repositories. |
+| Watch | Yes. Watch lists every skill with its Activations, Cost, Tokens, Models, Efforts and Repositories. |
 | Author | Not yet. |
 | Test | Not yet. |
 | Publish | Not yet. |
