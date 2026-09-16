@@ -37,7 +37,7 @@ _Avoid_: Slash command, manual skill
 **Studio**:
 The local app for watching, authoring and testing the catalogue. It runs on the developer's own
 machine because authoring writes files and evals start `claude`. What it measures it reads from the
-organisation's Events store, never from the machine it runs on.
+organisation's stores, never from the machine it runs on.
 _Avoid_: Reader, console, dashboard, portal
 
 **Health**:
@@ -54,7 +54,7 @@ _Avoid_: Indicator, light, badge
 
 **Home**:
 The page Studio opens on. It holds a panel for each of Studio's jobs, Watch, Author, Test and
-Publish, and leads to the ones that are built.
+Publish, and one for Sessions, and leads to the ones that are built.
 _Avoid_: Landing page, start page, index
 
 **Watch**:
@@ -81,7 +81,8 @@ _Avoid_: Usage data, metrics
 
 **Events store**:
 The organisation's store that Claude Code's telemetry events arrive in, once telemetry is switched
-on. It is the only place Studio reads what it measures. Studio keeps nothing of its own.
+on. With the Trace store it is one of the two places Studio reads what it measures. Studio keeps
+nothing of its own.
 _Avoid_: Event log, telemetry store, transcript store, database
 
 **Activation**:
@@ -102,16 +103,19 @@ _Avoid_: Lineage, delivery, history
 Which way an answer from the Events store fell short, when it did: the store was unreachable,
 telemetry was never switched on, or the period was genuinely quiet. Each can arrive as nothing at
 all, so the Gap is the only thing that tells them apart, and each one means something different for
-the developer to do. Whether telemetry is
-switched on is read from the machine Studio runs on, so that Gap speaks for this machine only. A
-period the Events store holds nothing for is labelled missing, never shown as none. A store that stops
-answering part way keeps the days already read, and the Gap names the days it could not read.
+the developer to do. Whether telemetry is switched on is read from the machine Studio runs on, so
+that Gap speaks for this machine only. A period a store holds nothing for is labelled missing, never
+shown as none. A store that stops answering part way keeps the days already read, and the Gap names
+the days it could not read. The Events store and the Trace store answer on their own, so a Gap names
+which of them fell short.
 _Avoid_: Error, empty, null
 
 **Arriving**:
-An answer from the Events store that has not finished reaching the screen. What has landed is shown at
-once, and its figures can still grow. It is **complete** when its last part lands. An arriving answer has
-not fallen short, so it is not a Gap, and a complete answer can still carry one.
+An answer from a store that has not finished reaching the screen. What has landed is shown at once,
+and its figures can still grow. It is **complete** when its last part lands. An arriving answer has
+not fallen short, so it is not a Gap, and a complete answer can still carry one. A Session arrives
+in two parts, its events and then its Spans, so its Depth can grow from Thin to Full as a reader
+looks at it.
 _Avoid_: Loading, pending, partial, streaming
 
 **Origin**:
@@ -126,7 +130,7 @@ _Avoid_: Project, folder, workspace
 
 **Turn**:
 One request to the model, the tokens it spent and what it cost. It is the unit of spend.
-_Avoid_: Message, exchange, round trip
+_Avoid_: Message, round trip
 
 **Cost**:
 What Claude Code estimates a Turn cost, at the prices it was sent with. Studio never prices a Turn
@@ -161,11 +165,11 @@ is reported beside it.
 _Avoid_: Reasoning level, thinking budget
 
 **Filter**:
-The one way every list narrows: a span of days, a Repository and a Skill. The span is counted in
-whole UTC days and takes both ends in. With no span, a list covers the **lookback**, the last seven
-days, and says so. A Skill that never fired belongs in the unnarrowed answer, where its zero says
-the description may be broken; a filter that asks what happened in a chosen span or one Repository
-leaves it out, because it did not happen there.
+The one way every list narrows: a span of days, a Repository, a Skill and a Depth. The span is
+counted in whole UTC days and takes both ends in. With no span, a list covers the **lookback**, the
+last seven days, and says so. A Skill that never fired belongs in the unnarrowed answer, where its
+zero says the description may be broken; a filter that asks what happened in a chosen span or one
+Repository leaves it out, because it did not happen there.
 _Avoid_: Query, search, scope
 
 **Firing eval**:
@@ -180,3 +184,66 @@ _Avoid_: Quality eval, judge eval
 
 **Contract**:
 The part of a skill's output that can be asserted without a model judging it.
+
+### Sessions
+
+**Session**:
+One run of Claude Code, in one Repository, by one person. No event says a Session ended, so a
+Session is **Running** while its last event is recent and never again after that. Its name is the
+title Claude Code wrote for it, and the first Prompt where it wrote none.
+_Avoid_: Conversation, thread, transcript
+
+**Prompt**:
+The words a person typed, and nothing that followed them.
+_Avoid_: Message, instruction, query
+
+**Exchange**:
+One Prompt and everything that followed it, up to the answer. It is the band on a timeline and the
+block in a conversation, and many Turns sit inside one.
+_Avoid_: Round trip, interaction, cycle
+
+**Step**:
+One thing in a Session that took time: a Turn, a Tool call, a hook run or a Subagent. Every Step has
+a start and an end.
+_Avoid_: Event, entry, item
+
+**Tool call**:
+One use of one tool by one agent.
+
+**Subagent**:
+An agent the main agent started. It has its own brief, its own Turns and its own Tool calls, and a
+reader opens it the way they open a Session. Only the opening words of its brief survive, with the
+length of the rest, so a Subagent is named by the description its caller gave it.
+_Avoid_: Sub-task, worker, child agent
+
+**Fault**:
+A Tool call that failed, or a model error. Nobody chose it, and that is what makes it worth
+counting.
+_Avoid_: Error, failure, problem
+
+**Friction**:
+A Tool call a person refused, or one a hook blocked. Somebody chose it, so it is counted apart from
+Faults and never added to them.
+_Avoid_: Block, rejection, denial
+
+**Finding**:
+Something Studio names in a Session because it crossed a bar worth a person's attention. Every
+Finding shows the figure it crossed on, so a reader sees how close the call was. A Finding that
+needs the Trace store reads **not known** in a Thin Session, never zero.
+_Avoid_: Insight, issue, alert
+
+**Trace store**:
+The organisation's store that Claude Code's Spans arrive in, once traces are switched on. It answers
+apart from the Events store, and it falls short apart from it.
+_Avoid_: Tempo, span store, tracing backend
+
+**Span**:
+One Step as the Trace store holds it, with the Steps that ran inside it. A Span says what an event
+cannot: which Subagent ran a Tool call, how long it waited for a person's permission, and what came
+back.
+
+**Depth**:
+How much of a Session can be read: **Full** when its Spans and its words are both there, and
+**Thin** when they are not. It is part of the Filter, so a reader asks for what they can read
+instead of opening Sessions to find out.
+_Avoid_: Fidelity, completeness, quality
