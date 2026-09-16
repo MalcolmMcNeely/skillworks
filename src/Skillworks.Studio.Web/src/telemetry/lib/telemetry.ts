@@ -48,6 +48,13 @@ export function switchOf(
     : { position: 'off', mark: switchMarks.off, word: 'Off', why: null };
 }
 
-export function describeChange(change: { name: string; from: string | null; to: string }): string {
-  return `${change.name}: ${change.from ?? 'not set'} → ${change.to}`;
-}
+// No setting is named here, because a variable name warns nobody of what a colleague could read.
+export const recordingWarning: string[] = [
+  'Everything you type to Claude Code on this machine.',
+  'Everything Claude Code writes back, including its plans and its reasons.',
+  'What every tool was handed and what it returned, so the text of the files you work on goes too.',
+  'How long each step took, and which agent ran it.',
+];
+
+export const whoElseCanRead =
+  'All of it goes to the stores the whole organisation reads. Anyone who can open them can read your work.';

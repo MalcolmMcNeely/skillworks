@@ -616,20 +616,46 @@ main {
 }
 
 .switch-path,
-.switch-changes code {
+.switch-file {
   color: var(--ink);
   font-family: var(--mono);
   font-size: 0.6rem;
   overflow-wrap: anywhere;
 }
 
-.switch-changes {
+.switch-kept {
   border-top: 1px solid var(--rule);
   display: grid;
-  gap: 0.15rem;
+  gap: 0.25rem;
   list-style: none;
   margin: 0;
   padding: 0.35rem 0 0;
+}
+
+.switch-team {
+  font-size: 0.66rem;
+}
+
+.switch-team summary {
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.switch-team p {
+  color: var(--ink-soft);
+  margin: 0.35rem 0;
+}
+
+.switch-file {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  margin: 0.35rem 0 0;
+  max-height: 11rem;
+  overflow: auto;
+  padding: 0.4rem 0.5rem;
+  white-space: pre;
 }
 
 .switch-confirm-keys {

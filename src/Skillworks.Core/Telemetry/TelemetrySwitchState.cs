@@ -5,6 +5,6 @@ public sealed record TelemetrySwitchState(
     string SettingsPath,
     bool Readable,
     string CollectorEndpoint,
-    IReadOnlyList<TelemetryChange> Changes,
     string RestartNote,
-    string? Problem);
+    string? Problem,
+    TeamSettings Team);

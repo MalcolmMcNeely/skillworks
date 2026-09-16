@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace Skillworks.Studio.Api.Tests.Telemetry;
 
-public sealed class TelemetrySwitchEndpointsTests
+public sealed partial class TelemetrySwitchEndpointsTests
 {
     private const string RepositoryVariable = "OTEL_METRICS_INCLUDE_REPOSITORY";
 
@@ -16,6 +16,11 @@ public sealed class TelemetrySwitchEndpointsTests
         ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf",
         ["OTEL_EXPORTER_OTLP_ENDPOINT"] = TelemetrySwitchHost.Collector,
         [RepositoryVariable] = "true",
+        ["OTEL_LOG_USER_PROMPTS"] = "1",
+        ["OTEL_LOG_ASSISTANT_RESPONSES"] = "1",
+        ["OTEL_LOG_TOOL_CONTENT"] = "1",
+        ["CLAUDE_CODE_ENHANCED_TELEMETRY_BETA"] = "1",
+        ["OTEL_TRACES_EXPORTER"] = "otlp",
     };
 
     [Fact]
@@ -48,7 +53,6 @@ public sealed class TelemetrySwitchEndpointsTests
         var state = await studio.State();
 
         Assert.True(state.GetProperty("emitting").GetBoolean());
-        Assert.Empty(state.GetProperty("changes").EnumerateArray());
     }
 
     [Fact]
@@ -59,7 +63,6 @@ public sealed class TelemetrySwitchEndpointsTests
         var state = await studio.State();
 
         Assert.True(state.GetProperty("emitting").GetBoolean());
-        Assert.Empty(state.GetProperty("changes").EnumerateArray());
     }
 
     [Fact]
@@ -71,33 +74,17 @@ public sealed class TelemetrySwitchEndpointsTests
         var state = await studio.State();
 
         Assert.False(state.GetProperty("emitting").GetBoolean());
-        Assert.Equal([RepositoryVariable], TelemetrySwitchHost.Changes(state).Keys);
     }
 
     [Fact]
-    public async Task Shows_every_variable_it_would_write_before_it_writes_anything()
+    public async Task Writes_nothing_until_it_is_asked_to()
     {
         using var studio = new TelemetrySwitchHost("{}");
 
-        var changes = TelemetrySwitchHost.Changes(await studio.State());
-
-        Assert.Equal(Owned.Keys.Order(), changes.Keys.Order());
-        Assert.Equal("{}", studio.SettingsText());
-    }
-
-    [Fact]
-    public async Task Names_the_value_it_would_displace_so_the_preview_is_the_whole_change()
-    {
-        using var studio = new TelemetrySwitchHost(
-            """{ "env": { "OTEL_LOGS_EXPORTER": "console" } }""");
-
         var state = await studio.State();
-        var change = state.GetProperty("changes")
-            .EnumerateArray()
-            .Single(entry => entry.GetProperty("name").GetString() == "OTEL_LOGS_EXPORTER");
 
-        Assert.Equal("console", change.GetProperty("from").GetString());
-        Assert.Equal("otlp", change.GetProperty("to").GetString());
+        Assert.False(state.GetProperty("emitting").GetBoolean());
+        Assert.Equal("{}", studio.SettingsText());
     }
 
     [Fact]

@@ -16,17 +16,15 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
 
         if (Unusable(document) is { } problem)
         {
-            return Report(emitting: false, readable: false, [], problem);
+            return Report(emitting: false, readable: false, problem);
         }
 
         var environment = Environment(document);
 
-        var changes = Owned()
-            .Where(variable => Held(environment, variable.Key) != variable.Value)
-            .Select(variable => new TelemetryChange(variable.Key, Held(environment, variable.Key), variable.Value))
-            .ToArray();
+        // All of them or none: a machine holding some of them records a Session nobody can read in full.
+        var emitting = Owned().All(variable => Held(environment, variable.Key) == variable.Value);
 
-        return Report(emitting: changes.Length == 0, readable: true, changes, problem: null);
+        return Report(emitting, readable: true, problem: null);
     }
 
     // A guess of off would send a developer to write a file Studio has refused.
@@ -55,7 +53,8 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         var root = document.Root!;
         var created = root["env"] is not JsonObject;
         var environment = created ? new JsonObject() : (JsonObject)root["env"]!;
-        var previous = TelemetryStamp.Read(options.Value.ResolvedStampPath());
+        var stampPath = options.Value.ResolvedStampPath();
+        var previous = TelemetryStamp.Read(stampPath);
         var displaced = new Dictionary<string, string?>();
 
         foreach (var (name, value) in Owned())
@@ -75,11 +74,15 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         }
 
         // Stamp first, or a crash between the writes loses the undo; an env block Studio once created stays Studio's.
-        TelemetryStamp.Write(
-            options.Value.ResolvedStampPath(),
-            new TelemetryStamp(displaced, created || previous.CreatedEnvironment));
+        TelemetryStamp.Write(stampPath, new TelemetryStamp(displaced, created || previous.CreatedEnvironment));
 
-        file.Write(settingsPath, root);
+        if (file.Write(settingsPath, root) is { } failure)
+        {
+            // A refused write displaced nothing, and a stamp saying otherwise would delete the developer's own env block.
+            TelemetryStamp.Write(stampPath, previous);
+
+            return Unwritten(failure);
+        }
 
         return new TelemetrySwitchResult(State(), null);
     }
@@ -130,7 +133,11 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
             }
         }
 
-        file.Write(settingsPath, root);
+        if (file.Write(settingsPath, root) is { } failure)
+        {
+            return Unwritten(failure);
+        }
+
         TelemetryStamp.Forget(stampPath);
 
         return new TelemetrySwitchResult(State(), null);
@@ -155,20 +162,19 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         var node => node.ToJsonString(),
     };
 
-    private TelemetrySwitchState Report(
-        bool emitting,
-        bool readable,
-        IReadOnlyList<TelemetryChange> changes,
-        string? problem) =>
+    private TelemetrySwitchState Report(bool emitting, bool readable, string? problem) =>
         new(
             emitting,
             options.Value.ResolvedPath(),
             readable,
             options.Value.CollectorEndpoint,
-            changes,
             RestartNote,
-            problem);
+            problem,
+            TeamSettings.For(file, options.Value.CollectorEndpoint));
 
     private TelemetrySwitchResult Refused(string problem) =>
         new(State(), $"Studio will not write {options.Value.ResolvedPath()}, because {problem}.");
+
+    private TelemetrySwitchResult Unwritten(string failure) =>
+        new(State(), $"Studio could not write {options.Value.ResolvedPath()}, so nothing was changed: {failure}");
 }

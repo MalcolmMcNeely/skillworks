@@ -27,12 +27,39 @@ public sealed class ClaudeSettingsFile
         }
     }
 
-    public void Write(string path, JsonObject root)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+    public string Render(JsonObject root) => root.ToJsonString(Layout);
 
+    public string? Write(string path, JsonObject root)
+    {
         var staging = path + ".skillworks-new";
-        File.WriteAllText(staging, root.ToJsonString(Layout));
-        File.Move(staging, path, overwrite: true);
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(staging, Render(root));
+
+            // A failure here leaves the settings as they were, so the switch never writes some of them and not the rest.
+            File.Move(staging, path, overwrite: true);
+
+            return null;
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            Discard(staging);
+
+            return failure.Message;
+        }
+    }
+
+    private static void Discard(string staging)
+    {
+        try
+        {
+            File.Delete(staging);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            // Nothing was changed, and the next write replaces this file, so a stray staging file is no fault.
+        }
     }
 }

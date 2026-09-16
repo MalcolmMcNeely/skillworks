@@ -97,21 +97,34 @@ amount, Unnamed spend, and never splits it among skills.
 ### The telemetry switch
 
 Claude Code sends nothing until telemetry is on. The Telemetry switch, on the rail of Studio's first
-page, turns it on for this machine. It lists what it will write to the `env` block of
-`~/.claude/settings.json`, and writes only when you say so:
+page, turns it on for this machine. Before it acts it says in plain words what will be recorded: what
+you type, what Claude Code writes back, what every tool was handed and what it returned, and how long
+each step took. Everyone who can read the organisation's stores can read all of it. The switch writes
+only when you say so.
 
-| Variable | Value |
-|---|---|
-| `CLAUDE_CODE_ENABLE_TELEMETRY` | `1` |
-| `OTEL_LOGS_EXPORTER` | `otlp` |
-| `OTEL_LOG_TOOL_DETAILS` | `1` |
-| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | The Collector, `http://localhost:4318` |
-| `OTEL_METRICS_INCLUDE_REPOSITORY` | `true` |
+It writes these to the `env` block of `~/.claude/settings.json`, all of them or none:
 
-The switch says telemetry is on only when all six hold these values. Turning it off puts back what
-was there before. A Claude Code session that is already running picks up neither change, so
-restart it.
+| Variable | Value | What it brings |
+|---|---|---|
+| `CLAUDE_CODE_ENABLE_TELEMETRY` | `1` | Nothing at all is sent without this one |
+| `OTEL_LOGS_EXPORTER` | `otlp` | The events |
+| `OTEL_LOG_TOOL_DETAILS` | `1` | A skill's real name, not `custom_skill` |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` | |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | The Collector, `http://localhost:4318` | |
+| `OTEL_METRICS_INCLUDE_REPOSITORY` | `true` | The Repository on every event |
+| `OTEL_LOG_USER_PROMPTS` | `1` | What you typed, not `<REDACTED>` |
+| `OTEL_LOG_ASSISTANT_RESPONSES` | `1` | What Claude Code answered |
+| `OTEL_LOG_TOOL_CONTENT` | `1` | What a tool was handed and returned |
+| `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` | `1` | Spans, which are beta |
+| `OTEL_TRACES_EXPORTER` | `otlp` | The Spans, to the Trace store |
+
+The switch says telemetry is on only when all eleven hold these values, because a Session recorded
+with some of them cannot be read in full. Turning it off puts back what was there before. A Claude
+Code session that is already running picks up neither change, so restart it.
+
+The switch writes this machine and no other, and never a repository file. Beside the switch, Studio
+shows the `.claude/settings.json` a team would commit to switch everyone on. It is text on a page:
+Studio does not commit it, because that decision belongs in review.
 
 The repository variable, `OTEL_METRICS_INCLUDE_REPOSITORY`, reaches past metrics despite its name.
 It names the session's `origin` remote on every event, and Studio shows that as a Repository,

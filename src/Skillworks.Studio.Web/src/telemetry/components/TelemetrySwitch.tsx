@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { describeFetchFailure } from '../../http/lib/errors';
-import { fetchTelemetry, setTelemetry, type TelemetryState } from '../api/telemetry';
-import { describeChange, switchOf, type SwitchReading } from '../lib/telemetry';
+import { fetchTelemetry, setTelemetry, type TeamSettings, type TelemetryState } from '../api/telemetry';
+import { recordingWarning, switchOf, whoElseCanRead, type SwitchReading } from '../lib/telemetry';
 
 function Face({ reading }: { reading: SwitchReading }) {
   return (
@@ -17,6 +17,47 @@ function Face({ reading }: { reading: SwitchReading }) {
         {reading.mark}
       </span>
     </>
+  );
+}
+
+function Confirm({ state, onGo, onCancel }: { state: TelemetryState; onGo: () => void; onCancel: () => void }) {
+  return (
+    <div
+      className="switch-confirm"
+      role="group"
+      aria-label="Turn telemetry on"
+      onKeyDown={(event) => event.key === 'Escape' && onCancel()}
+    >
+      <span className="micro">This machine will record</span>
+      <ul className="switch-kept">
+        {recordingWarning.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      <p>{whoElseCanRead}</p>
+      <code className="switch-path">{state.settingsPath}</code>
+      <p>{state.restartNote}</p>
+      <div className="switch-confirm-keys">
+        <button type="button" className="key is-go" onClick={onGo}>
+          <span aria-hidden="true">⏻ </span>On
+        </button>
+        <button type="button" className="key" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// No key to commit it, because that decision belongs in review and not in a button.
+function TeamFile({ team }: { team: TeamSettings }) {
+  return (
+    <details className="switch-team">
+      <summary>For the whole team</summary>
+      <p>Commit this file to switch everyone on. Studio will not commit it.</p>
+      <code className="switch-path">{team.path}</code>
+      <pre className="switch-file">{team.text}</pre>
+    </details>
   );
 }
 
@@ -68,69 +109,46 @@ export function TelemetrySwitch() {
   }
 
   const reading = switchOf(state, failure);
-
-  // A disclosure, not a tooltip, so why the switch will not flip opens by keyboard as well as by click.
-  if (reading.why !== null) {
-    return (
-      <details className={`switch is-${reading.position}`}>
-        <summary>
-          <Face reading={reading} />
-          <span className="visually-hidden">{reading.word}</span>
-        </summary>
-        <p className="switch-sentence">{reading.why}</p>
-      </details>
-    );
-  }
-
   const on = reading.position === 'on';
 
   return (
-    <div className={`switch is-${reading.position}`}>
-      <button
-        ref={key}
-        type="button"
-        className="switch-key"
-        aria-pressed={on}
-        disabled={reading.position === 'asking'}
-        onClick={() => (on ? flip(false) : setConfirming((open) => !open))}
-      >
-        <Face reading={reading} />
-      </button>
+    <>
+      {/* A disclosure, not a tooltip, so why the switch will not flip opens by keyboard as well as by click. */}
+      {reading.why !== null ? (
+        <details className={`switch is-${reading.position}`}>
+          <summary>
+            <Face reading={reading} />
+            <span className="visually-hidden">{reading.word}</span>
+          </summary>
+          <p className="switch-sentence">{reading.why}</p>
+        </details>
+      ) : (
+        <div className={`switch is-${reading.position}`}>
+          <button
+            ref={key}
+            type="button"
+            className="switch-key"
+            aria-pressed={on}
+            disabled={reading.position === 'asking'}
+            onClick={() => (on ? flip(false) : setConfirming((open) => !open))}
+          >
+            <Face reading={reading} />
+          </button>
 
-      {confirming && !on && state !== null && (
-        <div
-          className="switch-confirm"
-          role="group"
-          aria-label="Turn telemetry on"
-          onKeyDown={(event) => event.key === 'Escape' && close()}
-        >
-          <span className="micro">Writes</span>
-          <code className="switch-path">{state.settingsPath}</code>
-          <ul className="switch-changes">
-            {state.changes.map((change) => (
-              <li key={change.name}>
-                <code>{describeChange(change)}</code>
-              </li>
-            ))}
-          </ul>
-          <p>{state.restartNote}</p>
-          <div className="switch-confirm-keys">
-            <button
-              type="button"
-              className="key is-go"
-              onClick={() => {
+          {confirming && !on && state !== null && (
+            <Confirm
+              state={state}
+              onGo={() => {
                 flip(true);
                 close();
               }}
-            >
-              <span aria-hidden="true">⏻ </span>On
-            </button>
-            <button type="button" className="key" onClick={close}>
-              Cancel
-            </button>
-          </div>
+              onCancel={close}
+            />
+          )}
         </div>
       )}
-    </div>
+
+      {state !== null && <TeamFile team={state.team} />}
+    </>
   );
 }

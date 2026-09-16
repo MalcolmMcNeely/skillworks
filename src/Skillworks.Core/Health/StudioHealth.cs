@@ -56,15 +56,10 @@ public sealed class StudioHealth(
             "Trace store",
             PartState.Off,
             "Claude Code is not recording spans, so no Session can be read in full.",
-            TurnTracesOn),
+            TelemetrySwitch.TurnOnNote),
 
         _ => new StudioPart("Trace store", PartState.Working, answer.Detail, null),
     };
-
-    // The Telemetry switch does not write these yet, so naming it would send a developer to a button that does nothing.
-    private static string TurnTracesOn =>
-        $"Set {string.Join(" and ", TelemetryVariables.Traces.Select(variable => variable.Key))} " +
-        $"in Claude Code's settings. {TelemetrySwitch.RestartNote}";
 
     private static StudioPart Switch(TelemetrySwitchState state) => state switch
     {

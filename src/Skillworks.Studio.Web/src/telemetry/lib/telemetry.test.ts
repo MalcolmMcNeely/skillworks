@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeChange, switchOf } from './telemetry';
+import { recordingWarning, switchOf, whoElseCanRead } from './telemetry';
 
 const settingsPath = 'C:\\Users\\dev\\.claude\\settings.json';
 
@@ -73,16 +73,24 @@ describe('switchOf', () => {
   });
 });
 
-describe('describeChange', () => {
-  it('shows the value a variable would lose', () => {
-    expect(describeChange({ name: 'OTEL_LOGS_EXPORTER', from: 'console', to: 'otlp' })).toBe(
-      'OTEL_LOGS_EXPORTER: console → otlp',
-    );
+describe('recordingWarning', () => {
+  const said = [...recordingWarning, whoElseCanRead].join(' ');
+
+  it('names no setting, because a variable name tells a reader nothing about what is kept', () => {
+    expect(said).not.toMatch(/OTEL_|CLAUDE_CODE_/);
   });
 
-  it('says a variable is not set rather than showing an empty gap', () => {
-    expect(describeChange({ name: 'OTEL_LOGS_EXPORTER', from: null, to: 'otlp' })).toBe(
-      'OTEL_LOGS_EXPORTER: not set → otlp',
-    );
+  it('says what will be kept of what the developer types and of what the agent answers', () => {
+    expect(said).toMatch(/you type/);
+    expect(said).toMatch(/writes back/);
+  });
+
+  it('says tool content is kept, as that is where a file the developer never meant to share goes', () => {
+    expect(said).toMatch(/tool/);
+    expect(said).toMatch(/files/);
+  });
+
+  it('says who else will be able to read it, which is the part a developer cannot undo', () => {
+    expect(whoElseCanRead).toMatch(/organisation/);
   });
 });

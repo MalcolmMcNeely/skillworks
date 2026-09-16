@@ -19,10 +19,11 @@ public sealed class StudioHost : IDisposable
     }.ToJsonString();
 
     private static IEnumerable<KeyValuePair<string, string>> Owned(bool emitting, bool tracing) =>
-    [
-        .. emitting ? TelemetryVariables.For(new ClaudeSettingsOptions().CollectorEndpoint) : [],
-        .. tracing ? TelemetryVariables.Traces : [],
-    ];
+        TelemetryVariables.For(new ClaudeSettingsOptions().CollectorEndpoint)
+            .Where(variable => Traced(variable) ? tracing : emitting);
+
+    private static bool Traced(KeyValuePair<string, string> variable) =>
+        TelemetryVariables.Traces.Any(trace => trace.Key == variable.Key);
 
     private readonly TemporaryFolder _folder = new();
     private readonly PinnedClock _clock = new();

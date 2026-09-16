@@ -6,7 +6,7 @@ public static class TelemetrySwitchEndpoints
 {
     public static IEndpointRouteBuilder MapTelemetrySwitchEndpoints(this IEndpointRouteBuilder api)
     {
-        // The GET carries the preview, so the front end can show the exact change and ask before the PUT.
+        // The GET carries the file a team would commit, so the front end can show it without a second call.
         api.MapGet("telemetry/switch", (TelemetrySwitch telemetry) => telemetry.State());
 
         api.MapPut("telemetry/switch", (TelemetrySwitchRequest request, TelemetrySwitch telemetry) =>

@@ -2,8 +2,12 @@ namespace Skillworks.Core.Telemetry;
 
 public static class TelemetryVariables
 {
-    // Metrics stay off: their skill.name label reads third-party for a private catalogue.
+    // All of them or none: a run recorded with only some of these cannot be read in full.
     public static IReadOnlyList<KeyValuePair<string, string>> For(string collectorEndpoint) =>
+        [.. Events(collectorEndpoint), .. Words, .. Traces];
+
+    // Metrics stay off: their skill.name label reads third-party for a private catalogue.
+    private static IReadOnlyList<KeyValuePair<string, string>> Events(string collectorEndpoint) =>
     [
         // Nothing is exported at all without this one.
         new("CLAUDE_CODE_ENABLE_TELEMETRY", "1"),
@@ -17,7 +21,15 @@ public static class TelemetryVariables
         new("OTEL_METRICS_INCLUDE_REPOSITORY", "true"),
     ];
 
-    // Held apart from the rest until the switch writes them, so a trace store with nothing in it reads as off.
+    // Without these a prompt, an answer and a tool result all arrive as <REDACTED>.
+    private static IReadOnlyList<KeyValuePair<string, string>> Words =>
+    [
+        new("OTEL_LOG_USER_PROMPTS", "1"),
+        new("OTEL_LOG_ASSISTANT_RESPONSES", "1"),
+        new("OTEL_LOG_TOOL_CONTENT", "1"),
+    ];
+
+    // Health reads these on their own, to tell a trace store nobody switched on from a broken one.
     public static IReadOnlyList<KeyValuePair<string, string>> Traces =>
     [
         // Spans are beta, and without this one Claude Code makes none at all.

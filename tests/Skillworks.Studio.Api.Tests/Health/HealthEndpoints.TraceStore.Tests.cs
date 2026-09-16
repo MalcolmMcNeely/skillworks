@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Health;
@@ -75,9 +76,26 @@ public sealed partial class HealthEndpointsTests
         // Not a fault: reporting one would send a developer after a container problem that does not exist.
         Assert.Equal("off", part.State);
 
-        // The action has to be one that works today, and the switch does not write these two yet.
-        Assert.Contains("OTEL_TRACES_EXPORTER", part.Action ?? "");
-        Assert.Contains("CLAUDE_CODE_ENHANCED_TELEMETRY_BETA", part.Action ?? "");
+        // One button writes spans now, so sending a developer to edit settings by hand would be the longer way round.
+        Assert.Contains("Telemetry switch", part.Action ?? "");
+    }
+
+    [Fact]
+    public async Task Reads_the_trace_store_as_working_once_the_telemetry_switch_has_been_thrown()
+    {
+        using var studio = new StudioHost(StudioHost.Catalogue(), emitting: false, tracing: false);
+
+        Assert.Equal("off", (await studio.Part("Trace store")).State);
+
+        using var thrown = await studio.Client.PutAsJsonAsync(
+            "/api/telemetry/switch",
+            new { emitting = true },
+            StudioHost.Wire);
+
+        thrown.EnsureSuccessStatusCode();
+
+        // The switch writes what this Lamp reads, so the two lists have to stay the same set.
+        Assert.Equal("working", (await studio.Part("Trace store")).State);
     }
 
     [Fact]

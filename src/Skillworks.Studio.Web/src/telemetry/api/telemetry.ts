@@ -1,9 +1,8 @@
 import { getJson, putJson } from '../../http/api/json';
 
-export interface TelemetryChange {
-  name: string;
-  from: string | null;
-  to: string;
+export interface TeamSettings {
+  path: string;
+  text: string;
 }
 
 export interface TelemetryState {
@@ -11,9 +10,9 @@ export interface TelemetryState {
   settingsPath: string;
   readable: boolean;
   collectorEndpoint: string;
-  changes: TelemetryChange[];
   restartNote: string;
   problem: string | null;
+  team: TeamSettings;
 }
 
 export function fetchTelemetry(signal?: AbortSignal): Promise<TelemetryState> {
