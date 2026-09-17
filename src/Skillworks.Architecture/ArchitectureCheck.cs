@@ -1,5 +1,6 @@
 using Skillworks.Architecture.Comments;
 using Skillworks.Architecture.Placement;
+using Skillworks.Architecture.Words;
 
 namespace Skillworks.Architecture;
 
@@ -22,6 +23,7 @@ public static class ArchitectureCheck
                 .. NamespaceFollowsFolder.Check(root, sourceFiles),
                 .. TestsMirrorCode.Check(root, sourceFiles, rules.Placement),
                 .. DocComments.Check(root, sourceFiles, rules.Placement, rules.Comments),
+                .. BannedWords.Check(root, sourceFiles, rules.Words),
             ],
             sourceFiles.Count);
     }

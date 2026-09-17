@@ -7,6 +7,7 @@ public sealed partial class ArchitectureCheckTests
     [Theory]
     [InlineData(PlacementFile)]
     [InlineData(CommentsFile)]
+    [InlineData(WordsFile)]
     public void A_missing_rules_file_is_a_breach(string file)
     {
         using var tree = new RulesTree().Delete(file);
@@ -17,6 +18,7 @@ public sealed partial class ArchitectureCheckTests
     [Theory]
     [InlineData(PlacementFile)]
     [InlineData(CommentsFile)]
+    [InlineData(WordsFile)]
     public void A_rules_file_with_no_yaml_block_is_a_breach(string file)
     {
         using var tree = new RulesTree().Write(file, "# Rules\n\nThe text for Claude, and no settings.\n");
@@ -32,6 +34,8 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(PlacementFile, "banned-folder-names")]
     [InlineData(PlacementFile, "name-map")]
     [InlineData(CommentsFile, "doc-comments")]
+    [InlineData(WordsFile, "banned-words")]
+    [InlineData(WordsFile, "skip-folders")]
     public void A_rules_file_that_lacks_a_key_is_a_breach_that_names_the_key(string file, string key)
     {
         using var tree = new RulesTree().Remove(file, key);
@@ -51,6 +55,9 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(PlacementFile, "name-map", "{\"Que*ries\": Queries}")]
     [InlineData(PlacementFile, "name-map", "{\"*Queries*\": Queries}")]
     [InlineData(CommentsFile, "doc-comments", "sometimes")]
+    [InlineData(WordsFile, "banned-words", "Widget")]
+    [InlineData(WordsFile, "banned-words", "{Widget: Gadget}")]
+    [InlineData(WordsFile, "skip-folders", "sketches")]
     public void A_setting_of_the_wrong_shape_is_a_breach_that_names_the_key(string file, string key, string value)
     {
         using var tree = new RulesTree().Set(file, key, value);

@@ -4,6 +4,7 @@ public sealed class RulesTree : IDisposable
 {
     public const string PlacementFile = ".claude/rules/file-placement.md";
     public const string CommentsFile = ".claude/rules/comments.md";
+    public const string WordsFile = ".claude/rules/words.md";
 
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("skillworks-architecture");
 
@@ -21,6 +22,11 @@ public sealed class RulesTree : IDisposable
         [CommentsFile] = new()
         {
             ["doc-comments"] = "false",
+        },
+        [WordsFile] = new()
+        {
+            ["banned-words"] = "[Widget, \"Gadget box\"]",
+            ["skip-folders"] = "[sketches]",
         },
     };
 
