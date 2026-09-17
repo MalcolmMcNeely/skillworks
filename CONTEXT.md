@@ -100,6 +100,12 @@ its description works.
 Where a Skill came from and what set it off.
 _Avoid_: Lineage, delivery, history
 
+**Measure**:
+One number a list reports, read from the stores over a span. A Measure arrives on its own and falls
+short on its own, so a list can be whole in its rows and still be missing one. A Measure nobody has
+read yet is blank, and one that fell short is a dash.
+_Avoid_: Figure, metric, statistic
+
 **Gap**:
 Which way an answer from the Events store fell short, when it did: the store was unreachable,
 telemetry was never switched on, or the period was genuinely quiet. Each can arrive as nothing at
@@ -108,15 +114,16 @@ the developer to do. Whether telemetry is switched on is read from the machine S
 that Gap speaks for this machine only. A period a store holds nothing for is labelled missing, never
 shown as none. A store that stops answering part way keeps the days already read, and the Gap names
 the days it could not read. The Events store and the Trace store answer on their own, so a Gap names
-which of them fell short.
+which of them fell short. A list's Measures answer on their own too, so a Gap names the Measures it
+could not read while the rows stand without them.
 _Avoid_: Error, empty, null
 
 **Arriving**:
 An answer from a store that has not finished reaching the screen. What has landed is shown at once,
-and its figures can still grow. It is **complete** when its last part lands. An arriving answer has
+and its Measures can still grow. It is **complete** when its last part lands. An arriving answer has
 not fallen short, so it is not a Gap, and a complete answer can still carry one. A Session arrives
 in two parts, its events and then its Spans, so its Depth can grow from Thin to Full as a reader
-looks at it.
+looks at it. A Sessions list arrives in two parts as well, its rows and then its Measures.
 _Avoid_: Loading, pending, partial, streaming
 
 **Origin**:

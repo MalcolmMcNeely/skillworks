@@ -38,3 +38,13 @@ where it is absent the screen is still reading, and where it carries no rows the
 The list's queries grow with the number of Sessions and the number of Prompts in the span, not with
 the number of events, so a busy run never cuts it short. How they behave at many developers' volume
 is not measured, and is the same open question the two stores' retention already is.
+
+## Correction, 2026-09-17
+
+"The list asks four aggregate queries for the whole span" was true when this was written and is not
+true now. The list asks nine, and up to eleven with a Repository or a Skill filter, and a tenth goes
+to the Trace store when a reader narrows by Depth. The 0.08 second week was measured against the
+four-query list.
+
+ADR 0013 replaces the one-page answer with a gate and its Measures. The midnight rule this ADR
+records is not replaced, and ADR 0013 rests on it.
