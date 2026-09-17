@@ -4,6 +4,7 @@ import type { ContextPage, ContextPoint } from './context';
 import type { Exchange, ExchangesPage } from './conversation';
 import type { Session } from './sessions';
 import type { SkillCall, SkillCallsPage } from './skillCalls';
+import type { TracePage } from './trace';
 
 export type StepKind = 'prompt' | 'turn' | 'answer' | 'tool' | 'refused' | 'fault';
 
@@ -36,6 +37,7 @@ export type SessionLine =
   | SkillCallsPage
   | ContextPage
   | AgentsPage
+  | TracePage
   | StoresEnd;
 
 export interface SessionAnswer {
@@ -49,6 +51,8 @@ export interface SessionAnswer {
   depth: Depth;
   agents: Record<string, string>;
   subagents: Subagent[];
+  // Only the Spans say what ran inside what, so a Thin run nests nothing.
+  inside: Record<string, string>;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -68,6 +72,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       depth: 'thin',
       agents: {},
       subagents: [],
+      inside: {},
       landed: false,
       arriving: true,
       events: null,
@@ -97,6 +102,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
 
   if (line.kind === 'agents') {
     return { ...answer, depth: line.depth, agents: line.agents, subagents: line.subagents };
+  }
+
+  if (line.kind === 'trace') {
+    return { ...answer, inside: line.inside };
   }
 
   return { ...answer, steps: line.steps, landed: true };

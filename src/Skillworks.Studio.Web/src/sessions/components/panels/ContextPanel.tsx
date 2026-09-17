@@ -1,7 +1,7 @@
-import { describeCount, describeTokens } from '../../figures/lib/figures';
-import { inRange } from '../lib/brush';
-import { ceilingOf, describeInForce, describeShare, inForceBands, tallyOf, type Level } from '../lib/context';
-import { describeClock, type Range } from '../lib/steps';
+import { describeCount, describeTokens } from '../../../figures/lib/figures';
+import { inRange } from '../../lib/brush';
+import { ceilingOf, describeInForce, describeShare, inForceBands, tallyOf, type Level } from '../../lib/context';
+import { describeClock, type Range } from '../../lib/steps';
 
 function Turn({
   level,

@@ -1,7 +1,7 @@
-import { describeCount } from '../../figures/lib/figures';
-import { ranBy, type Depth } from '../lib/agents';
-import { inRange } from '../lib/brush';
-import { describeClock, describeSpell, noteOf, titleOf, type Mark, type Range } from '../lib/steps';
+import { describeCount } from '../../../figures/lib/figures';
+import { ranBy, type Depth } from '../../lib/agents';
+import { inRange } from '../../lib/brush';
+import { describeClock, describeSpell, noteOf, titleOf, type Mark, type Range } from '../../lib/steps';
 
 // A stretch can hold thousands of Steps, and a list that long is no more readable than the timeline above it.
 const mostRows = 200;

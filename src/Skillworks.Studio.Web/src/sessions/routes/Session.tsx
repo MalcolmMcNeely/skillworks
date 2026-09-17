@@ -8,12 +8,13 @@ import { UpButton } from '../../pages/components/UpButton';
 import { useTabTitle } from '../../pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../pages/lib/pages';
 import { fetchSession } from '../api/sessions';
-import { ContextPanel } from '../components/ContextPanel';
-import { ConversationPanel } from '../components/ConversationPanel';
 import { DepthWord } from '../components/DepthWord';
-import { SkillCallPanel } from '../components/SkillCallPanel';
-import { StepPanel } from '../components/StepPanel';
-import { SubagentPanel } from '../components/SubagentPanel';
+import { ContextPanel } from '../components/panels/ContextPanel';
+import { ConversationPanel } from '../components/panels/ConversationPanel';
+import { SkillCallPanel } from '../components/panels/SkillCallPanel';
+import { StepPanel } from '../components/panels/StepPanel';
+import { SubagentPanel } from '../components/panels/SubagentPanel';
+import { TracePanel } from '../components/panels/TracePanel';
 import { Timeline } from '../components/Timeline';
 import { ranByOne, stintsOf, type Stint } from '../lib/agents';
 import { rangeOf, readRange, widened, withRange } from '../lib/brush';
@@ -219,6 +220,15 @@ function Body({
         onRange={onRange}
         onOpen={onOpen}
         onExchange={onExchange}
+      />
+      <TracePanel
+        marks={drawn}
+        inside={answer.inside}
+        depth={answer.depth}
+        agents={answer.agents}
+        range={range}
+        selected={where.step}
+        onOpen={onOpen}
       />
       <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
       <SkillCallPanel firings={firings} range={range} opened={where.call} onOpen={onCall} />

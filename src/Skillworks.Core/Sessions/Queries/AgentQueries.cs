@@ -1,5 +1,6 @@
 using Skillworks.Core.Filters;
 using Skillworks.Core.Sessions.Agents;
+using Skillworks.Core.Sessions.Trace;
 using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
@@ -7,10 +8,6 @@ namespace Skillworks.Core.Sessions.Queries;
 public sealed class AgentQueries(TraceStoreReader traces)
 {
     private const string AgentAttribute = "agent_id";
-
-    private const string ToolSpan = "claude_code.tool";
-
-    private const string TurnSpan = "claude_code.llm_request";
 
     private const string RunSpan = "claude_code.tool.execution";
 
@@ -27,6 +24,7 @@ public sealed class AgentQueries(TraceStoreReader traces)
         return new OpenedSpans(
             read.Spans.Count > 0 ? Depth.Full : Depth.Thin,
             RanBy(read.Spans, keys),
+            SpanTree.Inside(read.Spans, keys),
             Wrapped(read.Spans, called),
             read);
     }
@@ -54,7 +52,7 @@ public sealed class AgentQueries(TraceStoreReader traces)
 
         foreach (var span in spans)
         {
-            if (Keyed(span) is { } key && Agent(span) is { } agent)
+            if (StepKey.Of(span) is { } key && Agent(span) is { } agent)
             {
                 agents[key] = agent;
             }
@@ -62,17 +60,6 @@ public sealed class AgentQueries(TraceStoreReader traces)
 
         return agents;
     }
-
-    // Every Span beneath a Subagent carries its agent id, and one of them repeats the tool use id of the
-    // call that started it, so only the Span a key belongs to may answer for that key.
-    private static string? Keyed(Span span) => span.Name switch
-    {
-        ToolSpan => span.Attributes.GetValueOrDefault(StepKey.ToolUse),
-
-        TurnSpan => span.Attributes.GetValueOrDefault(StepKey.Request),
-
-        _ => null,
-    };
 
     // Every Tool call a Subagent makes wraps in a Span of this name carrying that Subagent's agent id, so the
     // one Span that wraps the whole run is the one whose Tool call is the Agent call that started it.

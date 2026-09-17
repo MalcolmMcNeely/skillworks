@@ -1,8 +1,8 @@
-import { describeCount, describeMoney } from '../../figures/lib/figures';
-import { briefNote, noReport, noSubagentsWord, tallyOf, type Depth, type Stint } from '../lib/agents';
-import { inRange } from '../lib/brush';
-import { notKnown } from '../lib/sessions';
-import { describeClock, describeSpell, type Range } from '../lib/steps';
+import { describeCount, describeMoney } from '../../../figures/lib/figures';
+import { briefNote, noReport, noSubagentsWord, tallyOf, type Depth, type Stint } from '../../lib/agents';
+import { inRange } from '../../lib/brush';
+import { notKnown } from '../../lib/sessions';
+import { describeClock, describeSpell, type Range } from '../../lib/steps';
 
 function Said({ what, words, missing }: { what: string; words: string | null; missing: string | null }) {
   return (

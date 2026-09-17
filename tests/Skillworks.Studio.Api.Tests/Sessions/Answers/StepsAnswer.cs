@@ -14,12 +14,14 @@ public sealed record StepsAnswer(
     string? Depth,
     IReadOnlyDictionary<string, string> Agents,
     IReadOnlyList<SubagentRow> Subagents,
+    IReadOnlyDictionary<string, string> Inside,
     GapRow Events,
     GapRow Traces)
 {
     public static StepsAnswer Of(IReadOnlyList<JsonObject> lines)
     {
         var spans = Line(lines, "agents");
+        var tree = Line(lines, "trace");
 
         return new StepsAnswer(
             Opened(lines.Single(line => StudioHost.KindOf(line) == "head")),
@@ -33,6 +35,9 @@ public sealed record StepsAnswer(
                 ? new Dictionary<string, string>()
                 : StudioHost.Read<Dictionary<string, string>>(spans["agents"]),
             Held<SubagentRow>(lines, "agents", "subagents"),
+            tree is null
+                ? new Dictionary<string, string>()
+                : StudioHost.Read<Dictionary<string, string>>(tree["inside"]),
             Store(lines, "events"),
             Store(lines, "traces"));
     }

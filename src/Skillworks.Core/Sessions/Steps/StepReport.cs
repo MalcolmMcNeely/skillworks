@@ -7,6 +7,7 @@ using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Queries;
 using Skillworks.Core.Sessions.SkillCalls;
+using Skillworks.Core.Sessions.Trace;
 
 namespace Skillworks.Core.Sessions.Steps;
 
@@ -33,6 +34,9 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
 
         // Asked for once the events have drawn all they can, so a slow trace store delays only what they cannot.
         var traced = await agents.OfRunAsync(id, span, opened.Keys, opened.Called, cancellationToken);
+
+        // Ahead of the Depth, or a run would read Full for a moment with nothing yet nested.
+        yield return new TracePage(traced.Inside);
 
         yield return new AgentsPage(traced.Depth, traced.Agents, StepQueries.Ran(opened, traced.Agents, traced.Wrapped));
 
