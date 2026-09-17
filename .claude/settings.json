@@ -8,6 +8,7 @@
       "Bash(gh pr diff:*)",
       "Bash(gh label list:*)",
       "Bash(gh repo view:*)",
+      "Bash(git -C:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
