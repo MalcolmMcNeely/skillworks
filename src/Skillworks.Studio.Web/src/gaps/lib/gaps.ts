@@ -21,6 +21,13 @@ export interface PlainEnd {
   kind: 'end';
 }
 
+// The events store and the trace store fall short apart from each other, so each names its own shortfall.
+export interface StoresEnd {
+  kind: 'end';
+  events: Gap;
+  traces: Gap;
+}
+
 export interface Signal {
   word: string;
   tone: 'live' | 'quiet' | 'warned' | 'failed';

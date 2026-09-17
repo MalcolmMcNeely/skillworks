@@ -1,5 +1,6 @@
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Telemetry;
+using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Gaps;
 
@@ -10,6 +11,8 @@ public sealed class GapReport(TelemetrySwitch telemetry)
 
     public Gap InLines(EventLines read, IReadOnlyList<DateOnly> unread) =>
         Gap.Of(read.Unreachable, unread, read.Lines.Count, Emitting());
+
+    public Gap InSpans(SessionSpans read) => Gap.OfSpans(read.Unreachable, read.Spans.Count, telemetry.TracesOn());
 
     // The switch calls unreadable settings not emitting: safe for writing, but a lie on a screen.
     private bool? Emitting()

@@ -130,11 +130,34 @@ describe('foldSessionLine', () => {
     expect(answer.limitTokens).toBeNull();
   });
 
-  it('ends the answer and keeps its gap', () => {
-    const answer = foldSessionLine(opened, { kind: 'end', gap: { kind: 'complete', missing: null } });
+  it('opens thin, so a panel that needs a span never reads a missing figure as a zero', () => {
+    expect(opened.depth).toBe('thin');
+    expect(opened.agents).toEqual({});
+  });
+
+  it('takes which agent ran each step and raises the run to full, as the second part of one read', () => {
+    const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
+      kind: 'agents',
+      depth: 'full',
+      agents: { '4': 'agent-a' },
+    });
+
+    expect(answer.depth).toBe('full');
+    expect(answer.agents).toEqual({ '4': 'agent-a' });
+    expect(answer.steps).toEqual([prompt]);
+    expect(answer.arriving).toBe(true);
+  });
+
+  it('ends the answer and keeps a gap for each store', () => {
+    const answer = foldSessionLine(opened, {
+      kind: 'end',
+      events: { kind: 'complete', missing: null },
+      traces: { kind: 'quiet', missing: 'The trace store holds nothing for this run.' },
+    });
 
     expect(answer.arriving).toBe(false);
-    expect(answer.gap).toEqual({ kind: 'complete', missing: null });
+    expect(answer.events).toEqual({ kind: 'complete', missing: null });
+    expect(answer.traces?.kind).toBe('quiet');
   });
 
   it('carries no run where the store holds none, so a mistyped address says so', () => {

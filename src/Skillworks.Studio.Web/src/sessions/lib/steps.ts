@@ -1,4 +1,5 @@
-import type { Gap, GapEnd } from '../../gaps/lib/gaps';
+import type { Gap, StoresEnd } from '../../gaps/lib/gaps';
+import type { AgentsPage, Depth } from './agents';
 import type { ContextPage, ContextPoint } from './context';
 import type { Exchange, ExchangesPage } from './conversation';
 import type { Session } from './sessions';
@@ -28,7 +29,14 @@ export interface StepsPage {
   steps: Step[];
 }
 
-export type SessionLine = SessionHead | StepsPage | ExchangesPage | SkillCallsPage | ContextPage | GapEnd;
+export type SessionLine =
+  | SessionHead
+  | StepsPage
+  | ExchangesPage
+  | SkillCallsPage
+  | ContextPage
+  | AgentsPage
+  | StoresEnd;
 
 export interface SessionAnswer {
   session: Session | null;
@@ -37,10 +45,14 @@ export interface SessionAnswer {
   skillCalls: SkillCall[];
   context: ContextPoint[];
   limitTokens: number | null;
+  // Thin until the spans land, which is the second part of one read and not a second read.
+  depth: Depth;
+  agents: Record<string, string>;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
-  gap: Gap | null;
+  events: Gap | null;
+  traces: Gap | null;
 }
 
 export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine): SessionAnswer {
@@ -52,9 +64,12 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       skillCalls: [],
       context: [],
       limitTokens: null,
+      depth: 'thin',
+      agents: {},
       landed: false,
       arriving: true,
-      gap: null,
+      events: null,
+      traces: null,
     };
   }
 
@@ -63,7 +78,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
   }
 
   if (line.kind === 'end') {
-    return { ...answer, arriving: false, gap: line.gap };
+    return { ...answer, arriving: false, events: line.events, traces: line.traces };
   }
 
   if (line.kind === 'exchanges') {
@@ -76,6 +91,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
 
   if (line.kind === 'context') {
     return { ...answer, context: line.points, limitTokens: line.limitTokens };
+  }
+
+  if (line.kind === 'agents') {
+    return { ...answer, depth: line.depth, agents: line.agents };
   }
 
   return { ...answer, steps: line.steps, landed: true };

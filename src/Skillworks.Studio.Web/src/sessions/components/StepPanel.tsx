@@ -1,11 +1,22 @@
 import { describeCount } from '../../figures/lib/figures';
+import { ranBy, type Depth } from '../lib/agents';
 import { inRange } from '../lib/brush';
 import { describeClock, describeSpell, noteOf, titleOf, type Mark, type Range } from '../lib/steps';
 
 // A stretch can hold thousands of Steps, and a list that long is no more readable than the timeline above it.
 const mostRows = 200;
 
-function Opened({ mark, onClose }: { mark: Mark; onClose: () => void }) {
+function Opened({
+  mark,
+  depth,
+  agents,
+  onClose,
+}: {
+  mark: Mark;
+  depth: Depth;
+  agents: Record<string, string>;
+  onClose: () => void;
+}) {
   const { step } = mark;
   const note = noteOf(step);
 
@@ -19,7 +30,7 @@ function Opened({ mark, onClose }: { mark: Mark; onClose: () => void }) {
         </button>
       </p>
       <p className="micro">
-        {describeClock(mark.startMs, true)} · {describeSpell(step.lengthMs)}
+        {describeClock(mark.startMs, true)} · {describeSpell(step.lengthMs)} · ran by {ranBy(depth, agents, step.id)}
       </p>
       {step.words === null ? null : <p className="step-words">{step.words}</p>}
     </div>
@@ -29,11 +40,15 @@ function Opened({ mark, onClose }: { mark: Mark; onClose: () => void }) {
 // Every figure and every row here reads the brushed stretch alone, or the panel would answer a question nobody asked.
 export function StepPanel({
   marks,
+  depth,
+  agents,
   range,
   selected,
   onOpen,
 }: {
   marks: readonly Mark[];
+  depth: Depth;
+  agents: Record<string, string>;
   range: Range | null;
   selected: string | null;
   onOpen: (id: string | null) => void;
@@ -53,7 +68,7 @@ export function StepPanel({
         </p>
       </header>
 
-      {open === null ? null : <Opened mark={open} onClose={() => onOpen(null)} />}
+      {open === null ? null : <Opened mark={open} depth={depth} agents={agents} onClose={() => onOpen(null)} />}
 
       {shown.length === 0 ? (
         <p className="session-word">Nothing ran in this stretch.</p>

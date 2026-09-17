@@ -10,6 +10,7 @@ import { sessions as page, tabTitleOf } from '../../pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { ContextPanel } from '../components/ContextPanel';
 import { ConversationPanel } from '../components/ConversationPanel';
+import { DepthWord } from '../components/DepthWord';
 import { SkillCallPanel } from '../components/SkillCallPanel';
 import { StepPanel } from '../components/StepPanel';
 import { Timeline } from '../components/Timeline';
@@ -108,7 +109,8 @@ export function Session() {
         <UpButton parent={page} query={table} />
         <h1>{run?.name ?? 'Run'}</h1>
         {run?.running === true ? <span className="session-running">Running</span> : null}
-        <SignalWord gap={answer?.gap ?? null} failure={failure} />
+        <SignalWord gap={answer?.events ?? null} failure={failure} />
+        {answer === null ? null : <DepthWord depth={answer.depth} gap={answer.traces} />}
       </header>
 
       <p className="micro session-crumb">
@@ -203,7 +205,14 @@ function Body({
         selected={where.step}
         onOpen={onOpen}
       />
-      <StepPanel marks={marks} range={range} selected={where.step} onOpen={onOpen} />
+      <StepPanel
+        marks={marks}
+        depth={answer.depth}
+        agents={answer.agents}
+        range={range}
+        selected={where.step}
+        onOpen={onOpen}
+      />
     </>
   );
 }

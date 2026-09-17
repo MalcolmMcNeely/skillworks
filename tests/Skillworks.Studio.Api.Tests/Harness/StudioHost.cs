@@ -1,8 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Skillworks.Core.Telemetry;
-// Owned by the test project of the reader it serves, and linked into this one.
+// Owned by the test project of the reader they serve, and linked into this one.
 using Skillworks.Core.Tests.Harness;
+using Skillworks.Core.Tests.TraceStore;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 
@@ -79,6 +80,10 @@ public sealed class StudioHost : IDisposable
     public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);
 
     public Task Push(params SessionEvent[] events) => TestLoki.PushAsync(_tenant, events);
+
+    // One trace at a time, because Claude Code writes a Session as several and a span belongs to one of them.
+    public Task PushSpans(string session, string trace, params RecordedSpan[] spans) =>
+        TestTempo.PushAsync(_tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
 
     // Headers first and then one line at a time, as a browser reads an answer that arrives day by day.
     public async Task<IReadOnlyList<JsonObject>> Lines(string path, int count = int.MaxValue)

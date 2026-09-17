@@ -44,6 +44,37 @@ public sealed record Gap(GapKind Kind, string? Missing)
         return new Gap(kind, missing);
     }
 
+    internal static Gap OfSpans(string? unreachable, int spans, bool? tracing)
+    {
+        var (kind, missing) = (unreachable, spans, tracing) switch
+        {
+            ({ } reason, _, _) => (
+                GapKind.Unreachable,
+                $"Studio could not read the trace store: {reason}. Which agent ran each step is not known."),
+
+            // Said before the switch is asked, because spans that landed are the answer either way.
+            (_, > 0, _) => (GapKind.Complete, (string?)null),
+
+            (_, _, false) => (
+                GapKind.TelemetryOff,
+                "Claude Code is not sending traces, so which agent ran each step was never recorded. " +
+                TelemetrySwitch.TurnOnNote),
+
+            (_, _, null) => (
+                GapKind.TelemetryUnknown,
+                "The trace store holds nothing for this run, and Studio cannot read Claude Code's settings, " +
+                "so it cannot say whether traces were ever switched on. The Telemetry switch names the file " +
+                "and what is wrong with it."),
+
+            _ => (
+                GapKind.Quiet,
+                "Traces are on and the trace store holds nothing for this run, so which agent ran each step " +
+                "is not known. Anything from before the switch was flipped was never recorded."),
+        };
+
+        return new Gap(kind, missing);
+    }
+
     private static string Listed(IReadOnlyList<DateOnly> days)
     {
         string[] names = [.. days.Select(day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))];

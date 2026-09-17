@@ -11,7 +11,8 @@ public sealed record RecordedSpan(
     string Id,
     string? Parent = null,
     string? Agent = null,
-    string? ToolUse = null)
+    string? ToolUse = null,
+    string? Request = null)
 {
     internal JsonObject Record(string trace, string session)
     {
@@ -42,6 +43,7 @@ public sealed record RecordedSpan(
                 ("session.id", session),
                 ("agent_id", Agent),
                 ("tool_use_id", ToolUse),
+                ("request_id", Request),
             }
             .Where(attribute => attribute.Value is not null)
             .Select(attribute => new JsonObject

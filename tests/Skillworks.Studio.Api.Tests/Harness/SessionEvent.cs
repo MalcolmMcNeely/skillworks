@@ -43,6 +43,10 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? CostUsd { get; init; }
 
+    public string? ToolUseId { get; init; }
+
+    public string? RequestId { get; init; }
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>
@@ -60,6 +64,8 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("duration_ms", DurationMs),
         ("model", Model),
         ("cost_usd", CostUsd),
+        ("tool_use_id", ToolUseId),
+        ("request_id", RequestId),
         ("vcs.owner.name", Owner),
         ("vcs.repository.name", RepositoryName),
     ];
@@ -74,27 +80,44 @@ public sealed record SessionEvent(string Session, string EventName, string At)
     internal static SessionEvent Titled(string session, string at, string title) =>
         new(session, "assistant_response", at) { Response = title, QuerySource = TitleSource };
 
-    internal static SessionEvent Answered(string session, string at, string response) =>
-        new(session, "assistant_response", at) { Response = response, ResponseLength = Figure(response.Length) };
+    internal static SessionEvent Answered(string session, string at, string response, string? request = null) =>
+        new(session, "assistant_response", at)
+        {
+            Response = response,
+            ResponseLength = Figure(response.Length),
+            RequestId = request,
+        };
 
     internal static SessionEvent AnswerWithheld(string session, string at, int length) =>
         new(session, "assistant_response", at) { Response = Withheld, ResponseLength = Figure(length) };
 
-    internal static SessionEvent Turned(string session, string at, int lengthMs = 0, decimal cost = 0m) =>
+    internal static SessionEvent Turned(
+        string session,
+        string at,
+        int lengthMs = 0,
+        decimal cost = 0m,
+        string? request = null) =>
         new(session, "api_request", at)
         {
             Model = "claude-opus-5",
             DurationMs = Figure(lengthMs),
             CostUsd = cost.ToString(CultureInfo.InvariantCulture),
+            RequestId = request,
         };
 
-    internal static SessionEvent ToolRan(string session, string at, string tool = "Bash", int lengthMs = 0) =>
+    internal static SessionEvent ToolRan(
+        string session,
+        string at,
+        string tool = "Bash",
+        int lengthMs = 0,
+        string? use = null) =>
         new(session, ToolResult, at)
         {
             ToolName = tool,
             Success = "true",
             DecisionSource = "config",
             DurationMs = Figure(lengthMs),
+            ToolUseId = use,
         };
 
     internal static SessionEvent ToolFailed(string session, string at, string tool = "Bash") =>

@@ -17,7 +17,9 @@ public sealed partial class SessionEndpointsTests
         var lines = await studio.StepLines(Morning);
 
         // A screen draws once the steps land, so everything it draws beside them has to be there already.
-        Assert.Equal(["head", "exchanges", "skillCalls", "context", "steps", "end"], lines.Select(StudioHost.KindOf));
+        Assert.Equal(
+            ["head", "exchanges", "skillCalls", "context", "steps", "agents", "end"],
+            lines.Select(StudioHost.KindOf));
     }
 
     [Fact]
@@ -200,8 +202,8 @@ public sealed partial class SessionEndpointsTests
 
         var answer = await studio.StepAnswer(Morning);
 
-        Assert.Equal("unreachable", answer.Gap.Kind);
-        Assert.NotNull(answer.Gap.Missing);
+        Assert.Equal("unreachable", answer.Events.Kind);
+        Assert.NotNull(answer.Events.Missing);
         Assert.Null(answer.Run);
         Assert.Empty(answer.Steps);
     }

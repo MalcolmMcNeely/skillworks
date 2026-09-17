@@ -1,4 +1,5 @@
 using Skillworks.Core.EventsStore;
+using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.SkillCalls;
@@ -13,4 +14,5 @@ public sealed record OpenedRun(
     IReadOnlyList<SkillCall> Fired,
     IReadOnlyList<ContextPoint> Sent,
     long? LimitTokens,
+    IReadOnlyList<StepKey> Keys,
     EventLines Read);

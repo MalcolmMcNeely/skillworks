@@ -26,9 +26,10 @@
     <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Harness\TempoImage.cs" />
   </ItemGroup>
 
-  <!-- Its subject is the reader in Core, so it is owned there and borrowed here, never the other way about. -->
+  <!-- Their subject is the reader in Core, so they are owned there and borrowed here, never the other way about. -->
   <ItemGroup>
     <Compile Include="..\Skillworks.Core.Tests\Harness\TestTempo.cs" Link="Harness\TestTempo.cs" />
+    <Compile Include="..\Skillworks.Core.Tests\TraceStore\RecordedSpan.cs" Link="Harness\RecordedSpan.cs" />
     <Content Include="..\Skillworks.Core.Tests\Harness\tempo.yaml" Link="Harness\tempo.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

@@ -44,6 +44,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<SpendQueries>();
         services.AddSingleton<SessionQueries>();
         services.AddSingleton<StepQueries>();
+        services.AddSingleton<AgentQueries>();
 
         // A named client, not a typed one: a typed client held by a singleton keeps one handler for the app's life.
         services.AddHttpClient(EventsStoreReader.ClientName, (provider, client) =>
