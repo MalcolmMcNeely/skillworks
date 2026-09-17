@@ -40,6 +40,9 @@ public static class SessionRequests
     public static async Task<IReadOnlyList<ContextRow>> ContextIn(this StudioHost studio, string id, string filter = "") =>
         (await studio.StepAnswer(id, filter)).Context;
 
+    public static async Task<IReadOnlyList<SpellRow>> PartsIn(this StudioHost studio, string id, string filter = "") =>
+        (await studio.StepAnswer(id, filter)).Parts;
+
     public static async Task<JsonObject> StepLine(this StudioHost studio, string kind, string id) =>
         (await studio.StepLines(id)).First(line => StudioHost.KindOf(line) == kind);
 }

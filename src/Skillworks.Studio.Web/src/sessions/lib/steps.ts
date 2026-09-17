@@ -1,10 +1,12 @@
 import type { Gap, StoresEnd } from '../../gaps/lib/gaps';
-import type { AgentsPage, Depth, Subagent } from './agents';
-import type { ContextPage, ContextPoint } from './context';
-import type { Exchange, ExchangesPage } from './conversation';
+import type { Range } from './brush';
+import type { AgentsPage, Depth, Subagent } from './panels/agents';
+import type { ContextPage, ContextPoint } from './panels/context';
+import type { Exchange, ExchangesPage } from './panels/conversation';
+import type { SkillCall, SkillCallsPage } from './panels/skillCalls';
+import type { SplitPage } from './panels/split';
+import type { TracePage } from './panels/trace';
 import type { Session } from './sessions';
-import type { SkillCall, SkillCallsPage } from './skillCalls';
-import type { TracePage } from './trace';
 
 export type StepKind = 'prompt' | 'turn' | 'answer' | 'tool' | 'refused' | 'fault';
 
@@ -38,6 +40,7 @@ export type SessionLine =
   | ContextPage
   | AgentsPage
   | TracePage
+  | SplitPage
   | StoresEnd;
 
 export interface SessionAnswer {
@@ -53,6 +56,8 @@ export interface SessionAnswer {
   subagents: Subagent[];
   // Only the Spans say what ran inside what, so a Thin run nests nothing.
   inside: Record<string, string>;
+  // Null until the spans land, as an empty split and a split nobody has read yet mean different things.
+  split: SplitPage | null;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -73,6 +78,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       agents: {},
       subagents: [],
       inside: {},
+      split: null,
       landed: false,
       arriving: true,
       events: null,
@@ -108,6 +114,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
     return { ...answer, inside: line.inside };
   }
 
+  if (line.kind === 'split') {
+    return { ...answer, split: line };
+  }
+
   return { ...answer, steps: line.steps, landed: true };
 }
 
@@ -124,8 +134,6 @@ export function marksOf(steps: readonly Step[]): Mark[] {
     return { step, startMs, endMs: startMs + step.lengthMs };
   });
 }
-
-export type Range = [number, number];
 
 // Null where nothing ran, as a run with no Step has no stretch to draw.
 export function runSpan(marks: readonly Mark[]): Range | null {

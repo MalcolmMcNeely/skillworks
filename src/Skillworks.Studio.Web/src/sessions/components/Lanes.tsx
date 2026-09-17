@@ -1,8 +1,8 @@
 import { useMemo, type PointerEvent } from 'react';
-import { inRange } from '../lib/brush';
-import type { Band } from '../lib/conversation';
+import { inRange, type Range } from '../lib/brush';
+import type { Band } from '../lib/panels/conversation';
 import { foldScale, ticksOf } from '../lib/fold';
-import { describeClock, describeSpell, lanes, lanesOf, toneOf, type Lane, type Mark, type Range } from '../lib/steps';
+import { describeClock, describeSpell, lanes, lanesOf, toneOf, type Lane, type Mark } from '../lib/steps';
 
 // Narrow marks are common and a cursor is not, so every mark is drawn at least this wide to stay reachable.
 const leastPx = 3;

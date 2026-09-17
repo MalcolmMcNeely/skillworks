@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeCount, describeMoney, describeTokens } from './figures';
+import { describeCount, describeMoney, describeShare, describeTokens } from './figures';
 
 describe('describeMoney', () => {
   it('shows the pennies', () => {
@@ -26,5 +26,11 @@ describe('describeTokens', () => {
 
   it('leaves a small count whole', () => {
     expect(describeTokens(950)).toBe('950');
+  });
+});
+
+describe('describeShare', () => {
+  it('reads a share as whole percent', () => {
+    expect(describeShare(0.4236)).toBe('42%');
   });
 });

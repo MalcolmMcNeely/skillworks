@@ -34,11 +34,14 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
 
         // Asked for once the events have drawn all they can, so a slow trace store delays only what they cannot.
         var traced = await agents.OfRunAsync(id, span, opened.Keys, opened.Called, cancellationToken);
+        var ran = StepQueries.Ran(opened, traced.Agents, traced.Wrapped);
 
         // Ahead of the Depth, or a run would read Full for a moment with nothing yet nested.
         yield return new TracePage(traced.Inside);
 
-        yield return new AgentsPage(traced.Depth, traced.Agents, StepQueries.Ran(opened, traced.Agents, traced.Wrapped));
+        yield return new AgentsPage(traced.Depth, traced.Agents, ran);
+
+        yield return StepQueries.Split(opened, traced, ran);
 
         yield return new StoresEnd(
             gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst()),

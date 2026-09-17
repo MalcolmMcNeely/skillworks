@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ceilingOf,
-  describeInForce,
-  describeShare,
-  inForceBands,
-  levelsOf,
-  tallyOf,
-  type ContextPoint,
-} from './context';
+import { ceilingOf, describeInForce, inForceBands, levelsOf, tallyOf, type ContextPoint } from './context';
 
 function point(id: string, atUtc: string, tokens: number, held: Partial<ContextPoint> = {}): ContextPoint {
   return {
@@ -101,12 +93,6 @@ describe('ceilingOf', () => {
 
   it('never divides by nothing when a stretch holds no turn', () => {
     expect(ceilingOf([], null)).toBe(1);
-  });
-});
-
-describe('describeShare', () => {
-  it('reads a share as whole percent', () => {
-    expect(describeShare(0.4236)).toBe('42%');
   });
 });
 

@@ -11,6 +11,10 @@ public sealed class AgentQueries(TraceStoreReader traces)
 
     private const string RunSpan = "claude_code.tool.execution";
 
+    private const string WaitSpan = "claude_code.tool.blocked_on_user";
+
+    private const string HookSpan = "claude_code.hook";
+
     public async Task<OpenedSpans> OfRunAsync(
         string id,
         DaySpan span,
@@ -26,8 +30,38 @@ public sealed class AgentQueries(TraceStoreReader traces)
             RanBy(read.Spans, keys),
             SpanTree.Inside(read.Spans, keys),
             Wrapped(read.Spans, called),
+            Waited(read.Spans),
+            Hooked(read.Spans),
             read);
     }
+
+    // Nothing an event carries says a person was asked, so a run with no Span cannot tell their delay from work.
+    private static IReadOnlyDictionary<string, Stretch> Waited(IReadOnlyList<Span> spans)
+    {
+        var waited = new Dictionary<string, Stretch>(StringComparer.Ordinal);
+
+        foreach (var span in spans)
+        {
+            if (span.Name == WaitSpan &&
+                span.Attributes.GetValueOrDefault(StepKey.ToolUse) is { Length: > 0 } toolUse)
+            {
+                waited[toolUse] = Stretched(span);
+            }
+        }
+
+        return waited;
+    }
+
+    // A Subagent's hook is that Subagent's work, and the main thread may have been busy through the whole of it.
+    private static IReadOnlyList<Stretch> Hooked(IReadOnlyList<Span> spans) =>
+    [
+        .. spans
+            .Where(span => span.Name == HookSpan && Agent(span) is null)
+            .Select(Stretched)
+    ];
+
+    private static Stretch Stretched(Span span) =>
+        new(span.Started, (long)(span.Ended - span.Started).TotalMilliseconds);
 
     private static IReadOnlyDictionary<string, string> RanBy(IReadOnlyList<Span> spans, IReadOnlyList<StepKey> keys)
     {

@@ -247,3 +247,21 @@ How much of a Session can be read: **Full** when its Spans and its words are bot
 **Thin** when they are not. It is part of the Filter, so a reader asks for what they can read
 instead of opening Sessions to find out.
 _Avoid_: Fidelity, completeness, quality
+
+**Split**:
+Where a Session's time went, as eight Parts that hold no moment twice and add up to its length:
+your turn, nothing running, model thinking, tools running, waiting for your OK, hooks, only
+subagents and side requests. Each Part is also reported with its overlaps, so a reader sees both
+what a Part took on its own and what it took in all.
+_Avoid_: Breakdown, time analysis, profile
+
+**Part**:
+One of the eight things a moment of a Session can be spent on. A moment belongs to exactly one
+Part, so the busiest Part that was running takes it. Waiting for your OK, hooks and only subagents
+each need a Span, and all three read **not known** in a Thin Session, never zero.
+_Avoid_: Bucket, category, slice
+
+**Spell**:
+One stretch of a Session given to one Part. A brushed stretch is split by clipping each Spell to
+it, so every figure beneath the timeline narrows without asking a store again.
+_Avoid_: Interval, segment, block

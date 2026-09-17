@@ -1,4 +1,4 @@
-import { describeCount } from '../../figures/lib/figures';
+import { describeCount } from '../../../figures/lib/figures';
 
 export interface Exchange {
   index: number;

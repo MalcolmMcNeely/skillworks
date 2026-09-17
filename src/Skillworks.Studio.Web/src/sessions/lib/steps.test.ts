@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { ContextPoint } from './context';
-import type { Exchange } from './conversation';
+import type { ContextPoint } from './panels/context';
+import type { Exchange } from './panels/conversation';
+import type { SkillCall } from './panels/skillCalls';
 import type { Session } from './sessions';
-import type { SkillCall } from './skillCalls';
 import {
   describeClock,
   describeSpell,

@@ -1,9 +1,9 @@
 import { describeCount } from '../../../figures/lib/figures';
-import { ranBy, type Depth } from '../../lib/agents';
-import { inRange } from '../../lib/brush';
+import { ranBy, type Depth } from '../../lib/panels/agents';
+import { inRange, type Range } from '../../lib/brush';
 import { notKnown } from '../../lib/sessions';
-import { describeClock, describeSpell, noteOf, titleOf, type Mark, type Range } from '../../lib/steps';
-import { deepestOf, noTreeWord, treeOf } from '../../lib/trace';
+import { describeClock, describeSpell, noteOf, titleOf, type Mark } from '../../lib/steps';
+import { deepestOf, noTreeWord, treeOf } from '../../lib/panels/trace';
 
 // A stretch can hold thousands of Steps, and a tree that long is no more readable than the timeline above it.
 const mostRows = 200;

@@ -100,13 +100,15 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         string at,
         int lengthMs = 0,
         decimal cost = 0m,
-        string? request = null) =>
+        string? request = null,
+        string? source = null) =>
         new(session, "api_request", at)
         {
             Model = "claude-opus-5",
             DurationMs = Figure(lengthMs),
             CostUsd = cost.ToString(CultureInfo.InvariantCulture),
             RequestId = request,
+            QuerySource = source,
         };
 
     internal static SessionEvent ToolRan(

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
-import type { Band } from '../lib/conversation';
-import { describeClock, describeSpell, noteOf, titleOf, type Mark, type Range } from '../lib/steps';
+import type { Range } from '../lib/brush';
+import type { Band } from '../lib/panels/conversation';
+import { describeClock, describeSpell, noteOf, titleOf, type Mark } from '../lib/steps';
 import { Lanes } from './Lanes';
 import { Overview } from './Overview';
 

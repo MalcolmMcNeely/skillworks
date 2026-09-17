@@ -1,7 +1,7 @@
 import { describeCount, describeMoney } from '../../../figures/lib/figures';
-import { inRange } from '../../lib/brush';
-import { describeWithheld, figuresOf, type Band } from '../../lib/conversation';
-import { describeClock, describeSpell, type Range } from '../../lib/steps';
+import { inRange, type Range } from '../../lib/brush';
+import { describeWithheld, figuresOf, type Band } from '../../lib/panels/conversation';
+import { describeClock, describeSpell } from '../../lib/steps';
 
 function Words({ what, said, length, missing }: { what: string; said: string | null; length: number; missing: string }) {
   return (

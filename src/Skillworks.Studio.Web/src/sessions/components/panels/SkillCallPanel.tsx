@@ -1,8 +1,8 @@
 import { describeCount } from '../../../figures/lib/figures';
 import { triggerMark } from '../../../provenance/lib/triggers';
-import { madeIn } from '../../lib/brush';
-import { tallyOf, type Firing } from '../../lib/skillCalls';
-import { describeClock, describeSpell, type Range } from '../../lib/steps';
+import { madeIn, type Range } from '../../lib/brush';
+import { tallyOf, type Firing } from '../../lib/panels/skillCalls';
+import { describeClock, describeSpell } from '../../lib/steps';
 
 function Row({ firing, open, onOpen }: { firing: Firing; open: boolean; onOpen: (firing: Firing) => void }) {
   const { call } = firing;

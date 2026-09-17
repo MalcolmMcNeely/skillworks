@@ -22,3 +22,7 @@ export function describeCount(count: number): string {
 export function describeTokens(count: number): string {
   return tokenCounts.format(count);
 }
+
+export function describeShare(share: number): string {
+  return `${Math.round(share * 100)}%`;
+}

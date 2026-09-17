@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, holds, inRange, madeIn, moved, rangeOf, readRange, widened, withRange } from './brush';
-import type { Range } from './steps';
+import { clamp, holds, inRange, madeIn, moved, rangeOf, readRange, widened, withRange, type Range } from './brush';
 
 const whole: Range = [1_000, 101_000];
 

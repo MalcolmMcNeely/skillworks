@@ -1,4 +1,4 @@
-import { missingWords } from '../../skills/lib/skills';
+import { missingWords } from '../../../skills/lib/skills';
 
 export interface ContextPoint {
   id: string;
@@ -62,10 +62,6 @@ export function ceilingOf(levels: readonly Level[], limitTokens: number | null):
   const peak = Math.max(1, ...levels.map((each) => each.point.tokens));
 
   return limitTokens === null || limitTokens <= 0 ? peak : Math.max(limitTokens, peak);
-}
-
-export function describeShare(share: number): string {
-  return `${Math.round(share * 100)}%`;
 }
 
 export interface InForce {

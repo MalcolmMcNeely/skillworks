@@ -12,17 +12,18 @@ import { DepthWord } from '../components/DepthWord';
 import { ContextPanel } from '../components/panels/ContextPanel';
 import { ConversationPanel } from '../components/panels/ConversationPanel';
 import { SkillCallPanel } from '../components/panels/SkillCallPanel';
+import { SplitPanel } from '../components/panels/SplitPanel';
 import { StepPanel } from '../components/panels/StepPanel';
 import { SubagentPanel } from '../components/panels/SubagentPanel';
 import { TracePanel } from '../components/panels/TracePanel';
 import { Timeline } from '../components/Timeline';
-import { ranByOne, stintsOf, type Stint } from '../lib/agents';
-import { rangeOf, readRange, widened, withRange } from '../lib/brush';
-import { levelsOf, type Level } from '../lib/context';
-import { bandsOf, type Band } from '../lib/conversation';
+import { rangeOf, readRange, widened, withRange, type Range } from '../lib/brush';
+import { ranByOne, stintsOf, type Stint } from '../lib/panels/agents';
+import { levelsOf, type Level } from '../lib/panels/context';
+import { bandsOf, type Band } from '../lib/panels/conversation';
+import { firingsOf, type Firing } from '../lib/panels/skillCalls';
 import { describeLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
-import { firingsOf, type Firing } from '../lib/skillCalls';
-import { foldSessionLine, marksOf, runSpan, type Mark, type Range, type SessionAnswer } from '../lib/steps';
+import { foldSessionLine, marksOf, runSpan, type Mark, type SessionAnswer } from '../lib/steps';
 import { readWhere, withWhere, type Where } from '../lib/where';
 
 interface Reading {
@@ -240,6 +241,7 @@ function Body({
         onOpen={onAgent}
         onClose={onCloseAgent}
       />
+      <SplitPanel split={answer.split} range={range} />
       <ContextPanel
         levels={levels}
         limitTokens={answer.limitTokens}

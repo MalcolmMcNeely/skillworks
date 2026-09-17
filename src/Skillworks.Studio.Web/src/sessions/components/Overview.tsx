@@ -1,7 +1,7 @@
 import { useMemo, useRef, type PointerEvent } from 'react';
-import { clamp, moved, rangeOf } from '../lib/brush';
+import { clamp, moved, rangeOf, type Range } from '../lib/brush';
 import { foldScale } from '../lib/fold';
-import { describeClock, stretchesOf, toneOf, type Mark, type Range, type Tone } from '../lib/steps';
+import { describeClock, stretchesOf, toneOf, type Mark, type Tone } from '../lib/steps';
 
 const reachPx = 7;
 

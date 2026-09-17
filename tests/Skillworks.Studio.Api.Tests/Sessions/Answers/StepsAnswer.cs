@@ -15,6 +15,8 @@ public sealed record StepsAnswer(
     IReadOnlyDictionary<string, string> Agents,
     IReadOnlyList<SubagentRow> Subagents,
     IReadOnlyDictionary<string, string> Inside,
+    IReadOnlyList<SpellRow> Parts,
+    IReadOnlyList<SpellRow> Kinds,
     GapRow Events,
     GapRow Traces)
 {
@@ -38,6 +40,8 @@ public sealed record StepsAnswer(
             tree is null
                 ? new Dictionary<string, string>()
                 : StudioHost.Read<Dictionary<string, string>>(tree["inside"]),
+            Held<SpellRow>(lines, "split", "parts"),
+            Held<SpellRow>(lines, "split", "kinds"),
             Store(lines, "events"),
             Store(lines, "traces"));
     }
