@@ -228,9 +228,16 @@ _Avoid_: Block, rejection, denial
 
 **Finding**:
 Something Studio names in a Session because it crossed a bar worth a person's attention. Every
-Finding shows the figure it crossed on, so a reader sees how close the call was. A Finding that
-needs the Trace store reads **not known** in a Thin Session, never zero.
+Finding shows the figure it crossed on, so a reader sees how close the call was. Clicking a Finding
+moves the reader to the moment it happened. A Finding that needs the Trace store reads **not known**
+in a Thin Session, never zero.
 _Avoid_: Insight, issue, alert
+
+**Bar**:
+The figure a Session has to pass before Studio names a Finding. Every bar is in one table, so what
+counts as worth a person's attention is tuned in one place. A bar that was measured and not crossed
+comes back as no Finding at all, and a bar only a Span could measure comes back with no figure.
+_Avoid_: Threshold, limit, rule
 
 **Trace store**:
 The organisation's store that Claude Code's Spans arrive in, once traces are switched on. It answers

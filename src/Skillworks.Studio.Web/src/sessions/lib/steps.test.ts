@@ -5,7 +5,6 @@ import type { SkillCall } from './panels/skillCalls';
 import type { Session } from './sessions';
 import {
   describeClock,
-  describeSpell,
   foldSessionLine,
   lanes,
   lanesOf,
@@ -294,25 +293,6 @@ describe('the words on a mark', () => {
 
   it('says nothing about a step that went well', () => {
     expect(noteOf(prompt)).toBeNull();
-  });
-});
-
-describe('describeSpell', () => {
-  it('counts a step under a second in milliseconds', () => {
-    expect(describeSpell(4)).toBe('4 ms');
-  });
-
-  it('counts a short step in seconds, to a place while that place still says something', () => {
-    expect(describeSpell(2_140)).toBe('2.1 s');
-    expect(describeSpell(42_000)).toBe('42 s');
-  });
-
-  it('counts a step over a minute in minutes and seconds', () => {
-    expect(describeSpell(125_000)).toBe('2m 05s');
-  });
-
-  it('counts a step over an hour in hours and minutes', () => {
-    expect(describeSpell(3_900_000)).toBe('1h 05m');
   });
 });
 

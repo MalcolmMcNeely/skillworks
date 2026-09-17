@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeCount, describeMoney, describeShare, describeTokens } from './figures';
+import { describeCount, describeMoney, describeShare, describeStretch, describeTokens } from './figures';
 
 describe('describeMoney', () => {
   it('shows the pennies', () => {
@@ -32,5 +32,24 @@ describe('describeTokens', () => {
 describe('describeShare', () => {
   it('reads a share as whole percent', () => {
     expect(describeShare(0.4236)).toBe('42%');
+  });
+});
+
+describe('describeStretch', () => {
+  it('counts a stretch under a second in milliseconds', () => {
+    expect(describeStretch(4)).toBe('4 ms');
+  });
+
+  it('counts a short stretch in seconds, to a place while that place still says something', () => {
+    expect(describeStretch(2_140)).toBe('2.1 s');
+    expect(describeStretch(42_000)).toBe('42 s');
+  });
+
+  it('counts a stretch over a minute in minutes and seconds', () => {
+    expect(describeStretch(125_000)).toBe('2m 05s');
+  });
+
+  it('counts a stretch over an hour in hours and minutes', () => {
+    expect(describeStretch(3_900_000)).toBe('1h 05m');
   });
 });

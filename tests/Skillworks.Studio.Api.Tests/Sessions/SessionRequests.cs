@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Harness;
 using Skillworks.Studio.Api.Tests.Sessions.Answers;
+using Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 
@@ -25,6 +26,10 @@ public static class SessionRequests
     public static Task<IReadOnlyList<JsonObject>> StepLines(this StudioHost studio, string id, string filter = "") =>
         studio.Lines($"/api/sessions/{id}{filter}");
 
+    // Stops reading part way, which is how a test sees what the events alone answered before the spans were asked for.
+    public static Task<IReadOnlyList<JsonObject>> FirstStepLines(this StudioHost studio, string id, int count) =>
+        studio.Lines($"/api/sessions/{id}", count);
+
     public static async Task<StepsAnswer> StepAnswer(this StudioHost studio, string id, string filter = "") =>
         StepsAnswer.Of(await studio.StepLines(id, filter));
 
@@ -42,6 +47,9 @@ public static class SessionRequests
 
     public static async Task<IReadOnlyList<SpellRow>> PartsIn(this StudioHost studio, string id, string filter = "") =>
         (await studio.StepAnswer(id, filter)).Parts;
+
+    public static async Task<IReadOnlyList<FindingRow>> FindingsIn(this StudioHost studio, string id, string filter = "") =>
+        (await studio.StepAnswer(id, filter)).Findings;
 
     public static async Task<JsonObject> StepLine(this StudioHost studio, string kind, string id) =>
         (await studio.StepLines(id)).First(line => StudioHost.KindOf(line) == kind);

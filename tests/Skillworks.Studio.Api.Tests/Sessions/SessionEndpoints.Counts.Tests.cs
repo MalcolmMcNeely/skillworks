@@ -1,5 +1,5 @@
 using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Sessions.Answers;
+using Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 

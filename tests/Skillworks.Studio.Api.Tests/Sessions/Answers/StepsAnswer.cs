@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Gaps;
 using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 namespace Skillworks.Studio.Api.Tests.Sessions.Answers;
 
@@ -17,6 +18,7 @@ public sealed record StepsAnswer(
     IReadOnlyDictionary<string, string> Inside,
     IReadOnlyList<SpellRow> Parts,
     IReadOnlyList<SpellRow> Kinds,
+    IReadOnlyList<FindingRow> Findings,
     GapRow Events,
     GapRow Traces)
 {
@@ -42,6 +44,7 @@ public sealed record StepsAnswer(
                 : StudioHost.Read<Dictionary<string, string>>(tree["inside"]),
             Held<SpellRow>(lines, "split", "parts"),
             Held<SpellRow>(lines, "split", "kinds"),
+            Latest<FindingRow>(lines, "findings"),
             Store(lines, "events"),
             Store(lines, "traces"));
     }
@@ -51,6 +54,13 @@ public sealed record StepsAnswer(
         .. lines
             .Where(line => StudioHost.KindOf(line) == kind)
             .SelectMany(line => line[field ?? kind]?.AsArray() ?? [])
+            .Select(StudioHost.Read<T>)
+    ];
+
+    // The findings arrive twice and the second answers for the first, so a browser replaces where a page appends.
+    private static IReadOnlyList<T> Latest<T>(IReadOnlyList<JsonObject> lines, string kind) =>
+    [
+        .. (lines.LastOrDefault(line => StudioHost.KindOf(line) == kind)?[kind]?.AsArray() ?? [])
             .Select(StudioHost.Read<T>)
     ];
 

@@ -2,7 +2,8 @@ import { describeCount } from '../../../figures/lib/figures';
 import { ranBy, type Depth } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/brush';
 import { notKnown } from '../../lib/sessions';
-import { describeClock, describeSpell, noteOf, titleOf, type Mark } from '../../lib/steps';
+import { describeStretch } from '../../../figures/lib/figures';
+import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 import { deepestOf, noTreeWord, treeOf } from '../../lib/panels/trace';
 
 // A stretch can hold thousands of Steps, and a tree that long is no more readable than the timeline above it.
@@ -69,7 +70,7 @@ export function TracePanel({
                 </span>
                 <span className="trace-ran">{ranBy(depth, agents, row.mark.step.id)}</span>
                 <span className="trace-clock">{describeClock(row.mark.startMs, true)}</span>
-                <span className="trace-spell">{describeSpell(row.mark.step.lengthMs)}</span>
+                <span className="trace-spell">{describeStretch(row.mark.step.lengthMs)}</span>
               </button>
             </li>
           ))}

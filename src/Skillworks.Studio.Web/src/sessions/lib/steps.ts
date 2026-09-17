@@ -1,5 +1,6 @@
 import type { Gap, StoresEnd } from '../../gaps/lib/gaps';
 import type { Range } from './brush';
+import type { FindingsPage } from './findings';
 import type { AgentsPage, Depth, Subagent } from './panels/agents';
 import type { ContextPage, ContextPoint } from './panels/context';
 import type { Exchange, ExchangesPage } from './panels/conversation';
@@ -41,6 +42,7 @@ export type SessionLine =
   | AgentsPage
   | TracePage
   | SplitPage
+  | FindingsPage
   | StoresEnd;
 
 export interface SessionAnswer {
@@ -58,6 +60,8 @@ export interface SessionAnswer {
   inside: Record<string, string>;
   // Null until the spans land, as an empty split and a split nobody has read yet mean different things.
   split: SplitPage | null;
+  // Null until the spans land, as a run that crossed no bar and one nobody has read yet mean different things.
+  findings: FindingsPage | null;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -79,6 +83,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       subagents: [],
       inside: {},
       split: null,
+      findings: null,
       landed: false,
       arriving: true,
       events: null,
@@ -116,6 +121,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
 
   if (line.kind === 'split') {
     return { ...answer, split: line };
+  }
+
+  if (line.kind === 'findings') {
+    return { ...answer, findings: line };
   }
 
   return { ...answer, steps: line.steps, landed: true };
@@ -228,34 +237,7 @@ export function noteOf(step: Step): string | null {
   return step.kind === 'tool' && step.fault ? 'Failed' : null;
 }
 
-const second = 1_000;
-
-const minute = 60 * second;
-
-const hour = 60 * minute;
-
-// A Step can be four milliseconds or forty minutes, so the unit follows the figure.
-export function describeSpell(lengthMs: number): string {
-  if (lengthMs < second) {
-    return `${Math.round(lengthMs)} ms`;
-  }
-
-  if (lengthMs < minute) {
-    return `${(lengthMs / second).toFixed(lengthMs < 10 * second ? 1 : 0)} s`;
-  }
-
-  if (lengthMs < hour) {
-    return `${Math.floor(lengthMs / minute)}m ${twoFigures(Math.floor((lengthMs % minute) / second))}s`;
-  }
-
-  return `${Math.floor(lengthMs / hour)}h ${twoFigures(Math.floor((lengthMs % hour) / minute))}m`;
-}
-
 // UTC, as the Filter counts whole UTC days and a local clock would move a late Step to the wrong day.
 export function describeClock(atMs: number, seconds = false): string {
   return new Date(atMs).toISOString().slice(11, seconds ? 19 : 16);
-}
-
-function twoFigures(value: number): string {
-  return String(value).padStart(2, '0');
 }

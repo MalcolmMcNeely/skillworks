@@ -2,7 +2,8 @@ import { useMemo, type PointerEvent } from 'react';
 import { inRange, type Range } from '../lib/brush';
 import type { Band } from '../lib/panels/conversation';
 import { foldScale, ticksOf } from '../lib/fold';
-import { describeClock, describeSpell, lanes, lanesOf, toneOf, type Lane, type Mark } from '../lib/steps';
+import { describeStretch } from '../../figures/lib/figures';
+import { describeClock, lanes, lanesOf, toneOf, type Lane, type Mark } from '../lib/steps';
 
 // Narrow marks are common and a cursor is not, so every mark is drawn at least this wide to stay reachable.
 const leastPx = 3;
@@ -98,7 +99,7 @@ export function Lanes({
         <g key={fold.x}>
           <line x1={fold.x} x2={fold.x} y1={top} y2={axisY} className="timeline-fold" />
           <text x={fold.x} y={axisY + 26} textAnchor="middle" className="timeline-fold-word">
-            {describeSpell(fold.toMs - fold.fromMs)} idle
+            {describeStretch(fold.toMs - fold.fromMs)} idle
           </text>
         </g>
       ))}

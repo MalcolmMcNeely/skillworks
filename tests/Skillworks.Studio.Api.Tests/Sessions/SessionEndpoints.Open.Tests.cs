@@ -18,7 +18,7 @@ public sealed partial class SessionEndpointsTests
 
         // A screen draws once the steps land, so everything it draws beside them has to be there already.
         Assert.Equal(
-            ["head", "exchanges", "skillCalls", "context", "steps", "trace", "agents", "split", "end"],
+            ["head", "exchanges", "skillCalls", "context", "findings", "steps", "trace", "agents", "split", "findings", "end"],
             lines.Select(StudioHost.KindOf));
     }
 

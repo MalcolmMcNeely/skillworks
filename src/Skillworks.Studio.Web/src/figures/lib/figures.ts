@@ -26,3 +26,30 @@ export function describeTokens(count: number): string {
 export function describeShare(share: number): string {
   return `${Math.round(share * 100)}%`;
 }
+
+const second = 1_000;
+
+const minute = 60 * second;
+
+const hour = 60 * minute;
+
+// A stretch can be four milliseconds or forty minutes, so the unit follows the figure.
+export function describeStretch(lengthMs: number): string {
+  if (lengthMs < second) {
+    return `${Math.round(lengthMs)} ms`;
+  }
+
+  if (lengthMs < minute) {
+    return `${(lengthMs / second).toFixed(lengthMs < 10 * second ? 1 : 0)} s`;
+  }
+
+  if (lengthMs < hour) {
+    return `${Math.floor(lengthMs / minute)}m ${twoFigures(Math.floor((lengthMs % minute) / second))}s`;
+  }
+
+  return `${Math.floor(lengthMs / hour)}h ${twoFigures(Math.floor((lengthMs % hour) / minute))}m`;
+}
+
+function twoFigures(value: number): string {
+  return String(value).padStart(2, '0');
+}

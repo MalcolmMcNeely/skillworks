@@ -1,8 +1,8 @@
-import { describeCount } from '../../../figures/lib/figures';
+import { describeCount, describeStretch } from '../../../figures/lib/figures';
 import { triggerMark } from '../../../provenance/lib/triggers';
 import { madeIn, type Range } from '../../lib/brush';
 import { tallyOf, type Firing } from '../../lib/panels/skillCalls';
-import { describeClock, describeSpell } from '../../lib/steps';
+import { describeClock } from '../../lib/steps';
 
 function Row({ firing, open, onOpen }: { firing: Firing; open: boolean; onOpen: (firing: Firing) => void }) {
   const { call } = firing;
@@ -17,7 +17,7 @@ function Row({ firing, open, onOpen }: { firing: Firing; open: boolean; onOpen: 
           {mark.glyph}
         </span>
         <span className="visually-hidden">{mark.word}</span>
-        <span className="call-spell">{describeSpell(call.followedMs)}</span>
+        <span className="call-spell">{describeStretch(call.followedMs)}</span>
       </button>
     </li>
   );

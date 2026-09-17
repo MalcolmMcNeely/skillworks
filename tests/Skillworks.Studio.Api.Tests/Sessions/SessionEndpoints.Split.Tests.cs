@@ -1,6 +1,6 @@
 using Skillworks.Core.Tests.TraceStore;
 using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Sessions.Answers;
+using Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 
@@ -26,7 +26,7 @@ public sealed partial class SessionEndpointsTests
         var lines = await studio.StepLines(Morning);
 
         Assert.Equal(
-            ["head", "exchanges", "skillCalls", "context", "steps", "trace", "agents", "split", "end"],
+            ["head", "exchanges", "skillCalls", "context", "findings", "steps", "trace", "agents", "split", "findings", "end"],
             lines.Select(StudioHost.KindOf));
     }
 

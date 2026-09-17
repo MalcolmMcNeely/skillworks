@@ -1,7 +1,7 @@
-import { describeCount, describeMoney } from '../../../figures/lib/figures';
+import { describeCount, describeMoney, describeStretch } from '../../../figures/lib/figures';
 import { inRange, type Range } from '../../lib/brush';
 import { describeWithheld, figuresOf, type Band } from '../../lib/panels/conversation';
-import { describeClock, describeSpell } from '../../lib/steps';
+import { describeClock } from '../../lib/steps';
 
 function Words({ what, said, length, missing }: { what: string; said: string | null; length: number; missing: string }) {
   return (
@@ -27,7 +27,7 @@ function Block({ band, open, onOpen }: { band: Band; open: boolean; onOpen: (ban
           <span className="exchange-clock">{describeClock(band.startMs, true)}</span>
           <span className="exchange-figure">
             {describeCount(exchange.turns)} turns · {describeCount(exchange.toolCalls)} tool calls ·{' '}
-            {describeMoney(exchange.cost)} · {describeSpell(exchange.lengthMs)}
+            {describeMoney(exchange.cost)} · {describeStretch(exchange.lengthMs)}
           </span>
         </button>
         <Words what="Prompt" said={exchange.prompt} length={exchange.promptLength} missing="Nothing was recorded." />

@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import type { Range } from '../lib/brush';
 import type { Band } from '../lib/panels/conversation';
-import { describeClock, describeSpell, noteOf, titleOf, type Mark } from '../lib/steps';
+import { describeStretch } from '../../figures/lib/figures';
+import { describeClock, noteOf, titleOf, type Mark } from '../lib/steps';
 import { Lanes } from './Lanes';
 import { Overview } from './Overview';
 
@@ -49,7 +50,7 @@ function Tip({ pointed }: { pointed: Pointed }) {
         {note === null ? null : <span className="timeline-tip-note">{note}</span>}
       </p>
       <p className="micro">
-        {describeClock(pointed.mark.startMs, true)} · {describeSpell(step.lengthMs)}
+        {describeClock(pointed.mark.startMs, true)} · {describeStretch(step.lengthMs)}
       </p>
       {step.words === null ? null : <p className="timeline-tip-words">{step.words}</p>}
     </div>
@@ -100,7 +101,7 @@ export function Timeline({
         <p className="micro timeline-readout">
           {range === null
             ? 'The whole run'
-            : `${describeClock(range[0], true)} to ${describeClock(range[1], true)} · ${describeSpell(range[1] - range[0])}`}
+            : `${describeClock(range[0], true)} to ${describeClock(range[1], true)} · ${describeStretch(range[1] - range[0])}`}
         </p>
         <button type="button" className="timeline-clear" onClick={() => onRange(null)} disabled={range === null}>
           Whole run

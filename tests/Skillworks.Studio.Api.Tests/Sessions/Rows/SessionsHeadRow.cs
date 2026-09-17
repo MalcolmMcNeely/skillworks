@@ -1,6 +1,6 @@
 using Skillworks.Studio.Api.Tests.Filters;
 
-namespace Skillworks.Studio.Api.Tests.Sessions.Answers;
+namespace Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 public sealed record SessionsHeadRow
 {

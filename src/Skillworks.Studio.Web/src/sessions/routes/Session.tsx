@@ -9,6 +9,7 @@ import { useTabTitle } from '../../pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { DepthWord } from '../components/DepthWord';
+import { Findings } from '../components/Findings';
 import { ContextPanel } from '../components/panels/ContextPanel';
 import { ConversationPanel } from '../components/panels/ConversationPanel';
 import { SkillCallPanel } from '../components/panels/SkillCallPanel';
@@ -18,6 +19,7 @@ import { SubagentPanel } from '../components/panels/SubagentPanel';
 import { TracePanel } from '../components/panels/TracePanel';
 import { Timeline } from '../components/Timeline';
 import { rangeOf, readRange, widened, withRange, type Range } from '../lib/brush';
+import { type Named } from '../lib/findings';
 import { ranByOne, stintsOf, type Stint } from '../lib/panels/agents';
 import { levelsOf, type Level } from '../lib/panels/context';
 import { bandsOf, type Band } from '../lib/panels/conversation';
@@ -113,6 +115,9 @@ export function Session() {
   const onAgent = (stint: Stint) =>
     whole === null ? undefined : brush(widened([stint.startMs, stint.endMs], whole), { agent: stint.agent.id });
 
+  const onFinding = (named: Named) =>
+    whole === null ? undefined : brush(widened([named.startMs, named.endMs], whole), { step: named.finding.step });
+
   // What the table was asked for, so going up lands on the list the reader left rather than a fresh one.
   const table = withOrder(filterParams(filter), readOrder(params)).toString();
 
@@ -151,6 +156,7 @@ export function Session() {
         onCall={onCall}
         onAgent={onAgent}
         onCloseAgent={() => brush(null, { agent: null })}
+        onFinding={onFinding}
       />
     </main>
   );
@@ -174,6 +180,7 @@ function Body({
   onCall,
   onAgent,
   onCloseAgent,
+  onFinding,
 }: {
   answer: SessionAnswer | null;
   failure: string | null;
@@ -192,6 +199,7 @@ function Body({
   onCall: (firing: Firing) => void;
   onAgent: (stint: Stint) => void;
   onCloseAgent: () => void;
+  onFinding: (named: Named) => void;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
@@ -211,6 +219,7 @@ function Body({
 
   return (
     <>
+      <Findings findings={answer.findings} onOpen={onFinding} />
       <Timeline
         marks={marks}
         drawn={drawn}

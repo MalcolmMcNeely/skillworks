@@ -1,7 +1,8 @@
 import { describeCount } from '../../../figures/lib/figures';
 import { ranBy, type Depth } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/brush';
-import { describeClock, describeSpell, noteOf, titleOf, type Mark } from '../../lib/steps';
+import { describeStretch } from '../../../figures/lib/figures';
+import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 
 // A stretch can hold thousands of Steps, and a list that long is no more readable than the timeline above it.
 const mostRows = 200;
@@ -30,7 +31,7 @@ function Opened({
         </button>
       </p>
       <p className="micro">
-        {describeClock(mark.startMs, true)} · {describeSpell(step.lengthMs)} · ran by {ranBy(depth, agents, step.id)}
+        {describeClock(mark.startMs, true)} · {describeStretch(step.lengthMs)} · ran by {ranBy(depth, agents, step.id)}
       </p>
       {step.words === null ? null : <p className="step-words">{step.words}</p>}
     </div>
@@ -88,7 +89,7 @@ export function StepPanel({
                 <span className="step-clock">{describeClock(mark.startMs, true)}</span>
                 <span className="step-title">{titleOf(mark.step)}</span>
                 <span className="step-said">{mark.step.words ?? ''}</span>
-                <span className="step-spell">{describeSpell(mark.step.lengthMs)}</span>
+                <span className="step-spell">{describeStretch(mark.step.lengthMs)}</span>
               </button>
             </li>
           ))}

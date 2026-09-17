@@ -2027,6 +2027,74 @@ a.home-panel-face:hover::before {
   text-align: right;
 }
 
+/* Above the timeline rather than beneath it, so the trouble is the first thing an opened run says. */
+.session-findings {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.finding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.finding-row {
+  align-items: baseline;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-soft);
+  display: grid;
+  font: inherit;
+  font-size: 0.75rem;
+  gap: 0.6rem;
+  grid-template-columns: minmax(0, 1fr) 9rem minmax(0, 1fr);
+  padding: 0.25rem 0.4rem;
+  text-align: left;
+  width: 100%;
+}
+
+.finding-row:not(.is-unknown) {
+  cursor: pointer;
+}
+
+.finding-row:hover,
+.finding-row:focus-visible {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.finding-row.is-unknown,
+.finding-row.is-unknown:hover {
+  background: none;
+  color: var(--ink-faint);
+}
+
+.finding-word {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finding-row.is-unknown .finding-word {
+  color: inherit;
+}
+
+.finding-figure {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.finding-subject {
+  color: var(--hud);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .split-list {
   list-style: none;
   margin: 0;

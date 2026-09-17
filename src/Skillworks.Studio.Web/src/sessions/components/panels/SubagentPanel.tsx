@@ -1,8 +1,8 @@
-import { describeCount, describeMoney } from '../../../figures/lib/figures';
+import { describeCount, describeMoney, describeStretch } from '../../../figures/lib/figures';
 import { briefNote, noReport, noSubagentsWord, tallyOf, type Depth, type Stint } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/brush';
 import { notKnown } from '../../lib/sessions';
-import { describeClock, describeSpell } from '../../lib/steps';
+import { describeClock } from '../../lib/steps';
 
 function Said({ what, words, missing }: { what: string; words: string | null; missing: string | null }) {
   return (
@@ -27,7 +27,7 @@ function Opened({ stint, onClose }: { stint: Stint; onClose: () => void }) {
         </button>
       </p>
       <p className="micro">
-        {describeClock(stint.startMs, true)} · {describeSpell(agent.lengthMs)} ·{' '}
+        {describeClock(stint.startMs, true)} · {describeStretch(agent.lengthMs)} ·{' '}
         {describeCount(agent.toolCalls)} tool calls · {describeMoney(agent.cost)} ·{' '}
         {describeCount(agent.faults)} faults
       </p>
@@ -45,7 +45,7 @@ function Row({ stint, open, onOpen }: { stint: Stint; open: boolean; onOpen: (st
       <button type="button" className={`agent-row${open ? ' is-open' : ''}`} onClick={() => onOpen(stint)}>
         <span className="call-name">{agent.name}</span>
         <span className="agent-kind">{agent.type ?? notKnown}</span>
-        <span className="agent-figure">{describeSpell(agent.lengthMs)}</span>
+        <span className="agent-figure">{describeStretch(agent.lengthMs)}</span>
         <span className="agent-figure">{describeCount(agent.toolCalls)} tool calls</span>
         <span className="agent-figure">{describeMoney(agent.cost)}</span>
         <span className="agent-figure">{describeCount(agent.faults)} faults</span>

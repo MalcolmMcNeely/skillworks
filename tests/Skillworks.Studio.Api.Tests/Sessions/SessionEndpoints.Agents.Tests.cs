@@ -21,7 +21,7 @@ public sealed partial class SessionEndpointsTests
         var lines = await studio.StepLines(Morning);
 
         Assert.Equal(
-            ["head", "exchanges", "skillCalls", "context", "steps", "trace", "agents", "split", "end"],
+            ["head", "exchanges", "skillCalls", "context", "findings", "steps", "trace", "agents", "split", "findings", "end"],
             lines.Select(StudioHost.KindOf));
     }
 

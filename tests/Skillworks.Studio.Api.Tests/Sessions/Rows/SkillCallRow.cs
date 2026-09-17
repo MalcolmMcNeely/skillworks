@@ -1,4 +1,4 @@
-namespace Skillworks.Studio.Api.Tests.Sessions.Answers;
+namespace Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 public sealed record SkillCallRow
 {

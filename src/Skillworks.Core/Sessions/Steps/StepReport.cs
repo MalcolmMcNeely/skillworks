@@ -29,6 +29,10 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
             yield return new ExchangesPage(opened.Said);
             yield return new SkillCallsPage(opened.Fired);
             yield return new ContextPage(opened.Sent, opened.LimitTokens);
+
+            // Five of the eight bars are read off the events alone, so a slow trace store leaves no empty list.
+            yield return StepQueries.Found(opened);
+
             yield return new StepsPage([.. opened.Drawn.Select(each => each.Step)]);
         }
 
@@ -41,7 +45,12 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
 
         yield return new AgentsPage(traced.Depth, traced.Agents, ran);
 
-        yield return StepQueries.Split(opened, traced, ran);
+        var split = StepQueries.Split(opened, traced, ran);
+
+        yield return split;
+
+        // Again, now the three bars only a Span can measure have something to measure against.
+        yield return StepQueries.Found(opened, split, ran);
 
         yield return new StoresEnd(
             gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst()),
