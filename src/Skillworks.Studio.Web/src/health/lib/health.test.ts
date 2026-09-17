@@ -32,7 +32,7 @@ describe('lampsOf', () => {
   it('opens the detail and the action from the lamp of a broken part', () => {
     expect(lampsOf({ parts: [store] }, null)).toEqual([
       {
-        callSign: 'Events',
+        callSign: 'Events store',
         state: 'broken',
         glyph: '✕',
         word: 'Broken',
@@ -74,19 +74,19 @@ describe('lampsOf', () => {
     };
 
     expect(lampsOf({ parts: [store, telemetry, catalogue] }, null).map((lamp) => lamp.callSign)).toEqual([
-      'Events',
+      'Events store',
       'Catalogue',
     ]);
   });
 
   it('tells the two stores apart, so a broken one names itself', () => {
     expect(lampsOf({ parts: [store, traces] }, null).map((lamp) => [lamp.callSign, lamp.state])).toEqual([
-      ['Events', 'broken'],
-      ['Traces', 'working'],
+      ['Events store', 'broken'],
+      ['Trace store', 'working'],
     ]);
   });
 
-  it('keeps the name of a part it has no call sign for', () => {
+  it('keeps the name of the part it lights', () => {
     const [lamp] = lampsOf({ parts: [{ ...catalogue, name: 'Collector' }] }, null);
 
     expect(lamp?.callSign).toBe('Collector');

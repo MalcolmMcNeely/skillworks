@@ -29,12 +29,6 @@ export const lampSymbols: SymbolTable = {
   glyphs: Object.values(lampMarks).map((mark) => mark.glyph),
 };
 
-// Two stores stand side by side, so each lamp says which one it is.
-const callSigns: Record<string, string> = {
-  'Events store': 'Events',
-  'Trace store': 'Traces',
-};
-
 // The telemetry switch shows this part's state, so a lamp for it would say the same thing twice.
 const shownBySwitch = 'Claude Code telemetry';
 
@@ -56,7 +50,7 @@ export function lampsOf(report: { parts: readonly Part[] } | null, failure: stri
     .filter((part) => part.name !== shownBySwitch)
     .map((part) =>
       lamp(
-        callSigns[part.name] ?? part.name,
+        part.name,
         part.state,
         part.state === 'broken' || part.state === 'off' ? { detail: part.detail, action: part.action } : null,
       ),
