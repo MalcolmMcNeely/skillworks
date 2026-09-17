@@ -20,6 +20,8 @@ public static class EventAttributes
 
     public const string QuerySource = "query_source";
 
+    public const string ToolInput = "tool_input";
+
     public const string PromptLength = "prompt_length";
 
     public const string ResponseLength = "response_length";

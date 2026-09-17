@@ -1900,7 +1900,8 @@ a.home-panel-face:hover::before {
   padding: 0;
 }
 
-.call-row {
+.call-row,
+.agent-row {
   background: none;
   border: 0;
   border-bottom: 1px solid var(--rule);
@@ -1910,17 +1911,42 @@ a.home-panel-face:hover::before {
   font: inherit;
   font-size: 0.75rem;
   gap: 0.6rem;
-  grid-template-columns: 5rem minmax(0, 1fr) 1.2rem 5rem;
   padding: 0.25rem 0.4rem;
   text-align: left;
   width: 100%;
 }
 
+.call-row {
+  grid-template-columns: 5rem minmax(0, 1fr) 1.2rem 5rem;
+}
+
+/* One column per figure, so three siblings fired together line up and an expensive one stands out. */
+.agent-row {
+  grid-template-columns: minmax(0, 1fr) 7rem 4.5rem 5rem 5rem 5rem;
+}
+
 .call-row:hover,
 .call-row:focus-visible,
-.call-row.is-open {
+.call-row.is-open,
+.agent-row:hover,
+.agent-row:focus-visible,
+.agent-row.is-open {
   background: var(--panel);
   color: var(--ink);
+}
+
+.agent-kind {
+  color: var(--hud);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-figure {
+  font-family: var(--mono);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .call-name {
@@ -2137,18 +2163,21 @@ a.home-panel-face:hover::before {
   text-align: right;
 }
 
-.exchange-said {
+.exchange-said,
+.agent-said {
   margin-top: 0.35rem;
 }
 
-.exchange-mark {
+.exchange-mark,
+.agent-mark {
   color: var(--hud);
   font-size: 0.6rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
-.exchange-words {
+.exchange-words,
+.agent-words {
   color: var(--ink-soft);
   font-size: 0.75rem;
   margin-top: 0.15rem;
@@ -2156,7 +2185,8 @@ a.home-panel-face:hover::before {
   white-space: pre-wrap;
 }
 
-.exchange-withheld {
+.exchange-withheld,
+.agent-missing {
   color: var(--ink-faint);
   font-family: var(--mono);
   font-size: 0.7rem;

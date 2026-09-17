@@ -28,16 +28,16 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
             yield return new ExchangesPage(opened.Said);
             yield return new SkillCallsPage(opened.Fired);
             yield return new ContextPage(opened.Sent, opened.LimitTokens);
-            yield return new StepsPage(opened.Steps);
+            yield return new StepsPage([.. opened.Drawn.Select(each => each.Step)]);
         }
 
         // Asked for once the events have drawn all they can, so a slow trace store delays only what they cannot.
-        var ran = await agents.OfRunAsync(id, span, opened.Keys, cancellationToken);
+        var traced = await agents.OfRunAsync(id, span, opened.Keys, opened.Called, cancellationToken);
 
-        yield return new AgentsPage(ran.Depth, ran.Agents);
+        yield return new AgentsPage(traced.Depth, traced.Agents, StepQueries.Ran(opened, traced.Agents, traced.Wrapped));
 
         yield return new StoresEnd(
             gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst()),
-            gaps.InSpans(ran.Read));
+            gaps.InSpans(traced.Read));
     }
 }

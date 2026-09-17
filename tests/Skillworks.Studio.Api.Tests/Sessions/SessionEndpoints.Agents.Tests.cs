@@ -34,7 +34,7 @@ public sealed partial class SessionEndpointsTests
 
         var line = await studio.StepLine("agents", Morning);
 
-        Assert.Equal(["agents", "depth", "kind"], StudioHost.Fields(line));
+        Assert.Equal(["agents", "depth", "kind", "subagents"], StudioHost.Fields(line));
     }
 
     [Fact]

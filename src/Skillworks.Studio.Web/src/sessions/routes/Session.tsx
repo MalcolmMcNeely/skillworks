@@ -13,7 +13,9 @@ import { ConversationPanel } from '../components/ConversationPanel';
 import { DepthWord } from '../components/DepthWord';
 import { SkillCallPanel } from '../components/SkillCallPanel';
 import { StepPanel } from '../components/StepPanel';
+import { SubagentPanel } from '../components/SubagentPanel';
 import { Timeline } from '../components/Timeline';
+import { ranByOne, stintsOf, type Stint } from '../lib/agents';
 import { rangeOf, readRange, widened, withRange } from '../lib/brush';
 import { levelsOf, type Level } from '../lib/context';
 import { bandsOf, type Band } from '../lib/conversation';
@@ -79,11 +81,17 @@ export function Session() {
   const exchanges = answer?.exchanges;
   const skillCalls = answer?.skillCalls;
   const context = answer?.context;
+  const subagents = answer?.subagents;
   const marks = useMemo(() => marksOf(steps ?? []), [steps]);
   const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
   const firings = useMemo(() => firingsOf(skillCalls ?? []), [skillCalls]);
   const levels = useMemo(() => levelsOf(context ?? []), [context]);
+  const stints = useMemo(() => stintsOf(subagents ?? []), [subagents]);
   const whole = runSpan(marks);
+
+  // An open Subagent is read like a small Session, so every lane and every row beneath shows its Steps alone.
+  const agents = answer?.agents;
+  const drawn = useMemo(() => ranByOne(marks, agents ?? {}, where.agent), [marks, agents, where.agent]);
 
   // Replaced, not pushed, so brushing four stretches does not cost four presses of the back button.
   const write = (written: URLSearchParams) => setParams(written, { replace: true });
@@ -99,6 +107,9 @@ export function Session() {
   // Unpadded, unlike an Exchange: a call's stretch abuts the next call's, and padding would pull that one in too.
   const onCall = (firing: Firing) =>
     whole === null ? undefined : brush(rangeOf(firing.atMs, firing.followedToMs, whole), { call: firing.call.id });
+
+  const onAgent = (stint: Stint) =>
+    whole === null ? undefined : brush(widened([stint.startMs, stint.endMs], whole), { agent: stint.agent.id });
 
   // What the table was asked for, so going up lands on the list the reader left rather than a fresh one.
   const table = withOrder(filterParams(filter), readOrder(params)).toString();
@@ -124,16 +135,20 @@ export function Session() {
         answer={answer}
         failure={failure}
         marks={marks}
+        drawn={drawn}
         bands={bands}
         firings={firings}
         levels={levels}
+        stints={stints}
         whole={whole}
         range={range}
         where={where}
-        onRange={(stretch) => brush(stretch, stretch === null ? { exchange: null, call: null } : {})}
+        onRange={(stretch) => brush(stretch, stretch === null ? { exchange: null, call: null, agent: null } : {})}
         onOpen={open}
         onExchange={onExchange}
         onCall={onCall}
+        onAgent={onAgent}
+        onCloseAgent={() => brush(null, { agent: null })}
       />
     </main>
   );
@@ -143,9 +158,11 @@ function Body({
   answer,
   failure,
   marks,
+  drawn,
   bands,
   firings,
   levels,
+  stints,
   whole,
   range,
   where,
@@ -153,13 +170,17 @@ function Body({
   onOpen,
   onExchange,
   onCall,
+  onAgent,
+  onCloseAgent,
 }: {
   answer: SessionAnswer | null;
   failure: string | null;
   marks: readonly Mark[];
+  drawn: readonly Mark[];
   bands: readonly Band[];
   firings: readonly Firing[];
   levels: readonly Level[];
+  stints: readonly Stint[];
   whole: Range | null;
   range: Range | null;
   where: Where;
@@ -167,6 +188,8 @@ function Body({
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
   onCall: (firing: Firing) => void;
+  onAgent: (stint: Stint) => void;
+  onCloseAgent: () => void;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
@@ -188,6 +211,7 @@ function Body({
     <>
       <Timeline
         marks={marks}
+        drawn={drawn}
         bands={bands}
         whole={whole}
         range={range}
@@ -198,6 +222,14 @@ function Body({
       />
       <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
       <SkillCallPanel firings={firings} range={range} opened={where.call} onOpen={onCall} />
+      <SubagentPanel
+        stints={stints}
+        depth={answer.depth}
+        range={range}
+        opened={where.agent}
+        onOpen={onAgent}
+        onClose={onCloseAgent}
+      />
       <ContextPanel
         levels={levels}
         limitTokens={answer.limitTokens}
@@ -206,9 +238,10 @@ function Body({
         onOpen={onOpen}
       />
       <StepPanel
-        marks={marks}
+        marks={drawn}
         depth={answer.depth}
         agents={answer.agents}
+        agent={where.agent}
         range={range}
         selected={where.step}
         onOpen={onOpen}

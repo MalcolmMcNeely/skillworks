@@ -42,6 +42,7 @@ export function StepPanel({
   marks,
   depth,
   agents,
+  agent,
   range,
   selected,
   onOpen,
@@ -49,6 +50,7 @@ export function StepPanel({
   marks: readonly Mark[];
   depth: Depth;
   agents: Record<string, string>;
+  agent: string | null;
   range: Range | null;
   selected: string | null;
   onOpen: (id: string | null) => void;
@@ -71,7 +73,9 @@ export function StepPanel({
       {open === null ? null : <Opened mark={open} depth={depth} agents={agents} onClose={() => onOpen(null)} />}
 
       {shown.length === 0 ? (
-        <p className="session-word">Nothing ran in this stretch.</p>
+        <p className="session-word">
+          {agent === null ? 'Nothing ran in this stretch.' : 'This subagent ran nothing in this stretch.'}
+        </p>
       ) : (
         <ol className="step-list">
           {shown.slice(0, mostRows).map((mark) => (

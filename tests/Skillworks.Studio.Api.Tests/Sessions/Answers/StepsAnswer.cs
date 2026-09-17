@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Gaps;
 using Skillworks.Studio.Api.Tests.Harness;
 
-namespace Skillworks.Studio.Api.Tests.Sessions;
+namespace Skillworks.Studio.Api.Tests.Sessions.Answers;
 
 public sealed record StepsAnswer(
     SessionRow? Run,
@@ -13,6 +13,7 @@ public sealed record StepsAnswer(
     long? LimitTokens,
     string? Depth,
     IReadOnlyDictionary<string, string> Agents,
+    IReadOnlyList<SubagentRow> Subagents,
     GapRow Events,
     GapRow Traces)
 {
@@ -31,6 +32,7 @@ public sealed record StepsAnswer(
             spans is null
                 ? new Dictionary<string, string>()
                 : StudioHost.Read<Dictionary<string, string>>(spans["agents"]),
+            Held<SubagentRow>(lines, "agents", "subagents"),
             Store(lines, "events"),
             Store(lines, "traces"));
     }

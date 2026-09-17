@@ -9,10 +9,11 @@ namespace Skillworks.Core.Sessions;
 
 public sealed record OpenedRun(
     Session? Run,
-    IReadOnlyList<Step> Steps,
+    IReadOnlyList<DrawnStep> Drawn,
     IReadOnlyList<Exchange> Said,
     IReadOnlyList<SkillCall> Fired,
     IReadOnlyList<ContextPoint> Sent,
     long? LimitTokens,
     IReadOnlyList<StepKey> Keys,
+    IReadOnlyList<AgentCall> Called,
     EventLines Read);

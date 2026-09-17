@@ -140,6 +140,7 @@ describe('foldSessionLine', () => {
       kind: 'agents',
       depth: 'full',
       agents: { '4': 'agent-a' },
+      subagents: [],
     });
 
     expect(answer.depth).toBe('full');

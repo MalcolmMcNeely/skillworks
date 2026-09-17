@@ -57,6 +57,7 @@ function Tip({ pointed }: { pointed: Pointed }) {
 
 export function Timeline({
   marks,
+  drawn,
   bands,
   whole,
   range,
@@ -66,6 +67,8 @@ export function Timeline({
   onExchange,
 }: {
   marks: readonly Mark[];
+  // What the lanes draw, which is one Subagent's Steps alone once a reader opens one.
+  drawn: readonly Mark[];
   bands: readonly Band[];
   whole: Range;
   range: Range | null;
@@ -107,7 +110,7 @@ export function Timeline({
       <div className="timeline-frame" ref={frame}>
         <Overview marks={marks} whole={whole} range={range} left={left} width={width} onRange={onRange} />
         <Lanes
-          marks={marks}
+          marks={drawn}
           bands={bands}
           range={inView}
           selected={selected}

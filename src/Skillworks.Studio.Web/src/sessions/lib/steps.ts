@@ -1,5 +1,5 @@
 import type { Gap, StoresEnd } from '../../gaps/lib/gaps';
-import type { AgentsPage, Depth } from './agents';
+import type { AgentsPage, Depth, Subagent } from './agents';
 import type { ContextPage, ContextPoint } from './context';
 import type { Exchange, ExchangesPage } from './conversation';
 import type { Session } from './sessions';
@@ -48,6 +48,7 @@ export interface SessionAnswer {
   // Thin until the spans land, which is the second part of one read and not a second read.
   depth: Depth;
   agents: Record<string, string>;
+  subagents: Subagent[];
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -66,6 +67,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       limitTokens: null,
       depth: 'thin',
       agents: {},
+      subagents: [],
       landed: false,
       arriving: true,
       events: null,
@@ -94,7 +96,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
   }
 
   if (line.kind === 'agents') {
-    return { ...answer, depth: line.depth, agents: line.agents };
+    return { ...answer, depth: line.depth, agents: line.agents, subagents: line.subagents };
   }
 
   return { ...answer, steps: line.steps, landed: true };

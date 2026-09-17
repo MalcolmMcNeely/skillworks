@@ -6,9 +6,10 @@ export interface Where {
   exchange: number | null;
   call: string | null;
   step: string | null;
+  agent: string | null;
 }
 
-export const nowhere: Where = { exchange: null, call: null, step: null };
+export const nowhere: Where = { exchange: null, call: null, step: null, agent: null };
 
 export function readWhere(params: URLSearchParams): Where {
   const exchange = Number(params.get('exchange'));
@@ -18,6 +19,7 @@ export function readWhere(params: URLSearchParams): Where {
     exchange: params.has('exchange') && Number.isInteger(exchange) && exchange >= 0 ? exchange : null,
     call: params.get('call'),
     step: params.get('step'),
+    agent: params.get('agent'),
   };
 }
 
@@ -27,6 +29,7 @@ export function withWhere(params: URLSearchParams, where: Where): URLSearchParam
   write(written, 'exchange', where.exchange === null ? null : String(where.exchange));
   write(written, 'call', where.call);
   write(written, 'step', where.step);
+  write(written, 'agent', where.agent);
 
   return written;
 }

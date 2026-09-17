@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Nodes;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 
@@ -43,6 +44,8 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? CostUsd { get; init; }
 
+    public string? ToolInput { get; init; }
+
     public string? ToolUseId { get; init; }
 
     public string? RequestId { get; init; }
@@ -64,6 +67,7 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("duration_ms", DurationMs),
         ("model", Model),
         ("cost_usd", CostUsd),
+        ("tool_input", ToolInput),
         ("tool_use_id", ToolUseId),
         ("request_id", RequestId),
         ("vcs.owner.name", Owner),
@@ -120,8 +124,37 @@ public sealed record SessionEvent(string Session, string EventName, string At)
             ToolUseId = use,
         };
 
-    internal static SessionEvent ToolFailed(string session, string at, string tool = "Bash") =>
-        new(session, ToolResult, at) { ToolName = tool, Success = "false", ErrorType = "ShellError", DecisionSource = "config" };
+    internal static SessionEvent ToolFailed(string session, string at, string tool = "Bash", string? use = null) =>
+        new(session, ToolResult, at)
+        {
+            ToolName = tool,
+            Success = "false",
+            ErrorType = "ShellError",
+            DecisionSource = "config",
+            ToolUseId = use,
+        };
+
+    // Claude Code cuts a Tool call's input to its opening characters, so only the description survives whole.
+    internal static SessionEvent AgentRan(
+        string session,
+        string at,
+        string use,
+        string? name = null,
+        string? type = null,
+        string? brief = null,
+        int lengthMs = 0) =>
+        ToolRan(session, at, "Agent", lengthMs, use) with { ToolInput = Asked(name, type, brief) };
+
+    internal static SessionEvent AgentInputWithheld(string session, string at, string use, int lengthMs = 0) =>
+        ToolRan(session, at, "Agent", lengthMs, use) with { ToolInput = Withheld };
+
+    private static string Asked(string? name, string? type, string? brief) =>
+        new JsonObject
+        {
+            ["description"] = name,
+            ["subagent_type"] = type,
+            ["prompt"] = brief,
+        }.ToJsonString();
 
     internal static SessionEvent ModelFailed(string session, string at) =>
         new(session, "api_error", at) { ErrorType = "RateLimited" };

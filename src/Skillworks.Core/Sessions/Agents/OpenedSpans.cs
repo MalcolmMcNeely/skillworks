@@ -3,4 +3,8 @@ using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Sessions.Agents;
 
-public sealed record OpenedSpans(Depth Depth, IReadOnlyDictionary<string, string> Agents, SessionSpans Read);
+public sealed record OpenedSpans(
+    Depth Depth,
+    IReadOnlyDictionary<string, string> Agents,
+    IReadOnlyDictionary<string, AgentRoot> Wrapped,
+    SessionSpans Read);

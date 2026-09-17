@@ -60,7 +60,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
 
         if (read.Unreachable is not null || read.Lines.Count == 0)
         {
-            return new OpenedRun(null, [], [], [], [], null, [], read);
+            return new OpenedRun(null, [], [], [], [], null, [], [], read);
         }
 
         var drawn = Stepped(read.Lines);
@@ -68,16 +68,17 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
 
         return new OpenedRun(
             Run(id, read.Lines),
-            [.. drawn.Select(each => each.Step)],
+            drawn,
             Said(drawn),
             Fired(read.Lines),
             sent.Points,
             sent.Limit,
             Keys(drawn),
+            Called(read.Lines),
             read);
     }
 
-    private static IReadOnlyList<StepKey> Keys(IReadOnlyList<Drawn> drawn) =>
+    private static IReadOnlyList<StepKey> Keys(IReadOnlyList<DrawnStep> drawn) =>
     [
         .. drawn
             .Select(each => Keyed(each.Line) is { } key ? new StepKey(each.Step.Id, key) : null)
@@ -115,11 +116,11 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
     }
 
     // Paired with the event it came from, so an Exchange and a timeline band cover exactly one stretch.
-    private static IReadOnlyList<Drawn> Stepped(IReadOnlyList<EventLine> lines) =>
+    private static IReadOnlyList<DrawnStep> Stepped(IReadOnlyList<EventLine> lines) =>
         [
             .. lines
-                .Select((line, place) => Stepped(line, Identity(line, place)) is { } step ? new Drawn(line, step) : null)
-                .OfType<Drawn>()
+                .Select((line, place) => Stepped(line, Identity(line, place)) is { } step ? new DrawnStep(line, step) : null)
+                .OfType<DrawnStep>()
         ];
 
     private static Step? Stepped(EventLine line, string id)
@@ -200,5 +201,4 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
         return phrase.Length > Opening ? phrase[..Opening] + '…' : phrase;
     }
 
-    private sealed record Drawn(EventLine Line, Step Step);
 }

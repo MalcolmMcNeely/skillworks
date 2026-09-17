@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Gaps;
 using Skillworks.Studio.Api.Tests.Harness;
 
-namespace Skillworks.Studio.Api.Tests.Sessions;
+namespace Skillworks.Studio.Api.Tests.Sessions.Answers;
 
 public sealed record SessionsAnswer(SessionsHeadRow Head, IReadOnlyList<SessionRow> Sessions, GapRow Gap)
 {

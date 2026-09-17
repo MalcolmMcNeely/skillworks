@@ -7,7 +7,7 @@ namespace Skillworks.Core.Sessions.Queries;
 
 public sealed partial class StepQueries
 {
-    private static IReadOnlyList<Exchange> Said(IReadOnlyList<Drawn> drawn)
+    private static IReadOnlyList<Exchange> Said(IReadOnlyList<DrawnStep> drawn)
     {
         var opened = new List<Underway>();
 
