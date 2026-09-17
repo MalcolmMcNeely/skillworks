@@ -1,10 +1,10 @@
 import type { Gap, StoresEnd } from '../../gaps/lib/gaps';
 import type { Range } from './brush';
 import type { FindingsPage } from './findings';
+import type { Activation, ActivationsPage } from './panels/activations';
 import type { AgentsPage, Depth, Subagent } from './panels/agents';
 import type { ContextPage, ContextPoint } from './panels/context';
 import type { Exchange, ExchangesPage } from './panels/conversation';
-import type { SkillCall, SkillCallsPage } from './panels/skillCalls';
 import type { SplitPage } from './panels/split';
 import type { TracePage } from './panels/trace';
 import type { Session } from './sessions';
@@ -37,7 +37,7 @@ export type SessionLine =
   | SessionHead
   | StepsPage
   | ExchangesPage
-  | SkillCallsPage
+  | ActivationsPage
   | ContextPage
   | AgentsPage
   | TracePage
@@ -49,7 +49,7 @@ export interface SessionAnswer {
   session: Session | null;
   steps: Step[];
   exchanges: Exchange[];
-  skillCalls: SkillCall[];
+  activations: Activation[];
   context: ContextPoint[];
   limitTokens: number | null;
   // Thin until the spans land, which is the second part of one read and not a second read.
@@ -75,7 +75,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       session: line.session,
       steps: [],
       exchanges: [],
-      skillCalls: [],
+      activations: [],
       context: [],
       limitTokens: null,
       depth: 'thin',
@@ -103,8 +103,8 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
     return { ...answer, exchanges: line.exchanges };
   }
 
-  if (line.kind === 'skillCalls') {
-    return { ...answer, skillCalls: line.skillCalls };
+  if (line.kind === 'activations') {
+    return { ...answer, activations: line.activations };
   }
 
   if (line.kind === 'context') {

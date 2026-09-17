@@ -36,7 +36,7 @@ describe('triggerMarks', () => {
     expect(marks.map((mark) => mark.glyph)).toEqual(['◈', '/']);
   });
 
-  it('marks a firing recorded with no trigger as not recorded', () => {
+  it('marks an activation recorded with no trigger as not recorded', () => {
     expect(triggerMarks([{ trigger: null, activations: 5 }])).toEqual([
       { glyph: '?', word: 'Not recorded', activations: 5 },
     ]);

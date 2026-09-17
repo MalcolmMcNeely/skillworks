@@ -18,7 +18,7 @@ public sealed class CatalogueSkills(CatalogueLocator locator)
                where Directory.Exists(folder)
                from skill in Directory.EnumerateDirectories(folder)
                where File.Exists(Path.Combine(skill, "SKILL.md"))
-               // Spelled as Claude Code invokes a plugin skill, or a catalogue name never meets its firings.
+               // Spelled as Claude Code invokes a plugin skill, or a catalogue name never meets its Activations.
                select $"{Path.GetFileName(plugin)}:{Path.GetFileName(skill)}"
         ];
     }

@@ -3,7 +3,7 @@ const money = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
   minimumFractionDigits: 2,
-  // Four places, or a firing that costs a fraction of a cent would round to free.
+  // Four places, or an Activation that costs a fraction of a cent would round to free.
   maximumFractionDigits: 4,
 });
 

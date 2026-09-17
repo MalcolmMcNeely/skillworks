@@ -6,7 +6,7 @@ export interface Origin {
 }
 
 export interface TriggerCount {
-  // Null where the firing was recorded without one, as an older Claude Code sends no trigger.
+  // Null where the Activation was recorded without one, as an older Claude Code sends no trigger.
   trigger: string | null;
   activations: number;
 }

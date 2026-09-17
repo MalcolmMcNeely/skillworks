@@ -31,7 +31,7 @@ public sealed partial class FilterEndpointsTests
 
         var answer = await studio.SkillAnswer("?from=2026-09-01&to=2026-09-01");
 
-        // Only the nu firings fall in the range, so the xi firings are not in the answer at all.
+        // Only the nu Activations fall in the range, so the xi ones are not in the answer at all.
         var day = Assert.Single(answer.Days);
         Assert.Equal(["grilling", "unslop"], day.Skills.Select(skill => skill.Name));
         Assert.Equal([1, 1], day.Skills.Select(skill => skill.Activations));
@@ -50,7 +50,7 @@ public sealed partial class FilterEndpointsTests
 
         var answer = await studio.SkillAnswer("?from=2026-09-05&to=2026-09-05");
 
-        // A range ending at midnight on the 5th would drop the firing late that evening.
+        // A range ending at midnight on the 5th would drop the Activation late that evening.
         Assert.Equal(["first", "last"], Assert.Single(answer.Days).Skills.Select(skill => skill.Name));
     }
 
@@ -68,7 +68,7 @@ public sealed partial class FilterEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_out_a_firing_with_no_repository_when_a_repository_is_asked_for()
+    public async Task Leaves_out_an_activation_with_no_repository_when_a_repository_is_asked_for()
     {
         using var studio = new StudioHost();
 
@@ -78,7 +78,7 @@ public sealed partial class FilterEndpointsTests
             new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", RepositoryName: "xi"),
             new SkillActivated("grilling", "2026-09-14T09:15:00.000Z", Owner: "acme"));
 
-        // A firing with half a name might have been anywhere, so it is not an answer about acme/xi.
+        // An Activation with half a name might have been anywhere, so it is not an answer about acme/xi.
         Assert.Equal(1, (await studio.SkillOn("2026-09-14", "grilling", "?repository=acme/xi")).Activations);
         Assert.Empty((await studio.SkillAnswer("?repository=xi")).Skills);
     }

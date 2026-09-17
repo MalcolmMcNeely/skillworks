@@ -13,7 +13,7 @@ public sealed class ActivationReport(ActivationQueries activations, GapReport ga
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var span = lookback.SpanOf(filter);
-        var (fired, period) = await activations.FiringsAsync(span, filter, cancellationToken);
+        var (fired, period) = await activations.ActivationsAsync(span, filter, cancellationToken);
 
         if (period.Unreachable is null)
         {

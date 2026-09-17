@@ -38,7 +38,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_a_firing_whose_trigger_went_unsent_under_no_trigger()
+    public async Task Counts_an_activation_whose_trigger_went_unsent_under_no_trigger()
     {
         using var studio = new StudioHost();
 
@@ -48,7 +48,7 @@ public sealed partial class SkillEndpointsTests
 
         var grilling = await studio.SkillOn("2026-09-14", "grilling", OnlyTheFourteenth);
 
-        // An older Claude Code sends no trigger, and folding those firings into one of the four would invent a reading.
+        // An older Claude Code sends no trigger, and folding those Activations into one of the four would invent a reading.
         Assert.Equal([Fired(null, 1), Fired("user-slash", 1)], grilling.Triggers);
     }
 
@@ -69,7 +69,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_by_trigger_only_the_firings_the_filter_keeps()
+    public async Task Counts_by_trigger_only_the_activations_the_filter_keeps()
     {
         using var studio = new StudioHost();
 

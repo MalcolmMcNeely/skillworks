@@ -34,7 +34,7 @@ public sealed class SkillReport(
     }
 
     // Only the span narrows the choices, so picking a Repository never hides the others.
-    // A Gap here would count firings alone, so a period that only spent would read as quiet.
+    // A Gap here would count Activations alone, so a period that only spent would read as quiet.
     public IAsyncEnumerable<ArrivingLine> ChoicesAsync(Filter filter, CancellationToken cancellationToken)
     {
         var span = lookback.SpanOf(filter);
@@ -63,7 +63,7 @@ public sealed class SkillReport(
 
         var (tally, spent) = (await tallying, await spending);
 
-        // Turns count beside firings, so a period that only spent is not called quiet.
+        // Turns count beside Activations, so a period that only spent is not called quiet.
         var period = tally.Period.Plus(spent.Period);
 
         return (

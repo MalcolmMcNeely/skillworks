@@ -19,7 +19,7 @@ export interface ReadoutRow {
 
 const hourMs = 60 * 60 * 1000;
 
-// The last firing is known only to the hour, so this never claims a minute it does not have.
+// The last Activation is known only to the hour, so this never claims a minute it does not have.
 export function describeAgo(instant: string, now: number): string {
   const hours = Math.floor((now - Date.parse(instant)) / hourMs);
 

@@ -13,18 +13,18 @@ public sealed partial class ActivationQueries(EventsStoreReader events)
     // Narrow counts, not one wide one: every pairing multiplies the series a store returns, and a store caps them.
     public async Task<ActivationTally> TallyBySkillAsync(DaySpan span, Filter filter, CancellationToken cancellationToken)
     {
-        var narrowed = Firings(span, filter);
+        var narrowed = ActivationsIn(span, filter);
 
         var timing = events.CountByHourAsync(narrowed, [EventAttributes.Skill], cancellationToken);
         var placing = events.CountAsync(narrowed, ByRepository, cancellationToken);
         var tracing = events.CountAsync(narrowed, [EventAttributes.Skill, .. SkillOrigin.Attributes], cancellationToken);
-        var surveying = events.CountAsync(Firings(span), [], cancellationToken);
+        var surveying = events.CountAsync(ActivationsIn(span), [], cancellationToken);
 
         var (timed, repositories, origins, period) = (await timing, await placing, await tracing, await surveying);
 
         var hours = timed.BySkill().ToDictionary(group => group.Key, IReadOnlyList<int> (group) => ByHour(group));
 
-        // One query answers both the Origins and the Activations by trigger, so each firing is read once.
+        // One query answers both the Origins and the Activations by trigger, so no event is read twice.
         var traced = origins.BySkill().ToDictionary(
             group => group.Key,
             group => group.Select(count => (Origin: SkillOrigin.Of(count.Attribute), count.Total)).ToArray());
@@ -62,7 +62,7 @@ public sealed partial class ActivationQueries(EventsStoreReader events)
         DaySpan span,
         CancellationToken cancellationToken)
     {
-        var fired = await events.CountAsync(Firings(span), [EventAttributes.Owner, EventAttributes.RepositoryName], cancellationToken);
+        var fired = await events.CountAsync(ActivationsIn(span), [EventAttributes.Owner, EventAttributes.RepositoryName], cancellationToken);
 
         return (
             [
@@ -75,8 +75,8 @@ public sealed partial class ActivationQueries(EventsStoreReader events)
             fired);
     }
 
-    private static EventQuery Firings(DaySpan span) => new(EventName, span.FromUtc, span.UntilUtc);
+    private static EventQuery ActivationsIn(DaySpan span) => new(EventName, span.FromUtc, span.UntilUtc);
 
-    private static EventQuery Firings(DaySpan span, Filter filter) =>
-        Firings(span) with { Repository = filter.Repository, Skill = filter.Skill };
+    private static EventQuery ActivationsIn(DaySpan span, Filter filter) =>
+        ActivationsIn(span) with { Repository = filter.Repository, Skill = filter.Skill };
 }

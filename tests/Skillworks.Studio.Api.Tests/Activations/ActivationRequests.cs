@@ -11,7 +11,7 @@ public static class ActivationRequests
     public static async Task<ActivationsAnswer> ActivationAnswer(this StudioHost studio, string filter = "") =>
         ActivationsAnswer.Of(await studio.ActivationLines(filter));
 
-    public static async Task<IReadOnlyList<ActivationRow>> FiringsOf(this StudioHost studio, string filter = "") =>
+    public static async Task<IReadOnlyList<ActivationRow>> ActivationsOf(this StudioHost studio, string filter = "") =>
         (await studio.ActivationAnswer(filter)).Activations;
 
     // Raw JSON, as a typed row silently drops a field the line should no longer carry.

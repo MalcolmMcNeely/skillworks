@@ -95,7 +95,7 @@ public sealed partial class SkillEndpointsTests
 
         var elsewhere = await other.SkillAnswer();
 
-        // One Loki serves many teams, and another tenant's firings would be another team's skills.
+        // One Loki serves many teams, and another tenant's Activations would be another team's skills.
         Assert.NotEmpty((await sent.SkillOn("2026-09-14", "grilling")).Origins);
         Assert.Equal("quiet", elsewhere.Gap.Kind);
         Assert.Empty(elsewhere.Skills);

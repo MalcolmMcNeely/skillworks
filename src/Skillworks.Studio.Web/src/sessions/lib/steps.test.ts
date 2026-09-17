@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { Activation } from './panels/activations';
 import type { ContextPoint } from './panels/context';
 import type { Exchange } from './panels/conversation';
-import type { SkillCall } from './panels/skillCalls';
 import type { Session } from './sessions';
 import {
   describeClock,
@@ -50,7 +50,7 @@ const said: Exchange = {
   cost: 0.42,
 };
 
-const fired: SkillCall = {
+const fired: Activation = {
   id: '7',
   skill: 'tdd',
   atUtc: '2026-09-14T09:00:00.000Z',
@@ -101,13 +101,13 @@ describe('foldSessionLine', () => {
     expect(answer.steps).toEqual([prompt]);
   });
 
-  it('takes the skill calls, so the panel reads what the timeline is already drawing', () => {
+  it('takes the activations, so the panel reads what the timeline is already drawing', () => {
     const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
-      kind: 'skillCalls',
-      skillCalls: [fired],
+      kind: 'activations',
+      activations: [fired],
     });
 
-    expect(answer.skillCalls).toEqual([fired]);
+    expect(answer.activations).toEqual([fired]);
     expect(answer.steps).toEqual([prompt]);
   });
 

@@ -6,16 +6,16 @@ namespace Skillworks.Core.Activations.Queries;
 
 public sealed partial class ActivationQueries
 {
-    // One firing at a time, not a tally: each one names the run it happened in, and a tally names none.
-    public async Task<(IReadOnlyList<Activation> Fired, EventTotals Period)> FiringsAsync(
+    // An Activation names the run it happened in, and a tally names none.
+    public async Task<(IReadOnlyList<Activation> Fired, EventTotals Period)> ActivationsAsync(
         DaySpan span,
         Filter filter,
         CancellationToken cancellationToken)
     {
-        var reading = events.LinesAsync(Firings(span, filter), cancellationToken);
+        var reading = events.LinesAsync(ActivationsIn(span, filter), cancellationToken);
 
         // Judged on the period, not on what was asked, or a Skill that never fired would read as a quiet week.
-        var surveying = events.CountAsync(Firings(span), [], cancellationToken);
+        var surveying = events.CountAsync(ActivationsIn(span), [], cancellationToken);
 
         var (read, period) = (await reading, await surveying);
 

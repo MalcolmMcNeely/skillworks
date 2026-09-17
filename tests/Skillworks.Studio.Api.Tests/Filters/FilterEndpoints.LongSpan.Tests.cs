@@ -57,11 +57,11 @@ public sealed partial class FilterEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_a_firing_at_midnight_once_on_the_day_it_starts()
+    public async Task Counts_an_activation_at_midnight_once_on_the_day_it_starts()
     {
         using var studio = new StudioHost();
 
-        // One at every midnight, so every cut between days has a firing on it.
+        // One at every midnight, so every cut between days has an Activation on it.
         await studio.Push(SkillActivated.AtEveryMidnight("grilling", "2026-08-31", "2026-09-11"));
 
         var answer = await studio.SkillAnswer(TenDays);

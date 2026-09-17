@@ -19,7 +19,7 @@ public sealed partial class FilterEndpointsTests
         var answer = await studio.SkillAnswer("?from=2026-09-05&to=2026-09-05");
         var grilling = Assert.Single(Assert.Single(answer.Days).Skills);
 
-        // Narrowed as Activations are, or cost per activation would set one day's firings against other days' spend.
+        // Narrowed as Activations are, or Each would set one day's count against other days' spend.
         Assert.Equal(0.06m, grilling.Spend?.Cost);
         Assert.Equal(600, grilling.Spend?.InputTokens);
     }

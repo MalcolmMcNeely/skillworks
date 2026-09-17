@@ -10,9 +10,9 @@ import { sessions as page, tabTitleOf } from '../../pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { DepthWord } from '../components/DepthWord';
 import { Findings } from '../components/Findings';
+import { ActivationPanel } from '../components/panels/ActivationPanel';
 import { ContextPanel } from '../components/panels/ContextPanel';
 import { ConversationPanel } from '../components/panels/ConversationPanel';
-import { SkillCallPanel } from '../components/panels/SkillCallPanel';
 import { SplitPanel } from '../components/panels/SplitPanel';
 import { StepPanel } from '../components/panels/StepPanel';
 import { SubagentPanel } from '../components/panels/SubagentPanel';
@@ -20,10 +20,10 @@ import { TracePanel } from '../components/panels/TracePanel';
 import { Timeline } from '../components/Timeline';
 import { rangeOf, readRange, widened, withRange, type Range } from '../lib/brush';
 import { type Named } from '../lib/findings';
+import { activationSpellsOf, type ActivationSpell } from '../lib/panels/activations';
 import { agentSpellsOf, ranByOne, type AgentSpell } from '../lib/panels/agents';
 import { levelsOf, type Level } from '../lib/panels/context';
 import { bandsOf, type Band } from '../lib/panels/conversation';
-import { firingsOf, type Firing } from '../lib/panels/skillCalls';
 import { describeLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpan, type Mark, type SessionAnswer } from '../lib/steps';
 import { readWhere, withWhere, type Where } from '../lib/where';
@@ -83,12 +83,12 @@ export function Session() {
 
   const steps = answer?.steps;
   const exchanges = answer?.exchanges;
-  const skillCalls = answer?.skillCalls;
+  const activations = answer?.activations;
   const context = answer?.context;
   const subagents = answer?.subagents;
   const marks = useMemo(() => marksOf(steps ?? []), [steps]);
   const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
-  const firings = useMemo(() => firingsOf(skillCalls ?? []), [skillCalls]);
+  const activationSpells = useMemo(() => activationSpellsOf(activations ?? []), [activations]);
   const levels = useMemo(() => levelsOf(context ?? []), [context]);
   const agentSpells = useMemo(() => agentSpellsOf(subagents ?? []), [subagents]);
   const whole = runSpan(marks);
@@ -108,9 +108,11 @@ export function Session() {
   const onExchange = (band: Band) =>
     whole === null ? undefined : brush(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index });
 
-  // Unpadded, unlike an Exchange: a call's stretch abuts the next call's, and padding would pull that one in too.
-  const onCall = (firing: Firing) =>
-    whole === null ? undefined : brush(rangeOf(firing.atMs, firing.followedToMs, whole), { call: firing.call.id });
+  // Unpadded, unlike an Exchange: one spell abuts the next, and padding would pull that one in too.
+  const onActivation = (spell: ActivationSpell) =>
+    whole === null
+      ? undefined
+      : brush(rangeOf(spell.atMs, spell.followedToMs, whole), { activation: spell.activation.id });
 
   const onAgent = (spell: AgentSpell) =>
     whole === null ? undefined : brush(widened([spell.startMs, spell.endMs], whole), { agent: spell.agent.id });
@@ -144,16 +146,16 @@ export function Session() {
         marks={marks}
         drawn={drawn}
         bands={bands}
-        firings={firings}
+        activationSpells={activationSpells}
         levels={levels}
         agentSpells={agentSpells}
         whole={whole}
         range={range}
         where={where}
-        onRange={(stretch) => brush(stretch, stretch === null ? { exchange: null, call: null, agent: null } : {})}
+        onRange={(stretch) => brush(stretch, stretch === null ? { exchange: null, activation: null, agent: null } : {})}
         onOpen={open}
         onExchange={onExchange}
-        onCall={onCall}
+        onActivation={onActivation}
         onAgent={onAgent}
         onCloseAgent={() => brush(null, { agent: null })}
         onFinding={onFinding}
@@ -168,7 +170,7 @@ function Body({
   marks,
   drawn,
   bands,
-  firings,
+  activationSpells,
   levels,
   agentSpells,
   whole,
@@ -177,7 +179,7 @@ function Body({
   onRange,
   onOpen,
   onExchange,
-  onCall,
+  onActivation,
   onAgent,
   onCloseAgent,
   onFinding,
@@ -187,7 +189,7 @@ function Body({
   marks: readonly Mark[];
   drawn: readonly Mark[];
   bands: readonly Band[];
-  firings: readonly Firing[];
+  activationSpells: readonly ActivationSpell[];
   levels: readonly Level[];
   agentSpells: readonly AgentSpell[];
   whole: Range | null;
@@ -196,7 +198,7 @@ function Body({
   onRange: (range: Range | null) => void;
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
-  onCall: (firing: Firing) => void;
+  onActivation: (spell: ActivationSpell) => void;
   onAgent: (spell: AgentSpell) => void;
   onCloseAgent: () => void;
   onFinding: (named: Named) => void;
@@ -241,7 +243,7 @@ function Body({
         onOpen={onOpen}
       />
       <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
-      <SkillCallPanel firings={firings} range={range} opened={where.call} onOpen={onCall} />
+      <ActivationPanel spells={activationSpells} range={range} opened={where.activation} onOpen={onActivation} />
       <SubagentPanel
         agentSpells={agentSpells}
         depth={answer.depth}

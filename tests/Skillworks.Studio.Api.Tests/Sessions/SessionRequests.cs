@@ -39,8 +39,8 @@ public static class SessionRequests
     public static async Task<IReadOnlyList<ExchangeRow>> ExchangesIn(this StudioHost studio, string id, string filter = "") =>
         (await studio.StepAnswer(id, filter)).Exchanges;
 
-    public static async Task<IReadOnlyList<SkillCallRow>> SkillCallsIn(this StudioHost studio, string id, string filter = "") =>
-        (await studio.StepAnswer(id, filter)).SkillCalls;
+    public static async Task<IReadOnlyList<ActivationRow>> ActivationsIn(this StudioHost studio, string id, string filter = "") =>
+        (await studio.StepAnswer(id, filter)).Activations;
 
     public static async Task<IReadOnlyList<ContextRow>> ContextIn(this StudioHost studio, string id, string filter = "") =>
         (await studio.StepAnswer(id, filter)).Context;

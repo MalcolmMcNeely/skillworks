@@ -2,11 +2,11 @@ using System.Runtime.CompilerServices;
 using Skillworks.Core.Arriving;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Gaps;
+using Skillworks.Core.Sessions.Activations;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Queries;
-using Skillworks.Core.Sessions.SkillCalls;
 using Skillworks.Core.Sessions.Trace;
 
 namespace Skillworks.Core.Sessions.Steps;
@@ -27,7 +27,7 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
         {
             // Ahead of the steps, so a screen that draws on the steps landing has every panel already.
             yield return new ExchangesPage(opened.Said);
-            yield return new SkillCallsPage(opened.Fired);
+            yield return new ActivationsPage(opened.Fired);
             yield return new ContextPage(opened.Sent, opened.LimitTokens);
 
             // Five of the eight bars are read off the events alone, so a slow trace store leaves no empty list.

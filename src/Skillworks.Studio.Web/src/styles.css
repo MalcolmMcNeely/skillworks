@@ -1306,7 +1306,7 @@ button.tile-skin {
   white-space: nowrap;
 }
 
-.firings {
+.activations {
   align-items: baseline;
   border-top: 1px solid var(--rule);
   display: flex;
@@ -1317,7 +1317,7 @@ button.tile-skin {
   padding-top: 0.4rem;
 }
 
-.firings-label {
+.activations-label {
   color: var(--hud);
   flex: none;
   font-family: var(--mono);
@@ -1325,11 +1325,11 @@ button.tile-skin {
   letter-spacing: 0.1em;
 }
 
-.firings-word {
+.activations-word {
   margin: 0;
 }
 
-.firings ul {
+.activations ul {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -1339,7 +1339,7 @@ button.tile-skin {
   padding: 0;
 }
 
-.firing a {
+.activation a {
   align-items: baseline;
   border: 1px solid var(--line);
   color: var(--ink-soft);
@@ -1352,19 +1352,19 @@ button.tile-skin {
   text-decoration: none;
 }
 
-.firing a:hover,
-.firing a:focus-visible {
+.activation a:hover,
+.activation a:focus-visible {
   border-color: var(--hud);
   color: var(--ink);
 }
 
-.firing-clock {
+.activation-clock {
   font-family: var(--mono);
   white-space: nowrap;
 }
 
-.firing-where,
-.firing-trigger {
+.activation-where,
+.activation-trigger {
   color: var(--ink-faint);
   font-family: var(--mono);
   font-size: 0.64rem;

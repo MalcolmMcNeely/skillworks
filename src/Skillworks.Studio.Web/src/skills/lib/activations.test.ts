@@ -4,7 +4,7 @@ import { describeFiredAt, firedInNoRun, foldActivationsLine, noActivations, type
 
 const ended = (gap: Gap) => foldActivationsLine(noActivations, { kind: 'end', gap });
 
-const firing: Activation = {
+const activation: Activation = {
   skill: 'tdd',
   atUtc: '2026-09-14T09:00:00+00:00',
   session: '8f1c0a9e-0000-4000-8000-000000000001',
@@ -13,10 +13,10 @@ const firing: Activation = {
 };
 
 describe('foldActivationsLine', () => {
-  it('takes the firings and marks them landed', () => {
-    const answer = foldActivationsLine(noActivations, { kind: 'activations', activations: [firing] });
+  it('takes the activations and marks them landed', () => {
+    const answer = foldActivationsLine(noActivations, { kind: 'activations', activations: [activation] });
 
-    expect(answer.activations).toEqual([firing]);
+    expect(answer.activations).toEqual([activation]);
     expect(answer.landed).toBe(true);
   });
 
@@ -30,11 +30,11 @@ describe('foldActivationsLine', () => {
     expect(answer.landed).toBe(true);
   });
 
-  it('keeps the firings that landed when the answer ends', () => {
-    const landed = foldActivationsLine(noActivations, { kind: 'activations', activations: [firing] });
+  it('keeps the activations that landed when the answer ends', () => {
+    const landed = foldActivationsLine(noActivations, { kind: 'activations', activations: [activation] });
     const whole = foldActivationsLine(landed, { kind: 'end', gap: { kind: 'complete', missing: null } });
 
-    expect(whole.activations).toEqual([firing]);
+    expect(whole.activations).toEqual([activation]);
   });
 
   it('waits before saying a skill never fired, so an answer on its way does not read as none', () => {
@@ -59,14 +59,14 @@ describe('firedInNoRun', () => {
   });
 
   it('says nothing when the skill did fire', () => {
-    const landed = foldActivationsLine(noActivations, { kind: 'activations', activations: [firing] });
+    const landed = foldActivationsLine(noActivations, { kind: 'activations', activations: [activation] });
 
     expect(firedInNoRun(foldActivationsLine(landed, { kind: 'end', gap: { kind: 'complete', missing: null } }))).toBe(false);
   });
 });
 
 describe('describeFiredAt', () => {
-  it('reads a firing to the minute', () => {
+  it('reads an activation to the minute', () => {
     expect(describeFiredAt('2026-09-14T09:00:00+00:00')).toBe('2026-09-14 09:00');
   });
 

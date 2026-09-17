@@ -57,7 +57,7 @@ public sealed partial class SkillEndpointsTests
         var elsewhere = await studio.SkillAnswer("?repository=acme/nu");
         var unfired = await studio.SkillAnswer("?skill=tdd");
 
-        // The store holds firings for these days, so "quiet" would send a reader looking for a telemetry fault.
+        // The store holds Activations for these days, so "quiet" would send a reader looking for a telemetry fault.
         Assert.Empty(elsewhere.Skills);
         Assert.Equal("complete", elsewhere.Gap.Kind);
         Assert.Empty(unfired.Skills);
@@ -101,7 +101,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillAnswer();
 
-        // The earlier firings are real, but nothing has reached the events store since the switch went off.
+        // The earlier Activations are real, but nothing has reached the events store since the switch went off.
         Assert.Equal("telemetryOff", answer.Gap.Kind);
         Assert.Contains("Telemetry switch", answer.Gap.Missing ?? "");
         Assert.NotEmpty(Assert.Single(answer.Day("2026-09-14").Skills).Origins);
@@ -134,7 +134,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Says_nothing_is_missing_when_the_period_holds_turns_but_no_firings()
+    public async Task Says_nothing_is_missing_when_the_period_holds_turns_but_no_activations()
     {
         using var studio = new StudioHost();
 

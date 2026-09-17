@@ -5,13 +5,17 @@ import { nowhere, readWhere, sessionAddress, withWhere } from './where';
 const run = '8f1c0a9e-0000-4000-8000-000000000001';
 
 describe('readWhere', () => {
-  it('reads the exchange, the skill call, the step and the subagent a link named', () => {
-    expect(readWhere(new URLSearchParams('exchange=2&call=7&step=41&agent=agent-a'))).toEqual({
+  it('reads the exchange, the activation, the step and the subagent a link named', () => {
+    expect(readWhere(new URLSearchParams('exchange=2&activation=7&step=41&agent=agent-a'))).toEqual({
       exchange: 2,
-      call: '7',
+      activation: '7',
       step: '41',
       agent: 'agent-a',
     });
+  });
+
+  it('opens no activation for an older link that still names one the old way', () => {
+    expect(readWhere(new URLSearchParams('call=7')).activation).toBeNull();
   });
 
   it('reads nothing where the address names nothing, so an unopened run reads as the whole run', () => {
@@ -32,19 +36,19 @@ describe('readWhere', () => {
     const shown = new URLSearchParams('repository=acme%2Fxi&step=41');
 
     expect(readFilter(shown).repository).toBe('acme/xi');
-    expect(Object.keys(readWhere(shown))).toEqual(['exchange', 'call', 'step', 'agent']);
+    expect(Object.keys(readWhere(shown))).toEqual(['exchange', 'activation', 'step', 'agent']);
   });
 });
 
 describe('withWhere', () => {
   it('writes where the reader is, so a reload lands in the same place', () => {
-    const where = { exchange: 2, call: '7', step: '41', agent: 'agent-a' };
+    const where = { exchange: 2, activation: '7', step: '41', agent: 'agent-a' };
 
     expect(readWhere(withWhere(new URLSearchParams(''), where))).toEqual(where);
   });
 
-  it('takes a step, a skill call and a subagent off the address when the reader closes them', () => {
-    expect(withWhere(new URLSearchParams('step=41&exchange=2&call=7&agent=agent-a'), nowhere).toString()).toBe('');
+  it('takes a step, an activation and a subagent off the address when the reader closes them', () => {
+    expect(withWhere(new URLSearchParams('step=41&exchange=2&activation=7&agent=agent-a'), nowhere).toString()).toBe('');
   });
 
   it('keeps the parameters it was given, so opening a step never throws the span or the repository away', () => {

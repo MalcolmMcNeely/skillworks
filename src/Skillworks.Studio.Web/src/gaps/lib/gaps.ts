@@ -16,7 +16,7 @@ export interface GapEnd {
   gap: Gap;
 }
 
-// A Gap counting firings alone would call a period that only spent quiet, so an answer may end without one.
+// A Gap counting Activations alone would call a period that only spent quiet, so an answer may end without one.
 export interface PlainEnd {
   kind: 'end';
 }

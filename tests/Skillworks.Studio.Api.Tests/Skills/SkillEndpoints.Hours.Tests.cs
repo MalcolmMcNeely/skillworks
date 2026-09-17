@@ -22,7 +22,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_a_firing_on_the_hour_in_the_hour_it_starts()
+    public async Task Counts_an_activation_on_the_hour_in_the_hour_it_starts()
     {
         using var studio = new StudioHost();
 
@@ -61,7 +61,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_by_hour_only_the_firings_the_filter_keeps()
+    public async Task Counts_by_hour_only_the_activations_the_filter_keeps()
     {
         using var studio = new StudioHost();
 

@@ -106,7 +106,7 @@ describe('describeAgo', () => {
     expect(readings).toEqual(['1h', '23h', '2d', '14d']);
   });
 
-  it('says this hour for a firing in the hour that is still running', () => {
+  it('says this hour for an activation in the hour that is still running', () => {
     expect(describeAgo('2026-09-15T12:00:00Z', now)).toBe('This hour');
   });
 });

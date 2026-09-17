@@ -1,8 +1,8 @@
 using Skillworks.Core.EventsStore;
+using Skillworks.Core.Sessions.Activations;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Exchanges;
-using Skillworks.Core.Sessions.SkillCalls;
 using Skillworks.Core.Sessions.Steps;
 
 namespace Skillworks.Core.Sessions;
@@ -11,7 +11,7 @@ public sealed record OpenedRun(
     Session? Run,
     IReadOnlyList<DrawnStep> Drawn,
     IReadOnlyList<Exchange> Said,
-    IReadOnlyList<SkillCall> Fired,
+    IReadOnlyList<Activation> Fired,
     IReadOnlyList<ContextPoint> Sent,
     long? LimitTokens,
     IReadOnlyList<StepKey> Keys,

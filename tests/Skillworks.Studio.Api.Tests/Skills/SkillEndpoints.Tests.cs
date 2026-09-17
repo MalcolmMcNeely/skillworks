@@ -92,7 +92,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_a_firing_on_the_UTC_day_it_happened()
+    public async Task Counts_an_activation_on_the_UTC_day_it_happened()
     {
         using var studio = new StudioHost();
 
@@ -109,7 +109,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_every_firing_and_turn_of_a_day_however_the_filter_narrows_it()
+    public async Task Counts_every_activation_and_turn_of_a_day_however_the_filter_narrows_it()
     {
         using var studio = new StudioHost();
 
@@ -140,7 +140,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_a_firing_that_names_no_repository_without_naming_one_for_it()
+    public async Task Counts_an_activation_that_names_no_repository_without_naming_one_for_it()
     {
         using var studio = new StudioHost();
 

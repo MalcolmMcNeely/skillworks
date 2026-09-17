@@ -3,7 +3,7 @@ using Skillworks.Core.Provenance;
 
 namespace Skillworks.Core.Activations;
 
-// Period counts every firing in the span, narrowed or not, so a filter that matches nothing is not read as a quiet week.
+// Period counts every Activation in the span, narrowed or not, so a filter that matches nothing is not read as a quiet week.
 public sealed record ActivationTally(
     IReadOnlyDictionary<string, int> Counts,
     // By UTC hour, as the Filter counts whole UTC days.

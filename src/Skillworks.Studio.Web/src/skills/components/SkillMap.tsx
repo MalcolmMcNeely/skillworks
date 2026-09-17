@@ -9,7 +9,7 @@ import type { MapChoice } from '../lib/mapChoice';
 import { mapNoticeOf } from '../lib/mapNotice';
 import { describeSpend, missingWords, type SkillSummary } from '../lib/skills';
 import type { StripSlice } from '../lib/strip';
-import { Firings } from './Firings';
+import { Activations } from './Activations';
 import { TileReadout } from './TileReadout';
 
 // One scale across the whole map, so a busy hour on one tile is not drawn the height of a quiet one on another.
@@ -332,7 +332,7 @@ export function SkillMap({
         </div>
       </div>
 
-      {held?.kind === 'skill' && <Firings skill={held.skill.name} filter={filter} />}
+      {held?.kind === 'skill' && <Activations skill={held.skill.name} filter={filter} />}
       {showsFigures(answer) && unsized.length > 0 && <Unsized skills={unsized} figure={choice.figure} />}
       {showsFigures(answer) && beyond.length > 0 && <Beyond sized={beyond} figure={choice.figure} />}
     </section>

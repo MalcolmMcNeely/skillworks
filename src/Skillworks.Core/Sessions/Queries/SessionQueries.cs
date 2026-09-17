@@ -20,7 +20,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
     private const string TurnEvent = "api_request";
 
     // The only event a Skill's name reaches, so the runs it fired in are read from these alone.
-    private const string FiringEvent = "skill_activated";
+    private const string ActivationEvent = "skill_activated";
 
     // The one Turn whose answer is the Session's name.
     private const string TitleSource = "generate_session_title";
@@ -76,9 +76,9 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         var erring = events.CountAsync(everything with { EventName = ModelErrorEvent }, BySession, cancellationToken);
         var costing = events.SumAsync(everything with { EventName = TurnEvent }, CostAttribute, BySession, cancellationToken);
 
-        var firing = filter.Skill is null
+        var activating = filter.Skill is null
             ? Task.FromResult(EventTotals.Of([]))
-            : events.CountAsync(Firings(span, filter), BySession, cancellationToken);
+            : events.CountAsync(ActivationsIn(span, filter), BySession, cancellationToken);
 
         // Judged on the period, not on what was asked, or a Repository with no runs would read as a quiet week.
         var surveying = filter.Repository is null ? placing : events.CountAsync(Events(span), [], cancellationToken);
@@ -93,7 +93,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             await deciding,
             await erring,
             await costing,
-            await firing,
+            await activating,
             await surveying);
 
         var period = read.Surveyed with { Unreachable = read.Unreachable };
@@ -188,8 +188,8 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         Events(span, filter) with { EventName = TitleEvent, QuerySource = TitleSource };
 
     // The Repository is left off, as the rows this narrows are narrowed by it already.
-    private static EventQuery Firings(DaySpan span, Filter filter) =>
-        Events(span) with { EventName = FiringEvent, Skill = filter.Skill };
+    private static EventQuery ActivationsIn(DaySpan span, Filter filter) =>
+        Events(span) with { EventName = ActivationEvent, Skill = filter.Skill };
 
     // One short of an answer is no answer, as a run missing its name or its length would read as a lie.
     private sealed record Readings(

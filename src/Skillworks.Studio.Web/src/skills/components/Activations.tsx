@@ -27,12 +27,12 @@ interface Reading {
   failure: string | null;
 }
 
-// Only the span: the run behind a firing is one run, so a Repository could only narrow it away.
-function addressOf(firing: Activation, filter: Filter): string {
-  return sessionAddress(firing.session, nowhere, filterParams({ ...everything, from: filter.from, to: filter.to }));
+// Only the span: the run behind an Activation is one run, so a Repository could only narrow it away.
+function addressOf(activation: Activation, filter: Filter): string {
+  return sessionAddress(activation.session, nowhere, filterParams({ ...everything, from: filter.from, to: filter.to }));
 }
 
-export function Firings({ skill, filter }: { skill: string; filter: Filter }) {
+export function Activations({ skill, filter }: { skill: string; filter: Filter }) {
   const [reading, setReading] = useState<Reading | null>(null);
   const narrowing = filterParams({ ...filter, skill }).toString();
 
@@ -66,8 +66,8 @@ export function Firings({ skill, filter }: { skill: string; filter: Filter }) {
   const shown = answer.activations.slice(0, mostRows);
 
   return (
-    <section className="firings" aria-label={`Runs ${skill} fired in`} aria-busy={busy}>
-      <span className="firings-label" aria-hidden="true">
+    <section className="activations" aria-label={`Runs ${skill} fired in`} aria-busy={busy}>
+      <span className="activations-label" aria-hidden="true">
         {skill}
       </span>
 
@@ -75,22 +75,22 @@ export function Firings({ skill, filter }: { skill: string; filter: Filter }) {
       <SignalWord gap={answer.gap} failure={failure} />
 
       {busy ? (
-        <p className="micro firings-word">Reading the firings…</p>
+        <p className="micro activations-word">Reading the activations…</p>
       ) : shown.length === 0 ? (
-        <p className="micro firings-word">
+        <p className="micro activations-word">
           {firedInNoRun(answer) ? 'This skill fired in no run over this span.' : missingWords.noAnswer}
         </p>
       ) : (
         <ul>
-          {shown.map((firing) => (
-            <li key={`${firing.session}:${firing.atUtc}`} className="firing">
-              <Link to={addressOf(firing, filter)}>
-                <span className="firing-clock">{describeFiredAt(firing.atUtc)}</span>
-                <span className="firing-where">{firing.repository ?? missingWords.none}</span>
-                <span className="firing-trigger" aria-hidden="true">
-                  {triggerMark(firing.trigger).glyph}
+          {shown.map((activation) => (
+            <li key={`${activation.session}:${activation.atUtc}`} className="activation">
+              <Link to={addressOf(activation, filter)}>
+                <span className="activation-clock">{describeFiredAt(activation.atUtc)}</span>
+                <span className="activation-where">{activation.repository ?? missingWords.none}</span>
+                <span className="activation-trigger" aria-hidden="true">
+                  {triggerMark(activation.trigger).glyph}
                 </span>
-                <span className="visually-hidden">{triggerMark(firing.trigger).word}</span>
+                <span className="visually-hidden">{triggerMark(activation.trigger).word}</span>
               </Link>
             </li>
           ))}
@@ -98,7 +98,7 @@ export function Firings({ skill, filter }: { skill: string; filter: Filter }) {
       )}
 
       {answer.activations.length > mostRows ? (
-        <p className="micro firings-word">
+        <p className="micro activations-word">
           The latest {describeCount(mostRows)} of {describeCount(answer.activations.length)} are listed. Narrow the span to
           reach the rest.
         </p>

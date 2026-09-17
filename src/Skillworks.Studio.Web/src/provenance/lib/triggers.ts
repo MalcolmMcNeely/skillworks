@@ -22,7 +22,7 @@ export const triggerSymbols: SymbolTable = {
   glyphs: [...Object.values(marks).map((mark) => mark.glyph), unrecorded.glyph],
 };
 
-// A trigger Claude Code adds later keeps its own name, so a firing is never dropped or read as another trigger.
+// A trigger Claude Code adds later keeps its own name, so an Activation is never dropped or read as another trigger.
 export function triggerMark(trigger: string | null): Omit<TriggerMark, 'activations'> {
   if (trigger === null) {
     return unrecorded;

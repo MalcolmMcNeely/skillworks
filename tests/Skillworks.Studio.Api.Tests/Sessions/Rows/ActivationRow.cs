@@ -1,6 +1,6 @@
 namespace Skillworks.Studio.Api.Tests.Sessions.Rows;
 
-public sealed record SkillCallRow
+public sealed record ActivationRow
 {
     public required string Id { get; init; }
 
