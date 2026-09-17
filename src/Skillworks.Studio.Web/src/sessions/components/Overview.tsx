@@ -1,7 +1,7 @@
 import { useMemo, useRef, type PointerEvent } from 'react';
-import { clamp, moved, rangeOf, type Range } from '../lib/brush';
+import { clamp, moved, rangeOf, type Range } from '../lib/view';
 import { foldScale } from '../lib/fold';
-import { describeClock, stretchesOf, toneOf, type Mark, type Tone } from '../lib/steps';
+import { boundsOf, describeClock, toneOf, type Mark, type Tone } from '../lib/steps';
 
 const reachPx = 7;
 
@@ -22,51 +22,51 @@ interface Dragging {
 // Three rows and no more, so a run's shape reads at a glance on a strip a few pixels tall.
 const rows: Record<Tone, number> = { model: 0, tool: 1, refused: 1, fault: 2 };
 
-function gripAt(x: number, brush: Range | null): Grip {
-  if (brush === null) {
+function gripAt(x: number, view: Range | null): Grip {
+  if (view === null) {
     return 'new';
   }
 
-  if (Math.abs(x - brush[0]) <= reachPx) {
+  if (Math.abs(x - view[0]) <= reachPx) {
     return 'from';
   }
 
-  if (Math.abs(x - brush[1]) <= reachPx) {
+  if (Math.abs(x - view[1]) <= reachPx) {
     return 'to';
   }
 
-  return x > brush[0] && x < brush[1] ? 'move' : 'new';
+  return x > view[0] && x < view[1] ? 'move' : 'new';
 }
 
 export function Overview({
   marks,
   whole,
-  range,
+  view,
   left,
   width,
-  onRange,
+  onView,
 }: {
   marks: readonly Mark[];
   whole: Range;
-  range: Range | null;
+  view: Range | null;
   left: number;
   width: number;
-  onRange: (range: Range | null) => void;
+  onView: (view: Range | null) => void;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const dragging = useRef<Dragging | null>(null);
   const right = Math.max(left + 10, width - 8);
 
-  const scale = useMemo(() => foldScale(stretchesOf(marks), left, right), [marks, left, right]);
+  const scale = useMemo(() => foldScale(boundsOf(marks), left, right), [marks, left, right]);
 
-  const brush: Range | null = range === null ? null : [scale.map(range[0]), scale.map(range[1])];
+  const viewPx: Range | null = view === null ? null : [scale.map(view[0]), scale.map(view[1])];
   const cursorX = (event: PointerEvent) => event.clientX - (svg.current?.getBoundingClientRect().left ?? 0);
 
-  // The brush is dragged in pixels and read in moments, so a folded idle stretch is crossed at the speed it is drawn.
+  // A View is dragged in pixels and read in moments, so a folded idle pause is crossed at the speed it is drawn.
   const moments = (one: number, other: number): Range =>
     rangeOf(scale.invert(clamp(one, left, right)), scale.invert(clamp(other, left, right)), whole);
 
-  const stretched = (held: Dragging, x: number): Range => {
+  const viewOf = (held: Dragging, x: number): Range => {
     const by = x - held.fromX;
 
     if (held.grip === 'new') {
@@ -94,7 +94,7 @@ export function Overview({
     }
 
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragging.current = { grip: gripAt(x, brush), fromX: x, wasX: brush ?? [x, x], dragged: false };
+    dragging.current = { grip: gripAt(x, viewPx), fromX: x, wasX: viewPx ?? [x, x], dragged: false };
   };
 
   const move = (event: PointerEvent<SVGSVGElement>) => {
@@ -109,7 +109,7 @@ export function Overview({
     held.dragged ||= Math.abs(x - held.fromX) > dragPx;
 
     if (held.dragged) {
-      onRange(stretched(held, x));
+      onView(viewOf(held, x));
     }
   };
 
@@ -120,7 +120,7 @@ export function Overview({
 
     // Pressed and let go in one place: a reader who clicks the strip is asking for the whole run back.
     if (held !== null && !held.dragged) {
-      onRange(null);
+      onView(null);
     }
   };
 
@@ -136,9 +136,9 @@ export function Overview({
       onPointerCancel={up}
       role="img"
       aria-label={
-        range === null
-          ? 'The whole run. Drag across the strip to read one stretch of it.'
-          : `Reading ${describeClock(range[0], true)} to ${describeClock(range[1], true)}. Drag across the strip to read another stretch.`
+        view === null
+          ? 'The whole run. Drag across the strip to choose what is in view.'
+          : `Reading ${describeClock(view[0], true)} to ${describeClock(view[1], true)}. Drag across the strip to change what is in view.`
       }
     >
       <text x={left - 10} y={height / 2 + 4} textAnchor="end" className="timeline-label">
@@ -161,13 +161,13 @@ export function Overview({
         />
       ))}
 
-      {brush !== null && (
+      {viewPx !== null && (
         <>
-          <rect x={left} y={2} width={Math.max(0, brush[0] - left)} height={height - 4} className="timeline-shade" />
-          <rect x={brush[1]} y={2} width={Math.max(0, right - brush[1])} height={height - 4} className="timeline-shade" />
-          <rect x={brush[0]} y={2} width={Math.max(2, brush[1] - brush[0])} height={height - 4} className="timeline-brush" />
-          <rect x={brush[0] - 3} y={height / 2 - 9} width={6} height={18} rx={2} className="timeline-handle" />
-          <rect x={brush[1] - 3} y={height / 2 - 9} width={6} height={18} rx={2} className="timeline-handle" />
+          <rect x={left} y={2} width={Math.max(0, viewPx[0] - left)} height={height - 4} className="timeline-shade" />
+          <rect x={viewPx[1]} y={2} width={Math.max(0, right - viewPx[1])} height={height - 4} className="timeline-shade" />
+          <rect x={viewPx[0]} y={2} width={Math.max(2, viewPx[1] - viewPx[0])} height={height - 4} className="timeline-view" />
+          <rect x={viewPx[0] - 3} y={height / 2 - 9} width={6} height={18} rx={2} className="timeline-handle" />
+          <rect x={viewPx[1] - 3} y={height / 2 - 9} width={6} height={18} rx={2} className="timeline-handle" />
         </>
       )}
     </svg>

@@ -15,7 +15,7 @@ export interface FoldScale {
 // Long enough that a pause for thought stays on the axis, short enough that a walk away from the keyboard folds.
 export const foldsOver = 3 * 60_000;
 
-// The width a fold takes, so a reader sees the run stop and start again rather than one unbroken stretch.
+// A reader sees the run stop and start again rather than one unbroken line.
 const foldPx = 22;
 
 // Never more than this share of the width, or a run of many folds would be all folds.
@@ -24,7 +24,7 @@ const foldShare = 0.2;
 // Without it an instant Step is a segment of no width at all, and nothing inside it can be mapped.
 const leastMs = 500;
 
-// Without the fold, an eleven-hour run is a thin smear of work between long empty stretches.
+// Without the fold, an eleven-hour run is a thin smear of work between long idle pauses.
 export function foldScale(
   spells: readonly (readonly [number, number])[],
   x0: number,
@@ -59,7 +59,7 @@ export function foldScale(
       return pixels[index][0] + ((ms - from) / (to - from)) * (pixels[index][1] - pixels[index][0]);
     }
 
-    // Inside a fold, so the reader's cursor still moves forward over a stretch that took no width.
+    // A moment inside a fold still maps onto its width, so the reader's cursor never stops moving.
     return index + 1 < segments.length
       ? pixels[index][1] + ((ms - to) / (segments[index + 1][0] - to)) * gapPx
       : pixels[index][1];
@@ -142,7 +142,7 @@ function holding(segments: readonly (readonly [number, number])[], ms: number): 
 
 const steps = [1_000, 5_000, 10_000, 30_000, 60_000, 300_000, 600_000, 1_800_000, 3_600_000, 7_200_000, 21_600_000];
 
-// A tick inside a fold would name a moment nothing ran at, so each stretch of work is walked on its own.
+// A tick inside a fold would name a moment nothing ran at, so each segment of work is walked on its own.
 export function ticksOf(scale: FoldScale, leastApartPx = 70): { x: number; ms: number }[] {
   const step = steps.find((each) => each / scale.msPerPx >= leastApartPx) ?? steps[steps.length - 1];
   const ticks: { x: number; ms: number }[] = [];

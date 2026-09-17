@@ -197,7 +197,7 @@ describe('runSpan', () => {
     expect(runSpan(marks)?.[0]).toBe(Date.parse('2026-09-14T09:00:02.000Z'));
   });
 
-  it('says a run with no steps has no stretch to draw', () => {
+  it('says a run with no steps has no bounds to draw', () => {
     expect(runSpan([])).toBeNull();
   });
 });

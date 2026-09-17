@@ -51,7 +51,7 @@ export function tallyOf(levels: readonly Level[], limitTokens: number | null): C
   return {
     turns: levels.length,
     peakTokens,
-    // Nothing to take a share of where no Turn ran, so an empty stretch never reads as nought percent.
+    // Nothing to take a share of where no Turn ran, so an empty View never reads as nought percent.
     peakShare: limitTokens !== null && limitTokens > 0 && levels.length > 0 ? peakTokens / limitTokens : null,
     rebuilds: levels.filter((each) => each.point.rebuilt).length,
   };
@@ -66,7 +66,7 @@ export function ceilingOf(levels: readonly Level[], limitTokens: number | null):
 
 export interface InForce {
   label: string;
-  // Places in the stretch shown, not moments, and both ends taken in.
+  // Places in the View, not moments, and both ends taken in.
   from: number;
   to: number;
 }

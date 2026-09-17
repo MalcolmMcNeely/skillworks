@@ -1,6 +1,6 @@
-import { describeCount, describeMoney, describeStretch } from '../../../figures/lib/figures';
+import { describeCount, describeLength, describeMoney } from '../../../figures/lib/figures';
 import { briefNote, noReport, noSubagentsWord, tallyOf, type AgentSpell, type Depth } from '../../lib/panels/agents';
-import { inRange, type Range } from '../../lib/brush';
+import { inRange, type Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';
 import { describeClock } from '../../lib/steps';
 
@@ -27,7 +27,7 @@ function Opened({ spell, onClose }: { spell: AgentSpell; onClose: () => void }) 
         </button>
       </p>
       <p className="micro">
-        {describeClock(spell.startMs, true)} · {describeStretch(agent.lengthMs)} ·{' '}
+        {describeClock(spell.startMs, true)} · {describeLength(agent.lengthMs)} ·{' '}
         {describeCount(agent.toolCalls)} tool calls · {describeMoney(agent.cost)} ·{' '}
         {describeCount(agent.faults)} faults
       </p>
@@ -45,7 +45,7 @@ function Row({ spell, open, onOpen }: { spell: AgentSpell; open: boolean; onOpen
       <button type="button" className={`agent-row${open ? ' is-open' : ''}`} onClick={() => onOpen(spell)}>
         <span className="call-name">{agent.name}</span>
         <span className="agent-kind">{agent.type ?? notKnown}</span>
-        <span className="agent-figure">{describeStretch(agent.lengthMs)}</span>
+        <span className="agent-figure">{describeLength(agent.lengthMs)}</span>
         <span className="agent-figure">{describeCount(agent.toolCalls)} tool calls</span>
         <span className="agent-figure">{describeMoney(agent.cost)}</span>
         <span className="agent-figure">{describeCount(agent.faults)} faults</span>
@@ -54,23 +54,23 @@ function Row({ spell, open, onOpen }: { spell: AgentSpell; open: boolean; onOpen
   );
 }
 
-// Every row and every figure here reads the brushed stretch alone, or the panel would answer a question nobody asked.
+// Every row and every figure here reads the View alone, or the panel would answer a question nobody asked.
 export function SubagentPanel({
   agentSpells,
   depth,
-  range,
+  view,
   opened,
   onOpen,
   onClose,
 }: {
   agentSpells: readonly AgentSpell[];
   depth: Depth;
-  range: Range | null;
+  view: Range | null;
   opened: string | null;
   onOpen: (spell: AgentSpell) => void;
   onClose: () => void;
 }) {
-  const shown = inRange(agentSpells, range);
+  const shown = inRange(agentSpells, view);
   const tally = tallyOf(shown);
   const open = opened === null ? null : (agentSpells.find((spell) => spell.agent.id === opened) ?? null);
 
@@ -81,7 +81,7 @@ export function SubagentPanel({
         <p className="micro panel-figure">
           {describeCount(tally.subagents)} subagents · {describeCount(tally.toolCalls)} tool calls ·{' '}
           {describeMoney(tally.cost)} · {describeCount(tally.faults)} faults
-          {range === null ? '' : ' in the stretch in view'}
+          {view === null ? '' : ' in view'}
         </p>
       </header>
 

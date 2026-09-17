@@ -44,11 +44,11 @@ describe('figuresOf', () => {
     expect(figuresOf(bands)).toEqual({ exchanges: 2, turns: 5, toolCalls: 6, cost: 0.5 });
   });
 
-  it('counts a brushed stretch alone, so the figures answer the question the reader asked', () => {
+  it('counts the View alone, so the figures answer the question the reader asked', () => {
     expect(figuresOf(bands.slice(1))).toEqual({ exchanges: 1, turns: 3, toolCalls: 1, cost: 0.1 });
   });
 
-  it('counts an empty stretch as nothing rather than as nothing known', () => {
+  it('counts an empty View as nothing rather than as nothing known', () => {
     expect(figuresOf([])).toEqual({ exchanges: 0, turns: 0, toolCalls: 0, cost: 0 });
   });
 });

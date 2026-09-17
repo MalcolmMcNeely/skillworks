@@ -30,7 +30,7 @@ describe('treeOf', () => {
     expect(shape(rows)).toEqual(['early', '-inner', 'late']);
   });
 
-  it('puts a step whose outer step is out of the stretch at the root, so nothing in view is hidden', () => {
+  it('puts a step whose outer step is out of view at the root, so nothing in view is hidden', () => {
     const rows = treeOf([mark('inner', 20)], { inner: 'call' });
 
     expect(shape(rows)).toEqual(['inner']);
@@ -79,7 +79,7 @@ describe('noTreeWord', () => {
     expect(noTreeWord('thin')).toBe('A thin run cannot say what ran inside what.');
   });
 
-  it('says a full run whose stretch holds nothing ran nothing in it', () => {
-    expect(noTreeWord('full')).toBe('Nothing ran in this stretch.');
+  it('says a full run whose View holds nothing ran nothing in it', () => {
+    expect(noTreeWord('full')).toBe('Nothing ran in view.');
   });
 });

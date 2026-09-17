@@ -1,5 +1,5 @@
-import { describeShare, describeStretch } from '../../../figures/lib/figures';
-import type { Range } from '../../lib/brush';
+import { describeLength, describeShare } from '../../../figures/lib/figures';
+import type { Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';
 import { noSplitWord, shareOf, sharesOf, splitLength, type Share, type SplitPage } from '../../lib/panels/split';
 
@@ -21,18 +21,18 @@ function Row({ share, lengthMs }: { share: Share; lengthMs: number }) {
       <span className="split-bar">
         <span className="split-fill" style={{ width: `${shareOf(share, lengthMs) * 100}%` }} />
       </span>
-      <span className="split-figure">{describeStretch(share.ms)}</span>
+      <span className="split-figure">{describeLength(share.ms)}</span>
       <span className="split-share">
         {describeShare(shareOf(share, lengthMs))}
-        {share.overlapMs > share.ms ? ` · ${describeStretch(share.overlapMs)} in all` : ''}
+        {share.overlapMs > share.ms ? ` · ${describeLength(share.overlapMs)} in all` : ''}
       </span>
     </li>
   );
 }
 
-// Every figure here reads the brushed stretch alone, or the panel would answer a question nobody asked.
-export function SplitPanel({ split, range }: { split: SplitPage | null; range: Range | null }) {
-  const shares = sharesOf(split, range);
+// Every figure here reads the View alone, or the panel would answer a question nobody asked.
+export function SplitPanel({ split, view }: { split: SplitPage | null; view: Range | null }) {
+  const shares = sharesOf(split, view);
   const lengthMs = splitLength(shares);
 
   return (
@@ -40,8 +40,8 @@ export function SplitPanel({ split, range }: { split: SplitPage | null; range: R
       <header className="panel-head">
         <h2>Where the time went</h2>
         <p className="micro panel-figure">
-          {describeStretch(lengthMs)}
-          {range === null ? ' over the whole run' : ' in the stretch in view'}
+          {describeLength(lengthMs)}
+          {view === null ? ' over the whole run' : ' in view'}
         </p>
       </header>
 

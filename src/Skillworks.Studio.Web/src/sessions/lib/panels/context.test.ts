@@ -65,11 +65,11 @@ describe('tallyOf', () => {
     expect(tallyOf(levels, null).peakShare).toBeNull();
   });
 
-  it('counts nothing for a stretch with no turn in it', () => {
+  it('counts nothing for a View with no turn in it', () => {
     expect(tallyOf([], 1_000_000)).toEqual({ turns: 0, peakTokens: 0, peakShare: null, rebuilds: 0 });
   });
 
-  it('gives a stretch with no turn no share, so an empty brush never reads as nought percent', () => {
+  it('gives a View with no turn no share, so an empty View never reads as nought percent', () => {
     expect(tallyOf([], 1_000_000).peakShare).toBeNull();
   });
 });
@@ -91,7 +91,7 @@ describe('ceilingOf', () => {
     expect(ceilingOf(past, 200_000)).toBe(250_000);
   });
 
-  it('never divides by nothing when a stretch holds no turn', () => {
+  it('never divides by nothing when a View holds no turn', () => {
     expect(ceilingOf([], null)).toBe(1);
   });
 });
@@ -126,7 +126,7 @@ describe('inForceBands', () => {
     expect(inForceBands(levels)).toEqual([{ label: 'None', from: 0, to: 0 }]);
   });
 
-  it('gives a stretch with no turn no band', () => {
+  it('gives a View with no turn no band', () => {
     expect(inForceBands([])).toEqual([]);
   });
 });

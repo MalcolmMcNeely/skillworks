@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { describeCount, describeMoney } from '../../figures/lib/figures';
 import { nowhere, sessionAddress } from '../lib/where';
 import {
-  describeLength,
+  describeRunLength,
   describeStarted,
   noRepository,
   notKnown,
@@ -25,7 +25,7 @@ function Row({ session, asked }: { session: Session; asked: URLSearchParams }) {
         <Link to={sessionAddress(session.id, nowhere, asked)}>{session.name}</Link>
         {session.running ? <span className="session-running">Running</span> : null}
       </td>
-      <td className="session-figure">{describeLength(session.lengthMs)}</td>
+      <td className="session-figure">{describeRunLength(session.lengthMs)}</td>
       <td className="session-figure">{describeCount(session.toolCalls)}</td>
       <td className="session-figure">{describeMoney(session.cost)}</td>
       <td className="session-figure">{describeCount(session.faults)}</td>

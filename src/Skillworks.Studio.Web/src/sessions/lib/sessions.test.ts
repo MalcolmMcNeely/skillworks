@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { everything } from '../../filters/lib/filters';
 import {
-  describeLength,
   describeNoSessions,
   describePeriod,
+  describeRunLength,
   describeSpan,
   describeStarted,
   foldSessionsLine,
@@ -93,21 +93,21 @@ describe('foldSessionsLine', () => {
   });
 });
 
-describe('describeLength', () => {
+describe('describeRunLength', () => {
   it('counts a short run in minutes', () => {
-    expect(describeLength(41 * 60_000)).toBe('41m');
+    expect(describeRunLength(41 * 60_000)).toBe('41m');
   });
 
   it('counts a long run in hours and minutes, so an eleven-hour run is read at a glance', () => {
-    expect(describeLength(11 * 3_600_000 + 6 * 60_000)).toBe('11h 6m');
+    expect(describeRunLength(11 * 3_600_000 + 6 * 60_000)).toBe('11h 6m');
   });
 
   it('says a run under a minute is under a minute, never nothing', () => {
-    expect(describeLength(12_000)).toBe('< 1m');
+    expect(describeRunLength(12_000)).toBe('< 1m');
   });
 
   it('says a run of no length at all is under a minute, as one event is still a run', () => {
-    expect(describeLength(0)).toBe('< 1m');
+    expect(describeRunLength(0)).toBe('< 1m');
   });
 });
 

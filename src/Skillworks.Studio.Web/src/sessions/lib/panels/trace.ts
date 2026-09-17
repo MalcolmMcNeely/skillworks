@@ -26,7 +26,7 @@ export function treeOf<T extends Placed>(marks: readonly T[], inside: Record<str
   for (const mark of order) {
     const outer = inside[mark.step.id];
 
-    // A Step whose outer Step is out of view sits at the root, so nothing in the stretch is hidden.
+    // A Step whose outer Step is out of view sits at the root, so nothing in view is hidden.
     if (outer !== undefined && outer !== mark.step.id && held.has(outer)) {
       const kin = beneath.get(outer);
 
@@ -69,5 +69,5 @@ export function deepestOf<T>(rows: readonly Node<T>[]): number {
 
 // A Thin run has no Span to nest by, so it says so rather than reading as a run that nested nothing.
 export function noTreeWord(depth: Depth): string {
-  return depth === 'thin' ? 'A thin run cannot say what ran inside what.' : 'Nothing ran in this stretch.';
+  return depth === 'thin' ? 'A thin run cannot say what ran inside what.' : 'Nothing ran in view.';
 }

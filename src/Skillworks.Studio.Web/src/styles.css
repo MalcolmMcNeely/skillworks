@@ -1382,7 +1382,7 @@ button.tile-skin {
   gap: clamp(1rem, 4vh, 2rem);
 }
 
-/* A grid stretches its items, and a stretched link would take clicks far from its words. */
+/* A grid pulls its items to full width, and a link that wide would take clicks far from its words. */
 .no-such-page {
   gap: 0.9rem;
   justify-items: start;
@@ -1728,7 +1728,7 @@ a.home-panel-face:hover::before {
   stroke-width: 1;
 }
 
-/* A fold is a stretch of the run that was cut out, so it is drawn as a break and never as a divider. */
+/* A fold is idle time cut out of the run, so it is drawn as a break and never as a divider. */
 .timeline-fold {
   stroke: var(--line);
   stroke-dasharray: 3 3;
@@ -1760,7 +1760,7 @@ a.home-panel-face:hover::before {
   opacity: 0.66;
 }
 
-.timeline-brush {
+.timeline-view {
   fill: var(--hud);
   opacity: 0.12;
 }

@@ -87,7 +87,7 @@ export function noSubagentsWord(depth: Depth, inRun: number): string {
     return 'A thin run cannot say which subagents it ran.';
   }
 
-  return inRun === 0 ? 'No subagent ran in this run.' : 'No subagent ran in this stretch.';
+  return inRun === 0 ? 'No subagent ran in this run.' : 'No subagent ran in view.';
 }
 
 export function ranByOne<T extends { step: { id: string } }>(

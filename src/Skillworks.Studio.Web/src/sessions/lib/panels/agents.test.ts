@@ -65,7 +65,7 @@ describe('depthTone', () => {
 });
 
 describe('agentSpellsOf', () => {
-  it('gives a subagent the stretch a brush and a panel both read it by', () => {
+  it('gives a subagent the bounds a View and a panel both read it by', () => {
     expect(agentSpellsOf([subagent('agent-a')])).toEqual([
       { agent: subagent('agent-a'), startMs: Date.parse('2026-09-14T09:00:11.000Z'), endMs: Date.parse('2026-09-14T09:00:39.000Z') },
     ]);
@@ -73,7 +73,7 @@ describe('agentSpellsOf', () => {
 });
 
 describe('tallyOf', () => {
-  it('adds up what the subagents in the stretch cost and did', () => {
+  it('adds up what the subagents cost and did', () => {
     const tally = tallyOf(agentSpellsOf([subagent('agent-a'), subagent('agent-b', { cost: 1.6, toolCalls: 1, faults: 0 })]));
 
     expect(tally).toEqual({ subagents: 2, toolCalls: 4, cost: 2, faults: 1 });
@@ -95,9 +95,9 @@ describe('noSubagentsWord', () => {
     expect(noSubagentsWord('thin', 0)).toBe('A thin run cannot say which subagents it ran.');
   });
 
-  it('tells a run that ran none from a stretch that holds none', () => {
+  it('tells a run that ran none from a View that holds none', () => {
     expect(noSubagentsWord('full', 0)).toBe('No subagent ran in this run.');
-    expect(noSubagentsWord('full', 2)).toBe('No subagent ran in this stretch.');
+    expect(noSubagentsWord('full', 2)).toBe('No subagent ran in view.');
   });
 });
 

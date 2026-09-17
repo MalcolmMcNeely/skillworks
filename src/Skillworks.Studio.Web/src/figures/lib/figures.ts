@@ -33,8 +33,8 @@ const minute = 60 * second;
 
 const hour = 60 * minute;
 
-// A stretch can be four milliseconds or forty minutes, so the unit follows the figure.
-export function describeStretch(lengthMs: number): string {
+// A length can be four milliseconds or forty minutes, so the unit follows the figure.
+export function describeLength(lengthMs: number): string {
   if (lengthMs < second) {
     return `${Math.round(lengthMs)} ms`;
   }

@@ -1,5 +1,5 @@
 import type { Depth } from './agents';
-import type { Range } from '../brush';
+import type { Range } from '../view';
 
 export type SplitPart = 'waiting' | 'tools' | 'hooks' | 'model' | 'subagents' | 'side' | 'quiet' | 'yourTurn';
 
@@ -12,7 +12,7 @@ export interface PartSpell {
 export interface SplitPage {
   kind: 'split';
   depth: Depth;
-  // Never overlapping, so a brushed stretch is split by clipping each spell to it and nothing else.
+  // Never overlapping, so a View is split by clipping each Spell to it and nothing else.
   parts: PartSpell[];
   // The whole of each part, overlaps and all, which is what the exclusive figure beside it leaves out.
   kinds: PartSpell[];
@@ -59,9 +59,9 @@ export interface Share extends Part {
 }
 
 // Always all eight, as a part that took none of a run is an answer and a row that comes and goes is not.
-export function sharesOf(page: SplitPage | null, range: Range | null): Share[] {
-  const exclusive = summed(page?.parts ?? [], range);
-  const whole = summed(page?.kinds ?? [], range);
+export function sharesOf(page: SplitPage | null, view: Range | null): Share[] {
+  const exclusive = summed(page?.parts ?? [], view);
+  const whole = summed(page?.kinds ?? [], view);
 
   return parts.map((part) => ({
     ...part,
@@ -71,15 +71,15 @@ export function sharesOf(page: SplitPage | null, range: Range | null): Share[] {
   }));
 }
 
-// Clipped rather than filtered, as a spell can run in and out of the brushed stretch and only its middle counts.
-function summed(spells: readonly PartSpell[], range: Range | null): Map<SplitPart, number> {
+// Clipped rather than filtered, as a Spell can run in and out of the View and only its middle counts.
+function summed(spells: readonly PartSpell[], view: Range | null): Map<SplitPart, number> {
   const totals = new Map<SplitPart, number>();
 
   for (const spell of spells) {
     const startMs = Date.parse(spell.atUtc);
     const endMs = startMs + spell.lengthMs;
-    const from = range === null ? startMs : Math.max(startMs, range[0]);
-    const to = range === null ? endMs : Math.min(endMs, range[1]);
+    const from = view === null ? startMs : Math.max(startMs, view[0]);
+    const to = view === null ? endMs : Math.min(endMs, view[1]);
 
     if (to > from) {
       totals.set(spell.part, (totals.get(spell.part) ?? 0) + (to - from));
@@ -99,5 +99,5 @@ export function shareOf(share: Share, lengthMs: number): number {
 
 // The split comes with the spans, so a run whose second part is still on its way has read nothing yet.
 export function noSplitWord(split: SplitPage | null): string {
-  return split === null ? 'Still reading the run.' : 'Nothing ran in this stretch.';
+  return split === null ? 'Still reading the run.' : 'Nothing ran in view.';
 }

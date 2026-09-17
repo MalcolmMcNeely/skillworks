@@ -148,7 +148,7 @@ const minute = 60_000;
 
 const hour = 60 * minute;
 
-export function describeLength(lengthMs: number): string {
+export function describeRunLength(lengthMs: number): string {
   const hours = Math.floor(lengthMs / hour);
   const minutes = Math.round((lengthMs - hours * hour) / minute);
 

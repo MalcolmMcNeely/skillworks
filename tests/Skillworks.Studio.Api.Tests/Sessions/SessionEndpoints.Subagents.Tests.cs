@@ -146,8 +146,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Grep", 2_000, "toolu_grep"),
             SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find the leak", "Explore", "Read", 30_000));
 
-        // Every Tool call wraps in a span of this name, and one a Subagent made carries that Subagent's
-        // agent id too, so a run read off the wrong one takes the inner call's stretch and loses the brief.
+        // Every Tool call wraps in a span of this name, so only the agent id tells the Subagent's run apart.
         await studio.PushSpans(
             Morning,
             AgentTrace,

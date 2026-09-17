@@ -38,7 +38,7 @@ describe('tallyOf', () => {
     expect(tallyOf(twice)).toEqual({ activations: 2, skills: 1 });
   });
 
-  it('counts nothing for a stretch no skill fired in', () => {
+  it('counts nothing for a View no skill fired in', () => {
     expect(tallyOf([])).toEqual({ activations: 0, skills: 0 });
   });
 });

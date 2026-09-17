@@ -119,7 +119,7 @@ public sealed partial class SessionEndpointsTests
             SplitTrace,
             Waits(WaitedSpan, "toolu_gone", "2026-09-14T09:00:01Z", "2026-09-14T09:00:05Z"));
 
-        // The call never ran, so the whole of its stretch is the time a person took to say no.
+        // The call never ran, so the whole of its Spell is the time a person took to say no.
         Assert.Equal(4_000, Totals(await studio.PartsIn(Morning))["waiting"]);
     }
 
@@ -202,7 +202,7 @@ public sealed partial class SessionEndpointsTests
 
         var split = Totals(await studio.PartsIn(Morning));
 
-        // The Agent Tool call only starts the Subagent, so the stretch is its work and never the main agent's.
+        // The Agent Tool call only starts the Subagent, so the Spell is its work and never the main agent's.
         Assert.Equal(30_000, split["subagents"]);
         Assert.False(split.ContainsKey("tools"));
     }
@@ -247,7 +247,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_the_stretch_between_one_exchange_and_the_next_as_the_readers_own_turn()
+    public async Task Counts_the_spell_between_one_exchange_and_the_next_as_the_readers_own_turn()
     {
         using var studio = new StudioHost();
 

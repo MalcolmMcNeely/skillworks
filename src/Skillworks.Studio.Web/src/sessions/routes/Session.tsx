@@ -18,13 +18,13 @@ import { StepPanel } from '../components/panels/StepPanel';
 import { SubagentPanel } from '../components/panels/SubagentPanel';
 import { TracePanel } from '../components/panels/TracePanel';
 import { Timeline } from '../components/Timeline';
-import { rangeOf, readRange, widened, withRange, type Range } from '../lib/brush';
+import { rangeOf, readRange, widened, withRange, type Range } from '../lib/view';
 import { type Named } from '../lib/findings';
 import { activationSpellsOf, type ActivationSpell } from '../lib/panels/activations';
 import { agentSpellsOf, ranByOne, type AgentSpell } from '../lib/panels/agents';
 import { levelsOf, type Level } from '../lib/panels/context';
 import { bandsOf, type Band } from '../lib/panels/conversation';
-import { describeLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
+import { describeRunLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpan, type Mark, type SessionAnswer } from '../lib/steps';
 import { readWhere, withWhere, type Where } from '../lib/where';
 
@@ -43,7 +43,7 @@ export function Session() {
 
   const filter = readFilter(params);
   const where = readWhere(params);
-  const range = readRange(params);
+  const view = readRange(params);
 
   // Text, as a span read off the address is a new object every render.
   const span = `${filter.from}..${filter.to}`;
@@ -97,28 +97,28 @@ export function Session() {
   const agents = answer?.agents;
   const drawn = useMemo(() => ranByOne(marks, agents ?? {}, where.agent), [marks, agents, where.agent]);
 
-  // Replaced, not pushed, so brushing four stretches does not cost four presses of the back button.
+  // Replaced, not pushed, so setting four Views does not cost four presses of the back button.
   const write = (written: URLSearchParams) => setParams(written, { replace: true });
 
-  const brush = (stretch: Range | null, opened: Partial<Where>) =>
-    write(withRange(withWhere(params, { ...where, ...opened }), stretch));
+  const show = (shown: Range | null, opened: Partial<Where>) =>
+    write(withRange(withWhere(params, { ...where, ...opened }), shown));
 
   const open = (step: string | null) => write(withWhere(params, { ...where, step }));
 
   const onExchange = (band: Band) =>
-    whole === null ? undefined : brush(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index });
+    whole === null ? undefined : show(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index });
 
   // Unpadded, unlike an Exchange: one spell abuts the next, and padding would pull that one in too.
   const onActivation = (spell: ActivationSpell) =>
     whole === null
       ? undefined
-      : brush(rangeOf(spell.atMs, spell.followedToMs, whole), { activation: spell.activation.id });
+      : show(rangeOf(spell.atMs, spell.followedToMs, whole), { activation: spell.activation.id });
 
   const onAgent = (spell: AgentSpell) =>
-    whole === null ? undefined : brush(widened([spell.startMs, spell.endMs], whole), { agent: spell.agent.id });
+    whole === null ? undefined : show(widened([spell.startMs, spell.endMs], whole), { agent: spell.agent.id });
 
   const onFinding = (named: Named) =>
-    whole === null ? undefined : brush(widened([named.startMs, named.endMs], whole), { step: named.finding.step });
+    whole === null ? undefined : show(widened([named.startMs, named.endMs], whole), { step: named.finding.step });
 
   // What the table was asked for, so going up lands on the list the reader left rather than a fresh one.
   const table = withOrder(filterParams(filter), readOrder(params)).toString();
@@ -137,7 +137,7 @@ export function Session() {
         {run === null
           ? ''
           : `${run.repository ?? noRepository} · ${run.person ?? notKnown} · ${describeStarted(run.startedUtc)} · ` +
-            `${describeLength(run.lengthMs)} · ${describeCount(run.toolCalls)} tool calls · ${describeMoney(run.cost)}`}
+            `${describeRunLength(run.lengthMs)} · ${describeCount(run.toolCalls)} tool calls · ${describeMoney(run.cost)}`}
       </p>
 
       <Body
@@ -150,14 +150,14 @@ export function Session() {
         levels={levels}
         agentSpells={agentSpells}
         whole={whole}
-        range={range}
+        view={view}
         where={where}
-        onRange={(stretch) => brush(stretch, stretch === null ? { exchange: null, activation: null, agent: null } : {})}
+        onView={(shown) => show(shown, shown === null ? { exchange: null, activation: null, agent: null } : {})}
         onOpen={open}
         onExchange={onExchange}
         onActivation={onActivation}
         onAgent={onAgent}
-        onCloseAgent={() => brush(null, { agent: null })}
+        onCloseAgent={() => show(null, { agent: null })}
         onFinding={onFinding}
       />
     </main>
@@ -174,9 +174,9 @@ function Body({
   levels,
   agentSpells,
   whole,
-  range,
+  view,
   where,
-  onRange,
+  onView,
   onOpen,
   onExchange,
   onActivation,
@@ -193,9 +193,9 @@ function Body({
   levels: readonly Level[];
   agentSpells: readonly AgentSpell[];
   whole: Range | null;
-  range: Range | null;
+  view: Range | null;
   where: Where;
-  onRange: (range: Range | null) => void;
+  onView: (view: Range | null) => void;
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
   onActivation: (spell: ActivationSpell) => void;
@@ -227,9 +227,9 @@ function Body({
         drawn={drawn}
         bands={bands}
         whole={whole}
-        range={range}
+        view={view}
         selected={where.step}
-        onRange={onRange}
+        onView={onView}
         onOpen={onOpen}
         onExchange={onExchange}
       />
@@ -238,25 +238,25 @@ function Body({
         inside={answer.inside}
         depth={answer.depth}
         agents={answer.agents}
-        range={range}
+        view={view}
         selected={where.step}
         onOpen={onOpen}
       />
-      <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
-      <ActivationPanel spells={activationSpells} range={range} opened={where.activation} onOpen={onActivation} />
+      <ConversationPanel bands={bands} view={view} opened={where.exchange} onOpen={onExchange} />
+      <ActivationPanel spells={activationSpells} view={view} opened={where.activation} onOpen={onActivation} />
       <SubagentPanel
         agentSpells={agentSpells}
         depth={answer.depth}
-        range={range}
+        view={view}
         opened={where.agent}
         onOpen={onAgent}
         onClose={onCloseAgent}
       />
-      <SplitPanel split={answer.split} range={range} />
+      <SplitPanel split={answer.split} view={view} />
       <ContextPanel
         levels={levels}
         limitTokens={answer.limitTokens}
-        range={range}
+        view={view}
         selected={where.step}
         onOpen={onOpen}
       />
@@ -265,7 +265,7 @@ function Body({
         depth={answer.depth}
         agents={answer.agents}
         agent={where.agent}
-        range={range}
+        view={view}
         selected={where.step}
         onOpen={onOpen}
       />

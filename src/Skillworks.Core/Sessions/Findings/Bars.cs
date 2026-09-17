@@ -14,7 +14,7 @@ public static class Bars
     // The cache is written at full price and read at a fraction of it, so rebuilding it once already costs money.
     public const int CacheRebuilt = 1;
 
-    // Claude Code cuts a run down as its window fills, so this is the last stretch before that happens.
+    // Claude Code cuts a run down as its window fills, so a run this full is about to lose context.
     public const decimal NearTheLimit = 0.8m;
 
     // A hook is a guard around the work, and a run giving a sixth of its working time to guards is paying for them.

@@ -1,24 +1,24 @@
 import { describeCount } from '../../../figures/lib/figures';
 import { ranBy, type Depth } from '../../lib/panels/agents';
-import { inRange, type Range } from '../../lib/brush';
+import { inRange, type Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';
-import { describeStretch } from '../../../figures/lib/figures';
+import { describeLength } from '../../../figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 import { deepestOf, noTreeWord, treeOf } from '../../lib/panels/trace';
 
-// A stretch can hold thousands of Steps, and a tree that long is no more readable than the timeline above it.
+// A View can hold thousands of Steps, and a tree that long is no more readable than the timeline above it.
 const mostRows = 200;
 
 // Past this the rows would reach the middle of the panel.
 const mostIndent = 8;
 
-// Every row and every figure here reads the brushed stretch alone, or the panel would answer a question nobody asked.
+// Every row and every figure here reads the View alone, or the panel would answer a question nobody asked.
 export function TracePanel({
   marks,
   inside,
   depth,
   agents,
-  range,
+  view,
   selected,
   onOpen,
 }: {
@@ -26,12 +26,12 @@ export function TracePanel({
   inside: Record<string, string>;
   depth: Depth;
   agents: Record<string, string>;
-  range: Range | null;
+  view: Range | null;
   selected: string | null;
   onOpen: (id: string | null) => void;
 }) {
   // A Thin run has no Span to nest by, so a tree drawn from its Steps alone would be a flat list.
-  const shown = depth === 'thin' ? [] : inRange(marks, range);
+  const shown = depth === 'thin' ? [] : inRange(marks, view);
   const rows = treeOf(shown, inside);
 
   return (
@@ -44,7 +44,7 @@ export function TracePanel({
           ) : (
             <>
               {describeCount(rows.length)} steps · {describeCount(deepestOf(rows))} deep
-              {range === null ? '' : ' in the stretch in view'}
+              {view === null ? '' : ' in view'}
             </>
           )}
         </p>
@@ -70,7 +70,7 @@ export function TracePanel({
                 </span>
                 <span className="trace-ran">{ranBy(depth, agents, row.mark.step.id)}</span>
                 <span className="trace-clock">{describeClock(row.mark.startMs, true)}</span>
-                <span className="trace-spell">{describeStretch(row.mark.step.lengthMs)}</span>
+                <span className="trace-spell">{describeLength(row.mark.step.lengthMs)}</span>
               </button>
             </li>
           ))}
@@ -79,7 +79,7 @@ export function TracePanel({
 
       {rows.length > mostRows ? (
         <p className="micro panel-figure">
-          The first {describeCount(mostRows)} are drawn. Brush a shorter stretch to read the rest.
+          The first {describeCount(mostRows)} are drawn. Drag across less of the strip to read the rest.
         </p>
       ) : null}
     </section>

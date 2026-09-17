@@ -1,5 +1,5 @@
 import { describeCount, describeShare, describeTokens } from '../../../figures/lib/figures';
-import { inRange, type Range } from '../../lib/brush';
+import { inRange, type Range } from '../../lib/view';
 import { ceilingOf, describeInForce, inForceBands, tallyOf, type Level } from '../../lib/panels/context';
 import { describeClock } from '../../lib/steps';
 
@@ -37,21 +37,21 @@ function Turn({
   );
 }
 
-// Every bar and every figure here reads the brushed stretch alone, or the panel would answer a question nobody asked.
+// Every bar and every figure here reads the View alone, or the panel would answer a question nobody asked.
 export function ContextPanel({
   levels,
   limitTokens,
-  range,
+  view,
   selected,
   onOpen,
 }: {
   levels: readonly Level[];
   limitTokens: number | null;
-  range: Range | null;
+  view: Range | null;
   selected: string | null;
   onOpen: (step: string) => void;
 }) {
-  const shown = inRange(levels, range);
+  const shown = inRange(levels, view);
   const tally = tallyOf(shown, limitTokens);
   const ceiling = ceilingOf(shown, limitTokens);
   const bands = inForceBands(shown);
@@ -70,12 +70,12 @@ export function ContextPanel({
           {describeCount(tally.turns)} turns · peak {describeTokens(tally.peakTokens)} tokens
           {tally.peakShare === null ? '' : `, ${describeShare(tally.peakShare)} of the limit`} ·{' '}
           {describeCount(tally.rebuilds)} cache rebuilds
-          {range === null ? '' : ' in the stretch in view'}
+          {view === null ? '' : ' in view'}
         </p>
       </header>
 
       {shown.length === 0 ? (
-        <p className="session-word">{levels.length === 0 ? 'This run made no turn.' : 'No turn in this stretch.'}</p>
+        <p className="session-word">{levels.length === 0 ? 'This run made no turn.' : 'No turn in view.'}</p>
       ) : (
         <div className="context-plot">
           <p className="micro context-roof">{roof}</p>

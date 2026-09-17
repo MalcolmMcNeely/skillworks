@@ -17,9 +17,9 @@ const page = (parts: PartSpell[], kinds: PartSpell[] = [], depth: Depth = 'full'
   kinds,
 });
 
-const msOf = (split: SplitPage, range: [number, number] | null = null) =>
+const msOf = (split: SplitPage, view: [number, number] | null = null) =>
   Object.fromEntries(
-    sharesOf(split, range)
+    sharesOf(split, view)
       .filter((share) => share.ms > 0)
       .map((share) => [share.part, share.ms]),
   );
@@ -32,7 +32,7 @@ describe('sharesOf', () => {
     expect(msOf(split)).toEqual({ model: 5_000, quiet: 2_000, tools: 5_000 });
   });
 
-  // A row that comes and goes as a reader brushes cannot be read across two stretches of one run.
+  // A row that comes and goes as a reader drags cannot be read across two Views of one run.
   it('names all eight even where a part took none of the run', () => {
     const shares = sharesOf(page([spell('model', 0, 10)]), null);
 
@@ -48,13 +48,13 @@ describe('sharesOf', () => {
     ]);
   });
 
-  it('splits only the brushed stretch, clipping a spell that runs in and out of it', () => {
+  it('splits only the View, clipping a spell that runs in and out of it', () => {
     const split = page([spell('model', 0, 10), spell('tools', 10, 20)]);
 
     expect(msOf(split, [5_000, 15_000])).toEqual({ model: 5_000, tools: 5_000 });
   });
 
-  it('leaves out a spell the brushed stretch does not reach', () => {
+  it('leaves out a spell the View does not reach', () => {
     const split = page([spell('model', 0, 10), spell('tools', 20, 30)]);
 
     expect(msOf(split, [0, 10_000])).toEqual({ model: 10_000 });
@@ -85,13 +85,13 @@ describe('sharesOf', () => {
 });
 
 describe('splitLength', () => {
-  it('adds the parts up to the length of the stretch they split', () => {
+  it('adds the parts up to the length of the run they split', () => {
     const split = page([spell('model', 0, 5), spell('quiet', 5, 7), spell('tools', 7, 12)]);
 
     expect(splitLength(sharesOf(split, null))).toBe(12_000);
   });
 
-  it('adds up to the brushed stretch alone', () => {
+  it('adds up to the View alone', () => {
     const split = page([spell('model', 0, 10), spell('tools', 10, 20)]);
 
     expect(splitLength(sharesOf(split, [2_000, 18_000]))).toBe(16_000);
@@ -103,20 +103,20 @@ describe('noSplitWord', () => {
     expect(noSplitWord(null)).toBe('Still reading the run.');
   });
 
-  it('says a stretch nothing ran in held nothing', () => {
-    expect(noSplitWord(page([]))).toBe('Nothing ran in this stretch.');
+  it('says a View nothing ran in held nothing', () => {
+    expect(noSplitWord(page([]))).toBe('Nothing ran in view.');
   });
 });
 
 describe('shareOf', () => {
-  it('reads a part as its share of the stretch', () => {
+  it('reads a part as its share of the whole', () => {
     const shares = sharesOf(page([spell('model', 0, 5), spell('tools', 5, 20)]), null);
     const model = shares.find((share) => share.part === 'model')!;
 
     expect(shareOf(model, splitLength(shares))).toBe(0.25);
   });
 
-  it('takes no share of a stretch nothing ran in', () => {
+  it('takes no share where nothing ran', () => {
     const shares = sharesOf(page([]), null);
 
     expect(shareOf(shares[0], splitLength(shares))).toBe(0);

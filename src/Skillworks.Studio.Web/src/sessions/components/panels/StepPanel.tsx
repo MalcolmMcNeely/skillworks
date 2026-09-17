@@ -1,10 +1,10 @@
 import { describeCount } from '../../../figures/lib/figures';
 import { ranBy, type Depth } from '../../lib/panels/agents';
-import { inRange, type Range } from '../../lib/brush';
-import { describeStretch } from '../../../figures/lib/figures';
+import { inRange, type Range } from '../../lib/view';
+import { describeLength } from '../../../figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 
-// A stretch can hold thousands of Steps, and a list that long is no more readable than the timeline above it.
+// A View can hold thousands of Steps, and a list that long is no more readable than the timeline above it.
 const mostRows = 200;
 
 function Opened({
@@ -31,20 +31,20 @@ function Opened({
         </button>
       </p>
       <p className="micro">
-        {describeClock(mark.startMs, true)} · {describeStretch(step.lengthMs)} · ran by {ranBy(depth, agents, step.id)}
+        {describeClock(mark.startMs, true)} · {describeLength(step.lengthMs)} · ran by {ranBy(depth, agents, step.id)}
       </p>
       {step.words === null ? null : <p className="step-words">{step.words}</p>}
     </div>
   );
 }
 
-// Every figure and every row here reads the brushed stretch alone, or the panel would answer a question nobody asked.
+// Every figure and every row here reads the View alone, or the panel would answer a question nobody asked.
 export function StepPanel({
   marks,
   depth,
   agents,
   agent,
-  range,
+  view,
   selected,
   onOpen,
 }: {
@@ -52,11 +52,11 @@ export function StepPanel({
   depth: Depth;
   agents: Record<string, string>;
   agent: string | null;
-  range: Range | null;
+  view: Range | null;
   selected: string | null;
   onOpen: (id: string | null) => void;
 }) {
-  const shown = inRange(marks, range);
+  const shown = inRange(marks, view);
   const toolCalls = shown.filter((mark) => mark.step.kind === 'tool').length;
   const faults = shown.filter((mark) => mark.step.fault).length;
   const open = selected === null ? null : (marks.find((mark) => mark.step.id === selected) ?? null);
@@ -67,7 +67,7 @@ export function StepPanel({
         <h2>Steps</h2>
         <p className="micro panel-figure">
           {describeCount(shown.length)} steps · {describeCount(toolCalls)} tool calls · {describeCount(faults)} faults
-          {range === null ? '' : ' in the stretch in view'}
+          {view === null ? '' : ' in view'}
         </p>
       </header>
 
@@ -75,7 +75,7 @@ export function StepPanel({
 
       {shown.length === 0 ? (
         <p className="session-word">
-          {agent === null ? 'Nothing ran in this stretch.' : 'This subagent ran nothing in this stretch.'}
+          {agent === null ? 'Nothing ran in view.' : 'This subagent ran nothing in view.'}
         </p>
       ) : (
         <ol className="step-list">
@@ -89,7 +89,7 @@ export function StepPanel({
                 <span className="step-clock">{describeClock(mark.startMs, true)}</span>
                 <span className="step-title">{titleOf(mark.step)}</span>
                 <span className="step-said">{mark.step.words ?? ''}</span>
-                <span className="step-spell">{describeStretch(mark.step.lengthMs)}</span>
+                <span className="step-spell">{describeLength(mark.step.lengthMs)}</span>
               </button>
             </li>
           ))}
@@ -98,7 +98,7 @@ export function StepPanel({
 
       {shown.length > mostRows ? (
         <p className="micro panel-figure">
-          The first {describeCount(mostRows)} are listed. Brush a shorter stretch to read the rest.
+          The first {describeCount(mostRows)} are listed. Drag across less of the strip to read the rest.
         </p>
       ) : null}
     </section>

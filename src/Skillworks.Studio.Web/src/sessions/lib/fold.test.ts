@@ -14,7 +14,7 @@ const longDay: [number, number][] = [
 ];
 
 describe('foldScale', () => {
-  it('joins spells closer together than the threshold into one stretch', () => {
+  it('joins spells closer together than the threshold into one segment', () => {
     const scale = foldScale(
       [
         [0, minute],
@@ -28,7 +28,7 @@ describe('foldScale', () => {
     expect(scale.folds).toHaveLength(0);
   });
 
-  it('folds an idle stretch over the threshold, and says how long it was', () => {
+  it('folds an idle pause over the threshold, and says how long it was', () => {
     const scale = foldScale(longDay, 0, width);
 
     expect(scale.segments).toHaveLength(2);
@@ -59,14 +59,14 @@ describe('foldScale', () => {
     expect(scale.invert(scale.map(moment))).toBeCloseTo(moment, 3);
   });
 
-  it('holds a moment inside a fold to the nearer stretch of work, so a cursor never reads an idle instant', () => {
+  it('holds a moment inside a fold to the nearer segment of work, so a cursor never reads an idle instant', () => {
     const scale = foldScale(longDay, 0, width);
 
     expect(scale.invert(scale.map(2 * hour))).toBe(scale.segments[0][1]);
     expect(scale.invert(scale.map(10 * hour))).toBe(scale.segments[1][0]);
   });
 
-  it('takes a threshold of its own, so a shorter idle stretch can be folded too', () => {
+  it('takes a threshold of its own, so a shorter idle pause can be folded too', () => {
     const scale = foldScale(
       [
         [0, minute],
@@ -101,7 +101,7 @@ describe('foldScale', () => {
 });
 
 describe('ticksOf', () => {
-  it('puts every tick on a round moment inside a stretch that holds work', () => {
+  it('puts every tick on a round moment inside a segment that holds work', () => {
     const scale = foldScale(longDay, 0, width);
 
     for (const tick of ticksOf(scale)) {

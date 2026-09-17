@@ -1,4 +1,4 @@
-import { describeCount, describeShare, describeStretch } from '../../figures/lib/figures';
+import { describeCount, describeLength, describeShare } from '../../figures/lib/figures';
 import { notKnown } from './sessions';
 
 export type FindingKind =
@@ -18,7 +18,7 @@ export interface Finding {
   // Null where only a span could have measured it and the run has none, so no figure here is a made-up zero.
   figure: number | null;
   bar: number;
-  // Null where the finding is about a stretch rather than one step, which is what the moment is for.
+  // Null where the finding is about a length of time rather than one step, which is what the moment is for.
   step: string | null;
   atUtc: string;
   lengthMs: number;
@@ -66,7 +66,7 @@ const wordings: readonly Wording[] = [
     kind: 'nearTheLimit',
     word: 'The context came near its limit',
     reads: 'share',
-    note: 'Claude Code cuts a run down as its window fills, so this is the stretch before that happens.',
+    note: 'Claude Code cuts a run down as its window fills, so this is the last part before that happens.',
   },
   {
     kind: 'hooks',
@@ -132,7 +132,7 @@ function readingOf(wording: Wording, figure: number): string {
     return describeShare(figure);
   }
 
-  return wording.reads === 'length' ? describeStretch(figure) : `${figure.toFixed(1)}× the others`;
+  return wording.reads === 'length' ? describeLength(figure) : `${figure.toFixed(1)}× the others`;
 }
 
 // A run whose spans have not landed has read no bar yet, which is not the same as a run that crossed none.

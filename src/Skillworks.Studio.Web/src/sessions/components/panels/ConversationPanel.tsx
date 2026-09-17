@@ -1,5 +1,5 @@
-import { describeCount, describeMoney, describeStretch } from '../../../figures/lib/figures';
-import { inRange, type Range } from '../../lib/brush';
+import { describeCount, describeLength, describeMoney } from '../../../figures/lib/figures';
+import { inRange, type Range } from '../../lib/view';
 import { describeWithheld, figuresOf, type Band } from '../../lib/panels/conversation';
 import { describeClock } from '../../lib/steps';
 
@@ -27,7 +27,7 @@ function Block({ band, open, onOpen }: { band: Band; open: boolean; onOpen: (ban
           <span className="exchange-clock">{describeClock(band.startMs, true)}</span>
           <span className="exchange-figure">
             {describeCount(exchange.turns)} turns · {describeCount(exchange.toolCalls)} tool calls ·{' '}
-            {describeMoney(exchange.cost)} · {describeStretch(exchange.lengthMs)}
+            {describeMoney(exchange.cost)} · {describeLength(exchange.lengthMs)}
           </span>
         </button>
         <Words what="Prompt" said={exchange.prompt} length={exchange.promptLength} missing="Nothing was recorded." />
@@ -37,19 +37,19 @@ function Block({ band, open, onOpen }: { band: Band; open: boolean; onOpen: (ban
   );
 }
 
-// Every block and every figure here reads the brushed stretch alone, or the panel would answer a question nobody asked.
+// Every block and every figure here reads the View alone, or the panel would answer a question nobody asked.
 export function ConversationPanel({
   bands,
-  range,
+  view,
   opened,
   onOpen,
 }: {
   bands: readonly Band[];
-  range: Range | null;
+  view: Range | null;
   opened: number | null;
   onOpen: (band: Band) => void;
 }) {
-  const shown = inRange(bands, range);
+  const shown = inRange(bands, view);
   const figures = figuresOf(shown);
 
   return (
@@ -59,12 +59,12 @@ export function ConversationPanel({
         <p className="micro panel-figure">
           {describeCount(figures.exchanges)} exchanges · {describeCount(figures.turns)} turns ·{' '}
           {describeCount(figures.toolCalls)} tool calls · {describeMoney(figures.cost)}
-          {range === null ? '' : ' in the stretch in view'}
+          {view === null ? '' : ' in view'}
         </p>
       </header>
 
       {shown.length === 0 ? (
-        <p className="session-word">Nobody typed into this stretch.</p>
+        <p className="session-word">Nobody typed in view.</p>
       ) : (
         <ol className="exchange-list">
           {shown.map((band) => (

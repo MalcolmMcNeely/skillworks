@@ -115,7 +115,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
             lines.Count(line => Named(DecisionEvent)(line) && Refused(line)));
     }
 
-    // Paired with the event it came from, so an Exchange and a timeline band cover exactly one stretch.
+    // Paired with the event it came from, so an Exchange and a timeline band cover exactly one Spell.
     private static IReadOnlyList<DrawnStep> Stepped(IReadOnlyList<EventLine> lines) =>
         [
             .. lines

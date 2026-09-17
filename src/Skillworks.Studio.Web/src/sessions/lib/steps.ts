@@ -1,5 +1,5 @@
 import type { Gap, StoresEnd } from '../../gaps/lib/gaps';
-import type { Range } from './brush';
+import type { Range } from './view';
 import type { FindingsPage } from './findings';
 import type { Activation, ActivationsPage } from './panels/activations';
 import type { AgentsPage, Depth, Subagent } from './panels/agents';
@@ -144,7 +144,7 @@ export function marksOf(steps: readonly Step[]): Mark[] {
   });
 }
 
-// Null where nothing ran, as a run with no Step has no stretch to draw.
+// Null where nothing ran, as a run with no Step has no bounds to draw.
 export function runSpan(marks: readonly Mark[]): Range | null {
   if (marks.length === 0) {
     return null;
@@ -156,7 +156,7 @@ export function runSpan(marks: readonly Mark[]): Range | null {
   );
 }
 
-export const stretchesOf = (marks: readonly Mark[]): [number, number][] => marks.map((mark) => [mark.startMs, mark.endMs]);
+export const boundsOf = (marks: readonly Mark[]): [number, number][] => marks.map((mark) => [mark.startMs, mark.endMs]);
 
 export type Lane = 'prompt' | 'model' | 'shell' | 'edit' | 'read' | 'tool' | 'fault';
 

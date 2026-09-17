@@ -1,6 +1,6 @@
-import { describeCount, describeStretch } from '../../../figures/lib/figures';
+import { describeCount, describeLength } from '../../../figures/lib/figures';
 import { triggerMark } from '../../../provenance/lib/triggers';
-import { madeIn, type Range } from '../../lib/brush';
+import { madeIn, type Range } from '../../lib/view';
 import { tallyOf, type ActivationSpell } from '../../lib/panels/activations';
 import { describeClock } from '../../lib/steps';
 
@@ -25,25 +25,25 @@ function Row({
           {mark.glyph}
         </span>
         <span className="visually-hidden">{mark.word}</span>
-        <span className="call-spell">{describeStretch(activation.followedMs)}</span>
+        <span className="call-spell">{describeLength(activation.followedMs)}</span>
       </button>
     </li>
   );
 }
 
-// Every row and every figure here reads the brushed stretch alone, or the panel would answer a question nobody asked.
+// Every row and every figure here reads the View alone, or the panel would answer a question nobody asked.
 export function ActivationPanel({
   spells,
-  range,
+  view,
   opened,
   onOpen,
 }: {
   spells: readonly ActivationSpell[];
-  range: Range | null;
+  view: Range | null;
   opened: string | null;
   onOpen: (spell: ActivationSpell) => void;
 }) {
-  const shown = madeIn(spells, range);
+  const shown = madeIn(spells, view);
   const tally = tallyOf(shown);
 
   return (
@@ -52,12 +52,12 @@ export function ActivationPanel({
         <h2>Activations</h2>
         <p className="micro panel-figure">
           {describeCount(tally.activations)} activations · {describeCount(tally.skills)} skills
-          {range === null ? '' : ' in the stretch in view'}
+          {view === null ? '' : ' in view'}
         </p>
       </header>
 
       {shown.length === 0 ? (
-        <p className="session-word">{spells.length === 0 ? 'No skill fired in this run.' : 'No skill fired in this stretch.'}</p>
+        <p className="session-word">{spells.length === 0 ? 'No skill fired in this run.' : 'No skill fired in view.'}</p>
       ) : (
         <ol className="call-list">
           {shown.map((spell) => (

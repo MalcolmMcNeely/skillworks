@@ -189,7 +189,7 @@ public sealed partial class SessionEndpointsTests
 
         await studio.Push(Turn("2026-09-14T09:00:10.000Z") with { DurationMs = 4_000 });
 
-        // A point drawn where Claude Code wrote the event would sit outside the stretch its Step covers.
+        // A point drawn where Claude Code wrote the event would sit outside the Spell its Step covers.
         var point = Assert.Single(await studio.ContextIn(Morning));
 
         Assert.Equal(Moment("2026-09-14T09:00:06.000Z"), point.AtUtc);

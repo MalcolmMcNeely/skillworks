@@ -1,8 +1,8 @@
 import { useMemo, type PointerEvent } from 'react';
-import { inRange, type Range } from '../lib/brush';
+import { inRange, type Range } from '../lib/view';
 import type { Band } from '../lib/panels/conversation';
 import { foldScale, ticksOf } from '../lib/fold';
-import { describeStretch } from '../../figures/lib/figures';
+import { describeLength } from '../../figures/lib/figures';
 import { describeClock, lanes, lanesOf, toneOf, type Lane, type Mark } from '../lib/steps';
 
 // Narrow marks are common and a cursor is not, so every mark is drawn at least this wide to stay reachable.
@@ -26,7 +26,7 @@ interface Placed {
 export function Lanes({
   marks,
   bands,
-  range,
+  view,
   selected,
   left,
   width,
@@ -36,7 +36,7 @@ export function Lanes({
 }: {
   marks: readonly Mark[];
   bands: readonly Band[];
-  range: Range;
+  view: Range;
   selected: string | null;
   left: number;
   width: number;
@@ -46,11 +46,11 @@ export function Lanes({
 }) {
   const right = Math.max(left + 10, width - 8);
   const height = top + lanes.length * (laneHeight + gap) + axis;
-  const shown = useMemo(() => inRange(marks, range), [marks, range]);
+  const shown = useMemo(() => inRange(marks, view), [marks, view]);
 
   const scale = useMemo(
-    () => foldScale(shown.map((mark) => [Math.max(range[0], mark.startMs), Math.min(range[1], mark.endMs)]), left, right),
-    [shown, range, left, right],
+    () => foldScale(shown.map((mark) => [Math.max(view[0], mark.startMs), Math.min(view[1], mark.endMs)]), left, right),
+    [shown, view, left, right],
   );
 
   const laneY = (index: number) => top + index * (laneHeight + gap);
@@ -59,18 +59,18 @@ export function Lanes({
   const placed: Placed[] = useMemo(
     () =>
       shown.flatMap((mark) => {
-        const x1 = scale.map(Math.max(range[0], mark.startMs));
-        const x2 = scale.map(Math.min(range[1], mark.endMs));
+        const x1 = scale.map(Math.max(view[0], mark.startMs));
+        const x2 = scale.map(Math.min(view[1], mark.endMs));
 
         return lanesOf(mark.step).map((lane) => ({ lane, mark, x1, x2: Math.max(x1 + leastPx, x2) }));
       }),
-    [shown, scale, range],
+    [shown, scale, view],
   );
 
-  const opened = inRange(bands, range);
+  const opened = inRange(bands, view);
 
   return (
-    <svg width={width} height={height} className="timeline-lanes" role="img" aria-label="The steps in the stretch in view">
+    <svg width={width} height={height} className="timeline-lanes" role="img" aria-label="The steps in view">
       {lanes.map((lane, index) => (
         <g key={lane.key}>
           <text x={left - 10} y={laneY(index) + laneHeight / 2 + 4} textAnchor="end" className="timeline-label">
@@ -99,14 +99,14 @@ export function Lanes({
         <g key={fold.x}>
           <line x1={fold.x} x2={fold.x} y1={top} y2={axisY} className="timeline-fold" />
           <text x={fold.x} y={axisY + 26} textAnchor="middle" className="timeline-fold-word">
-            {describeStretch(fold.toMs - fold.fromMs)} idle
+            {describeLength(fold.toMs - fold.fromMs)} idle
           </text>
         </g>
       ))}
 
       {opened.map((band) => {
-        const x1 = scale.map(Math.max(range[0], band.startMs));
-        const x2 = scale.map(Math.min(range[1], band.endMs));
+        const x1 = scale.map(Math.max(view[0], band.startMs));
+        const x2 = scale.map(Math.min(view[1], band.endMs));
 
         return (
           <rect

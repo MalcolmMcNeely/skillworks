@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeCount, describeMoney, describeShare, describeStretch, describeTokens } from './figures';
+import { describeCount, describeLength, describeMoney, describeShare, describeTokens } from './figures';
 
 describe('describeMoney', () => {
   it('shows the pennies', () => {
@@ -35,21 +35,21 @@ describe('describeShare', () => {
   });
 });
 
-describe('describeStretch', () => {
-  it('counts a stretch under a second in milliseconds', () => {
-    expect(describeStretch(4)).toBe('4 ms');
+describe('describeLength', () => {
+  it('counts a length under a second in milliseconds', () => {
+    expect(describeLength(4)).toBe('4 ms');
   });
 
-  it('counts a short stretch in seconds, to a place while that place still says something', () => {
-    expect(describeStretch(2_140)).toBe('2.1 s');
-    expect(describeStretch(42_000)).toBe('42 s');
+  it('counts a short length in seconds, to a place while that place still says something', () => {
+    expect(describeLength(2_140)).toBe('2.1 s');
+    expect(describeLength(42_000)).toBe('42 s');
   });
 
-  it('counts a stretch over a minute in minutes and seconds', () => {
-    expect(describeStretch(125_000)).toBe('2m 05s');
+  it('counts a length over a minute in minutes and seconds', () => {
+    expect(describeLength(125_000)).toBe('2m 05s');
   });
 
-  it('counts a stretch over an hour in hours and minutes', () => {
-    expect(describeStretch(3_900_000)).toBe('1h 05m');
+  it('counts a length over an hour in hours and minutes', () => {
+    expect(describeLength(3_900_000)).toBe('1h 05m');
   });
 });

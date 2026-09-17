@@ -43,7 +43,7 @@ describe('namedIn', () => {
     expect(namedIn(page([finding('hooks', 0.22)]))[0].reading).toBe('22%');
   });
 
-  it('reads a wait as a stretch of time', () => {
+  it('reads a wait as a length of time', () => {
     expect(namedIn(page([finding('waiting', 185_000)]))[0].reading).toBe('3m 05s');
   });
 
@@ -59,7 +59,7 @@ describe('namedIn', () => {
     expect(named.known).toBe(false);
   });
 
-  it('measures the stretch a finding happened in from its moment and its length', () => {
+  it('measures the spell a finding happened in from its moment and its length', () => {
     const named = namedIn(page([finding('waiting', 180_000, { lengthMs: 180_000 })]))[0];
 
     expect(named.startMs).toBe(Date.parse('2026-09-14T09:00:00.000Z'));
