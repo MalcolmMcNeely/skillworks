@@ -25,11 +25,11 @@ export interface AgentsPage {
   subagents: Subagent[];
 }
 
-export const mainThread = 'Main thread';
+export const mainAgent = 'Main agent';
 
-// A Thin run has no Span to name the agent, so it reads not known rather than as the main thread's work.
+// A Thin run has no Span to name the agent, so it reads not known rather than as the main agent's work.
 export function ranBy(depth: Depth, agents: Record<string, string>, step: string): string {
-  return depth === 'thin' ? notKnown : (agents[step] ?? mainThread);
+  return depth === 'thin' ? notKnown : (agents[step] ?? mainAgent);
 }
 
 export function describeDepth(depth: Depth): string {

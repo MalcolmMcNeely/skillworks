@@ -67,7 +67,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_a_step_whose_span_names_no_agent_on_the_main_thread()
+    public async Task Leaves_a_step_whose_span_names_no_agent_on_the_main_agent()
     {
         using var studio = new StudioHost();
 
@@ -83,7 +83,7 @@ public sealed partial class SessionEndpointsTests
 
         var answer = await studio.StepAnswer(Morning);
 
-        // Only a Subagent's spans carry an agent id, so the main thread is what is left unnamed.
+        // Only a Subagent's spans carry an agent id, so the main agent is what is left unnamed.
         Assert.Equal("full", answer.Depth);
         Assert.False(answer.Agents.ContainsKey(answer.Steps[0].Id));
         Assert.Equal("agent-a", answer.Agents[answer.Steps[1].Id]);
@@ -202,7 +202,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Keeps_the_tool_call_that_started_a_subagent_on_the_main_thread()
+    public async Task Keeps_the_tool_call_that_started_a_subagent_on_the_main_agent()
     {
         using var studio = new StudioHost();
 

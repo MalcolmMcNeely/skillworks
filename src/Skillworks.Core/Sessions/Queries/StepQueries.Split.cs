@@ -7,8 +7,8 @@ namespace Skillworks.Core.Sessions.Queries;
 
 public sealed partial class StepQueries
 {
-    // An older Claude Code names no thread on a Turn, and a Turn that names none is the main thread's.
-    private const string MainThread = "main";
+    // An older Claude Code names no source on a Turn, and a Turn that names none is the main agent's.
+    private const string MainAgent = "main";
 
     public static SplitPage Split(OpenedRun opened, OpenedSpans traced, IReadOnlyList<Subagent> ran)
     {
@@ -85,7 +85,7 @@ public sealed partial class StepQueries
     private static Spell Spelled(SplitPart part, Stretch stretch) => new(part, stretch.AtUtc, stretch.LengthMs);
 
     private static bool Aside(EventLine line) =>
-        line.Attribute(EventAttributes.QuerySource) is { Length: > 0 } source && source != MainThread;
+        line.Attribute(EventAttributes.QuerySource) is { Length: > 0 } source && source != MainAgent;
 
     private static IReadOnlyList<Spell> Idle(OpenedRun opened, IReadOnlyList<Spell> worked)
     {

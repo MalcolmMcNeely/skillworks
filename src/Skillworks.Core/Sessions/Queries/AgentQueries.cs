@@ -52,7 +52,7 @@ public sealed class AgentQueries(TraceStoreReader traces)
         return waited;
     }
 
-    // A Subagent's hook is that Subagent's work, and the main thread may have been busy through the whole of it.
+    // A Subagent's hook is that Subagent's work, and the main agent may have been busy through the whole of it.
     private static IReadOnlyList<Stretch> Hooked(IReadOnlyList<Span> spans) =>
     [
         .. spans
@@ -79,7 +79,7 @@ public sealed class AgentQueries(TraceStoreReader traces)
         return ran;
     }
 
-    // Only a Subagent's spans carry an agent id, so a key left out here belongs to the main thread.
+    // Only a Subagent's spans carry an agent id, so a key left out here belongs to the main agent.
     private static Dictionary<string, string> Named(IReadOnlyList<Span> spans)
     {
         var agents = new Dictionary<string, string>(StringComparer.Ordinal);

@@ -161,7 +161,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_a_hook_the_main_thread_ran()
+    public async Task Counts_a_hook_the_main_agent_ran()
     {
         using var studio = new StudioHost();
 
@@ -179,7 +179,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_a_hook_a_subagent_ran_out_of_the_main_threads_hooks()
+    public async Task Leaves_a_hook_a_subagent_ran_out_of_the_main_agents_hooks()
     {
         using var studio = new StudioHost();
 
@@ -194,7 +194,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Gives_a_subagents_work_to_its_own_part_while_the_main_thread_is_idle()
+    public async Task Gives_a_subagents_work_to_its_own_part_while_the_main_agent_is_idle()
     {
         using var studio = new StudioHost();
 
@@ -202,13 +202,13 @@ public sealed partial class SessionEndpointsTests
 
         var split = Totals(await studio.PartsIn(Morning));
 
-        // The Agent Tool call only starts the Subagent, so the stretch is its work and never the main thread's.
+        // The Agent Tool call only starts the Subagent, so the stretch is its work and never the main agent's.
         Assert.Equal(30_000, split["subagents"]);
         Assert.False(split.ContainsKey("tools"));
     }
 
     [Fact]
-    public async Task Leaves_a_tool_call_a_subagent_made_out_of_the_main_threads_tools()
+    public async Task Leaves_a_tool_call_a_subagent_made_out_of_the_main_agents_tools()
     {
         using var studio = new StudioHost();
 
@@ -231,7 +231,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Gives_a_turn_that_is_not_the_main_threads_to_side_requests()
+    public async Task Gives_a_turn_that_is_not_the_main_agents_to_side_requests()
     {
         using var studio = new StudioHost();
 
@@ -274,7 +274,7 @@ public sealed partial class SessionEndpointsTests
 
         var answer = await studio.StepAnswer(Morning);
 
-        // The main thread's Turn takes the ten seconds they share, and the whole of each still reads here.
+        // The main agent's Turn takes the ten seconds they share, and the whole of each still reads here.
         Assert.Equal(20_000, Totals(answer.Parts)["subagents"]);
         Assert.Equal(30_000, Totals(answer.Kinds)["subagents"]);
         Assert.Equal(10_000, Totals(answer.Kinds)["model"]);

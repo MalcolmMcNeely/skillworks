@@ -3,7 +3,7 @@ import {
   briefNote,
   depthTone,
   describeDepth,
-  mainThread,
+  mainAgent,
   noSubagentsWord,
   ranBy,
   ranByOne,
@@ -29,7 +29,7 @@ function subagent(id: string, held: Partial<Subagent> = {}): Subagent {
 }
 
 describe('ranBy', () => {
-  it('reads not known in a thin run, so a missing span is never read as the main thread', () => {
+  it('reads not known in a thin run, so a missing span is never read as the main agent', () => {
     expect(ranBy('thin', { '4': 'agent-a' }, '4')).toBe('Not known');
   });
 
@@ -37,8 +37,8 @@ describe('ranBy', () => {
     expect(ranBy('full', { '4': 'agent-a' }, '4')).toBe('agent-a');
   });
 
-  it('puts a step no agent id named on the main thread, as only a subagent carries one', () => {
-    expect(ranBy('full', {}, '4')).toBe(mainThread);
+  it('puts a step no agent id named on the main agent, as only a subagent carries one', () => {
+    expect(ranBy('full', {}, '4')).toBe(mainAgent);
   });
 });
 
@@ -109,7 +109,7 @@ describe('ranByOne', () => {
     expect(ranByOne(marks, agents, null)).toEqual(marks);
   });
 
-  it('keeps only what the open subagent ran, so its tool calls are never the main thread', () => {
+  it('keeps only what the open subagent ran, so its tool calls are never the main agent', () => {
     expect(ranByOne(marks, agents, 'agent-a')).toEqual([{ step: { id: '1' } }]);
   });
 });

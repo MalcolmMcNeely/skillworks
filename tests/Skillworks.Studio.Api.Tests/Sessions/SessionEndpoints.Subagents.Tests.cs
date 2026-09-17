@@ -115,7 +115,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Counts_a_tool_call_to_the_subagent_that_made_it_and_not_to_the_main_thread()
+    public async Task Counts_a_tool_call_to_the_subagent_that_made_it_and_not_to_the_main_agent()
     {
         using var studio = new StudioHost();
 
