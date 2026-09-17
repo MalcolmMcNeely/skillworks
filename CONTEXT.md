@@ -87,8 +87,9 @@ _Avoid_: Event log, telemetry store, transcript store, database
 
 **Activation**:
 One occasion on which a skill fired. It holds only what Claude Code said when the skill fired: the
-skill, the time, its Origin, its session and its Repository.
-_Avoid_: Invocation, call, run, usage
+skill, the time and its Origin, with its Session and its Repository where those are not already
+known. A list of one Session's Activations knows both, so it keeps how long the skill ran instead.
+_Avoid_: Invocation, call, skill call, firing, run, usage
 
 **Trigger**:
 What caused an activation: Claude chose the skill, a developer typed it, another skill called it, or
@@ -172,10 +173,10 @@ zero says the description may be broken; a filter that asks what happened in a c
 Repository leaves it out, because it did not happen there.
 _Avoid_: Query, search, scope
 
-**Firing eval**:
+**Activation eval**:
 A test of whether a skill activates on the prompts it should, and stays quiet on the ones it should
 not. Cheap. Applies to every engine.
-_Avoid_: Trigger test, discovery eval
+_Avoid_: Firing eval, trigger test, discovery eval
 
 **Outcome eval**:
 A test of whether a skill's output meets its contract once it has fired. Expensive. Applies only
@@ -210,6 +211,10 @@ _Avoid_: Event, entry, item
 **Tool call**:
 One use of one tool by one agent.
 
+**Main agent**:
+The agent Claude Code runs a Session as. Every Step no Subagent ran belongs to it.
+_Avoid_: Main thread, root agent, parent agent
+
 **Subagent**:
 An agent the main agent started. It has its own brief, its own Turns and its own Tool calls, and a
 reader opens it the way they open a Session. Only the opening words of its brief survive, with the
@@ -238,6 +243,10 @@ The figure a Session has to pass before Studio names a Finding. Every bar is in 
 counts as worth a person's attention is tuned in one place. A bar that was measured and not crossed
 comes back as no Finding at all, and a bar only a Span could measure comes back with no figure.
 _Avoid_: Threshold, limit, rule
+
+**Trace**:
+One Session as the Trace store holds it: its Spans, and the tree they make. The Trace panel draws
+that tree.
 
 **Trace store**:
 The organisation's store that Claude Code's Spans arrive in, once traces are switched on. It answers
@@ -269,6 +278,15 @@ each need a Span, and all three read **not known** in a Thin Session, never zero
 _Avoid_: Bucket, category, slice
 
 **Spell**:
-One stretch of a Session given to one Part. A brushed stretch is split by clipping each Spell to
-it, so every figure beneath the timeline narrows without asking a store again.
-_Avoid_: Interval, segment, block
+One bounded piece of a Session's time: a start and a length. What filled it is said beside it, a
+Part or a Subagent, and a Spell with nothing beside it is only the piece of time. A View is applied
+by clipping each Spell to it, so every figure beneath the timeline narrows without asking a store
+again.
+_Avoid_: Stint, stretch, interval, segment, block
+
+**View**:
+The part of a run a reader dragged over on the timeline. Every panel reads the View alone, so its
+figures answer the question the reader asked and no other. With no View, every panel reads the whole
+run. A reader meets it as **in view** and never by name, so nobody has to learn a word to read a
+figure.
+_Avoid_: Brush, stretch, range, selection, window
