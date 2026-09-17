@@ -79,6 +79,13 @@ _Avoid_: Cell, box, block
 The events Claude Code sends while it is switched on. Everything Studio measures is telemetry.
 _Avoid_: Usage data, metrics
 
+**Collector**:
+The part that takes everything Claude Code sends and hands it on, events to the Events store and
+Spans to the Trace store. Nothing Studio measures arrives any other way. It takes each kind on a
+door of its own, so a Collector that takes one and refuses the other leaves a whole kind of answer
+missing while both stores still answer well.
+_Avoid_: Gateway, pipeline, forwarder, hop
+
 **Events store**:
 The organisation's store that Claude Code's telemetry events arrive in, once telemetry is switched
 on. With the Trace store it is one of the two places Studio reads what it measures. Studio keeps
@@ -110,12 +117,15 @@ _Avoid_: Figure, metric, statistic
 Which way an answer from the Events store fell short, when it did: the store was unreachable,
 telemetry was never switched on, or the period was genuinely quiet. Each can arrive as nothing at
 all, so the Gap is the only thing that tells them apart, and each one means something different for
-the developer to do. Whether telemetry is switched on is read from the machine Studio runs on, so
-that Gap speaks for this machine only. A period a store holds nothing for is labelled missing, never
-shown as none. A store that stops answering part way keeps the days already read, and the Gap names
-the days it could not read. The Events store and the Trace store answer on their own, so a Gap names
-which of them fell short. A list's Measures answer on their own too, so a Gap names the Measures it
-could not read while the rows stand without them.
+the developer to do. Words the person switched off are a fourth way: the events arrived and the
+Prompts in them were withheld, so the Session is there and still cannot be read. That one is read
+from the Session itself, so it holds for a Session recorded on any machine. Whether telemetry is
+switched on is read from the machine Studio runs on, so that Gap speaks for this machine only. A
+period a store holds nothing for is labelled missing, never shown as none. A store that stops
+answering part way keeps the days already read, and the Gap names the days it could not read. The
+Events store and the Trace store answer on their own, so a Gap names which of them fell short. A
+list's Measures answer on their own too, so a Gap names the Measures it could not read while the
+rows stand without them.
 _Avoid_: Error, empty, null
 
 **Arriving**:
@@ -266,9 +276,10 @@ cannot: which Subagent ran a Tool call, how long it waited for a person's permis
 back.
 
 **Depth**:
-How much of a Session can be read: **Full** when its Spans and its words are both there, and
-**Thin** when they are not. It is part of the Filter, so a reader asks for what they can read
-instead of opening Sessions to find out.
+How much of a Session can be read: **Full** when its Spans and its Prompts are both there, and
+**Thin** when they are not. A Prompt whose words were withheld is not there, so a Session recorded
+with the words switched off is Thin however whole its Spans. It is part of the Filter, so a reader
+asks for what they can read instead of opening Sessions to find out.
 _Avoid_: Fidelity, completeness, quality
 
 **Split**:
