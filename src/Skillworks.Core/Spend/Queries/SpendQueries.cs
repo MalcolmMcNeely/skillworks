@@ -7,9 +7,6 @@ public sealed class SpendQueries(EventsStoreReader events)
 {
     private const string EventName = "api_request";
 
-    // Sent in place of any skill from a plugin outside Anthropic's marketplaces, so it names no one skill.
-    private const string Unnamed = "third-party";
-
     private const string CostAttribute = "cost_usd";
 
     private const string InputAttribute = "input_tokens";
@@ -71,12 +68,12 @@ public sealed class SpendQueries(EventsStoreReader events)
         return new SpendTally(
             models.Keys
                 .Concat(new[] { costs, inputs, outputs, cacheReads, cacheCreations }.SelectMany(sums => sums.Keys))
-                .Where(skill => skill != Unnamed)
+                .Where(skill => skill != EventAttributes.Unnamed)
                 .Distinct()
                 .ToDictionary(skill => skill, SpendOf),
             models,
             Names(effort, EffortAttribute),
-            SpendOf(Unnamed),
+            SpendOf(EventAttributes.Unnamed),
             period with
             {
                 Unreachable = period.Unreachable ?? cost.Unreachable ?? input.Unreachable ?? output.Unreachable ??
@@ -91,7 +88,7 @@ public sealed class SpendQueries(EventsStoreReader events)
 
     private static Dictionary<string, IReadOnlyList<string>> Names(EventTotals totals, string attribute) =>
         totals.BySkill()
-            .Where(group => group.Key != Unnamed)
+            .Where(group => group.Key != EventAttributes.Unnamed)
             .ToDictionary(
                 group => group.Key,
                 IReadOnlyList<string> (group) => [.. group.Select(total => total.Attribute(attribute)).OfType<string>().Distinct().Order()]);

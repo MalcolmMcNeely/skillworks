@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Skillworks.Core.Arriving;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Gaps;
+using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Queries;
 using Skillworks.Core.Sessions.SkillCalls;
@@ -25,6 +26,7 @@ public sealed class StepReport(StepQueries steps, GapReport gaps, Lookback lookb
             // Ahead of the steps, so a screen that draws on the steps landing has every panel already.
             yield return new ExchangesPage(opened.Said);
             yield return new SkillCallsPage(opened.Fired);
+            yield return new ContextPage(opened.Sent, opened.LimitTokens);
             yield return new StepsPage(opened.Steps);
         }
 

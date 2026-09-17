@@ -8,11 +8,13 @@ import { UpButton } from '../../pages/components/UpButton';
 import { useTabTitle } from '../../pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../pages/lib/pages';
 import { fetchSession } from '../api/sessions';
+import { ContextPanel } from '../components/ContextPanel';
 import { ConversationPanel } from '../components/ConversationPanel';
 import { SkillCallPanel } from '../components/SkillCallPanel';
 import { StepPanel } from '../components/StepPanel';
 import { Timeline } from '../components/Timeline';
 import { rangeOf, readRange, widened, withRange } from '../lib/brush';
+import { levelsOf, type Level } from '../lib/context';
 import { bandsOf, type Band } from '../lib/conversation';
 import { describeLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
 import { firingsOf, type Firing } from '../lib/skillCalls';
@@ -75,9 +77,11 @@ export function Session() {
   const steps = answer?.steps;
   const exchanges = answer?.exchanges;
   const skillCalls = answer?.skillCalls;
+  const context = answer?.context;
   const marks = useMemo(() => marksOf(steps ?? []), [steps]);
   const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
   const firings = useMemo(() => firingsOf(skillCalls ?? []), [skillCalls]);
+  const levels = useMemo(() => levelsOf(context ?? []), [context]);
   const whole = runSpan(marks);
 
   // Replaced, not pushed, so brushing four stretches does not cost four presses of the back button.
@@ -120,6 +124,7 @@ export function Session() {
         marks={marks}
         bands={bands}
         firings={firings}
+        levels={levels}
         whole={whole}
         range={range}
         where={where}
@@ -138,6 +143,7 @@ function Body({
   marks,
   bands,
   firings,
+  levels,
   whole,
   range,
   where,
@@ -151,6 +157,7 @@ function Body({
   marks: readonly Mark[];
   bands: readonly Band[];
   firings: readonly Firing[];
+  levels: readonly Level[];
   whole: Range | null;
   range: Range | null;
   where: Where;
@@ -189,6 +196,13 @@ function Body({
       />
       <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
       <SkillCallPanel firings={firings} range={range} opened={where.call} onOpen={onCall} />
+      <ContextPanel
+        levels={levels}
+        limitTokens={answer.limitTokens}
+        range={range}
+        selected={where.step}
+        onOpen={onOpen}
+      />
       <StepPanel marks={marks} range={range} selected={where.step} onOpen={onOpen} />
     </>
   );

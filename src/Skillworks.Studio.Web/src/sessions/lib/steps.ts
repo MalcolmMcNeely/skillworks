@@ -1,4 +1,5 @@
 import type { Gap, GapEnd } from '../../gaps/lib/gaps';
+import type { ContextPage, ContextPoint } from './context';
 import type { Exchange, ExchangesPage } from './conversation';
 import type { Session } from './sessions';
 import type { SkillCall, SkillCallsPage } from './skillCalls';
@@ -27,13 +28,15 @@ export interface StepsPage {
   steps: Step[];
 }
 
-export type SessionLine = SessionHead | StepsPage | ExchangesPage | SkillCallsPage | GapEnd;
+export type SessionLine = SessionHead | StepsPage | ExchangesPage | SkillCallsPage | ContextPage | GapEnd;
 
 export interface SessionAnswer {
   session: Session | null;
   steps: Step[];
   exchanges: Exchange[];
   skillCalls: SkillCall[];
+  context: ContextPoint[];
+  limitTokens: number | null;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -47,6 +50,8 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       steps: [],
       exchanges: [],
       skillCalls: [],
+      context: [],
+      limitTokens: null,
       landed: false,
       arriving: true,
       gap: null,
@@ -67,6 +72,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
 
   if (line.kind === 'skillCalls') {
     return { ...answer, skillCalls: line.skillCalls };
+  }
+
+  if (line.kind === 'context') {
+    return { ...answer, context: line.points, limitTokens: line.limitTokens };
   }
 
   return { ...answer, steps: line.steps, landed: true };

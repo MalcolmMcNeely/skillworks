@@ -1,6 +1,7 @@
 using System.Globalization;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
+using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Steps;
 
@@ -58,16 +59,19 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
 
         if (read.Unreachable is not null || read.Lines.Count == 0)
         {
-            return new OpenedRun(null, [], [], [], read);
+            return new OpenedRun(null, [], [], [], [], null, read);
         }
 
         var drawn = Stepped(read.Lines);
+        var sent = Sent(read.Lines);
 
         return new OpenedRun(
             Run(id, read.Lines),
             [.. drawn.Select(each => each.Step)],
             Said(drawn),
             Fired(read.Lines),
+            sent.Points,
+            sent.Limit,
             read);
     }
 

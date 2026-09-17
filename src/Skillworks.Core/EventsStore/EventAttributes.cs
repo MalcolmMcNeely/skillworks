@@ -27,6 +27,9 @@ public static class EventAttributes
     // Claude Code writes this in place of the words when the prompt and response switches are off.
     public const string Withheld = "<REDACTED>";
 
+    // Sent in place of any skill from a plugin outside Anthropic's marketplaces, so it names no one skill.
+    public const string Unnamed = "third-party";
+
     // Loki gives OTLP attributes with their dots turned into underscores.
     internal static string LabelOf(string attribute) => attribute.Replace('.', '_');
 

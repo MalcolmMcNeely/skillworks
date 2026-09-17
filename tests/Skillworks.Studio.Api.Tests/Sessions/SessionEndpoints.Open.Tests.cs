@@ -17,7 +17,7 @@ public sealed partial class SessionEndpointsTests
         var lines = await studio.StepLines(Morning);
 
         // A screen draws once the steps land, so everything it draws beside them has to be there already.
-        Assert.Equal(["head", "exchanges", "skillCalls", "steps", "end"], lines.Select(StudioHost.KindOf));
+        Assert.Equal(["head", "exchanges", "skillCalls", "context", "steps", "end"], lines.Select(StudioHost.KindOf));
     }
 
     [Fact]

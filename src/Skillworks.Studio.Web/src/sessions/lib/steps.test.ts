@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ContextPoint } from './context';
 import type { Exchange } from './conversation';
 import type { Session } from './sessions';
 import type { SkillCall } from './skillCalls';
@@ -58,6 +59,17 @@ const fired: SkillCall = {
   trigger: 'user-slash',
 };
 
+const sent: ContextPoint = {
+  id: '9',
+  atUtc: '2026-09-14T09:00:00.000Z',
+  lengthMs: 2_000,
+  tokens: 420_000,
+  writtenToCache: 0,
+  skill: 'tdd',
+  unnamed: false,
+  rebuilt: false,
+};
+
 const opened: SessionAnswer = foldSessionLine(null, { kind: 'head', session: run });
 
 describe('foldSessionLine', () => {
@@ -98,6 +110,24 @@ describe('foldSessionLine', () => {
 
     expect(answer.skillCalls).toEqual([fired]);
     expect(answer.steps).toEqual([prompt]);
+  });
+
+  it('takes the context and the limit, so the panel reads what the timeline is already drawing', () => {
+    const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
+      kind: 'context',
+      points: [sent],
+      limitTokens: 1_000_000,
+    });
+
+    expect(answer.context).toEqual([sent]);
+    expect(answer.limitTokens).toBe(1_000_000);
+    expect(answer.steps).toEqual([prompt]);
+  });
+
+  it('keeps a limit no model named out of the answer, so a share is never read off a guess', () => {
+    const answer = foldSessionLine(opened, { kind: 'context', points: [sent], limitTokens: null });
+
+    expect(answer.limitTokens).toBeNull();
   });
 
   it('ends the answer and keeps its gap', () => {

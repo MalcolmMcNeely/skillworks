@@ -22,6 +22,8 @@ public sealed record ApiRequest(
 
     public string? Person { get; init; } = TestLoki.Person;
 
+    public long DurationMs { get; init; } = 2140;
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>
@@ -35,7 +37,7 @@ public sealed record ApiRequest(
         ("cache_read_tokens", CacheReadTokens.ToString(CultureInfo.InvariantCulture)),
         ("cache_creation_tokens", CacheCreationTokens.ToString(CultureInfo.InvariantCulture)),
         ("request_id", $"req_{Guid.NewGuid():N}"),
-        ("duration_ms", "2140"),
+        ("duration_ms", DurationMs.ToString(CultureInfo.InvariantCulture)),
         ("speed", "normal"),
         ("vcs.owner.name", Owner),
         ("vcs.repository.name", RepositoryName),
