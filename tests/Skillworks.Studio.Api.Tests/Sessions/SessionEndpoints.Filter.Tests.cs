@@ -1,9 +1,19 @@
+using Skillworks.Core.Tests.TraceStore;
 using Skillworks.Studio.Api.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 
 public sealed partial class SessionEndpointsTests
 {
+    // A trace of its own for each run, as Claude Code never writes two runs into one.
+    private const string MorningTrace = "7a1c0a9e0000400080000000000000b1";
+
+    private const string EveningTrace = "7a1c0a9e0000400080000000000000b3";
+
+    private const string MorningSpan = "c11c0a9e00000001";
+
+    private const string EveningSpan = "c11c0a9e00000003";
+
     [Fact]
     public async Task Narrows_the_table_to_a_span_of_days_and_takes_both_ends_in()
     {
@@ -175,6 +185,130 @@ public sealed partial class SessionEndpointsTests
         Assert.Empty(answer.Sessions);
         Assert.Equal("complete", answer.Gap.Kind);
     }
+
+    [Fact]
+    public async Task Hides_neither_depth_from_a_table_nobody_narrowed_by_depth()
+    {
+        using var studio = new StudioHost();
+
+        await BothDepthsRan(studio);
+
+        Assert.Equal(["The thin run", "The full run"], (await studio.SessionsIn()).Select(session => session.Name));
+    }
+
+    [Fact]
+    public async Task Narrows_the_table_to_the_runs_that_can_be_read_in_full()
+    {
+        using var studio = new StudioHost();
+
+        await BothDepthsRan(studio);
+
+        Assert.Equal(["The full run"], (await studio.SessionsIn("?depth=full")).Select(session => session.Name));
+    }
+
+    [Fact]
+    public async Task Narrows_the_table_to_the_runs_that_were_never_traced()
+    {
+        using var studio = new StudioHost();
+
+        await BothDepthsRan(studio);
+
+        Assert.Equal(["The thin run"], (await studio.SessionsIn("?depth=thin")).Select(session => session.Name));
+    }
+
+    [Fact]
+    public async Task Opens_a_whole_table_for_a_depth_nobody_has()
+    {
+        using var studio = new StudioHost();
+
+        await BothDepthsRan(studio);
+
+        // A hand-typed address that misspells a Depth must hide no run, as nobody asked for one to go.
+        Assert.Equal(
+            ["The thin run", "The full run"],
+            (await studio.SessionsIn("?depth=deep")).Select(session => session.Name));
+    }
+
+    [Fact]
+    public async Task Narrows_the_table_by_the_span_the_repository_the_skill_and_the_depth_together()
+    {
+        using var studio = new StudioHost();
+
+        await studio.Push(
+            Ran(Morning, "2026-09-14T09:00:00.000Z", "The run that matches", "acme/xi"),
+            Ran(Afternoon, "2026-09-14T10:00:00.000Z", "The run that was never traced", "acme/xi"),
+            Ran(Evening, "2026-09-12T09:00:00.000Z", "The run outside the span", "acme/xi"));
+        await studio.Push(
+            new SkillActivated("tdd", "2026-09-14T09:05:00.000Z") { Session = Morning },
+            new SkillActivated("tdd", "2026-09-14T10:05:00.000Z") { Session = Afternoon },
+            new SkillActivated("tdd", "2026-09-12T09:05:00.000Z") { Session = Evening });
+        await studio.PushSpans(Morning, MorningTrace, Traced(MorningSpan));
+        await studio.PushSpans(Evening, EveningTrace, Traced(EveningSpan));
+
+        var names = (await studio.SessionsIn("?from=2026-09-14&to=2026-09-14&repository=acme/xi&skill=tdd&depth=full"))
+            .Select(session => session.Name);
+
+        Assert.Equal(["The run that matches"], names);
+    }
+
+    [Fact]
+    public async Task Draws_a_table_nobody_narrowed_by_depth_even_when_the_trace_store_is_down()
+    {
+        using var traces = BrokenTraceStore.Down();
+        using var studio = new StudioHost(traces: traces);
+
+        await studio.Push(SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The run"));
+
+        var answer = await studio.SessionAnswer();
+
+        // The list is the events store's answer, so a slow or broken trace store leaves no reader waiting.
+        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
+        Assert.Equal("complete", answer.Gap.Kind);
+    }
+
+    [Fact]
+    public async Task Names_the_trace_store_rather_than_narrowing_by_a_depth_it_could_not_read()
+    {
+        using var traces = BrokenTraceStore.Down();
+        using var studio = new StudioHost(traces: traces);
+
+        await studio.Push(SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The run"));
+
+        var answer = await studio.SessionAnswer("?depth=full");
+
+        // A guessed Depth would hide runs nobody asked to hide, so the table says what it cannot know instead.
+        Assert.Empty(answer.Sessions);
+        Assert.Equal("unreachable", answer.Gap.Kind);
+        Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Names_the_trace_store_for_a_depth_it_could_not_read_even_with_the_telemetry_switch_off()
+    {
+        using var traces = BrokenTraceStore.Down();
+        using var studio = new StudioHost(traces: traces, emitting: false);
+
+        await studio.Push(SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The run"));
+
+        var answer = await studio.SessionAnswer("?depth=full");
+
+        // The store that emptied the table is the one to name, and a switch nobody flipped did not empty it.
+        Assert.Empty(answer.Sessions);
+        Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+    }
+
+    private static async Task BothDepthsRan(StudioHost studio)
+    {
+        await studio.Push(
+            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The full run"),
+            SessionEvent.Titled(Afternoon, "2026-09-14T14:00:00.000Z", "The thin run"));
+
+        await studio.PushSpans(Morning, MorningTrace, Traced(MorningSpan));
+    }
+
+    // Nothing but a span of the run: a Depth asks whether the trace store holds one, never what it says.
+    private static RecordedSpan Traced(string id) =>
+        new("claude_code.interaction", "2026-09-14T09:00:00Z", "2026-09-14T09:00:30Z", id);
 
     private static SessionEvent Ran(string session, string at, string title, string repository)
     {

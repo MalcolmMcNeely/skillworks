@@ -134,6 +134,53 @@ public sealed class TraceStoreReaderTests
     }
 
     [Fact]
+    public async Task Names_every_session_the_store_holds_spans_for()
+    {
+        // Arrange
+        var tenant = Tenant();
+        var traced = Session();
+        var another = Session();
+
+        await Push(tenant, traced, Prompt, WholeRun());
+        await Push(tenant, another, Title, [new RecordedSpan(Interaction, "2026-09-14T11:00:00Z", "2026-09-14T11:00:05Z", "c100000000000001")]);
+
+        // Act
+        var read = await Reader(tenant).OfPeriodAsync(From, CancellationToken.None);
+
+        // Assert
+        Assert.Null(read.Unreachable);
+        Assert.Equal(
+            new[] { traced, another }.Order(StringComparer.Ordinal),
+            read.Sessions.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Names_no_session_when_the_store_holds_no_spans()
+    {
+        // Act
+        var read = await Reader(Tenant()).OfPeriodAsync(From, CancellationToken.None);
+
+        // Assert
+        Assert.Null(read.Unreachable);
+        Assert.Empty(read.Sessions);
+    }
+
+    [Fact]
+    public async Task Names_the_trace_store_and_nothing_else_when_the_sessions_it_holds_cannot_be_read()
+    {
+        // Arrange
+        var down = "http://127.0.0.1:1";
+
+        // Act
+        var read = await Reader(Tenant(), down).OfPeriodAsync(From, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(read.Sessions);
+        Assert.Contains(down, read.Unreachable ?? "");
+        Assert.DoesNotContain("events", read.Unreachable ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Names_the_trace_store_and_nothing_else_when_it_cannot_be_read()
     {
         // Arrange

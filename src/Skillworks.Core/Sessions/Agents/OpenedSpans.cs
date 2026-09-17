@@ -1,3 +1,4 @@
+using Skillworks.Core.Filters;
 using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Sessions.Agents;

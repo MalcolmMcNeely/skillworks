@@ -62,6 +62,16 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         return SessionSpans.Of([.. spans.OrderBy(span => span.Started)]);
     }
 
+    // The values of one attribute, not a search: a period holds far more traces than a search hands back.
+    public async Task<TracedSessions> OfPeriodAsync(DateTimeOffset from, CancellationToken cancellationToken)
+    {
+        var found = await AskAsync<IReadOnlyList<string>>(Values(from, Ever), Sessions, [], cancellationToken);
+
+        return found.Unreachable is null
+            ? TracedSessions.Of(found.Value.ToHashSet(StringComparer.Ordinal))
+            : TracedSessions.Failed(found.Unreachable);
+    }
+
     public async Task<TraceStoreAnswer> AnsweringAsync(CancellationToken cancellationToken)
     {
         var address = options.Value.ResolvedAddress();
@@ -89,10 +99,15 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         }
     }
 
-    // A second's truncation would drop a span at the far end, and Tempo counts seconds in 32 signed bits.
     private static string Search(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
-        $"api/search?q={Uri.EscapeDataString(traceQl)}" +
-        $"&start={from.ToUnixTimeSeconds()}&end={Math.Min(until.ToUnixTimeSeconds() + 1, int.MaxValue)}&limit={limit}";
+        $"api/search?q={Uri.EscapeDataString(traceQl)}&{Window(from, until)}&limit={limit}";
+
+    private static string Values(DateTimeOffset from, DateTimeOffset until) =>
+        $"api/v2/search/tag/span.{SessionAttribute}/values?{Window(from, until)}";
+
+    // A second's truncation would drop a span at the far end, and Tempo counts seconds in 32 signed bits.
+    private static string Window(DateTimeOffset from, DateTimeOffset until) =>
+        $"start={from.ToUnixTimeSeconds()}&end={Math.Min(until.ToUnixTimeSeconds() + 1, int.MaxValue)}";
 
     // Tempo writes a trace id without its leading zeroes, and takes one back the same way.
     private static string Trace(string traceId) => $"api/v2/traces/{Uri.EscapeDataString(traceId)}";
@@ -146,6 +161,13 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     private static bool Outside(Exception failure, CancellationToken cancellationToken) =>
         failure is HttpRequestException or JsonException ||
         (failure is TaskCanceledException && !cancellationToken.IsCancellationRequested);
+
+    private static IReadOnlyList<string> Sessions(JsonElement root) =>
+    [
+        .. Items(root, "tagValues")
+            .Select(held => Text(held, "value"))
+            .OfType<string>()
+    ];
 
     private static IReadOnlyList<string> TraceIds(JsonElement root) =>
     [

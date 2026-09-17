@@ -1,4 +1,5 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
+import { narrowsByDepth } from '../../filters/lib/depthKeys';
 import type { Filter, Span } from '../../filters/lib/filters';
 import type { Gap, GapEnd } from '../../gaps/lib/gaps';
 
@@ -177,7 +178,9 @@ export function describePeriod(span: SessionsHead['span'] | null, shown: Span | 
   return shown === null ? 'The lookback' : describeSpan(shown);
 }
 
-// A span is the period itself, so only a Repository or a Skill turns an empty table from a quiet week into no match.
+// A span is the period itself, so only the other three parts turn an empty table from a quiet week into no match.
 export function describeNoSessions(filter: Filter): string {
-  return filter.repository !== '' || filter.skill !== '' ? 'No runs match this filter.' : 'No runs in this period.';
+  const narrowed = filter.repository !== '' || filter.skill !== '' || narrowsByDepth(filter);
+
+  return narrowed ? 'No runs match this filter.' : 'No runs in this period.';
 }

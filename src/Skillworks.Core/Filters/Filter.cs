@@ -12,7 +12,10 @@ public sealed record Filter
 
     public string? Skill { get; init; }
 
-    // Skill is left out: it only picks which skills are listed, and a never-fired one still belongs there.
+    // Text, not the word itself: a hand-typed address that misspells a Depth must still open a table.
+    public string? Depth { get; init; }
+
+    // Skill and Depth are left out: they pick which rows are listed, and a never-fired skill still belongs there.
     public bool AsksWhatHappened => From is not null || To is not null || Repository is not null;
 
     public DateTimeOffset? FromUtc => From is { } day ? DaySpan.StartOf(day) : null;
@@ -20,6 +23,14 @@ public sealed record Filter
     public DateTimeOffset? UntilUtc => To is { } day ? DaySpan.EndOf(day) : null;
 
     public bool Covers(string skill) => Skill is null || Skill == skill;
+
+    public bool NarrowsByDepth => AskedDepth is not null;
+
+    public bool Covers(Depth depth) => AskedDepth is null || AskedDepth == depth;
+
+    // A number would parse as a Depth nobody has, so only a name the enum really holds narrows anything.
+    private Depth? AskedDepth =>
+        Enum.TryParse<Depth>(Depth, ignoreCase: true, out var asked) && Enum.IsDefined(asked) ? asked : null;
 
     // With no span, the lookback, so a zero always has a period it is honest about.
     public DaySpan Span(DateOnly today, int lookbackDays)

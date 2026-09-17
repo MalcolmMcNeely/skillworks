@@ -4,9 +4,11 @@ export interface Filter {
   to: string;
   repository: string;
   skill: string;
+  // Empty asks for both depths, so no run is ever hidden from a reader who did not ask for that.
+  depth: string;
 }
 
-export const everything: Filter = { from: '', to: '', repository: '', skill: '' };
+export const everything: Filter = { from: '', to: '', repository: '', skill: '', depth: '' };
 
 // Both ends in, so a span of one day has from equal to to.
 export interface Span {
@@ -20,6 +22,7 @@ export function readFilter(params: URLSearchParams): Filter {
     to: params.get('to') ?? '',
     repository: params.get('repository') ?? '',
     skill: params.get('skill') ?? '',
+    depth: params.get('depth') ?? '',
   };
 }
 

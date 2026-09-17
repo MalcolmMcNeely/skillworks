@@ -18,13 +18,20 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
 
         yield return new SessionsHead(span, order.SortedOn, order.HighestFirst);
 
-        var (rows, period) = await sessions.ListAsync(span, filter, order, cancellationToken);
+        var (rows, period, traced) = await sessions.ListAsync(span, filter, order, cancellationToken);
 
-        if (period.Unreachable is null)
+        // A Depth the trace store could not answer would narrow the table by guesswork, so it shows no rows at all.
+        if (period.Unreachable is null && traced.Unreachable is null)
         {
             yield return new SessionsPage(rows);
         }
 
-        yield return new GapEnd(gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()));
+        yield return new GapEnd(Emptied(
+            gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()),
+            gaps.InDepths(traced)));
     }
+
+    // The store that emptied the table is the one to name, and an events store that never answered empties it hardest.
+    private static Gap Emptied(Gap events, Gap depths) =>
+        events.Kind == GapKind.Unreachable || depths.Kind == GapKind.Complete ? events : depths;
 }

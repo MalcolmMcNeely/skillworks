@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { ChosenSkill } from '../../filters/components/ChosenSkill';
 import { RepositoryPicker } from '../../filters/components/RepositoryPicker';
+import { depthKeyOf, depthKeys } from '../../filters/lib/depthKeys';
 import { filterParams, readFilter, type Filter } from '../../filters/lib/filters';
 import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../filters/lib/spanKeys';
 import { SignalWord } from '../../gaps/components/SignalWord';
@@ -101,6 +102,12 @@ export function Sessions() {
           span={filter}
           repository={filter.repository}
           onChange={(repository) => show({ ...filter, repository }, order)}
+        />
+        <Keys
+          label="Depth"
+          pressed={depthKeyOf(filter)}
+          options={depthKeys}
+          onPress={(depth) => show({ ...filter, depth }, order)}
         />
         <p className="micro sessions-span">{describePeriod(answer?.span ?? null, shownSpan)}</p>
       </section>

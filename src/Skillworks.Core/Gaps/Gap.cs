@@ -75,6 +75,14 @@ public sealed record Gap(GapKind Kind, string? Missing)
         return new Gap(kind, missing);
     }
 
+    // A store that holds nothing is a true answer, as a run it says nothing about is Thin.
+    internal static Gap OfDepths(string? unreachable) =>
+        unreachable is { } reason
+            ? new Gap(
+                GapKind.Unreachable,
+                $"Studio could not read the trace store: {reason}. Which runs can be read in full is not known.")
+            : new Gap(GapKind.Complete, null);
+
     private static string Listed(IReadOnlyList<DateOnly> days)
     {
         string[] names = [.. days.Select(day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))];

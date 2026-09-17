@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { everything, type Filter } from './filters';
 import { spanKeyOf, todayUtc, withSpanKey } from './spanKeys';
 
-const narrowed: Filter = { from: '2026-09-01', to: '2026-09-05', repository: 'skillworks', skill: '' };
+const narrowed: Filter = { from: '2026-09-01', to: '2026-09-05', repository: 'skillworks', skill: '', depth: '' };
 
 describe('withSpanKey', () => {
   it('narrows 24H to today alone, keeping the rest of the filter', () => {

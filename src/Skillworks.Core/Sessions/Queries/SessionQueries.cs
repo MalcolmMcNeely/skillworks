@@ -1,9 +1,10 @@
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
+using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 
-public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
+public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths, TimeProvider clock)
 {
     private const string TitleEvent = "assistant_response";
 
@@ -54,13 +55,16 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
     private static readonly string[] ByDecision = [EventAttributes.Session, DecisionAttribute];
 
     // Totals, never a list of events: a busy organisation's week is more lines than one read holds.
-    public async Task<(IReadOnlyList<Session> Sessions, EventTotals Period)> ListAsync(
+    public async Task<(IReadOnlyList<Session> Sessions, EventTotals Period, TracedSessions Traced)> ListAsync(
         DaySpan span,
         Filter filter,
         SessionOrder order,
         CancellationToken cancellationToken)
     {
         var everything = Events(span, filter);
+
+        // Started with the totals, so a Depth costs a reader no wait the events store was not already taking.
+        var tracing = depths.OfPeriodAsync(span, filter, cancellationToken);
 
         var placing = events.CountAsync(everything, ByWhereabouts, cancellationToken);
         var starting = events.EarliestAsync(everything, BySession, cancellationToken);
@@ -93,11 +97,12 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
             await surveying);
 
         var period = read.Surveyed with { Unreachable = read.Unreachable };
+        var traced = await tracing;
 
-        return (period.Unreachable is null ? Rows(read, filter, order) : [], period);
+        return (period.Unreachable is null ? Rows(read, filter, order, traced) : [], period, traced);
     }
 
-    private IReadOnlyList<Session> Rows(Readings read, Filter filter, SessionOrder order)
+    private IReadOnlyList<Session> Rows(Readings read, Filter filter, SessionOrder order, TracedSessions traced)
     {
         var (firstEvent, lastEvent) = (MomentsOf(read.Started), MomentsOf(read.Ended));
         var titles = WordsOf(read.Titled, EventAttributes.Response);
@@ -117,6 +122,7 @@ public sealed class SessionQueries(EventsStoreReader events, TimeProvider clock)
             let id = run.Key
             where firstEvent.ContainsKey(id) && lastEvent.ContainsKey(id)
             where firedIn is null || firedIn.Contains(id)
+            where filter.Covers(traced.Sessions.Contains(id) ? Depth.Full : Depth.Thin)
             let repository = MostlySaid(run, total => total.Repository)
             let startedAt = firstEvent[id]
             select new Session(

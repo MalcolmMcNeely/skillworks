@@ -14,6 +14,7 @@ const narrowed: Filter = {
   to: '2026-09-05',
   repository: 'skillworks',
   skill: 'grilling',
+  depth: 'full',
 };
 
 describe('filterQuery', () => {
@@ -25,10 +26,14 @@ describe('filterQuery', () => {
     expect(filterQuery({ ...everything, repository: 'skillworks' })).toBe('?repository=skillworks');
   });
 
-  it('carries all three filters at once', () => {
+  it('carries all four filters at once', () => {
     expect(filterQuery(narrowed)).toBe(
-      '?from=2026-09-01&to=2026-09-05&repository=skillworks&skill=grilling',
+      '?from=2026-09-01&to=2026-09-05&repository=skillworks&skill=grilling&depth=full',
     );
+  });
+
+  it('leaves out a Depth that asks for both, so an unnarrowed table has a clean address to share', () => {
+    expect(filterQuery({ ...everything, depth: '' })).toBe('');
   });
 
   it('escapes a skill name that a query string would otherwise read as two', () => {
@@ -48,6 +53,10 @@ describe('readFilter', () => {
       ...everything,
       repository: 'skillworks',
     });
+  });
+
+  it('reads a Depth back out of the address, so a narrowed table survives a reload', () => {
+    expect(readFilter(new URLSearchParams('depth=thin'))).toEqual({ ...everything, depth: 'thin' });
   });
 });
 

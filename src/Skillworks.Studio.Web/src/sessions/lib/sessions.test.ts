@@ -242,8 +242,14 @@ describe('describeNoSessions', () => {
     expect(describeNoSessions({ ...everything, from: '2026-09-13', to: '2026-09-14' })).toBe('No runs in this period.');
   });
 
-  it('says a table narrowed by a Repository or a Skill matched nothing, never reading as a blank page', () => {
+  it('says a table narrowed by a Repository, a Skill or a Depth matched nothing, never reading as a blank page', () => {
     expect(describeNoSessions({ ...everything, repository: 'acme/nu' })).toBe('No runs match this filter.');
     expect(describeNoSessions({ ...everything, skill: 'tdd' })).toBe('No runs match this filter.');
+    expect(describeNoSessions({ ...everything, depth: 'full' })).toBe('No runs match this filter.');
+  });
+
+  it('calls a quiet period quiet when the address bar names a Depth nobody has', () => {
+    // The API lists both depths for a Depth it cannot read, so nothing was narrowed away.
+    expect(describeNoSessions({ ...everything, depth: 'deep' })).toBe('No runs in this period.');
   });
 });
