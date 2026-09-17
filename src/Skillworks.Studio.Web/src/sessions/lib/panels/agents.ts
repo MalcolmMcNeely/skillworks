@@ -45,13 +45,13 @@ export function depthTone(depth: Depth, gap: Gap | null): Signal['tone'] {
   return gap !== null && gap.kind === 'unreachable' ? 'failed' : 'quiet';
 }
 
-export interface Stint {
+export interface AgentSpell {
   agent: Subagent;
   startMs: number;
   endMs: number;
 }
 
-export function stintsOf(subagents: readonly Subagent[]): Stint[] {
+export function agentSpellsOf(subagents: readonly Subagent[]): AgentSpell[] {
   return subagents.map((agent) => {
     const startMs = Date.parse(agent.atUtc);
 
@@ -66,12 +66,12 @@ export interface AgentTally {
   faults: number;
 }
 
-export function tallyOf(stints: readonly Stint[]): AgentTally {
+export function tallyOf(spells: readonly AgentSpell[]): AgentTally {
   return {
-    subagents: stints.length,
-    toolCalls: stints.reduce((sum, stint) => sum + stint.agent.toolCalls, 0),
-    cost: stints.reduce((sum, stint) => sum + stint.agent.cost, 0),
-    faults: stints.reduce((sum, stint) => sum + stint.agent.faults, 0),
+    subagents: spells.length,
+    toolCalls: spells.reduce((sum, spell) => sum + spell.agent.toolCalls, 0),
+    cost: spells.reduce((sum, spell) => sum + spell.agent.cost, 0),
+    faults: spells.reduce((sum, spell) => sum + spell.agent.faults, 0),
   };
 }
 

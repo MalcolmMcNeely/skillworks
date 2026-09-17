@@ -9,6 +9,6 @@ public sealed record OpenedSpans(
     IReadOnlyDictionary<string, string> Agents,
     IReadOnlyDictionary<string, string> Inside,
     IReadOnlyDictionary<string, AgentRoot> Wrapped,
-    IReadOnlyDictionary<string, Stretch> Waited,
-    IReadOnlyList<Stretch> Hooked,
+    IReadOnlyDictionary<string, Spell> Waited,
+    IReadOnlyList<Spell> Hooked,
     SessionSpans Read);

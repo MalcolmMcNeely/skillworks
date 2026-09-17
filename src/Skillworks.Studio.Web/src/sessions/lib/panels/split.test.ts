@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { Depth } from './agents';
-import { noSplitWord, shareOf, sharesOf, splitLength, type Spell, type SplitPage, type SplitPart } from './split';
+import { noSplitWord, shareOf, sharesOf, splitLength, type PartSpell, type SplitPage, type SplitPart } from './split';
 
 const at = (seconds: number) => new Date(seconds * 1_000).toISOString();
 
-const spell = (part: SplitPart, fromSeconds: number, toSeconds: number): Spell => ({
+const spell = (part: SplitPart, fromSeconds: number, toSeconds: number): PartSpell => ({
   part,
   atUtc: at(fromSeconds),
   lengthMs: (toSeconds - fromSeconds) * 1_000,
 });
 
-const page = (parts: Spell[], kinds: Spell[] = [], depth: Depth = 'full'): SplitPage => ({
+const page = (parts: PartSpell[], kinds: PartSpell[] = [], depth: Depth = 'full'): SplitPage => ({
   kind: 'split',
   depth,
   parts,

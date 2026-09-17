@@ -1,5 +1,5 @@
 import { describeCount, describeMoney, describeStretch } from '../../../figures/lib/figures';
-import { briefNote, noReport, noSubagentsWord, tallyOf, type Depth, type Stint } from '../../lib/panels/agents';
+import { briefNote, noReport, noSubagentsWord, tallyOf, type AgentSpell, type Depth } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/brush';
 import { notKnown } from '../../lib/sessions';
 import { describeClock } from '../../lib/steps';
@@ -14,8 +14,8 @@ function Said({ what, words, missing }: { what: string; words: string | null; mi
   );
 }
 
-function Opened({ stint, onClose }: { stint: Stint; onClose: () => void }) {
-  const { agent } = stint;
+function Opened({ spell, onClose }: { spell: AgentSpell; onClose: () => void }) {
+  const { agent } = spell;
 
   return (
     <div className="step-open">
@@ -27,7 +27,7 @@ function Opened({ stint, onClose }: { stint: Stint; onClose: () => void }) {
         </button>
       </p>
       <p className="micro">
-        {describeClock(stint.startMs, true)} · {describeStretch(agent.lengthMs)} ·{' '}
+        {describeClock(spell.startMs, true)} · {describeStretch(agent.lengthMs)} ·{' '}
         {describeCount(agent.toolCalls)} tool calls · {describeMoney(agent.cost)} ·{' '}
         {describeCount(agent.faults)} faults
       </p>
@@ -37,12 +37,12 @@ function Opened({ stint, onClose }: { stint: Stint; onClose: () => void }) {
   );
 }
 
-function Row({ stint, open, onOpen }: { stint: Stint; open: boolean; onOpen: (stint: Stint) => void }) {
-  const { agent } = stint;
+function Row({ spell, open, onOpen }: { spell: AgentSpell; open: boolean; onOpen: (spell: AgentSpell) => void }) {
+  const { agent } = spell;
 
   return (
     <li>
-      <button type="button" className={`agent-row${open ? ' is-open' : ''}`} onClick={() => onOpen(stint)}>
+      <button type="button" className={`agent-row${open ? ' is-open' : ''}`} onClick={() => onOpen(spell)}>
         <span className="call-name">{agent.name}</span>
         <span className="agent-kind">{agent.type ?? notKnown}</span>
         <span className="agent-figure">{describeStretch(agent.lengthMs)}</span>
@@ -56,23 +56,23 @@ function Row({ stint, open, onOpen }: { stint: Stint; open: boolean; onOpen: (st
 
 // Every row and every figure here reads the brushed stretch alone, or the panel would answer a question nobody asked.
 export function SubagentPanel({
-  stints,
+  agentSpells,
   depth,
   range,
   opened,
   onOpen,
   onClose,
 }: {
-  stints: readonly Stint[];
+  agentSpells: readonly AgentSpell[];
   depth: Depth;
   range: Range | null;
   opened: string | null;
-  onOpen: (stint: Stint) => void;
+  onOpen: (spell: AgentSpell) => void;
   onClose: () => void;
 }) {
-  const shown = inRange(stints, range);
+  const shown = inRange(agentSpells, range);
   const tally = tallyOf(shown);
-  const open = opened === null ? null : (stints.find((stint) => stint.agent.id === opened) ?? null);
+  const open = opened === null ? null : (agentSpells.find((spell) => spell.agent.id === opened) ?? null);
 
   return (
     <section className="session-panel" aria-label="Subagents">
@@ -85,14 +85,14 @@ export function SubagentPanel({
         </p>
       </header>
 
-      {open === null ? null : <Opened stint={open} onClose={onClose} />}
+      {open === null ? null : <Opened spell={open} onClose={onClose} />}
 
       {shown.length === 0 ? (
-        <p className="session-word">{noSubagentsWord(depth, stints.length)}</p>
+        <p className="session-word">{noSubagentsWord(depth, agentSpells.length)}</p>
       ) : (
         <ol className="call-list">
-          {shown.map((stint) => (
-            <Row key={stint.agent.id} stint={stint} open={stint.agent.id === opened} onOpen={onOpen} />
+          {shown.map((spell) => (
+            <Row key={spell.agent.id} spell={spell} open={spell.agent.id === opened} onOpen={onOpen} />
           ))}
         </ol>
       )}

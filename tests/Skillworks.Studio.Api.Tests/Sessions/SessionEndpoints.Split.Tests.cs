@@ -155,7 +155,7 @@ public sealed partial class SessionEndpointsTests
         var answer = await studio.StepAnswer(Morning);
         var split = Totals(answer.Parts);
 
-        // With no Span there is no stint to stand for the work, and nothing running would be a lie.
+        // With no Span there is no spell to stand for the work, and nothing running would be a lie.
         Assert.Equal("thin", answer.Depth);
         Assert.Equal(30_000, split["tools"]);
     }
@@ -307,7 +307,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.ToolRan(Morning, "2026-09-14T09:00:12.000Z", "Bash", 5_000, "toolu_01"),
             SessionEvent.Answered(Morning, "2026-09-14T09:00:15.000Z", "Built."));
 
-    // An Agent Tool call and the Span that wraps the Subagent it started, which is where the stint comes from.
+    // A Subagent's spell comes off the Span that wraps it, never off the event.
     private static async Task Worked(StudioHost studio)
     {
         await studio.Push(
@@ -336,7 +336,7 @@ public sealed partial class SessionEndpointsTests
     private static RecordedSpan Under(string id, string parent, string toolUse, string agent) =>
         new("claude_code.tool", "2026-09-14T09:00:25Z", "2026-09-14T09:00:30Z", id, parent, agent, toolUse);
 
-    private static IReadOnlyDictionary<string, long> Totals(IReadOnlyList<SpellRow> spells) =>
+    private static IReadOnlyDictionary<string, long> Totals(IReadOnlyList<PartSpellRow> spells) =>
         spells
             .GroupBy(spell => spell.Part, StringComparer.Ordinal)
             .ToDictionary(part => part.Key, part => part.Sum(spell => spell.LengthMs), StringComparer.Ordinal);

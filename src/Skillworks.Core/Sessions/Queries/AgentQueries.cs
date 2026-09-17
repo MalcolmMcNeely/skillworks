@@ -36,16 +36,16 @@ public sealed class AgentQueries(TraceStoreReader traces)
     }
 
     // Nothing an event carries says a person was asked, so a run with no Span cannot tell their delay from work.
-    private static IReadOnlyDictionary<string, Stretch> Waited(IReadOnlyList<Span> spans)
+    private static IReadOnlyDictionary<string, Spell> Waited(IReadOnlyList<Span> spans)
     {
-        var waited = new Dictionary<string, Stretch>(StringComparer.Ordinal);
+        var waited = new Dictionary<string, Spell>(StringComparer.Ordinal);
 
         foreach (var span in spans)
         {
             if (span.Name == WaitSpan &&
                 span.Attributes.GetValueOrDefault(StepKey.ToolUse) is { Length: > 0 } toolUse)
             {
-                waited[toolUse] = Stretched(span);
+                waited[toolUse] = Spelled(span);
             }
         }
 
@@ -53,14 +53,14 @@ public sealed class AgentQueries(TraceStoreReader traces)
     }
 
     // A Subagent's hook is that Subagent's work, and the main agent may have been busy through the whole of it.
-    private static IReadOnlyList<Stretch> Hooked(IReadOnlyList<Span> spans) =>
+    private static IReadOnlyList<Spell> Hooked(IReadOnlyList<Span> spans) =>
     [
         .. spans
             .Where(span => span.Name == HookSpan && Agent(span) is null)
-            .Select(Stretched)
+            .Select(Spelled)
     ];
 
-    private static Stretch Stretched(Span span) =>
+    private static Spell Spelled(Span span) =>
         new(span.Started, (long)(span.Ended - span.Started).TotalMilliseconds);
 
     private static IReadOnlyDictionary<string, string> RanBy(IReadOnlyList<Span> spans, IReadOnlyList<StepKey> keys)

@@ -3,7 +3,7 @@ import type { Range } from '../brush';
 
 export type SplitPart = 'waiting' | 'tools' | 'hooks' | 'model' | 'subagents' | 'side' | 'quiet' | 'yourTurn';
 
-export interface Spell {
+export interface PartSpell {
   part: SplitPart;
   atUtc: string;
   lengthMs: number;
@@ -13,9 +13,9 @@ export interface SplitPage {
   kind: 'split';
   depth: Depth;
   // Never overlapping, so a brushed stretch is split by clipping each spell to it and nothing else.
-  parts: Spell[];
+  parts: PartSpell[];
   // The whole of each part, overlaps and all, which is what the exclusive figure beside it leaves out.
-  kinds: Spell[];
+  kinds: PartSpell[];
 }
 
 interface Part {
@@ -72,7 +72,7 @@ export function sharesOf(page: SplitPage | null, range: Range | null): Share[] {
 }
 
 // Clipped rather than filtered, as a spell can run in and out of the brushed stretch and only its middle counts.
-function summed(spells: readonly Spell[], range: Range | null): Map<SplitPart, number> {
+function summed(spells: readonly PartSpell[], range: Range | null): Map<SplitPart, number> {
   const totals = new Map<SplitPart, number>();
 
   for (const spell of spells) {

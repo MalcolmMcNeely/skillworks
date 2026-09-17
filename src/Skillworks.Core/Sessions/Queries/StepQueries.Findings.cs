@@ -175,7 +175,7 @@ public sealed partial class StepQueries
                 dearest.Cost / middle,
                 Bars.CostlySubagent,
                 dearest.Name,
-                new Stretch(dearest.AtUtc, dearest.LengthMs));
+                new Spell(dearest.AtUtc, dearest.LengthMs));
     }
 
     private static decimal Middle(IReadOnlyList<decimal> sorted) =>
@@ -192,10 +192,10 @@ public sealed partial class StepQueries
     private static long Spent(SplitPage split, SplitPart part) =>
         split.Parts.Where(spell => spell.Part == part).Sum(spell => spell.LengthMs);
 
-    // The worst stretch of the part, so a Finding made of many moments still points at one a reader can look at.
-    private static Stretch? Longest(SplitPage split, SplitPart part) =>
+    // A Finding made of many moments still points at one a reader can look at.
+    private static Spell? Longest(SplitPage split, SplitPart part) =>
         split.Parts.Where(spell => spell.Part == part).MaxBy(spell => spell.LengthMs) is { } spell
-            ? new Stretch(spell.AtUtc, spell.LengthMs)
+            ? new Spell(spell.AtUtc, spell.LengthMs)
             : null;
 
     // The most recent time it happened, for every bar alike, so clicking one always lands in the same place.
@@ -205,8 +205,8 @@ public sealed partial class StepQueries
     private static Finding? Crossed(FindingKind kind, decimal figure, decimal bar, string? subject, ContextPoint point) =>
         figure < bar ? null : new Finding(kind, subject, figure, bar, point.Id, point.AtUtc, point.LengthMs);
 
-    private static Finding? Crossed(FindingKind kind, decimal figure, decimal bar, string? subject, Stretch stretch) =>
-        figure < bar ? null : new Finding(kind, subject, figure, bar, null, stretch.AtUtc, stretch.LengthMs);
+    private static Finding? Crossed(FindingKind kind, decimal figure, decimal bar, string? subject, Spell spell) =>
+        figure < bar ? null : new Finding(kind, subject, figure, bar, null, spell.AtUtc, spell.LengthMs);
 
     // Named with no figure, as leaving it out would read as a bar Studio measured and found clean.
     private static Finding NotKnown(FindingKind kind, decimal bar, Session run) =>

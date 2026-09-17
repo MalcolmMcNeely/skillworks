@@ -20,7 +20,7 @@ import { TracePanel } from '../components/panels/TracePanel';
 import { Timeline } from '../components/Timeline';
 import { rangeOf, readRange, widened, withRange, type Range } from '../lib/brush';
 import { type Named } from '../lib/findings';
-import { ranByOne, stintsOf, type Stint } from '../lib/panels/agents';
+import { agentSpellsOf, ranByOne, type AgentSpell } from '../lib/panels/agents';
 import { levelsOf, type Level } from '../lib/panels/context';
 import { bandsOf, type Band } from '../lib/panels/conversation';
 import { firingsOf, type Firing } from '../lib/panels/skillCalls';
@@ -90,7 +90,7 @@ export function Session() {
   const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
   const firings = useMemo(() => firingsOf(skillCalls ?? []), [skillCalls]);
   const levels = useMemo(() => levelsOf(context ?? []), [context]);
-  const stints = useMemo(() => stintsOf(subagents ?? []), [subagents]);
+  const agentSpells = useMemo(() => agentSpellsOf(subagents ?? []), [subagents]);
   const whole = runSpan(marks);
 
   // An open Subagent is read like a small Session, so every lane and every row beneath shows its Steps alone.
@@ -112,8 +112,8 @@ export function Session() {
   const onCall = (firing: Firing) =>
     whole === null ? undefined : brush(rangeOf(firing.atMs, firing.followedToMs, whole), { call: firing.call.id });
 
-  const onAgent = (stint: Stint) =>
-    whole === null ? undefined : brush(widened([stint.startMs, stint.endMs], whole), { agent: stint.agent.id });
+  const onAgent = (spell: AgentSpell) =>
+    whole === null ? undefined : brush(widened([spell.startMs, spell.endMs], whole), { agent: spell.agent.id });
 
   const onFinding = (named: Named) =>
     whole === null ? undefined : brush(widened([named.startMs, named.endMs], whole), { step: named.finding.step });
@@ -146,7 +146,7 @@ export function Session() {
         bands={bands}
         firings={firings}
         levels={levels}
-        stints={stints}
+        agentSpells={agentSpells}
         whole={whole}
         range={range}
         where={where}
@@ -170,7 +170,7 @@ function Body({
   bands,
   firings,
   levels,
-  stints,
+  agentSpells,
   whole,
   range,
   where,
@@ -189,7 +189,7 @@ function Body({
   bands: readonly Band[];
   firings: readonly Firing[];
   levels: readonly Level[];
-  stints: readonly Stint[];
+  agentSpells: readonly AgentSpell[];
   whole: Range | null;
   range: Range | null;
   where: Where;
@@ -197,7 +197,7 @@ function Body({
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
   onCall: (firing: Firing) => void;
-  onAgent: (stint: Stint) => void;
+  onAgent: (spell: AgentSpell) => void;
   onCloseAgent: () => void;
   onFinding: (named: Named) => void;
 }) {
@@ -243,7 +243,7 @@ function Body({
       <ConversationPanel bands={bands} range={range} opened={where.exchange} onOpen={onExchange} />
       <SkillCallPanel firings={firings} range={range} opened={where.call} onOpen={onCall} />
       <SubagentPanel
-        stints={stints}
+        agentSpells={agentSpells}
         depth={answer.depth}
         range={range}
         opened={where.agent}

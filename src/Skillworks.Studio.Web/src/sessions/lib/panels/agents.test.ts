@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agentSpellsOf,
   briefNote,
   depthTone,
   describeDepth,
@@ -7,7 +8,6 @@ import {
   noSubagentsWord,
   ranBy,
   ranByOne,
-  stintsOf,
   tallyOf,
   type Subagent,
 } from './agents';
@@ -64,9 +64,9 @@ describe('depthTone', () => {
   });
 });
 
-describe('stintsOf', () => {
+describe('agentSpellsOf', () => {
   it('gives a subagent the stretch a brush and a panel both read it by', () => {
-    expect(stintsOf([subagent('agent-a')])).toEqual([
+    expect(agentSpellsOf([subagent('agent-a')])).toEqual([
       { agent: subagent('agent-a'), startMs: Date.parse('2026-09-14T09:00:11.000Z'), endMs: Date.parse('2026-09-14T09:00:39.000Z') },
     ]);
   });
@@ -74,7 +74,7 @@ describe('stintsOf', () => {
 
 describe('tallyOf', () => {
   it('adds up what the subagents in the stretch cost and did', () => {
-    const tally = tallyOf(stintsOf([subagent('agent-a'), subagent('agent-b', { cost: 1.6, toolCalls: 1, faults: 0 })]));
+    const tally = tallyOf(agentSpellsOf([subagent('agent-a'), subagent('agent-b', { cost: 1.6, toolCalls: 1, faults: 0 })]));
 
     expect(tally).toEqual({ subagents: 2, toolCalls: 4, cost: 2, faults: 1 });
   });
