@@ -30,13 +30,13 @@ export function Watch() {
 
   useTabTitle(watch.tabTitle);
 
-  // Filter, view and order live in the address bar, so a reload, a bookmark or the back button lands on the same map.
+  // Filter, figure and order live in the address bar, so a reload, a bookmark or the back button lands on the same map.
   const [params, setParams] = useSearchParams();
   // No skill: Watch offers no way to see or clear one, so an old link naming a skill must not narrow it unseen.
   const filter: Filter = { ...readFilter(params), skill: '' };
   const choice = readMapChoice(params);
 
-  // Text, as a filter object is new every render; the view and order are left out as they need no new answer.
+  // Text, as a filter object is new every render; the figure and order are left out as they need no new answer.
   const narrowing = filterParams(filter).toString();
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function Watch() {
       }
     });
 
-    // A changed filter stops the old answer, so its days never land in the new view.
+    // A changed filter stops the old answer, so its days never land in the new map.
     return () => abort.abort();
   }, [narrowing]);
 

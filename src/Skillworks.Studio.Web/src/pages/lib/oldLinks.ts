@@ -1,6 +1,6 @@
 import { watch } from './pages';
 
-// Not skill: the map never wrote one, so a link naming only that was never a map link.
+// What an old link could hold: never skill, which the map never wrote, and still view, not figure.
 const watchWords = ['from', 'to', 'repository', 'view', 'order'];
 
 // A bookmark from before Watch had an address of its own still opens the map.

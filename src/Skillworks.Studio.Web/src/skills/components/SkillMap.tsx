@@ -4,7 +4,7 @@ import { describeDay, type Filter } from '../../filters/lib/filters';
 import { Keys } from '../../keys/components/Keys';
 import { triggerMarks } from '../../provenance/lib/triggers';
 import { showsFigures, type SkillsAnswer } from '../lib/answer';
-import { describeTile, heatStep, layOut, tilesOf, unnamedWord, viewWords, type MapView, type PlacedTile, type Sizing } from '../lib/map';
+import { describeTile, figureWords, heatStep, layOut, tilesOf, unnamedWord, type MapFigure, type PlacedTile, type Sizing } from '../lib/map';
 import type { MapChoice } from '../lib/mapChoice';
 import { mapNoticeOf } from '../lib/mapNotice';
 import { describeSpend, missingWords, type SkillSummary } from '../lib/skills';
@@ -38,7 +38,7 @@ function Spark({ counts, slices, peak }: { counts: readonly number[]; slices: re
 
 function Tile({
   placed,
-  view,
+  figure,
   pinned,
   slices,
   peak,
@@ -46,7 +46,7 @@ function Tile({
   onProbe,
 }: {
   placed: PlacedTile;
-  view: MapView;
+  figure: MapFigure;
   pinned: boolean;
   slices: readonly StripSlice[];
   peak: number;
@@ -101,11 +101,11 @@ function Tile({
           </span>
         </span>
         <span className="tile-figure" aria-hidden="true">
-          {view === 'cost' ? cost : activations}
+          {figure === 'cost' ? cost : activations}
         </span>
         <Spark counts={skill.spark} slices={slices} peak={peak} />
         <span className="tile-foot" aria-hidden="true">
-          {view === 'cost' ? activations : cost}
+          {figure === 'cost' ? activations : cost}
           <span className="tile-triggers">
             {triggerMarks(skill.triggers).map((mark) => (
               <span key={mark.word} className="trigger">
@@ -145,8 +145,8 @@ function OffMap({ word, label, chips }: { word: string; label: string; chips: re
   );
 }
 
-function Unsized({ skills, view }: { skills: readonly SkillSummary[]; view: MapView }) {
-  const word = `No ${viewWords[view]}`;
+function Unsized({ skills, figure }: { skills: readonly SkillSummary[]; figure: MapFigure }) {
+  const word = `No ${figureWords[figure]}`;
 
   return (
     <OffMap
@@ -156,7 +156,7 @@ function Unsized({ skills, view }: { skills: readonly SkillSummary[]; view: MapV
         key: skill.name,
         name: skill.name,
         figure:
-          view === 'cost'
+          figure === 'cost'
             ? `×${describeCount(skill.activations)}${skill.spend === null ? ` · ${missingWords.notNamed}` : ''}`
             : describeSpend(skill.spend?.cost ?? null),
       }))}
@@ -165,7 +165,7 @@ function Unsized({ skills, view }: { skills: readonly SkillSummary[]; view: MapV
 }
 
 // Having a figure and missing the map is a different fact from having no figure at all.
-function Beyond({ sized, view }: { sized: readonly Sizing[]; view: MapView }) {
+function Beyond({ sized, figure }: { sized: readonly Sizing[]; figure: MapFigure }) {
   return (
     <OffMap
       word="Did not fit"
@@ -173,15 +173,15 @@ function Beyond({ sized, view }: { sized: readonly Sizing[]; view: MapView }) {
       chips={sized.map((sizing) => ({
         key: sizing.key,
         name: sizing.kind === 'skill' ? sizing.skill.name : unnamedWord,
-        figure: view === 'cost' ? describeMoney(sizing.value) : `×${describeCount(sizing.value)}`,
+        figure: figure === 'cost' ? describeMoney(sizing.value) : `×${describeCount(sizing.value)}`,
       }))}
     />
   );
 }
 
-const views = [
-  { key: 'cost', glyph: '$', word: viewWords.cost },
-  { key: 'activations', glyph: '×', word: viewWords.activations },
+const figures = [
+  { key: 'cost', glyph: '$', word: figureWords.cost },
+  { key: 'activations', glyph: '×', word: figureWords.activations },
 ] as const;
 
 const orders = [
@@ -253,8 +253,8 @@ export function SkillMap({
     return () => window.removeEventListener('keydown', letGo);
   }, [pinned]);
 
-  const { tiles, unsized, beyond, each } = tilesOf(answer ?? { skills: [], unnamedSpend: null }, choice.view, choice.order);
-  const notice = mapNoticeOf({ answer, failure, tileCount: tiles.length, view: choice.view });
+  const { tiles, unsized, beyond, each } = tilesOf(answer ?? { skills: [], unnamedSpend: null }, choice.figure, choice.order);
+  const notice = mapNoticeOf({ answer, failure, tileCount: tiles.length, figure: choice.figure });
   const placed = layOut(tiles, size);
   const shown = placed.find((entry) => entry.tile.key === (probed ?? pinned)) ?? null;
   // Pinned, never probed: a list of links has to stay still long enough for the pointer to reach it.
@@ -265,7 +265,7 @@ export function SkillMap({
   return (
     <section className="deck" aria-label="Skills map">
       <header className="deck-head">
-        <Keys label="Size by" pressed={choice.view} options={views} onPress={(view) => onChoose({ ...choice, view })} />
+        <Keys label="Size by" pressed={choice.figure} options={figures} onPress={(figure) => onChoose({ ...choice, figure })} />
         <Keys label="Order" pressed={choice.order} options={orders} onPress={(order) => onChoose({ ...choice, order })} />
 
         {notice === null && each !== null && (
@@ -298,12 +298,12 @@ export function SkillMap({
         <div className={`field${arriving ? ' is-arriving' : ''}`} ref={field} aria-busy={arriving}>
           {notice === null ? (
             <>
-              <ol className="tiles" aria-label={`Skills by ${viewWords[choice.view]}, ${choice.order} first`}>
+              <ol className="tiles" aria-label={`Skills by ${figureWords[choice.figure]}, ${choice.order} first`}>
                 {placed.map((entry) => (
                   <Tile
                     key={entry.tile.key}
                     placed={entry}
-                    view={choice.view}
+                    figure={choice.figure}
                     pinned={pinned === entry.tile.key}
                     slices={slices}
                     peak={peak}
@@ -333,8 +333,8 @@ export function SkillMap({
       </div>
 
       {held?.kind === 'skill' && <Firings skill={held.skill.name} filter={filter} />}
-      {showsFigures(answer) && unsized.length > 0 && <Unsized skills={unsized} view={choice.view} />}
-      {showsFigures(answer) && beyond.length > 0 && <Beyond sized={beyond} view={choice.view} />}
+      {showsFigures(answer) && unsized.length > 0 && <Unsized skills={unsized} figure={choice.figure} />}
+      {showsFigures(answer) && beyond.length > 0 && <Beyond sized={beyond} figure={choice.figure} />}
     </section>
   );
 }

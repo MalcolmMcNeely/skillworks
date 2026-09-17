@@ -2,7 +2,7 @@ import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { signalOf } from '../../gaps/lib/gaps';
 import { noLink } from '../../http/lib/errors';
 import type { SkillsAnswer } from './answer';
-import { viewWords, type MapView } from './map';
+import { figureWords, type MapFigure } from './map';
 
 export interface MapNotice {
   glyph: string;
@@ -28,9 +28,9 @@ export function mapNoticeOf(state: {
   answer: Pick<SkillsAnswer, 'skills' | 'gap'> | null;
   failure: string | null;
   tileCount: number;
-  view: MapView;
+  figure: MapFigure;
 }): MapNotice | null {
-  const { answer, failure, tileCount, view } = state;
+  const { answer, failure, tileCount, figure } = state;
 
   if (answer === null) {
     return failure === null ? arriving : { glyph: noticeGlyphs.failed, word: noLink, tone: 'failed', busy: false };
@@ -59,5 +59,5 @@ export function mapNoticeOf(state: {
     };
   }
 
-  return { glyph: noticeGlyphs.noFigure, word: `No ${viewWords[view]}`, tone: 'dim', busy: false };
+  return { glyph: noticeGlyphs.noFigure, word: `No ${figureWords[figure]}`, tone: 'dim', busy: false };
 }

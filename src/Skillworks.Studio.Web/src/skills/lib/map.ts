@@ -2,11 +2,11 @@ import { describeCount, describeMoney } from '../../figures/lib/figures';
 import type { SkillsAnswer } from './answer';
 import { describeEach, describeSpend, type SkillSummary, type TurnTotals } from './skills';
 
-export type MapView = 'cost' | 'activations';
+export type MapFigure = 'cost' | 'activations';
 
 export type MapOrder = 'most' | 'least';
 
-export const viewWords: Record<MapView, string> = { cost: 'Cost', activations: 'Activations' };
+export const figureWords: Record<MapFigure, string> = { cost: 'Cost', activations: 'Activations' };
 
 export type MapTile =
   | {
@@ -76,10 +76,10 @@ function rankedTile(sizing: Sizing, rank: number, range: EachRange): MapTile {
   };
 }
 
-export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, view: MapView, order: MapOrder): SkillTiles {
+export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, figure: MapFigure, order: MapOrder): SkillTiles {
   const valued = answer.skills.map((skill) => ({
     skill,
-    value: view === 'cost' ? (skill.spend?.cost ?? 0) : skill.activations,
+    value: figure === 'cost' ? (skill.spend?.cost ?? 0) : skill.activations,
   }));
 
   const sized: Sizing[] = valued
@@ -87,7 +87,7 @@ export function tilesOf(answer: Pick<SkillsAnswer, 'skills' | 'unnamedSpend'>, v
     .map(({ skill, value }) => ({ kind: 'skill', key: `skill:${skill.name}`, value, skill }));
 
   // Never shared out among skills, and it has no Activations, so it is sized only when the map shows Cost.
-  if (view === 'cost' && answer.unnamedSpend !== null && answer.unnamedSpend.cost > 0) {
+  if (figure === 'cost' && answer.unnamedSpend !== null && answer.unnamedSpend.cost > 0) {
     sized.push({ kind: 'unnamed', key: 'unnamed', value: answer.unnamedSpend.cost, spend: answer.unnamedSpend });
   }
 

@@ -1,16 +1,16 @@
-import type { MapOrder, MapView } from './map';
+import type { MapFigure, MapOrder } from './map';
 
 export interface MapChoice {
-  view: MapView;
+  figure: MapFigure;
   order: MapOrder;
 }
 
-export const costMostFirst: MapChoice = { view: 'cost', order: 'most' };
+export const costMostFirst: MapChoice = { figure: 'cost', order: 'most' };
 
 // Anything else reads as the default, so a hand-typed address still opens a map.
 export function readMapChoice(params: URLSearchParams): MapChoice {
   return {
-    view: params.get('view') === 'activations' ? 'activations' : costMostFirst.view,
+    figure: params.get('figure') === 'activations' ? 'activations' : costMostFirst.figure,
     order: params.get('order') === 'least' ? 'least' : costMostFirst.order,
   };
 }
@@ -19,10 +19,10 @@ export function readMapChoice(params: URLSearchParams): MapChoice {
 export function withMapChoice(params: URLSearchParams, choice: MapChoice): URLSearchParams {
   const written = new URLSearchParams(params);
 
-  if (choice.view === costMostFirst.view) {
-    written.delete('view');
+  if (choice.figure === costMostFirst.figure) {
+    written.delete('figure');
   } else {
-    written.set('view', choice.view);
+    written.set('figure', choice.figure);
   }
 
   if (choice.order === costMostFirst.order) {
