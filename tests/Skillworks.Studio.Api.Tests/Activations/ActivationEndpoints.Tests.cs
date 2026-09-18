@@ -1,5 +1,6 @@
 using System.Globalization;
 using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Activations;
 

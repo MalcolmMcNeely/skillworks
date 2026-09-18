@@ -39,7 +39,7 @@ builder.AddContainer("collector", "otel/opentelemetry-collector-contrib", "0.138
 var api = builder.AddProject<Projects.Skillworks_Studio_Api>("api")
     .WithHttpHealthCheck("/health")
     .WithEnvironment("Catalogue__Path", Path.Combine(repositoryRoot, "plugins"))
-    .WithEnvironment("ClaudeSettings__CollectorEndpoint", collectorAddress)
+    .WithEnvironment("Collector__Address", collectorAddress)
     // Pinned, so the address holds whether or not Loki was up when Studio started.
     .WithEnvironment("Loki__Address", loki.GetEndpoint("http"))
     .WithEnvironment("Tempo__Address", tempo.GetEndpoint("http"));

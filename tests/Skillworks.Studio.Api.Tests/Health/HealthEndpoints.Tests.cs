@@ -1,5 +1,6 @@
 using System.Net;
 using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Health;
 
@@ -14,7 +15,7 @@ public sealed partial class HealthEndpointsTests
         var parts = (await studio.Health()).Parts.Select(part => part.Name).Order();
 
         // A part missing from here is a part a developer has to go and check by hand.
-        Assert.Equal(["Catalogue", "Claude Code telemetry", "Events store", "Trace store"], parts);
+        Assert.Equal(["Catalogue", "Claude Code telemetry", "Collector", "Events store", "Trace store"], parts);
     }
 
     [Fact]
@@ -52,7 +53,8 @@ public sealed partial class HealthEndpointsTests
     public async Task Points_no_part_at_transcripts_or_the_ingest_when_every_part_needs_attention()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(events: events, emitting: false, tracing: false);
+        using var collector = FakeCollector.Down();
+        using var studio = new StudioHost(events: events, collector: collector, emitting: false, tracing: false);
 
         var health = await studio.Health();
 

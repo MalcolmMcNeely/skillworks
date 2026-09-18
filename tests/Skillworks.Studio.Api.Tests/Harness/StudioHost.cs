@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Skillworks.Core.Collector;
 using Skillworks.Core.Telemetry;
 // Owned by the test project of the reader they serve, and linked into this one.
 using Skillworks.Core.Tests.Harness;
 using Skillworks.Core.Tests.TraceStore;
+using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 
@@ -20,7 +22,7 @@ public sealed class StudioHost : IDisposable
     }.ToJsonString();
 
     private static IEnumerable<KeyValuePair<string, string>> Owned(bool emitting, bool tracing, bool words) =>
-        TelemetryVariables.For(new ClaudeSettingsOptions().CollectorEndpoint)
+        TelemetryVariables.For(new CollectorOptions().ResolvedEndpoint())
             .Where(variable => In(TelemetryVariables.Traces, variable)
                 ? tracing
                 : In(TelemetryVariables.Words, variable) ? words : emitting);
@@ -43,13 +45,16 @@ public sealed class StudioHost : IDisposable
         BrokenEventsStore? events = null,
         // Only for a store that is down, failing or still starting; spans come from the test Tempo.
         BrokenTraceStore? traces = null,
+        // Always a fake: no test starts a Collector, and a real one on this machine would answer for it.
+        FakeCollector? collector = null,
         // Not the developer's settings, or Gap tests would pass or fail on this machine's telemetry.
         bool emitting = true,
         bool tracing = true,
         bool words = true,
         string? settings = null,
         bool tenanted = true,
-        int? lookbackDays = null)
+        int? lookbackDays = null,
+        string? collectorAddress = null)
     {
         var settingsPath = Path.Combine(_folder.Path, "settings.json");
         File.WriteAllText(settingsPath, settings ?? Settings(emitting, tracing, words));
@@ -57,9 +62,13 @@ public sealed class StudioHost : IDisposable
         // Left out unless asked for, as an empty value binds as zero days and would hide the default.
         (string Key, string? Value)[] lookback = lookbackDays is { } days ? [("Loki:LookbackDays", days.ToString())] : [];
 
+        // Left out unless asked for, so an unset address is the pinned one Studio really falls back to.
+        (string Key, string? Value)[] address = collectorAddress is null ? [] : [("Collector:Address", collectorAddress)];
+
         _api = new StudioApiHost(
             events,
             traces,
+            collector ?? FakeCollector.Open(),
             _clock,
             [
                 ("Loki:Address", TestLoki.Address.ToString()),
@@ -71,6 +80,7 @@ public sealed class StudioHost : IDisposable
                 ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
                 ("Catalogue:Path", cataloguePath ?? Path.Combine(_folder.Path, "no-catalogue")),
                 .. lookback,
+                .. address,
             ]);
 
         _client = _api.CreateClient();

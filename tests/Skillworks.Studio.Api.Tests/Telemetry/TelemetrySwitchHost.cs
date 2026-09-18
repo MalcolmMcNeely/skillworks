@@ -30,10 +30,11 @@ public sealed class TelemetrySwitchHost : IDisposable
         _api = new StudioApiHost(
             events: null,
             traces: null,
+            collector: null,
             clock: null,
             ("ClaudeSettings:Path", _settingsPath),
             ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, StampName)),
-            ("ClaudeSettings:CollectorEndpoint", Collector),
+            ("Collector:Address", Collector),
             ("Catalogue:Path", Path.Combine(_folder.Path, "no-catalogue")));
 
         _client = _api.CreateClient();

@@ -1,9 +1,14 @@
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Skillworks.Core.Collector;
 
 namespace Skillworks.Core.Telemetry;
 
-public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSettingsOptions> options)
+// The address it writes is the one Health knocks on, so a Lamp can never pass a door nothing is sent to.
+public sealed class TelemetrySwitch(
+    ClaudeSettingsFile file,
+    IOptions<ClaudeSettingsOptions> options,
+    IOptions<CollectorOptions> collector)
 {
     public const string RestartNote =
         "A Claude Code session that is already running will not pick this up. Restart it.";
@@ -148,7 +153,7 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
     }
 
     private IReadOnlyList<KeyValuePair<string, string>> Owned() =>
-        TelemetryVariables.For(options.Value.CollectorEndpoint);
+        TelemetryVariables.For(collector.Value.ResolvedEndpoint());
 
     // A non-object env counts: overwriting it would discard whatever the developer meant by it.
     private static string? Unusable(ClaudeSettingsDocument document) => document.Root switch
@@ -171,10 +176,10 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
             emitting,
             options.Value.ResolvedPath(),
             readable,
-            options.Value.CollectorEndpoint,
+            collector.Value.ResolvedEndpoint(),
             RestartNote,
             problem,
-            TeamSettings.For(file, options.Value.CollectorEndpoint));
+            TeamSettings.For(file, collector.Value.ResolvedEndpoint()));
 
     private TelemetrySwitchResult Refused(string problem) =>
         new(State(), $"Studio will not write {options.Value.ResolvedPath()}, because {problem}.");

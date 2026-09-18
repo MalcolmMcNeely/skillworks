@@ -8,9 +8,6 @@ public sealed class ClaudeSettingsOptions
 
     public string StampPath { get; set; } = "";
 
-    // The host port is pinned: this value is written into the developer's settings and must stay right.
-    public string CollectorEndpoint { get; set; } = "http://localhost:4318";
-
     public string ResolvedPath() => string.IsNullOrWhiteSpace(Path)
         ? System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),

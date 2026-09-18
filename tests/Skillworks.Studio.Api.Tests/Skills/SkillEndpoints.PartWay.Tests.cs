@@ -1,5 +1,6 @@
 using Skillworks.Core.EventsStore;
 using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Skills;
 

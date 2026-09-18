@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Health;
 

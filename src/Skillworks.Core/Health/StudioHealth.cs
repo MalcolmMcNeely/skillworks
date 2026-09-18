@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Collector;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Telemetry;
 using Skillworks.Core.TraceStore;
@@ -10,6 +11,7 @@ public sealed class StudioHealth(
     CatalogueLocator catalogue,
     EventsStoreReader events,
     TraceStoreReader traces,
+    CollectorReader collector,
     TelemetrySwitch telemetry,
     IOptions<LokiOptions> loki)
 {
@@ -17,12 +19,14 @@ public sealed class StudioHealth(
     {
         var unreachable = await events.UnreachableAsync(cancellationToken);
         var answering = await traces.AnsweringAsync(cancellationToken);
+        var doors = await collector.AnsweringAsync(cancellationToken);
         var emitting = telemetry.State();
 
         return new HealthReport(
             [
                 Events(unreachable),
                 Traces(answering, telemetry.TracesOn()),
+                Collector(doors),
                 Switch(emitting),
                 Catalogue(catalogue.Locate()),
             ]);
@@ -60,6 +64,15 @@ public sealed class StudioHealth(
 
         _ => new StudioPart("Trace store", PartState.Working, answer.Detail, null),
     };
+
+    // No off state: nothing a developer flips turns the Collector off, so one nobody started is a fault.
+    private static StudioPart Collector(CollectorAnswer answer) => answer.State is CollectorState.Answering
+        ? new StudioPart("Collector", PartState.Working, answer.Detail, null)
+        : new StudioPart(
+            "Collector",
+            PartState.Broken,
+            answer.Detail,
+            "Restart the Collector so that it reads its settings again. Until then, that kind of answer is lost as it arrives.");
 
     private static StudioPart Switch(TelemetrySwitchState state) => state switch
     {

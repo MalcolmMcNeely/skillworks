@@ -7,6 +7,7 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Arriving;
 using Skillworks.Core.Catalogue;
+using Skillworks.Core.Collector;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Gaps;
@@ -29,6 +30,7 @@ public static class CoreServiceCollectionExtensions
         services.Configure<ClaudeSettingsOptions>(configuration.GetSection(ClaudeSettingsOptions.SectionName));
         services.Configure<LokiOptions>(configuration.GetSection(LokiOptions.SectionName));
         services.Configure<TempoOptions>(configuration.GetSection(TempoOptions.SectionName));
+        services.Configure<CollectorOptions>(configuration.GetSection(CollectorOptions.SectionName));
 
         services.TryAddSingleton(TimeProvider.System);
 
@@ -65,16 +67,25 @@ public static class CoreServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(tempo.TimeoutSeconds);
         });
 
+        services.AddHttpClient(CollectorReader.ClientName, (provider, client) =>
+        {
+            var collector = provider.GetRequiredService<IOptions<CollectorOptions>>().Value;
+
+            client.BaseAddress = collector.ResolvedAddress();
+            client.Timeout = TimeSpan.FromSeconds(collector.TimeoutSeconds);
+        });
+
         // Cleared wholesale, so no retry a shell adds, now or later, turns a down container's fast 502 into a slow timeout.
-        foreach (var store in new[] { EventsStoreReader.ClientName, TraceStoreReader.ClientName })
+        foreach (var clientName in new[] { EventsStoreReader.ClientName, TraceStoreReader.ClientName, CollectorReader.ClientName })
         {
             services.Configure<HttpClientFactoryOptions>(
-                store,
+                clientName,
                 options => options.HttpMessageHandlerBuilderActions.Clear());
         }
 
         services.AddSingleton<EventsStoreReader>();
         services.AddSingleton<TraceStoreReader>();
+        services.AddSingleton<CollectorReader>();
         services.AddSingleton<GapReport>();
         services.AddSingleton<ArrivingDays>();
         services.AddSingleton<SkillReport>();

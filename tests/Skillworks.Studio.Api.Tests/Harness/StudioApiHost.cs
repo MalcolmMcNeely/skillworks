@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Skillworks.Core.Collector;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.TraceStore;
 
@@ -11,6 +12,7 @@ namespace Skillworks.Studio.Api.Tests.Harness;
 public sealed class StudioApiHost(
     HttpMessageHandler? events,
     HttpMessageHandler? traces,
+    HttpMessageHandler? collector,
     TimeProvider? clock,
     params (string Key, string? Value)[] settings)
     : WebApplicationFactory<Program>
@@ -31,6 +33,11 @@ public sealed class StudioApiHost(
             if (traces is not null)
             {
                 services.AddHttpClient(TraceStoreReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => traces);
+            }
+
+            if (collector is not null)
+            {
+                services.AddHttpClient(CollectorReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => collector);
             }
 
             if (clock is not null)
