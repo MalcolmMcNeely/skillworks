@@ -60,7 +60,9 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
             [.. named.Select(landing => MeasureHeading.Of(landing.Measure))]);
     }
 
-    // The bigger loss is named first: no rows at all, then columns of dashes, then a table nobody narrowed.
+    // The bigger loss is named first: no rows at all, then a table nobody narrowed, then columns of dashes.
+    // A table nobody narrowed says nothing about itself, so its sentence never gives way to one about
+    // dashes a reader can already see.
     private static Gap Shown(Gap events, Gap measures, Gap depths)
     {
         if (events.Kind == GapKind.Unreachable)
@@ -68,11 +70,11 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
             return events;
         }
 
-        if (measures.Kind != GapKind.Complete)
+        if (depths.Kind != GapKind.Complete)
         {
-            return measures;
+            return measures.Kind == GapKind.Complete ? depths : Gap.Beside(depths, measures);
         }
 
-        return depths.Kind == GapKind.Complete ? events : depths;
+        return measures.Kind == GapKind.Complete ? events : measures;
     }
 }

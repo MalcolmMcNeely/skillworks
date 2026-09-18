@@ -170,4 +170,22 @@ public sealed partial class SessionEndpointsTests
         // No rows means nothing was lost from a table, so the advice on screen is still the switch.
         Assert.Equal("telemetryOff", (await studio.SessionAnswer()).Gap.Kind);
     }
+
+    [Fact]
+    public async Task Names_the_trace_store_as_well_as_the_measure_when_both_fell_short()
+    {
+        using var events = Breaking(TurnRead);
+        using var traces = BrokenTraceStore.Down();
+        using var studio = new StudioHost(events: events, traces: traces);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        var answer = await studio.SessionAnswer("?depth=full");
+
+        // A table nobody narrowed says nothing about itself, so dropping its sentence for a column of
+        // dashes would leave a reader trusting rows they never asked to see.
+        Assert.Equal("unreachable", answer.Gap.Kind);
+        Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+        Assert.Contains("Cost", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+    }
 }

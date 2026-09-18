@@ -42,6 +42,10 @@ public sealed record Gap(GapKind Kind, string? Missing)
         return new Gap(kind, missing);
     }
 
+    // One Gap rides the end line and two stores can fall short at once, so both sentences ride it
+    // together rather than the second one going unsaid.
+    internal static Gap Beside(Gap first, Gap second) => new(first.Kind, $"{first.Missing} {second.Missing}");
+
     // The rows stand without them, so this names the columns left empty rather than emptying the table.
     internal static Gap OfMeasures(string? unreachable, IReadOnlyList<string> measures) =>
         unreachable is null
