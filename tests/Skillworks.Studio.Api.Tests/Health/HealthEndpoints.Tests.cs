@@ -108,15 +108,16 @@ public sealed partial class HealthEndpointsTests
     }
 
     [Fact]
-    public async Task Reports_a_multi_tenant_events_store_as_broken_when_studio_names_no_tenant()
+    public async Task Reads_the_events_store_with_a_real_query_rather_than_asking_if_it_is_up()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue(), tenanted: false);
+        using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
+        using var studio = new StudioHost(StudioHost.Catalogue(), events: events);
 
-        var part = await studio.Part("Events store");
+        await studio.Part("Events store");
 
-        // The test Loki refuses a read that names no tenant, so this is Studio sending none.
-        Assert.Equal("broken", part.State);
-        Assert.Contains("401", part.Detail);
+        // Asking only whether it is up would pass a store that refuses LogQL, and every Measure would read a dash.
+        Assert.Contains("query_range", events.Asked.Single());
+        Assert.Contains("service_name", events.Asked.Single());
     }
 
     [Fact]

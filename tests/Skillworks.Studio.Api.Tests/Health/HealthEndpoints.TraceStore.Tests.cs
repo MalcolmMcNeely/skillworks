@@ -56,15 +56,16 @@ public sealed partial class HealthEndpointsTests
     }
 
     [Fact]
-    public async Task Reports_a_multi_tenant_trace_store_as_broken_when_studio_names_no_tenant()
+    public async Task Reads_the_trace_store_with_a_real_search_rather_than_asking_if_it_is_up()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue(), tenanted: false);
+        using var traces = BrokenTraceStore.Failing(HttpStatusCode.BadGateway);
+        using var studio = new StudioHost(StudioHost.Catalogue(), traces: traces);
 
-        var part = await studio.Part("Trace store");
+        await studio.Part("Trace store");
 
-        // The test Tempo refuses a read that names no tenant, so this is Studio sending none.
-        Assert.Equal("broken", part.State);
-        Assert.Contains("401", part.Detail);
+        // Asking only whether it is up would pass a store that refuses TraceQL, and every Session would read Thin.
+        Assert.Contains("api/search", traces.Asked.Single());
+        Assert.Contains("session.id", traces.Asked.Single());
     }
 
     [Fact]

@@ -52,7 +52,6 @@ public sealed class StudioHost : IDisposable
         bool tracing = true,
         bool words = true,
         string? settings = null,
-        bool tenanted = true,
         int? lookbackDays = null,
         string? collectorAddress = null)
     {
@@ -72,10 +71,10 @@ public sealed class StudioHost : IDisposable
             _clock,
             [
                 ("Loki:Address", TestLoki.Address.ToString()),
-                ("Loki:Tenant", tenanted ? _tenant : null),
+                ("Loki:Tenant", _tenant),
                 ("Loki:MaxQueryDays", TestLoki.MaxQueryDays.ToString()),
                 ("Tempo:Address", TestTempo.Address.ToString()),
-                ("Tempo:Tenant", tenanted ? _tenant : null),
+                ("Tempo:Tenant", _tenant),
                 ("ClaudeSettings:Path", settingsPath),
                 ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
                 ("Catalogue:Path", cataloguePath ?? Path.Combine(_folder.Path, "no-catalogue")),
