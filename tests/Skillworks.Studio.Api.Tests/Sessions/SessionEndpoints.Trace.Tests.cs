@@ -75,8 +75,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find the leak", "Explore", "Read", 30_000),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Grep", 2_000, "toolu_grep"));
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find the leak", "Explore", "Read", 30_000),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:20.000"), "Grep", 2_000, "toolu_grep"));
 
         // The Span that wraps a Subagent's run stands for no Step, so the walk goes past it to the Agent call.
         await studio.PushSpans(
@@ -100,8 +100,8 @@ public sealed partial class SessionEndpointsTests
 
         // One request writes both events and both join to one span, so neither can hold the other.
         await studio.Push(
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:20.000Z", 2_000, request: "req_01"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:22.000Z", "Built.", "req_01"));
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:20.000"), 2_000, request: "req_01"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:22.000"), "Built.", "req_01"));
 
         await studio.PushSpans(Morning, TreeTrace, Asks(AskedSpan, "req_01"));
 
@@ -115,7 +115,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Grep", 2_000, "toolu_grep"));
+        await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:20.000"), "Grep", 2_000, "toolu_grep"));
 
         await studio.PushSpans(
             Morning,
@@ -135,8 +135,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:20.000Z", 2_000, request: "req_01"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:25.000Z", "Bash", 3_000, use: "toolu_01"));
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:20.000"), 2_000, request: "req_01"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:25.000"), "Bash", 3_000, use: "toolu_01"));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -148,8 +148,8 @@ public sealed partial class SessionEndpointsTests
     private static async Task NestedRan(StudioHost studio)
     {
         await studio.Push(
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:20.000Z", 2_000, request: "req_01"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:25.000Z", "Bash", 3_000, use: "toolu_01"));
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:20.000"), 2_000, request: "req_01"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:25.000"), "Bash", 3_000, use: "toolu_01"));
 
         await studio.PushSpans(
             Morning,
@@ -159,14 +159,14 @@ public sealed partial class SessionEndpointsTests
     }
 
     private static RecordedSpan Asks(string id, string request) =>
-        new("claude_code.llm_request", "2026-09-14T09:00:18Z", "2026-09-14T09:00:20Z", id, Request: request);
+        new("claude_code.llm_request", At(Yesterday, "09:00:18"), At(Yesterday, "09:00:20"), id, Request: request);
 
     private static RecordedSpan Within(string id, string? parent, string toolUse, string? agent) =>
-        new("claude_code.tool", "2026-09-14T09:00:22Z", "2026-09-14T09:00:25Z", id, parent, agent, toolUse);
+        new("claude_code.tool", At(Yesterday, "09:00:22"), At(Yesterday, "09:00:25"), id, parent, agent, toolUse);
 
     private static RecordedSpan Starts(string id, string toolUse) =>
-        new("claude_code.tool", "2026-09-14T09:00:10Z", "2026-09-14T09:00:40Z", id, ToolUse: toolUse);
+        new("claude_code.tool", At(Yesterday, "09:00:10"), At(Yesterday, "09:00:40"), id, ToolUse: toolUse);
 
     private static RecordedSpan Wraps(string id, string? parent, string toolUse, string agent) =>
-        new("claude_code.tool.execution", "2026-09-14T09:00:11Z", "2026-09-14T09:00:39Z", id, parent, agent, toolUse);
+        new("claude_code.tool.execution", At(Yesterday, "09:00:11"), At(Yesterday, "09:00:39"), id, parent, agent, toolUse);
 }

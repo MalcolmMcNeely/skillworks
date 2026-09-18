@@ -10,7 +10,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var page = await studio.StepLine("exchanges", Morning);
 
@@ -26,10 +26,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", "Built."),
-            SessionEvent.Prompted(Morning, "2026-09-14T09:05:00.000Z", "Now the docs"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:06:00.000Z", "Written."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:05:00.000"), "Now the docs"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:06:00.000"), "Written."));
 
         var said = await studio.ExchangesIn(Morning);
 
@@ -44,14 +44,14 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:05.000Z", 2_000, 0.10m),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:08.000Z"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:12.000Z", 2_000, 0.32m),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:15.000Z"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:20.000Z", "Built."),
-            SessionEvent.Prompted(Morning, "2026-09-14T09:05:00.000Z", "Now the docs"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:05:05.000Z", 1_000, 0.05m));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 2_000, 0.10m),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:08.000")),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:12.000"), 2_000, 0.32m),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:15.000")),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:20.000"), "Built."),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:05:00.000"), "Now the docs"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:05:05.000"), 1_000, 0.05m));
 
         var said = await studio.ExchangesIn(Morning);
 
@@ -66,13 +66,13 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", "Built."),
-            SessionEvent.Prompted(Morning, "2026-09-14T09:05:00.000Z", "Now the docs"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:05:00.000"), "Now the docs"));
 
         var said = await studio.ExchangesIn(Morning);
 
-        Assert.Equal(Moment("2026-09-14T09:00:00.000Z"), said[0].AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:00.000")), said[0].AtUtc);
         Assert.Equal(10_000, said[0].LengthMs);
     }
 
@@ -82,8 +82,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:05.000Z", "Bash", 3_000));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:05.000"), "Bash", 3_000));
 
         Assert.Equal(5_000, Assert.Single(await studio.ExchangesIn(Morning)).LengthMs);
     }
@@ -94,9 +94,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", "Looking at it."),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:40.000Z", "Built."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Looking at it."),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:40.000"), "Built."));
 
         var said = Assert.Single(await studio.ExchangesIn(Morning));
 
@@ -110,13 +110,13 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T08:59:00.000Z"),
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:05.000Z"));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "08:59:00.000")),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:05.000")));
 
         var said = Assert.Single(await studio.ExchangesIn(Morning));
 
-        Assert.Equal(Moment("2026-09-14T09:00:00.000Z"), said.AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:00.000")), said.AtUtc);
         Assert.Equal(1, said.ToolCalls);
     }
 
@@ -126,8 +126,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:05.000Z", "The build fix"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:05.000"), "The build fix"));
 
         // Claude Code asked for the title itself, so it is no part of what the agent answered.
         var said = Assert.Single(await studio.ExchangesIn(Morning));
@@ -143,8 +143,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.PromptWithheld(Morning, "2026-09-14T09:00:00.000Z", 1_840),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", "Built."));
+            SessionEvent.PromptWithheld(Morning, At(Yesterday, "09:00:00.000"), 1_840),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."));
 
         var said = Assert.Single(await studio.ExchangesIn(Morning));
 
@@ -158,8 +158,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.AnswerWithheld(Morning, "2026-09-14T09:00:10.000Z", 4_206));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.AnswerWithheld(Morning, At(Yesterday, "09:00:10.000"), 4_206));
 
         var said = Assert.Single(await studio.ExchangesIn(Morning));
 
@@ -173,8 +173,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", "Built."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."));
 
         var said = Assert.Single(await studio.ExchangesIn(Morning));
 
@@ -191,8 +191,8 @@ public sealed partial class SessionEndpointsTests
         var answered = new string('b', 900);
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", asked),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", answered));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), asked),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), answered));
 
         var said = Assert.Single(await studio.ExchangesIn(Morning));
 
@@ -206,7 +206,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SessionEvent(Morning, "user_prompt", "2026-09-14T09:00:00.000Z") { Prompt = SessionEvent.Withheld });
+            new SessionEvent(Morning, "user_prompt", At(Yesterday, "09:00:00.000")) { Prompt = SessionEvent.Withheld });
 
         // An older Claude Code wrote no length, so the panel can say only that it holds nothing.
         var said = Assert.Single(await studio.ExchangesIn(Morning));
@@ -221,8 +221,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.PromptWithheld(Morning, "2026-09-14T09:00:00.000Z", 1_840),
-            SessionEvent.AnswerWithheld(Morning, "2026-09-14T09:00:10.000Z", 4_206));
+            SessionEvent.PromptWithheld(Morning, At(Yesterday, "09:00:00.000"), 1_840),
+            SessionEvent.AnswerWithheld(Morning, At(Yesterday, "09:00:10.000"), 4_206));
 
         // The timeline and the conversation read the same run, so neither may show Claude Code's stand-in.
         Assert.All(await studio.StepsIn(Morning), step => Assert.Null(step.Words));
@@ -234,7 +234,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.ToolRan(Morning, "2026-09-14T09:00:00.000Z"));
+        await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:00.000")));
 
         Assert.Empty(await studio.ExchangesIn(Morning));
     }

@@ -10,7 +10,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", "2026-09-14T09:00:00.000Z"));
+        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000")));
 
         var page = await studio.StepLine("activations", Morning);
 
@@ -24,14 +24,14 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("implement", "2026-09-14T09:00:00.000Z"),
-            Fired("tdd", "2026-09-14T09:05:00.000Z"),
-            Fired("comment-sweep", "2026-09-14T09:20:00.000Z"));
+            Fired("implement", At(Yesterday, "09:00:00.000")),
+            Fired("tdd", At(Yesterday, "09:05:00.000")),
+            Fired("comment-sweep", At(Yesterday, "09:20:00.000")));
 
         var activations = await studio.ActivationsIn(Morning);
 
         Assert.Equal(["implement", "tdd", "comment-sweep"], activations.Select(activation => activation.Skill));
-        Assert.Equal(Moment("2026-09-14T09:05:00.000Z"), activations[1].AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:05:00.000")), activations[1].AtUtc);
     }
 
     [Fact]
@@ -40,9 +40,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("implement", "2026-09-14T09:00:00.000Z"),
-            Fired("tdd", "2026-09-14T09:05:00.000Z"));
-        await studio.Push(SessionEvent.ToolRan(Morning, "2026-09-14T09:09:00.000Z"));
+            Fired("implement", At(Yesterday, "09:00:00.000")),
+            Fired("tdd", At(Yesterday, "09:05:00.000")));
+        await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:09:00.000")));
 
         Assert.Equal((long)TimeSpan.FromMinutes(5).TotalMilliseconds, (await studio.ActivationsIn(Morning))[0].FollowedMs);
     }
@@ -52,8 +52,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", "2026-09-14T09:00:00.000Z"));
-        await studio.Push(SessionEvent.Answered(Morning, "2026-09-14T09:30:00.000Z", "Done."));
+        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000")));
+        await studio.Push(SessionEvent.Answered(Morning, At(Yesterday, "09:30:00.000"), "Done."));
 
         Assert.Equal(
             (long)TimeSpan.FromMinutes(30).TotalMilliseconds,
@@ -65,7 +65,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", "2026-09-14T09:00:00.000Z") with { Trigger = "user-slash" });
+        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000")) with { Trigger = "user-slash" });
 
         Assert.Equal("user-slash", Assert.Single(await studio.ActivationsIn(Morning)).Trigger);
     }
@@ -76,8 +76,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-14T09:00:00.000Z"),
-            Fired("tdd", "2026-09-14T09:05:00.000Z"));
+            Fired("tdd", At(Yesterday, "09:00:00.000")),
+            Fired("tdd", At(Yesterday, "09:05:00.000")));
 
         var activations = await studio.ActivationsIn(Morning);
 
@@ -89,7 +89,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         Assert.Empty(await studio.ActivationsIn(Morning));
     }
@@ -100,8 +100,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-14T09:00:00.000Z"),
-            new SkillActivated("comment-sweep", "2026-09-14T14:00:00.000Z") { Session = Afternoon });
+            Fired("tdd", At(Yesterday, "09:00:00.000")),
+            new SkillActivated("comment-sweep", At(Yesterday, "14:00:00.000")) { Session = Afternoon });
 
         Assert.Equal(["tdd"], (await studio.ActivationsIn(Morning)).Select(activation => activation.Skill));
     }

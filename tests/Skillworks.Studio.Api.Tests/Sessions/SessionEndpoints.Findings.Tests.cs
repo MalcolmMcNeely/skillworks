@@ -43,9 +43,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost(traces: traces);
 
         await studio.Push(
-            Failing("2026-09-14T09:00:05.000Z", "npm test"),
-            Failing("2026-09-14T09:00:10.000Z", "npm test"),
-            Failing("2026-09-14T09:00:15.000Z", "npm test"));
+            Failing(At(Yesterday, "09:00:05.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:10.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:15.000"), "npm test"));
 
         // The first findings line lands with the events, so a trace store that never answers leaves no empty list.
         var first = await studio.FirstStepLines(Morning, 5);
@@ -61,7 +61,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await Built(studio);
-        await studio.PushSpans(Morning, FindingTrace, Guarded(GuardSpan, "2026-09-14T09:00:07Z", "2026-09-14T09:00:09Z"));
+        await studio.PushSpans(Morning, FindingTrace, Guarded(GuardSpan, At(Yesterday, "09:00:07"), At(Yesterday, "09:00:09")));
 
         var first = await studio.FirstStepLines(Morning, 5);
         var found = StudioHost.Read<FindingRow[]>(first[^1]["findings"]);
@@ -76,7 +76,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.ModelFailed(Morning, "2026-09-14T09:00:05.000Z"));
+        await studio.Push(SessionEvent.ModelFailed(Morning, At(Yesterday, "09:00:05.000")));
 
         var line = await studio.StepLine("findings", Morning);
 
@@ -105,9 +105,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Failing("2026-09-14T09:00:05.000Z", "npm test"),
-            Failing("2026-09-14T09:00:10.000Z", "npm test"),
-            Failing("2026-09-14T09:00:15.000Z", "npm test"));
+            Failing(At(Yesterday, "09:00:05.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:10.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:15.000"), "npm test"));
 
         var finding = Crossed(await studio.FindingsIn(Morning), "failingAgain");
 
@@ -121,8 +121,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Failing("2026-09-14T09:00:05.000Z", "npm test"),
-            Failing("2026-09-14T09:00:10.000Z", "npm test"));
+            Failing(At(Yesterday, "09:00:05.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:10.000"), "npm test"));
 
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "failingAgain"));
     }
@@ -133,9 +133,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Failing("2026-09-14T09:00:05.000Z", "npm test"),
-            Failing("2026-09-14T09:00:10.000Z", "npm run build"),
-            Failing("2026-09-14T09:00:15.000Z", "npm run lint"));
+            Failing(At(Yesterday, "09:00:05.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:10.000"), "npm run build"),
+            Failing(At(Yesterday, "09:00:15.000"), "npm run lint"));
 
         // Three things going wrong once each is a hard afternoon, not an agent stuck on one of them.
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "failingAgain"));
@@ -147,11 +147,11 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Editing("2026-09-14T09:00:05.000Z", "src/App.tsx"),
-            Editing("2026-09-14T09:00:10.000Z", "src/App.tsx"),
-            Editing("2026-09-14T09:00:15.000Z", "src/App.tsx"),
-            Editing("2026-09-14T09:00:20.000Z", "src/App.tsx"),
-            Editing("2026-09-14T09:00:25.000Z", "src/App.tsx"));
+            Editing(At(Yesterday, "09:00:05.000"), "src/App.tsx"),
+            Editing(At(Yesterday, "09:00:10.000"), "src/App.tsx"),
+            Editing(At(Yesterday, "09:00:15.000"), "src/App.tsx"),
+            Editing(At(Yesterday, "09:00:20.000"), "src/App.tsx"),
+            Editing(At(Yesterday, "09:00:25.000"), "src/App.tsx"));
 
         var finding = Crossed(await studio.FindingsIn(Morning), "editedAgain");
 
@@ -165,11 +165,11 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Noting("2026-09-14T09:00:05.000Z", "src/Report.ipynb"),
-            Noting("2026-09-14T09:00:10.000Z", "src/Report.ipynb"),
-            Noting("2026-09-14T09:00:15.000Z", "src/Report.ipynb"),
-            Noting("2026-09-14T09:00:20.000Z", "src/Report.ipynb"),
-            Noting("2026-09-14T09:00:25.000Z", "src/Report.ipynb"));
+            Noting(At(Yesterday, "09:00:05.000"), "src/Report.ipynb"),
+            Noting(At(Yesterday, "09:00:10.000"), "src/Report.ipynb"),
+            Noting(At(Yesterday, "09:00:15.000"), "src/Report.ipynb"),
+            Noting(At(Yesterday, "09:00:20.000"), "src/Report.ipynb"),
+            Noting(At(Yesterday, "09:00:25.000"), "src/Report.ipynb"));
 
         // NotebookEdit names its file under a key of its own, and a notebook is a file a reader went back to.
         Assert.Equal("src/Report.ipynb", Crossed(await studio.FindingsIn(Morning), "editedAgain")?.Subject);
@@ -181,10 +181,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Editing("2026-09-14T09:00:05.000Z", "src/App.tsx"),
-            Editing("2026-09-14T09:00:10.000Z", "src/App.tsx"),
-            Editing("2026-09-14T09:00:15.000Z", "src/App.tsx"),
-            Editing("2026-09-14T09:00:20.000Z", "src/App.tsx"));
+            Editing(At(Yesterday, "09:00:05.000"), "src/App.tsx"),
+            Editing(At(Yesterday, "09:00:10.000"), "src/App.tsx"),
+            Editing(At(Yesterday, "09:00:15.000"), "src/App.tsx"),
+            Editing(At(Yesterday, "09:00:20.000"), "src/App.tsx"));
 
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "editedAgain"));
     }
@@ -195,8 +195,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ModelFailed(Morning, "2026-09-14T09:00:05.000Z"),
-            SessionEvent.ModelFailed(Morning, "2026-09-14T09:00:25.000Z"));
+            SessionEvent.ModelFailed(Morning, At(Yesterday, "09:00:05.000")),
+            SessionEvent.ModelFailed(Morning, At(Yesterday, "09:00:25.000")));
 
         Assert.Equal(2, Crossed(await studio.FindingsIn(Morning), "rateLimited")?.Figure);
     }
@@ -206,7 +206,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new SessionEvent(Morning, "api_error", "2026-09-14T09:00:05.000Z") { ErrorType = "Overloaded" });
+        await studio.Push(new SessionEvent(Morning, "api_error", At(Yesterday, "09:00:05.000")) { ErrorType = "Overloaded" });
 
         // A busy model is nothing a person can act on, and naming it would name every run on a busy day.
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "rateLimited"));
@@ -218,8 +218,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { CacheReadTokens = 60_000 },
-            Turn("2026-09-14T09:05:00.000Z") with { CacheReadTokens = 1_000, CacheCreationTokens = 61_000 });
+            Turn(At(Yesterday, "09:00:00.000")) with { CacheReadTokens = 60_000 },
+            Turn(At(Yesterday, "09:05:00.000")) with { CacheReadTokens = 1_000, CacheCreationTokens = 61_000 });
 
         Assert.Equal(1, Crossed(await studio.FindingsIn(Morning), "cacheRebuilt")?.Figure);
     }
@@ -230,8 +230,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { CacheCreationTokens = 60_000 },
-            Turn("2026-09-14T09:05:00.000Z") with { CacheReadTokens = 60_000 });
+            Turn(At(Yesterday, "09:00:00.000")) with { CacheCreationTokens = 60_000 },
+            Turn(At(Yesterday, "09:05:00.000")) with { CacheReadTokens = 60_000 });
 
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "cacheRebuilt"));
     }
@@ -242,8 +242,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { InputTokens = 100_000 },
-            Turn("2026-09-14T09:05:00.000Z") with { InputTokens = 850_000 });
+            Turn(At(Yesterday, "09:00:00.000")) with { InputTokens = 100_000 },
+            Turn(At(Yesterday, "09:05:00.000")) with { InputTokens = 850_000 });
 
         Assert.Equal(0.85m, Crossed(await studio.FindingsIn(Morning), "nearTheLimit")?.Figure);
     }
@@ -253,7 +253,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with { InputTokens = 100_000 });
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with { InputTokens = 100_000 });
 
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "nearTheLimit"));
     }
@@ -263,7 +263,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with { Model = ModelWithNoMarker, InputTokens = 900_000 });
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with { Model = ModelWithNoMarker, InputTokens = 900_000 });
 
         // A window nobody stated cannot be neared, and inventing one would make some run look doomed.
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "nearTheLimit"));
@@ -275,7 +275,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await Built(studio);
-        await studio.PushSpans(Morning, FindingTrace, Guarded(GuardSpan, "2026-09-14T09:00:07Z", "2026-09-14T09:00:09Z"));
+        await studio.PushSpans(Morning, FindingTrace, Guarded(GuardSpan, At(Yesterday, "09:00:07"), At(Yesterday, "09:00:09")));
 
         // Two seconds of hooks in ten seconds of work, where the five quiet seconds count for neither.
         Assert.Equal(0.2m, Crossed(await studio.FindingsIn(Morning), "hooks")?.Figure);
@@ -287,7 +287,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await Built(studio);
-        await studio.PushSpans(Morning, FindingTrace, Guarded(GuardSpan, "2026-09-14T09:00:07Z", "2026-09-14T09:00:08Z"));
+        await studio.PushSpans(Morning, FindingTrace, Guarded(GuardSpan, At(Yesterday, "09:00:07"), At(Yesterday, "09:00:08")));
 
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "hooks"));
     }
@@ -301,12 +301,12 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(
             Morning,
             FindingTrace,
-            Paused(PausedSpan, "toolu_01", "2026-09-14T09:00:00Z", "2026-09-14T09:03:00Z"));
+            Paused(PausedSpan, "toolu_01", At(Yesterday, "09:00:00"), At(Yesterday, "09:03:00")));
 
         var finding = Crossed(await studio.FindingsIn(Morning), "waiting");
 
         Assert.Equal(180_000, finding?.Figure);
-        Assert.Equal(Moment("2026-09-14T09:00:00.000Z"), finding?.AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:00.000")), finding?.AtUtc);
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(
             Morning,
             FindingTrace,
-            Paused(PausedSpan, "toolu_01", "2026-09-14T09:00:00Z", "2026-09-14T09:01:00Z"));
+            Paused(PausedSpan, "toolu_01", At(Yesterday, "09:00:00"), At(Yesterday, "09:01:00")));
 
         Assert.Null(Crossed(await studio.FindingsIn(Morning), "waiting"));
     }
@@ -363,9 +363,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Find the leak"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find the leak", lengthMs: 30_000),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:01:40.000Z", "toolu_b", "Review the diff", lengthMs: 30_000));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Find the leak"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find the leak", lengthMs: 30_000),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:01:40.000"), "toolu_b", "Review the diff", lengthMs: 30_000));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -395,16 +395,16 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Failing("2026-09-14T09:00:05.000Z", "npm test"),
-            Failing("2026-09-14T09:00:10.000Z", "npm test"),
-            Failing("2026-09-14T09:00:15.000Z", "npm test"));
+            Failing(At(Yesterday, "09:00:05.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:10.000"), "npm test"),
+            Failing(At(Yesterday, "09:00:15.000"), "npm test"));
 
         var answer = await studio.StepAnswer(Morning);
         var finding = Crossed(answer.Findings, "failingAgain");
 
         // The last go at it, which is where a reader picking the Finding up wants to start reading.
         Assert.Equal(answer.Steps[^1].Id, finding?.Step);
-        Assert.Equal(Moment("2026-09-14T09:00:15.000Z"), finding?.AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:15.000")), finding?.AtUtc);
     }
 
     [Fact]
@@ -421,17 +421,17 @@ public sealed partial class SessionEndpointsTests
     // Five seconds of model, five of tool and five of quiet between them, which no bar of its own crosses.
     private static Task Built(StudioHost studio) =>
         studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:05.000Z", 5_000, source: "main"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:12.000Z", "Bash", 5_000, "toolu_01"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:15.000Z", "Built."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, source: "main"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:12.000"), "Bash", 5_000, "toolu_01"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:15.000"), "Built."));
 
     // A five-minute Tool call, so the wait a Span puts inside it has room to cross a bar counted in minutes.
     private static Task Asking(StudioHost studio) =>
         studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Drop the table"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:05:00.000Z", "Bash", 300_000, "toolu_01"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:05:01.000Z", "Dropped."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Drop the table"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:05:00.000"), "Bash", 300_000, "toolu_01"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:05:01.000"), "Dropped."));
 
     private static Task TwoAgentsRan(StudioHost studio, decimal first, decimal second) =>
         AgentsRan(studio, [first, second]);
@@ -442,25 +442,25 @@ public sealed partial class SessionEndpointsTests
     // One Agent Tool call and one Turn each, a minute apart, with the Spans that put the Turn on the Subagent.
     private static async Task AgentsRan(StudioHost studio, IReadOnlyList<decimal> costs)
     {
-        var events = new List<SessionEvent> { SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Find the leak") };
+        var events = new List<SessionEvent> { SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Find the leak") };
         var spans = new List<RecordedSpan>();
 
         for (var agent = 0; agent < costs.Count; agent++)
         {
             var minute = $"09:0{agent}";
 
-            events.Add(SessionEvent.Turned(Morning, $"2026-09-14T{minute}:25.000Z", 3_000, costs[agent], $"req_{agent}"));
+            events.Add(SessionEvent.Turned(Morning, At(Yesterday, $"{minute}:25.000"), 3_000, costs[agent], $"req_{agent}"));
             events.Add(SessionEvent.AgentRan(
                 Morning,
-                $"2026-09-14T{minute}:40.000Z",
+                At(Yesterday, $"{minute}:40.000"),
                 $"toolu_{agent}",
                 AgentNames[agent],
                 "Explore",
                 "Read",
                 30_000));
 
-            spans.Add(Around(AgentSpans[agent], $"toolu_{agent}", $"agent-{agent}", $"2026-09-14T{minute}:11Z", $"2026-09-14T{minute}:39Z"));
-            spans.Add(Thinking(ThoughtSpans[agent], $"req_{agent}", $"agent-{agent}", $"2026-09-14T{minute}:22Z"));
+            spans.Add(Around(AgentSpans[agent], $"toolu_{agent}", $"agent-{agent}", At(Yesterday, $"{minute}:11"), At(Yesterday, $"{minute}:39")));
+            spans.Add(Thinking(ThoughtSpans[agent], $"req_{agent}", $"agent-{agent}", At(Yesterday, $"{minute}:22")));
         }
 
         await studio.Push([.. events]);
@@ -469,7 +469,7 @@ public sealed partial class SessionEndpointsTests
 
     // Any Span at all lifts a run to Full, and this one says nothing beyond that.
     private static RecordedSpan Watched(string id, string toolUse) =>
-        new("claude_code.tool", "2026-09-14T09:00:07Z", "2026-09-14T09:00:12Z", id, ToolUse: toolUse);
+        new("claude_code.tool", At(Yesterday, "09:00:07"), At(Yesterday, "09:00:12"), id, ToolUse: toolUse);
 
     private static RecordedSpan Paused(string id, string toolUse, string at, string until) =>
         new("claude_code.tool.blocked_on_user", at, until, id, ToolUse: toolUse);

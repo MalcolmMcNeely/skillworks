@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Harness;
 
@@ -12,6 +11,5 @@ public sealed record FilterChoicesAnswer(IReadOnlyList<DateOnly> HeadDays, IRead
 
     public IEnumerable<string> Repositories => Days.SelectMany(day => day.Repositories);
 
-    public FilterChoicesDayRow Day(string day) =>
-        Days.Single(landed => landed.Day == DateOnly.Parse(day, CultureInfo.InvariantCulture));
+    public FilterChoicesDayRow Day(DateOnly day) => Days.Single(landed => landed.Day == day);
 }

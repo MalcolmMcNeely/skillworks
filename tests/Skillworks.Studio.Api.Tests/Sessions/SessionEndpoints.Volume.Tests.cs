@@ -12,9 +12,9 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The busy run"));
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The busy run"));
         await studio.Push(
-            SessionEvent.Every(Morning, "2026-09-14T09:00:00.000Z", TimeSpan.FromSeconds(3), MoreEventsThanOneReadHolds));
+            SessionEvent.Every(Morning, At(Yesterday, "09:00:00.000"), TimeSpan.FromSeconds(3), MoreEventsThanOneReadHolds));
 
         var session = Assert.Single(await studio.SessionsIn());
 

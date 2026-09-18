@@ -10,8 +10,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build before the demo"),
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:30.000Z", "Fixing the failing build"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build before the demo"),
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:30.000"), "Fixing the failing build"));
 
         // The title is the one a reader recognises, so it wins over the words that led to it.
         Assert.Equal("Fixing the failing build", Assert.Single(await studio.SessionsIn()).Name);
@@ -23,8 +23,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build before the demo"),
-            SessionEvent.Prompted(Morning, "2026-09-14T09:30:00.000Z", "Now push it"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build before the demo"),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:30:00.000"), "Now push it"));
 
         Assert.Equal("Fix the build before the demo", Assert.Single(await studio.SessionsIn()).Name);
     }
@@ -35,14 +35,14 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SessionEvent(Morning, "tool_result", "2026-09-14T09:00:00.000Z")
+            new SessionEvent(Morning, "tool_result", At(Yesterday, "09:00:00.000"))
             {
                 Owner = "malcolmania",
                 RepositoryName = "skillworks",
             });
 
         // Never empty, or a row would be unreadable in the one column that says which run it is.
-        Assert.Equal("malcolmania/skillworks 2026-09-14 09:00", Assert.Single(await studio.SessionsIn()).Name);
+        Assert.Equal($"malcolmania/skillworks {Written(Yesterday)} 09:00", Assert.Single(await studio.SessionsIn()).Name);
     }
 
     [Fact]
@@ -50,9 +50,9 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new SessionEvent(Morning, "tool_result", "2026-09-14T09:00:00.000Z"));
+        await studio.Push(new SessionEvent(Morning, "tool_result", At(Yesterday, "09:00:00.000")));
 
-        Assert.Equal("2026-09-14 09:00", Assert.Single(await studio.SessionsIn()).Name);
+        Assert.Equal($"{Written(Yesterday)} 09:00", Assert.Single(await studio.SessionsIn()).Name);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SessionEvent(Morning, "user_prompt", "2026-09-14T09:00:00.000Z")
+            new SessionEvent(Morning, "user_prompt", At(Yesterday, "09:00:00.000"))
             {
                 Prompt = SessionEvent.Withheld,
                 Owner = "acme",
@@ -69,7 +69,7 @@ public sealed partial class SessionEndpointsTests
             });
 
         // Claude Code withheld the words, so the row says where and when instead of the placeholder.
-        Assert.Equal("acme/xi 2026-09-14 09:00", Assert.Single(await studio.SessionsIn()).Name);
+        Assert.Equal($"acme/xi {Written(Yesterday)} 09:00", Assert.Single(await studio.SessionsIn()).Name);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", new string('a', 400)));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), new string('a', 400)));
 
         var name = Assert.Single(await studio.SessionsIn()).Name;
 
@@ -90,7 +90,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build\nthen push it"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build\nthen push it"));
 
         Assert.Equal("Fix the build then push it", Assert.Single(await studio.SessionsIn()).Name);
     }

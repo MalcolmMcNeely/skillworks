@@ -13,7 +13,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var lines = await studio.StepLines(Morning);
 
@@ -28,7 +28,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var head = await studio.StepLine("head", Morning);
         var page = await studio.StepLine("steps", Morning);
@@ -49,13 +49,13 @@ public sealed partial class SessionEndpointsTests
 
         SessionEvent[] recorded =
         [
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:05.000Z", "The build fix"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:20.000Z", 2_000, 0.42m),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:30.000Z"),
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:00:40.000Z"),
-            SessionEvent.Refused(Morning, "2026-09-14T09:00:50.000Z"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:01:00.000Z", "Done"),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:05.000"), "The build fix"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:20.000"), 2_000, 0.42m),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:30.000")),
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:00:40.000")),
+            SessionEvent.Refused(Morning, At(Yesterday, "09:00:50.000")),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:01:00.000"), "Done"),
         ];
 
         // Claude Code names the person and the repository on every event of a run.
@@ -69,7 +69,7 @@ public sealed partial class SessionEndpointsTests
         Assert.Equal("The build fix", run.Name);
         Assert.Equal("malcolmania/skillworks", run.Repository);
         Assert.Equal("grace@acme.test", run.Person);
-        Assert.Equal(Moment("2026-09-14T09:00:00.000Z"), run.StartedUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:00.000")), run.StartedUtc);
         Assert.Equal((long)TimeSpan.FromMinutes(1).TotalMilliseconds, run.LengthMs);
         Assert.Equal(2, run.ToolCalls);
         Assert.Equal(0.42m, run.Cost);
@@ -83,10 +83,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:10.000Z", 2_000),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Bash", 4_000),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:30.000Z", "Built."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:10.000"), 2_000),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:20.000"), "Bash", 4_000),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:30.000"), "Built."));
 
         var steps = await studio.StepsIn(Morning);
 
@@ -100,12 +100,12 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000));
+        await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000));
 
         // Claude Code writes its event once a Step is over, so a mark drawn at that moment would sit late.
         var step = Assert.Single(await studio.StepsIn(Morning));
 
-        Assert.Equal(Moment("2026-09-14T09:00:06.000Z"), step.AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:06.000")), step.AtUtc);
         Assert.Equal(4_000, step.LengthMs);
     }
 
@@ -115,9 +115,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z"),
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:00:20.000Z"),
-            SessionEvent.ModelFailed(Morning, "2026-09-14T09:00:30.000Z"));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000")),
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:00:20.000")),
+            SessionEvent.ModelFailed(Morning, At(Yesterday, "09:00:30.000")));
 
         var steps = await studio.StepsIn(Morning);
 
@@ -132,8 +132,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Refused(Morning, "2026-09-14T09:00:10.000Z"),
-            SessionEvent.HookBlocked(Morning, "2026-09-14T09:00:20.000Z"));
+            SessionEvent.Refused(Morning, At(Yesterday, "09:00:10.000")),
+            SessionEvent.HookBlocked(Morning, At(Yesterday, "09:00:20.000")));
 
         // Somebody chose both, so a clean run still reads clean.
         var steps = await studio.StepsIn(Morning);
@@ -149,8 +149,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Allowed(Morning, "2026-09-14T09:00:10.000Z"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:12.000Z"));
+            SessionEvent.Allowed(Morning, At(Yesterday, "09:00:10.000")),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:12.000")));
 
         // The Tool call's own mark already covers it, so a second mark would read as two calls.
         Assert.Equal(["tool"], (await studio.StepsIn(Morning)).Select(step => step.Kind));
@@ -162,8 +162,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:05.000Z", "The build fix"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:05.000"), "The build fix"));
 
         // Claude Code asked for the title itself, so it is no part of what was said.
         Assert.Equal(["prompt"], (await studio.StepsIn(Morning)).Select(step => step.Kind));
@@ -175,8 +175,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Prompted(Afternoon, "2026-09-14T14:00:00.000Z", "Write the docs"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Prompted(Afternoon, At(Yesterday, "14:00:00.000"), "Write the docs"));
 
         Assert.Equal(["Fix the build"], (await studio.StepsIn(Morning)).Select(step => step.Words));
     }
@@ -186,7 +186,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var answer = await studio.StepAnswer(Evening);
 
@@ -215,7 +215,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Every(Evening, "2026-09-14T09:00:00.000Z", TimeSpan.FromSeconds(1), MoreEventsThanOnePageHolds));
+            SessionEvent.Every(Evening, At(Yesterday, "09:00:00.000"), TimeSpan.FromSeconds(1), MoreEventsThanOnePageHolds));
 
         // A run cut at the end of a page would draw a timeline that stops before the run did.
         Assert.Equal(MoreEventsThanOnePageHolds, (await studio.StepsIn(Evening)).Count);
@@ -226,8 +226,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Answered(Morning, "2026-09-14T09:01:00.000Z", "Built."));
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Answered(Morning, At(Yesterday, "09:01:00.000"), "Built."));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         // The store answers stream by stream, and a timeline reads a run the way it ran.
         Assert.Equal(["Fix the build", "Built."], (await studio.StepsIn(Morning)).Select(step => step.Words));
@@ -239,10 +239,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-12T09:00:00.000Z", "The early words"),
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "The later words"));
+            SessionEvent.Prompted(Morning, At(DaysBack(3), "09:00:00.000"), "The early words"),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "The later words"));
 
-        var steps = await studio.StepsIn(Morning, "?from=2026-09-14&to=2026-09-14");
+        var steps = await studio.StepsIn(Morning, $"?from={Written(Yesterday)}&to={Written(Yesterday)}");
 
         Assert.Equal(["The later words"], steps.Select(step => step.Words));
     }

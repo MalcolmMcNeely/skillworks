@@ -105,7 +105,7 @@ public sealed partial class SkillEndpointsTests
         // The earlier Activations are real, but nothing has reached the events store since the switch went off.
         Assert.Equal("telemetryOff", answer.Gap.Kind);
         Assert.Contains("Telemetry switch", answer.Gap.Missing ?? "");
-        Assert.NotEmpty(Assert.Single(answer.Day("2026-09-14").Skills).Origins);
+        Assert.NotEmpty(Assert.Single(answer.Day(Yesterday).Skills).Origins);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public sealed partial class SkillEndpointsTests
         var answer = await studio.SkillAnswer();
 
         // A skill that fired before the period can spend inside it, and a row of spend beside "quiet" contradicts itself.
-        Assert.Equal(0.1m, Assert.Single(answer.Day("2026-09-14").Skills).Spend?.Cost);
+        Assert.Equal(0.1m, Assert.Single(answer.Day(Yesterday).Skills).Spend?.Cost);
         Assert.Equal("complete", answer.Gap.Kind);
         Assert.Null(answer.Gap.Missing);
     }

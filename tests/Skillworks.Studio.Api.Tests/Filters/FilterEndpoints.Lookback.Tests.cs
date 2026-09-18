@@ -1,4 +1,3 @@
-using System.Globalization;
 using Skillworks.Studio.Api.Tests.Harness;
 using Skillworks.Studio.Api.Tests.Skills;
 
@@ -12,17 +11,17 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-08T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-09T00:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-15T00:00:00.000Z"));
+            new SkillActivated("grilling", At(DaysBack(7), "23:59:59.999")),
+            new SkillActivated("grilling", At(DaysBack(6), "00:00:00.000")),
+            new SkillActivated("grilling", At(Today, "00:00:00.000")));
 
         var answer = await studio.SkillAnswer();
 
         // Named in the head, so a zero on screen says which week it is a zero for.
-        Assert.Equal(Span("2026-09-09", "2026-09-15", lookback: true), SpanOf(answer));
+        Assert.Equal((From: DaysBack(6), To: Today, Lookback: true), SpanOf(answer));
         Assert.Equal(7, answer.Days.Count);
-        Assert.Equal(1, Assert.Single(answer.Day("2026-09-15").Skills).Activations);
-        Assert.Equal(1, Assert.Single(answer.Day("2026-09-09").Skills).Activations);
+        Assert.Equal(1, Assert.Single(answer.Day(Today).Skills).Activations);
+        Assert.Equal(1, Assert.Single(answer.Day(DaysBack(6)).Skills).Activations);
     }
 
     [Fact]
@@ -31,14 +30,14 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost(lookbackDays: 2);
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-13T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-14T00:00:00.000Z"));
+            new SkillActivated("grilling", At(DaysBack(2), "23:59:59.999")),
+            new SkillActivated("grilling", At(Yesterday, "00:00:00.000")));
 
         var answer = await studio.SkillAnswer();
 
-        Assert.Equal(Span("2026-09-14", "2026-09-15", lookback: true), SpanOf(answer));
+        Assert.Equal((From: Yesterday, To: Today, Lookback: true), SpanOf(answer));
         Assert.Equal(2, answer.Days.Count);
-        Assert.Equal(1, Assert.Single(answer.Day("2026-09-14").Skills).Activations);
+        Assert.Equal(1, Assert.Single(answer.Day(Yesterday).Skills).Activations);
     }
 
     [Fact]
@@ -47,14 +46,14 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-03T09:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
+            new SkillActivated("grilling", At(DaysBack(12), "09:00:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000")));
 
         var answer = await studio.SkillAnswer(BothDays);
 
-        Assert.Equal(Span("2026-09-01", "2026-09-05", lookback: false), SpanOf(answer));
+        Assert.Equal((From: DaysBack(14), To: DaysBack(10), Lookback: false), SpanOf(answer));
         Assert.Equal(1, answer.Skills.Sum(skill => skill.Activations));
-        Assert.Equal(1, Assert.Single(answer.Day("2026-09-03").Skills).Activations);
+        Assert.Equal(1, Assert.Single(answer.Day(DaysBack(12)).Skills).Activations);
     }
 
     [Fact]
@@ -63,8 +62,8 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-01T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"));
+            new SkillActivated("grilling", At(DaysBack(14), "09:00:00.000"), Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "xi"));
 
         var inXi = await studio.SkillAnswer("?repository=acme/xi");
         var grilling = await studio.SkillAnswer("?skill=grilling");
@@ -80,12 +79,9 @@ public sealed partial class FilterEndpointsTests
     {
         using var studio = new StudioHost();
 
-        Assert.Equal(Span("2026-09-10", "2026-09-15", lookback: false), SpanOf(await studio.SkillAnswer("?from=2026-09-10")));
-        Assert.Equal(Span("2026-08-30", "2026-09-05", lookback: false), SpanOf(await studio.SkillAnswer("?to=2026-09-05")));
+        Assert.Equal((From: DaysBack(5), To: Today, Lookback: false), SpanOf(await studio.SkillAnswer($"?from={Written(DaysBack(5))}")));
+        Assert.Equal((From: DaysBack(16), To: DaysBack(10), Lookback: false), SpanOf(await studio.SkillAnswer($"?to={Written(DaysBack(10))}")));
     }
-
-    private static (DateOnly From, DateOnly To, bool Lookback) Span(string from, string to, bool lookback) =>
-        (DateOnly.Parse(from, CultureInfo.InvariantCulture), DateOnly.Parse(to, CultureInfo.InvariantCulture), lookback);
 
     private static (DateOnly From, DateOnly To, bool Lookback) SpanOf(SkillsAnswer answer) =>
         (answer.Head.Span.From, answer.Head.Span.To, answer.Head.Span.Lookback);

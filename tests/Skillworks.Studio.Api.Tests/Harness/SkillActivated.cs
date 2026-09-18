@@ -1,4 +1,5 @@
 using System.Globalization;
+using Skillworks.Core.Tests.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 
@@ -32,16 +33,11 @@ public sealed record SkillActivated(
         ("vcs.repository.name", RepositoryName),
     ];
 
-    internal static SkillActivated[] AtEveryMidnight(string skill, string firstDay, string lastDay)
-    {
-        var first = DateOnly.Parse(firstDay, CultureInfo.InvariantCulture);
-        var last = DateOnly.Parse(lastDay, CultureInfo.InvariantCulture);
-
-        return
-        [
-            .. Enumerable
-                .Range(0, last.DayNumber - first.DayNumber + 1)
-                .Select(day => new SkillActivated(skill, first.AddDays(day).ToString("yyyy-MM-dd'T00:00:00.000Z'", CultureInfo.InvariantCulture)))
-        ];
-    }
+    internal static SkillActivated[] AtEveryMidnight(string skill, DateOnly firstDay, DateOnly lastDay) =>
+    [
+        .. Enumerable
+            .Range(0, lastDay.DayNumber - firstDay.DayNumber + 1)
+            // Named in full, because this record's own At wins over the imported one.
+            .Select(day => new SkillActivated(skill, Recently.At(firstDay.AddDays(day), "00:00:00.000")))
+    ];
 }

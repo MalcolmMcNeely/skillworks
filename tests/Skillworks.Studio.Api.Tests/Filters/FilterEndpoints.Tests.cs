@@ -6,7 +6,10 @@ namespace Skillworks.Studio.Api.Tests.Filters;
 
 public sealed partial class FilterEndpointsTests
 {
-    private const string BothDays = "?from=2026-09-01&to=2026-09-05";
+    private static readonly string BothDays = $"?from={Written(DaysBack(14))}&to={Written(DaysBack(10))}";
+
+    // Well before the oldest fixture, so nothing a test pushes can fall inside it.
+    private static readonly string NothingHappened = $"?from={Written(DaysBack(60))}&to={Written(DaysBack(59))}";
 
     [Fact]
     public async Task Counts_every_activation_inside_a_span_on_the_day_it_fired()
@@ -16,10 +19,10 @@ public sealed partial class FilterEndpointsTests
 
         var answer = await studio.SkillAnswer(BothDays);
 
-        Assert.Equal(["grilling", "tdd", "unslop"], answer.Day("2026-09-05").Skills.Select(skill => skill.Name));
-        Assert.Equal([1, 1, 1], answer.Day("2026-09-05").Skills.Select(skill => skill.Activations));
-        Assert.Equal(["grilling", "unslop"], answer.Day("2026-09-01").Skills.Select(skill => skill.Name));
-        Assert.Equal([1, 1], answer.Day("2026-09-01").Skills.Select(skill => skill.Activations));
+        Assert.Equal(["grilling", "tdd", "unslop"], answer.Day(DaysBack(10)).Skills.Select(skill => skill.Name));
+        Assert.Equal([1, 1, 1], answer.Day(DaysBack(10)).Skills.Select(skill => skill.Activations));
+        Assert.Equal(["grilling", "unslop"], answer.Day(DaysBack(14)).Skills.Select(skill => skill.Name));
+        Assert.Equal([1, 1], answer.Day(DaysBack(14)).Skills.Select(skill => skill.Activations));
         Assert.All(answer.Days.Skip(1).Take(3), day => Assert.Empty(day.Skills));
     }
 
@@ -29,7 +32,7 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
         await PushNuAndXi(studio);
 
-        var answer = await studio.SkillAnswer("?from=2026-09-01&to=2026-09-01");
+        var answer = await studio.SkillAnswer($"?from={Written(DaysBack(14))}&to={Written(DaysBack(14))}");
 
         // Only the nu Activations fall in the range, so the xi ones are not in the answer at all.
         var day = Assert.Single(answer.Days);
@@ -43,14 +46,14 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("before", "2026-09-04T23:59:59.999Z"),
-            new SkillActivated("first", "2026-09-05T00:00:00.000Z"),
-            new SkillActivated("last", "2026-09-05T23:59:59.999Z"),
-            new SkillActivated("after", "2026-09-06T00:00:00.000Z"));
+            new SkillActivated("before", At(DaysBack(11), "23:59:59.999")),
+            new SkillActivated("first", At(DaysBack(10), "00:00:00.000")),
+            new SkillActivated("last", At(DaysBack(10), "23:59:59.999")),
+            new SkillActivated("after", At(DaysBack(9), "00:00:00.000")));
 
-        var answer = await studio.SkillAnswer("?from=2026-09-05&to=2026-09-05");
+        var answer = await studio.SkillAnswer($"?from={Written(DaysBack(10))}&to={Written(DaysBack(10))}");
 
-        // A range ending at midnight on the 5th would drop the Activation late that evening.
+        // A range ending at its last day's midnight would drop the Activation late that evening.
         Assert.Equal(["first", "last"], Assert.Single(answer.Days).Skills.Select(skill => skill.Name));
     }
 
@@ -62,9 +65,9 @@ public sealed partial class FilterEndpointsTests
 
         var answer = await studio.SkillAnswer($"{BothDays}&repository=acme/xi");
 
-        Assert.Equal(["grilling", "tdd", "unslop"], answer.Day("2026-09-05").Skills.Select(skill => skill.Name));
-        Assert.Equal([1, 1, 1], answer.Day("2026-09-05").Skills.Select(skill => skill.Activations));
-        Assert.Empty(answer.Day("2026-09-01").Skills);
+        Assert.Equal(["grilling", "tdd", "unslop"], answer.Day(DaysBack(10)).Skills.Select(skill => skill.Name));
+        Assert.Equal([1, 1, 1], answer.Day(DaysBack(10)).Skills.Select(skill => skill.Activations));
+        Assert.Empty(answer.Day(DaysBack(14)).Skills);
     }
 
     [Fact]
@@ -73,13 +76,13 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-14T09:15:00.000Z", Owner: "acme"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "09:10:00.000"), RepositoryName: "xi"),
+            new SkillActivated("grilling", At(Yesterday, "09:15:00.000"), Owner: "acme"));
 
         // An Activation with half a name might have been anywhere, so it is not an answer about acme/xi.
-        Assert.Equal(1, (await studio.SkillOn("2026-09-14", "grilling", "?repository=acme/xi")).Activations);
+        Assert.Equal(1, (await studio.SkillOn(Yesterday, "grilling", "?repository=acme/xi")).Activations);
         Assert.Empty((await studio.SkillAnswer("?repository=xi")).Skills);
     }
 
@@ -89,12 +92,12 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Owner: "globex", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", Owner: "globex", RepositoryName: "xi"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Owner: "globex", RepositoryName: "xi"),
+            new SkillActivated("grilling", At(Yesterday, "09:10:00.000"), Owner: "globex", RepositoryName: "xi"));
 
-        Assert.Equal(1, (await studio.SkillOn("2026-09-14", "grilling", "?repository=acme/xi")).Activations);
-        Assert.Equal(2, (await studio.SkillOn("2026-09-14", "grilling", "?repository=globex/xi")).Activations);
+        Assert.Equal(1, (await studio.SkillOn(Yesterday, "grilling", "?repository=acme/xi")).Activations);
+        Assert.Equal(2, (await studio.SkillOn(Yesterday, "grilling", "?repository=globex/xi")).Activations);
     }
 
     [Fact]
@@ -105,8 +108,8 @@ public sealed partial class FilterEndpointsTests
 
         var answer = await studio.SkillAnswer($"{BothDays}&skill=grilling");
 
-        Assert.Equal(["grilling"], answer.Day("2026-09-05").Skills.Select(skill => skill.Name));
-        Assert.Equal(["grilling"], answer.Day("2026-09-01").Skills.Select(skill => skill.Name));
+        Assert.Equal(["grilling"], answer.Day(DaysBack(10)).Skills.Select(skill => skill.Name));
+        Assert.Equal(["grilling"], answer.Day(DaysBack(14)).Skills.Select(skill => skill.Name));
         Assert.Equal(2, answer.Skills.Sum(skill => skill.Activations));
     }
 
@@ -116,7 +119,7 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
         await PushNuAndXi(studio);
 
-        var answer = await studio.SkillAnswer("?from=2026-09-05&to=2026-09-05&repository=acme/xi&skill=grilling");
+        var answer = await studio.SkillAnswer($"?from={Written(DaysBack(10))}&to={Written(DaysBack(10))}&repository=acme/xi&skill=grilling");
 
         var grilling = Assert.Single(Assert.Single(answer.Days).Skills);
         Assert.Equal("grilling", grilling.Name);
@@ -129,11 +132,11 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
         await PushNuAndXi(studio);
 
-        using var response = await studio.AskForSkills("?from=2020-01-01&to=2020-01-02");
+        using var response = await studio.AskForSkills(NothingHappened);
 
         // An empty week is an answer, and a failure would send the reader looking for a broken Studio.
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Empty((await studio.SkillAnswer("?from=2020-01-01&to=2020-01-02")).Skills);
+        Assert.Empty((await studio.SkillAnswer(NothingHappened)).Skills);
     }
 
     [Fact]
@@ -151,12 +154,12 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost(StudioHost.Catalogue());
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "nu"));
 
         // A never-fired skill's zero belongs to the unfiltered answer; it did not happen there.
         Assert.Contains("probekit:probe-local", (await studio.SkillAnswer()).Head.CatalogueSkills);
         Assert.Empty((await studio.SkillAnswer("?repository=acme/nu")).Head.CatalogueSkills);
-        Assert.Empty((await studio.SkillAnswer("?from=2026-09-14&to=2026-09-14")).Head.CatalogueSkills);
+        Assert.Empty((await studio.SkillAnswer($"?from={Written(Yesterday)}&to={Written(Yesterday)}")).Head.CatalogueSkills);
     }
 
     [Fact]
@@ -171,9 +174,9 @@ public sealed partial class FilterEndpointsTests
     }
 
     private static Task PushNuAndXi(StudioHost studio) => studio.Push(
-        new SkillActivated("grilling", "2026-09-01T10:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
-        new SkillActivated("unslop", "2026-09-01T10:05:00.000Z", Owner: "acme", RepositoryName: "nu"),
-        new SkillActivated("grilling", "2026-09-05T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
-        new SkillActivated("unslop", "2026-09-05T09:05:00.000Z", Owner: "acme", RepositoryName: "xi"),
-        new SkillActivated("tdd", "2026-09-05T23:30:00.000Z", Owner: "acme", RepositoryName: "xi"));
+        new SkillActivated("grilling", At(DaysBack(14), "10:00:00.000"), Owner: "acme", RepositoryName: "nu"),
+        new SkillActivated("unslop", At(DaysBack(14), "10:05:00.000"), Owner: "acme", RepositoryName: "nu"),
+        new SkillActivated("grilling", At(DaysBack(10), "09:00:00.000"), Owner: "acme", RepositoryName: "xi"),
+        new SkillActivated("unslop", At(DaysBack(10), "09:05:00.000"), Owner: "acme", RepositoryName: "xi"),
+        new SkillActivated("tdd", At(DaysBack(10), "23:30:00.000"), Owner: "acme", RepositoryName: "xi"));
 }

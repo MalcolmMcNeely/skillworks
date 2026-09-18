@@ -11,10 +11,10 @@ public static class SkillRequests
     public static async Task<SkillsAnswer> SkillAnswer(this StudioHost studio, string filter = "") =>
         SkillsAnswer.Of(await studio.SkillLines(filter));
 
-    public static async Task<IReadOnlyList<SkillRow>> SkillsOn(this StudioHost studio, string day, string filter = "") =>
+    public static async Task<IReadOnlyList<SkillRow>> SkillsOn(this StudioHost studio, DateOnly day, string filter = "") =>
         (await studio.SkillAnswer(filter)).Day(day).Skills;
 
-    public static async Task<SkillRow> SkillOn(this StudioHost studio, string day, string name, string filter = "") =>
+    public static async Task<SkillRow> SkillOn(this StudioHost studio, DateOnly day, string name, string filter = "") =>
         (await studio.SkillsOn(day, filter)).Single(skill => skill.Name == name);
 
     public static Task<HttpResponseMessage> AskForSkills(this StudioHost studio, string filter) =>

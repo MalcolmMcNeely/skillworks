@@ -95,7 +95,7 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(
             Morning,
             SplitTrace,
-            Waits(WaitedSpan, "toolu_01", "2026-09-14T09:00:07Z", "2026-09-14T09:00:10Z"));
+            Waits(WaitedSpan, "toolu_01", At(Yesterday, "09:00:07"), At(Yesterday, "09:00:10")));
 
         var split = Totals(await studio.PartsIn(Morning));
 
@@ -111,13 +111,13 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Drop the table"),
-            SessionEvent.Refused(Morning, "2026-09-14T09:00:05.000Z"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Drop the table"),
+            SessionEvent.Refused(Morning, At(Yesterday, "09:00:05.000")));
 
         await studio.PushSpans(
             Morning,
             SplitTrace,
-            Waits(WaitedSpan, "toolu_gone", "2026-09-14T09:00:01Z", "2026-09-14T09:00:05Z"));
+            Waits(WaitedSpan, "toolu_gone", At(Yesterday, "09:00:01"), At(Yesterday, "09:00:05")));
 
         // The call never ran, so the whole of its Spell is the time a person took to say no.
         Assert.Equal(4_000, Totals(await studio.PartsIn(Morning))["waiting"]);
@@ -134,7 +134,7 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(
             Morning,
             SplitTrace,
-            Hooks(HookedSpan, null, "2026-09-14T09:00:07Z", "2026-09-14T09:00:09Z"));
+            Hooks(HookedSpan, null, At(Yesterday, "09:00:07"), At(Yesterday, "09:00:09")));
 
         var split = Totals(await studio.PartsIn(Morning));
 
@@ -148,9 +148,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Find the leak"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find it", "Explore", lengthMs: 30_000),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:41.000Z", "Found."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Find the leak"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find it", "Explore", lengthMs: 30_000),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:41.000"), "Found."));
 
         var answer = await studio.StepAnswer(Morning);
         var split = Totals(answer.Parts);
@@ -170,7 +170,7 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(
             Morning,
             SplitTrace,
-            Hooks(HookedSpan, null, "2026-09-14T09:00:05Z", "2026-09-14T09:00:07Z"));
+            Hooks(HookedSpan, null, At(Yesterday, "09:00:05"), At(Yesterday, "09:00:07")));
 
         var split = Totals(await studio.PartsIn(Morning));
 
@@ -188,7 +188,7 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(
             Morning,
             SplitTrace,
-            Hooks(HookedSpan, "agent-a", "2026-09-14T09:00:05Z", "2026-09-14T09:00:07Z"));
+            Hooks(HookedSpan, "agent-a", At(Yesterday, "09:00:05"), At(Yesterday, "09:00:07")));
 
         Assert.False(Totals(await studio.PartsIn(Morning)).ContainsKey("hooks"));
     }
@@ -213,10 +213,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Find the leak"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:30.000Z", "Grep", 5_000, "toolu_grep"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find it", "Explore", lengthMs: 30_000),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:41.000Z", "Found."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Find the leak"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:30.000"), "Grep", 5_000, "toolu_grep"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find it", "Explore", lengthMs: 30_000),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:41.000"), "Found."));
 
         await studio.PushSpans(
             Morning,
@@ -236,9 +236,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:05.000Z", 5_000, source: "compact"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", "Built."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, source: "compact"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."));
 
         var split = Totals(await studio.PartsIn(Morning));
 
@@ -252,10 +252,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:10.000Z", "Built."),
-            SessionEvent.Prompted(Morning, "2026-09-14T09:01:00.000Z", "Now ship it"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:01:10.000Z", "Shipped."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."),
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:01:00.000"), "Now ship it"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:01:10.000"), "Shipped."));
 
         var split = Totals(await studio.PartsIn(Morning));
 
@@ -270,7 +270,7 @@ public sealed partial class SessionEndpointsTests
 
         await Worked(studio);
 
-        await studio.Push(SessionEvent.Turned(Morning, "2026-09-14T09:00:30.000Z", 10_000));
+        await studio.Push(SessionEvent.Turned(Morning, At(Yesterday, "09:00:30.000"), 10_000));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -287,7 +287,7 @@ public sealed partial class SessionEndpointsTests
 
         await Turned(studio);
 
-        await studio.Push(SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", lengthMs: 30_000));
+        await studio.Push(SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", lengthMs: 30_000));
 
         var answer = await studio.StepAnswer(Morning);
         var split = Totals(answer.Parts);
@@ -302,18 +302,18 @@ public sealed partial class SessionEndpointsTests
 
     private static Task Turned(StudioHost studio) =>
         studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:05.000Z", 5_000, source: "main"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:12.000Z", "Bash", 5_000, "toolu_01"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:15.000Z", "Built."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, source: "main"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:12.000"), "Bash", 5_000, "toolu_01"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:15.000"), "Built."));
 
     // A Subagent's spell comes off the Span that wraps it, never off the event.
     private static async Task Worked(StudioHost studio)
     {
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Find the leak"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find it", "Explore", lengthMs: 30_000),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:41.000Z", "Found."));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Find the leak"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find it", "Explore", lengthMs: 30_000),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:41.000"), "Found."));
 
         await studio.PushSpans(Morning, SplitTrace, Wraps(WrapSpan, "toolu_a", "agent-a"));
     }
@@ -327,14 +327,14 @@ public sealed partial class SessionEndpointsTests
     private static RecordedSpan Wraps(string id, string toolUse, string agent) =>
         new(
             "claude_code.tool.execution",
-            "2026-09-14T09:00:10Z",
-            "2026-09-14T09:00:40Z",
+            At(Yesterday, "09:00:10"),
+            At(Yesterday, "09:00:40"),
             id,
             Agent: agent,
             ToolUse: toolUse);
 
     private static RecordedSpan Under(string id, string parent, string toolUse, string agent) =>
-        new("claude_code.tool", "2026-09-14T09:00:25Z", "2026-09-14T09:00:30Z", id, parent, agent, toolUse);
+        new("claude_code.tool", At(Yesterday, "09:00:25"), At(Yesterday, "09:00:30"), id, parent, agent, toolUse);
 
     private static IReadOnlyDictionary<string, long> Totals(IReadOnlyList<PartSpellRow> spells) =>
         spells

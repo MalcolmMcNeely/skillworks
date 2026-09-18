@@ -10,12 +10,12 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Trigger: "claude-proactive"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Trigger: "claude-proactive"),
-            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", Trigger: "user-slash"),
-            new SkillActivated("tdd", "2026-09-14T09:20:00.000Z", Trigger: "nested-skill"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Trigger: "claude-proactive"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Trigger: "claude-proactive"),
+            new SkillActivated("grilling", At(Yesterday, "09:10:00.000"), Trigger: "user-slash"),
+            new SkillActivated("tdd", At(Yesterday, "09:20:00.000"), Trigger: "nested-skill"));
 
-        var skills = await studio.SkillsOn("2026-09-14", OnlyTheFourteenth);
+        var skills = await studio.SkillsOn(Yesterday, OnlyYesterday);
 
         Assert.Equal(
             [Fired("claude-proactive", 2), Fired("user-slash", 1)],
@@ -29,10 +29,10 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Trigger: "claude-proactive", Source: "projectSettings"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Trigger: "claude-proactive", Source: "plugin", Plugin: "probekit"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Trigger: "claude-proactive", Source: "projectSettings"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Trigger: "claude-proactive", Source: "plugin", Plugin: "probekit"));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling", OnlyTheFourteenth);
+        var grilling = await studio.SkillOn(Yesterday, "grilling", OnlyYesterday);
 
         Assert.Equal([Fired("claude-proactive", 2)], grilling.Triggers);
     }
@@ -43,10 +43,10 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Trigger: "user-slash"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Trigger: "user-slash"));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling", OnlyTheFourteenth);
+        var grilling = await studio.SkillOn(Yesterday, "grilling", OnlyYesterday);
 
         // An older Claude Code sends no trigger, and folding those Activations into one of the four would invent a reading.
         Assert.Equal([Fired(null, 1), Fired("user-slash", 1)], grilling.Triggers);
@@ -58,11 +58,11 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Trigger: "claude-proactive"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Trigger: "user-slash"),
-            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Trigger: "claude-proactive"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Trigger: "user-slash"),
+            new SkillActivated("grilling", At(Yesterday, "09:10:00.000")));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling", OnlyTheFourteenth);
+        var grilling = await studio.SkillOn(Yesterday, "grilling", OnlyYesterday);
 
         // Two figures for one day that disagree would leave the developer unsure which to believe.
         Assert.Equal(grilling.Activations, grilling.Triggers.Sum(trigger => trigger.Activations));
@@ -74,10 +74,10 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Trigger: "claude-proactive", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-14T11:00:00.000Z", Trigger: "user-slash", Owner: "acme", RepositoryName: "nu"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Trigger: "claude-proactive", Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", At(Yesterday, "11:00:00.000"), Trigger: "user-slash", Owner: "acme", RepositoryName: "nu"));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling", "?from=2026-09-14&to=2026-09-14&repository=acme/nu");
+        var grilling = await studio.SkillOn(Yesterday, "grilling", $"?from={Written(Yesterday)}&to={Written(Yesterday)}&repository=acme/nu");
 
         Assert.Equal([Fired("user-slash", 1)], grilling.Triggers);
     }
@@ -87,9 +87,9 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", CostUsd: 0.2m));
+        await studio.Push(new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "grilling", CostUsd: 0.2m));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling", OnlyTheFourteenth);
+        var grilling = await studio.SkillOn(Yesterday, "grilling", OnlyYesterday);
 
         Assert.Empty(grilling.Triggers);
     }

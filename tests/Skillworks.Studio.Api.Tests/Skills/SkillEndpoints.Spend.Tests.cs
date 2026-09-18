@@ -10,11 +10,11 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", CostUsd: 0.1m),
-            new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", CostUsd: 0.2m));
+            new ApiRequest(At(Yesterday, "09:00:00.000"), Skill: "grilling", CostUsd: 0.1m),
+            new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "grilling", CostUsd: 0.2m));
 
         // Added in floating point these make 0.30000000000000004, which is not what the Turns cost.
-        Assert.Equal(0.3m, (await studio.SkillOn("2026-09-14", "grilling")).Spend?.Cost);
+        Assert.Equal(0.3m, (await studio.SkillOn(Yesterday, "grilling")).Spend?.Cost);
     }
 
     [Fact]
@@ -23,10 +23,10 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", InputTokens: 1_000, OutputTokens: 4_000, CacheReadTokens: 2_000_000, CacheCreationTokens: 100_000),
-            new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", InputTokens: 500, OutputTokens: 2_000, CacheReadTokens: 1_000_000, CacheCreationTokens: 300_000));
+            new ApiRequest(At(Yesterday, "09:00:00.000"), Skill: "grilling", InputTokens: 1_000, OutputTokens: 4_000, CacheReadTokens: 2_000_000, CacheCreationTokens: 100_000),
+            new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "grilling", InputTokens: 500, OutputTokens: 2_000, CacheReadTokens: 1_000_000, CacheCreationTokens: 300_000));
 
-        var spend = (await studio.SkillOn("2026-09-14", "grilling")).Spend;
+        var spend = (await studio.SkillOn(Yesterday, "grilling")).Spend;
 
         Assert.Equal(1_500, spend?.InputTokens);
         Assert.Equal(6_000, spend?.OutputTokens);
@@ -39,12 +39,12 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
+        await studio.Push(new SkillActivated("grilling", At(Yesterday, "09:00:00.000")));
         await studio.Push(
-            new ApiRequest("2026-09-14T08:59:58.000Z", CostUsd: 0.05m, InputTokens: 900),
-            new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "grilling", CostUsd: 0.02m, InputTokens: 200));
+            new ApiRequest(At(Yesterday, "08:59:58.000"), CostUsd: 0.05m, InputTokens: 900),
+            new ApiRequest(At(Yesterday, "09:00:10.000"), Skill: "grilling", CostUsd: 0.02m, InputTokens: 200));
 
-        var grilling = Assert.Single(await studio.SkillsOn("2026-09-14"));
+        var grilling = Assert.Single(await studio.SkillsOn(Yesterday));
 
         // The Turn that chose grilling ran before grilling was in force, so it is no skill's.
         Assert.Equal("grilling", grilling.Name);
@@ -58,10 +58,10 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new ApiRequest("2026-09-14T09:00:10.000Z", Skill: "third-party", CostUsd: 0.07m, OutputTokens: 700),
-            new ApiRequest("2026-09-14T09:02:00.000Z", Skill: "grilling", CostUsd: 0.02m));
+            new ApiRequest(At(Yesterday, "09:00:10.000"), Skill: "third-party", CostUsd: 0.07m, OutputTokens: 700),
+            new ApiRequest(At(Yesterday, "09:02:00.000"), Skill: "grilling", CostUsd: 0.02m));
 
-        var skills = await studio.SkillsOn("2026-09-14");
+        var skills = await studio.SkillsOn(Yesterday);
 
         // third-party stands for any skill from a plugin outside Anthropic's marketplaces, so no one skill has that name.
         Assert.Equal(["grilling"], skills.Select(skill => skill.Name));
@@ -74,12 +74,12 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", Model: "claude-opus-5[1m]", Effort: "high"),
-            new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", Model: "claude-sonnet-5", Effort: "medium"),
-            new ApiRequest("2026-09-14T09:02:00.000Z", Skill: "grilling", Model: "claude-sonnet-5"),
-            new ApiRequest("2026-09-14T09:03:00.000Z", Skill: "tdd", Model: "claude-haiku-4-5", Effort: "low"));
+            new ApiRequest(At(Yesterday, "09:00:00.000"), Skill: "grilling", Model: "claude-opus-5[1m]", Effort: "high"),
+            new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "grilling", Model: "claude-sonnet-5", Effort: "medium"),
+            new ApiRequest(At(Yesterday, "09:02:00.000"), Skill: "grilling", Model: "claude-sonnet-5"),
+            new ApiRequest(At(Yesterday, "09:03:00.000"), Skill: "tdd", Model: "claude-haiku-4-5", Effort: "low"));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling");
+        var grilling = await studio.SkillOn(Yesterday, "grilling");
 
         // Its cost was charged at two models' rates, and naming one would hide the other.
         Assert.Equal(["claude-opus-5[1m]", "claude-sonnet-5"], grilling.Models!);
@@ -91,9 +91,9 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
+        await studio.Push(new SkillActivated("grilling", At(Yesterday, "09:00:00.000")));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling");
+        var grilling = await studio.SkillOn(Yesterday, "grilling");
 
         Assert.Equal(1, grilling.Activations);
         Assert.Equal(new TurnTotalsRow { InputTokens = 0, OutputTokens = 0, CacheReadTokens = 0, CacheCreationTokens = 0, Cost = 0m }, grilling.Spend);
@@ -106,9 +106,9 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "grilling", CostUsd: 0.1m));
+        await studio.Push(new ApiRequest(At(Yesterday, "09:00:00.000"), Skill: "grilling", CostUsd: 0.1m));
 
-        var spend = (await studio.SkillLine("day", OnlyTheFourteenth))["skills"]?[0]?["spend"];
+        var spend = (await studio.SkillLine("day", OnlyYesterday))["skills"]?[0]?["spend"];
 
         // Telemetry sends no thinking tokens and no split of cache writes, so a field for either would stay empty for good.
         Assert.Equal(

@@ -16,7 +16,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var lines = await studio.SessionLines();
 
@@ -38,7 +38,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var head = await studio.SessionLine("head");
         var page = await studio.SessionLine("sessions");
@@ -61,8 +61,8 @@ public sealed partial class SessionEndpointsTests
 
         // The page says which days it covers, so a reader never takes a quiet week for the whole record.
         Assert.True(span.Lookback);
-        Assert.Equal(Day("2026-09-09"), span.From);
-        Assert.Equal(Day("2026-09-15"), span.To);
+        Assert.Equal(DaysBack(6), span.From);
+        Assert.Equal(Today, span.To);
     }
 
     [Fact]
@@ -71,8 +71,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SessionEvent(Morning, "user_prompt", "2026-09-14T09:00:00.000Z") { Owner = "acme", RepositoryName = "xi" },
-            new SessionEvent(Afternoon, "user_prompt", "2026-09-14T14:00:00.000Z") { Owner = "acme", RepositoryName = "nu" });
+            new SessionEvent(Morning, "user_prompt", At(Yesterday, "09:00:00.000")) { Owner = "acme", RepositoryName = "xi" },
+            new SessionEvent(Afternoon, "user_prompt", At(Yesterday, "14:00:00.000")) { Owner = "acme", RepositoryName = "nu" });
 
         // Nothing is asked for, so a reader sees the whole organisation the moment the page opens.
         Assert.Equal(["acme/nu", "acme/xi"], (await studio.SessionsIn()).Select(session => session.Repository).Order());
@@ -84,8 +84,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-12T09:00:00.000Z", "The early run"),
-            SessionEvent.Titled(Afternoon, "2026-09-14T14:00:00.000Z", "The later run"));
+            SessionEvent.Titled(Morning, At(DaysBack(3), "09:00:00.000"), "The early run"),
+            SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"));
 
         // Newest first, so the run a developer just finished is the first row on the page.
         Assert.Equal(["The later run", "The early run"], (await studio.SessionsIn()).Select(session => session.Name));
@@ -97,7 +97,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SessionEvent(Morning, "user_prompt", "2026-09-14T09:00:00.000Z")
+            new SessionEvent(Morning, "user_prompt", At(Yesterday, "09:00:00.000"))
             {
                 Owner = "malcolmania",
                 RepositoryName = "skillworks",
@@ -106,7 +106,7 @@ public sealed partial class SessionEndpointsTests
 
         var session = Assert.Single(await studio.SessionsIn());
 
-        Assert.Equal(Moment("2026-09-14T09:00:00.000Z"), session.StartedUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:00.000")), session.StartedUtc);
         Assert.Equal("malcolmania/skillworks", session.Repository);
         Assert.Equal("grace@acme.test", session.Person);
     }
@@ -117,13 +117,13 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            new SessionEvent(Morning, "tool_result", "2026-09-14T09:20:30.000Z"),
-            new SessionEvent(Morning, "assistant_response", "2026-09-14T09:41:00.000Z"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            new SessionEvent(Morning, "tool_result", At(Yesterday, "09:20:30.000")),
+            new SessionEvent(Morning, "assistant_response", At(Yesterday, "09:41:00.000")));
 
         var session = Assert.Single(await studio.SessionsIn());
 
-        Assert.Equal(Moment("2026-09-14T09:00:00.000Z"), session.StartedUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:00.000")), session.StartedUtc);
         Assert.Equal((long)TimeSpan.FromMinutes(41).TotalMilliseconds, session.LengthMs);
     }
 
@@ -133,13 +133,13 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-13T23:30:00.000Z", "Fix the build"),
-            new SessionEvent(Morning, "assistant_response", "2026-09-14T00:30:00.000Z"));
+            SessionEvent.Prompted(Morning, At(DaysBack(2), "23:30:00.000"), "Fix the build"),
+            new SessionEvent(Morning, "assistant_response", At(Yesterday, "00:30:00.000")));
 
         // A run cut at midnight would read as two halves that mean nothing on their own.
         var session = Assert.Single(await studio.SessionsIn());
 
-        Assert.Equal(Moment("2026-09-13T23:30:00.000Z"), session.StartedUtc);
+        Assert.Equal(Moment(At(DaysBack(2), "23:30:00.000")), session.StartedUtc);
         Assert.Equal((long)TimeSpan.FromHours(1).TotalMilliseconds, session.LengthMs);
     }
 
@@ -149,10 +149,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-12T09:00:00.000Z", "The early run"),
-            SessionEvent.Titled(Afternoon, "2026-09-14T14:00:00.000Z", "The later run"));
+            SessionEvent.Titled(Morning, At(DaysBack(3), "09:00:00.000"), "The early run"),
+            SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"));
 
-        Assert.Equal(["The later run"], (await studio.SessionsIn("?from=2026-09-14&to=2026-09-14")).Select(s => s.Name));
+        Assert.Equal(["The later run"], (await studio.SessionsIn($"?from={Written(Yesterday)}&to={Written(Yesterday)}")).Select(s => s.Name));
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The run"));
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         // An older Claude Code, or a repository with no origin remote, still ran the Session.
         Assert.Null(Assert.Single(await studio.SessionsIn()).Repository);
@@ -173,8 +173,6 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Empty(await studio.SessionsIn());
     }
-
-    private static DateOnly Day(string day) => DateOnly.Parse(day, CultureInfo.InvariantCulture);
 
     private static DateTimeOffset Moment(string at) => DateTimeOffset.Parse(at, CultureInfo.InvariantCulture);
 }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using Skillworks.Core.EventsStore;
 using Skillworks.Studio.Api.Tests.Harness;
 using Skillworks.Studio.Api.Tests.Harness.StandIns;
@@ -7,7 +6,7 @@ namespace Skillworks.Studio.Api.Tests.Filters;
 
 public sealed partial class FilterEndpointsTests
 {
-    private const string FiveDays = "?from=2026-09-11&to=2026-09-15";
+    private static readonly string FiveDays = $"?from={Written(DaysBack(4))}&to={Written(Today)}";
 
     [Fact]
     public async Task Offers_the_repositories_seen_on_each_day_of_the_span_newest_day_first()
@@ -15,24 +14,24 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-08-31T23:59:59.999Z", Owner: "acme", RepositoryName: "before"),
-            new SkillActivated("grilling", "2026-09-01T10:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
-            new SkillActivated("grilling", "2026-09-05T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("unslop", "2026-09-05T09:05:00.000Z", Owner: "acme", RepositoryName: "nu"),
-            new SkillActivated("tdd", "2026-09-05T09:10:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("tdd", "2026-09-05T09:15:00.000Z"),
-            new SkillActivated("grilling", "2026-09-06T00:00:00.000Z", Owner: "acme", RepositoryName: "after"));
+            new SkillActivated("grilling", At(DaysBack(15), "23:59:59.999"), Owner: "acme", RepositoryName: "before"),
+            new SkillActivated("grilling", At(DaysBack(14), "10:00:00.000"), Owner: "acme", RepositoryName: "nu"),
+            new SkillActivated("grilling", At(DaysBack(10), "09:00:00.000"), Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("unslop", At(DaysBack(10), "09:05:00.000"), Owner: "acme", RepositoryName: "nu"),
+            new SkillActivated("tdd", At(DaysBack(10), "09:10:00.000"), Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("tdd", At(DaysBack(10), "09:15:00.000")),
+            new SkillActivated("grilling", At(DaysBack(9), "00:00:00.000"), Owner: "acme", RepositoryName: "after"));
 
         var lines = await studio.FilterChoiceLines(BothDays);
         var answer = FilterChoicesAnswer.Of(lines);
 
         Assert.Equal(["head", "day", "day", "day", "day", "day", "end"], lines.Select(StudioHost.KindOf));
         Assert.Equal(
-            [Day("2026-09-05"), Day("2026-09-04"), Day("2026-09-03"), Day("2026-09-02"), Day("2026-09-01")],
+            [DaysBack(10), DaysBack(11), DaysBack(12), DaysBack(13), DaysBack(14)],
             answer.HeadDays);
         Assert.Equal(answer.HeadDays, answer.Days.Select(day => day.Day));
-        Assert.Equal(["acme/nu", "acme/xi"], answer.Day("2026-09-05").Repositories);
-        Assert.Equal(["acme/nu"], answer.Day("2026-09-01").Repositories);
+        Assert.Equal(["acme/nu", "acme/xi"], answer.Day(DaysBack(10)).Repositories);
+        Assert.Equal(["acme/nu"], answer.Day(DaysBack(14)).Repositories);
         Assert.All(answer.Days.Skip(1).Take(3), day => Assert.Empty(day.Repositories));
     }
 
@@ -42,10 +41,10 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Owner: "acme", RepositoryName: "xi"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "nu"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Owner: "acme", RepositoryName: "xi"));
 
-        var answer = await studio.FilterChoices("?from=2026-09-14&to=2026-09-14&repository=acme/nu");
+        var answer = await studio.FilterChoices($"?from={Written(Yesterday)}&to={Written(Yesterday)}&repository=acme/nu");
 
         // The picked repository narrows the map, and the choices must still offer the way across.
         Assert.Equal(["acme/nu", "acme/xi"], Assert.Single(answer.Days).Repositories);
@@ -58,14 +57,14 @@ public sealed partial class FilterEndpointsTests
 
         // At both ends of the span, so no one query could hold both.
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-01T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
-            new SkillActivated("grilling", "2026-09-10T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"));
+            new SkillActivated("grilling", At(DaysBack(14), "09:00:00.000"), Owner: "acme", RepositoryName: "nu"),
+            new SkillActivated("grilling", At(DaysBack(5), "09:00:00.000"), Owner: "acme", RepositoryName: "xi"));
 
         var answer = await studio.FilterChoices(TenDays);
 
         Assert.Equal(10, answer.Days.Count);
-        Assert.Equal(["acme/xi"], answer.Day("2026-09-10").Repositories);
-        Assert.Equal(["acme/nu"], answer.Day("2026-09-01").Repositories);
+        Assert.Equal(["acme/xi"], answer.Day(DaysBack(5)).Repositories);
+        Assert.Equal(["acme/nu"], answer.Day(DaysBack(14)).Repositories);
     }
 
     [Fact]
@@ -73,9 +72,9 @@ public sealed partial class FilterEndpointsTests
     {
         using var studio = new StudioHost(StudioHost.Catalogue());
 
-        await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"));
+        await studio.Push(new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "nu"));
 
-        var lines = await studio.FilterChoiceLines("?from=2026-09-14&to=2026-09-14");
+        var lines = await studio.FilterChoiceLines($"?from={Written(Yesterday)}&to={Written(Yesterday)}");
 
         // No screen offers a skill dropdown, so a list of skills would be read for nothing.
         Assert.Equal(["days", "kind", "span"], StudioHost.Fields(lines[0]));
@@ -97,18 +96,18 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Keeps_the_choices_already_sent_and_leaves_out_the_day_it_could_not_read_when_the_store_fails_part_way()
     {
-        using var events = BrokenEventsStore.DownBefore("2026-09-14");
+        using var events = BrokenEventsStore.DownBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-15T09:00:00.000Z", Owner: "acme", RepositoryName: "nu"),
-            new SkillActivated("grilling", "2026-09-13T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"));
+            new SkillActivated("grilling", At(Today, "00:00:00.000"), Owner: "acme", RepositoryName: "nu"),
+            new SkillActivated("grilling", At(DaysBack(2), "09:00:00.000"), Owner: "acme", RepositoryName: "xi"));
 
         var lines = await studio.FilterChoiceLines(FiveDays);
         var answer = FilterChoicesAnswer.Of(lines);
 
-        Assert.Equal([Day("2026-09-15"), Day("2026-09-14")], answer.Days.Select(day => day.Day));
-        Assert.Equal(["acme/nu"], answer.Day("2026-09-15").Repositories);
+        Assert.Equal([Today, Yesterday], answer.Days.Select(day => day.Day));
+        Assert.Equal(["acme/nu"], answer.Day(Today).Repositories);
         Assert.DoesNotContain("acme/xi", answer.Repositories);
         Assert.Equal(["kind"], StudioHost.Fields(lines[^1]));
     }
@@ -116,7 +115,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Lets_go_of_the_store_when_the_choices_request_is_closed()
     {
-        using var events = BrokenEventsStore.StallingBefore("2026-09-14");
+        using var events = BrokenEventsStore.StallingBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         // Head and two days, then closed while the store holds the third, as when the span changes.
@@ -124,6 +123,4 @@ public sealed partial class FilterEndpointsTests
 
         Assert.True(await events.HeldFor < TimeSpan.FromSeconds(new LokiOptions().TimeoutSeconds));
     }
-
-    private static DateOnly Day(string day) => DateOnly.Parse(day, CultureInfo.InvariantCulture);
 }

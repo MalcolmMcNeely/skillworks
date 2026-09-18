@@ -1,3 +1,4 @@
+using System.Globalization;
 using Skillworks.Core.Sessions;
 using Skillworks.Studio.Api.Tests.Harness;
 
@@ -10,11 +11,11 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        var lastEvent = PinnedClock.Today - RunningWindow.Length + TimeSpan.FromMinutes(1);
+        var lastEvent = Now - RunningWindow.Length + TimeSpan.FromMinutes(1);
 
         await studio.Push(
-            SessionEvent.Titled(Morning, At(lastEvent - TimeSpan.FromMinutes(10)), "The run in hand"),
-            new SessionEvent(Morning, "tool_result", At(lastEvent)));
+            SessionEvent.Titled(Morning, Stamped(lastEvent - TimeSpan.FromMinutes(10)), "The run in hand"),
+            new SessionEvent(Morning, "tool_result", Stamped(lastEvent)));
 
         // No event says a Session ended, so a recent last event is all Studio has to go on.
         Assert.True(Assert.Single(await studio.SessionsIn()).Running);
@@ -25,16 +26,16 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        var lastEvent = PinnedClock.Today - RunningWindow.Length - TimeSpan.FromMinutes(1);
+        var lastEvent = Now - RunningWindow.Length - TimeSpan.FromMinutes(1);
 
         await studio.Push(
-            SessionEvent.Titled(Morning, At(lastEvent - TimeSpan.FromMinutes(10)), "The finished run"),
-            new SessionEvent(Morning, "tool_result", At(lastEvent)));
+            SessionEvent.Titled(Morning, Stamped(lastEvent - TimeSpan.FromMinutes(10)), "The finished run"),
+            new SessionEvent(Morning, "tool_result", Stamped(lastEvent)));
 
         // A finished run must never read as Running, nor a half-finished one as finished.
         Assert.False(Assert.Single(await studio.SessionsIn()).Running);
     }
 
-    private static string At(DateTimeOffset moment) =>
-        moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture);
+    private static string Stamped(DateTimeOffset moment) =>
+        moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
 }

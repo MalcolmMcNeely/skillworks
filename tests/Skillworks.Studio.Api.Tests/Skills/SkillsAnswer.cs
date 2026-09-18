@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Gaps;
 using Skillworks.Studio.Api.Tests.Harness;
@@ -14,6 +13,5 @@ public sealed record SkillsAnswer(SkillsHeadRow Head, IReadOnlyList<SkillsDayRow
 
     public IEnumerable<SkillRow> Skills => Days.SelectMany(day => day.Skills);
 
-    public SkillsDayRow Day(string day) =>
-        Days.Single(landed => landed.Day == DateOnly.Parse(day, CultureInfo.InvariantCulture));
+    public SkillsDayRow Day(DateOnly day) => Days.Single(landed => landed.Day == day);
 }

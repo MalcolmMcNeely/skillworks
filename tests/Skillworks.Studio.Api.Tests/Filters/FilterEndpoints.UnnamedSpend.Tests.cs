@@ -11,12 +11,12 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new ApiRequest("2026-09-04T23:59:59.999Z", Skill: "third-party", CostUsd: 0.01m),
-            new ApiRequest("2026-09-05T00:00:00.000Z", Skill: "third-party", CostUsd: 0.02m, OutputTokens: 200),
-            new ApiRequest("2026-09-05T23:59:59.999Z", Skill: "third-party", CostUsd: 0.04m, OutputTokens: 400),
-            new ApiRequest("2026-09-06T00:00:00.000Z", Skill: "third-party", CostUsd: 0.08m));
+            new ApiRequest(At(DaysBack(11), "23:59:59.999"), Skill: "third-party", CostUsd: 0.01m),
+            new ApiRequest(At(DaysBack(10), "00:00:00.000"), Skill: "third-party", CostUsd: 0.02m, OutputTokens: 200),
+            new ApiRequest(At(DaysBack(10), "23:59:59.999"), Skill: "third-party", CostUsd: 0.04m, OutputTokens: 400),
+            new ApiRequest(At(DaysBack(9), "00:00:00.000"), Skill: "third-party", CostUsd: 0.08m));
 
-        var unnamed = Assert.Single((await studio.SkillAnswer("?from=2026-09-05&to=2026-09-05")).Days).UnnamedSpend;
+        var unnamed = Assert.Single((await studio.SkillAnswer($"?from={Written(DaysBack(10))}&to={Written(DaysBack(10))}")).Days).UnnamedSpend;
 
         Assert.Equal(0.06m, unnamed?.Cost);
         Assert.Equal(600, unnamed?.OutputTokens);
@@ -28,12 +28,12 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "third-party", CostUsd: 0.01m, Owner: "acme", RepositoryName: "nu"),
-            new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "third-party", CostUsd: 0.02m, Owner: "acme", RepositoryName: "xi"),
-            new ApiRequest("2026-09-14T09:02:00.000Z", Skill: "third-party", CostUsd: 0.04m));
+            new ApiRequest(At(Yesterday, "09:00:00.000"), Skill: "third-party", CostUsd: 0.01m, Owner: "acme", RepositoryName: "nu"),
+            new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "third-party", CostUsd: 0.02m, Owner: "acme", RepositoryName: "xi"),
+            new ApiRequest(At(Yesterday, "09:02:00.000"), Skill: "third-party", CostUsd: 0.04m));
 
-        var everywhere = (await studio.SkillAnswer()).Day("2026-09-14");
-        var inNu = (await studio.SkillAnswer("?repository=acme/nu")).Day("2026-09-14");
+        var everywhere = (await studio.SkillAnswer()).Day(Yesterday);
+        var inNu = (await studio.SkillAnswer("?repository=acme/nu")).Day(Yesterday);
 
         Assert.Equal(0.07m, everywhere.UnnamedSpend?.Cost);
         Assert.Equal(0.01m, inNu.UnnamedSpend?.Cost);
@@ -45,8 +45,8 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new ApiRequest("2026-09-14T09:00:00.000Z", Skill: "third-party", CostUsd: 0.07m),
-            new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", CostUsd: 0.02m));
+            new ApiRequest(At(Yesterday, "09:00:00.000"), Skill: "third-party", CostUsd: 0.07m),
+            new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "grilling", CostUsd: 0.02m));
 
         var forGrilling = await studio.SkillAnswer("?skill=grilling");
         var forThirdParty = await studio.SkillAnswer("?skill=third-party");

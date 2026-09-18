@@ -6,7 +6,7 @@ namespace Skillworks.Studio.Api.Tests.Filters;
 public sealed partial class FilterEndpointsTests
 {
     // More days than the test Loki lets one query cover.
-    private const string TenDays = "?from=2026-09-01&to=2026-09-10";
+    private static readonly string TenDays = $"?from={Written(DaysBack(14))}&to={Written(DaysBack(5))}";
 
     [Fact]
     public async Task Reads_every_day_of_a_span_longer_than_one_query_may_cover()
@@ -15,13 +15,13 @@ public sealed partial class FilterEndpointsTests
 
         // At both ends of the span, so no one query could hold both.
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-01T09:00:00.000Z", Trigger: "claude-proactive", Owner: "acme", RepositoryName: "nu"),
-            new SkillActivated("grilling", "2026-09-10T09:00:00.000Z", Trigger: "user-slash", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-10T09:05:00.000Z", Trigger: "user-slash", Owner: "acme", RepositoryName: "xi"));
+            new SkillActivated("grilling", At(DaysBack(14), "09:00:00.000"), Trigger: "claude-proactive", Owner: "acme", RepositoryName: "nu"),
+            new SkillActivated("grilling", At(DaysBack(5), "09:00:00.000"), Trigger: "user-slash", Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", At(DaysBack(5), "09:05:00.000"), Trigger: "user-slash", Owner: "acme", RepositoryName: "xi"));
 
         var answer = await studio.SkillAnswer(TenDays);
-        var newest = Assert.Single(answer.Day("2026-09-10").Skills);
-        var oldest = Assert.Single(answer.Day("2026-09-01").Skills);
+        var newest = Assert.Single(answer.Day(DaysBack(5)).Skills);
+        var oldest = Assert.Single(answer.Day(DaysBack(14)).Skills);
 
         Assert.Equal("complete", answer.Gap.Kind);
         Assert.Equal(10, answer.Days.Count);
@@ -40,13 +40,13 @@ public sealed partial class FilterEndpointsTests
 
         // At both ends of the span, so no one query could hold both.
         await studio.Push(
-            new ApiRequest("2026-09-01T09:00:00.000Z", Skill: "grilling", Model: "claude-opus-5[1m]", CostUsd: 0.1m, OutputTokens: 100),
-            new ApiRequest("2026-09-10T09:00:00.000Z", Skill: "grilling", Model: "claude-sonnet-5", CostUsd: 0.2m, OutputTokens: 200),
-            new ApiRequest("2026-09-10T09:05:00.000Z", Skill: "grilling", Model: "claude-sonnet-5", CostUsd: 0.4m, OutputTokens: 400));
+            new ApiRequest(At(DaysBack(14), "09:00:00.000"), Skill: "grilling", Model: "claude-opus-5[1m]", CostUsd: 0.1m, OutputTokens: 100),
+            new ApiRequest(At(DaysBack(5), "09:00:00.000"), Skill: "grilling", Model: "claude-sonnet-5", CostUsd: 0.2m, OutputTokens: 200),
+            new ApiRequest(At(DaysBack(5), "09:05:00.000"), Skill: "grilling", Model: "claude-sonnet-5", CostUsd: 0.4m, OutputTokens: 400));
 
         var answer = await studio.SkillAnswer(TenDays);
-        var newest = Assert.Single(answer.Day("2026-09-10").Skills);
-        var oldest = Assert.Single(answer.Day("2026-09-01").Skills);
+        var newest = Assert.Single(answer.Day(DaysBack(5)).Skills);
+        var oldest = Assert.Single(answer.Day(DaysBack(14)).Skills);
 
         Assert.Equal(0.6m, newest.Spend?.Cost);
         Assert.Equal(600, newest.Spend?.OutputTokens);
@@ -62,7 +62,7 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost();
 
         // One at every midnight, so every cut between days has an Activation on it.
-        await studio.Push(SkillActivated.AtEveryMidnight("grilling", "2026-08-31", "2026-09-11"));
+        await studio.Push(SkillActivated.AtEveryMidnight("grilling", DaysBack(15), DaysBack(4)));
 
         var answer = await studio.SkillAnswer(TenDays);
 

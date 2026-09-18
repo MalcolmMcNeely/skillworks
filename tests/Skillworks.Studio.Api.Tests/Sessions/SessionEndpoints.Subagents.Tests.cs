@@ -47,7 +47,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal("Find the leak", agent.Name);
         Assert.Equal("Explore", agent.Type);
-        Assert.Equal(DateTimeOffset.Parse("2026-09-14T09:00:11Z", CultureInfo.InvariantCulture), agent.AtUtc);
+        Assert.Equal(DateTimeOffset.Parse(At(Yesterday, "09:00:11"), CultureInfo.InvariantCulture), agent.AtUtc);
         Assert.Equal(28_000, agent.LengthMs);
         Assert.Equal(1, agent.ToolCalls);
         Assert.Equal(0.40m, agent.Cost);
@@ -60,12 +60,12 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:20.000Z", 3_000, 0.10m, "req_a"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:21.000Z", 3_000, 0.40m, "req_b"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:22.000Z", 3_000, 0.10m, "req_c"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Read the tests", "Explore", "Read", 30_000),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:41.000Z", "toolu_b", "Read the source", "Explore", "Read", 30_000),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:42.000Z", "toolu_c", "Read the docs", "Explore", "Read", 30_000));
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:20.000"), 3_000, 0.10m, "req_a"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:21.000"), 3_000, 0.40m, "req_b"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:22.000"), 3_000, 0.10m, "req_c"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Read the tests", "Explore", "Read", 30_000),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:41.000"), "toolu_b", "Read the source", "Explore", "Read", 30_000),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:42.000"), "toolu_c", "Read the docs", "Explore", "Read", 30_000));
 
         await studio.PushSpans(
             Morning,
@@ -91,10 +91,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Grep", 2_000, "toolu_one"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:21.000Z", "Grep", 2_000, "toolu_two"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Read the tests", "Explore", "Read", 30_000),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:41.000Z", "toolu_b", "Read the source", "Explore", "Read", 30_000));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:20.000"), "Grep", 2_000, "toolu_one"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:21.000"), "Grep", 2_000, "toolu_two"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Read the tests", "Explore", "Read", 30_000),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:41.000"), "toolu_b", "Read the source", "Explore", "Read", 30_000));
 
         // Both carry the same type and their events interleave, so only their agent ids keep them apart.
         await studio.PushSpans(
@@ -120,9 +120,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:05.000Z", "Read", 1_000, "toolu_main"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Grep", 2_000, "toolu_one"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Read the tests", "Explore", "Read", 30_000));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:05.000"), "Read", 1_000, "toolu_main"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:20.000"), "Grep", 2_000, "toolu_one"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Read the tests", "Explore", "Read", 30_000));
 
         await studio.PushSpans(
             Morning,
@@ -143,8 +143,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Grep", 2_000, "toolu_grep"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find the leak", "Explore", "Read", 30_000));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:20.000"), "Grep", 2_000, "toolu_grep"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find the leak", "Explore", "Read", 30_000));
 
         // Every Tool call wraps in a span of this name, so only the agent id tells the Subagent's run apart.
         await studio.PushSpans(
@@ -153,13 +153,13 @@ public sealed partial class SessionEndpointsTests
             Called(FirstCallSpan, "toolu_a"),
             Wrapped(FirstRunSpan, FirstCallSpan, "toolu_a", "agent-a"),
             Used(InsideSpan, "toolu_grep", "agent-a"),
-            Wrapped(OtherInsideSpan, InsideSpan, "toolu_grep", "agent-a", "2026-09-14T09:00:18Z", "2026-09-14T09:00:20Z"));
+            Wrapped(OtherInsideSpan, InsideSpan, "toolu_grep", "agent-a", At(Yesterday, "09:00:18"), At(Yesterday, "09:00:20")));
 
         var agent = Assert.Single((await studio.StepAnswer(Morning)).Subagents);
 
         Assert.Equal("Find the leak", agent.Name);
         Assert.Equal("Explore", agent.Type);
-        Assert.Equal(DateTimeOffset.Parse("2026-09-14T09:00:11Z", CultureInfo.InvariantCulture), agent.AtUtc);
+        Assert.Equal(DateTimeOffset.Parse(At(Yesterday, "09:00:11"), CultureInfo.InvariantCulture), agent.AtUtc);
         Assert.Equal(28_000, agent.LengthMs);
     }
 
@@ -169,8 +169,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:00:20.000Z", "Bash", "toolu_one"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Build it", "Explore", "Build", 30_000));
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:00:20.000"), "Bash", "toolu_one"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Build it", "Explore", "Build", 30_000));
 
         await studio.PushSpans(
             Morning,
@@ -190,9 +190,9 @@ public sealed partial class SessionEndpointsTests
         var report = new string('r', 400);
 
         await studio.Push(
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:25.000Z", "Half way there.", "req_a"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:30.000Z", report, "req_a"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Read the tests", "Explore", "Read", 30_000));
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:25.000"), "Half way there.", "req_a"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:30.000"), report, "req_a"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Read the tests", "Explore", "Read", 30_000));
 
         await studio.PushSpans(
             Morning,
@@ -216,7 +216,7 @@ public sealed partial class SessionEndpointsTests
         await studio.Push(
             SessionEvent.AgentRan(
                 Morning,
-                "2026-09-14T09:00:40.000Z",
+                At(Yesterday, "09:00:40.000"),
                 "toolu_a",
                 "Find the leak",
                 "Explore",
@@ -241,7 +241,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", type: "Explore", brief: "Read", lengthMs: 30_000));
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", type: "Explore", brief: "Read", lengthMs: 30_000));
 
         await studio.PushSpans(
             Morning,
@@ -257,7 +257,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.AgentInputWithheld(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", 30_000));
+        await studio.Push(SessionEvent.AgentInputWithheld(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", 30_000));
 
         await studio.PushSpans(
             Morning,
@@ -277,7 +277,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find the leak", "Explore", "Read", 30_000));
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find the leak", "Explore", "Read", 30_000));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -302,27 +302,27 @@ public sealed partial class SessionEndpointsTests
     private static async Task TwoRan(StudioHost studio)
     {
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:20.000Z", "Grep", 2_000, "toolu_grep"),
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:25.000Z", 3_000, 0.40m, "req_a"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:00:40.000Z", "toolu_a", "Find the leak", "Explore", "Read", 30_000),
-            SessionEvent.Turned(Morning, "2026-09-14T09:01:20.000Z", 3_000, 0.10m, "req_b"),
-            SessionEvent.AgentRan(Morning, "2026-09-14T09:01:40.000Z", "toolu_b", "Review the diff", "Review", "Judge", 30_000));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:20.000"), "Grep", 2_000, "toolu_grep"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:25.000"), 3_000, 0.40m, "req_a"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find the leak", "Explore", "Read", 30_000),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:01:20.000"), 3_000, 0.10m, "req_b"),
+            SessionEvent.AgentRan(Morning, At(Yesterday, "09:01:40.000"), "toolu_b", "Review the diff", "Review", "Judge", 30_000));
 
         await studio.PushSpans(
             Morning,
             AgentTrace,
             Called(FirstCallSpan, "toolu_a"),
-            Wrapped(FirstRunSpan, FirstCallSpan, "toolu_a", "agent-a", "2026-09-14T09:00:11Z", "2026-09-14T09:00:39Z"),
+            Wrapped(FirstRunSpan, FirstCallSpan, "toolu_a", "agent-a", At(Yesterday, "09:00:11"), At(Yesterday, "09:00:39")),
             Used(InsideSpan, "toolu_grep", "agent-a"),
             Thought(OtherInsideSpan, "req_a", "agent-a"),
             Called(SecondCallSpan, "toolu_b"),
-            Wrapped(SecondRunSpan, SecondCallSpan, "toolu_b", "agent-b", "2026-09-14T09:01:11Z", "2026-09-14T09:01:39Z"),
+            Wrapped(SecondRunSpan, SecondCallSpan, "toolu_b", "agent-b", At(Yesterday, "09:01:11"), At(Yesterday, "09:01:39")),
             Thought("c11c0a9e00000009", "req_b", "agent-b"));
     }
 
     // The Agent Tool call, which belongs to the caller and so carries no agent id of its own.
     private static RecordedSpan Called(string id, string toolUse) =>
-        new("claude_code.tool", "2026-09-14T09:00:10Z", "2026-09-14T09:00:40Z", id, ToolUse: toolUse);
+        new("claude_code.tool", At(Yesterday, "09:00:10"), At(Yesterday, "09:00:40"), id, ToolUse: toolUse);
 
     // The Span Claude Code wraps a whole Subagent run in, and the only place its agent id meets the call's.
     private static RecordedSpan Wrapped(
@@ -330,13 +330,20 @@ public sealed partial class SessionEndpointsTests
         string parent,
         string toolUse,
         string agent,
-        string at = "2026-09-14T09:00:11Z",
-        string until = "2026-09-14T09:00:39Z") =>
-        new("claude_code.tool.execution", at, until, id, parent, agent, toolUse);
+        string? at = null,
+        string? until = null) =>
+        new(
+            "claude_code.tool.execution",
+            at ?? At(Yesterday, "09:00:11"),
+            until ?? At(Yesterday, "09:00:39"),
+            id,
+            parent,
+            agent,
+            toolUse);
 
     private static RecordedSpan Used(string id, string toolUse, string? agent) =>
-        new("claude_code.tool", "2026-09-14T09:00:18Z", "2026-09-14T09:00:20Z", id, Agent: agent, ToolUse: toolUse);
+        new("claude_code.tool", At(Yesterday, "09:00:18"), At(Yesterday, "09:00:20"), id, Agent: agent, ToolUse: toolUse);
 
     private static RecordedSpan Thought(string id, string request, string agent) =>
-        new("claude_code.llm_request", "2026-09-14T09:00:22Z", "2026-09-14T09:00:25Z", id, Agent: agent, Request: request);
+        new("claude_code.llm_request", At(Yesterday, "09:00:22"), At(Yesterday, "09:00:25"), id, Agent: agent, Request: request);
 }

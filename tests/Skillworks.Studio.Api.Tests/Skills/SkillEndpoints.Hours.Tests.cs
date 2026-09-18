@@ -10,12 +10,12 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T09:40:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T17:30:00.000Z"),
-            new SkillActivated("tdd", "2026-09-14T02:15:00.000Z"));
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "09:40:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "17:30:00.000")),
+            new SkillActivated("tdd", At(Yesterday, "02:15:00.000")));
 
-        var skills = await studio.SkillsOn("2026-09-14", OnlyTheFourteenth);
+        var skills = await studio.SkillsOn(Yesterday, OnlyYesterday);
 
         Assert.Equal(Hours((9, 2), (17, 1)), skills.Single(skill => skill.Name == "grilling").Hours);
         Assert.Equal(Hours((2, 1)), skills.Single(skill => skill.Name == "tdd").Hours);
@@ -27,18 +27,18 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-13T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-14T00:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T09:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-14T10:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-15T00:00:00.000Z"));
+            new SkillActivated("grilling", At(DaysBack(2), "23:59:59.999")),
+            new SkillActivated("grilling", At(Yesterday, "00:00:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "09:59:59.999")),
+            new SkillActivated("grilling", At(Yesterday, "10:00:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "23:59:59.999")),
+            new SkillActivated("grilling", At(Today, "00:00:00.000")));
 
-        var answer = await studio.SkillAnswer("?from=2026-09-13&to=2026-09-15");
+        var answer = await studio.SkillAnswer($"?from={Written(DaysBack(2))}&to={Written(Today)}");
 
-        Assert.Equal(Hours((23, 1)), answer.Day("2026-09-13").Skills.Single().Hours);
-        Assert.Equal(Hours((0, 1), (9, 1), (10, 1), (23, 1)), answer.Day("2026-09-14").Skills.Single().Hours);
-        Assert.Equal(Hours((0, 1)), answer.Day("2026-09-15").Skills.Single().Hours);
+        Assert.Equal(Hours((23, 1)), answer.Day(DaysBack(2)).Skills.Single().Hours);
+        Assert.Equal(Hours((0, 1), (9, 1), (10, 1), (23, 1)), answer.Day(Yesterday).Skills.Single().Hours);
+        Assert.Equal(Hours((0, 1)), answer.Day(Today).Skills.Single().Hours);
     }
 
     [Fact]
@@ -47,13 +47,13 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-13T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-14T00:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T13:30:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-15T00:00:00.000Z"));
+            new SkillActivated("grilling", At(DaysBack(2), "23:59:59.999")),
+            new SkillActivated("grilling", At(Yesterday, "00:00:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "13:30:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "23:59:59.999")),
+            new SkillActivated("grilling", At(Today, "00:00:00.000")));
 
-        var days = (await studio.SkillAnswer("?from=2026-09-13&to=2026-09-15")).Days.Select(day => day.Skills.Single()).ToArray();
+        var days = (await studio.SkillAnswer($"?from={Written(DaysBack(2))}&to={Written(Today)}")).Days.Select(day => day.Skills.Single()).ToArray();
 
         // Two figures for one day that disagree would leave the developer unsure which to believe.
         Assert.Equal([1, 3, 1], days.Select(grilling => grilling.Activations));
@@ -66,10 +66,10 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("grilling", "2026-09-14T11:00:00.000Z", Owner: "acme", RepositoryName: "nu"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("grilling", At(Yesterday, "11:00:00.000"), Owner: "acme", RepositoryName: "nu"));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling", "?from=2026-09-14&to=2026-09-14&repository=acme/nu");
+        var grilling = await studio.SkillOn(Yesterday, "grilling", $"?from={Written(Yesterday)}&to={Written(Yesterday)}&repository=acme/nu");
 
         Assert.Equal(Hours((11, 1)), grilling.Hours);
     }
@@ -79,9 +79,9 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling", CostUsd: 0.2m));
+        await studio.Push(new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "grilling", CostUsd: 0.2m));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling", OnlyTheFourteenth);
+        var grilling = await studio.SkillOn(Yesterday, "grilling", OnlyYesterday);
 
         // Every hour, so a screen reads a quiet hour as a zero it was told, not a slot left out.
         Assert.Equal(Hours(), grilling.Hours);

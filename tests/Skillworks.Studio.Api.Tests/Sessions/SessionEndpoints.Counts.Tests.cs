@@ -11,10 +11,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The thrashing run"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:01:00.000Z"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:02:00.000Z"),
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:03:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The thrashing run"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:02:00.000")),
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:03:00.000")));
 
         // A call that failed still ran, so it is one of the calls a run that thrashed made.
         Assert.Equal(3, Assert.Single(await studio.SessionsIn()).ToolCalls);
@@ -25,10 +25,10 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The expensive run"));
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The expensive run"));
         await studio.Push(
-            new ApiRequest("2026-09-14T09:01:00.000Z", CostUsd: 0.25m) { Session = Morning },
-            new ApiRequest("2026-09-14T09:02:00.000Z", CostUsd: 0.75m) { Session = Morning });
+            new ApiRequest(At(Yesterday, "09:01:00.000"), CostUsd: 0.25m) { Session = Morning },
+            new ApiRequest(At(Yesterday, "09:02:00.000"), CostUsd: 0.75m) { Session = Morning });
 
         Assert.Equal(1m, Assert.Single(await studio.SessionsIn()).Cost);
     }
@@ -39,10 +39,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The broken run"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:01:00.000Z"),
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:02:00.000Z"),
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:03:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The broken run"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")),
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:03:00.000")));
 
         Assert.Equal(2, Assert.Single(await studio.SessionsIn()).Faults);
     }
@@ -53,9 +53,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The run the model failed"),
-            SessionEvent.ModelFailed(Morning, "2026-09-14T09:01:00.000Z"),
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:02:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run the model failed"),
+            SessionEvent.ModelFailed(Morning, At(Yesterday, "09:01:00.000")),
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")));
 
         // Nobody chose either one, and that is what puts them in the same count.
         Assert.Equal(2, Assert.Single(await studio.SessionsIn()).Faults);
@@ -67,8 +67,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The run I said no to"),
-            SessionEvent.Refused(Morning, "2026-09-14T09:01:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run I said no to"),
+            SessionEvent.Refused(Morning, At(Yesterday, "09:01:00.000")));
 
         var session = Assert.Single(await studio.SessionsIn());
 
@@ -82,8 +82,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The run the hook stopped"),
-            SessionEvent.HookBlocked(Morning, "2026-09-14T09:01:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run the hook stopped"),
+            SessionEvent.HookBlocked(Morning, At(Yesterday, "09:01:00.000")));
 
         var session = Assert.Single(await studio.SessionsIn());
 
@@ -97,10 +97,10 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The careful run"),
-            SessionEvent.Refused(Morning, "2026-09-14T09:01:00.000Z"),
-            SessionEvent.HookBlocked(Morning, "2026-09-14T09:02:00.000Z"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:03:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The careful run"),
+            SessionEvent.Refused(Morning, At(Yesterday, "09:01:00.000")),
+            SessionEvent.HookBlocked(Morning, At(Yesterday, "09:02:00.000")),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:03:00.000")));
 
         var session = Assert.Single(await studio.SessionsIn());
 
@@ -115,9 +115,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The smooth run"),
-            SessionEvent.Allowed(Morning, "2026-09-14T09:01:00.000Z"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:02:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The smooth run"),
+            SessionEvent.Allowed(Morning, At(Yesterday, "09:01:00.000")),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:02:00.000")));
 
         Assert.Equal(0, Assert.Single(await studio.SessionsIn()).Friction);
     }
@@ -128,11 +128,11 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The early run"),
-            SessionEvent.ToolFailed(Morning, "2026-09-14T09:01:00.000Z"),
-            SessionEvent.Titled(Afternoon, "2026-09-14T14:00:00.000Z", "The later run"),
-            SessionEvent.ToolRan(Afternoon, "2026-09-14T14:01:00.000Z"),
-            SessionEvent.Refused(Afternoon, "2026-09-14T14:02:00.000Z"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The early run"),
+            SessionEvent.ToolFailed(Morning, At(Yesterday, "09:01:00.000")),
+            SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"),
+            SessionEvent.ToolRan(Afternoon, At(Yesterday, "14:01:00.000")),
+            SessionEvent.Refused(Afternoon, At(Yesterday, "14:02:00.000")));
 
         var sessions = (await studio.SessionsIn()).ToDictionary(session => session.Name);
 
@@ -145,7 +145,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var session = Assert.Single(await studio.SessionsIn());
 

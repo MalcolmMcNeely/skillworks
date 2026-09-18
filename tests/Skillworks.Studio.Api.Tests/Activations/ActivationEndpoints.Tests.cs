@@ -15,7 +15,7 @@ public sealed class ActivationEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", "2026-09-14T09:00:00.000Z", Morning));
+        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         Assert.Equal(["activations", "end"], (await studio.ActivationLines("?skill=tdd")).Select(StudioHost.KindOf));
     }
@@ -25,7 +25,7 @@ public sealed class ActivationEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", "2026-09-14T09:00:00.000Z", Morning));
+        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         var page = await studio.ActivationLine("activations", "?skill=tdd");
 
@@ -41,13 +41,13 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-14T09:00:00.000Z", Morning) with { Owner = "acme", RepositoryName = "xi", Trigger = "user-slash" });
+            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning) with { Owner = "acme", RepositoryName = "xi", Trigger = "user-slash" });
 
         var activation = Assert.Single(await studio.ActivationsOf("?skill=tdd"));
 
         Assert.Equal("tdd", activation.Skill);
         Assert.Equal(Morning, activation.Session);
-        Assert.Equal(Moment("2026-09-14T09:00:00.000Z"), activation.AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:00.000")), activation.AtUtc);
         Assert.Equal("acme/xi", activation.Repository);
         Assert.Equal("user-slash", activation.Trigger);
     }
@@ -58,8 +58,8 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-12T09:00:00.000Z", Morning),
-            Fired("tdd", "2026-09-14T14:00:00.000Z", Afternoon));
+            Fired("tdd", At(DaysBack(3), "09:00:00.000"), Morning),
+            Fired("tdd", At(Yesterday, "14:00:00.000"), Afternoon));
 
         Assert.Equal([Afternoon, Morning], (await studio.ActivationsOf("?skill=tdd")).Select(activation => activation.Session));
     }
@@ -70,8 +70,8 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-14T09:00:00.000Z", Morning),
-            Fired("tdd", "2026-09-14T09:30:00.000Z", Morning));
+            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning),
+            Fired("tdd", At(Yesterday, "09:30:00.000"), Morning));
 
         Assert.Equal(2, (await studio.ActivationsOf("?skill=tdd")).Count);
     }
@@ -82,8 +82,8 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-14T09:00:00.000Z", Morning),
-            Fired("comment-sweep", "2026-09-14T09:30:00.000Z", Afternoon));
+            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning),
+            Fired("comment-sweep", At(Yesterday, "09:30:00.000"), Afternoon));
 
         Assert.Equal(["tdd"], (await studio.ActivationsOf("?skill=tdd")).Select(activation => activation.Skill));
     }
@@ -94,10 +94,10 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-12T09:00:00.000Z", Morning),
-            Fired("tdd", "2026-09-14T09:00:00.000Z", Afternoon));
+            Fired("tdd", At(DaysBack(3), "09:00:00.000"), Morning),
+            Fired("tdd", At(Yesterday, "09:00:00.000"), Afternoon));
 
-        var activations = await studio.ActivationsOf("?skill=tdd&from=2026-09-14&to=2026-09-14");
+        var activations = await studio.ActivationsOf($"?skill=tdd&from={Written(Yesterday)}&to={Written(Yesterday)}");
 
         Assert.Equal([Afternoon], activations.Select(activation => activation.Session));
     }
@@ -108,8 +108,8 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", "2026-09-14T09:00:00.000Z", Morning) with { Owner = "acme", RepositoryName = "xi" },
-            Fired("tdd", "2026-09-14T09:30:00.000Z", Afternoon) with { Owner = "acme", RepositoryName = "nu" });
+            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning) with { Owner = "acme", RepositoryName = "xi" },
+            Fired("tdd", At(Yesterday, "09:30:00.000"), Afternoon) with { Owner = "acme", RepositoryName = "nu" });
 
         Assert.Equal([Morning], (await studio.ActivationsOf("?skill=tdd&repository=acme/xi")).Select(activation => activation.Session));
     }
@@ -119,7 +119,7 @@ public sealed class ActivationEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", "2026-09-14T09:00:00.000Z", Morning));
+        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         Assert.Null(Assert.Single(await studio.ActivationsOf("?skill=tdd")).Repository);
     }
@@ -129,7 +129,7 @@ public sealed class ActivationEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", "2026-09-14T09:00:00.000Z", Morning));
+        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         var answer = await studio.ActivationAnswer("?skill=comment-sweep");
 

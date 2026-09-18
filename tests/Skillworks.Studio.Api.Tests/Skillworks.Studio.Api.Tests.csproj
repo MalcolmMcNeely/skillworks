@@ -26,6 +26,11 @@
     <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Harness\TempoImage.cs" />
   </ItemGroup>
 
+  <!-- Dating a fixture is the same problem in both suites, so one copy serves both. -->
+  <ItemGroup>
+    <Compile Include="..\Skillworks.Core.Tests\Harness\Recently.cs" Link="Harness\Recently.cs" />
+  </ItemGroup>
+
   <!-- Their subject is the reader in Core, so they are owned there and borrowed here, never the other way about. -->
   <ItemGroup>
     <Compile Include="..\Skillworks.Core.Tests\Harness\TestTempo.cs" Link="Harness\TestTempo.cs" />
@@ -35,6 +40,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Skillworks.Core.Tests.Harness.Recently" Static="true" />
   </ItemGroup>
 
   <ItemGroup>

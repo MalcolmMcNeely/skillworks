@@ -108,9 +108,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "apple run"),
-            SessionEvent.Titled(Afternoon, "2026-09-14T10:00:00.000Z", "Banana run"),
-            SessionEvent.Titled(Evening, "2026-09-14T11:00:00.000Z", "Cherry run"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "apple run"),
+            SessionEvent.Titled(Afternoon, At(Yesterday, "10:00:00.000"), "Banana run"),
+            SessionEvent.Titled(Evening, At(Yesterday, "11:00:00.000"), "Cherry run"));
 
         // A title Claude Code wrote in lower case belongs among the words, not banished past every capital.
         Assert.Equal(["apple run", "Banana run", "Cherry run"], await Names(studio, "?sort=name"));
@@ -133,8 +133,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "One run"),
-            SessionEvent.Titled(Afternoon, "2026-09-14T09:00:00.000Z", "Another run"));
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "One run"),
+            SessionEvent.Titled(Afternoon, At(Yesterday, "09:00:00.000"), "Another run"));
 
         var first = await Names(studio, "?sort=faults");
 
@@ -163,15 +163,15 @@ public sealed partial class SessionEndpointsTests
     {
         await studio.Push(
         [
-            .. Run(Morning, "2026-09-12T09:00:00.000Z", "Alpha run", "acme/xi", "ada@acme.test", minutes: 10, toolCalls: 1, faults: 0),
-            .. Run(Afternoon, "2026-09-13T14:00:00.000Z", "Beta run", "acme/nu", "bea@acme.test", minutes: 30, toolCalls: 3, faults: 2),
-            .. Run(Evening, "2026-09-14T19:00:00.000Z", "Gamma run", "acme/mu", "cal@acme.test", minutes: 20, toolCalls: 2, faults: 1),
+            .. Run(Morning, At(DaysBack(3), "09:00:00.000"), "Alpha run", "acme/xi", "ada@acme.test", minutes: 10, toolCalls: 1, faults: 0),
+            .. Run(Afternoon, At(DaysBack(2), "14:00:00.000"), "Beta run", "acme/nu", "bea@acme.test", minutes: 30, toolCalls: 3, faults: 2),
+            .. Run(Evening, At(Yesterday, "19:00:00.000"), "Gamma run", "acme/mu", "cal@acme.test", minutes: 20, toolCalls: 2, faults: 1),
         ]);
 
         await studio.Push(
-            new ApiRequest("2026-09-12T09:01:00.000Z", CostUsd: 0.1m) { Session = Morning, Person = "ada@acme.test" },
-            new ApiRequest("2026-09-13T14:01:00.000Z", CostUsd: 0.3m) { Session = Afternoon, Person = "bea@acme.test" },
-            new ApiRequest("2026-09-14T19:01:00.000Z", CostUsd: 0.2m) { Session = Evening, Person = "cal@acme.test" });
+            new ApiRequest(At(DaysBack(3), "09:01:00.000"), CostUsd: 0.1m) { Session = Morning, Person = "ada@acme.test" },
+            new ApiRequest(At(DaysBack(2), "14:01:00.000"), CostUsd: 0.3m) { Session = Afternoon, Person = "bea@acme.test" },
+            new ApiRequest(At(Yesterday, "19:01:00.000"), CostUsd: 0.2m) { Session = Evening, Person = "cal@acme.test" });
     }
 
     private static SessionEvent[] Run(
@@ -190,7 +190,7 @@ public sealed partial class SessionEndpointsTests
         SessionEvent Placed(SessionEvent recorded) =>
             recorded with { Owner = placed[0], RepositoryName = placed[1], Person = person };
 
-        string Minute(int minute) => At(started.AddMinutes(minute));
+        string Minute(int minute) => Stamped(started.AddMinutes(minute));
 
         return
         [

@@ -15,7 +15,7 @@ public sealed class TraceStoreReaderTests
 
     private const string Prompt = "7a000000000000000000000000000002";
 
-    private static readonly DateTimeOffset From = Moment("2026-09-08T00:00:00Z");
+    private static readonly DateTimeOffset From = Moment(At(DaysBack(7), "00:00:00"));
 
     [Fact]
     public async Task Reads_back_every_span_of_the_session_it_was_asked_for_oldest_first()
@@ -44,7 +44,7 @@ public sealed class TraceStoreReaderTests
         var session = Session();
 
         await Push(tenant, session, Prompt, WholeRun());
-        await Push(tenant, session, Title, [new RecordedSpan(Interaction, "2026-09-14T10:01:00Z", "2026-09-14T10:01:02Z", "b100000000000001")]);
+        await Push(tenant, session, Title, [new RecordedSpan(Interaction, At(Yesterday, "10:01:00"), At(Yesterday, "10:01:02"), "b100000000000001")]);
 
         // Act
         var read = await Reader(tenant).OfSessionAsync(session, From, CancellationToken.None);
@@ -63,7 +63,7 @@ public sealed class TraceStoreReaderTests
         var asked = Session();
 
         await Push(tenant, asked, Prompt, WholeRun());
-        await Push(tenant, Session(), Title, [new RecordedSpan(Interaction, "2026-09-14T11:00:00Z", "2026-09-14T11:00:05Z", "c100000000000001")]);
+        await Push(tenant, Session(), Title, [new RecordedSpan(Interaction, At(Yesterday, "11:00:00"), At(Yesterday, "11:00:05"), "c100000000000001")]);
 
         // Act
         var read = await Reader(tenant).OfSessionAsync(asked, From, CancellationToken.None);
@@ -90,8 +90,8 @@ public sealed class TraceStoreReaderTests
         // Which agent ran the Step, what it ran inside, and how long it took are all on the span alone.
         Assert.Equal("agent-a", tool.Attributes["agent_id"]);
         Assert.Equal("toolu_01", tool.Attributes["tool_use_id"]);
-        Assert.Equal(Moment("2026-09-14T10:00:05Z"), tool.Started);
-        Assert.Equal(Moment("2026-09-14T10:00:12Z"), tool.Ended);
+        Assert.Equal(Moment(At(Yesterday, "10:00:05")), tool.Started);
+        Assert.Equal(Moment(At(Yesterday, "10:00:12")), tool.Ended);
         Assert.Equal(read.Spans.Single(span => span.Name == Interaction).SpanId, tool.ParentSpanId);
     }
 
@@ -126,7 +126,7 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, session, Prompt, WholeRun());
 
         // Act
-        var read = await Reader(tenant).OfSessionAsync(session, Moment("2026-09-15T00:00:00Z"), CancellationToken.None);
+        var read = await Reader(tenant).OfSessionAsync(session, Moment(At(Today, "00:00:00")), CancellationToken.None);
 
         // Assert
         Assert.Null(read.Unreachable);
@@ -142,7 +142,7 @@ public sealed class TraceStoreReaderTests
         var another = Session();
 
         await Push(tenant, traced, Prompt, WholeRun());
-        await Push(tenant, another, Title, [new RecordedSpan(Interaction, "2026-09-14T11:00:00Z", "2026-09-14T11:00:05Z", "c100000000000001")]);
+        await Push(tenant, another, Title, [new RecordedSpan(Interaction, At(Yesterday, "11:00:00"), At(Yesterday, "11:00:05"), "c100000000000001")]);
 
         // Act
         var read = await Reader(tenant).OfPeriodAsync(From, CancellationToken.None);
@@ -198,10 +198,10 @@ public sealed class TraceStoreReaderTests
 
     private static RecordedSpan[] WholeRun() =>
     [
-        new(Interaction, "2026-09-14T10:00:00Z", "2026-09-14T10:00:30Z", "a100000000000001"),
-        new("claude_code.llm_request", "2026-09-14T10:00:01Z", "2026-09-14T10:00:04Z", "a100000000000002", "a100000000000001"),
-        new("claude_code.tool", "2026-09-14T10:00:05Z", "2026-09-14T10:00:12Z", "a100000000000003", "a100000000000001", "agent-a", "toolu_01"),
-        new("claude_code.tool.execution", "2026-09-14T10:00:06Z", "2026-09-14T10:00:11Z", "a100000000000004", "a100000000000003", "agent-a"),
+        new(Interaction, At(Yesterday, "10:00:00"), At(Yesterday, "10:00:30"), "a100000000000001"),
+        new("claude_code.llm_request", At(Yesterday, "10:00:01"), At(Yesterday, "10:00:04"), "a100000000000002", "a100000000000001"),
+        new("claude_code.tool", At(Yesterday, "10:00:05"), At(Yesterday, "10:00:12"), "a100000000000003", "a100000000000001", "agent-a", "toolu_01"),
+        new("claude_code.tool.execution", At(Yesterday, "10:00:06"), At(Yesterday, "10:00:11"), "a100000000000004", "a100000000000003", "agent-a"),
     ];
 
     private static Task Push(string tenant, string session, string trace, IReadOnlyList<RecordedSpan> spans) =>

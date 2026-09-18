@@ -29,10 +29,10 @@ public sealed class BrokenEventsStore : DelegatingHandler
     public static BrokenEventsStore Failing(HttpStatusCode status) =>
         new(DateOnly.MaxValue, (_, _) => Task.FromResult(new HttpResponseMessage(status)));
 
-    public static BrokenEventsStore DownBefore(string oldestAnswered) => new(Day(oldestAnswered), Refused);
+    public static BrokenEventsStore DownBefore(DateOnly oldestAnswered) => new(oldestAnswered, Refused);
 
-    public static BrokenEventsStore StallingBefore(string oldestAnswered) =>
-        new(Day(oldestAnswered), (store, cancellationToken) => store.HoldAsync(cancellationToken));
+    public static BrokenEventsStore StallingBefore(DateOnly oldestAnswered) =>
+        new(oldestAnswered, (store, cancellationToken) => store.HoldAsync(cancellationToken));
 
     public IReadOnlyList<string> Asked => [.. _asked.Select(route => route.PathAndQuery)];
 
@@ -82,6 +82,4 @@ public sealed class BrokenEventsStore : DelegatingHandler
             ? DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds(nanoseconds / 1_000_000).UtcDateTime)
             : null;
     }
-
-    private static DateOnly Day(string day) => DateOnly.Parse(day, CultureInfo.InvariantCulture);
 }

@@ -16,7 +16,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z"));
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")));
 
         var page = await studio.StepLine("context", Morning);
 
@@ -32,9 +32,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { InputTokens = 100 },
-            Turn("2026-09-14T09:05:00.000Z") with { InputTokens = 200 },
-            Turn("2026-09-14T09:10:00.000Z") with { InputTokens = 300 });
+            Turn(At(Yesterday, "09:00:00.000")) with { InputTokens = 100 },
+            Turn(At(Yesterday, "09:05:00.000")) with { InputTokens = 200 },
+            Turn(At(Yesterday, "09:10:00.000")) with { InputTokens = 300 });
 
         Assert.Equal([100, 200, 300], (await studio.ContextIn(Morning)).Select(point => point.Tokens));
     }
@@ -44,7 +44,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with
         {
             InputTokens = 1_200,
             CacheReadTokens = 40_000,
@@ -64,7 +64,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with { Skill = "tdd" });
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with { Skill = "tdd" });
 
         var point = Assert.Single(await studio.ContextIn(Morning));
 
@@ -77,7 +77,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z"));
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")));
 
         // The Turn that chose a skill belongs to no skill, and Studio never names one Claude Code did not.
         var point = Assert.Single(await studio.ContextIn(Morning));
@@ -91,7 +91,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with { Skill = "third-party" });
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with { Skill = "third-party" });
 
         // A skill was in force, so reading it as no skill would say the opposite of what happened.
         var point = Assert.Single(await studio.ContextIn(Morning));
@@ -105,7 +105,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with { Model = ModelWithAMillion });
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with { Model = ModelWithAMillion });
 
         Assert.Equal(MillionLimit, (await studio.StepAnswer(Morning)).LimitTokens);
     }
@@ -115,7 +115,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with { Model = ModelWithNoMarker });
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with { Model = ModelWithNoMarker });
 
         // A limit nobody stated, read as a figure, would make every run look safe or doomed by invention.
         Assert.Null((await studio.StepAnswer(Morning)).LimitTokens);
@@ -127,8 +127,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { Model = ModelWithAMillion },
-            Turn("2026-09-14T09:05:00.000Z") with { Model = ModelWithNoMarker });
+            Turn(At(Yesterday, "09:00:00.000")) with { Model = ModelWithAMillion },
+            Turn(At(Yesterday, "09:05:00.000")) with { Model = ModelWithNoMarker });
 
         // A Subagent on a smaller model is a Turn of the same run, and it states nothing about the window.
         Assert.Equal(MillionLimit, (await studio.StepAnswer(Morning)).LimitTokens);
@@ -140,8 +140,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { CacheReadTokens = 60_000 },
-            Turn("2026-09-14T09:05:00.000Z") with { CacheReadTokens = 1_000, CacheCreationTokens = 61_000 });
+            Turn(At(Yesterday, "09:00:00.000")) with { CacheReadTokens = 60_000 },
+            Turn(At(Yesterday, "09:05:00.000")) with { CacheReadTokens = 1_000, CacheCreationTokens = 61_000 });
 
         Assert.Equal([false, true], (await studio.ContextIn(Morning)).Select(point => point.Rebuilt));
     }
@@ -151,7 +151,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:00.000Z") with { CacheCreationTokens = 80_000 });
+        await studio.Push(Turn(At(Yesterday, "09:00:00.000")) with { CacheCreationTokens = 80_000 });
 
         // Every run writes its cache at the start, so marking that would mark every run.
         Assert.False(Assert.Single(await studio.ContextIn(Morning)).Rebuilt);
@@ -163,8 +163,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { CacheCreationTokens = 60_000 },
-            Turn("2026-09-14T09:05:00.000Z") with { CacheReadTokens = 5_000, CacheCreationTokens = 15_000 });
+            Turn(At(Yesterday, "09:00:00.000")) with { CacheCreationTokens = 60_000 },
+            Turn(At(Yesterday, "09:05:00.000")) with { CacheReadTokens = 5_000, CacheCreationTokens = 15_000 });
 
         // Most of a small context, but too little of it to have cost anything worth telling a reader about.
         Assert.Equal([false, false], (await studio.ContextIn(Morning)).Select(point => point.Rebuilt));
@@ -176,8 +176,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { CacheCreationTokens = 60_000 },
-            Turn("2026-09-14T09:05:00.000Z") with { CacheReadTokens = 270_000, CacheCreationTokens = 30_000 });
+            Turn(At(Yesterday, "09:00:00.000")) with { CacheCreationTokens = 60_000 },
+            Turn(At(Yesterday, "09:05:00.000")) with { CacheReadTokens = 270_000, CacheCreationTokens = 30_000 });
 
         // Plenty of tokens written, but a cache read back nearly whole is the cache working, not failing.
         Assert.Equal([false, false], (await studio.ContextIn(Morning)).Select(point => point.Rebuilt));
@@ -188,12 +188,12 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Turn("2026-09-14T09:00:10.000Z") with { DurationMs = 4_000 });
+        await studio.Push(Turn(At(Yesterday, "09:00:10.000")) with { DurationMs = 4_000 });
 
         // A point drawn where Claude Code wrote the event would sit outside the Spell its Step covers.
         var point = Assert.Single(await studio.ContextIn(Morning));
 
-        Assert.Equal(Moment("2026-09-14T09:00:06.000Z"), point.AtUtc);
+        Assert.Equal(Moment(At(Yesterday, "09:00:06.000")), point.AtUtc);
         Assert.Equal(4_000, point.LengthMs);
     }
 
@@ -203,8 +203,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z"),
-            Turn("2026-09-14T09:05:00.000Z"));
+            Turn(At(Yesterday, "09:00:00.000")),
+            Turn(At(Yesterday, "09:05:00.000")));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -219,8 +219,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Turn("2026-09-14T09:00:00.000Z") with { InputTokens = 100 },
-            Turn("2026-09-14T14:00:00.000Z") with { InputTokens = 900, Session = Afternoon });
+            Turn(At(Yesterday, "09:00:00.000")) with { InputTokens = 100 },
+            Turn(At(Yesterday, "14:00:00.000")) with { InputTokens = 900, Session = Afternoon });
 
         Assert.Equal([100], (await studio.ContextIn(Morning)).Select(point => point.Tokens));
     }
@@ -230,7 +230,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         Assert.Empty(await studio.ContextIn(Morning));
     }

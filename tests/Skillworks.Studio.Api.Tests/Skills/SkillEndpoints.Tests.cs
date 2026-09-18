@@ -5,18 +5,20 @@ namespace Skillworks.Studio.Api.Tests.Skills;
 
 public sealed partial class SkillEndpointsTests
 {
-    private const string OnlyTheFourteenth = "?from=2026-09-14&to=2026-09-14";
+    private static readonly string OnlyYesterday = $"?from={Written(Yesterday)}&to={Written(Yesterday)}";
 
     [Fact]
     public async Task Answers_with_a_head_then_one_day_per_UTC_day_newest_first_then_an_end()
     {
         using var studio = new StudioHost();
 
-        var lines = await studio.SkillLines("?from=2026-09-12&to=2026-09-14");
+        var lines = await studio.SkillLines($"?from={Written(DaysBack(3))}&to={Written(Yesterday)}");
 
         // Newest first, so the recent end a developer cares about lands before the rest.
         Assert.Equal(["head", "day", "day", "day", "end"], lines.Select(StudioHost.KindOf));
-        Assert.Equal(["2026-09-14", "2026-09-13", "2026-09-12"], lines.Skip(1).SkipLast(1).Select(line => (string?)line["day"]));
+        Assert.Equal(
+            [Written(Yesterday), Written(DaysBack(2)), Written(DaysBack(3))],
+            lines.Skip(1).SkipLast(1).Select(line => (string?)line["day"]));
     }
 
     [Fact]
@@ -34,10 +36,10 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        var answer = await studio.SkillAnswer("?from=2026-09-12&to=2026-09-14");
+        var answer = await studio.SkillAnswer($"?from={Written(DaysBack(3))}&to={Written(Yesterday)}");
 
         // Known before any day is read, so a screen can show the days still to come.
-        Assert.Equal([Day("2026-09-14"), Day("2026-09-13"), Day("2026-09-12")], answer.Head.Days);
+        Assert.Equal([Yesterday, DaysBack(2), DaysBack(3)], answer.Head.Days);
         Assert.Equal(answer.Head.Days, answer.Days.Select(day => day.Day));
     }
 
@@ -46,10 +48,10 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
+        await studio.Push(new SkillActivated("grilling", At(Yesterday, "09:00:00.000")));
 
         var head = await studio.SkillLine("head");
-        var day = await studio.SkillLine("day", OnlyTheFourteenth);
+        var day = await studio.SkillLine("day", OnlyYesterday);
 
         Assert.Equal(["catalogueSkills", "days", "kind", "span"], StudioHost.Fields(head));
         Assert.Equal(["from", "fromUtc", "lookback", "to", "untilUtc"], StudioHost.Fields(head["span"]));
@@ -66,10 +68,10 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        var span = (await studio.SkillAnswer("?from=2026-09-01&to=2026-09-05")).Head.Span;
+        var span = (await studio.SkillAnswer($"?from={Written(DaysBack(14))}&to={Written(DaysBack(10))}")).Head.Span;
 
-        Assert.Equal(DateTimeOffset.Parse("2026-09-01T00:00:00Z", CultureInfo.InvariantCulture), span.FromUtc);
-        Assert.Equal(DateTimeOffset.Parse("2026-09-06T00:00:00Z", CultureInfo.InvariantCulture), span.UntilUtc);
+        Assert.Equal(DateTimeOffset.Parse(At(DaysBack(14), "00:00:00"), CultureInfo.InvariantCulture), span.FromUtc);
+        Assert.Equal(DateTimeOffset.Parse(At(DaysBack(9), "00:00:00"), CultureInfo.InvariantCulture), span.UntilUtc);
     }
 
     [Fact]
@@ -78,13 +80,13 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Trigger: "claude-proactive"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Trigger: "user-slash"),
-            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", Trigger: "nested-skill"),
-            new SkillActivated("grilling", "2026-09-14T09:15:00.000Z", Trigger: "agent-preload"),
-            new SkillActivated("tdd", "2026-09-14T09:20:00.000Z", Trigger: "claude-proactive"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Trigger: "claude-proactive"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Trigger: "user-slash"),
+            new SkillActivated("grilling", At(Yesterday, "09:10:00.000"), Trigger: "nested-skill"),
+            new SkillActivated("grilling", At(Yesterday, "09:15:00.000"), Trigger: "agent-preload"),
+            new SkillActivated("tdd", At(Yesterday, "09:20:00.000"), Trigger: "claude-proactive"));
 
-        var skills = await studio.SkillsOn("2026-09-14");
+        var skills = await studio.SkillsOn(Yesterday);
 
         // A typed skill is use too, so an entry point never reads as a skill nobody runs.
         Assert.Equal(["grilling", "tdd"], skills.Select(skill => skill.Name));
@@ -97,12 +99,12 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-04T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-05T00:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-05T23:59:59.999Z"),
-            new SkillActivated("grilling", "2026-09-06T00:00:00.000Z"));
+            new SkillActivated("grilling", At(DaysBack(11), "23:59:59.999")),
+            new SkillActivated("grilling", At(DaysBack(10), "00:00:00.000")),
+            new SkillActivated("grilling", At(DaysBack(10), "23:59:59.999")),
+            new SkillActivated("grilling", At(DaysBack(9), "00:00:00.000")));
 
-        var answer = await studio.SkillAnswer("?from=2026-09-04&to=2026-09-06");
+        var answer = await studio.SkillAnswer($"?from={Written(DaysBack(11))}&to={Written(DaysBack(9))}");
 
         // A late session evening and an early one next morning are two days, however close together.
         Assert.Equal([1, 2, 1], answer.Days.Select(day => Assert.Single(day.Skills).Activations));
@@ -114,11 +116,11 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "acme", RepositoryName: "xi"),
-            new SkillActivated("tdd", "2026-09-14T09:05:00.000Z"));
-        await studio.Push(new ApiRequest("2026-09-14T09:01:00.000Z", Skill: "grilling"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "xi"),
+            new SkillActivated("tdd", At(Yesterday, "09:05:00.000")));
+        await studio.Push(new ApiRequest(At(Yesterday, "09:01:00.000"), Skill: "grilling"));
 
-        var day = (await studio.SkillAnswer("?repository=acme/nu")).Day("2026-09-14");
+        var day = (await studio.SkillAnswer("?repository=acme/nu")).Day(Yesterday);
 
         // What the store holds, not what the filter kept, or a filter that matches nothing would read as a quiet day.
         Assert.Empty(day.Skills);
@@ -131,12 +133,12 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z", Owner: "malcolmania", RepositoryName: "skillworks"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Owner: "acme", RepositoryName: "skillworks"),
-            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", Owner: "acme", RepositoryName: "skillworks"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "malcolmania", RepositoryName: "skillworks"),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Owner: "acme", RepositoryName: "skillworks"),
+            new SkillActivated("grilling", At(Yesterday, "09:10:00.000"), Owner: "acme", RepositoryName: "skillworks"));
 
         // Two organisations can each have a skillworks, and one name for both would merge them.
-        Assert.Equal(["acme/skillworks", "malcolmania/skillworks"], (await studio.SkillOn("2026-09-14", "grilling")).Repositories);
+        Assert.Equal(["acme/skillworks", "malcolmania/skillworks"], (await studio.SkillOn(Yesterday, "grilling")).Repositories);
     }
 
     [Fact]
@@ -145,11 +147,11 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"),
-            new SkillActivated("grilling", "2026-09-14T09:05:00.000Z", Owner: "acme"),
-            new SkillActivated("grilling", "2026-09-14T09:10:00.000Z", RepositoryName: "skillworks"));
+            new SkillActivated("grilling", At(Yesterday, "09:00:00.000")),
+            new SkillActivated("grilling", At(Yesterday, "09:05:00.000"), Owner: "acme"),
+            new SkillActivated("grilling", At(Yesterday, "09:10:00.000"), RepositoryName: "skillworks"));
 
-        var grilling = await studio.SkillOn("2026-09-14", "grilling");
+        var grilling = await studio.SkillOn(Yesterday, "grilling");
 
         // An older Claude Code, or a repository with no origin remote, still fired the skill.
         Assert.Equal(3, grilling.Activations);
@@ -173,16 +175,16 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost(StudioHost.Catalogue());
 
         await studio.Push(
-            new SkillActivated("probekit:probe-local", "2026-09-01T09:00:00.000Z"),
-            new SkillActivated("probekit:probe-plugin", "2026-09-14T09:00:00.000Z"),
-            new SkillActivated("probekit:probe-plugin", "2026-09-14T09:05:00.000Z"));
+            new SkillActivated("probekit:probe-local", At(DaysBack(14), "09:00:00.000")),
+            new SkillActivated("probekit:probe-plugin", At(Yesterday, "09:00:00.000")),
+            new SkillActivated("probekit:probe-plugin", At(Yesterday, "09:05:00.000")));
 
         var answer = await studio.SkillAnswer();
 
         // probe-local last fired before the lookback, and its zero says its description may have stopped working.
         Assert.Equal(["probekit:probe-local", "probekit:probe-plugin"], answer.Head.CatalogueSkills);
         Assert.DoesNotContain("probekit:probe-local", answer.Skills.Select(skill => skill.Name));
-        Assert.Equal(2, (await studio.SkillOn("2026-09-14", "probekit:probe-plugin")).Activations);
+        Assert.Equal(2, (await studio.SkillOn(Yesterday, "probekit:probe-plugin")).Activations);
     }
 
     [Fact]
@@ -190,14 +192,12 @@ public sealed partial class SkillEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new SkillActivated("grilling", "2026-09-14T09:00:00.000Z"));
+        await studio.Push(new SkillActivated("grilling", At(Yesterday, "09:00:00.000")));
 
-        var grilling = (await studio.SkillLine("day", OnlyTheFourteenth))["skills"]?[0];
+        var grilling = (await studio.SkillLine("day", OnlyYesterday))["skills"]?[0];
 
         // No telemetry event carries a branch, so a field for one would stay empty for good.
         Assert.Equal("grilling", (string?)grilling?["name"]);
         Assert.DoesNotContain("branches", StudioHost.Fields(grilling));
     }
-
-    private static DateOnly Day(string day) => DateOnly.Parse(day, CultureInfo.InvariantCulture);
 }

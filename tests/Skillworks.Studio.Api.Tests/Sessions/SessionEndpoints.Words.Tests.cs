@@ -21,8 +21,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000, use: "toolu_01"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"));
 
         await studio.PushSpans(Morning, MainTrace, Ran(ToolSpan, "toolu_01", "agent-a"));
 
@@ -100,8 +100,8 @@ public sealed partial class SessionEndpointsTests
     private static async Task WordsWithheld(StudioHost studio)
     {
         await studio.Push(
-            SessionEvent.PromptWithheld(Morning, "2026-09-14T09:00:00.000Z", 1_840),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000, use: "toolu_01"));
+            SessionEvent.PromptWithheld(Morning, At(Yesterday, "09:00:00.000"), 1_840),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"));
 
         await studio.PushSpans(Morning, MainTrace, Ran(ToolSpan, "toolu_01", "agent-a"));
     }

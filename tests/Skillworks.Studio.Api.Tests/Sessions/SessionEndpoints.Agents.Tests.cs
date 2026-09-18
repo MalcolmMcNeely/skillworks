@@ -58,8 +58,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Turned(Morning, "2026-09-14T09:00:20.000Z", 2_000, request: "req_01"),
-            SessionEvent.Answered(Morning, "2026-09-14T09:00:22.000Z", "Built.", request: "req_01"));
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:20.000"), 2_000, request: "req_01"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:22.000"), "Built.", request: "req_01"));
         await studio.PushSpans(Morning, MainTrace, Asked(TurnSpan, "req_01", "agent-b"));
 
         var answer = await studio.StepAnswer(Morning);
@@ -73,8 +73,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000, use: "toolu_01"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:30.000Z", "Read", 1_000, use: "toolu_02"));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:30.000"), "Read", 1_000, use: "toolu_02"));
 
         await studio.PushSpans(
             Morning,
@@ -95,7 +95,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000, use: "toolu_01"));
+        await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"));
 
         Assert.Equal("thin", (await studio.StepAnswer(Morning)).Depth);
 
@@ -110,8 +110,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000, use: "toolu_01"));
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -127,7 +127,7 @@ public sealed partial class SessionEndpointsTests
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(traces: traces);
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -144,7 +144,7 @@ public sealed partial class SessionEndpointsTests
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(traces: traces);
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -172,7 +172,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost(tracing: false);
 
-        await studio.Push(SessionEvent.Prompted(Morning, "2026-09-14T09:00:00.000Z", "Fix the build"));
+        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var answer = await studio.StepAnswer(Morning);
 
@@ -187,8 +187,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000, use: "toolu_01"),
-            SessionEvent.ToolRan(Morning, "2026-09-14T09:00:11.000Z", "Bash", 4_000, use: "toolu_02"));
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:11.000"), "Bash", 4_000, use: "toolu_02"));
 
         // Claude Code gives each Subagent an agent id of its own, so two that ran in one Session never merge.
         await studio.PushSpans(
@@ -207,7 +207,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Agent", 4_000, use: "toolu_01"));
+        await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Agent", 4_000, use: "toolu_01"));
 
         // Every Span beneath a Subagent carries its agent id, and the one that ran the Subagent repeats
         // the tool use id of the call that started it, which belongs to the caller and not to the Subagent.
@@ -225,16 +225,16 @@ public sealed partial class SessionEndpointsTests
 
     private static async Task SubagentRan(StudioHost studio)
     {
-        await studio.Push(SessionEvent.ToolRan(Morning, "2026-09-14T09:00:10.000Z", "Bash", 4_000, use: "toolu_01"));
+        await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"));
         await studio.PushSpans(Morning, MainTrace, Ran(ToolSpan, "toolu_01", "agent-a"));
     }
 
     private static RecordedSpan Ran(string id, string toolUse, string? agent) =>
-        new("claude_code.tool", "2026-09-14T09:00:06Z", "2026-09-14T09:00:10Z", id, Agent: agent, ToolUse: toolUse);
+        new("claude_code.tool", At(Yesterday, "09:00:06"), At(Yesterday, "09:00:10"), id, Agent: agent, ToolUse: toolUse);
 
     private static RecordedSpan Asked(string id, string request, string? agent) =>
-        new("claude_code.llm_request", "2026-09-14T09:00:18Z", "2026-09-14T09:00:20Z", id, Agent: agent, Request: request);
+        new("claude_code.llm_request", At(Yesterday, "09:00:18"), At(Yesterday, "09:00:20"), id, Agent: agent, Request: request);
 
     private static RecordedSpan Beneath(string id, string parent, string toolUse, string agent) =>
-        new("claude_code.tool.execution", "2026-09-14T09:00:07Z", "2026-09-14T09:00:09Z", id, parent, agent, toolUse);
+        new("claude_code.tool.execution", At(Yesterday, "09:00:07"), At(Yesterday, "09:00:09"), id, parent, agent, toolUse);
 }
