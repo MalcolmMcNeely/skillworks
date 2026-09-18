@@ -17,6 +17,7 @@
       "Bash(git branch:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
+      "Bash(git mv:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(bash scripts/spec-loop.sh:*)",
