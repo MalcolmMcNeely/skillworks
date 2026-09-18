@@ -115,14 +115,17 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         var now = clock.GetUtcNow();
 
         // A Skill says which runs are listed, never how much of a run is counted.
-        var firedIn = filter.Skill is null ? null : Keyed(read.Fired);
+        var firedIn = filter.Skill is null ? null : Keyed(read.Fired.Groups);
+
+        // Taken from the read that names a run, so the words half of a Depth costs no second question.
+        var withheld = Keyed(read.Prompted.Groups.Where(Withheld));
 
         var sessions =
             from run in Identified(read.Placed.Groups)
             let id = run.Key
             where firstEvent.ContainsKey(id) && lastEvent.ContainsKey(id)
             where firedIn is null || firedIn.Contains(id)
-            where filter.Covers(traced.Sessions.Contains(id) ? Depth.Full : Depth.Thin)
+            where filter.Covers(Depths.Of(traced.Sessions.Contains(id), withheld.Contains(id)))
             let repository = MostlySaid(run, total => total.Repository)
             let startedAt = firstEvent[id]
             select new Session(
@@ -164,14 +167,17 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
 
     private static bool Refused(EventTotal decision) => decision.Attribute(DecisionAttribute) == Rejected;
 
+    private static bool Withheld(EventTotal prompt) =>
+        prompt.Attribute(EventAttributes.Prompt) == EventAttributes.Withheld;
+
     private static Dictionary<string, int> CountedIn(IEnumerable<EventTotal> groups) =>
         Identified(groups).ToDictionary(run => run.Key, run => (int)run.Sum(total => total.Total));
 
     private static Dictionary<string, decimal> SummedIn(EventTotals totals) =>
         Identified(totals.Groups).ToDictionary(run => run.Key, run => run.Sum(total => total.Total));
 
-    private static HashSet<string> Keyed(EventTotals totals) =>
-        [.. Identified(totals.Groups).Select(run => run.Key)];
+    private static HashSet<string> Keyed(IEnumerable<EventTotal> groups) =>
+        [.. Identified(groups).Select(run => run.Key)];
 
     private static IEnumerable<IGrouping<string, EventTotal>> Identified(IEnumerable<EventTotal> groups) =>
         from total in groups

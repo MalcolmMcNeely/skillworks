@@ -8,9 +8,13 @@ public sealed partial class SessionEndpointsTests
     // A trace of its own for each run, as Claude Code never writes two runs into one.
     private const string MorningTrace = "7a1c0a9e0000400080000000000000b1";
 
+    private const string AfternoonTrace = "7a1c0a9e0000400080000000000000b2";
+
     private const string EveningTrace = "7a1c0a9e0000400080000000000000b3";
 
     private const string MorningSpan = "c11c0a9e00000001";
+
+    private const string AfternoonSpan = "c11c0a9e00000002";
 
     private const string EveningSpan = "c11c0a9e00000003";
 
@@ -295,6 +299,92 @@ public sealed partial class SessionEndpointsTests
         // The store that emptied the table is the one to name, and a switch nobody flipped did not empty it.
         Assert.Empty(answer.Sessions);
         Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Leaves_a_run_whose_words_were_withheld_out_of_a_table_narrowed_to_full()
+    {
+        using var studio = new StudioHost();
+
+        await EachHalfOfDepthRan(studio);
+
+        // The withheld run's Spans are whole, so the Spans half alone would have listed it.
+        Assert.Equal(["The full run"], (await studio.SessionsIn("?depth=full")).Select(session => session.Name));
+    }
+
+    [Fact]
+    public async Task Keeps_a_run_whose_words_were_withheld_in_a_table_narrowed_to_thin()
+    {
+        using var studio = new StudioHost();
+
+        await EachHalfOfDepthRan(studio);
+
+        Assert.Contains("The withheld run", (await studio.SessionsIn("?depth=thin")).Select(session => session.Name));
+    }
+
+    [Fact]
+    public async Task Keeps_a_run_that_carries_its_words_and_no_spans_in_a_table_narrowed_to_thin()
+    {
+        using var studio = new StudioHost();
+
+        await EachHalfOfDepthRan(studio);
+
+        Assert.Contains("The untraced run", (await studio.SessionsIn("?depth=thin")).Select(session => session.Name));
+    }
+
+    [Fact]
+    public async Task Opens_a_run_the_table_called_full_as_full()
+    {
+        using var studio = new StudioHost();
+
+        await EachHalfOfDepthRan(studio);
+
+        var listed = Assert.Single(await studio.SessionsIn("?depth=full"));
+
+        Assert.Equal("full", (await studio.StepAnswer(listed.Id)).Depth);
+    }
+
+    [Fact]
+    public async Task Opens_a_run_the_table_called_thin_as_thin()
+    {
+        using var studio = new StudioHost();
+
+        await EachHalfOfDepthRan(studio);
+
+        var listed = (await studio.SessionsIn("?depth=thin")).First(session => session.Name == "The withheld run");
+
+        Assert.Equal("thin", (await studio.StepAnswer(listed.Id)).Depth);
+    }
+
+    [Fact]
+    public async Task Asks_the_events_store_no_more_when_the_table_is_narrowed_by_depth()
+    {
+        // Down only before the two days the lookback covers, so nothing here breaks and every route is recorded.
+        using var events = BrokenEventsStore.DownBefore("2026-09-14");
+        using var studio = new StudioHost(events: events, lookbackDays: 2);
+
+        await EachHalfOfDepthRan(studio);
+
+        Assert.NotEmpty(await studio.SessionsIn());
+        var plain = events.Asked;
+
+        Assert.NotEmpty(await studio.SessionsIn("?depth=full"));
+
+        Assert.Equal(plain.Order(), events.Asked.Skip(plain.Count).Order());
+    }
+
+    private static async Task EachHalfOfDepthRan(StudioHost studio)
+    {
+        await studio.Push(
+            SessionEvent.Titled(Morning, "2026-09-14T09:00:00.000Z", "The full run"),
+            SessionEvent.Prompted(Morning, "2026-09-14T09:00:10.000Z", "Fix the build"),
+            SessionEvent.Titled(Afternoon, "2026-09-14T14:00:00.000Z", "The withheld run"),
+            SessionEvent.PromptWithheld(Afternoon, "2026-09-14T14:00:10.000Z", 1_840),
+            SessionEvent.Titled(Evening, "2026-09-14T19:00:00.000Z", "The untraced run"),
+            SessionEvent.Prompted(Evening, "2026-09-14T19:00:10.000Z", "Push it"));
+
+        await studio.PushSpans(Morning, MorningTrace, Traced(MorningSpan));
+        await studio.PushSpans(Afternoon, AfternoonTrace, Traced(AfternoonSpan));
     }
 
     private static async Task BothDepthsRan(StudioHost studio)
