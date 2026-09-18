@@ -21,7 +21,8 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
         var (rows, period, traced) = await sessions.ListAsync(span, filter, order, cancellationToken);
 
         // A Depth the trace store could not answer would narrow the table by guesswork, so it shows no rows at all.
-        if (period.Unreachable is null && traced.Unreachable is null)
+        // Half an answer narrows it the same way, and a run the store left out would go missing without a word.
+        if (period.Unreachable is null && traced.Unreachable is null && !traced.Shortened)
         {
             yield return new SessionsPage(rows);
         }

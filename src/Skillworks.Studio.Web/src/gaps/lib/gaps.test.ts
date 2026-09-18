@@ -10,6 +10,10 @@ describe('signalOf', () => {
     expect(signalOf('unreachable')).toEqual({ word: 'No signal', tone: 'failed' });
   });
 
+  it('says Cut short when the store held more than it answered with, so half an answer never reads as the whole', () => {
+    expect(signalOf('shortened')).toEqual({ word: 'Cut short', tone: 'warned' });
+  });
+
   it('says Quiet when the store was read and held nothing', () => {
     expect(signalOf('quiet')).toEqual({ word: 'Quiet', tone: 'quiet' });
   });

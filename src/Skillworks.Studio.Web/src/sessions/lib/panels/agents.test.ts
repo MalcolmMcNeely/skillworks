@@ -57,6 +57,7 @@ describe('depthTone', () => {
 
   it('reads failed only where the trace store itself fell short', () => {
     expect(depthTone('thin', { kind: 'unreachable', missing: 'The trace store could not be read.' })).toBe('failed');
+    expect(depthTone('thin', { kind: 'shortened', missing: 'The trace store cut its answer short.' })).toBe('failed');
   });
 
   it('reads live once the spans have landed', () => {

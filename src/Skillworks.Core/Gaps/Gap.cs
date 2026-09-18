@@ -61,23 +61,29 @@ public sealed record Gap(GapKind Kind, string? Missing)
                      "recorded here now. The Telemetry switch names the file and what is wrong with it.",
             });
 
-    internal static Gap OfSpans(string? unreachable, int spans, bool? tracing)
+    internal static Gap OfSpans(string? unreachable, bool shortened, int spans, bool? tracing)
     {
-        var (kind, missing) = (unreachable, spans, tracing) switch
+        var (kind, missing) = (unreachable, shortened, spans, tracing) switch
         {
-            ({ } reason, _, _) => (
+            ({ } reason, _, _, _) => (
                 GapKind.Unreachable,
                 $"Studio could not read the trace store: {reason}. Which agent ran each step is not known."),
 
-            // Said before the switch is asked, because spans that landed are the answer either way.
-            (_, > 0, _) => (GapKind.Complete, (string?)null),
+            // Ahead of the spans that did land, or a run the store cut in half would read as a whole one.
+            (_, true, _, _) => (
+                GapKind.Shortened,
+                "The trace store held more traces for this run than one read takes, so what is shown is part " +
+                "of it. Which agent ran a step it left out is not known."),
 
-            (_, _, false) => (
+            // Said before the switch is asked, because spans that landed are the answer either way.
+            (_, _, > 0, _) => (GapKind.Complete, (string?)null),
+
+            (_, _, _, false) => (
                 GapKind.TelemetryOff,
                 "Claude Code is not sending traces, so which agent ran each step was never recorded. " +
                 TelemetrySwitch.TurnOnNote),
 
-            (_, _, null) => (
+            (_, _, _, null) => (
                 GapKind.TelemetryUnknown,
                 "The trace store holds nothing for this run, and Studio cannot read Claude Code's settings, " +
                 "so it cannot say whether traces were ever switched on. The Telemetry switch names the file " +
@@ -93,12 +99,24 @@ public sealed record Gap(GapKind Kind, string? Missing)
     }
 
     // A store that holds nothing is a true answer, as a run it says nothing about is Thin.
-    internal static Gap OfDepths(string? unreachable) =>
-        unreachable is { } reason
-            ? new Gap(
+    internal static Gap OfDepths(string? unreachable, bool shortened)
+    {
+        var (kind, missing) = (unreachable, shortened) switch
+        {
+            ({ } reason, _) => (
                 GapKind.Unreachable,
-                $"Studio could not read the trace store: {reason}. Which runs can be read in full is not known.")
-            : new Gap(GapKind.Complete, null);
+                $"Studio could not read the trace store: {reason}. Which runs can be read in full is not known."),
+
+            (_, true) => (
+                GapKind.Shortened,
+                "The trace store held more runs for this period than one read takes, so which runs can be " +
+                "read in full is not known. Ask for fewer days, so the whole of the answer fits one read."),
+
+            _ => (GapKind.Complete, (string?)null),
+        };
+
+        return new Gap(kind, missing);
+    }
 
     private static string Listed(IReadOnlyList<DateOnly> days)
     {

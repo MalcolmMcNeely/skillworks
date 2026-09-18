@@ -1,4 +1,4 @@
-import type { Gap, Signal } from '../../../gaps/lib/gaps';
+import type { Gap, GapKind, Signal } from '../../../gaps/lib/gaps';
 import { notKnown } from '../sessions';
 
 export type Depth = 'thin' | 'full';
@@ -38,13 +38,24 @@ export function describeDepth(depth: Depth): string {
   return depth === 'full' ? 'Full' : 'Thin';
 }
 
+// Every kind is answered here, so a kind added later cannot fall quietly to the tone for a store that held nothing.
+const thinTones: Record<GapKind, Signal['tone']> = {
+  complete: 'quiet',
+  unreachable: 'failed',
+  shortened: 'failed',
+  telemetryOff: 'quiet',
+  telemetryUnknown: 'quiet',
+  wordsOff: 'quiet',
+  quiet: 'quiet',
+};
+
 // A run still arriving is Thin and not yet short of anything, so only a store that fell short reads failed.
 export function depthTone(depth: Depth, gap: Gap | null): Signal['tone'] {
   if (depth === 'full') {
     return 'live';
   }
 
-  return gap !== null && gap.kind === 'unreachable' ? 'failed' : 'quiet';
+  return gap === null ? 'quiet' : thinTones[gap.kind];
 }
 
 export interface AgentSpell {

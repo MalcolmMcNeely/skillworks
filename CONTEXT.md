@@ -120,8 +120,10 @@ all, so the Gap is the only thing that tells them apart, and each one means some
 the developer to do. Words the person switched off are a fourth way: the events arrived and the
 Prompts in them were withheld, so the Session is there and still cannot be read. That one is read
 from the Session itself, so it holds for a Session recorded on any machine. Whether telemetry is
-switched on is read from the machine Studio runs on, so that Gap speaks for this machine only. A
-period a store holds nothing for is labelled missing, never shown as none. A store that stops
+switched on is read from the machine Studio runs on, so that Gap speaks for this machine only. An
+answer the store cut short is a fifth way: it hands back as much as one read takes and never says it
+held more, so what arrived is part of the answer and is never read as the whole of it. A period a
+store holds nothing for is labelled missing, never shown as none. A store that stops
 answering part way keeps the days already read, and the Gap names the days it could not read. The
 Events store and the Trace store answer on their own, so a Gap names which of them fell short. A
 list's Measures answer on their own too, so a Gap names the Measures it could not read while the

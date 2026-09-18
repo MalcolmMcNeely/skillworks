@@ -2,6 +2,7 @@
 export type GapKind =
   | 'complete'
   | 'unreachable'
+  | 'shortened'
   | 'telemetryOff'
   | 'telemetryUnknown'
   | 'wordsOff'
@@ -38,6 +39,7 @@ export interface Signal {
 const signals: Record<GapKind, Signal> = {
   complete: { word: 'Live', tone: 'live' },
   unreachable: { word: 'No signal', tone: 'failed' },
+  shortened: { word: 'Cut short', tone: 'warned' },
   telemetryOff: { word: 'Telemetry off', tone: 'warned' },
   telemetryUnknown: { word: 'Telemetry unknown', tone: 'warned' },
   wordsOff: { word: 'Words withheld', tone: 'warned' },

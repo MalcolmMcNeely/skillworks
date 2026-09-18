@@ -139,6 +139,27 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
+    public async Task Says_a_run_the_trace_store_cut_short_was_cut_short_rather_than_leaving_it_reading_thin()
+    {
+        // One of the two traces this run was written as, so the store's answer fills up and cuts the rest.
+        using var studio = new StudioHost(mostTraces: 1);
+
+        await studio.Push(
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:00:10.000"), "Bash", 4_000, use: "toolu_01"));
+
+        await studio.PushSpans(Morning, MainTrace, Ran(ToolSpan, "toolu_01", "agent-a"));
+        await studio.PushSpans(Morning, TreeTrace, Ran(TurnSpan, "toolu_02", "agent-b"));
+
+        var answer = await studio.StepAnswer(Morning);
+
+        // The spans that did land stand, or half an answer would read as a run that was never traced.
+        Assert.Equal("full", answer.Depth);
+        Assert.Equal("shortened", answer.Traces.Kind);
+        Assert.NotNull(answer.Traces.Missing);
+    }
+
+    [Fact]
     public async Task Names_the_trace_store_and_not_the_events_store_when_only_the_trace_store_falls_short()
     {
         using var traces = BrokenTraceStore.Down();

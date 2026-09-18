@@ -53,7 +53,10 @@ public sealed class StudioHost : IDisposable
         bool words = true,
         string? settings = null,
         int? lookbackDays = null,
-        string? collectorAddress = null)
+        string? collectorAddress = null,
+        // Only to make the test Tempo cut an answer short, which it will not do on the handful of spans a test pushes.
+        int? mostTraces = null,
+        int? mostSessions = null)
     {
         var settingsPath = Path.Combine(_folder.Path, "settings.json");
         File.WriteAllText(settingsPath, settings ?? Settings(emitting, tracing, words));
@@ -63,6 +66,10 @@ public sealed class StudioHost : IDisposable
 
         // Left out unless asked for, so an unset address is the pinned one Studio really falls back to.
         (string Key, string? Value)[] address = collectorAddress is null ? [] : [("Collector:Address", collectorAddress)];
+
+        // Left out unless asked for, as an empty value binds as none and would hide the default.
+        (string Key, string? Value)[] perRun = mostTraces is { } trace ? [("Tempo:MostTraces", trace.ToString())] : [];
+        (string Key, string? Value)[] perPeriod = mostSessions is { } run ? [("Tempo:MostSessions", run.ToString())] : [];
 
         _api = new StudioApiHost(
             events,
@@ -80,6 +87,8 @@ public sealed class StudioHost : IDisposable
                 ("Catalogue:Path", cataloguePath ?? Path.Combine(_folder.Path, "no-catalogue")),
                 .. lookback,
                 .. address,
+                .. perRun,
+                .. perPeriod,
             ]);
 
         _client = _api.CreateClient();

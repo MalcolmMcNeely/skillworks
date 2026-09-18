@@ -22,9 +22,6 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
     private const int TraceIdBytes = 16;
 
-    // A long interactive Session is a few hundred traces, and the default limit of 20 would cut it short.
-    private const int MostTraces = 1000;
-
     public async Task<SessionSpans> OfSessionAsync(
         string session,
         DateTimeOffset from,
@@ -32,12 +29,14 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         CancellationToken cancellationToken)
     {
         var traces = new HashSet<string>(StringComparer.Ordinal);
+        var most = Most(options.Value.MostTraces);
+        var shortened = false;
 
         // A trace that straddles a cut comes back from both windows, so the ids gather into a set.
         foreach (var (start, end) in Windows(from, until))
         {
             var found = await AskAsync<IReadOnlyList<string>>(
-                Search($"{{ span.{SessionAttribute} = {Quoted(session)} }}", start, end, MostTraces),
+                Search($"{{ span.{SessionAttribute} = {Quoted(session)} }}", start, end, most),
                 TraceIds,
                 [],
                 cancellationToken);
@@ -46,6 +45,8 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
             {
                 return SessionSpans.Failed(found.Unreachable);
             }
+
+            shortened |= Filled(found.Value.Count, most);
 
             traces.UnionWith(found.Value);
         }
@@ -65,7 +66,7 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
             spans.AddRange(read.Value);
         }
 
-        return SessionSpans.Of([.. spans.OrderBy(span => span.Started)]);
+        return SessionSpans.Of([.. spans.OrderBy(span => span.Started)], shortened);
     }
 
     // The values of one attribute, not a search: a period holds far more traces than a search hands back.
@@ -75,20 +76,24 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         CancellationToken cancellationToken)
     {
         var sessions = new HashSet<string>(StringComparer.Ordinal);
+        var most = Most(options.Value.MostSessions);
+        var shortened = false;
 
         foreach (var (start, end) in Windows(from, until))
         {
-            var found = await AskAsync<IReadOnlyList<string>>(Values(start, end), Sessions, [], cancellationToken);
+            var found = await AskAsync<IReadOnlyList<string>>(Values(start, end, most), Sessions, [], cancellationToken);
 
             if (found.Unreachable is not null)
             {
                 return TracedSessions.Failed(found.Unreachable);
             }
 
+            shortened |= Filled(found.Value.Count, most);
+
             sessions.UnionWith(found.Value);
         }
 
-        return TracedSessions.Of(sessions);
+        return TracedSessions.Of(sessions, shortened);
     }
 
     public async Task<TraceStoreAnswer> AnsweringAsync(CancellationToken cancellationToken)
@@ -118,12 +123,18 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         }
     }
 
+    // The store cuts an answer to the limit it was asked for and never says it had more, so a full answer is a short one.
+    private static bool Filled(int answered, int limit) => answered >= limit;
+
+    // At least one, as a limit of none asks the store for a default of its own and would never be reached.
+    private static int Most(int asked) => Math.Max(1, asked);
+
     // Within a block a search keeps only the spans whose own times fall in the window, which a values read does not.
     private static string Search(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
         $"api/search?q={Uri.EscapeDataString(traceQl)}&{Window(from, until)}&limit={limit}";
 
-    private static string Values(DateTimeOffset from, DateTimeOffset until) =>
-        $"api/v2/search/tag/span.{SessionAttribute}/values?{Window(from, until)}";
+    private static string Values(DateTimeOffset from, DateTimeOffset until, int limit) =>
+        $"api/v2/search/tag/span.{SessionAttribute}/values?{Window(from, until)}&limit={limit}";
 
     // The store picks its blocks by when the spans reached it, so a period ending before they arrived reads none.
     private static string Window(DateTimeOffset from, DateTimeOffset until) =>

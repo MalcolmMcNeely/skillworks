@@ -183,6 +183,77 @@ public sealed class TraceStoreReaderTests
     }
 
     [Fact]
+    public async Task Says_a_session_was_cut_short_when_it_holds_more_traces_than_one_read_takes()
+    {
+        // Arrange
+        var tenant = Tenant();
+        var session = Session();
+
+        await Push(tenant, session, Prompt, WholeRun());
+        await Push(tenant, session, Title, [new RecordedSpan(Interaction, At(Yesterday, "10:01:00"), At(Yesterday, "10:01:02"), "b100000000000001")]);
+
+        // Act
+        var read = await Reader(tenant, mostTraces: 1).OfSessionAsync(session, From, Until, CancellationToken.None);
+
+        // Assert
+        // What came back stands, or a run the store cut in half would read as one that was never traced.
+        Assert.True(read.Shortened);
+        Assert.NotEmpty(read.Spans);
+        Assert.Null(read.Unreachable);
+    }
+
+    [Fact]
+    public async Task Says_a_session_was_not_cut_short_when_every_trace_of_it_came_back()
+    {
+        // Arrange
+        var tenant = Tenant();
+        var session = Session();
+
+        await Push(tenant, session, Prompt, WholeRun());
+
+        // Act
+        var read = await Reader(tenant).OfSessionAsync(session, From, Until, CancellationToken.None);
+
+        // Assert
+        Assert.False(read.Shortened);
+        Assert.Equal(4, read.Spans.Count);
+    }
+
+    [Fact]
+    public async Task Says_a_period_was_cut_short_when_it_holds_more_sessions_than_one_read_takes()
+    {
+        // Arrange
+        var tenant = Tenant();
+
+        await Push(tenant, Session(), Prompt, WholeRun());
+        await Push(tenant, Session(), Title, [new RecordedSpan(Interaction, At(Yesterday, "11:00:00"), At(Yesterday, "11:00:05"), "c100000000000001")]);
+
+        // Act
+        var read = await Reader(tenant, mostSessions: 1).OfPeriodAsync(From, Until, CancellationToken.None);
+
+        // Assert
+        Assert.True(read.Shortened);
+        Assert.Single(read.Sessions);
+        Assert.Null(read.Unreachable);
+    }
+
+    [Fact]
+    public async Task Says_a_period_was_not_cut_short_when_every_session_in_it_came_back()
+    {
+        // Arrange
+        var tenant = Tenant();
+
+        await Push(tenant, Session(), Prompt, WholeRun());
+
+        // Act
+        var read = await Reader(tenant).OfPeriodAsync(From, Until, CancellationToken.None);
+
+        // Assert
+        Assert.False(read.Shortened);
+        Assert.Single(read.Sessions);
+    }
+
+    [Fact]
     public async Task Names_every_session_the_store_holds_spans_for()
     {
         // Arrange
@@ -291,17 +362,34 @@ public sealed class TraceStoreReaderTests
         TestTempo.PushAsync(tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
 
     // The real registration, so the address and the timeout under test are the ones Studio runs with.
-    private static TraceStoreReader Reader(string tenant, string? address = null) =>
-        new ServiceCollection()
-            .AddSkillworksCore(new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Tempo:Address"] = address ?? TestTempo.Address.ToString(),
-                    ["Tempo:Tenant"] = tenant,
-                })
-                .Build())
+    private static TraceStoreReader Reader(
+        string tenant,
+        string? address = null,
+        int? mostTraces = null,
+        int? mostSessions = null)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["Tempo:Address"] = address ?? TestTempo.Address.ToString(),
+            ["Tempo:Tenant"] = tenant,
+        };
+
+        // Left out unless asked for, as an empty value binds as none and would hide the default.
+        if (mostTraces is { } traces)
+        {
+            settings["Tempo:MostTraces"] = traces.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (mostSessions is { } runs)
+        {
+            settings["Tempo:MostSessions"] = runs.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return new ServiceCollection()
+            .AddSkillworksCore(new ConfigurationBuilder().AddInMemoryCollection(settings).Build())
             .BuildServiceProvider()
             .GetRequiredService<TraceStoreReader>();
+    }
 
     // Its own tenant, so no other test's spans reach this one's answers.
     private static string Tenant() => Guid.NewGuid().ToString("N");
