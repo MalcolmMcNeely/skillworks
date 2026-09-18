@@ -81,4 +81,4 @@ So commit and push every change to `CONTEXT.md` or an ADR as soon as it settles.
 
 - **Stage by path.** Stage only the file you settled. Work in progress elsewhere in the tree is never swept into a glossary commit.
 - **Prefix the subject line.** `Glossary:` for a `CONTEXT.md` change, `ADR:` for an ADR, so the log says which kind of change it was without anyone opening it.
-- **Read what the push pulls down.** A push has to pull first, so the check comes free. When a teammate's change touches ground this session already settled, say so. What to re-ask is then a question for this session.
+- **Pull, then push.** A push onto a branch a teammate has moved is rejected, so pull first and push the rebased commit. Read what the pull brings down: when a teammate's change touches ground this session already settled, say so. What to re-ask is then a question for this session.
