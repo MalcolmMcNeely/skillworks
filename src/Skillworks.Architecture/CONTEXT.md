@@ -10,6 +10,16 @@ One product area, with a language of its own. Two contexts exist when one word h
 and neither meaning can win.
 _Avoid_: Domain, area, boundary
 
+**Glossary**:
+The file that holds a Context's words. `CONTEXT-MAP.md` names one for each Context, and that file is
+what the check reads to decide whether a word has been settled.
+_Avoid_: Dictionary, lexicon, vocabulary
+
+**Headword**:
+One word a Glossary settles, written bold and alone on its line. It is the name a folder in `Shared`
+has to carry.
+_Avoid_: Term, entry, keyword
+
 **Slice**:
 The folder that holds everything one job of the app needs. An agent changing that job opens the Slice
 and nothing else.

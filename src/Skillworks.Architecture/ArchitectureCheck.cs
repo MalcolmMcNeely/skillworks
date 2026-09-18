@@ -35,6 +35,9 @@ public static class ArchitectureCheck
                 .. WhenAskedFor(ConcernFolders.Rule, () => ConcernFolders.Check(root, sourceFiles, rules.Placement)),
                 .. WhenAskedFor(SlicesStayApart.Rule, () => SlicesStayApart.Check(root, sourceFiles, rules.Placement)),
                 .. WhenAskedFor(SharedStaysBelow.Rule, () => SharedStaysBelow.Check(root, sourceFiles, rules.Placement)),
+                .. WhenAskedFor(
+                    SharedNamesAWord.Rule,
+                    () => SharedNamesAWord.Check(root, sourceFiles, rules.Placement, rules.Contexts)),
             ],
             sourceFiles.Count);
     }

@@ -50,8 +50,10 @@ internal sealed record PlacementRules(
     public bool IsSlice(string folderName, bool frontEnd) =>
         Slices.Any(name => InCase(name, frontEnd) == folderName);
 
+    public bool IsShared(string folderName, bool frontEnd) => folderName == SharedFolderName(frontEnd);
+
     public bool IsSliceOrShared(string folderName, bool frontEnd) =>
-        IsSlice(folderName, frontEnd) || folderName == SharedFolderName(frontEnd);
+        IsSlice(folderName, frontEnd) || IsShared(folderName, frontEnd);
 
     public bool IsSharedInAnyCase(string folderName) =>
         string.Equals(folderName, Shared, StringComparison.OrdinalIgnoreCase);

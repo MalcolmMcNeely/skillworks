@@ -17,6 +17,8 @@ public sealed class RulesTree : IDisposable
         ["check"] = ("tools/Check/CONTEXT.md", ["tools/Check"]),
     };
 
+    private readonly Dictionary<string, IReadOnlyList<string>> _headwords = [];
+
     private readonly Dictionary<string, Dictionary<string, string>> _settings = new()
     {
         [PlacementFile] = new()
@@ -46,8 +48,8 @@ public sealed class RulesTree : IDisposable
         foreach (var file in _settings.Keys)
             WriteRules(file);
 
-        foreach (var context in _contexts.Values)
-            Write(context.Glossary, "# Glossary\n\nThe words this context settled on.\n");
+        foreach (var context in _contexts.Keys)
+            WriteGlossary(context);
 
         WriteContextMap();
     }
@@ -68,6 +70,12 @@ public sealed class RulesTree : IDisposable
     {
         _contexts[name] = (glossary, code);
         return WriteContextMap();
+    }
+
+    public RulesTree Glossary(string context, params string[] headwords)
+    {
+        _headwords[context] = headwords;
+        return WriteGlossary(context);
     }
 
     public RulesTree RemoveContext(string name)
@@ -146,6 +154,16 @@ public sealed class RulesTree : IDisposable
     {
         var settings = string.Join('\n', _settings[file].Select(setting => $"{setting.Key}: {setting.Value}"));
         return Write(file, $"# Rules\n\nThe text for Claude.\n\n```yaml\n{settings}\n```\n");
+    }
+
+    private RulesTree WriteGlossary(string context)
+    {
+        var headwords = _headwords.TryGetValue(context, out var chosen) ? chosen : [];
+        var entries = headwords.Select(headword => $"**{headword}**:\nWhat this context means by it.\n");
+
+        return Write(
+            _contexts[context].Glossary,
+            $"# Glossary\n\nThe words this context settled on.\n\n{string.Join('\n', entries)}");
     }
 
     private RulesTree WriteContextMap()
