@@ -13,7 +13,7 @@ public sealed partial class SessionEndpointsTests
     private const string Evening = "8f1c0a9e-0000-4000-8000-000000000003";
 
     [Fact]
-    public async Task Answers_with_a_head_then_the_sessions_then_an_end()
+    public async Task Answers_with_a_head_then_the_sessions_then_the_measures_then_an_end()
     {
         using var studio = new StudioHost();
 
@@ -21,7 +21,9 @@ public sealed partial class SessionEndpointsTests
 
         var lines = await studio.SessionLines();
 
-        Assert.Equal(["head", "sessions", "end"], lines.Select(StudioHost.KindOf));
+        Assert.Equal(
+            ["head", "sessions", "measure", "measure", "measure", "measure", "end"],
+            lines.Select(StudioHost.KindOf));
     }
 
     [Fact]
@@ -43,14 +45,17 @@ public sealed partial class SessionEndpointsTests
 
         var head = await studio.SessionLine("head");
         var page = await studio.SessionLine("sessions");
+        var measure = await studio.SessionLine("measure");
 
         Assert.Equal(["descending", "kind", "sort", "span"], StudioHost.Fields(head));
         Assert.Equal(["from", "fromUtc", "lookback", "to", "untilUtc"], StudioHost.Fields(head["span"]));
 
         Assert.Equal(["kind", "sessions"], StudioHost.Fields(page));
         Assert.Equal(
-            ["cost", "faults", "friction", "id", "lengthMs", "name", "person", "repository", "running", "startedUtc", "toolCalls"],
+            ["id", "lengthMs", "name", "person", "repository", "running", "startedUtc"],
             StudioHost.Fields(page["sessions"]?[0]));
+
+        Assert.Equal(["kind", "measure", "values"], StudioHost.Fields(measure));
     }
 
     [Fact]

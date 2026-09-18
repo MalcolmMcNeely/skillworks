@@ -1,5 +1,6 @@
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
+using Skillworks.Core.Sessions.Measures;
 using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
@@ -55,7 +56,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
     private static readonly string[] ByDecision = [EventAttributes.Session, DecisionAttribute];
 
     // Totals, never a list of events: a busy organisation's week is more lines than one read holds.
-    public async Task<(IReadOnlyList<Session> Sessions, EventTotals Period, TracedSessions Traced)> ListAsync(
+    public async Task<(IReadOnlyList<SessionRow> Rows, SessionMeasures Measures, EventTotals Period, TracedSessions Traced)> ListAsync(
         DaySpan span,
         Filter filter,
         SessionOrder order,
@@ -99,19 +100,25 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         var period = read.Surveyed with { Unreachable = read.Unreachable };
         var traced = await tracing;
 
-        return (period.Unreachable is null ? Rows(read, filter, order, traced) : [], period, traced);
+        if (period.Unreachable is not null)
+        {
+            return ([], SessionMeasures.Nothing, period, traced);
+        }
+
+        var (rows, measures) = Rows(read, filter, order, traced);
+
+        return (rows, measures, period, traced);
     }
 
-    private IReadOnlyList<Session> Rows(Readings read, Filter filter, SessionOrder order, TracedSessions traced)
+    private (IReadOnlyList<SessionRow> Rows, SessionMeasures Measures) Rows(
+        Readings read,
+        Filter filter,
+        SessionOrder order,
+        TracedSessions traced)
     {
         var (firstEvent, lastEvent) = (MomentsOf(read.Started), MomentsOf(read.Ended));
         var titles = WordsOf(read.Titled, EventAttributes.Response);
         var prompts = WordsOf(read.Prompted, EventAttributes.Prompt);
-        var toolCalls = CountedIn(read.Called.Groups);
-        var toolFaults = CountedIn(read.Called.Groups.Where(Failed));
-        var modelFaults = CountedIn(read.Erred.Groups);
-        var friction = CountedIn(read.Decided.Groups.Where(Refused));
-        var costs = SummedIn(read.Cost);
         var now = clock.GetUtcNow();
 
         // A Skill says which runs are listed, never how much of a run is counted.
@@ -129,20 +136,24 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             where traced.FellShort || filter.Covers(Depths.Of(traced.Sessions.Contains(id), withheld.Contains(id)))
             let repository = MostlySaid(run, total => total.Repository)
             let startedAt = firstEvent[id]
-            select new Session(
+            select new SessionRow(
                 id,
                 startedAt,
                 repository,
                 MostlySaid(run, total => total.Attribute(EventAttributes.Person)),
                 SessionName.Of(titles.GetValueOrDefault(id), prompts.GetValueOrDefault(id), repository, startedAt),
                 (long)(lastEvent[id] - startedAt).TotalMilliseconds,
-                RunningWindow.Covers(lastEvent[id], now),
-                toolCalls.GetValueOrDefault(id),
-                costs.GetValueOrDefault(id),
-                toolFaults.GetValueOrDefault(id) + modelFaults.GetValueOrDefault(id),
-                friction.GetValueOrDefault(id));
+                RunningWindow.Covers(lastEvent[id], now));
 
-        return order.Sorted(sessions);
+        var measures = new SessionMeasures(
+            TotalledIn(read.Called.Groups),
+            TotalledIn(read.Cost.Groups),
+            Added(TotalledIn(read.Called.Groups.Where(Failed)), TotalledIn(read.Erred.Groups)),
+            TotalledIn(read.Decided.Groups.Where(Refused)));
+
+        var rows = order.Sorted(sessions, measures);
+
+        return (rows, measures.Covering(rows));
     }
 
     // An older Claude Code puts the repository on no event, and a run with no origin remote has none.
@@ -171,11 +182,15 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
     private static bool Withheld(EventTotal prompt) =>
         prompt.Attribute(EventAttributes.Prompt) == EventAttributes.Withheld;
 
-    private static Dictionary<string, int> CountedIn(IEnumerable<EventTotal> groups) =>
-        Identified(groups).ToDictionary(run => run.Key, run => (int)run.Sum(total => total.Total));
+    private static Dictionary<string, decimal> TotalledIn(IEnumerable<EventTotal> groups) =>
+        Identified(groups).ToDictionary(run => run.Key, run => run.Sum(total => total.Total));
 
-    private static Dictionary<string, decimal> SummedIn(EventTotals totals) =>
-        Identified(totals.Groups).ToDictionary(run => run.Key, run => run.Sum(total => total.Total));
+    private static Dictionary<string, decimal> Added(
+        IReadOnlyDictionary<string, decimal> one,
+        IReadOnlyDictionary<string, decimal> other) =>
+        one.Keys
+            .Union(other.Keys)
+            .ToDictionary(id => id, id => one.GetValueOrDefault(id) + other.GetValueOrDefault(id));
 
     private static HashSet<string> Keyed(IEnumerable<EventTotal> groups) =>
         [.. Identified(groups).Select(run => run.Key)];

@@ -1584,6 +1584,16 @@ a.home-panel-face:hover::before {
   text-align: right;
 }
 
+/* An empty cell has no figure to dim, so the Arriving state is drawn in the space the figure will fill. */
+.session-figure.is-arriving::after {
+  background: repeating-linear-gradient(var(--ink-faint) 0 2px, transparent 2px 5px);
+  content: '';
+  display: inline-block;
+  height: 0.7rem;
+  vertical-align: middle;
+  width: 2.5rem;
+}
+
 /* A heading is the control that sorts its column, so it carries the heading's own look and no other. */
 .session-sort {
   background: none;

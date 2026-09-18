@@ -1,5 +1,5 @@
 using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Sessions.Rows;
+using Skillworks.Studio.Api.Tests.Sessions.Answers;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 
@@ -17,7 +17,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:03:00.000")));
 
         // A call that failed still ran, so it is one of the calls a run that thrashed made.
-        Assert.Equal(3, Assert.Single(await studio.SessionsIn()).ToolCalls);
+        Assert.Equal(3m, (await studio.SessionAnswer()).Measured("toolCalls", Morning));
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public sealed partial class SessionEndpointsTests
             new ApiRequest(At(Yesterday, "09:01:00.000"), CostUsd: 0.25m) { Session = Morning },
             new ApiRequest(At(Yesterday, "09:02:00.000"), CostUsd: 0.75m) { Session = Morning });
 
-        Assert.Equal(1m, Assert.Single(await studio.SessionsIn()).Cost);
+        Assert.Equal(1m, (await studio.SessionAnswer()).Measured("cost", Morning));
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")),
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:03:00.000")));
 
-        Assert.Equal(2, Assert.Single(await studio.SessionsIn()).Faults);
+        Assert.Equal(2m, (await studio.SessionAnswer()).Measured("faults", Morning));
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")));
 
         // Nobody chose either one, and that is what puts them in the same count.
-        Assert.Equal(2, Assert.Single(await studio.SessionsIn()).Faults);
+        Assert.Equal(2m, (await studio.SessionAnswer()).Measured("faults", Morning));
     }
 
     [Fact]
@@ -70,10 +70,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run I said no to"),
             SessionEvent.Refused(Morning, At(Yesterday, "09:01:00.000")));
 
-        var session = Assert.Single(await studio.SessionsIn());
-
-        Assert.Equal(1, session.Friction);
-        Assert.Equal(0, session.Faults);
+        Assert.Equal((0m, 1m), FaultsAndFriction(await studio.SessionAnswer(), Morning));
     }
 
     [Fact]
@@ -85,10 +82,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run the hook stopped"),
             SessionEvent.HookBlocked(Morning, At(Yesterday, "09:01:00.000")));
 
-        var session = Assert.Single(await studio.SessionsIn());
-
-        Assert.Equal(1, session.Friction);
-        Assert.Equal(0, session.Faults);
+        Assert.Equal((0m, 1m), FaultsAndFriction(await studio.SessionAnswer(), Morning));
     }
 
     [Fact]
@@ -102,11 +96,8 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.HookBlocked(Morning, At(Yesterday, "09:02:00.000")),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:03:00.000")));
 
-        var session = Assert.Single(await studio.SessionsIn());
-
         // A reader's own refusals must never make a clean run look broken.
-        Assert.Equal(0, session.Faults);
-        Assert.Equal(2, session.Friction);
+        Assert.Equal((0m, 2m), FaultsAndFriction(await studio.SessionAnswer(), Morning));
     }
 
     [Fact]
@@ -119,7 +110,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Allowed(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:02:00.000")));
 
-        Assert.Equal(0, Assert.Single(await studio.SessionsIn()).Friction);
+        Assert.Equal(0m, (await studio.SessionAnswer()).Measured("friction", Morning));
     }
 
     [Fact]
@@ -134,10 +125,10 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.ToolRan(Afternoon, At(Yesterday, "14:01:00.000")),
             SessionEvent.Refused(Afternoon, At(Yesterday, "14:02:00.000")));
 
-        var sessions = (await studio.SessionsIn()).ToDictionary(session => session.Name);
+        var answer = await studio.SessionAnswer();
 
-        Assert.Equal((1, 1, 0), Counts(sessions["The early run"]));
-        Assert.Equal((1, 0, 1), Counts(sessions["The later run"]));
+        Assert.Equal((1m, 1m, 0m), Counts(answer, Morning));
+        Assert.Equal((1m, 0m, 1m), Counts(answer, Afternoon));
     }
 
     [Fact]
@@ -147,12 +138,15 @@ public sealed partial class SessionEndpointsTests
 
         await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
-        var session = Assert.Single(await studio.SessionsIn());
+        var answer = await studio.SessionAnswer();
 
-        Assert.Equal((0, 0, 0), Counts(session));
-        Assert.Equal(0m, session.Cost);
+        Assert.Equal((0m, 0m, 0m), Counts(answer, Morning));
+        Assert.Equal(0m, answer.Measured("cost", Morning));
     }
 
-    private static (int ToolCalls, int Faults, int Friction) Counts(SessionRow session) =>
-        (session.ToolCalls, session.Faults, session.Friction);
+    private static (decimal ToolCalls, decimal Faults, decimal Friction) Counts(SessionsAnswer answer, string id) =>
+        (answer.Measured("toolCalls", id), answer.Measured("faults", id), answer.Measured("friction", id));
+
+    private static (decimal Faults, decimal Friction) FaultsAndFriction(SessionsAnswer answer, string id) =>
+        (answer.Measured("faults", id), answer.Measured("friction", id));
 }

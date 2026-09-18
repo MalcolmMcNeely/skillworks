@@ -4,18 +4,35 @@ import { nowhere, sessionAddress } from '../lib/where';
 import {
   describeRunLength,
   describeStarted,
+  measureWords,
   noRepository,
   notKnown,
   sessionColumns,
   sortGlyphs,
-  type Session,
+  type DrawnSession,
+  type Measured,
   type SessionColumn,
   type SessionSort,
   type SessionsAnswer,
   type SortedBy,
 } from '../lib/sessions';
 
-function Row({ session, asked }: { session: Session; asked: URLSearchParams }) {
+// Blank and busy, as the rail and the Map already say a figure is on its way that way.
+function Cell({ measured, describe }: { measured: Measured; describe: (value: number) => string }) {
+  if (measured.state === 'landed') {
+    return <td className="session-figure">{describe(measured.value)}</td>;
+  }
+
+  if (measured.state === 'arriving') {
+    return <td className="session-figure is-arriving" aria-busy={true} />;
+  }
+
+  return <td className="session-figure">{measureWords.fellShort}</td>;
+}
+
+function Row({ row, asked }: { row: DrawnSession; asked: URLSearchParams }) {
+  const { session, measures } = row;
+
   return (
     <tr>
       <td className="session-started">{describeStarted(session.startedUtc)}</td>
@@ -26,9 +43,9 @@ function Row({ session, asked }: { session: Session; asked: URLSearchParams }) {
         {session.running ? <span className="session-running">Running</span> : null}
       </td>
       <td className="session-figure">{describeRunLength(session.lengthMs)}</td>
-      <td className="session-figure">{describeCount(session.toolCalls)}</td>
-      <td className="session-figure">{describeMoney(session.cost)}</td>
-      <td className="session-figure">{describeCount(session.faults)}</td>
+      <Cell measured={measures.toolCalls} describe={describeCount} />
+      <Cell measured={measures.cost} describe={describeMoney} />
+      <Cell measured={measures.faults} describe={describeCount} />
     </tr>
   );
 }
@@ -81,7 +98,7 @@ export function SessionTable({
     return <p className="session-word">Reading the runs…</p>;
   }
 
-  if (answer.sessions.length === 0) {
+  if (answer.rows.length === 0) {
     return <p className="session-word">{noRuns}</p>;
   }
 
@@ -96,8 +113,8 @@ export function SessionTable({
         </tr>
       </thead>
       <tbody>
-        {answer.sessions.map((session) => (
-          <Row key={session.id} session={session} asked={asked} />
+        {answer.rows.map((row) => (
+          <Row key={row.session.id} row={row} asked={asked} />
         ))}
       </tbody>
     </table>

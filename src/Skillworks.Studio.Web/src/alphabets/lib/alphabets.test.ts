@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lampSymbols } from '../../health/lib/health';
 import { pageSymbols } from '../../pages/lib/pages';
 import { triggerSymbols } from '../../provenance/lib/triggers';
-import { sortSymbols } from '../../sessions/lib/sessions';
+import { measureSymbols, sortSymbols } from '../../sessions/lib/sessions';
 import { mapNoticeSymbols } from '../../skills/lib/mapNotice';
 import { readoutSymbols } from '../../skills/lib/readout';
 import { missingSymbols } from '../../skills/lib/skills';
@@ -15,6 +15,7 @@ const tables: Record<string, SymbolTable> = {
   pages: pageSymbols,
   lamps: lampSymbols,
   mapNotice: mapNoticeSymbols,
+  measures: measureSymbols,
   missing: missingSymbols,
   readout: readoutSymbols,
   slices: sliceSymbols,

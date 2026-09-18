@@ -1,6 +1,7 @@
 namespace Skillworks.Studio.Api.Tests.Sessions.Rows;
 
-public sealed record SessionRow
+// The Session page counts one run's figures from its own events, so they ride the head that opens it.
+public sealed record RunRow
 {
     public required string Id { get; init; }
 
@@ -15,4 +16,12 @@ public sealed record SessionRow
     public required long LengthMs { get; init; }
 
     public required bool Running { get; init; }
+
+    public required int ToolCalls { get; init; }
+
+    public required decimal Cost { get; init; }
+
+    public required int Faults { get; init; }
+
+    public required int Friction { get; init; }
 }

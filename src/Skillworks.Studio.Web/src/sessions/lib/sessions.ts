@@ -3,7 +3,8 @@ import { narrowsByDepth } from '../../filters/lib/depthKeys';
 import type { Filter, Span } from '../../filters/lib/filters';
 import type { Gap, GapEnd } from '../../gaps/lib/gaps';
 
-export interface Session {
+// It carries no Measure, so a number still being read costs a reader no rows.
+export interface SessionRow {
   id: string;
   startedUtc: string;
   // Null where no event named one, which an older Claude Code and a checkout with no remote both do.
@@ -12,12 +13,36 @@ export interface Session {
   name: string;
   lengthMs: number;
   running: boolean;
+}
+
+// One run's own page counts its Measures from its events, so they ride the head that opens it.
+export interface Session extends SessionRow {
   toolCalls: number;
   cost: number;
   faults: number;
   // Never added to Faults: somebody chose a refusal and a hook block, so a clean run still reads clean.
   friction: number;
 }
+
+export type MeasureName = 'toolCalls' | 'cost' | 'faults' | 'friction';
+
+export type Measured =
+  | { state: 'landed'; value: number }
+  | { state: 'arriving' }
+  | { state: 'fellShort' };
+
+export interface DrawnSession {
+  session: SessionRow;
+  measures: Record<MeasureName, Measured>;
+}
+
+export const measureWords = {
+  // Never a zero, so a Measure nobody could read never reads as a run that did nothing.
+  fellShort: '—',
+} as const;
+
+// The dash is drawn, so it answers to the alphabets as any other mark on screen does.
+export const measureSymbols: SymbolTable = { alphabet: 'condition', glyphs: [measureWords.fellShort] };
 
 export type SessionSort = 'started' | 'repository' | 'person' | 'name' | 'length' | 'toolCalls' | 'cost' | 'faults';
 
@@ -51,17 +76,24 @@ export interface SessionsHead {
 
 export interface SessionsPage {
   kind: 'sessions';
-  sessions: Session[];
+  sessions: SessionRow[];
 }
 
-export type SessionsLine = SessionsHead | SessionsPage | GapEnd;
+export interface SessionsMeasure {
+  kind: 'measure';
+  measure: MeasureName;
+  // A run this does not name made none of it, which is a zero rather than a hole.
+  values: Record<string, number>;
+}
+
+export type SessionsLine = SessionsHead | SessionsPage | SessionsMeasure | GapEnd;
 
 export interface SessionsAnswer {
   span: SessionsHead['span'];
   // The order the answer was read in, which is the only order a heading may mark.
   sort: SessionSort;
   descending: boolean;
-  sessions: Session[];
+  rows: DrawnSession[];
   // No rows yet is not the same as no runs, so the table waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -69,13 +101,24 @@ export interface SessionsAnswer {
   gap: Gap | null;
 }
 
+const arriving: Measured = { state: 'arriving' };
+
+const fellShort: Measured = { state: 'fellShort' };
+
+const unread: Record<MeasureName, Measured> = {
+  toolCalls: arriving,
+  cost: arriving,
+  faults: arriving,
+  friction: arriving,
+};
+
 export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLine): SessionsAnswer {
   if (line.kind === 'head') {
     return {
       span: line.span,
       sort: line.sort,
       descending: line.descending,
-      sessions: [],
+      rows: [],
       landed: false,
       arriving: true,
       gap: null,
@@ -86,11 +129,38 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
     throw new Error(`A sessions answer starts with its head, not a ${line.kind} line.`);
   }
 
-  if (line.kind === 'end') {
-    return { ...answer, arriving: false, gap: line.gap };
+  if (line.kind === 'sessions') {
+    return { ...answer, rows: line.sessions.map((session) => ({ session, measures: unread })), landed: true };
   }
 
-  return { ...answer, sessions: line.sessions, landed: true };
+  if (line.kind === 'measure') {
+    return { ...answer, rows: answer.rows.map((row) => landedIn(row, line)) };
+  }
+
+  return { ...answer, arriving: false, gap: line.gap, rows: answer.rows.map(settled) };
+}
+
+function landedIn(row: DrawnSession, line: SessionsMeasure): DrawnSession {
+  const value = line.values[row.session.id] ?? 0;
+
+  return { ...row, measures: { ...row.measures, [line.measure]: { state: 'landed', value } } };
+}
+
+// Nothing comes after the end line, so a Measure still blank is one the store could not read.
+function settled(row: DrawnSession): DrawnSession {
+  return {
+    ...row,
+    measures: {
+      toolCalls: read(row.measures.toolCalls),
+      cost: read(row.measures.cost),
+      faults: read(row.measures.faults),
+      friction: read(row.measures.friction),
+    },
+  };
+}
+
+function read(measured: Measured): Measured {
+  return measured.state === 'arriving' ? fellShort : measured;
 }
 
 export interface SessionOrder {

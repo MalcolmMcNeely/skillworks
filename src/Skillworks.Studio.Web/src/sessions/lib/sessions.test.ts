@@ -7,6 +7,8 @@ import {
   describeSpan,
   describeStarted,
   foldSessionsLine,
+  measureSymbols,
+  measureWords,
   nextOrder,
   noRepository,
   notKnown,
@@ -16,7 +18,9 @@ import {
   sortGlyphs,
   sortSymbols,
   withOrder,
-  type Session,
+  type MeasureName,
+  type SessionRow,
+  type SessionsAnswer,
   type SessionsHead,
 } from './sessions';
 
@@ -27,7 +31,7 @@ const head: SessionsHead = {
   descending: true,
 };
 
-const run: Session = {
+const run: SessionRow = {
   id: '8f1c0a9e-0000-4000-8000-000000000001',
   startedUtc: '2026-09-14T09:00:00+00:00',
   repository: 'malcolmania/skillworks',
@@ -35,11 +39,19 @@ const run: Session = {
   name: 'Fixing the failing build',
   lengthMs: 2_460_000,
   running: false,
-  toolCalls: 42,
-  cost: 1.25,
-  faults: 3,
-  friction: 2,
 };
+
+const other: SessionRow = { ...run, id: '8f1c0a9e-0000-4000-8000-000000000002', name: 'Reading the logs' };
+
+const complete = { kind: 'complete', missing: null } as const;
+
+function withRows(...sessions: SessionRow[]): SessionsAnswer {
+  return foldSessionsLine(foldSessionsLine(null, head), { kind: 'sessions', sessions });
+}
+
+function cell(answer: SessionsAnswer, measure: MeasureName, id: string = run.id) {
+  return answer.rows.find((row) => row.session.id === id)?.measures[measure];
+}
 
 describe('foldSessionsLine', () => {
   it('opens on the span and no rows, so the page says which days it covers before they land', () => {
@@ -49,7 +61,7 @@ describe('foldSessionsLine', () => {
       span: head.span,
       sort: 'started',
       descending: true,
-      sessions: [],
+      rows: [],
       landed: false,
       arriving: true,
       gap: null,
@@ -63,33 +75,76 @@ describe('foldSessionsLine', () => {
   });
 
   it('takes the rows from the sessions line and marks them landed, so the table draws before the answer ends', () => {
-    const answer = foldSessionsLine(foldSessionsLine(null, head), { kind: 'sessions', sessions: [run] });
+    const answer = withRows(run);
 
-    expect(answer.sessions).toEqual([run]);
+    expect(answer.rows.map((row) => row.session)).toEqual([run]);
     expect(answer.landed).toBe(true);
     expect(answer.arriving).toBe(true);
   });
 
   it('marks an answer with no runs landed too, so an empty week is told apart from rows still to come', () => {
-    const answer = foldSessionsLine(foldSessionsLine(null, head), { kind: 'sessions', sessions: [] });
+    const answer = withRows();
 
     expect(answer.landed).toBe(true);
-    expect(answer.sessions).toEqual([]);
+    expect(answer.rows).toEqual([]);
   });
 
   it('ends the answer and keeps its gap, so a screen knows the rows are all there are', () => {
-    const landed = foldSessionsLine(foldSessionsLine(null, head), { kind: 'sessions', sessions: [run] });
-    const answer = foldSessionsLine(landed, { kind: 'end', gap: { kind: 'complete', missing: null } });
+    const answer = foldSessionsLine(withRows(run), { kind: 'end', gap: complete });
 
     expect(answer.arriving).toBe(false);
-    expect(answer.gap).toEqual({ kind: 'complete', missing: null });
-    expect(answer.sessions).toEqual([run]);
+    expect(answer.gap).toEqual(complete);
+    expect(answer.rows.map((row) => row.session)).toEqual([run]);
   });
 
   it('refuses a line before the head, as a row with no span says nothing about the period', () => {
     expect(() => foldSessionsLine(null, { kind: 'sessions', sessions: [run] })).toThrow(
       'A sessions answer starts with its head, not a sessions line.',
     );
+  });
+});
+
+describe('the Measures on a folded answer', () => {
+  it('leaves every Measure of a fresh row still arriving, so a cell nobody has read yet is blank', () => {
+    const answer = withRows(run);
+
+    expect(cell(answer, 'toolCalls')).toEqual({ state: 'arriving' });
+    expect(cell(answer, 'cost')).toEqual({ state: 'arriving' });
+    expect(cell(answer, 'faults')).toEqual({ state: 'arriving' });
+    expect(cell(answer, 'friction')).toEqual({ state: 'arriving' });
+  });
+
+  it('fills one column from one Measure line and leaves the rest arriving', () => {
+    const answer = foldSessionsLine(withRows(run), {
+      kind: 'measure',
+      measure: 'cost',
+      values: { [run.id]: 1.25 },
+    });
+
+    expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 1.25 });
+    expect(cell(answer, 'toolCalls')).toEqual({ state: 'arriving' });
+  });
+
+  it('reads a run the Measure does not name as a zero, as a run that made none is named nowhere', () => {
+    const answer = foldSessionsLine(withRows(run, other), {
+      kind: 'measure',
+      measure: 'faults',
+      values: { [run.id]: 3 },
+    });
+
+    expect(cell(answer, 'faults', other.id)).toEqual({ state: 'landed', value: 0 });
+  });
+
+  it('calls a Measure that never came short once the answer ends, so its cells read a dash', () => {
+    const landed = foldSessionsLine(withRows(run), {
+      kind: 'measure',
+      measure: 'cost',
+      values: { [run.id]: 1.25 },
+    });
+    const answer = foldSessionsLine(landed, { kind: 'end', gap: { kind: 'unreachable', missing: 'Tool calls' } });
+
+    expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
+    expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 1.25 });
   });
 });
 
@@ -121,6 +176,11 @@ describe('the words for what a row does not carry', () => {
   it('says a run with no origin remote has no Repository, which is not the same as not knowing', () => {
     expect(noRepository).toBe('None');
     expect(notKnown).not.toBe(noRepository);
+  });
+
+  it('marks a Measure that fell short with a dash, never a zero, and gives the dash one alphabet', () => {
+    expect(measureWords.fellShort).toBe('—');
+    expect(measureSymbols).toEqual({ alphabet: 'condition', glyphs: ['—'] });
   });
 });
 

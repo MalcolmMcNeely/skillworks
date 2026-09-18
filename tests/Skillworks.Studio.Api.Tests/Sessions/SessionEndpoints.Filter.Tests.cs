@@ -105,11 +105,12 @@ public sealed partial class SessionEndpointsTests
             Placed(SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000"))),
             Placed(SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000"))));
 
-        var session = Assert.Single(await studio.SessionsIn("?repository=acme/xi"));
+        var answer = await studio.SessionAnswer("?repository=acme/xi");
 
         // Every read is narrowed in the store, so a run whose events all name the Repository is counted in full.
-        Assert.Equal(2, session.ToolCalls);
-        Assert.Equal(1, session.Faults);
+        Assert.Equal(Morning, Assert.Single(answer.Sessions).Id);
+        Assert.Equal(2m, answer.Measured("toolCalls", Morning));
+        Assert.Equal(1m, answer.Measured("faults", Morning));
     }
 
     [Fact]
@@ -150,10 +151,11 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")));
         await studio.Push(new SkillActivated("comment-sweep", At(Yesterday, "09:05:00.000")) { Session = Morning });
 
-        var session = Assert.Single(await studio.SessionsIn("?skill=comment-sweep"));
+        var answer = await studio.SessionAnswer("?skill=comment-sweep");
 
-        Assert.Equal(2, session.ToolCalls);
-        Assert.Equal(1, session.Faults);
+        Assert.Equal(Morning, Assert.Single(answer.Sessions).Id);
+        Assert.Equal(2m, answer.Measured("toolCalls", Morning));
+        Assert.Equal(1m, answer.Measured("faults", Morning));
     }
 
     [Fact]

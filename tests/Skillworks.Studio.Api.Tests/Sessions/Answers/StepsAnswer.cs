@@ -6,7 +6,7 @@ using Skillworks.Studio.Api.Tests.Sessions.Rows;
 namespace Skillworks.Studio.Api.Tests.Sessions.Answers;
 
 public sealed record StepsAnswer(
-    SessionRow? Run,
+    RunRow? Run,
     IReadOnlyList<StepRow> Steps,
     IReadOnlyList<ExchangeRow> Exchanges,
     IReadOnlyList<ActivationRow> Activations,
@@ -73,6 +73,6 @@ public sealed record StepsAnswer(
     private static GapRow Store(IReadOnlyList<JsonObject> lines, string store) =>
         StudioHost.Read<GapRow>(lines.Single(line => StudioHost.KindOf(line) == "end")[store]);
 
-    private static SessionRow? Opened(JsonObject head) =>
-        head["session"] is { } session ? StudioHost.Read<SessionRow>(session) : null;
+    private static RunRow? Opened(JsonObject head) =>
+        head["session"] is { } session ? StudioHost.Read<RunRow>(session) : null;
 }
