@@ -72,3 +72,13 @@ Only offer to create an ADR when all three are true:
 3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
 
 If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+
+### Commit each change the moment it settles
+
+More than one person runs agent work against a repo at once, and a conversation can sit open for an hour while the user thinks. A word settled in that hour lives only in this session's context, so a teammate working beside you can reserve the same word for something else, and one of the two designs then has to be reworked.
+
+So commit and push every change to `CONTEXT.md` or an ADR as soon as it settles. Never hold them to the end of the session.
+
+- **Stage by path.** Stage only the file you settled. Work in progress elsewhere in the tree is never swept into a glossary commit.
+- **Prefix the subject line.** `Glossary:` for a `CONTEXT.md` change, `ADR:` for an ADR, so the log says which kind of change it was without anyone opening it.
+- **Read what the push pulls down.** A push has to pull first, so the check comes free. When a teammate's change touches ground this session already settled, say so. What to re-ask is then a question for this session.
