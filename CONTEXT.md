@@ -138,6 +138,15 @@ in two parts, its events and then its Spans, so its Depth can grow from Thin to 
 looks at it. A Sessions list arrives in two parts as well, its rows and then its Measures.
 _Avoid_: Loading, pending, partial, streaming
 
+**Gate**:
+The reads a list waits for before it draws a row. They are the ones that decide which rows exist and
+what each is called, so a row is whole the moment it appears and never changes under the reader's
+hand. A Filter that decides which rows exist puts its read in the gate too, and so does the Measure
+a reader arrived sorted on, because the rows are drawn once and in that order. Every other read
+arrives behind the rows. A gate read that falls short leaves no rows to stand, so the table is empty
+with a Gap; a read behind the gate that falls short costs a Measure and no rows.
+_Avoid_: Barrier, blocker, first pass, critical path
+
 **Origin**:
 One way a Skill was delivered and set off: its Trigger, the place it was loaded from, and the Plugin
 and Marketplace behind it where a plugin delivered it. A Skill name with two Origins is two Skills
