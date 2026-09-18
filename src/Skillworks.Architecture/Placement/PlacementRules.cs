@@ -44,6 +44,8 @@ internal sealed record PlacementRules(
 
     public string SharedFolderName(bool frontEnd) => InCase(Shared, frontEnd);
 
+    public string SliceFolderName(string slice, bool frontEnd) => InCase(slice, frontEnd);
+
     public IReadOnlyList<string> SliceAndSharedNames(bool frontEnd) =>
         [.. Slices.Select(name => InCase(name, frontEnd)), SharedFolderName(frontEnd)];
 
@@ -57,6 +59,9 @@ internal sealed record PlacementRules(
 
     public bool IsSharedInAnyCase(string folderName) =>
         string.Equals(folderName, Shared, StringComparison.OrdinalIgnoreCase);
+
+    public string? SliceNamedInAnyCase(string folderName) =>
+        Slices.FirstOrDefault(name => string.Equals(name, folderName, StringComparison.OrdinalIgnoreCase));
 
     public bool IsConcern(string folderName) => Concerns.Contains(folderName, StringComparer.Ordinal);
 

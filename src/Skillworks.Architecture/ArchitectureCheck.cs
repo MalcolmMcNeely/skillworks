@@ -38,6 +38,9 @@ public static class ArchitectureCheck
                 .. WhenAskedFor(
                     SharedNamesAWord.Rule,
                     () => SharedNamesAWord.Check(root, sourceFiles, rules.Placement, rules.Contexts)),
+                .. WhenAskedFor(
+                    SliceNamesMatch.Rule,
+                    () => SliceNamesMatch.Check(root, sourceFiles, rules.Placement)),
             ],
             sourceFiles.Count);
     }
