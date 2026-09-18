@@ -1,4 +1,3 @@
-import type { Depth } from './agents';
 import type { Range } from '../view';
 
 export type SplitPart = 'waiting' | 'tools' | 'hooks' | 'model' | 'subagents' | 'side' | 'quiet' | 'yourTurn';
@@ -11,7 +10,8 @@ export interface PartSpell {
 
 export interface SplitPage {
   kind: 'split';
-  depth: Depth;
+  // Three of the parts can only be measured from a Span, so this says whether they were measured at all.
+  traced: boolean;
   // Never overlapping, so a View is split by clipping each Spell to it and nothing else.
   parts: PartSpell[];
   // The whole of each part, overlaps and all, which is what the exclusive figure beside it leaves out.
@@ -67,7 +67,7 @@ export function sharesOf(page: SplitPage | null, view: Range | null): Share[] {
     ...part,
     ms: exclusive.get(part.part) ?? 0,
     overlapMs: whole.get(part.part) ?? 0,
-    known: page !== null && (page.depth === 'full' || !fromSpans.has(part.part)),
+    known: page !== null && (page.traced || !fromSpans.has(part.part)),
   }));
 }
 

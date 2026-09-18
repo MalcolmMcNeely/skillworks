@@ -1,6 +1,6 @@
 namespace Skillworks.Core.Filters;
 
-// A Thin run still opens and still draws; the parts that need a Span say what they cannot know.
+// A Thin run still opens and still draws, and every figure it cannot know says so itself.
 public enum Depth
 {
     Thin,

@@ -22,7 +22,7 @@ public static class TelemetryVariables
     ];
 
     // Without these a prompt, an answer and a tool result all arrive as <REDACTED>.
-    private static IReadOnlyList<KeyValuePair<string, string>> Words =>
+    public static IReadOnlyList<KeyValuePair<string, string>> Words =>
     [
         new("OTEL_LOG_USER_PROMPTS", "1"),
         new("OTEL_LOG_ASSISTANT_RESPONSES", "1"),

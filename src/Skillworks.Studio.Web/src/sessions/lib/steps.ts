@@ -54,6 +54,8 @@ export interface SessionAnswer {
   limitTokens: number | null;
   // Thin until the spans land, which is the second part of one read and not a second read.
   depth: Depth;
+  // A narrower question than the Depth: withheld words leave a run Thin with its spans landed.
+  traced: boolean;
   agents: Record<string, string>;
   subagents: Subagent[];
   // Only the Spans say what ran inside what, so a Thin run nests nothing.
@@ -79,6 +81,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       context: [],
       limitTokens: null,
       depth: 'thin',
+      traced: false,
       agents: {},
       subagents: [],
       inside: {},
@@ -112,7 +115,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
   }
 
   if (line.kind === 'agents') {
-    return { ...answer, depth: line.depth, agents: line.agents, subagents: line.subagents };
+    return { ...answer, depth: line.depth, traced: line.traced, agents: line.agents, subagents: line.subagents };
   }
 
   if (line.kind === 'trace') {

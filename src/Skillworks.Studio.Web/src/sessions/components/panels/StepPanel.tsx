@@ -1,5 +1,5 @@
 import { describeCount } from '../../../figures/lib/figures';
-import { ranBy, type Depth } from '../../lib/panels/agents';
+import { ranBy } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/view';
 import { describeLength } from '../../../figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
@@ -9,12 +9,12 @@ const mostRows = 200;
 
 function Opened({
   mark,
-  depth,
+  traced,
   agents,
   onClose,
 }: {
   mark: Mark;
-  depth: Depth;
+  traced: boolean;
   agents: Record<string, string>;
   onClose: () => void;
 }) {
@@ -31,7 +31,7 @@ function Opened({
         </button>
       </p>
       <p className="micro">
-        {describeClock(mark.startMs, true)} · {describeLength(step.lengthMs)} · ran by {ranBy(depth, agents, step.id)}
+        {describeClock(mark.startMs, true)} · {describeLength(step.lengthMs)} · ran by {ranBy(traced, agents, step.id)}
       </p>
       {step.words === null ? null : <p className="step-words">{step.words}</p>}
     </div>
@@ -41,7 +41,7 @@ function Opened({
 // Every figure and every row here reads the View alone, or the panel would answer a question nobody asked.
 export function StepPanel({
   marks,
-  depth,
+  traced,
   agents,
   agent,
   view,
@@ -49,7 +49,7 @@ export function StepPanel({
   onOpen,
 }: {
   marks: readonly Mark[];
-  depth: Depth;
+  traced: boolean;
   agents: Record<string, string>;
   agent: string | null;
   view: Range | null;
@@ -71,7 +71,7 @@ export function StepPanel({
         </p>
       </header>
 
-      {open === null ? null : <Opened mark={open} depth={depth} agents={agents} onClose={() => onOpen(null)} />}
+      {open === null ? null : <Opened mark={open} traced={traced} agents={agents} onClose={() => onOpen(null)} />}
 
       {shown.length === 0 ? (
         <p className="session-word">

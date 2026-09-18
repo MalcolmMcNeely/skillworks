@@ -75,11 +75,11 @@ describe('deepestOf', () => {
 });
 
 describe('noTreeWord', () => {
-  it('says a thin run cannot know the tree, rather than reading as a run that nested nothing', () => {
-    expect(noTreeWord('thin')).toBe('A thin run cannot say what ran inside what.');
+  it('says a run with no span cannot know the tree, rather than reading as a run that nested nothing', () => {
+    expect(noTreeWord(false)).toBe('A run with no spans cannot say what ran inside what.');
   });
 
-  it('says a full run whose View holds nothing ran nothing in it', () => {
-    expect(noTreeWord('full')).toBe('Nothing ran in view.');
+  it('says a traced run whose View holds nothing ran nothing in it', () => {
+    expect(noTreeWord(true)).toBe('Nothing ran in view.');
   });
 });

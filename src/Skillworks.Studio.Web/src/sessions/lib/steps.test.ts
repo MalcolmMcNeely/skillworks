@@ -131,6 +131,7 @@ describe('foldSessionLine', () => {
 
   it('opens thin, so a panel that needs a span never reads a missing figure as a zero', () => {
     expect(opened.depth).toBe('thin');
+    expect(opened.traced).toBe(false);
     expect(opened.agents).toEqual({});
   });
 
@@ -138,14 +139,29 @@ describe('foldSessionLine', () => {
     const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
       kind: 'agents',
       depth: 'full',
+      traced: true,
       agents: { '4': 'agent-a' },
       subagents: [],
     });
 
     expect(answer.depth).toBe('full');
+    expect(answer.traced).toBe(true);
     expect(answer.agents).toEqual({ '4': 'agent-a' });
     expect(answer.steps).toEqual([prompt]);
     expect(answer.arriving).toBe(true);
+  });
+
+  it('keeps a thin run whose spans landed, so withheld words hide no panel a span can fill', () => {
+    const answer = foldSessionLine(opened, {
+      kind: 'agents',
+      depth: 'thin',
+      traced: true,
+      agents: { '4': 'agent-a' },
+      subagents: [],
+    });
+
+    expect(answer.depth).toBe('thin');
+    expect(answer.traced).toBe(true);
   });
 
   it('ends the answer and keeps a gap for each store', () => {

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { Depth } from './agents';
 import { noSplitWord, shareOf, sharesOf, splitLength, type PartSpell, type SplitPage, type SplitPart } from './split';
 
 const at = (seconds: number) => new Date(seconds * 1_000).toISOString();
@@ -10,9 +9,9 @@ const spell = (part: SplitPart, fromSeconds: number, toSeconds: number): PartSpe
   lengthMs: (toSeconds - fromSeconds) * 1_000,
 });
 
-const page = (parts: PartSpell[], kinds: PartSpell[] = [], depth: Depth = 'full'): SplitPage => ({
+const page = (parts: PartSpell[], kinds: PartSpell[] = [], traced = true): SplitPage => ({
   kind: 'split',
-  depth,
+  traced,
   parts,
   kinds,
 });
@@ -69,7 +68,7 @@ describe('sharesOf', () => {
   });
 
   it('says the three parts only a span can tell are not known in a thin run', () => {
-    const shares = sharesOf(page([spell('model', 0, 10)], [], 'thin'), null);
+    const shares = sharesOf(page([spell('model', 0, 10)], [], false), null);
     const unknown = shares.filter((share) => !share.known).map((share) => share.part);
 
     expect(unknown).toEqual(['waiting', 'hooks', 'subagents']);

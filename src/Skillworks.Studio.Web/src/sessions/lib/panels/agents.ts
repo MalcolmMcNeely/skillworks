@@ -20,6 +20,8 @@ export interface Subagent {
 export interface AgentsPage {
   kind: 'agents';
   depth: Depth;
+  // The Spans half alone, because only a Span names an agent, and withheld words leave those Spans standing.
+  traced: boolean;
   // Only the Steps a Subagent ran, as the browser is sent a Session and never a Span.
   agents: Record<string, string>;
   subagents: Subagent[];
@@ -27,9 +29,9 @@ export interface AgentsPage {
 
 export const mainAgent = 'Main agent';
 
-// A Thin run has no Span to name the agent, so it reads not known rather than as the main agent's work.
-export function ranBy(depth: Depth, agents: Record<string, string>, step: string): string {
-  return depth === 'thin' ? notKnown : (agents[step] ?? mainAgent);
+// A run with no Span has none to name the agent, so it reads not known rather than as the main agent's work.
+export function ranBy(traced: boolean, agents: Record<string, string>, step: string): string {
+  return traced ? (agents[step] ?? mainAgent) : notKnown;
 }
 
 export function describeDepth(depth: Depth): string {
@@ -81,10 +83,10 @@ export function briefNote(agent: Subagent): string {
 
 export const noReport = 'This subagent wrote no report.';
 
-// A Thin run has no Span to find a Subagent by, so it says so rather than reading as a run that had none.
-export function noSubagentsWord(depth: Depth, inRun: number): string {
-  if (depth === 'thin') {
-    return 'A thin run cannot say which subagents it ran.';
+// A run with no Span has none to find a Subagent by, so it says so rather than reading as a run that had none.
+export function noSubagentsWord(traced: boolean, inRun: number): string {
+  if (!traced) {
+    return 'A run with no spans cannot say which subagents it ran.';
   }
 
   return inRun === 0 ? 'No subagent ran in this run.' : 'No subagent ran in view.';

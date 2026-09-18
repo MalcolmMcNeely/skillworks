@@ -16,4 +16,6 @@ public sealed record OpenedRun(
     long? LimitTokens,
     IReadOnlyList<StepKey> Keys,
     IReadOnlyList<AgentCall> Called,
+    // An answer or a tool result can be withheld too, and neither moves the Depth.
+    bool PromptsWithheld,
     EventLines Read);

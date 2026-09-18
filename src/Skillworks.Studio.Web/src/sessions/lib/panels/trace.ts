@@ -1,5 +1,3 @@
-import type { Depth } from './agents';
-
 export interface TracePage {
   kind: 'trace';
   // Step ids alone, as the browser is sent a Session and never a Span.
@@ -67,7 +65,7 @@ export function deepestOf<T>(rows: readonly Node<T>[]): number {
   return rows.reduce((deepest, row) => Math.max(deepest, row.level + 1), 0);
 }
 
-// A Thin run has no Span to nest by, so it says so rather than reading as a run that nested nothing.
-export function noTreeWord(depth: Depth): string {
-  return depth === 'thin' ? 'A thin run cannot say what ran inside what.' : 'Nothing ran in view.';
+// A run with no Span has none to nest by, so it says so rather than reading as a run that nested nothing.
+export function noTreeWord(traced: boolean): string {
+  return traced ? 'Nothing ran in view.' : 'A run with no spans cannot say what ran inside what.';
 }

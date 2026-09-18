@@ -39,7 +39,7 @@ public sealed partial class SessionEndpointsTests
 
         var line = await studio.StepLine("split", Morning);
 
-        Assert.Equal(["depth", "kind", "kinds", "parts"], StudioHost.Fields(line));
+        Assert.Equal(["kind", "kinds", "parts", "traced"], StudioHost.Fields(line));
         Assert.Equal(["atUtc", "lengthMs", "part"], StudioHost.Fields(line["parts"]?[0]));
     }
 

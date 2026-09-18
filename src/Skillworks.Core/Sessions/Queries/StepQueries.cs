@@ -60,7 +60,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
 
         if (read.Unreachable is not null || read.Lines.Count == 0)
         {
-            return new OpenedRun(null, [], [], [], [], null, [], [], read);
+            return new OpenedRun(null, [], [], [], [], null, [], [], false, read);
         }
 
         var drawn = Stepped(read.Lines);
@@ -75,8 +75,13 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
             sent.Limit,
             Keys(drawn),
             Called(read.Lines),
+            PromptsWithheld(read.Lines),
             read);
     }
+
+    // Claude Code sends the Prompt with a marker in place of the words, so a withheld one is told from a missing one.
+    private static bool PromptsWithheld(IReadOnlyList<EventLine> lines) =>
+        lines.Any(line => Named(PromptEvent)(line) && line.Attribute(EventAttributes.Prompt) == EventAttributes.Withheld);
 
     private static IReadOnlyList<StepKey> Keys(IReadOnlyList<DrawnStep> drawn) =>
     [

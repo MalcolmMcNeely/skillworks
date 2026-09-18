@@ -1,10 +1,10 @@
 using Skillworks.Core.Arriving;
-using Skillworks.Core.Filters;
 
 namespace Skillworks.Core.Sessions.Split;
 
 // Parts hold no moment twice and cover the whole run; Kinds overlap freely and read beside them.
 public sealed record SplitPage(
-    Depth Depth,
+    // Three of the Parts can only be measured from a Span, so without one they read not known and never zero.
+    bool Traced,
     IReadOnlyList<PartSpell> Parts,
     IReadOnlyList<PartSpell> Kinds) : ArrivingLine("split");

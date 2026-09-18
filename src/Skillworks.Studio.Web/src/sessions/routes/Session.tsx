@@ -236,7 +236,7 @@ function Body({
       <TracePanel
         marks={drawn}
         inside={answer.inside}
-        depth={answer.depth}
+        traced={answer.traced}
         agents={answer.agents}
         view={view}
         selected={where.step}
@@ -246,7 +246,7 @@ function Body({
       <ActivationPanel spells={activationSpells} view={view} opened={where.activation} onOpen={onActivation} />
       <SubagentPanel
         agentSpells={agentSpells}
-        depth={answer.depth}
+        traced={answer.traced}
         view={view}
         opened={where.agent}
         onOpen={onAgent}
@@ -262,7 +262,7 @@ function Body({
       />
       <StepPanel
         marks={drawn}
-        depth={answer.depth}
+        traced={answer.traced}
         agents={answer.agents}
         agent={where.agent}
         view={view}

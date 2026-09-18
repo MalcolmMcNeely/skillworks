@@ -18,4 +18,8 @@ describe('signalOf', () => {
     expect(signalOf('telemetryOff')).toEqual({ word: 'Telemetry off', tone: 'warned' });
     expect(signalOf('telemetryUnknown')).toEqual({ word: 'Telemetry unknown', tone: 'warned' });
   });
+
+  it('names withheld words apart from telemetry, as the two ask for different lines in different files', () => {
+    expect(signalOf('wordsOff')).toEqual({ word: 'Words withheld', tone: 'warned' });
+  });
 });

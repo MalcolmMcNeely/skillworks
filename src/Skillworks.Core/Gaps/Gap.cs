@@ -44,6 +44,23 @@ public sealed record Gap(GapKind Kind, string? Missing)
         return new Gap(kind, missing);
     }
 
+    // The switch is asked for the next action alone, which is the one part of this that differs by machine.
+    internal static Gap OfWords(bool? on) =>
+        new(
+            GapKind.WordsOff,
+            "Claude Code withheld the words of this run's prompts, so it cannot be read in full. " +
+            on switch
+            {
+                false => TelemetrySwitch.TurnOnNote,
+
+                true => "The Telemetry switch records them on this machine, so a run started since it was " +
+                        "turned on carries its words. This one cannot be raised.",
+
+                // A guess of on would promise the next run reads in full, from a file Studio never read.
+                _ => "Studio cannot read Claude Code's settings, so it cannot say whether the words are " +
+                     "recorded here now. The Telemetry switch names the file and what is wrong with it.",
+            });
+
     internal static Gap OfSpans(string? unreachable, int spans, bool? tracing)
     {
         var (kind, missing) = (unreachable, spans, tracing) switch

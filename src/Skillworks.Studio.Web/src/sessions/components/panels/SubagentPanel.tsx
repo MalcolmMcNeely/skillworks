@@ -1,5 +1,5 @@
 import { describeCount, describeLength, describeMoney } from '../../../figures/lib/figures';
-import { briefNote, noReport, noSubagentsWord, tallyOf, type AgentSpell, type Depth } from '../../lib/panels/agents';
+import { briefNote, noReport, noSubagentsWord, tallyOf, type AgentSpell } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';
 import { describeClock } from '../../lib/steps';
@@ -57,14 +57,14 @@ function Row({ spell, open, onOpen }: { spell: AgentSpell; open: boolean; onOpen
 // Every row and every figure here reads the View alone, or the panel would answer a question nobody asked.
 export function SubagentPanel({
   agentSpells,
-  depth,
+  traced,
   view,
   opened,
   onOpen,
   onClose,
 }: {
   agentSpells: readonly AgentSpell[];
-  depth: Depth;
+  traced: boolean;
   view: Range | null;
   opened: string | null;
   onOpen: (spell: AgentSpell) => void;
@@ -88,7 +88,7 @@ export function SubagentPanel({
       {open === null ? null : <Opened spell={open} onClose={onClose} />}
 
       {shown.length === 0 ? (
-        <p className="session-word">{noSubagentsWord(depth, agentSpells.length)}</p>
+        <p className="session-word">{noSubagentsWord(traced, agentSpells.length)}</p>
       ) : (
         <ol className="call-list">
           {shown.map((spell) => (

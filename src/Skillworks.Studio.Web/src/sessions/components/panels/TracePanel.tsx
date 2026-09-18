@@ -1,5 +1,5 @@
 import { describeCount } from '../../../figures/lib/figures';
-import { ranBy, type Depth } from '../../lib/panels/agents';
+import { ranBy } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';
 import { describeLength } from '../../../figures/lib/figures';
@@ -16,7 +16,7 @@ const mostIndent = 8;
 export function TracePanel({
   marks,
   inside,
-  depth,
+  traced,
   agents,
   view,
   selected,
@@ -24,14 +24,14 @@ export function TracePanel({
 }: {
   marks: readonly Mark[];
   inside: Record<string, string>;
-  depth: Depth;
+  traced: boolean;
   agents: Record<string, string>;
   view: Range | null;
   selected: string | null;
   onOpen: (id: string | null) => void;
 }) {
-  // A Thin run has no Span to nest by, so a tree drawn from its Steps alone would be a flat list.
-  const shown = depth === 'thin' ? [] : inRange(marks, view);
+  // A run with no Span has none to nest by, so a tree drawn from its Steps alone would be a flat list.
+  const shown = traced ? inRange(marks, view) : [];
   const rows = treeOf(shown, inside);
 
   return (
@@ -39,7 +39,7 @@ export function TracePanel({
       <header className="panel-head">
         <h2>Trace</h2>
         <p className="micro panel-figure">
-          {depth === 'thin' ? (
+          {!traced ? (
             notKnown
           ) : (
             <>
@@ -51,7 +51,7 @@ export function TracePanel({
       </header>
 
       {rows.length === 0 ? (
-        <p className="session-word">{noTreeWord(depth)}</p>
+        <p className="session-word">{noTreeWord(traced)}</p>
       ) : (
         <ol className="trace-tree">
           {rows.slice(0, mostRows).map((row) => (
@@ -68,7 +68,7 @@ export function TracePanel({
                     <span className="step-note">{noteOf(row.mark.step)}</span>
                   )}
                 </span>
-                <span className="trace-ran">{ranBy(depth, agents, row.mark.step.id)}</span>
+                <span className="trace-ran">{ranBy(traced, agents, row.mark.step.id)}</span>
                 <span className="trace-clock">{describeClock(row.mark.startMs, true)}</span>
                 <span className="trace-spell">{describeLength(row.mark.step.lengthMs)}</span>
               </button>

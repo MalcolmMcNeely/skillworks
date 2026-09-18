@@ -14,12 +14,12 @@ public sealed partial class StepQueries
     {
         if (opened.Run is null)
         {
-            return new SplitPage(traced.Depth, [], []);
+            return new SplitPage(traced.Traced, [], []);
         }
 
         var worked = Worked(opened, traced, ran);
 
-        return new SplitPage(traced.Depth, Apart([.. worked, .. Idle(opened, worked)]), worked);
+        return new SplitPage(traced.Traced, Apart([.. worked, .. Idle(opened, worked)]), worked);
     }
 
     private static IReadOnlyList<PartSpell> Worked(

@@ -27,13 +27,17 @@ public sealed class TelemetrySwitch(ClaudeSettingsFile file, IOptions<ClaudeSett
         return Report(emitting, readable: true, problem: null);
     }
 
+    public bool? TracesOn() => On(TelemetryVariables.Traces);
+
+    public bool? WordsOn() => On(TelemetryVariables.Words);
+
     // A guess of off would send a developer to write a file Studio has refused.
-    public bool? TracesOn()
+    private bool? On(IReadOnlyList<KeyValuePair<string, string>> group)
     {
         var document = file.Read(options.Value.ResolvedPath());
 
         return Unusable(document) is null
-            ? TelemetryVariables.Traces.All(variable => Held(Environment(document), variable.Key) == variable.Value)
+            ? group.All(variable => Held(Environment(document), variable.Key) == variable.Value)
             : null;
     }
 

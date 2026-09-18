@@ -252,7 +252,7 @@ _Avoid_: Block, rejection, denial
 Something Studio names in a Session because it crossed a bar worth a person's attention. Every
 Finding shows the figure it crossed on, so a reader sees how close the call was. Clicking a Finding
 moves the reader to the moment it happened. A Finding that needs the Trace store reads **not known**
-in a Thin Session, never zero.
+in a Session the store holds no Spans for, never zero.
 _Avoid_: Insight, issue, alert
 
 **Bar**:
@@ -278,8 +278,9 @@ back.
 **Depth**:
 How much of a Session can be read: **Full** when its Spans and its Prompts are both there, and
 **Thin** when they are not. A Prompt whose words were withheld is not there, so a Session recorded
-with the words switched off is Thin however whole its Spans. It is part of the Filter, so a reader
-asks for what they can read instead of opening Sessions to find out.
+with the words switched off is Thin however whole its Spans. Each half is also reported on its own,
+because a figure only a Span can give still stands when the words alone are missing. It is part of
+the Filter, so a reader asks for what they can read instead of opening Sessions to find out.
 _Avoid_: Fidelity, completeness, quality
 
 **Split**:
@@ -292,7 +293,7 @@ _Avoid_: Breakdown, time analysis, profile
 **Part**:
 One of the eight things a moment of a Session can be spent on. A moment belongs to exactly one
 Part, so the busiest Part that was running takes it. Waiting for your OK, hooks and only subagents
-each need a Span, and all three read **not known** in a Thin Session, never zero.
+each need a Span, and all three read **not known** where no Span landed, never zero.
 _Avoid_: Bucket, category, slice
 
 **Spell**:

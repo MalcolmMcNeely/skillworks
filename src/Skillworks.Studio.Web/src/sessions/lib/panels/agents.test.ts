@@ -29,16 +29,16 @@ function subagent(id: string, held: Partial<Subagent> = {}): Subagent {
 }
 
 describe('ranBy', () => {
-  it('reads not known in a thin run, so a missing span is never read as the main agent', () => {
-    expect(ranBy('thin', { '4': 'agent-a' }, '4')).toBe('Not known');
+  it('reads not known where no span landed, so a missing span is never read as the main agent', () => {
+    expect(ranBy(false, { '4': 'agent-a' }, '4')).toBe('Not known');
   });
 
   it('names the agent whose span carried the step', () => {
-    expect(ranBy('full', { '4': 'agent-a' }, '4')).toBe('agent-a');
+    expect(ranBy(true, { '4': 'agent-a' }, '4')).toBe('agent-a');
   });
 
   it('puts a step no agent id named on the main agent, as only a subagent carries one', () => {
-    expect(ranBy('full', {}, '4')).toBe(mainAgent);
+    expect(ranBy(true, {}, '4')).toBe(mainAgent);
   });
 });
 
@@ -91,13 +91,13 @@ describe('briefNote', () => {
 });
 
 describe('noSubagentsWord', () => {
-  it('says a thin run cannot know, as no span means no subagent can be found', () => {
-    expect(noSubagentsWord('thin', 0)).toBe('A thin run cannot say which subagents it ran.');
+  it('says a run with no span cannot know, as no span means no subagent can be found', () => {
+    expect(noSubagentsWord(false, 0)).toBe('A run with no spans cannot say which subagents it ran.');
   });
 
   it('tells a run that ran none from a View that holds none', () => {
-    expect(noSubagentsWord('full', 0)).toBe('No subagent ran in this run.');
-    expect(noSubagentsWord('full', 2)).toBe('No subagent ran in view.');
+    expect(noSubagentsWord(true, 0)).toBe('No subagent ran in this run.');
+    expect(noSubagentsWord(true, 2)).toBe('No subagent ran in view.');
   });
 });
 

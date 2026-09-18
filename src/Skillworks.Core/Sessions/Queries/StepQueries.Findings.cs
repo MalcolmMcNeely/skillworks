@@ -1,5 +1,4 @@
 using Skillworks.Core.EventsStore;
-using Skillworks.Core.Filters;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Findings;
@@ -24,7 +23,7 @@ public sealed partial class StepQueries
             return new FindingsPage([]);
         }
 
-        var traces = split?.Depth == Depth.Full;
+        var traces = split?.Traced == true;
 
         return new FindingsPage(
         [

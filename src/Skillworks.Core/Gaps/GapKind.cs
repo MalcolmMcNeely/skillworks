@@ -6,5 +6,6 @@ public enum GapKind
     Unreachable,
     TelemetryOff,
     TelemetryUnknown,
+    WordsOff,
     Quiet,
 }

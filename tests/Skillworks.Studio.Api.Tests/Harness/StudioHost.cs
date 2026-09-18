@@ -12,19 +12,21 @@ public sealed class StudioHost : IDisposable
     public static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web);
 
     // Shares the switch's lists, so this fixture cannot claim telemetry is on while Studio reads it as off.
-    private static string Settings(bool emitting, bool tracing) => new JsonObject
+    private static string Settings(bool emitting, bool tracing, bool words) => new JsonObject
     {
         ["env"] = new JsonObject(
-            Owned(emitting, tracing)
+            Owned(emitting, tracing, words)
                 .Select(variable => KeyValuePair.Create(variable.Key, (JsonNode?)JsonValue.Create(variable.Value)))),
     }.ToJsonString();
 
-    private static IEnumerable<KeyValuePair<string, string>> Owned(bool emitting, bool tracing) =>
+    private static IEnumerable<KeyValuePair<string, string>> Owned(bool emitting, bool tracing, bool words) =>
         TelemetryVariables.For(new ClaudeSettingsOptions().CollectorEndpoint)
-            .Where(variable => Traced(variable) ? tracing : emitting);
+            .Where(variable => In(TelemetryVariables.Traces, variable)
+                ? tracing
+                : In(TelemetryVariables.Words, variable) ? words : emitting);
 
-    private static bool Traced(KeyValuePair<string, string> variable) =>
-        TelemetryVariables.Traces.Any(trace => trace.Key == variable.Key);
+    private static bool In(IReadOnlyList<KeyValuePair<string, string>> group, KeyValuePair<string, string> variable) =>
+        group.Any(held => held.Key == variable.Key);
 
     private readonly TemporaryFolder _folder = new();
     private readonly PinnedClock _clock = new();
@@ -44,12 +46,13 @@ public sealed class StudioHost : IDisposable
         // Not the developer's settings, or Gap tests would pass or fail on this machine's telemetry.
         bool emitting = true,
         bool tracing = true,
+        bool words = true,
         string? settings = null,
         bool tenanted = true,
         int? lookbackDays = null)
     {
         var settingsPath = Path.Combine(_folder.Path, "settings.json");
-        File.WriteAllText(settingsPath, settings ?? Settings(emitting, tracing));
+        File.WriteAllText(settingsPath, settings ?? Settings(emitting, tracing, words));
 
         // Left out unless asked for, as an empty value binds as zero days and would hide the default.
         (string Key, string? Value)[] lookback = lookbackDays is { } days ? [("Loki:LookbackDays", days.ToString())] : [];

@@ -9,8 +9,11 @@ public sealed class GapReport(TelemetrySwitch telemetry)
     public Gap InTotals(EventTotals period, IReadOnlyList<DateOnly> unread) =>
         Gap.Of(period.Unreachable, unread, (long)period.Total, Emitting());
 
-    public Gap InLines(EventLines read, IReadOnlyList<DateOnly> unread) =>
-        Gap.Of(read.Unreachable, unread, read.Lines.Count, Emitting());
+    // Withheld words beat a switch that is off here: the events did arrive, and the two ask for different fixes.
+    public Gap InLines(EventLines read, IReadOnlyList<DateOnly> unread, bool withheld) =>
+        read.Unreachable is null && withheld
+            ? Gap.OfWords(telemetry.WordsOn())
+            : Gap.Of(read.Unreachable, unread, read.Lines.Count, Emitting());
 
     public Gap InSpans(SessionSpans read) => Gap.OfSpans(read.Unreachable, read.Spans.Count, telemetry.TracesOn());
 

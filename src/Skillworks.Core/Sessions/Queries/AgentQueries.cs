@@ -24,9 +24,9 @@ public sealed class AgentQueries(TraceStoreReader traces)
     {
         var read = await traces.OfSessionAsync(id, span.FromUtc, cancellationToken);
 
-        // A run recorded before traces were switched on comes back with none, and that is Thin and not broken.
+        // A run recorded before traces were switched on comes back with none, and that is not a fault.
         return new OpenedSpans(
-            read.Spans.Count > 0 ? Depth.Full : Depth.Thin,
+            read.Spans.Count > 0,
             RanBy(read.Spans, keys),
             SpanTree.Inside(read.Spans, keys),
             Wrapped(read.Spans, called),

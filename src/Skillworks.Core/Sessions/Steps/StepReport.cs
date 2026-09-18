@@ -43,7 +43,11 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
         // Ahead of the Depth, or a run would read Full for a moment with nothing yet nested.
         yield return new TracePage(traced.Inside);
 
-        yield return new AgentsPage(traced.Depth, traced.Agents, ran);
+        yield return new AgentsPage(
+            Depths.Of(traced.Traced, opened.PromptsWithheld),
+            traced.Traced,
+            traced.Agents,
+            ran);
 
         var split = StepQueries.Split(opened, traced, ran);
 
@@ -53,7 +57,7 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
         yield return StepQueries.Found(opened, split, ran);
 
         yield return new StoresEnd(
-            gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst()),
+            gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst(), opened.PromptsWithheld),
             gaps.InSpans(traced.Read));
     }
 }
