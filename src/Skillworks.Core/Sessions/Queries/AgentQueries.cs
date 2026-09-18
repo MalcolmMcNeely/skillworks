@@ -22,7 +22,7 @@ public sealed class AgentQueries(TraceStoreReader traces)
         IReadOnlyList<AgentCall> called,
         CancellationToken cancellationToken)
     {
-        var read = await traces.OfSessionAsync(id, span.FromUtc, cancellationToken);
+        var read = await traces.OfSessionAsync(id, span.FromUtc, span.UntilUtc, cancellationToken);
 
         // A run recorded before traces were switched on comes back with none, and that is not a fault.
         return new OpenedSpans(

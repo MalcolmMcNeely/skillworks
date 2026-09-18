@@ -24,8 +24,6 @@ ingester:
 
 query_frontend:
   search:
-    # Every test reads days at a time, and the default caps a read at a week.
-    max_duration: 0s
     # Without this a test that flushes and reads at once finds nothing. A real read comes long after.
     query_backend_after: 0s
 

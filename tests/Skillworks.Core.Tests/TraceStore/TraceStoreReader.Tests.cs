@@ -15,7 +15,13 @@ public sealed class TraceStoreReaderTests
 
     private const string Prompt = "7a000000000000000000000000000002";
 
-    private static readonly DateTimeOffset From = Moment(At(DaysBack(7), "00:00:00"));
+    // A whole week, the longest period a store that keeps the ordinary limit will answer for.
+    private static readonly DateTimeOffset From = Moment(At(DaysBack(6), "00:00:00"));
+
+    private static readonly DateTimeOffset Until = Moment(At(Tomorrow, "00:00:00"));
+
+    // Longer than a store that keeps the ordinary limit will answer for in one read.
+    private static readonly DateTimeOffset MonthBack = Moment(At(DaysBack(29), "00:00:00"));
 
     [Fact]
     public async Task Reads_back_every_span_of_the_session_it_was_asked_for_oldest_first()
@@ -27,7 +33,7 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, session, Prompt, WholeRun());
 
         // Act
-        var read = await Reader(tenant).OfSessionAsync(session, From, CancellationToken.None);
+        var read = await Reader(tenant).OfSessionAsync(session, From, Until, CancellationToken.None);
 
         // Assert
         Assert.Null(read.Unreachable);
@@ -47,7 +53,7 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, session, Title, [new RecordedSpan(Interaction, At(Yesterday, "10:01:00"), At(Yesterday, "10:01:02"), "b100000000000001")]);
 
         // Act
-        var read = await Reader(tenant).OfSessionAsync(session, From, CancellationToken.None);
+        var read = await Reader(tenant).OfSessionAsync(session, From, Until, CancellationToken.None);
 
         // Assert
         // Claude Code writes a session's title in a trace of its own, so one trace is never the whole Session.
@@ -66,7 +72,7 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, Session(), Title, [new RecordedSpan(Interaction, At(Yesterday, "11:00:00"), At(Yesterday, "11:00:05"), "c100000000000001")]);
 
         // Act
-        var read = await Reader(tenant).OfSessionAsync(asked, From, CancellationToken.None);
+        var read = await Reader(tenant).OfSessionAsync(asked, From, Until, CancellationToken.None);
 
         // Assert
         Assert.All(read.Spans, span => Assert.Equal(asked, span.Attributes["session.id"]));
@@ -82,7 +88,7 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, session, Prompt, WholeRun());
 
         // Act
-        var read = await Reader(tenant).OfSessionAsync(session, From, CancellationToken.None);
+        var read = await Reader(tenant).OfSessionAsync(session, From, Until, CancellationToken.None);
 
         // Assert
         var tool = read.Spans.Single(span => span.Name == "claude_code.tool");
@@ -105,7 +111,7 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, session, Prompt, WholeRun());
 
         // Act
-        var read = await Reader(tenant).OfSessionAsync(session, From, CancellationToken.None);
+        var read = await Reader(tenant).OfSessionAsync(session, From, Until, CancellationToken.None);
 
         // Assert
         var tool = read.Spans.Single(span => span.Name == "claude_code.tool");
@@ -126,11 +132,54 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, session, Prompt, WholeRun());
 
         // Act
-        var read = await Reader(tenant).OfSessionAsync(session, Moment(At(Today, "00:00:00")), CancellationToken.None);
+        var read = await Reader(tenant).OfSessionAsync(
+            session,
+            Moment(At(Today, "00:00:00")),
+            Until,
+            CancellationToken.None);
 
         // Assert
         Assert.Null(read.Unreachable);
         Assert.Empty(read.Spans);
+    }
+
+    [Fact]
+    public async Task Reaches_no_further_forward_than_the_last_day_it_was_asked_for()
+    {
+        // Arrange
+        var tenant = Tenant();
+        var session = Session();
+
+        await Push(tenant, session, Prompt, WholeRun());
+
+        // Act
+        var read = await Reader(tenant).OfSessionAsync(
+            session,
+            From,
+            Moment(At(Today, "00:00:00")),
+            CancellationToken.None);
+
+        // Assert
+        // The spans' own times fall inside this period, so only the day the store took them in leaves them out.
+        Assert.Null(read.Unreachable);
+        Assert.Empty(read.Spans);
+    }
+
+    [Fact]
+    public async Task Reads_back_a_session_over_a_period_longer_than_the_store_will_answer_for()
+    {
+        // Arrange
+        var tenant = Tenant();
+        var session = Session();
+
+        await Push(tenant, session, Prompt, WholeRun());
+
+        // Act
+        var read = await Reader(tenant).OfSessionAsync(session, MonthBack, Until, CancellationToken.None);
+
+        // Assert
+        Assert.Null(read.Unreachable);
+        Assert.Equal(4, read.Spans.Count);
     }
 
     [Fact]
@@ -145,7 +194,7 @@ public sealed class TraceStoreReaderTests
         await Push(tenant, another, Title, [new RecordedSpan(Interaction, At(Yesterday, "11:00:00"), At(Yesterday, "11:00:05"), "c100000000000001")]);
 
         // Act
-        var read = await Reader(tenant).OfPeriodAsync(From, CancellationToken.None);
+        var read = await Reader(tenant).OfPeriodAsync(From, Until, CancellationToken.None);
 
         // Assert
         Assert.Null(read.Unreachable);
@@ -155,10 +204,44 @@ public sealed class TraceStoreReaderTests
     }
 
     [Fact]
+    public async Task Names_no_session_traced_after_the_last_day_it_was_asked_for()
+    {
+        // Arrange
+        var tenant = Tenant();
+
+        await Push(tenant, Session(), Prompt, WholeRun());
+
+        // Act
+        var read = await Reader(tenant).OfPeriodAsync(From, Moment(At(Today, "00:00:00")), CancellationToken.None);
+
+        // Assert
+        // The spans' own times fall inside this period, so only the day the store took them in leaves them out.
+        Assert.Null(read.Unreachable);
+        Assert.Empty(read.Sessions);
+    }
+
+    [Fact]
+    public async Task Names_a_session_over_a_period_longer_than_the_store_will_answer_for()
+    {
+        // Arrange
+        var tenant = Tenant();
+        var session = Session();
+
+        await Push(tenant, session, Prompt, WholeRun());
+
+        // Act
+        var read = await Reader(tenant).OfPeriodAsync(MonthBack, Until, CancellationToken.None);
+
+        // Assert
+        Assert.Null(read.Unreachable);
+        Assert.Equal([session], read.Sessions);
+    }
+
+    [Fact]
     public async Task Names_no_session_when_the_store_holds_no_spans()
     {
         // Act
-        var read = await Reader(Tenant()).OfPeriodAsync(From, CancellationToken.None);
+        var read = await Reader(Tenant()).OfPeriodAsync(From, Until, CancellationToken.None);
 
         // Assert
         Assert.Null(read.Unreachable);
@@ -172,7 +255,7 @@ public sealed class TraceStoreReaderTests
         var down = "http://127.0.0.1:1";
 
         // Act
-        var read = await Reader(Tenant(), down).OfPeriodAsync(From, CancellationToken.None);
+        var read = await Reader(Tenant(), down).OfPeriodAsync(From, Until, CancellationToken.None);
 
         // Assert
         Assert.Empty(read.Sessions);
@@ -187,7 +270,7 @@ public sealed class TraceStoreReaderTests
         var down = "http://127.0.0.1:1";
 
         // Act
-        var read = await Reader(Tenant(), down).OfSessionAsync(Session(), From, CancellationToken.None);
+        var read = await Reader(Tenant(), down).OfSessionAsync(Session(), From, Until, CancellationToken.None);
 
         // Assert
         // The two stores fall short apart from each other, so this reason never speaks for the events store.

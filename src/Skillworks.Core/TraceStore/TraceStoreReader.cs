@@ -25,29 +25,35 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     // A long interactive Session is a few hundred traces, and the default limit of 20 would cut it short.
     private const int MostTraces = 1000;
 
-    // Tempo bounds a search by when spans reached it, so a far end would hide a Session whose spans arrived late.
-    private static readonly DateTimeOffset Ever = DateTimeOffset.FromUnixTimeSeconds(int.MaxValue);
-
     public async Task<SessionSpans> OfSessionAsync(
         string session,
         DateTimeOffset from,
+        DateTimeOffset until,
         CancellationToken cancellationToken)
     {
-        var found = await AskAsync<IReadOnlyList<string>>(
-            Search($"{{ span.{SessionAttribute} = {Quoted(session)} }}", from, Ever, MostTraces),
-            TraceIds,
-            [],
-            cancellationToken);
+        var traces = new HashSet<string>(StringComparer.Ordinal);
 
-        if (found.Unreachable is not null)
+        // A trace that straddles a cut comes back from both windows, so the ids gather into a set.
+        foreach (var (start, end) in Windows(from, until))
         {
-            return SessionSpans.Failed(found.Unreachable);
+            var found = await AskAsync<IReadOnlyList<string>>(
+                Search($"{{ span.{SessionAttribute} = {Quoted(session)} }}", start, end, MostTraces),
+                TraceIds,
+                [],
+                cancellationToken);
+
+            if (found.Unreachable is not null)
+            {
+                return SessionSpans.Failed(found.Unreachable);
+            }
+
+            traces.UnionWith(found.Value);
         }
 
         var spans = new List<Span>();
 
         // A search names only the spans it matched, so the run itself is read back trace by trace.
-        foreach (var trace in found.Value)
+        foreach (var trace in traces)
         {
             var read = await AskAsync<IReadOnlyList<Span>>(Trace(trace), Spans, [], cancellationToken);
 
@@ -63,13 +69,26 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     }
 
     // The values of one attribute, not a search: a period holds far more traces than a search hands back.
-    public async Task<TracedSessions> OfPeriodAsync(DateTimeOffset from, CancellationToken cancellationToken)
+    public async Task<TracedSessions> OfPeriodAsync(
+        DateTimeOffset from,
+        DateTimeOffset until,
+        CancellationToken cancellationToken)
     {
-        var found = await AskAsync<IReadOnlyList<string>>(Values(from, Ever), Sessions, [], cancellationToken);
+        var sessions = new HashSet<string>(StringComparer.Ordinal);
 
-        return found.Unreachable is null
-            ? TracedSessions.Of(found.Value.ToHashSet(StringComparer.Ordinal))
-            : TracedSessions.Failed(found.Unreachable);
+        foreach (var (start, end) in Windows(from, until))
+        {
+            var found = await AskAsync<IReadOnlyList<string>>(Values(start, end), Sessions, [], cancellationToken);
+
+            if (found.Unreachable is not null)
+            {
+                return TracedSessions.Failed(found.Unreachable);
+            }
+
+            sessions.UnionWith(found.Value);
+        }
+
+        return TracedSessions.Of(sessions);
     }
 
     public async Task<TraceStoreAnswer> AnsweringAsync(CancellationToken cancellationToken)
@@ -99,15 +118,34 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         }
     }
 
+    // Within a block a search keeps only the spans whose own times fall in the window, which a values read does not.
     private static string Search(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
         $"api/search?q={Uri.EscapeDataString(traceQl)}&{Window(from, until)}&limit={limit}";
 
     private static string Values(DateTimeOffset from, DateTimeOffset until) =>
         $"api/v2/search/tag/span.{SessionAttribute}/values?{Window(from, until)}";
 
-    // A second's truncation would drop a span at the far end, and Tempo counts seconds in 32 signed bits.
+    // The store picks its blocks by when the spans reached it, so a period ending before they arrived reads none.
     private static string Window(DateTimeOffset from, DateTimeOffset until) =>
-        $"start={from.ToUnixTimeSeconds()}&end={Math.Min(until.ToUnixTimeSeconds() + 1, int.MaxValue)}";
+        $"start={from.ToUnixTimeSeconds()}&end={SecondsRoundedUp(until)}";
+
+    // A whole week is exactly as long as a store will answer for, so a spare second at the end would be refused.
+    private static long SecondsRoundedUp(DateTimeOffset until) => (until.ToUnixTimeMilliseconds() + 999) / 1000;
+
+    private IEnumerable<(DateTimeOffset From, DateTimeOffset Until)> Windows(DateTimeOffset from, DateTimeOffset until)
+    {
+        // At least a day, as a window of none would never move back.
+        var longest = TimeSpan.FromDays(Math.Max(1, options.Value.MaxSearchDays));
+
+        while (until > from)
+        {
+            var start = until - from > longest ? until - longest : from;
+
+            yield return (start, until);
+
+            until = start;
+        }
+    }
 
     // Tempo writes a trace id without its leading zeroes, and takes one back the same way.
     private static string Trace(string traceId) => $"api/v2/traces/{Uri.EscapeDataString(traceId)}";

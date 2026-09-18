@@ -14,6 +14,9 @@ public sealed class TempoOptions
     // Short on purpose: a Tempo container that is down must show as a Gap, not stall the page.
     public int TimeoutSeconds { get; set; } = 5;
 
+    // The store refuses a search longer than a week by default.
+    public int MaxSearchDays { get; set; } = 7;
+
     // Ends in a slash, or a relative route resolved against it drops the last path segment.
     public Uri ResolvedAddress()
     {

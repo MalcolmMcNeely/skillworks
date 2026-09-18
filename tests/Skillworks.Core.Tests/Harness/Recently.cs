@@ -12,6 +12,8 @@ public static class Recently
 
     public static readonly DateOnly Yesterday = Today.AddDays(-1);
 
+    public static readonly DateOnly Tomorrow = Today.AddDays(1);
+
     public static DateOnly DaysBack(int days) => Today.AddDays(-days);
 
     public static string At(DateOnly day, string time) => $"{Written(day)}T{time}Z";

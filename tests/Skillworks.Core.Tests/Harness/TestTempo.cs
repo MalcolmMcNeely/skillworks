@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using DotNet.Testcontainers.Builders;
@@ -84,10 +85,8 @@ public static class TestTempo
         var giveUp = DateTime.UtcNow.AddSeconds(30);
         var query = Uri.EscapeDataString($"{{ span.session.id = \"{session}\" }}");
 
-        // Every span a test pushes is dated in the past, so the window starts at the first second Tempo takes.
-        var route = new Uri(
-            Address,
-            $"api/search?q={query}&start=1&end={DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds()}&limit=1000");
+        // A store that keeps the ordinary limit refuses a window wider than a week, so it is cut to the spans.
+        var route = new Uri(Address, $"api/search?q={query}&{Window(spans)}&limit=1000");
 
         while (DateTime.UtcNow < giveUp)
         {
@@ -96,10 +95,15 @@ public static class TestTempo
             request.Headers.Add("X-Scope-OrgID", tenant);
 
             using var response = await Client.SendAsync(request);
+            var answered = await response.Content.ReadAsStringAsync();
 
-            response.EnsureSuccessStatusCode();
+            // Tempo says why it refused a window only in the body.
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Tempo refused {route} with {(int)response.StatusCode}: {answered}");
+            }
 
-            var found = JsonNode.Parse(await response.Content.ReadAsStringAsync())?["traces"] as JsonArray ?? [];
+            var found = JsonNode.Parse(answered)?["traces"] as JsonArray ?? [];
 
             if (pushed.IsSubsetOf(found.Select(trace => Shortened((string)trace!["traceID"]!))))
             {
@@ -111,6 +115,19 @@ public static class TestTempo
 
         throw new InvalidOperationException($"Tempo never made the spans of {session} searchable.");
     }
+
+    // Tempo picks the blocks to read by when the spans reached it, so the window covers now as well as the spans.
+    private static string Window(IReadOnlyList<JsonObject> spans)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var first = spans.Min(span => Seconds(span, "startTimeUnixNano"));
+        var last = spans.Max(span => Seconds(span, "endTimeUnixNano"));
+
+        return $"start={Math.Min(first, now)}&end={Math.Max(last, now) + 60}";
+    }
+
+    private static long Seconds(JsonObject span, string field) =>
+        long.Parse((string)span[field]!, CultureInfo.InvariantCulture) / 1_000_000_000;
 
     // Tempo answers with a trace id stripped of its leading zeroes.
     private static string Shortened(string traceId) => traceId.TrimStart('0');
