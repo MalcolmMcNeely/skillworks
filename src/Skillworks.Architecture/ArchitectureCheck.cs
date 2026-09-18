@@ -1,4 +1,5 @@
 using Skillworks.Architecture.Comments;
+using Skillworks.Architecture.Contexts;
 using Skillworks.Architecture.Placement;
 using Skillworks.Architecture.Words;
 
@@ -16,6 +17,7 @@ public static class ArchitectureCheck
 
         return new CheckResult(
             [
+                .. ContextMap.Check(root, rules.Contexts),
                 .. MaxTypesPerFolder.Check(sourceFiles, rules.Placement),
                 .. NameMap.Check(sourceFiles, rules.Placement),
                 .. BannedFolderNames.Check(sourceFiles, rules.Placement),
@@ -23,7 +25,7 @@ public static class ArchitectureCheck
                 .. NamespaceFollowsFolder.Check(root, sourceFiles),
                 .. TestsMirrorCode.Check(root, sourceFiles, rules.Placement),
                 .. DocComments.Check(root, sourceFiles, rules.Placement, rules.Comments),
-                .. BannedWords.Check(root, sourceFiles, rules.Words),
+                .. BannedWords.Check(root, sourceFiles, rules.Words, rules.Contexts),
             ],
             sourceFiles.Count);
     }

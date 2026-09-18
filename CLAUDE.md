@@ -8,7 +8,8 @@ GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context.
+See `docs/agents/domain.md`.
 
 ## Working in this repo
 

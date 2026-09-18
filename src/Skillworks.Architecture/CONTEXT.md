@@ -47,7 +47,9 @@ _Avoid_: Partial, split file
 
 **Rule**:
 One thing the code has to be true of. Its text lives in `.claude/rules/`, and the settings it names
-live in the YAML block at the end of that file.
+live in the YAML block at the end of that file. The `contexts` rule is the one exception: its text
+and its settings live in `CONTEXT-MAP.md` at the repository root, because the map is what a reader
+opens to learn which glossary judges a file.
 
 **Breach**:
 One place the code is not true of a Rule. It names the Rule, the path and what to do.
