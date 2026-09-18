@@ -29,6 +29,8 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Theory]
+    [InlineData(PlacementFile, "slices")]
+    [InlineData(PlacementFile, "concerns")]
     [InlineData(PlacementFile, "max-types-per-folder")]
     [InlineData(PlacementFile, "source-files")]
     [InlineData(PlacementFile, "test-files")]
@@ -49,6 +51,8 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Theory]
+    [InlineData(PlacementFile, "slices", "Watch")]
+    [InlineData(PlacementFile, "concerns", "{api: api}")]
     [InlineData(PlacementFile, "max-types-per-folder", "many")]
     [InlineData(PlacementFile, "max-types-per-folder", "0")]
     [InlineData(PlacementFile, "skip-folders", "bin")]

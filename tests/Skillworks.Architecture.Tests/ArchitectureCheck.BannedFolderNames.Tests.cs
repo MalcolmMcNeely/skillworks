@@ -19,10 +19,10 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/App/Helpers/Clock.cs")
-            .Write("web/src/SHARED/format.ts");
+            .Write("web/src/COMMON/format.ts");
 
         Assert.Equal(
-            [("banned-folder-names", "src/App/Helpers"), ("banned-folder-names", "web/src/SHARED")],
+            [("banned-folder-names", "src/App/Helpers"), ("banned-folder-names", "web/src/COMMON")],
             tree.Breaches());
     }
 

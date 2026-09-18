@@ -6,15 +6,8 @@ internal sealed record CSharpProject(string Name, string RootNamespace, string F
 {
     private const string TestProjectSuffix = ".Tests";
 
-    public static IReadOnlyDictionary<string, CSharpProject?> AboveEach(string root, IEnumerable<string> folders)
-    {
-        var projects = new Dictionary<string, CSharpProject?>();
-
-        foreach (var folder in folders)
-            Above(root, folder, projects);
-
-        return projects;
-    }
+    public static IReadOnlyDictionary<string, CSharpProject?> AboveEach(string root, IEnumerable<string> folders) =>
+        SourceTree.NearestAbove(folders, folder => At(root, folder));
 
     public string? TestedProjectName =>
         Name.EndsWith(TestProjectSuffix, StringComparison.Ordinal) ? Name[..^TestProjectSuffix.Length] : null;
@@ -24,33 +17,20 @@ internal sealed record CSharpProject(string Name, string RootNamespace, string F
 
     public string FolderMirroredIn(CSharpProject other, string folder) => other.FolderAt(RelativePathOf(folder));
 
-    private string RelativePathOf(string folder) =>
-        folder == Folder ? "" : folder[(Folder.Length == 0 ? 0 : Folder.Length + 1)..];
+    private string RelativePathOf(string folder) => SourceTree.Beneath(Folder, folder);
 
     private string FolderAt(string relativePath) =>
         relativePath.Length == 0 ? Folder
         : Folder.Length == 0 ? relativePath
         : $"{Folder}/{relativePath}";
 
-    private static CSharpProject? Above(string root, string folder, Dictionary<string, CSharpProject?> projects)
-    {
-        if (projects.TryGetValue(folder, out var known))
-            return known;
-
-        var projectFile = Directory
+    private static CSharpProject? At(string root, string folder) =>
+        Directory
             .EnumerateFiles(Path.Combine(root, folder), "*.csproj")
             .Order(StringComparer.Ordinal)
-            .FirstOrDefault();
-
-        var project = projectFile is not null
+            .FirstOrDefault() is { } projectFile
             ? Read(projectFile, folder)
-            : folder.Length > 0
-                ? Above(root, SourceTree.FolderOf(folder), projects)
-                : null;
-
-        projects[folder] = project;
-        return project;
-    }
+            : null;
 
     private static CSharpProject Read(string projectFile, string folder)
     {

@@ -30,6 +30,32 @@ internal static class SourceTree
 
     public static string FolderOf(string path) => path.LastIndexOf('/') is var slash and >= 0 ? path[..slash] : "";
 
+    public static string Beneath(string root, string folder) =>
+        folder == root ? "" : folder[(root.Length == 0 ? 0 : root.Length + 1)..];
+
+    public static IReadOnlyDictionary<string, T?> NearestAbove<T>(IEnumerable<string> folders, Func<string, T?> at)
+        where T : class
+    {
+        var found = new Dictionary<string, T?>();
+
+        foreach (var folder in folders)
+            Nearest(folder, at, found);
+
+        return found;
+    }
+
+    private static T? Nearest<T>(string folder, Func<string, T?> at, Dictionary<string, T?> found)
+        where T : class
+    {
+        if (found.TryGetValue(folder, out var known))
+            return known;
+
+        var nearest = at(folder) ?? (folder.Length > 0 ? Nearest(FolderOf(folder), at, found) : null);
+
+        found[folder] = nearest;
+        return nearest;
+    }
+
     // A worktree or a clone inside the root is another checkout, which answers to its own rules.
     private static bool IsRepository(string folder) => Path.Exists(Path.Combine(folder, ".git"));
 }

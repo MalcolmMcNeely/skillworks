@@ -9,6 +9,8 @@ public sealed class RulesTree : IDisposable
 
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("skillworks-architecture");
 
+    private readonly List<string> _projects = [];
+
     private readonly Dictionary<string, (string Glossary, IReadOnlyList<string> Code)> _contexts = new()
     {
         ["app"] = ("CONTEXT.md", ["src", "tests", "web"]),
@@ -19,11 +21,13 @@ public sealed class RulesTree : IDisposable
     {
         [PlacementFile] = new()
         {
+            ["slices"] = "[Watch, Sessions]",
+            ["concerns"] = "[api, components, lib, routes]",
             ["max-types-per-folder"] = "10",
             ["source-files"] = "[.cs, .ts, .tsx]",
             ["test-files"] = "[\"*.Tests.cs\", \"*.test.ts\", \"*.test.tsx\"]",
             ["skip-folders"] = "[Migrations, bin, obj, node_modules]",
-            ["banned-folder-names"] = "[utils, helpers, common, shared, misc]",
+            ["banned-folder-names"] = "[utils, helpers, common, misc]",
             ["name-map"] = "{\"*Queries\": Queries}",
         },
         [CommentsFile] = new()
@@ -72,6 +76,15 @@ public sealed class RulesTree : IDisposable
         return WriteContextMap();
     }
 
+    // A project turns on the namespace rule, so a file beneath one is written with the namespace its folder asks for.
+    public RulesTree Project(string folder)
+    {
+        _projects.Add(folder);
+        return Write($"{folder}/{Path.GetFileName(folder)}.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+    }
+
+    public RulesTree FrontEnd(string folder) => Write($"{folder}/package.json", "{}\n");
+
     public RulesTree Write(string path, string? content = null)
     {
         var full = Path.Combine(_root.FullName, path);
@@ -86,24 +99,41 @@ public sealed class RulesTree : IDisposable
         return this;
     }
 
-    public CheckResult Check() => ArchitectureCheck.Run(_root.FullName);
+    public CheckResult Check(params string[] alsoRun) => ArchitectureCheck.Run(_root.FullName, alsoRun);
 
-    public IEnumerable<(string Rule, string Path)> Breaches() =>
-        Check().Breaches.Select(breach => (breach.Rule, breach.Path));
+    public IEnumerable<(string Rule, string Path)> Breaches(params string[] alsoRun) =>
+        Check(alsoRun).Breaches.Select(breach => (breach.Rule, breach.Path));
 
     public void Dispose() => _root.Delete(recursive: true);
 
     // A C# file with no content breaks the one-type rule, which would crowd the breaches of every other rule.
-    private static string TypeNamedFor(string path)
+    private string TypeNamedFor(string path)
     {
         var fileName = Path.GetFileName(path);
         if (!fileName.EndsWith(".cs", StringComparison.Ordinal))
             return "";
 
         var subject = fileName.Split('.')[0];
-        return fileName.EndsWith(".Tests.cs", StringComparison.Ordinal)
-            ? $"public sealed partial class {subject}Tests;\n"
-            : $"public sealed partial class {subject};\n";
+        var name = fileName.EndsWith(".Tests.cs", StringComparison.Ordinal) ? $"{subject}Tests" : subject;
+
+        return $"{NamespaceOf(path)}public sealed partial class {name};\n";
+    }
+
+    private string NamespaceOf(string path)
+    {
+        var folder = path.LastIndexOf('/') is var slash and >= 0 ? path[..slash] : "";
+
+        var project = _projects
+            .Where(candidate => folder == candidate || folder.StartsWith($"{candidate}/", StringComparison.Ordinal))
+            .MaxBy(candidate => candidate.Length);
+
+        if (project is null)
+            return "";
+
+        var beneath = folder[project.Length..].Trim('/').Replace('/', '.');
+        var root = Path.GetFileName(project);
+
+        return $"namespace {(beneath.Length == 0 ? root : $"{root}.{beneath}")};\n\n";
     }
 
     private RulesTree WriteRules(string file)

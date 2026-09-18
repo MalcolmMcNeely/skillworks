@@ -4,6 +4,8 @@ using Skillworks.Architecture.RulesFiles;
 namespace Skillworks.Architecture.Placement;
 
 internal sealed record PlacementRules(
+    IReadOnlyList<string> Slices,
+    IReadOnlyList<string> Concerns,
     int MaxTypesPerFolder,
     IReadOnlyList<string> SourceFiles,
     IReadOnlyList<string> TestFiles,
@@ -13,8 +15,12 @@ internal sealed record PlacementRules(
 {
     public const string RelativePath = ".claude/rules/file-placement.md";
 
+    private const string Shared = "Shared";
+
     public static PlacementRules Read(RulesFile file)
     {
+        var slices = file.RequireList("slices");
+        var concerns = file.RequireList("concerns");
         var maxTypesPerFolder = file.RequireWholeNumber("max-types-per-folder");
         var sourceFiles = file.RequireList("source-files");
         var testFiles = file.RequireList("test-files");
@@ -25,8 +31,32 @@ internal sealed record PlacementRules(
             "a map from a name with `*` at the start or the end to a folder name, such as {\"*Queries\": Queries}",
             IsNamePattern);
 
-        return new(maxTypesPerFolder, sourceFiles, testFiles, skipFolders, bannedFolderNames, nameMap);
+        return new(
+            slices,
+            concerns,
+            maxTypesPerFolder,
+            sourceFiles,
+            testFiles,
+            skipFolders,
+            bannedFolderNames,
+            nameMap);
     }
+
+    public string SharedFolderName(bool frontEnd) => InCase(Shared, frontEnd);
+
+    public IReadOnlyList<string> SliceAndSharedNames(bool frontEnd) =>
+        [.. Slices.Select(name => InCase(name, frontEnd)), SharedFolderName(frontEnd)];
+
+    public bool IsSlice(string folderName, bool frontEnd) =>
+        Slices.Any(name => InCase(name, frontEnd) == folderName);
+
+    public bool IsSliceOrShared(string folderName, bool frontEnd) =>
+        IsSlice(folderName, frontEnd) || folderName == SharedFolderName(frontEnd);
+
+    public bool IsSharedInAnyCase(string folderName) =>
+        string.Equals(folderName, Shared, StringComparison.OrdinalIgnoreCase);
+
+    public bool IsConcern(string folderName) => Concerns.Contains(folderName, StringComparer.Ordinal);
 
     public bool IsSourceFile(string fileName) =>
         SourceFiles.Any(suffix => fileName.EndsWith(suffix, StringComparison.Ordinal));
@@ -61,6 +91,9 @@ internal sealed record PlacementRules(
                     : subject.StartsWith(entry.Key[..^1], StringComparison.Ordinal))
                 .Select(entry => (Pattern: entry.Key, Folder: entry.Value)),
         ];
+
+    // A Slice keeps its name in each language's own case.
+    private static string InCase(string name, bool frontEnd) => frontEnd ? name.ToLowerInvariant() : name;
 
     private static bool IsNamePattern(string pattern) =>
         pattern.Length > 1 && pattern.AsSpan().Count('*') == 1 && (pattern[0] == '*' || pattern[^1] == '*');

@@ -17,14 +17,8 @@ internal static class NameMap
             yield return new Breach(
                 Rule,
                 file,
-                $"Move the file into a folder named {OneOf(entries.Select(entry => entry.Folder).Distinct())}, " +
-                $"which the name map gives to a name that matches {OneOf(entries.Select(entry => entry.Pattern))}.");
+                $"Move the file into a folder named {Breach.OneOf(entries.Select(entry => entry.Folder).Distinct())}, " +
+                $"which the name map gives to a name that matches {Breach.OneOf(entries.Select(entry => entry.Pattern))}.");
         }
-    }
-
-    private static string OneOf(IEnumerable<string> names)
-    {
-        var quoted = names.Select(name => $"`{name}`").ToList();
-        return quoted is [var only] ? only : $"{string.Join(", ", quoted.SkipLast(1))} or {quoted[^1]}";
     }
 }
