@@ -93,6 +93,12 @@ public sealed class RulesTree : IDisposable
         return this;
     }
 
+    public RulesTree Reads(string path, params string[] namespaces)
+    {
+        var usings = string.Concat(namespaces.Select(name => $"using {name};\n"));
+        return Write(path, $"{usings}\n{TypeNamedFor(path)}");
+    }
+
     public RulesTree Delete(string path)
     {
         File.Delete(Path.Combine(_root.FullName, path));

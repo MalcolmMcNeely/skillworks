@@ -18,6 +18,16 @@ internal sealed class CSharpFile
         TopLevelTypes = [.. types.Where(type => type.Parent is not TypeDeclarationSyntax).Select(Declared)];
         NestedTypes = [.. types.Where(type => type.Parent is TypeDeclarationSyntax).Select(Declared)];
         HasTopLevelStatements = unit.Members.OfType<GlobalStatementSyntax>().Any();
+
+        // An alias and a static using carry the name they reach in the same place as a plain one.
+        Usings =
+        [
+            .. unit
+                .DescendantNodes()
+                .OfType<UsingDirectiveSyntax>()
+                .Select(directive => directive.Name?.ToString())
+                .OfType<string>(),
+        ];
     }
 
     public IReadOnlyList<DeclaredType> TopLevelTypes { get; }
@@ -25,6 +35,8 @@ internal sealed class CSharpFile
     public IReadOnlyList<DeclaredType> NestedTypes { get; }
 
     public bool HasTopLevelStatements { get; }
+
+    public IReadOnlyList<string> Usings { get; }
 
     public static bool IsCSharp(string file) => Path.GetExtension(file) == ".cs";
 

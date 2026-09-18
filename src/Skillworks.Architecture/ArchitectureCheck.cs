@@ -33,6 +33,8 @@ public static class ArchitectureCheck
                 .. BannedWords.Check(root, sourceFiles, rules.Words, rules.Contexts),
                 .. WhenAskedFor(SliceFolders.Rule, () => SliceFolders.Check(root, sourceFiles, rules.Placement)),
                 .. WhenAskedFor(ConcernFolders.Rule, () => ConcernFolders.Check(root, sourceFiles, rules.Placement)),
+                .. WhenAskedFor(SlicesStayApart.Rule, () => SlicesStayApart.Check(root, sourceFiles, rules.Placement)),
+                .. WhenAskedFor(SharedStaysBelow.Rule, () => SharedStaysBelow.Check(root, sourceFiles, rules.Placement)),
             ],
             sourceFiles.Count);
     }

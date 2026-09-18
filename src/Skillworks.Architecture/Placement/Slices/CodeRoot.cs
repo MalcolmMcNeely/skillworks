@@ -5,10 +5,13 @@ internal sealed record CodeRoot(string Folder, bool IsFrontEnd)
     private const string FrontEndCode = "src";
     private const string FrontEndPackage = "package.json";
 
+    public static IReadOnlyDictionary<string, CodeRoot?> AboveEach(string root, IEnumerable<string> folders) =>
+        SourceTree.NearestAbove(folders, folder => At(root, folder));
+
     public static IEnumerable<CodeRootFolder> FoldersUnder(string root, IReadOnlyList<string> sourceFiles)
     {
         var folders = sourceFiles.Select(SourceTree.FolderOf).Distinct().ToList();
-        var roots = SourceTree.NearestAbove(folders, folder => At(root, folder));
+        var roots = AboveEach(root, folders);
 
         return folders
             .Where(folder => roots[folder] is not null)
@@ -18,6 +21,9 @@ internal sealed record CodeRoot(string Folder, bool IsFrontEnd)
     }
 
     public string PathOf(string folderName) => Folder.Length == 0 ? folderName : $"{Folder}/{folderName}";
+
+    public string? TopFolderOf(string folder) =>
+        SourceTree.Beneath(Folder, folder).Split('/') is [{ Length: > 0 } name, ..] ? name : null;
 
     private IEnumerable<CodeRootFolder> Climb(string folder)
     {
