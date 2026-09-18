@@ -41,6 +41,12 @@ main() {
     esac
   }
 
+  # The mean argument is unused: no caller measures one yet.
+  progress_suffix() {
+    local position="$1" total="$2" mean="${3:-}"
+    printf '%s/%s' "$position" "$total"
+  }
+
   # Git Bash would pass "/comment-sweep" to claude as "C:/Program Files/Git/comment-sweep".
   claude_p() {
     MSYS_NO_PATHCONV=1 env -u CLAUDECODE claude -p "$@" \
@@ -111,7 +117,8 @@ main() {
     local ticket="$1" step="$2" out check
     shift 2
     out=$(step_log "$ticket" "$step")
-    say "STEP  #$ticket $step"
+    say "$(printf 'STEP  #%s %-7s%s' \
+      "$ticket" "$step" "$(progress_suffix "$POSITION" "$TICKET_COUNT")")"
     claude_p "$(step_prompt "$ticket" "$step")" "$@" >"$out.json" 2>"$out.err" \
       || stop_step "$ticket" "$step" "exited non-zero" "$out.err and $out.json"
     for check in $(step_checks "$step"); do
@@ -151,8 +158,10 @@ main() {
   spec_title=$(gh api "repos/$REPO/issues/$SPEC" --jq .title)
   [ "$spec_state" = "open" ] || die "ABORT spec #$SPEC is $spec_state. The loop needs it open."
 
-  ticket_count=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" --jq 'length' | head -1)
-  [ "${ticket_count:-0}" -gt 0 ] || die "ABORT spec #$SPEC has no sub-issues. Run /to-tickets first."
+  # --paginate runs --jq once per page, so a length per page would count only
+  # the first hundred. Counting the numbers themselves spans every page.
+  TICKET_COUNT=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" --jq '.[].number' | wc -l)
+  [ "$TICKET_COUNT" -gt 0 ] || die "ABORT spec #$SPEC has no sub-issues. Run /to-tickets first."
 
   # --- working tree ---------------------------------------------------------
 
@@ -194,6 +203,11 @@ main() {
   # --- the loop -------------------------------------------------------------
 
   while :; do
+    open_tickets=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
+                     --jq '.[] | select(.state=="open") | .number')
+    open_count=0
+    [ -z "$open_tickets" ] || open_count=$(( $(printf '%s\n' "$open_tickets" | wc -l) ))
+
     next=""
     while read -r n; do
       [ -n "$n" ] || continue
@@ -210,14 +224,11 @@ main() {
       if [ -n "$others" ]; then continue; fi
       next="$n"
       break
-    done < <(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
-               --jq '.[] | select(.state=="open") | .number')
+    done <<<"$open_tickets"
 
     if [ -z "$next" ]; then
-      remaining=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
-        --jq '[.[] | select(.state=="open")] | length' | head -1)
-      [ "${remaining:-0}" -eq 0 ] && break
-      die "STUCK $remaining ticket(s) still open but none are startable (blocked, or claimed by someone else)."
+      [ "$open_count" -eq 0 ] && break
+      die "STUCK $open_count ticket(s) still open but none are startable (blocked, or claimed by someone else)."
     fi
 
     title=$(gh api "repos/$REPO/issues/$next" --jq .title)
@@ -233,6 +244,9 @@ main() {
       say "SKIP  #$next claimed by $others"
       continue
     fi
+
+    # Counts closed tickets, not this run's, so a rerun starts at its real place.
+    POSITION=$(( TICKET_COUNT - open_count + 1 ))
 
     say "START #$next $title"
     TICKET_BASE=$(git rev-parse HEAD)
