@@ -7,8 +7,12 @@ namespace Skillworks.Studio.Api.Tests.Sessions;
 
 public static class SessionRequests
 {
-    public static Task<IReadOnlyList<JsonObject>> SessionLines(this StudioHost studio, string filter = "") =>
-        studio.Lines($"/api/sessions{filter}");
+    // A count stops reading part way, which is how a test sees what the gate alone answered.
+    public static Task<IReadOnlyList<JsonObject>> SessionLines(
+        this StudioHost studio,
+        string filter = "",
+        int count = int.MaxValue) =>
+        studio.Lines($"/api/sessions{filter}", count);
 
     public static async Task<SessionsAnswer> SessionAnswer(this StudioHost studio, string filter = "") =>
         SessionsAnswer.Of(await studio.SessionLines(filter));

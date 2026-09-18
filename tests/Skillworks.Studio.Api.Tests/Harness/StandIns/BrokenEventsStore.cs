@@ -9,30 +9,32 @@ namespace Skillworks.Studio.Api.Tests.Harness.StandIns;
 // Stands in for a store that is down, failing or stops part way, which a running Loki cannot be made to be.
 public sealed class BrokenEventsStore : DelegatingHandler
 {
-    private readonly DateOnly _oldestAnswered;
+    private readonly Func<Uri, bool> _breaks;
     private readonly Func<BrokenEventsStore, CancellationToken, Task<HttpResponseMessage>> _broken;
     private readonly ConcurrentQueue<Uri> _asked = new();
     private readonly TaskCompletionSource<TimeSpan> _heldFor = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    // Answered days come from the test Loki, so the days before the break hold real figures.
     private BrokenEventsStore(
-        DateOnly oldestAnswered,
+        Func<Uri, bool> breaks,
         Func<BrokenEventsStore, CancellationToken, Task<HttpResponseMessage>> broken)
         : base(new HttpClientHandler())
     {
-        _oldestAnswered = oldestAnswered;
+        _breaks = breaks;
         _broken = broken;
     }
 
-    public static BrokenEventsStore Down() => new(DateOnly.MaxValue, Refused);
+    public static BrokenEventsStore Down() => new(Before(DateOnly.MaxValue), Refused);
 
     public static BrokenEventsStore Failing(HttpStatusCode status) =>
-        new(DateOnly.MaxValue, (_, _) => Task.FromResult(new HttpResponseMessage(status)));
+        new(Before(DateOnly.MaxValue), (_, _) => Task.FromResult(new HttpResponseMessage(status)));
 
-    public static BrokenEventsStore DownBefore(DateOnly oldestAnswered) => new(oldestAnswered, Refused);
+    public static BrokenEventsStore DownBefore(DateOnly oldestAnswered) => new(Before(oldestAnswered), Refused);
 
     public static BrokenEventsStore StallingBefore(DateOnly oldestAnswered) =>
-        new(oldestAnswered, (store, cancellationToken) => store.HoldAsync(cancellationToken));
+        new(Before(oldestAnswered), Hold);
+
+    // Each read names the events it counts, so a test can hold one back and leave the rest answering.
+    public static BrokenEventsStore StallingOn(Func<string, bool> read) => new(route => read(QueryOf(route)), Hold);
 
     public IReadOnlyList<string> Asked => [.. _asked.Select(route => route.PathAndQuery)];
 
@@ -48,13 +50,19 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
         _asked.Enqueue(route);
 
-        return DayOf(route) >= _oldestAnswered
-            ? base.SendAsync(request, cancellationToken)
-            : _broken(this, cancellationToken);
+        return _breaks(route) ? _broken(this, cancellationToken) : base.SendAsync(request, cancellationToken);
     }
+
+    // Answered days come from the test Loki, so the days on or after this one hold real figures.
+    private static Func<Uri, bool> Before(DateOnly oldestAnswered) => route => !(DayOf(route) >= oldestAnswered);
+
+    private static string QueryOf(Uri route) => HttpUtility.ParseQueryString(route.Query)["query"] ?? "";
 
     private static Task<HttpResponseMessage> Refused(BrokenEventsStore store, CancellationToken cancellationToken) =>
         throw new HttpRequestException("connection refused");
+
+    private static Task<HttpResponseMessage> Hold(BrokenEventsStore store, CancellationToken cancellationToken) =>
+        store.HoldAsync(cancellationToken);
 
     private async Task<HttpResponseMessage> HoldAsync(CancellationToken cancellationToken)
     {

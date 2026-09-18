@@ -18,23 +18,25 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
 
         yield return new SessionsHead(span, order.SortedOn, order.HighestFirst);
 
-        var (rows, measures, period, traced) = await sessions.ListAsync(span, filter, order, cancellationToken);
+        var read = await sessions.ListAsync(span, filter, order, cancellationToken);
 
         // Every row is the events store's answer, so a trace store that fell short leaves them standing.
-        if (period.Unreachable is null)
+        if (read.Unreachable is null)
         {
-            yield return new SessionsPage(rows);
+            yield return new SessionsPage(read.Rows);
 
             // Behind the rows, so a reader has the table in hand before a single number reaches it.
-            foreach (var measure in measures.Lines())
+            await foreach (var measure in read.Measures.WithCancellation(cancellationToken))
             {
                 yield return measure;
             }
         }
 
+        var period = await read.Period;
+
         yield return new GapEnd(Shown(
             gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()),
-            gaps.InDepths(traced)));
+            gaps.InDepths(read.Traced)));
     }
 
     // An events store that never answered emptied the table, so it is named ahead of a trace store.

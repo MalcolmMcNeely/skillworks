@@ -11,14 +11,18 @@ public sealed record SessionsAnswer(
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, decimal>> Measures,
     GapRow Gap)
 {
+    // Read on their own as well, so a test that stops before the end line still sees the rows.
+    public static IReadOnlyList<SessionRow> RowsIn(IReadOnlyList<JsonObject> lines) =>
+    [
+        .. lines
+            .Where(line => StudioHost.KindOf(line) == "sessions")
+            .SelectMany(line => line["sessions"]?.AsArray() ?? [])
+            .Select(StudioHost.Read<SessionRow>)
+    ];
+
     public static SessionsAnswer Of(IReadOnlyList<JsonObject> lines) => new(
         StudioHost.Read<SessionsHeadRow>(lines.Single(line => StudioHost.KindOf(line) == "head")),
-        [
-            .. lines
-                .Where(line => StudioHost.KindOf(line) == "sessions")
-                .SelectMany(line => line["sessions"]?.AsArray() ?? [])
-                .Select(StudioHost.Read<SessionRow>)
-        ],
+        RowsIn(lines),
         lines
             .Where(line => StudioHost.KindOf(line) == "measure")
             .ToDictionary(

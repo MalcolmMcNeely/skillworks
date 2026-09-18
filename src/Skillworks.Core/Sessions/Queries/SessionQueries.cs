@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Sessions.Measures;
@@ -55,8 +56,10 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
 
     private static readonly string[] ByDecision = [EventAttributes.Session, DecisionAttribute];
 
+    private static readonly IReadOnlyDictionary<string, decimal> NoValues = new Dictionary<string, decimal>();
+
     // Totals, never a list of events: a busy organisation's week is more lines than one read holds.
-    public async Task<(IReadOnlyList<SessionRow> Rows, SessionMeasures Measures, EventTotals Period, TracedSessions Traced)> ListAsync(
+    public async Task<SessionsRead> ListAsync(
         DaySpan span,
         Filter filter,
         SessionOrder order,
@@ -67,68 +70,139 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         // Started with the totals, so a Depth costs a reader no wait the events store was not already taking.
         var tracing = depths.OfPeriodAsync(span, filter, cancellationToken);
 
+        // The gate: issued ahead of the Measures, because Loki runs four queries at a time.
         var placing = events.CountAsync(everything, ByWhereabouts, cancellationToken);
         var starting = events.EarliestAsync(everything, BySession, cancellationToken);
         var ending = events.LatestAsync(everything, BySession, cancellationToken);
         var titling = events.EarliestAsync(Titles(span, filter), ByTitle, cancellationToken);
         var prompting = events.EarliestAsync(everything with { EventName = PromptEvent }, ByPrompt, cancellationToken);
+
+        // In the gate too, because a Skill decides which runs are listed.
+        var activating = filter.Skill is null
+            ? Task.FromResult(EventTotals.Of([]))
+            : events.CountAsync(ActivationsIn(span, filter), BySession, cancellationToken);
+
         var calling = events.CountAsync(everything with { EventName = ToolCallEvent }, ByOutcome, cancellationToken);
         var deciding = events.CountAsync(everything with { EventName = DecisionEvent }, ByDecision, cancellationToken);
         var erring = events.CountAsync(everything with { EventName = ModelErrorEvent }, BySession, cancellationToken);
         var costing = events.SumAsync(everything with { EventName = TurnEvent }, CostAttribute, BySession, cancellationToken);
 
-        var activating = filter.Skill is null
-            ? Task.FromResult(EventTotals.Of([]))
-            : events.CountAsync(ActivationsIn(span, filter), BySession, cancellationToken);
-
         // Judged on the period, not on what was asked, or a Repository with no runs would read as a quiet week.
         var surveying = filter.Repository is null ? placing : events.CountAsync(Events(span), [], cancellationToken);
 
-        var read = new Readings(
+        var measuring = new Dictionary<Measure, Task<Measured>>
+        {
+            [Measure.ToolCalls] = TotalledAsync(Measure.ToolCalls, calling, read => TotalledIn(read.Groups)),
+            [Measure.Cost] = TotalledAsync(Measure.Cost, costing, read => TotalledIn(read.Groups)),
+            [Measure.Faults] = FaultsAsync(calling, erring),
+            [Measure.Friction] = TotalledAsync(Measure.Friction, deciding, read => TotalledIn(read.Groups.Where(Refused))),
+        };
+
+        var gate = new Gate(
             await placing,
             await starting,
             await ending,
             await titling,
             await prompting,
-            await calling,
-            await deciding,
-            await erring,
-            await costing,
-            await activating,
-            await surveying);
+            await activating);
 
-        var period = read.Surveyed with { Unreachable = read.Unreachable };
+        // A reader who arrived sorted on a Measure waits for it here, so the rows are drawn once, in that order.
+        var ranking = order.SortedMeasure is { } sortedOn ? await measuring[sortedOn] : null;
+
         var traced = await tracing;
 
-        if (period.Unreachable is not null)
+        if ((gate.Unreachable ?? ranking?.Unreachable) is { } unreachable)
         {
-            return ([], SessionMeasures.Nothing, period, traced);
+            var empty = PeriodAsync(unreachable, surveying, rows: false);
+
+            return new SessionsRead(unreachable, [], AsyncEnumerable.Empty<SessionMeasure>(), empty, traced);
         }
 
-        var (rows, measures) = Rows(read, filter, order, traced);
+        var rows = Rows(gate, filter, order, traced, ranking?.Values ?? NoValues);
 
-        return (rows, measures, period, traced);
+        return new SessionsRead(
+            null,
+            rows,
+            LandingAsync(measuring.Values, rows, cancellationToken),
+            PeriodAsync(null, surveying, rows.Count > 0),
+            traced);
     }
 
-    private (IReadOnlyList<SessionRow> Rows, SessionMeasures Measures) Rows(
-        Readings read,
+    // Each lands on its own, so nothing ready is held back to buy an order a test could read top to bottom.
+    private static async IAsyncEnumerable<SessionMeasure> LandingAsync(
+        IEnumerable<Task<Measured>> measuring,
+        IReadOnlyList<SessionRow> rows,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var landing in Task.WhenEach(measuring).WithCancellation(cancellationToken))
+        {
+            var measured = await landing;
+
+            if (measured.Unreachable is null)
+            {
+                yield return new SessionMeasure(measured.Measure, Only(rows, measured.Values));
+            }
+        }
+    }
+
+    private static async Task<Measured> TotalledAsync(
+        Measure measure,
+        Task<EventTotals> reading,
+        Func<EventTotals, IReadOnlyDictionary<string, decimal>> totalled)
+    {
+        var read = await reading;
+
+        return new Measured(measure, read.Unreachable is null ? totalled(read) : NoValues, read.Unreachable);
+    }
+
+    // Both halves are added before the figure goes out, so a reader never watches the count climb from one to both.
+    private static async Task<Measured> FaultsAsync(Task<EventTotals> calling, Task<EventTotals> erring)
+    {
+        var (called, erred) = (await calling, await erring);
+        var unreachable = called.Unreachable ?? erred.Unreachable;
+
+        var values = unreachable is null
+            ? Added(TotalledIn(called.Groups.Where(Failed)), TotalledIn(erred.Groups))
+            : NoValues;
+
+        return new Measured(Measure.Faults, values, unreachable);
+    }
+
+    // The survey only tells a quiet period from a narrowed one, which rows on the table answer already, so
+    // a survey that fell short is worth saying only where there are no rows to say it about.
+    private static async Task<EventTotals> PeriodAsync(string? gated, Task<EventTotals> surveying, bool rows)
+    {
+        var surveyed = await surveying;
+
+        return surveyed with { Unreachable = gated ?? (rows ? null : surveyed.Unreachable) };
+    }
+
+    // A run no row names was narrowed away, and handing its figure back would undo the narrowing.
+    private static IReadOnlyDictionary<string, decimal> Only(
+        IReadOnlyList<SessionRow> rows,
+        IReadOnlyDictionary<string, decimal> values) =>
+        rows.Where(row => values.ContainsKey(row.Id)).ToDictionary(row => row.Id, row => values[row.Id]);
+
+    private IReadOnlyList<SessionRow> Rows(
+        Gate gate,
         Filter filter,
         SessionOrder order,
-        TracedSessions traced)
+        TracedSessions traced,
+        IReadOnlyDictionary<string, decimal> ranked)
     {
-        var (firstEvent, lastEvent) = (MomentsOf(read.Started), MomentsOf(read.Ended));
-        var titles = WordsOf(read.Titled, EventAttributes.Response);
-        var prompts = WordsOf(read.Prompted, EventAttributes.Prompt);
+        var (firstEvent, lastEvent) = (MomentsOf(gate.Started), MomentsOf(gate.Ended));
+        var titles = WordsOf(gate.Titled, EventAttributes.Response);
+        var prompts = WordsOf(gate.Prompted, EventAttributes.Prompt);
         var now = clock.GetUtcNow();
 
         // A Skill says which runs are listed, never how much of a run is counted.
-        var firedIn = filter.Skill is null ? null : Keyed(read.Fired.Groups);
+        var firedIn = filter.Skill is null ? null : Keyed(gate.Fired.Groups);
 
         // Taken from the read that names a run, so the words half of a Depth costs no second question.
-        var withheld = Keyed(read.Prompted.Groups.Where(Withheld));
+        var withheld = Keyed(gate.Prompted.Groups.Where(Withheld));
 
         var sessions =
-            from run in Identified(read.Placed.Groups)
+            from run in Identified(gate.Placed.Groups)
             let id = run.Key
             where firstEvent.ContainsKey(id) && lastEvent.ContainsKey(id)
             where firedIn is null || firedIn.Contains(id)
@@ -145,15 +219,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
                 (long)(lastEvent[id] - startedAt).TotalMilliseconds,
                 RunningWindow.Covers(lastEvent[id], now));
 
-        var measures = new SessionMeasures(
-            TotalledIn(read.Called.Groups),
-            TotalledIn(read.Cost.Groups),
-            Added(TotalledIn(read.Called.Groups.Where(Failed)), TotalledIn(read.Erred.Groups)),
-            TotalledIn(read.Decided.Groups.Where(Refused)));
-
-        var rows = order.Sorted(sessions, measures);
-
-        return (rows, measures.Covering(rows));
+        return order.Sorted(sessions, ranked);
     }
 
     // An older Claude Code puts the repository on no event, and a run with no origin remote has none.
@@ -213,23 +279,19 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
     private static EventQuery ActivationsIn(DaySpan span, Filter filter) =>
         Events(span) with { EventName = ActivationEvent, Skill = filter.Skill };
 
-    // One short of an answer is no answer, as a run missing its name or its length would read as a lie.
-    private sealed record Readings(
+    // One short of these is no answer, as a run missing its name or its length would read as a lie.
+    private sealed record Gate(
         EventTotals Placed,
         EventTotals Started,
         EventTotals Ended,
         EventTotals Titled,
         EventTotals Prompted,
-        EventTotals Called,
-        EventTotals Decided,
-        EventTotals Erred,
-        EventTotals Cost,
-        EventTotals Fired,
-        EventTotals Surveyed)
+        EventTotals Fired)
     {
         public string? Unreachable =>
             Placed.Unreachable ?? Started.Unreachable ?? Ended.Unreachable ?? Titled.Unreachable ??
-            Prompted.Unreachable ?? Called.Unreachable ?? Decided.Unreachable ?? Erred.Unreachable ??
-            Cost.Unreachable ?? Fired.Unreachable ?? Surveyed.Unreachable;
+            Prompted.Unreachable ?? Fired.Unreachable;
     }
+
+    private sealed record Measured(Measure Measure, IReadOnlyDictionary<string, decimal> Values, string? Unreachable);
 }
