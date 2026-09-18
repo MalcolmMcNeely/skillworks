@@ -14,14 +14,14 @@ A **flow** is a path through the skills. Most paths run along one **main flow**,
 
 The route most work travels. You have an idea and want it built.
 
-1. **`/grill-with-docs`** — sharpen the idea by interview. Start here whenever you are **working in a working directory**: it's stateful, retaining what it learns in `CONTEXT.md` and ADRs. (No working directory? Use `/grill-me` — see Standalone. Both run the same `/grilling` primitive; `grill-with-docs` is the one that leaves a paper trail, which makes it the better of the two whenever a repo is there to leave it in.)
+1. **`/grill-with-docs`** — sharpen the idea by interview. Start here whenever you are **working in a working directory**: it's stateful, retaining what it learns in `CONTEXT.md` and ADRs. When the questions run out it sums up the shape it settled and asks you to confirm it. That is the one gate: on your yes it runs **`/to-spec`** itself, turning the thread into a spec issue, so a satisfied grill never sits idle waiting for you to remember a command. (No working directory? Use `/grill-me` — see Standalone. Both run the same `/grilling` primitive; `grill-with-docs` is the one that leaves a paper trail, which makes it the better of the two whenever a repo is there to leave it in.)
 2. **Branch — can you settle every question in conversation?** If a question needs a runnable answer (state, business logic, a UI you have to see), detour through a prototype, bridged by **`/handoff`** in both directions (a prototype lives in its own directory, which is exactly what `/handoff` is for — see Phase boundaries):
    - **`/handoff`** out, then open a fresh session against that file,
    - **`/prototype`** to answer the question with throwaway code,
    - **`/handoff`** back what you learned, and reference it from the original idea thread.
 3. **Branch — is this a multi-session build?**
-   - **Yes** → **`/to-spec`** (turn the thread into a spec issue, and commit the docs the thread produced), then **`/spec-loop <spec#>`** and walk away. It runs **`/to-tickets`** with you in the room — you approve the slices and the blocking edges — publishes them as **sub-issues of the spec**, then hands the rest to `scripts/spec-loop.sh`. The script picks the next unblocked ticket, spends a **fresh session** on it via `/implement`, commits, pushes, closes, repeats. It stops at the first failure and resumes where it stopped. It finishes with **`/spec-drift`**, which compares the whole diff against the spec — the one check no per-ticket test can do.
-   - **No** → **`/implement`** right here, in the same context window.
+   - **Yes** → **`/spec-loop <spec#>`** on the spec the grill published, then walk away. Typing the command is the whole of your consent, and nothing after it asks you anything until the end. It cuts the spec into tickets, prints the slices for you to read, publishes them as **sub-issues of the spec**, then hands the rest to `scripts/spec-loop.sh`. The script picks the next unblocked ticket, spends a **fresh session** on it via `/implement`, commits, pushes, closes, repeats. It stops at the first failure and resumes where it stopped. It finishes with **`/spec-drift`**, which compares the whole diff against the spec — the one check no per-ticket test can do. Reach the end clean and it asks you the one question the flow has left: close the spec?
+   - **No** → **`/implement`** right here, in the same context window, against the spec the grill published.
 
    Either way, **`/implement`** builds each issue by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`**, a two-axis review (Standards + Spec) of the diff, before committing. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
 
@@ -29,7 +29,7 @@ The route most work travels. You have an idea and want it built.
 
 Keep steps 1–3 in **one unbroken context window** — don't compact or clear until `/spec-loop` has published the tickets — so the grilling, spec, and tickets all build on the same thinking. After that the hygiene is not yours to keep: the script starts a new process per ticket, so every `/implement` gets a genuinely empty window whatever you do with this one.
 
-The limit on this is the **[smart zone](https://www.aihero.dev/ai-coding-dictionary/smart-zone)**: the window (~150k tokens on state-of-the-art models) within which the model still reasons sharply. If a session approaches it before `/to-tickets`, don't push on degraded — `/compact` at the nearest phase boundary and carry on (see Phase boundaries).
+The limit on this is the **[smart zone](https://www.aihero.dev/ai-coding-dictionary/smart-zone)**: the window (~150k tokens on state-of-the-art models) within which the model still reasons sharply. If a session approaches it before the tickets are published, don't push on degraded — `/compact` at the nearest phase boundary and carry on (see Phase boundaries).
 
 ## On-ramps
 
@@ -39,7 +39,7 @@ A starting situation that generates work, then merges onto the main flow.
 
 - **A huge, foggy effort — a greenfield project or a huge feature build, too big for one session** → **`/wayfinder`**, the most cognitively demanding flow here. When the way from here to the destination isn't visible yet, it charts a **shared map** of **decision tickets** on the issue tracker and resolves them one at a time — producing **decisions, not deliverables** — until the fog is pushed back and the way is clear. Where **`/grill-with-docs`** sharpens an idea you can hold in one session, wayfinder is for the idea you can't — and it's slower and denser, so save it for exactly that, never a well-scoped feature.
 
-  When the map clears, **it hands off, it doesn't build**: merge onto the main flow at **`/to-spec`**, which collapses the map's linked decisions into a buildable plan, then `/to-tickets` and `/implement` as usual. Looping the map straight into `/implement` skips that collapse and throws the linked detail away — go straight to `/implement` only when the effort turned out genuinely small.
+  When the map clears, **it hands off, it doesn't build**: merge onto the main flow at **`/to-spec`**, which collapses the map's linked decisions into a buildable plan, then `/spec-loop` as usual. Looping the map straight into `/implement` skips that collapse and throws the linked detail away — go straight to `/implement` only when the effort turned out genuinely small.
 
 ## Codebase health
 
@@ -65,6 +65,12 @@ A **phase** is a chunk of work inside a session — the grilling, the implementa
 - **`/compact`** — compress this context and seed a fresh session with it. The **default**, at the bottom of the tree rather than the first reach.
 
 Read [PHASE-BOUNDARIES.md](PHASE-BOUNDARIES.md) for the ordered tree — the five questions, the reasoning behind each branch, and why the primary-source cost makes **Continue** the one to rule out first. Make the decision **at** a boundary; mid-phase, continue or split the rest into subagents.
+
+## Inside other skills
+
+Each one runs because another skill reached for it. This map routes you to that caller, never to the skill inside, so read these as parts rather than as steps.
+
+- **`/to-tickets`** — cuts a spec into **tracer-bullet tickets** and works out the blocking edges between them. `/spec-loop` reaches for it, at step 3 above.
 
 ## Standalone
 
