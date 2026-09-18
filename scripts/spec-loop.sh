@@ -41,10 +41,13 @@ main() {
     esac
   }
 
-  # The mean argument is unused: no caller measures one yet.
+  # The ticket now running counts as remaining, so the estimate never flatters the run.
   progress_suffix() {
-    local position="$1" total="$2" mean="${3:-}"
+    local position="$1" total="$2" mean="${3:-}" remaining
     printf '%s/%s' "$position" "$total"
+    [ -n "$mean" ] || return 0
+    remaining=$(( total - position + 1 ))
+    printf '  ~%sm left' "$(( (mean * remaining + 30) / 60 ))"
   }
 
   # Git Bash would pass "/comment-sweep" to claude as "C:/Program Files/Git/comment-sweep".
@@ -118,7 +121,7 @@ main() {
     shift 2
     out=$(step_log "$ticket" "$step")
     say "$(printf 'STEP  #%s %-7s%s' \
-      "$ticket" "$step" "$(progress_suffix "$POSITION" "$TICKET_COUNT")")"
+      "$ticket" "$step" "$(progress_suffix "$POSITION" "$TICKET_COUNT" "$MEAN_SECONDS")")"
     claude_p "$(step_prompt "$ticket" "$step")" "$@" >"$out.json" 2>"$out.err" \
       || stop_step "$ticket" "$step" "exited non-zero" "$out.err and $out.json"
     for check in $(step_checks "$step"); do
@@ -202,6 +205,11 @@ main() {
 
   # --- the loop -------------------------------------------------------------
 
+  # Nothing is read from an earlier run, so a rerun grows a mean of its own.
+  TIMED_TICKETS=0
+  TIMED_SECONDS=0
+  MEAN_SECONDS=""
+
   while :; do
     open_tickets=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
                      --jq '.[] | select(.state=="open") | .number')
@@ -250,6 +258,7 @@ main() {
 
     say "START #$next $title"
     TICKET_BASE=$(git rev-parse HEAD)
+    started=$(date -u +%s)
 
     run_step "$next" build
     build_json=$(step_log "$next" build).json
@@ -257,6 +266,11 @@ main() {
       || die "FAIL  #$next step build gave no session id. See $build_json"
     run_step "$next" sweep --resume "$session"
     run_step "$next" finish --resume "$session"
+
+    # A skipped ticket never reaches here, so nobody else's work is in the mean.
+    TIMED_SECONDS=$(( TIMED_SECONDS + $(date -u +%s) - started ))
+    TIMED_TICKETS=$(( TIMED_TICKETS + 1 ))
+    MEAN_SECONDS=$(( TIMED_SECONDS / TIMED_TICKETS ))
 
     # No push here. The loop pushes once at the end, so a half-finished spec
     # never reaches the remote.
