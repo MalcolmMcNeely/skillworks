@@ -113,7 +113,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
 
         if ((gate.Unreachable ?? ranking?.Unreachable) is { } unreachable)
         {
-            var empty = PeriodAsync(unreachable, surveying, rows: false);
+            var empty = PeriodAsync(unreachable, surveying, standing: null);
 
             return new SessionsRead(unreachable, [], AsyncEnumerable.Empty<MeasureLanding>(), empty, traced);
         }
@@ -124,7 +124,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             null,
             rows,
             LandingAsync(measuring.Values, rows, cancellationToken),
-            PeriodAsync(null, surveying, rows.Count > 0),
+            PeriodAsync(null, surveying, rows.Count > 0 ? gate.Placed : null),
             traced);
     }
 
@@ -165,13 +165,18 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         return new MeasureLanding(Measure.Faults, values, unreachable);
     }
 
-    // The survey only tells a quiet period from a narrowed one, which rows on the table answer already, so
-    // a survey that fell short is worth saying only where there are no rows to say it about.
-    private static async Task<EventTotals> PeriodAsync(string? gated, Task<EventTotals> surveying, bool rows)
+    // The survey only tells a quiet period from a narrowed one, and rows on the table answer that already,
+    // so where they stand the read that named them speaks for a survey that fell short.
+    private static async Task<EventTotals> PeriodAsync(string? gated, Task<EventTotals> surveying, EventTotals? standing)
     {
         var surveyed = await surveying;
 
-        return surveyed with { Unreachable = gated ?? (rows ? null : surveyed.Unreachable) };
+        if (gated is not null)
+        {
+            return surveyed with { Unreachable = gated };
+        }
+
+        return surveyed.Unreachable is null || standing is null ? surveyed : standing;
     }
 
     // A run no row names was narrowed away, and handing its figure back would undo the narrowing.

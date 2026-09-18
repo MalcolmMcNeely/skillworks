@@ -262,6 +262,20 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
+    public async Task Asks_the_trace_store_nothing_for_a_table_nobody_narrowed_by_depth()
+    {
+        using var traces = BrokenTraceStore.Down();
+        using var studio = new StudioHost(traces: traces);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        await studio.SessionAnswer();
+
+        // A second store nobody asked a question costs a reader nothing on this page, broken or not.
+        Assert.Empty(traces.Asked);
+    }
+
+    [Fact]
     public async Task Draws_a_table_nobody_narrowed_by_depth_even_when_the_trace_store_is_down()
     {
         using var traces = BrokenTraceStore.Down();

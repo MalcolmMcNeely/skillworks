@@ -13,6 +13,9 @@ public sealed partial class SessionEndpointsTests
     // Tool calls and the tool half of Faults, and no part of Cost or Friction.
     private const string ToolResultRead = "claude_code.tool_result";
 
+    // The one read grouped by nothing, so no other read of the answer is spelled this way.
+    private const string SurveyRead = "sum (count_over_time";
+
     // One of the five that name a run, and no Measure's.
     private const string PromptRead = "claude_code.user_prompt";
 
@@ -188,6 +191,39 @@ public sealed partial class SessionEndpointsTests
         // A run this read leaves unnamed is a row Studio cannot vouch for, so one short is none.
         Assert.Empty(answer.Sessions);
         Assert.Equal("unreachable", answer.Gap.Kind);
+    }
+
+    [Theory]
+    [InlineData("cost", TurnRead)]
+    [InlineData("toolCalls", ToolResultRead)]
+    [InlineData("faults", ToolResultRead)]
+    public async Task Empties_the_table_when_the_measure_a_reader_sorted_on_fell_short(string sort, string broken)
+    {
+        using var events = Breaking(broken);
+        using var studio = new StudioHost(events: events);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        var answer = await studio.SessionAnswer($"?sort={sort}");
+
+        // Rows drawn in an order this read never gave would settle again the moment it landed.
+        Assert.Empty(answer.Sessions);
+        Assert.Equal("unreachable", answer.Gap.Kind);
+    }
+
+    [Fact]
+    public async Task Draws_the_rows_when_the_survey_read_fell_short()
+    {
+        using var events = Breaking(SurveyRead);
+        using var studio = new StudioHost(events: events);
+
+        await studio.Push(Ran(Morning, At(Yesterday, "09:00:00.000"), "The run", "acme/xi"));
+
+        var answer = await studio.SessionAnswer("?repository=acme/xi");
+
+        // The survey tells a quiet period from a narrowed one, which a table with rows on it answers already.
+        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
+        Assert.Equal("complete", answer.Gap.Kind);
     }
 
     private static BrokenEventsStore Holding(string read) =>
