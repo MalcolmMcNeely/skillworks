@@ -5,22 +5,61 @@ split the code until it fits. The settings change only when the developer asks.
 
 ## One shape
 
-C# and TypeScript share one shape: feature folders first, concern folders beneath.
+C# and TypeScript share one shape: Slices first, Concerns beneath.
 
-- A **feature** folder is named for the part of Studio its code serves. A type goes in the feature it
-  belongs to.
-- A **concern** folder groups types that play one role inside a feature. `name-map` names the roles
-  that always get one. A feature that grows may add others.
-- In the front end, the layer folders `api`, `components`, `lib` and `routes` are the concerns, and
-  `src/Skillworks.Studio.Web/.dependency-cruiser.cjs` holds the boundaries between them.
-- Code that serves no feature goes in a folder named for what it does. Every folder name says what
-  its code serves or does, so the names in `banned-folder-names` are never used, in any letter case.
+- A **code root** is the folder a project's code starts in: a folder that holds a `.csproj`, and the
+  front end's `src`.
+- A **Slice** is the folder that holds everything one job of Studio needs. `slices` names them. A
+  type goes in the Slice whose job it serves.
+- A **Concern** groups the types that play one role inside a Slice. In the front end `concerns` names
+  them, and `src/Skillworks.Studio.Web/.dependency-cruiser.cjs` holds the boundaries between them.
+- **`Shared`** holds the code no one job owns, and a folder inside `Shared` is named for what its
+  code does.
+- Every folder name says what its code serves or does, so the names in `banned-folder-names` are
+  never used, in any letter case.
 - Folders in `skip-folders` hold code nobody writes by hand. These rules skip them.
 - A folder with its own `.git`, such as an agent's worktree, is another checkout. These rules skip it
   too.
 
-Copy the shape of `src/Skillworks.Core/Activations`. The feature folder holds the types of an
-Activation. `Queries` beneath it holds `ActivationQueries`, as `name-map` says.
+`src/Skillworks.Core/Activations` shows the shape beneath a Slice: the folder holds the types of an
+Activation, and `Queries` beneath it holds `ActivationQueries`, as `name-map` says. It still sits at
+the first level, where rule 1 does not allow it, until the tree catches up with these rules.
+
+## Slices
+
+An agent asked to change one job opens that job's Slice and nothing else. Eight rules keep it that
+way.
+
+1. **A Slice comes first.** Every folder at the first level under a code root is a Slice from
+   `slices`, or `Shared`. `Shared` sits at that level and nowhere else, in any letter case. A file
+   that sits at a code root itself, such as the program entry point or the router, is untouched.
+2. **A Concern comes beneath, in the front end.** A folder inside a front-end Slice is named for a
+   role from `concerns`, and that list is closed. In C# a folder inside a Slice is free grouping,
+   held by `max-types-per-folder` and `name-map`.
+3. **A Slice never reads another Slice.** No code file in a Slice names another Slice's namespace or
+   imports from another Slice's folder. The rule reaches the first level only, so a Slice reading its
+   own folders is free.
+4. **`Shared` never reads a Slice.** The arrow runs one way, so a Slice can be read in full without
+   opening anything above it.
+5. **`Shared` has two doors.** Code gets in by naming a word from the glossary of the context that
+   claims it, or by having no domain meaning at all. The first door is checked against the glossary.
+   The second is a judgement no check can make, so it stays here as text. Either way the test runs on
+   the piece and not on the word: only what two Slices actually read moves.
+6. **A Slice keeps its name everywhere.** A Slice folder sits at the same depth, and under the same
+   name in that language's own case, in every project that holds its code, and in the front end.
+7. **Two Slices may hold a type with the same name.** They are two types about two jobs. Merging them
+   is the defect, not the duplication.
+8. **A new job gets a new Slice.** The glossary names the job, then `slices` gains a line, then the
+   folder appears.
+
+Rules 3 and 4 hold code files only. A test may read any Slice, because a test that checks a seam has
+to see both sides of it. The exemption belongs to being a test, so no list of exempt tests is kept,
+because a list goes stale.
+
+A Slice name and `Shared` are matched in each language's own case: `Watch` and `Shared` in C#,
+`watch` and `shared` in the front end. Rule 1 turns down a folder holding the right word in the wrong
+case, and turns down `Shared` in any case below the first level, which is the work
+`banned-folder-names` did for `shared` before `Shared` earned its place.
 
 ## Files
 
@@ -34,7 +73,7 @@ that tests use: a host, a fake or a record a test reads a response into.
 - Global usings go in the project file as `<Using>` items, so no C# file holds only usings.
 - A large type splits across aspect files: `BlobRepository.Async.cs` holds `partial BlobRepository`.
 - A C# namespace is the project's root namespace, then the folder path: a file in
-  `Skillworks.Core/<Feature>/<Concern>/` is in `Skillworks.Core.<Feature>.<Concern>`.
+  `Skillworks.Core/<Slice>/<Folder>/` is in `Skillworks.Core.<Slice>.<Folder>`.
 - The root namespace is the `<RootNamespace>` in the project file when it is set and not empty, and
   the project file name otherwise. A `<RootNamespace>` in a shared build file, such as
   `Directory.Build.props`, does not count.
@@ -58,8 +97,8 @@ among the source files that sit directly in the folder.
 
 - A type, its aspect files and the test beside it share a subject, so they take one place.
 - A test with no code file beside it counts as one.
-- Subfolders count for nothing, so splitting a full folder into feature or concern folders always
-  makes room.
+- Subfolders count for nothing, so splitting a full folder into folders beneath it always makes
+  room.
 
 ## Name map
 
@@ -68,9 +107,17 @@ Each pattern in `name-map` is a name with `*` at the start or the end, such as `
 
 - A subject that matches one pattern sits in that pattern's folder.
 - A subject that matches several patterns sits in the folder of any one of them.
-- A subject that matches none goes where its feature puts it.
+- A subject that matches none goes where its Slice puts it.
 
 ```yaml
+slices:
+  - Watch
+  - Sessions
+concerns:
+  - api
+  - components
+  - lib
+  - routes
 max-types-per-folder: 10
 source-files:
   - .cs
@@ -89,7 +136,6 @@ banned-folder-names:
   - utils
   - helpers
   - common
-  - shared
   - misc
 name-map:
   "*Queries": Queries
