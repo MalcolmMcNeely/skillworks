@@ -120,7 +120,7 @@ main() {
     local ticket="$1" step="$2" out check
     shift 2
     out=$(step_log "$ticket" "$step")
-    say "$(printf 'STEP  #%s %-7s%s' \
+    say "$(printf 'STEP  #%s %-10s%s' \
       "$ticket" "$step" "$(progress_suffix "$POSITION" "$TICKET_COUNT" "$MEAN_SECONDS")")"
     claude_p "$(step_prompt "$ticket" "$step")" "$@" >"$out.json" 2>"$out.err" \
       || stop_step "$ticket" "$step" "exited non-zero" "$out.err and $out.json"
