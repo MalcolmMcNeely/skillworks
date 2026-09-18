@@ -213,7 +213,8 @@ Two stages. A human drives the first. A script drives the second.
 
 ```
 /grill-with-docs        argue it out; CONTEXT.md and ADRs get written
-/to-spec                a SPEC: issue on GitHub; docs committed and pushed
+                          └─ on your yes, /to-spec runs: a SPEC: issue on
+                             GitHub, docs committed and pushed
 /spec-loop <spec#>      /to-tickets, then scripts/spec-loop.sh takes over
                           └─ per ticket, one fresh session:
                                /implement <n> --stop-after-tests

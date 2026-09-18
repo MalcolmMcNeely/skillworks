@@ -90,7 +90,10 @@ Then read `outputStyle` in `.claude/settings.local.json`. `/config` saves a styl
 Say what was written and what was skipped. Say which output style the repo now sets. A new style file loads only when Claude Code starts, so tell them to restart it. Then tell them the loop is ready:
 
 ```
-/grill-with-docs  →  /to-spec  →  /spec-loop <spec#>
+/grill-with-docs  →  /spec-loop <spec#>
 ```
+
+The grill runs `/to-spec` itself once the user confirms the shape it settled, so it hands them a
+spec number rather than a command to type.
 
 Mention they can edit `docs/agents/*.md` by hand later. Re-running this skill is only for repair.
