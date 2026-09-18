@@ -31,3 +31,6 @@ docs/research/
 
 # Handoff documents from one agent session to the next. Transient, per-machine.
 .handoff/
+
+# Agent working notes. Plans and research for a question, kept local.
+.claude/docs/
