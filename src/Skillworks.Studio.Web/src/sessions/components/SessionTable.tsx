@@ -9,6 +9,7 @@ import {
   notKnown,
   sessionColumns,
   sortGlyphs,
+  takesOrder,
   type DrawnSession,
   type Measured,
   type SessionColumn,
@@ -54,10 +55,12 @@ function Row({ row, asked }: { row: DrawnSession; asked: URLSearchParams }) {
 function Heading({
   column,
   sortedBy,
+  takes,
   onSort,
 }: {
   column: SessionColumn;
   sortedBy: SortedBy;
+  takes: boolean;
   onSort: (sort: SessionSort) => void;
 }) {
   const sorted = sortedBy.sort === column.sort;
@@ -65,7 +68,7 @@ function Heading({
 
   return (
     <th scope="col" aria-sort={sorted ? (sortedBy.descending ? 'descending' : 'ascending') : 'none'}>
-      <button type="button" className="session-sort" onClick={() => onSort(column.sort)}>
+      <button type="button" className="session-sort" disabled={!takes} onClick={() => onSort(column.sort)}>
         {column.heading}
         <span className="session-sort-mark" aria-hidden="true">
           {sorted ? glyph : ''}
@@ -108,7 +111,13 @@ export function SessionTable({
       <thead>
         <tr>
           {sessionColumns.map((column) => (
-            <Heading key={column.sort} column={column} sortedBy={answer} onSort={onSort} />
+            <Heading
+              key={column.sort}
+              column={column}
+              sortedBy={answer}
+              takes={takesOrder(answer, column)}
+              onSort={onSort}
+            />
           ))}
         </tr>
       </thead>

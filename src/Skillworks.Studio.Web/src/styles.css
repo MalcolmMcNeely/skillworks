@@ -1607,13 +1607,19 @@ a.home-panel-face:hover::before {
   white-space: nowrap;
 }
 
-.session-sort:hover,
+.session-sort:hover:enabled,
 .session-sort:focus-visible {
   color: var(--ink);
 }
 
-.sessions-table th[aria-sort='ascending'] .session-sort,
-.sessions-table th[aria-sort='descending'] .session-sort {
+.session-sort:disabled {
+  color: var(--ink-faint);
+  cursor: default;
+}
+
+/* Without :enabled the sorted column out-ranks the dimming above and stays bright while it is inert. */
+.sessions-table th[aria-sort='ascending'] .session-sort:enabled,
+.sessions-table th[aria-sort='descending'] .session-sort:enabled {
   color: var(--ink);
 }
 

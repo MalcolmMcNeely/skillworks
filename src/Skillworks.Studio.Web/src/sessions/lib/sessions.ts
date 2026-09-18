@@ -49,17 +49,19 @@ export type SessionSort = 'started' | 'repository' | 'person' | 'name' | 'length
 export interface SessionColumn {
   sort: SessionSort;
   heading: string;
+  // Null where the column is read off the row, which lands on the gate and so can never fall short.
+  measure: MeasureName | null;
 }
 
 export const sessionColumns: readonly SessionColumn[] = [
-  { sort: 'started', heading: 'Started' },
-  { sort: 'repository', heading: 'Repository' },
-  { sort: 'person', heading: 'Person' },
-  { sort: 'name', heading: 'Session' },
-  { sort: 'length', heading: 'Length' },
-  { sort: 'toolCalls', heading: 'Tool calls' },
-  { sort: 'cost', heading: 'Cost' },
-  { sort: 'faults', heading: 'Faults' },
+  { sort: 'started', heading: 'Started', measure: null },
+  { sort: 'repository', heading: 'Repository', measure: null },
+  { sort: 'person', heading: 'Person', measure: null },
+  { sort: 'name', heading: 'Session', measure: null },
+  { sort: 'length', heading: 'Length', measure: null },
+  { sort: 'toolCalls', heading: 'Tool calls', measure: 'toolCalls' },
+  { sort: 'cost', heading: 'Cost', measure: 'cost' },
+  { sort: 'faults', heading: 'Faults', measure: 'faults' },
 ];
 
 export const sortGlyphs = { ascending: '▲', descending: '▼' } as const;
@@ -161,6 +163,17 @@ function settled(row: DrawnSession): DrawnSession {
 
 function read(measured: Measured): Measured {
   return measured.state === 'arriving' ? fellShort : measured;
+}
+
+// Reordering mid-answer resettles the rows under the reader, and a Measure that fell short orders on nothing.
+export function takesOrder(answer: SessionsAnswer, column: SessionColumn): boolean {
+  if (answer.arriving) {
+    return false;
+  }
+
+  const measure = column.measure;
+
+  return measure === null || !answer.rows.some((row) => row.measures[measure].state === 'fellShort');
 }
 
 export interface SessionOrder {

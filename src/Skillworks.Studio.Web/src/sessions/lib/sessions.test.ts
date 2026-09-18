@@ -17,6 +17,7 @@ import {
   sessionColumns,
   sortGlyphs,
   sortSymbols,
+  takesOrder,
   withOrder,
   type MeasureName,
   type SessionRow,
@@ -51,6 +52,17 @@ function withRows(...sessions: SessionRow[]): SessionsAnswer {
 
 function cell(answer: SessionsAnswer, measure: MeasureName, id: string = run.id) {
   return answer.rows.find((row) => row.session.id === id)?.measures[measure];
+}
+
+function withMeasures(answer: SessionsAnswer, ...measures: MeasureName[]): SessionsAnswer {
+  return measures.reduce(
+    (folded, measure) => foldSessionsLine(folded, { kind: 'measure', measure, values: {} }),
+    answer,
+  );
+}
+
+function orderedColumns(answer: SessionsAnswer) {
+  return sessionColumns.filter((column) => takesOrder(answer, column)).map((column) => column.sort);
 }
 
 describe('foldSessionsLine', () => {
@@ -95,6 +107,15 @@ describe('foldSessionsLine', () => {
     expect(answer.arriving).toBe(false);
     expect(answer.gap).toEqual(complete);
     expect(answer.rows.map((row) => row.session)).toEqual([run]);
+  });
+
+  it('stays arriving through its rows and its Measures, so it is complete only once the end line lands', () => {
+    const opened = foldSessionsLine(null, head);
+    const drawn = foldSessionsLine(opened, { kind: 'sessions', sessions: [run] });
+    const measured = withMeasures(drawn, 'cost');
+
+    expect([opened.arriving, drawn.arriving, measured.arriving]).toEqual([true, true, true]);
+    expect(foldSessionsLine(measured, { kind: 'end', gap: complete }).arriving).toBe(false);
   });
 
   it('refuses a line before the head, as a row with no span says nothing about the period', () => {
@@ -153,6 +174,27 @@ describe('the Measures on a folded answer', () => {
 
     expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 0 });
     expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
+  });
+});
+
+describe('takesOrder', () => {
+  it('takes no order while the answer is arriving, so no heading asks for one Studio cannot yet give', () => {
+    expect(orderedColumns(withRows(run))).toEqual([]);
+    expect(orderedColumns(withMeasures(withRows(run), 'toolCalls', 'cost', 'faults'))).toEqual([]);
+  });
+
+  it('takes every order once the answer is complete, so the reader can reorder the table', () => {
+    const measured = withMeasures(withRows(run), 'toolCalls', 'cost', 'faults', 'friction');
+    const answer = foldSessionsLine(measured, { kind: 'end', gap: complete });
+
+    expect(orderedColumns(answer)).toEqual(sessionColumns.map((column) => column.sort));
+  });
+
+  it('takes no order on the one Measure that fell short and every order on the rest', () => {
+    const measured = withMeasures(withRows(run), 'cost', 'faults', 'friction');
+    const answer = foldSessionsLine(measured, { kind: 'end', gap: { kind: 'unreachable', missing: 'Tool calls' } });
+
+    expect(orderedColumns(answer)).toEqual(['started', 'repository', 'person', 'name', 'length', 'cost', 'faults']);
   });
 });
 
