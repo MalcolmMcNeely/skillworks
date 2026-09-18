@@ -22,9 +22,9 @@ A list grows one line at a time, as its glossary settles each word. Several _Avo
 Studio's glossary are ordinary English the code needs, such as `run` and `block`, and one is another
 entry's headword, so they are not on the list.
 
-A folder in `skip-folders` holds a record of a question already answered, such as a captured
-prototype. Its words are history, and history is not renamed, so this rule skips it. The placement
-rules still judge it.
+A folder in `skip-folders` holds a record of a question already answered. Its words are history, and
+history is not renamed, so this rule skips it. The placement rules still judge it. No folder here is
+such a record, so the list is empty.
 
 Settling a new word is one line here. Add the winner to the context's glossary with the loser under
 _Avoid_, then add the loser to that context's list.
@@ -39,6 +39,5 @@ banned-words:
     - Brush
     - Main thread
   architecture: []
-skip-folders:
-  - prototypes
+skip-folders: []
 ```

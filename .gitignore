@@ -34,3 +34,6 @@ docs/research/
 
 # Agent working notes. Plans and research for a question, kept local.
 .claude/docs/
+
+# Prototypes. A prototype is a throwaway and never reaches main.
+prototypes/

@@ -182,7 +182,6 @@ npm test
 | `.claude/skills/` | Dev tooling for working in this repo. Mostly vendored, not shipped. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
-| `prototypes/` | Prototypes kept as a record once their question is settled. The web app never builds, lints or tests them, but the architecture check still scans them. |
 | `docs/agents/` | Written by `/skillworks-setup`. The tracker, label and domain doc references the skills read. |
 
 ## Working on Skillworks
