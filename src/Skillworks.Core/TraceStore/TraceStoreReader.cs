@@ -28,6 +28,11 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         DateTimeOffset until,
         CancellationToken cancellationToken)
     {
+        // One budget over the whole read, because it makes a request per trace and each would take its own.
+        using var spent = new CancellationTokenSource(Whole(options.Value.SessionTimeoutSeconds), clock);
+        using var whole = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
+
+        var budget = new Budget(whole.Token, cancellationToken);
         var traces = new HashSet<string>(StringComparer.Ordinal);
         var most = Most(options.Value.MostTraces);
         var shortened = false;
@@ -39,7 +44,7 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
                 Search($"{{ span.{SessionAttribute} = {Quoted(session)} }}", start, end, most),
                 TraceIds,
                 [],
-                cancellationToken);
+                budget);
 
             if (found.Unreachable is not null)
             {
@@ -56,7 +61,7 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         // A search names only the spans it matched, so the run itself is read back trace by trace.
         foreach (var trace in traces)
         {
-            var read = await AskAsync<IReadOnlyList<Span>>(Trace(trace), Spans, [], cancellationToken);
+            var read = await AskAsync<IReadOnlyList<Span>>(Trace(trace), Spans, [], budget);
 
             if (read.Unreachable is not null)
             {
@@ -81,7 +86,11 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
         foreach (var (start, end) in Windows(from, until))
         {
-            var found = await AskAsync<IReadOnlyList<string>>(Values(start, end, most), Sessions, [], cancellationToken);
+            var found = await AskAsync<IReadOnlyList<string>>(
+                Values(start, end, most),
+                Sessions,
+                [],
+                Budget.PerRequest(cancellationToken));
 
             if (found.Unreachable is not null)
             {
@@ -129,6 +138,9 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     // At least one, as a limit of none asks the store for a default of its own and would never be reached.
     private static int Most(int asked) => Math.Max(1, asked);
 
+    // At least a second, as a budget of none would be spent before the first request went out.
+    private static TimeSpan Whole(int seconds) => TimeSpan.FromSeconds(Math.Max(1, seconds));
+
     // Within a block a search keeps only the spans whose own times fall in the window, which a values read does not.
     private static string Search(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
         $"api/search?q={Uri.EscapeDataString(traceQl)}&{Window(from, until)}&limit={limit}";
@@ -163,29 +175,25 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
     private static string Quoted(string value) => JsonSerializer.Serialize(value, TraceQlString);
 
-    private async Task<Answer<T>> AskAsync<T>(
-        string route,
-        Func<JsonElement, T> read,
-        T none,
-        CancellationToken cancellationToken)
+    private async Task<Answer<T>> AskAsync<T>(string route, Func<JsonElement, T> read, T none, Budget budget)
     {
         var address = options.Value.ResolvedAddress();
 
         try
         {
-            using var response = await SendAsync(route, cancellationToken);
+            using var response = await SendAsync(route, budget.Within);
 
             if (!response.IsSuccessStatusCode)
             {
                 return new Answer<T>(none, $"{address} answered {(int)response.StatusCode}");
             }
 
-            await using var body = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var document = await JsonDocument.ParseAsync(body, cancellationToken: cancellationToken);
+            await using var body = await response.Content.ReadAsStreamAsync(budget.Within);
+            using var document = await JsonDocument.ParseAsync(body, cancellationToken: budget.Within);
 
             return new Answer<T>(read(document.RootElement), null);
         }
-        catch (Exception failure) when (Outside(failure, cancellationToken))
+        catch (Exception failure) when (Outside(failure, budget.Caller))
         {
             return new Answer<T>(none, $"{address} could not be read: {failure.Message}");
         }
@@ -309,4 +317,12 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         held.TryGetProperty(field, out var items) && items.ValueKind == JsonValueKind.Array ? items.EnumerateArray() : [];
 
     private sealed record Answer<T>(T Value, string? Unreachable);
+
+    // Two tokens, because a budget that ran out is the store falling short and a reader who left is not.
+    private readonly record struct Budget(CancellationToken Within, CancellationToken Caller)
+    {
+        // A read with no budget of its own, where each request is bounded by the client's timeout alone.
+        public static Budget PerRequest(CancellationToken cancellationToken) =>
+            new(cancellationToken, cancellationToken);
+    }
 }

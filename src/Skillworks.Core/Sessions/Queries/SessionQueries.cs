@@ -125,7 +125,8 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             let id = run.Key
             where firstEvent.ContainsKey(id) && lastEvent.ContainsKey(id)
             where firedIn is null || firedIn.Contains(id)
-            where filter.Covers(Depths.Of(traced.Sessions.Contains(id), withheld.Contains(id)))
+            // Narrowing by a read that fell short would hide runs nobody asked to hide.
+            where traced.FellShort || filter.Covers(Depths.Of(traced.Sessions.Contains(id), withheld.Contains(id)))
             let repository = MostlySaid(run, total => total.Repository)
             let startedAt = firstEvent[id]
             select new Session(

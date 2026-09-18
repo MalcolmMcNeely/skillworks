@@ -67,3 +67,24 @@ lands, and not before, because the check reads whole files.
 
 This says nothing about the Session page, which ADR 0010 already splits by store, or about following
 a run while it happens.
+
+## Correction, 2026-09-18
+
+"A Depth filter puts the Trace store read there, because both decide which rows exist" no longer
+holds, and neither does the half of the consequence that rests on it. The Trace store read has left
+the gate. Where it falls short the rows stand, un-narrowed, and the answer's Gap says the table was
+not narrowed by a Depth it could not read.
+
+The reason is that the two gate reads are not alike. The activation read and the five that name a run
+come from the Events store, and a run they leave out is a run that did not happen. The Trace store
+answers apart from the Events store and falls short apart from it, so a Depth it could not read says
+nothing about which runs exist. Emptying the table on it spent the whole Events store answer on a
+second store's outage, and a reader who asked for Full Sessions got a blank page where the rows were
+already in hand.
+
+Narrowing on half an answer is still refused. A run the store left out would go missing from the
+table without a word, so a shortened Depth read narrows nothing either, and its Gap says so.
+
+The rest of this ADR stands. The gate is now the five reads that name a run, plus the activation read
+under a Skill filter, plus the reads behind a Measure a reader sorted on. Where one of those falls
+short there are still no rows to stand.

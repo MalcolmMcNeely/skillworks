@@ -14,6 +14,9 @@ public sealed class TempoOptions
     // Short on purpose: a Tempo container that is down must show as a Gap, not stall the page.
     public int TimeoutSeconds { get; set; } = 5;
 
+    // Covers the hundreds of requests a long run's traces take, where the one above covers a single stalled request.
+    public int SessionTimeoutSeconds { get; set; } = 30;
+
     // The store refuses a search longer than a week by default.
     public int MaxSearchDays { get; set; } = 7;
 

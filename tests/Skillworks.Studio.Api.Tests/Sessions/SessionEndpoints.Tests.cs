@@ -1,5 +1,6 @@
 using System.Globalization;
 using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 
@@ -172,6 +173,20 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         Assert.Empty(await studio.SessionsIn());
+    }
+
+    [Fact]
+    public async Task Empties_the_table_when_the_events_store_never_answered()
+    {
+        using var events = BrokenEventsStore.Down();
+        using var studio = new StudioHost(events: events);
+
+        var answer = await studio.SessionAnswer();
+
+        // Every row is the events store's answer, so a store that never answered leaves none standing.
+        Assert.Empty(answer.Sessions);
+        Assert.Equal("unreachable", answer.Gap.Kind);
+        Assert.Contains("events store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
     }
 
     private static DateTimeOffset Moment(string at) => DateTimeOffset.Parse(at, CultureInfo.InvariantCulture);

@@ -20,19 +20,18 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
 
         var (rows, period, traced) = await sessions.ListAsync(span, filter, order, cancellationToken);
 
-        // A Depth the trace store could not answer would narrow the table by guesswork, so it shows no rows at all.
-        // Half an answer narrows it the same way, and a run the store left out would go missing without a word.
-        if (period.Unreachable is null && traced.Unreachable is null && !traced.Shortened)
+        // Every row is the events store's answer, so a trace store that fell short leaves them standing.
+        if (period.Unreachable is null)
         {
             yield return new SessionsPage(rows);
         }
 
-        yield return new GapEnd(Emptied(
+        yield return new GapEnd(Shown(
             gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()),
             gaps.InDepths(traced)));
     }
 
-    // The store that emptied the table is the one to name, and an events store that never answered empties it hardest.
-    private static Gap Emptied(Gap events, Gap depths) =>
+    // An events store that never answered emptied the table, so it is named ahead of a trace store.
+    private static Gap Shown(Gap events, Gap depths) =>
         events.Kind == GapKind.Unreachable || depths.Kind == GapKind.Complete ? events : depths;
 }

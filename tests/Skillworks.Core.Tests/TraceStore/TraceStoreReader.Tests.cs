@@ -7,7 +7,7 @@ using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Tests.TraceStore;
 
-public sealed class TraceStoreReaderTests
+public sealed partial class TraceStoreReaderTests
 {
     private const string Interaction = "claude_code.interaction";
 
@@ -366,7 +366,9 @@ public sealed class TraceStoreReaderTests
         string tenant,
         string? address = null,
         int? mostTraces = null,
-        int? mostSessions = null)
+        int? mostSessions = null,
+        int? sessionTimeoutSeconds = null,
+        HttpMessageHandler? store = null)
     {
         var settings = new Dictionary<string, string?>
         {
@@ -385,10 +387,21 @@ public sealed class TraceStoreReaderTests
             settings["Tempo:MostSessions"] = runs.ToString(CultureInfo.InvariantCulture);
         }
 
-        return new ServiceCollection()
-            .AddSkillworksCore(new ConfigurationBuilder().AddInMemoryCollection(settings).Build())
-            .BuildServiceProvider()
-            .GetRequiredService<TraceStoreReader>();
+        if (sessionTimeoutSeconds is { } seconds)
+        {
+            settings["Tempo:SessionTimeoutSeconds"] = seconds.ToString(CultureInfo.InvariantCulture);
+        }
+
+        var services = new ServiceCollection()
+            .AddSkillworksCore(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+
+        // Only the handler is replaced, and after the registration that clears them, so Studio's own timeout stays under test.
+        if (store is not null)
+        {
+            services.AddHttpClient(TraceStoreReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => store);
+        }
+
+        return services.BuildServiceProvider().GetRequiredService<TraceStoreReader>();
     }
 
     // Its own tenant, so no other test's spans reach this one's answers.

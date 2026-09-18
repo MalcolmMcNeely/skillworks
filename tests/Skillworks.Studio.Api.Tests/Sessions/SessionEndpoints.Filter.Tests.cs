@@ -275,7 +275,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Names_the_trace_store_rather_than_narrowing_by_a_depth_it_could_not_read()
+    public async Task Leaves_the_table_standing_and_names_the_trace_store_for_a_depth_it_could_not_read()
     {
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(traces: traces);
@@ -284,8 +284,8 @@ public sealed partial class SessionEndpointsTests
 
         var answer = await studio.SessionAnswer("?depth=full");
 
-        // A guessed Depth would hide runs nobody asked to hide, so the table says what it cannot know instead.
-        Assert.Empty(answer.Sessions);
+        // A guessed Depth would hide runs nobody asked to hide.
+        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
         Assert.Equal("unreachable", answer.Gap.Kind);
         Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
     }
@@ -300,13 +300,13 @@ public sealed partial class SessionEndpointsTests
 
         var answer = await studio.SessionAnswer("?depth=full");
 
-        // The store that emptied the table is the one to name, and a switch nobody flipped did not empty it.
-        Assert.Empty(answer.Sessions);
+        // The store that could not answer is the one to name, and a switch nobody flipped is not it.
+        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
         Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Names_the_trace_store_rather_than_narrowing_by_half_an_answer_of_depths()
+    public async Task Leaves_the_table_standing_and_names_the_trace_store_for_half_an_answer_of_depths()
     {
         // One of the two runs the store holds spans for, so its answer fills up and cuts the rest.
         using var studio = new StudioHost(mostSessions: 1);
@@ -316,7 +316,7 @@ public sealed partial class SessionEndpointsTests
         var answer = await studio.SessionAnswer("?depth=full");
 
         // A run the store left out of half an answer would go missing from the table without a word.
-        Assert.Empty(answer.Sessions);
+        Assert.Equal(3, answer.Sessions.Count);
         Assert.Equal("shortened", answer.Gap.Kind);
         Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
     }
