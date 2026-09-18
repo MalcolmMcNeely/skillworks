@@ -13,6 +13,9 @@ public sealed partial class SessionEndpointsTests
     // Tool calls and the tool half of Faults, and no part of Cost or Friction.
     private const string ToolResultRead = "claude_code.tool_result";
 
+    // One of the five that name a run, and no Measure's.
+    private const string PromptRead = "claude_code.user_prompt";
+
     [Fact]
     public async Task Draws_the_rows_while_a_measure_read_is_still_out()
     {
@@ -172,8 +175,26 @@ public sealed partial class SessionEndpointsTests
         Assert.Equal(events.Asked.Distinct(), events.Asked);
     }
 
+    [Fact]
+    public async Task Empties_the_table_when_one_gate_read_fell_short()
+    {
+        using var events = Breaking(PromptRead);
+        using var studio = new StudioHost(events: events);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        var answer = await studio.SessionAnswer();
+
+        // A run this read leaves unnamed is a row Studio cannot vouch for, so one short is none.
+        Assert.Empty(answer.Sessions);
+        Assert.Equal("unreachable", answer.Gap.Kind);
+    }
+
     private static BrokenEventsStore Holding(string read) =>
         BrokenEventsStore.StallingOn(asked => asked.Contains(read, StringComparison.Ordinal));
+
+    private static BrokenEventsStore Breaking(string read) =>
+        BrokenEventsStore.DownOn(asked => asked.Contains(read, StringComparison.Ordinal));
 
     // Without this a predicate that matched no read would leave every test above passing on an answer it never held.
     private static async Task StillOut(BrokenEventsStore events) =>

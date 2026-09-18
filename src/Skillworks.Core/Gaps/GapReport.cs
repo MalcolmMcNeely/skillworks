@@ -15,6 +15,10 @@ public sealed class GapReport(TelemetrySwitch telemetry)
             ? Gap.OfWords(telemetry.WordsOn())
             : Gap.Of(read.Unreachable, unread, read.Lines.Count, Emitting());
 
+    // The switch is left out, because the store did answer for every read but these.
+    public Gap InMeasures(string? unreachable, IReadOnlyList<string> measures) =>
+        Gap.OfMeasures(unreachable, measures);
+
     public Gap InSpans(SessionSpans read) =>
         Gap.OfSpans(read.Unreachable, read.Shortened, read.Spans.Count, telemetry.TracesOn());
 

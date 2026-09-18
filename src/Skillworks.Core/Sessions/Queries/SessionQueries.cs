@@ -90,7 +90,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         // Judged on the period, not on what was asked, or a Repository with no runs would read as a quiet week.
         var surveying = filter.Repository is null ? placing : events.CountAsync(Events(span), [], cancellationToken);
 
-        var measuring = new Dictionary<Measure, Task<Measured>>
+        var measuring = new Dictionary<Measure, Task<MeasureLanding>>
         {
             [Measure.ToolCalls] = TotalledAsync(Measure.ToolCalls, calling, read => TotalledIn(read.Groups)),
             [Measure.Cost] = TotalledAsync(Measure.Cost, costing, read => TotalledIn(read.Groups)),
@@ -115,7 +115,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         {
             var empty = PeriodAsync(unreachable, surveying, rows: false);
 
-            return new SessionsRead(unreachable, [], AsyncEnumerable.Empty<SessionMeasure>(), empty, traced);
+            return new SessionsRead(unreachable, [], AsyncEnumerable.Empty<MeasureLanding>(), empty, traced);
         }
 
         var rows = Rows(gate, filter, order, traced, ranking?.Values ?? NoValues);
@@ -129,8 +129,8 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
     }
 
     // Each lands on its own, so nothing ready is held back to buy an order a test could read top to bottom.
-    private static async IAsyncEnumerable<SessionMeasure> LandingAsync(
-        IEnumerable<Task<Measured>> measuring,
+    private static async IAsyncEnumerable<MeasureLanding> LandingAsync(
+        IEnumerable<Task<MeasureLanding>> measuring,
         IReadOnlyList<SessionRow> rows,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -138,25 +138,22 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         {
             var measured = await landing;
 
-            if (measured.Unreachable is null)
-            {
-                yield return new SessionMeasure(measured.Measure, Only(rows, measured.Values));
-            }
+            yield return measured.Unreachable is null ? measured with { Values = Only(rows, measured.Values) } : measured;
         }
     }
 
-    private static async Task<Measured> TotalledAsync(
+    private static async Task<MeasureLanding> TotalledAsync(
         Measure measure,
         Task<EventTotals> reading,
         Func<EventTotals, IReadOnlyDictionary<string, decimal>> totalled)
     {
         var read = await reading;
 
-        return new Measured(measure, read.Unreachable is null ? totalled(read) : NoValues, read.Unreachable);
+        return new MeasureLanding(measure, read.Unreachable is null ? totalled(read) : NoValues, read.Unreachable);
     }
 
     // Both halves are added before the figure goes out, so a reader never watches the count climb from one to both.
-    private static async Task<Measured> FaultsAsync(Task<EventTotals> calling, Task<EventTotals> erring)
+    private static async Task<MeasureLanding> FaultsAsync(Task<EventTotals> calling, Task<EventTotals> erring)
     {
         var (called, erred) = (await calling, await erring);
         var unreachable = called.Unreachable ?? erred.Unreachable;
@@ -165,7 +162,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             ? Added(TotalledIn(called.Groups.Where(Failed)), TotalledIn(erred.Groups))
             : NoValues;
 
-        return new Measured(Measure.Faults, values, unreachable);
+        return new MeasureLanding(Measure.Faults, values, unreachable);
     }
 
     // The survey only tells a quiet period from a narrowed one, which rows on the table answer already, so
@@ -292,6 +289,4 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             Placed.Unreachable ?? Started.Unreachable ?? Ended.Unreachable ?? Titled.Unreachable ??
             Prompted.Unreachable ?? Fired.Unreachable;
     }
-
-    private sealed record Measured(Measure Measure, IReadOnlyDictionary<string, decimal> Values, string? Unreachable);
 }

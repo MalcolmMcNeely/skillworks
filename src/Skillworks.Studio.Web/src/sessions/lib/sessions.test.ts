@@ -146,6 +146,14 @@ describe('the Measures on a folded answer', () => {
     expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
     expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 1.25 });
   });
+
+  it('tells a Measure that read as nought from one the Gap names, so a dash is never a zero', () => {
+    const nought = foldSessionsLine(withRows(run), { kind: 'measure', measure: 'cost', values: {} });
+    const answer = foldSessionsLine(nought, { kind: 'end', gap: { kind: 'unreachable', missing: 'Tool calls' } });
+
+    expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 0 });
+    expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
+  });
 });
 
 describe('describeRunLength', () => {

@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Skillworks.Core.Arriving;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Gaps;
+using Skillworks.Core.Sessions.Measures;
 using Skillworks.Core.Sessions.Queries;
 
 namespace Skillworks.Core.Sessions;
@@ -19,6 +20,7 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
         yield return new SessionsHead(span, order.SortedOn, order.HighestFirst);
 
         var read = await sessions.ListAsync(span, filter, order, cancellationToken);
+        var fellShort = new List<MeasureLanding>();
 
         // Every row is the events store's answer, so a trace store that fell short leaves them standing.
         if (read.Unreachable is null)
@@ -26,9 +28,16 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
             yield return new SessionsPage(read.Rows);
 
             // Behind the rows, so a reader has the table in hand before a single number reaches it.
-            await foreach (var measure in read.Measures.WithCancellation(cancellationToken))
+            await foreach (var landing in read.Measures.WithCancellation(cancellationToken))
             {
-                yield return measure;
+                if (landing.Unreachable is null)
+                {
+                    yield return new SessionMeasure(landing.Measure, landing.Values);
+                }
+                else
+                {
+                    fellShort.Add(landing);
+                }
             }
         }
 
@@ -36,10 +45,34 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
 
         yield return new GapEnd(Shown(
             gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()),
+            // Only where rows stand, as a Measure with no row to sit on leaves no column of dashes to explain.
+            Missed(read.Rows.Count > 0 ? fellShort : []),
             gaps.InDepths(read.Traced)));
     }
 
-    // An events store that never answered emptied the table, so it is named ahead of a trace store.
-    private static Gap Shown(Gap events, Gap depths) =>
-        events.Kind == GapKind.Unreachable || depths.Kind == GapKind.Complete ? events : depths;
+    // They land in no order of their own, so the sentence would name them differently run to run.
+    private Gap Missed(IEnumerable<MeasureLanding> fellShort)
+    {
+        MeasureLanding[] named = [.. fellShort.OrderBy(landing => landing.Measure)];
+
+        return gaps.InMeasures(
+            named.Select(landing => landing.Unreachable).FirstOrDefault(),
+            [.. named.Select(landing => MeasureHeading.Of(landing.Measure))]);
+    }
+
+    // The bigger loss is named first: no rows at all, then columns of dashes, then a table nobody narrowed.
+    private static Gap Shown(Gap events, Gap measures, Gap depths)
+    {
+        if (events.Kind == GapKind.Unreachable)
+        {
+            return events;
+        }
+
+        if (measures.Kind != GapKind.Complete)
+        {
+            return measures;
+        }
+
+        return depths.Kind == GapKind.Complete ? events : depths;
+    }
 }

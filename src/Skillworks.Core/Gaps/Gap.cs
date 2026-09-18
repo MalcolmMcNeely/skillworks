@@ -10,9 +10,7 @@ public sealed record Gap(GapKind Kind, string? Missing)
         var (kind, missing) = (unreachable, events, emitting) switch
         {
             // Only the unread days are short, as every day that landed is whole.
-            ({ } reason, _, _) => (
-                GapKind.Unreachable,
-                $"Studio could not read the events store: {reason}. Nothing is shown for {Listed(unread)}."),
+            ({ } reason, _, _) => (GapKind.Unreachable, Unread(reason, Listed(unread))),
 
             // Asked of the switch, not guessed: "nobody turned it on" is a fix for the developer, "nothing happened" is not.
             (_, 0, false) => (
@@ -43,6 +41,12 @@ public sealed record Gap(GapKind Kind, string? Missing)
 
         return new Gap(kind, missing);
     }
+
+    // The rows stand without them, so this names the columns left empty rather than emptying the table.
+    internal static Gap OfMeasures(string? unreachable, IReadOnlyList<string> measures) =>
+        unreachable is null
+            ? new Gap(GapKind.Complete, null)
+            : new Gap(GapKind.Unreachable, Unread(unreachable, Listed(measures)));
 
     // The switch is asked for the next action alone, which is the one part of this that differs by machine.
     internal static Gap OfWords(bool? on) =>
@@ -120,10 +124,14 @@ public sealed record Gap(GapKind Kind, string? Missing)
         return new Gap(kind, missing);
     }
 
-    private static string Listed(IReadOnlyList<DateOnly> days)
-    {
-        string[] names = [.. days.Select(day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))];
+    private static string Unread(string reason, string missing) =>
+        $"Studio could not read the events store: {reason}. Nothing is shown for {missing}.";
 
-        return names.Length > 1 ? $"{string.Join(", ", names[..^1])} and {names[^1]}" : string.Concat(names);
-    }
+    private static string Listed(IReadOnlyList<DateOnly> days) =>
+        Listed([.. days.Select(day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))]);
+
+    private static string Listed(IReadOnlyList<string> names) =>
+        names.Count > 1
+            ? $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}"
+            : string.Concat(names);
 }

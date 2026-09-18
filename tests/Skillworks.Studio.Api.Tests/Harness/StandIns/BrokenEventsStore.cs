@@ -36,6 +36,9 @@ public sealed class BrokenEventsStore : DelegatingHandler
     // Each read names the events it counts, so a test can hold one back and leave the rest answering.
     public static BrokenEventsStore StallingOn(Func<string, bool> read) => new(route => read(QueryOf(route)), Hold);
 
+    // Refused rather than held, so a test that reads to the end of the answer waits on nothing.
+    public static BrokenEventsStore DownOn(Func<string, bool> read) => new(route => read(QueryOf(route)), Refused);
+
     public IReadOnlyList<string> Asked => [.. _asked.Select(route => route.PathAndQuery)];
 
     public IReadOnlyList<DateOnly> DaysAsked => [.. _asked.Select(DayOf).OfType<DateOnly>()];

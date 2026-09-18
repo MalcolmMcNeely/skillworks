@@ -92,4 +92,82 @@ public sealed partial class SessionEndpointsTests
         // No rows to hang a number on, so a Measure for them would be a figure about nothing.
         Assert.Empty((await studio.SessionAnswer()).Measures);
     }
+
+    [Fact]
+    public async Task Leaves_every_row_standing_when_one_measure_read_fell_short()
+    {
+        using var events = Breaking(TurnRead);
+        using var studio = new StudioHost(events: events);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        var answer = await studio.SessionAnswer();
+
+        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
+        Assert.Equal(["faults", "friction", "toolCalls"], answer.Measures.Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Names_the_measure_it_could_not_read_on_the_end_line()
+    {
+        using var events = Breaking(TurnRead);
+        using var studio = new StudioHost(events: events);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        var answer = await studio.SessionAnswer();
+
+        // A column of dashes with nothing said about it would read as a table Studio vouched for.
+        Assert.Equal("unreachable", answer.Gap.Kind);
+        Assert.Contains("events store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+        Assert.Contains("Cost", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Names_both_measures_that_one_read_falling_short_took_away()
+    {
+        using var events = Breaking(ToolResultRead);
+        using var studio = new StudioHost(events: events);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        var answer = await studio.SessionAnswer();
+
+        Assert.Equal(["cost", "friction"], answer.Measures.Keys.Order(StringComparer.Ordinal));
+        Assert.Contains("Tool calls and Faults", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Reads_a_quiet_period_as_quiet_while_a_measure_read_falls_short()
+    {
+        using var events = Breaking(TurnRead);
+        using var studio = new StudioHost(events: events);
+
+        // No rows means no column of dashes to explain, so the period is the whole of the answer.
+        Assert.Equal("quiet", (await studio.SessionAnswer()).Gap.Kind);
+    }
+
+    [Fact]
+    public async Task Asks_the_events_store_for_nothing_twice_after_a_read_fell_short()
+    {
+        using var events = Breaking(TurnRead);
+        using var studio = new StudioHost(events: events);
+
+        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        await studio.SessionAnswer();
+
+        // A Measure that fell short comes back when the reader changes the Filter, never behind their back.
+        Assert.Equal(events.Asked.Distinct(), events.Asked);
+    }
+
+    [Fact]
+    public async Task Leaves_the_gap_for_telemetry_that_was_never_switched_on_alone()
+    {
+        using var events = Breaking(TurnRead);
+        using var studio = new StudioHost(events: events, emitting: false);
+
+        // No rows means nothing was lost from a table, so the advice on screen is still the switch.
+        Assert.Equal("telemetryOff", (await studio.SessionAnswer()).Gap.Kind);
+    }
 }
