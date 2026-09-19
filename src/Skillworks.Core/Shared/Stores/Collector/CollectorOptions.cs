@@ -10,7 +10,7 @@ public sealed class CollectorOptions
     private const string Pinned = "http://localhost:4318";
 
     // Short on purpose: a Collector that is down must light its own Lamp, not hold the panel up.
-    public int TimeoutSeconds { get; set; } = 5;
+    public int PatienceSeconds { get; set; } = 5;
 
     // Every reader settles a blank the same way, or the knock and the settings fall back to different addresses.
     public string ResolvedEndpoint() => string.IsNullOrWhiteSpace(Address) ? Pinned : Address.Trim();

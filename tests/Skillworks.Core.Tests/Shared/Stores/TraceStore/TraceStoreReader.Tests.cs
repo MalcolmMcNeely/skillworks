@@ -367,8 +367,8 @@ public sealed partial class TraceStoreReaderTests
         string? address = null,
         int? mostTraces = null,
         int? mostSessions = null,
-        int? timeoutSeconds = null,
-        int? sessionTimeoutSeconds = null,
+        int? requestPatienceSeconds = null,
+        int? sessionPatienceSeconds = null,
         HttpMessageHandler? store = null,
         TimeProvider? clock = null)
     {
@@ -389,14 +389,14 @@ public sealed partial class TraceStoreReaderTests
             settings["Tempo:MostSessions"] = runs.ToString(CultureInfo.InvariantCulture);
         }
 
-        if (timeoutSeconds is { } eachRequest)
+        if (requestPatienceSeconds is { } eachRequest)
         {
-            settings["Tempo:TimeoutSeconds"] = eachRequest.ToString(CultureInfo.InvariantCulture);
+            settings["Tempo:RequestPatienceSeconds"] = eachRequest.ToString(CultureInfo.InvariantCulture);
         }
 
-        if (sessionTimeoutSeconds is { } wholeSession)
+        if (sessionPatienceSeconds is { } wholeSession)
         {
-            settings["Tempo:SessionTimeoutSeconds"] = wholeSession.ToString(CultureInfo.InvariantCulture);
+            settings["Tempo:SessionPatienceSeconds"] = wholeSession.ToString(CultureInfo.InvariantCulture);
         }
 
         var services = new ServiceCollection();

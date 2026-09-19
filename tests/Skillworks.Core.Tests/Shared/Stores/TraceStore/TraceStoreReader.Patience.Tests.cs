@@ -22,7 +22,7 @@ public sealed partial class TraceStoreReaderTests
         // Arrange
         using var stalling = new StallingTraceStore();
         var clock = HarnessClock.Still();
-        var reader = Reader(Tenant(), timeoutSeconds: PatienceSeconds, store: stalling, clock: clock);
+        var reader = Reader(Tenant(), requestPatienceSeconds: PatienceSeconds, store: stalling, clock: clock);
 
         // Act
         // A period has no Patience over it as a whole, so a request's own is the only wait that can end this read.
@@ -56,8 +56,8 @@ public sealed partial class TraceStoreReaderTests
         // The way round Studio runs: a request gives up long before the session it belongs to does.
         var reader = Reader(
             tenant,
-            timeoutSeconds: PatienceSeconds,
-            sessionTimeoutSeconds: BeyondReach,
+            requestPatienceSeconds: PatienceSeconds,
+            sessionPatienceSeconds: BeyondReach,
             store: stalling,
             clock: clock);
 
@@ -158,8 +158,8 @@ public sealed partial class TraceStoreReaderTests
     private static TraceStoreReader HeldReader(string tenant, StallingTraceStore stalling, TimeProvider clock) =>
         Reader(
             tenant,
-            timeoutSeconds: BeyondReach,
-            sessionTimeoutSeconds: PatienceSeconds,
+            requestPatienceSeconds: BeyondReach,
+            sessionPatienceSeconds: PatienceSeconds,
             store: stalling,
             clock: clock);
 

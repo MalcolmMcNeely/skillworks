@@ -33,7 +33,7 @@ public sealed class CollectorReader(IHttpClientFactory clients, IOptions<Collect
     private async Task<string?> KnockAsync(Door door, Uri address, CancellationToken cancellationToken)
     {
         var client = clients.CreateClient(ClientName);
-        var patience = Patience(options.Value.TimeoutSeconds);
+        var patience = Patience(options.Value.PatienceSeconds);
 
         using var payload = new StringContent(door.Payload, Encoding.UTF8, "application/json");
 

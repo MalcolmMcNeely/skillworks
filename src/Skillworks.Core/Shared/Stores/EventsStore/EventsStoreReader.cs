@@ -261,7 +261,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         }
 
         // One per request, as a long period is asked for a window at a time and one Patience over them all would cut it short.
-        var patience = Patience(loki.TimeoutSeconds);
+        var patience = Patience(loki.PatienceSeconds);
 
         using var spent = new CancellationTokenSource(patience, clock);
         using var within = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);

@@ -121,7 +121,7 @@ public sealed class CollectorReaderTests
     {
         var settings = new Dictionary<string, string?>
         {
-            ["Collector:TimeoutSeconds"] = PatienceSeconds.ToString(CultureInfo.InvariantCulture),
+            ["Collector:PatienceSeconds"] = PatienceSeconds.ToString(CultureInfo.InvariantCulture),
         };
 
         var services = new ServiceCollection();

@@ -24,7 +24,7 @@ public sealed class StudioApiHost(
 
         builder.ConfigureTestServices(services =>
         {
-            // Only the handler is replaced, so Studio's real address and timeout stay under test.
+            // Only the handler is replaced, so Studio's real address and Patience stay under test.
             if (events is not null)
             {
                 services.AddHttpClient(EventsStoreReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => events);

@@ -66,7 +66,7 @@ public sealed class EventsStoreReaderTests
     {
         var settings = new Dictionary<string, string?>
         {
-            ["Loki:TimeoutSeconds"] = PatienceSeconds.ToString(CultureInfo.InvariantCulture),
+            ["Loki:PatienceSeconds"] = PatienceSeconds.ToString(CultureInfo.InvariantCulture),
         };
 
         var services = new ServiceCollection();
