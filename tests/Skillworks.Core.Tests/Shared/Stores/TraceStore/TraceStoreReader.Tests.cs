@@ -361,12 +361,13 @@ public sealed partial class TraceStoreReaderTests
     private static Task Push(string tenant, string session, string trace, IReadOnlyList<RecordedSpan> spans) =>
         TestTempo.PushAsync(tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
 
-    // The real registration, so the address and the timeout under test are the ones Studio runs with.
+    // The real registration, so the address and the two Patiences under test are the ones Studio runs with.
     private static TraceStoreReader Reader(
         string tenant,
         string? address = null,
         int? mostTraces = null,
         int? mostSessions = null,
+        int? timeoutSeconds = null,
         int? sessionTimeoutSeconds = null,
         HttpMessageHandler? store = null,
         TimeProvider? clock = null)
@@ -388,9 +389,14 @@ public sealed partial class TraceStoreReaderTests
             settings["Tempo:MostSessions"] = runs.ToString(CultureInfo.InvariantCulture);
         }
 
-        if (sessionTimeoutSeconds is { } seconds)
+        if (timeoutSeconds is { } eachRequest)
         {
-            settings["Tempo:SessionTimeoutSeconds"] = seconds.ToString(CultureInfo.InvariantCulture);
+            settings["Tempo:TimeoutSeconds"] = eachRequest.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (sessionTimeoutSeconds is { } wholeSession)
+        {
+            settings["Tempo:SessionTimeoutSeconds"] = wholeSession.ToString(CultureInfo.InvariantCulture);
         }
 
         var services = new ServiceCollection();
@@ -400,7 +406,7 @@ public sealed partial class TraceStoreReaderTests
 
         services.AddStores(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
 
-        // Only the handler is replaced, and after the registration that clears them, so Studio's own timeout stays under test.
+        // Only the handler is replaced, and after the registration that clears them, so Studio's own waits stay under test.
         if (store is not null)
         {
             services.AddHttpClient(TraceStoreReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => store);

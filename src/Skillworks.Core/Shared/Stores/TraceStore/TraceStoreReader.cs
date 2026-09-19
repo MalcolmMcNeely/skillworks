@@ -18,6 +18,10 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
     private const string SessionAttribute = "session.id";
 
+    private const string OneRequest = "one request";
+
+    private const string AWholeSession = "a whole session";
+
     private const int SpanIdBytes = 8;
 
     private const int TraceIdBytes = 16;
@@ -28,8 +32,10 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         DateTimeOffset until,
         CancellationToken cancellationToken)
     {
-        // One budget over the whole read, because it makes a request per trace and each would take its own.
-        using var spent = new CancellationTokenSource(Whole(options.Value.SessionTimeoutSeconds), clock);
+        var patience = Patience(options.Value.SessionTimeoutSeconds);
+
+        // Each request has its own, but a session is hundreds of them, so the whole read needs a wait too.
+        using var spent = new CancellationTokenSource(patience, clock);
         using var whole = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
 
         var budget = new Budget(whole.Token, cancellationToken);
@@ -48,7 +54,7 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
             if (found.Unreachable is not null)
             {
-                return SessionSpans.Failed(found.Unreachable);
+                return SessionSpans.Failed(Gap(found.Unreachable, spent, patience));
             }
 
             shortened |= Filled(found.Value.Count, most);
@@ -65,7 +71,7 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
             if (read.Unreachable is not null)
             {
-                return SessionSpans.Failed(read.Unreachable);
+                return SessionSpans.Failed(Gap(read.Unreachable, spent, patience));
             }
 
             spans.AddRange(read.Value);
@@ -109,12 +115,16 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     {
         var address = options.Value.ResolvedAddress();
         var now = clock.GetUtcNow();
+        var patience = Patience(options.Value.TimeoutSeconds);
+
+        using var spent = new CancellationTokenSource(patience, clock);
+        using var within = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
 
         try
         {
             using var response = await SendAsync(
                 Search($"{{ span.{SessionAttribute} != \"\" }}", now - Probe, now, 1),
-                cancellationToken);
+                within.Token);
 
             return response.StatusCode switch
             {
@@ -128,7 +138,9 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         }
         catch (Exception failure) when (Outside(failure, cancellationToken))
         {
-            return TraceStoreAnswer.Unreachable($"{address} could not be read: {failure.Message}");
+            return TraceStoreAnswer.Unreachable(spent.IsCancellationRequested
+                ? Waited(address, patience, OneRequest)
+                : $"{address} could not be read: {failure.Message}");
         }
     }
 
@@ -138,8 +150,18 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     // At least one, as a limit of none asks the store for a default of its own and would never be reached.
     private static int Most(int asked) => Math.Max(1, asked);
 
-    // At least a second, as a budget of none would be spent before the first request went out.
-    private static TimeSpan Whole(int seconds) => TimeSpan.FromSeconds(Math.Max(1, seconds));
+    // At least a second, as a Patience of none would be spent before the request went out.
+    private static TimeSpan Patience(int seconds) => TimeSpan.FromSeconds(Math.Max(1, seconds));
+
+    // The wait names what it covered, or a stalled request reads the same on screen as a whole session giving up.
+    private static string Waited(Uri address, TimeSpan patience, string over) =>
+        $"{address} did not answer inside the {patience.TotalSeconds:0} seconds Studio waits for {over}";
+
+    // The wait over a whole read is the reading method's own, so it says so rather than leaving one request to guess.
+    private string Gap(string unreachable, CancellationTokenSource spent, TimeSpan patience) =>
+        spent.IsCancellationRequested
+            ? Waited(options.Value.ResolvedAddress(), patience, AWholeSession)
+            : unreachable;
 
     // Within a block a search keeps only the spans whose own times fall in the window, which a values read does not.
     private static string Search(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
@@ -178,24 +200,32 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     private async Task<Answer<T>> AskAsync<T>(string route, Func<JsonElement, T> read, T none, Budget budget)
     {
         var address = options.Value.ResolvedAddress();
+        var patience = Patience(options.Value.TimeoutSeconds);
+
+        // The client sets no wait of its own, so without this a single stalled request would never end.
+        using var spent = new CancellationTokenSource(patience, clock);
+        using var within = CancellationTokenSource.CreateLinkedTokenSource(budget.Within, spent.Token);
 
         try
         {
-            using var response = await SendAsync(route, budget.Within);
+            using var response = await SendAsync(route, within.Token);
 
             if (!response.IsSuccessStatusCode)
             {
                 return new Answer<T>(none, $"{address} answered {(int)response.StatusCode}");
             }
 
-            await using var body = await response.Content.ReadAsStreamAsync(budget.Within);
-            using var document = await JsonDocument.ParseAsync(body, cancellationToken: budget.Within);
+            await using var body = await response.Content.ReadAsStreamAsync(within.Token);
+            using var document = await JsonDocument.ParseAsync(body, cancellationToken: within.Token);
 
             return new Answer<T>(read(document.RootElement), null);
         }
         catch (Exception failure) when (Outside(failure, budget.Caller))
         {
-            return new Answer<T>(none, $"{address} could not be read: {failure.Message}");
+            // Only this request's own Patience is knowable here, as the wait over a whole read belongs to the method that built it.
+            return new Answer<T>(none, spent.IsCancellationRequested
+                ? Waited(address, patience, OneRequest)
+                : $"{address} could not be read: {failure.Message}");
         }
     }
 
@@ -318,10 +348,9 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
     private sealed record Answer<T>(T Value, string? Unreachable);
 
-    // Two tokens, because a budget that ran out is the store falling short and a reader who left is not.
+    // Two tokens, because a Patience that ran out is the store falling short and a reader who left is not.
     private readonly record struct Budget(CancellationToken Within, CancellationToken Caller)
     {
-        // A read with no budget of its own, where each request is bounded by the client's timeout alone.
         public static Budget PerRequest(CancellationToken cancellationToken) =>
             new(cancellationToken, cancellationToken);
     }

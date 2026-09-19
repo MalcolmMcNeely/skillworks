@@ -34,8 +34,8 @@ public static class StoresServiceCollectionExtensions
         {
             var tempo = provider.GetRequiredService<IOptions<TempoOptions>>().Value;
 
+            // No wait of its own: the reader waits a Patience on the Clock, which a busy machine cannot run out.
             client.BaseAddress = tempo.ResolvedAddress();
-            client.Timeout = TimeSpan.FromSeconds(tempo.TimeoutSeconds);
         });
 
         services.AddHttpClient(CollectorReader.ClientName, (provider, client) =>
