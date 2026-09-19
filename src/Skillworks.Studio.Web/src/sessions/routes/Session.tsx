@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router';
 import { filterParams, readFilter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
-import { describeFetchFailure } from '../../shared/http/lib/errors';
+import { describeFetchFailure } from '../../shared/wire/lib/errors';
 import { UpButton } from '../../shared/pages/components/UpButton';
 import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../shared/pages/lib/pages';

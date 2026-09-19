@@ -57,6 +57,12 @@ The page Studio opens on. It holds a panel for each of Studio's jobs, Watch, Aut
 Publish, and one for Sessions, and leads to the ones that are built.
 _Avoid_: Landing page, start page, index
 
+**Page**:
+One address in Studio: the name it is known by, its symbol, the title its tab carries, and the Page
+above it. Home is the only Page with none above it, so every other Page has one to go up to. A Page
+nobody built is still named, so Home can show the job and say it is not there yet.
+_Avoid_: Screen, place, destination
+
 **Watch**:
 Studio's first job, and the page that does it: which skills fire, how often, in which Repositories,
 and what they cost.
@@ -72,6 +78,36 @@ _Avoid_: Treemap, chart, grid
 One Skill's place on the Map. Its area is that Skill's share of the figure the Map is sized by, and
 never less than a fiftieth of the Map, so no Skill is too small to read or to click.
 _Avoid_: Cell, box, block
+
+**Alphabet**:
+One set of symbols with one job between them: which thing it is, what state it is in, what caused
+it, or which way an order runs. A symbol belongs to one Alphabet, so the same mark never means two
+things on one screen.
+_Avoid_: Symbol set, icon set, glyph set
+
+**Key**:
+One of a row of buttons a reader presses to choose, with one pressed at a time and none pressed
+where the reader has not chosen. It carries a word, and a symbol beside it where its Alphabet has
+one.
+_Avoid_: Toggle, chip, segment
+
+**Palette**:
+The whole set of colours Studio draws with, each named for what it is for and not for what colour it
+is. Nothing on screen takes a colour from outside it, so contrast is checked once, over every pair
+Studio actually puts together.
+_Avoid_: Theme, colour scheme, swatch
+
+**Wire**:
+The one way the front end asks Studio's API for something and reads the answer back, whether the
+answer comes whole or a line at a time. A broken Wire says only that the API was not reached, never
+that a store fell short, so it is never read as a Gap.
+_Avoid_: HTTP, client, transport
+
+**Harness**:
+What a test stands a part of Studio up on: a host to send requests to, a stand-in for a store, and a
+clock that does not move. Nothing in a Harness ships, so a Harness is built for the test to read and
+never for the screen.
+_Avoid_: Fixtures, scaffolding, rig
 
 ### Measurement
 
@@ -118,6 +154,12 @@ One number a list reports, read from the stores over a span. A Measure arrives o
 short on its own, so a list can be whole in its rows and still be missing one. A Measure nobody has
 read yet is blank, and one that fell short is a dash.
 _Avoid_: Figure, metric, statistic
+
+**Figure**:
+A number as Studio writes it for a reader: money, a count, a share or a length, each in the form
+that reader reads it in. A Measure is the number; a Figure is how it is written, so one Measure is
+one Figure on a Tile and another in a table.
+_Avoid_: Format, display value, rendering
 
 **Gap**:
 Which way an answer from the Events store fell short, when it did: the store was unreachable,

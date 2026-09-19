@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { describeFetchFailure } from '../../http/lib/errors';
+import { describeFetchFailure } from '../../wire/lib/errors';
 import { fetchHealth, type Health } from '../api/health';
 
 interface HealthReading {

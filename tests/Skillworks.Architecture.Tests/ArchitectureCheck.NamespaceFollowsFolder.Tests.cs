@@ -57,11 +57,11 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
             .Write("src/Studio/Plugins/Skillworks.Plugins.csproj", ProjectFile)
-            .Write("src/Studio/Plugins/Shared/Loading/PluginLoader.cs", "namespace Skillworks.Plugins.Shared.Loading;\n\npublic sealed class PluginLoader;\n")
-            .Write("src/Studio/Plugins/Shared/Loading/PluginCache.cs", "namespace Skillworks.Studio.Plugins.Shared.Loading;\n\npublic sealed class PluginCache;\n");
+            .Write("src/Studio/Plugins/Shared/Catalogue/PluginLoader.cs", "namespace Skillworks.Plugins.Shared.Catalogue;\n\npublic sealed class PluginLoader;\n")
+            .Write("src/Studio/Plugins/Shared/Catalogue/PluginCache.cs", "namespace Skillworks.Studio.Plugins.Shared.Catalogue;\n\npublic sealed class PluginCache;\n");
 
         Assert.Equal(
-            [("namespace-follows-folder", "src/Studio/Plugins/Shared/Loading/PluginCache.cs")],
+            [("namespace-follows-folder", "src/Studio/Plugins/Shared/Catalogue/PluginCache.cs")],
             tree.Breaches());
     }
 

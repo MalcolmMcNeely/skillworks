@@ -6,7 +6,6 @@ internal static class SharedNamesAWord
 {
     public const string Rule = "shared-names-a-word";
 
-    // The other door into Shared, code with no domain meaning, is a judgement, so only the word half is checked.
     public static IEnumerable<Breach> Check(
         string root,
         IReadOnlyList<string> sourceFiles,

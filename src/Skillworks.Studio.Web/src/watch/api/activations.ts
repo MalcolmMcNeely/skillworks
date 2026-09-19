@@ -1,5 +1,5 @@
 import { filterParams, type Filter } from '../../shared/filters/lib/filters';
-import { getLines } from '../../shared/http/api/json';
+import { getLines } from '../../shared/wire/api/json';
 import type { ActivationsLine } from '../lib/activations';
 
 export function fetchActivations(filter: Filter, signal: AbortSignal): AsyncGenerator<ActivationsLine> {

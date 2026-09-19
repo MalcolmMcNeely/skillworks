@@ -1,6 +1,6 @@
 import type { SymbolTable } from '../../shared/alphabets/lib/alphabets';
 import { signalOf } from '../../shared/gaps/lib/gaps';
-import { noLink } from '../../shared/http/lib/errors';
+import { noLink } from '../../shared/wire/lib/errors';
 import type { SkillsAnswer } from './answer';
 import { figureWords, type MapFigure } from './map';
 

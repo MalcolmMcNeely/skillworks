@@ -13,8 +13,8 @@ C# and TypeScript share one shape: Slices first, Concerns beneath.
   type goes in the Slice whose job it serves.
 - A **Concern** groups the types that play one role inside a Slice. In the front end `concerns` names
   them, and `src/Skillworks.Studio.Web/.dependency-cruiser.cjs` holds the boundaries between them.
-- **`Shared`** holds the code no one job owns, and a folder inside `Shared` is named for what its
-  code does.
+- **`Shared`** holds the code no one job owns, and a folder inside `Shared` is named for a word in
+  the glossary.
 - Every folder name says what its code serves or does, so the names in `banned-folder-names` are
   never used, in any letter case.
 - Folders in `skip-folders` hold code nobody writes by hand. These rules skip them.
@@ -44,10 +44,11 @@ context that declares no Slices, is judged by the rest of these rules and by non
    own folders is free.
 4. **`Shared` never reads a Slice.** The arrow runs one way, so a Slice can be read in full without
    opening anything above it.
-5. **`Shared` has two doors.** Code gets in by naming a word from the glossary of the context that
-   claims it, or by having no domain meaning at all. The first door is checked against the glossary.
-   The second is a judgement no check can make, so it stays here as text. Either way the test runs on
-   the piece and not on the word: only what two Slices actually read moves.
+5. **`Shared` has one door.** Every folder in `Shared` names a word from the glossary of the context
+   that claims it, or the plural of one, because a folder holds many of a thing. Code with no word of
+   its own settles one in the glossary before the folder appears, and machinery settles a word like
+   everything else. The test runs on the piece and not on the word: only what two Slices actually
+   read moves.
 6. **A Slice keeps its name everywhere.** A Slice folder sits at the same depth, and under the same
    name in that language's own case, in every project that holds its code, and in the front end.
 7. **Two Slices may hold a type with the same name.** They are two types about two jobs. Merging them

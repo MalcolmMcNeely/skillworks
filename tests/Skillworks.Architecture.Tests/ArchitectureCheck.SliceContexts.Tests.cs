@@ -13,7 +13,7 @@ public sealed partial class ArchitectureCheckTests
             .FrontEnd("tools/Check/web")
             .Write("tools/Check/web/src/watch/pages/clock.ts");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]

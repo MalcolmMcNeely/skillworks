@@ -10,7 +10,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/Plumbing/Pipe.cs");
 
-        Assert.Equal([("shared-names-a-word", "src/App/Shared/Plumbing")], tree.Breaches("shared-names-a-word"));
+        Assert.Equal([("shared-names-a-word", "src/App/Shared/Plumbing")], tree.Breaches());
     }
 
     [Fact]
@@ -21,7 +21,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/Health/Lamp.cs");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -32,7 +32,51 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/EventsStore/Reader.cs");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_folder_named_in_the_plural_of_a_headword_is_not_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Glossary("app", "Gap")
+            .Project("src/App")
+            .Write("src/App/Shared/Gaps/Gap.cs");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_folder_named_in_the_plural_of_a_headword_that_takes_es_is_not_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Glossary("app", "Patch")
+            .Project("src/App")
+            .Write("src/App/Shared/Patches/Patch.cs");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_folder_named_in_the_plural_of_a_headword_that_ends_in_y_is_not_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Glossary("app", "Story")
+            .Project("src/App")
+            .Write("src/App/Shared/Stories/Story.cs");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_folder_whose_singular_names_no_glossary_word_is_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Glossary("app", "Gap")
+            .Project("src/App")
+            .Write("src/App/Shared/Pipes/Pipe.cs");
+
+        Assert.Equal([("shared-names-a-word", "src/App/Shared/Pipes")], tree.Breaches());
     }
 
     [Fact]
@@ -43,7 +87,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/HealthReport/Report.cs");
 
-        Assert.Equal([("shared-names-a-word", "src/App/Shared/HealthReport")], tree.Breaches("shared-names-a-word"));
+        Assert.Equal([("shared-names-a-word", "src/App/Shared/HealthReport")], tree.Breaches());
     }
 
     [Fact]
@@ -55,7 +99,18 @@ public sealed partial class ArchitectureCheckTests
             .Write("web/src/shared/events-store/reader.ts")
             .Write("web/src/shared/plumbing/pipe.ts");
 
-        Assert.Equal([("shared-names-a-word", "web/src/shared/plumbing")], tree.Breaches("shared-names-a-word"));
+        Assert.Equal([("shared-names-a-word", "web/src/shared/plumbing")], tree.Breaches());
+    }
+
+    [Fact]
+    public void A_front_end_folder_named_in_the_plural_of_a_headword_is_not_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Glossary("app", "Gap")
+            .FrontEnd("web")
+            .Write("web/src/shared/gaps/gaps.ts");
+
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -65,7 +120,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/Pipe.cs");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -76,7 +131,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/Health/Lamps/Lamp.cs");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -86,7 +141,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Watch/Plumbing/Pipe.cs");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -106,7 +161,7 @@ public sealed partial class ArchitectureCheckTests
                 ("shared-names-a-word", "src/App/Shared/Rule"),
                 ("shared-names-a-word", "tools/Check/Shared/Health"),
             ],
-            tree.Breaches("shared-names-a-word"));
+            tree.Breaches());
     }
 
     [Fact]
@@ -116,7 +171,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("lib/App")
             .Write("lib/App/Shared/Plumbing/Pipe.cs");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -126,21 +181,11 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/Plumbing/Pipe.cs");
 
-        var breach = Assert.Single(tree.Check("shared-names-a-word").Breaches);
+        var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Contains("`Plumbing`", breach.Message);
         Assert.Contains("`CONTEXT.md`", breach.Message);
         Assert.Contains("Rename", breach.Message);
-    }
-
-    [Fact]
-    public void The_shared_names_a_word_check_is_not_in_the_run()
-    {
-        using var tree = new RulesTree()
-            .Project("src/App")
-            .Write("src/App/Shared/Plumbing/Pipe.cs");
-
-        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -151,7 +196,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/EventsStore/Reader.cs");
 
-        Assert.Empty(tree.Breaches("shared-names-a-word"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -162,6 +207,6 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Shared/Plumbing/Pipe.cs");
 
-        Assert.Equal([("contexts", "CONTEXT.md")], tree.Breaches("shared-names-a-word"));
+        Assert.Equal([("contexts", "CONTEXT.md")], tree.Breaches());
     }
 }

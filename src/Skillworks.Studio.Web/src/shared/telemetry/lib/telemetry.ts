@@ -1,5 +1,5 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
-import { noLink } from '../../http/lib/errors';
+import { noLink } from '../../wire/lib/errors';
 
 export type SwitchPosition = 'on' | 'off' | 'unreadable' | 'asking' | 'unlinked';
 

@@ -44,7 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Shared\Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Shared\Harness\Catalogue\**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Shared\Harness\loki.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

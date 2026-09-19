@@ -57,7 +57,7 @@ public sealed partial class ArchitectureCheckTests
     [Fact]
     public void A_folder_inside_the_front_end_shared_folder_is_not_a_breach()
     {
-        using var tree = new RulesTree().FrontEnd("web").Write("web/src/shared/http/get.ts");
+        using var tree = new RulesTree().FrontEnd("web").Write("web/src/shared/wire/get.ts");
 
         Assert.Empty(tree.Breaches());
     }

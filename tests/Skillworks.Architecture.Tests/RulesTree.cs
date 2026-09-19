@@ -17,7 +17,11 @@ public sealed class RulesTree : IDisposable
         ["check"] = new("tools/Check/CONTEXT.md", Slices: false, ["tools/Check"]),
     };
 
-    private readonly Dictionary<string, IReadOnlyList<string>> _headwords = [];
+    // Every folder in Shared names a glossary word, so the default settles the words the trees are written with.
+    private readonly Dictionary<string, IReadOnlyList<string>> _headwords = new()
+    {
+        ["app"] = ["Alarm", "Catalogue", "Clock", "Health", "Host", "Snooze", "Timer", "Wire"],
+    };
 
     private readonly Dictionary<string, Dictionary<string, string>> _settings = new()
     {
@@ -119,10 +123,10 @@ public sealed class RulesTree : IDisposable
         return this;
     }
 
-    public CheckResult Check(params string[] alsoRun) => ArchitectureCheck.Run(_root.FullName, alsoRun);
+    public CheckResult Check() => ArchitectureCheck.Run(_root.FullName);
 
-    public IEnumerable<(string Rule, string Path)> Breaches(params string[] alsoRun) =>
-        Check(alsoRun).Breaches.Select(breach => (breach.Rule, breach.Path));
+    public IEnumerable<(string Rule, string Path)> Breaches() =>
+        Check().Breaches.Select(breach => (breach.Rule, breach.Path));
 
     public void Dispose() => _root.Delete(recursive: true);
 

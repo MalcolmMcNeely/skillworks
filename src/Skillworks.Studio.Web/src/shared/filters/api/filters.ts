@@ -1,4 +1,4 @@
-import { getLines } from '../../http/api/json';
+import { getLines } from '../../wire/api/json';
 import type { FilterChoicesLine } from '../lib/choices';
 import { everything, filterQuery, type Span } from '../lib/filters';
 

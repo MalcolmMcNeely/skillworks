@@ -6,7 +6,7 @@ import { depthKeyOf, depthKeys } from '../../shared/filters/lib/depthKeys';
 import { filterParams, readFilter, type Filter } from '../../shared/filters/lib/filters';
 import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../shared/filters/lib/spanKeys';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
-import { describeFetchFailure } from '../../shared/http/lib/errors';
+import { describeFetchFailure } from '../../shared/wire/lib/errors';
 import { Keys } from '../../shared/keys/components/Keys';
 import { UpButton } from '../../shared/pages/components/UpButton';
 import { useTabTitle } from '../../shared/pages/components/useTabTitle';

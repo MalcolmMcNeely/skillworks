@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Gap } from '../../shared/gaps/lib/gaps';
-import { chunkedBody } from '../../shared/http/lib/chunkedBody';
-import { readLines } from '../../shared/http/lib/lines';
+import { chunkedBody } from '../../shared/wire/lib/chunkedBody';
+import { readLines } from '../../shared/wire/lib/lines';
 import type { Origin } from '../../shared/provenance/lib/provenance';
 import { foldSkillsLine, showsFigures, type SkillsAnswer } from './answer';
 import type { SkillOnDay, SkillsLine, TurnTotals } from './skills';
