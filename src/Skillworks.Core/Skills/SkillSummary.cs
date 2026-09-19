@@ -1,4 +1,4 @@
-using Skillworks.Core.Provenance;
+using Skillworks.Core.Shared.Provenance;
 using Skillworks.Core.Spend;
 
 namespace Skillworks.Core.Skills;

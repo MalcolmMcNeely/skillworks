@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lampSymbols } from '../../shared/health/lib/health';
 import { pageSymbols } from '../../pages/lib/pages';
-import { triggerSymbols } from '../../provenance/lib/triggers';
+import { triggerSymbols } from '../../shared/provenance/lib/triggers';
 import { measureSymbols, sortSymbols } from '../../sessions/lib/sessions';
 import { mapNoticeSymbols } from '../../skills/lib/mapNotice';
 import { readoutSymbols } from '../../skills/lib/readout';

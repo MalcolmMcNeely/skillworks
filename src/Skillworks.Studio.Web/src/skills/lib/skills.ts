@@ -2,7 +2,7 @@ import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { describeMoney } from '../../figures/lib/figures';
 import type { Span } from '../../filters/lib/filters';
 import type { GapEnd } from '../../gaps/lib/gaps';
-import type { Origin, TriggerCount } from '../../provenance/lib/provenance';
+import type { Origin, TriggerCount } from '../../shared/provenance/lib/provenance';
 
 export interface TokenSplit {
   inputTokens: number;

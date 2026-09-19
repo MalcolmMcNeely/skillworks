@@ -1,6 +1,6 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { describeCount, describeTokens } from '../../figures/lib/figures';
-import { triggerMarks } from '../../provenance/lib/triggers';
+import { triggerMarks } from '../../shared/provenance/lib/triggers';
 import type { PlacedTile, Size } from './map';
 import { describeEach, describeSpend, missingWords, type SkillSummary } from './skills';
 import { tokensIn } from './totals';

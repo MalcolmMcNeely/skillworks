@@ -4,7 +4,7 @@ import { describeCount } from '../../figures/lib/figures';
 import { everything, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
 import { SignalWord } from '../../gaps/components/SignalWord';
 import { describeFetchFailure } from '../../http/lib/errors';
-import { triggerMark } from '../../provenance/lib/triggers';
+import { triggerMark } from '../../shared/provenance/lib/triggers';
 import { nowhere, sessionAddress } from '../../sessions/lib/where';
 import { fetchActivations } from '../api/activations';
 import {

@@ -1,5 +1,5 @@
-using Skillworks.Core.Provenance;
 using Skillworks.Core.Sessions.Activations;
+using Skillworks.Core.Shared.Provenance;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Sessions.Queries;

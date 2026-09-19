@@ -1,4 +1,4 @@
-import type { SymbolTable } from '../../alphabets/lib/alphabets';
+import type { SymbolTable } from '../../../alphabets/lib/alphabets';
 import type { TriggerCount } from './provenance';
 
 export interface TriggerMark {

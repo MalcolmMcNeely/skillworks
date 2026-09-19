@@ -1,5 +1,5 @@
 import type { Gap } from '../../gaps/lib/gaps';
-import type { Origin, TriggerCount } from '../../provenance/lib/provenance';
+import type { Origin, TriggerCount } from '../../shared/provenance/lib/provenance';
 import type { SkillOnDay, SkillsHead, SkillsLine, SkillSummary, TurnTotals } from './skills';
 import { slicesOf, startOfHour, withDaysMissing, withDayLanded, withHoursLanded, type StripSlice } from './strip';
 import { totalsOf, type Totals } from './totals';

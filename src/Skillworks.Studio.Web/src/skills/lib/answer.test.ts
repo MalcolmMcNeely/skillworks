@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Gap } from '../../gaps/lib/gaps';
 import { chunkedBody } from '../../http/lib/chunkedBody';
 import { readLines } from '../../http/lib/lines';
-import type { Origin } from '../../provenance/lib/provenance';
+import type { Origin } from '../../shared/provenance/lib/provenance';
 import { foldSkillsLine, showsFigures, type SkillsAnswer } from './answer';
 import type { SkillOnDay, SkillsLine, TurnTotals } from './skills';
 

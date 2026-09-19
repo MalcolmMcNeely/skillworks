@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Provenance;
+namespace Skillworks.Core.Shared.Provenance;
 
 // Trigger stays verbatim: putting it into words is the screen's job.
 public sealed record TriggerCount(string? Trigger, int Activations)

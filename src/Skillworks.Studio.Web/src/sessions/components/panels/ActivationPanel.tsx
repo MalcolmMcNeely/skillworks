@@ -1,5 +1,5 @@
 import { describeCount, describeLength } from '../../../figures/lib/figures';
-import { triggerMark } from '../../../provenance/lib/triggers';
+import { triggerMark } from '../../../shared/provenance/lib/triggers';
 import { madeIn, type Range } from '../../lib/view';
 import { tallyOf, type ActivationSpell } from '../../lib/panels/activations';
 import { describeClock } from '../../lib/steps';

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { describeCount, describeMoney } from '../../figures/lib/figures';
 import { describeDay, type Filter } from '../../filters/lib/filters';
 import { Keys } from '../../keys/components/Keys';
-import { triggerMarks } from '../../provenance/lib/triggers';
+import { triggerMarks } from '../../shared/provenance/lib/triggers';
 import { showsFigures, type SkillsAnswer } from '../lib/answer';
 import { describeTile, figureWords, heatStep, layOut, tilesOf, unnamedWord, type MapFigure, type PlacedTile, type Sizing } from '../lib/map';
 import type { MapChoice } from '../lib/mapChoice';

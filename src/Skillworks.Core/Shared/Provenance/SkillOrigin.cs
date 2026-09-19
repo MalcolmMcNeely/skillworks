@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Provenance;
+namespace Skillworks.Core.Shared.Provenance;
 
 // Trigger stays verbatim (claude-proactive, user-slash): putting it into words is the screen's job.
 public sealed record SkillOrigin(string? Trigger, string? Source, string? Plugin, string? Marketplace)
