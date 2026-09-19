@@ -25,11 +25,11 @@ public static class StoresServiceCollectionExtensions
         {
             var loki = provider.GetRequiredService<IOptions<LokiOptions>>().Value;
 
+            // No wait of its own: the reader waits a Patience on the Clock, which a busy machine cannot run out.
             client.BaseAddress = loki.ResolvedAddress();
-            client.Timeout = TimeSpan.FromSeconds(loki.TimeoutSeconds);
         });
 
-        // Its own address and its own timeout: the two stores fall short apart from each other.
+        // Its own address, because the two stores fall short apart from each other.
         services.AddHttpClient(TraceStoreReader.ClientName, (provider, client) =>
         {
             var tempo = provider.GetRequiredService<IOptions<TempoOptions>>().Value;
