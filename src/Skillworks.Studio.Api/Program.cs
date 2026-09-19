@@ -2,12 +2,12 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Skillworks.Core.Registration;
 using Skillworks.ServiceDefaults;
-using Skillworks.Studio.Api.Activations;
+using Skillworks.Studio.Api.Watch.Activations;
 using Skillworks.Studio.Api.Shared.Catalogue;
 using Skillworks.Studio.Api.Shared.Filters;
 using Skillworks.Studio.Api.Shared.Health;
 using Skillworks.Studio.Api.Sessions;
-using Skillworks.Studio.Api.Skills;
+using Skillworks.Studio.Api.Watch.Skills;
 using Skillworks.Studio.Api.Shared.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);

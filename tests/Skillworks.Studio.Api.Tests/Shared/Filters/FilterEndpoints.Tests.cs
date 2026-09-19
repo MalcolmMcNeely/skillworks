@@ -1,6 +1,6 @@
 using System.Net;
 using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Skills;
+using Skillworks.Studio.Api.Tests.Watch.Skills;
 
 namespace Skillworks.Studio.Api.Tests.Shared.Filters;
 

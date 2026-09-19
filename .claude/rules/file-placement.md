@@ -21,9 +21,8 @@ C# and TypeScript share one shape: Slices first, Concerns beneath.
 - A folder with its own `.git`, such as an agent's worktree, is another checkout. These rules skip it
   too.
 
-`src/Skillworks.Core/Activations` shows the shape beneath a Slice: the folder holds the types of an
-Activation, and `Queries` beneath it holds `ActivationQueries`, as `name-map` says. It still sits at
-the first level, where rule 1 does not allow it, until the tree catches up with these rules.
+`src/Skillworks.Core/Watch/Activations` shows the shape beneath a Slice: the folder holds the types
+of an Activation, and `Queries` beneath it holds `ActivationQueries`, as `name-map` says.
 
 ## Slices
 
