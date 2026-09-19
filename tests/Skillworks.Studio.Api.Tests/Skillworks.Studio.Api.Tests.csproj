@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Testcontainers" Version="4.15.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -26,9 +27,10 @@
     <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Shared\Harness\TempoImage.cs" />
   </ItemGroup>
 
-  <!-- Dating a fixture is the same problem in both suites, so one copy serves both. -->
+  <!-- Dating a fixture, and the Clock dated with it, are the same problem in both suites, so one copy serves both. -->
   <ItemGroup>
     <Compile Include="..\Skillworks.Core.Tests\Shared\Harness\Recently.cs" Link="Shared\Harness\Recently.cs" />
+    <Compile Include="..\Skillworks.Core.Tests\Shared\Harness\HarnessClock.cs" Link="Shared\Harness\HarnessClock.cs" />
   </ItemGroup>
 
   <!-- Their subject is the reader in Core, so they are owned there and borrowed here, never the other way about. -->

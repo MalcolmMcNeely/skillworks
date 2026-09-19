@@ -1,4 +1,3 @@
-using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 using Skillworks.Studio.Api.Tests.Sessions.Answers;
@@ -32,7 +31,7 @@ public sealed partial class SessionEndpointsTests
         Assert.Equal(["head", "sessions"], lines.Select(StudioHost.KindOf));
         Assert.Equal(["The run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
-        await StillOut(events);
+        await StillOut(events, TurnRead);
     }
 
     [Fact]
@@ -53,7 +52,7 @@ public sealed partial class SessionEndpointsTests
             ["faults", "friction", "toolCalls"],
             lines.Skip(2).Select(line => (string?)line["measure"]).Order(StringComparer.Ordinal));
 
-        await StillOut(events);
+        await StillOut(events, TurnRead);
     }
 
     [Fact]
@@ -73,7 +72,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(["The later run", "The early run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
-        await StillOut(events);
+        await StillOut(events, TurnRead);
     }
 
     [Theory]
@@ -94,7 +93,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(["Beta run", "Gamma run", "Alpha run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
-        await StillOut(events);
+        await StillOut(events, held);
     }
 
     [Fact]
@@ -113,7 +112,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(["The run that swept"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
-        await StillOut(events);
+        await StillOut(events, TurnRead);
     }
 
     [Fact]
@@ -132,7 +131,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(["The chosen run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
-        await StillOut(events);
+        await StillOut(events, SurveyRead);
     }
 
     [Fact]
@@ -233,6 +232,6 @@ public sealed partial class SessionEndpointsTests
         BrokenEventsStore.DownOn(asked => asked.Contains(read, StringComparison.Ordinal));
 
     // Without this a predicate that matched no read would leave every test above passing on an answer it never held.
-    private static async Task StillOut(BrokenEventsStore events) =>
-        Assert.True(await events.HeldFor < TimeSpan.FromSeconds(new LokiOptions().TimeoutSeconds));
+    private static async Task StillOut(BrokenEventsStore events, string read) =>
+        Assert.Contains(read, await events.HeldRead, StringComparison.Ordinal);
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Time.Testing;
 using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Telemetry;
 // Owned by the test project of the reader they serve, and linked into this one.
@@ -31,7 +32,7 @@ public sealed class StudioHost : IDisposable
         group.Any(held => held.Key == variable.Key);
 
     private readonly TemporaryFolder _folder = new();
-    private readonly PinnedClock _clock = new();
+    private readonly FakeTimeProvider _clock = HarnessClock.Still();
 
     // Its own tenant, so no other test's events reach this host's answers.
     private readonly string _tenant = Guid.NewGuid().ToString("N");
@@ -95,6 +96,9 @@ public sealed class StudioHost : IDisposable
     }
 
     public HttpClient Client => _client;
+
+    // A Clock standing still runs no Patience out, so a test moves it on purpose.
+    public FakeTimeProvider Clock => _clock;
 
     public Task Push(params SkillActivated[] events) => TestLoki.PushAsync(_tenant, events);
 

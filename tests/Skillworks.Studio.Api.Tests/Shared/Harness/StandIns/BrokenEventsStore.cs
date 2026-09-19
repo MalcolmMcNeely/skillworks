@@ -10,13 +10,13 @@ namespace Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 public sealed class BrokenEventsStore : DelegatingHandler
 {
     private readonly Func<Uri, bool> _breaks;
-    private readonly Func<BrokenEventsStore, CancellationToken, Task<HttpResponseMessage>> _broken;
+    private readonly Func<BrokenEventsStore, Uri, CancellationToken, Task<HttpResponseMessage>> _broken;
     private readonly ConcurrentQueue<Uri> _asked = new();
-    private readonly TaskCompletionSource<TimeSpan> _heldFor = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<string> _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private BrokenEventsStore(
         Func<Uri, bool> breaks,
-        Func<BrokenEventsStore, CancellationToken, Task<HttpResponseMessage>> broken)
+        Func<BrokenEventsStore, Uri, CancellationToken, Task<HttpResponseMessage>> broken)
         : base(new HttpClientHandler())
     {
         _breaks = breaks;
@@ -26,7 +26,7 @@ public sealed class BrokenEventsStore : DelegatingHandler
     public static BrokenEventsStore Down() => new(Before(DateOnly.MaxValue), Refused);
 
     public static BrokenEventsStore Failing(HttpStatusCode status) =>
-        new(Before(DateOnly.MaxValue), (_, _) => Task.FromResult(new HttpResponseMessage(status)));
+        new(Before(DateOnly.MaxValue), (_, _, _) => Task.FromResult(new HttpResponseMessage(status)));
 
     public static BrokenEventsStore DownBefore(DateOnly oldestAnswered) => new(Before(oldestAnswered), Refused);
 
@@ -43,7 +43,7 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
     public IReadOnlyList<DateOnly> DaysAsked => [.. _asked.Select(DayOf).OfType<DateOnly>()];
 
-    public Task<TimeSpan> HeldFor => _heldFor.Task;
+    public Task<string> HeldRead => _held.Task;
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
@@ -53,7 +53,7 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
         _asked.Enqueue(route);
 
-        return _breaks(route) ? _broken(this, cancellationToken) : base.SendAsync(request, cancellationToken);
+        return _breaks(route) ? _broken(this, route, cancellationToken) : base.SendAsync(request, cancellationToken);
     }
 
     // Answered days come from the test Loki, so the days on or after this one hold real figures.
@@ -61,23 +61,27 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
     private static string QueryOf(Uri route) => HttpUtility.ParseQueryString(route.Query)["query"] ?? "";
 
-    private static Task<HttpResponseMessage> Refused(BrokenEventsStore store, CancellationToken cancellationToken) =>
+    private static Task<HttpResponseMessage> Refused(
+        BrokenEventsStore store,
+        Uri route,
+        CancellationToken cancellationToken) =>
         throw new HttpRequestException("connection refused");
 
-    private static Task<HttpResponseMessage> Hold(BrokenEventsStore store, CancellationToken cancellationToken) =>
-        store.HoldAsync(cancellationToken);
+    private static Task<HttpResponseMessage> Hold(
+        BrokenEventsStore store,
+        Uri route,
+        CancellationToken cancellationToken) =>
+        store.HoldAsync(route, cancellationToken);
 
-    private async Task<HttpResponseMessage> HoldAsync(CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> HoldAsync(Uri route, CancellationToken cancellationToken)
     {
-        var held = Stopwatch.StartNew();
-
         try
         {
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         }
         catch (OperationCanceledException)
         {
-            _heldFor.TrySetResult(held.Elapsed);
+            _held.TrySetResult(QueryOf(route));
             throw;
         }
 

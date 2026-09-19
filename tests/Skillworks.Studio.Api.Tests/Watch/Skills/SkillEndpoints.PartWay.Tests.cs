@@ -1,4 +1,3 @@
-using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
@@ -65,7 +64,9 @@ public sealed partial class SkillEndpointsTests
         // Head and two days, then closed while the store holds the third, as when the Filter changes.
         await studio.SkillLines(FiveDays, count: 3);
 
-        // The store's timeout lets go too, but only after Studio waited all of it.
-        Assert.True(await events.HeldFor < TimeSpan.FromSeconds(new LokiOptions().TimeoutSeconds));
+        // The store never answered this read, so the two days the reader saw came back without it.
+        await events.HeldRead;
+
+        Assert.Contains(DaysBack(2), events.DaysAsked);
     }
 }

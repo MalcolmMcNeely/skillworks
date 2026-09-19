@@ -368,7 +368,8 @@ public sealed partial class TraceStoreReaderTests
         int? mostTraces = null,
         int? mostSessions = null,
         int? sessionTimeoutSeconds = null,
-        HttpMessageHandler? store = null)
+        HttpMessageHandler? store = null,
+        TimeProvider? clock = null)
     {
         var settings = new Dictionary<string, string?>
         {
@@ -392,8 +393,12 @@ public sealed partial class TraceStoreReaderTests
             settings["Tempo:SessionTimeoutSeconds"] = seconds.ToString(CultureInfo.InvariantCulture);
         }
 
-        var services = new ServiceCollection()
-            .AddStores(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        var services = new ServiceCollection();
+
+        // Ahead of AddStores, which falls back to the machine's clock only where nothing has supplied one.
+        services.AddSingleton<TimeProvider>(clock ?? HarnessClock.Still());
+
+        services.AddStores(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
 
         // Only the handler is replaced, and after the registration that clears them, so Studio's own timeout stays under test.
         if (store is not null)
