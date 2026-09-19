@@ -1,4 +1,4 @@
-import type { Gap, GapKind, Signal } from '../../../gaps/lib/gaps';
+import type { Gap, GapKind, Signal } from '../../../shared/gaps/lib/gaps';
 import { notKnown } from '../sessions';
 
 export type Depth = 'thin' | 'full';

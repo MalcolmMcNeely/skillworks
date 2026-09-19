@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Gap } from '../../gaps/lib/gaps';
+import type { Gap } from '../../shared/gaps/lib/gaps';
 import { chunkedBody } from '../../http/lib/chunkedBody';
 import { readLines } from '../../http/lib/lines';
 import type { Origin } from '../../shared/provenance/lib/provenance';

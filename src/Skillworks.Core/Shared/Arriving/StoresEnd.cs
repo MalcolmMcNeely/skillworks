@@ -1,4 +1,4 @@
-using Skillworks.Core.Gaps;
+using Skillworks.Core.Shared.Gaps;
 
 namespace Skillworks.Core.Shared.Arriving;
 

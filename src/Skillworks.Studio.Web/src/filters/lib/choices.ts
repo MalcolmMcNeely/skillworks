@@ -1,4 +1,4 @@
-import type { PlainEnd } from '../../gaps/lib/gaps';
+import type { PlainEnd } from '../../shared/gaps/lib/gaps';
 
 export interface FilterChoicesHead {
   kind: 'head';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Gap } from '../../gaps/lib/gaps';
+import { missingWords, type Gap } from '../../shared/gaps/lib/gaps';
 import { mapNoticeOf } from './mapNotice';
-import { missingWords, type SkillSummary } from './skills';
+import type { SkillSummary } from './skills';
 
 const noTokens = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
 

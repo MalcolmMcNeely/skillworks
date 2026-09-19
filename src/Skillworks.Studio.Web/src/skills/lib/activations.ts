@@ -1,4 +1,4 @@
-import type { Gap, GapEnd } from '../../gaps/lib/gaps';
+import type { Gap, GapEnd } from '../../shared/gaps/lib/gaps';
 
 export interface Activation {
   skill: string;

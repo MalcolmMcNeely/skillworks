@@ -8,7 +8,7 @@ using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Shared.Arriving;
 using Skillworks.Core.Shared.Catalogue;
 using Skillworks.Core.Filters;
-using Skillworks.Core.Gaps;
+using Skillworks.Core.Shared.Gaps;
 using Skillworks.Core.Shared.Health;
 using Skillworks.Core.Sessions;
 using Skillworks.Core.Sessions.Queries;

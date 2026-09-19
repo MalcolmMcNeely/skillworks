@@ -1,7 +1,7 @@
 using System.Globalization;
 using Skillworks.Core.Shared.Telemetry;
 
-namespace Skillworks.Core.Gaps;
+namespace Skillworks.Core.Shared.Gaps;
 
 public sealed record Gap(GapKind Kind, string? Missing)
 {

@@ -1,7 +1,7 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { narrowsByDepth } from '../../filters/lib/depthKeys';
 import type { Filter, Span } from '../../filters/lib/filters';
-import type { Gap, GapEnd } from '../../gaps/lib/gaps';
+import type { Gap, GapEnd } from '../../shared/gaps/lib/gaps';
 
 // It carries no Measure, so a number still being read costs a reader no rows.
 export interface SessionRow {

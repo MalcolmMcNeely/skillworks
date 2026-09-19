@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Gaps;
+namespace Skillworks.Core.Shared.Gaps;
 
 public enum GapKind
 {

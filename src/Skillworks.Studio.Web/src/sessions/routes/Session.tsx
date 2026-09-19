@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { filterParams, readFilter } from '../../filters/lib/filters';
-import { SignalWord } from '../../gaps/components/SignalWord';
+import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { describeCount, describeMoney } from '../../figures/lib/figures';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { UpButton } from '../../pages/components/UpButton';

@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using Skillworks.Core.Gaps;
+using Skillworks.Core.Shared.Gaps;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Shared.Arriving;

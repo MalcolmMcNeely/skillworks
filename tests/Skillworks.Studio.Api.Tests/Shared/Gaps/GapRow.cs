@@ -1,4 +1,4 @@
-namespace Skillworks.Studio.Api.Tests.Gaps;
+namespace Skillworks.Studio.Api.Tests.Shared.Gaps;
 
 public sealed record GapRow
 {

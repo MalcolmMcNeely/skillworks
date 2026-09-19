@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Shared.Arriving;
 using Skillworks.Core.Filters;
-using Skillworks.Core.Gaps;
+using Skillworks.Core.Shared.Gaps;
 
 namespace Skillworks.Core.Activations;
 

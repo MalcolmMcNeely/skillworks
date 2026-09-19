@@ -1,6 +1,7 @@
 import { describeCount, describeMoney, describeTokens } from '../../figures/lib/figures';
+import { missingWords } from '../../shared/gaps/lib/gaps';
 import type { SkillsAnswer } from '../lib/answer';
-import { describeEach, missingWords } from '../lib/skills';
+import { describeEach } from '../lib/skills';
 
 export function RailTotals({ answer, arriving }: { answer: SkillsAnswer | null; arriving: boolean }) {
   const totals = answer?.totals ?? null;

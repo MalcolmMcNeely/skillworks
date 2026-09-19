@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { describeCount } from '../../figures/lib/figures';
 import { everything, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
-import { SignalWord } from '../../gaps/components/SignalWord';
+import { SignalWord } from '../../shared/gaps/components/SignalWord';
+import { missingWords } from '../../shared/gaps/lib/gaps';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { triggerMark } from '../../shared/provenance/lib/triggers';
 import { nowhere, sessionAddress } from '../../sessions/lib/where';
@@ -15,7 +16,6 @@ import {
   type Activation,
   type ActivationsAnswer,
 } from '../lib/activations';
-import { missingWords } from '../lib/skills';
 
 // A busy skill fires hundreds of times a week, and a reader opens one run at a time.
 const mostRows = 20;

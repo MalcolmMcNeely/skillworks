@@ -1,7 +1,7 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { describeMoney } from '../../figures/lib/figures';
 import type { Span } from '../../filters/lib/filters';
-import type { GapEnd } from '../../gaps/lib/gaps';
+import { missingWords, type GapEnd } from '../../shared/gaps/lib/gaps';
 import type { Origin, TriggerCount } from '../../shared/provenance/lib/provenance';
 
 export interface TokenSplit {
@@ -56,15 +56,6 @@ export interface SkillsDay {
 }
 
 export type SkillsLine = SkillsHead | SkillsDay | GapEnd;
-
-export const missingWords = {
-  // A word, not a dash, which a screen reader reads as a pause or not at all.
-  none: 'None',
-  // A plugin outside Anthropic's marketplaces has its Turns sent unnamed, so the cost is hidden, not absent.
-  notNamed: 'Not named',
-  // Never a zero, so an outage never reads as a quiet week.
-  noAnswer: '—',
-} as const;
 
 // The dash is drawn, so it answers to the alphabets as any other mark on screen does.
 export const missingSymbols: SymbolTable = { alphabet: 'condition', glyphs: [missingWords.noAnswer] };

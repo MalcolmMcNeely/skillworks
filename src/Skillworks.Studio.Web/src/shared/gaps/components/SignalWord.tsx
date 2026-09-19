@@ -1,4 +1,4 @@
-import { noLink } from '../../http/lib/errors';
+import { noLink } from '../../../http/lib/errors';
 import { signalOf, type Gap, type Signal } from '../lib/gaps';
 
 export function SignalWord({ gap, failure }: { gap: Gap | null; failure: string | null }) {

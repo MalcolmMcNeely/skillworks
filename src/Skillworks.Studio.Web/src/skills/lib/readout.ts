@@ -1,8 +1,9 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
 import { describeCount, describeTokens } from '../../figures/lib/figures';
+import { missingWords } from '../../shared/gaps/lib/gaps';
 import { triggerMarks } from '../../shared/provenance/lib/triggers';
 import type { PlacedTile, Size } from './map';
-import { describeEach, describeSpend, missingWords, type SkillSummary } from './skills';
+import { describeEach, describeSpend, type SkillSummary } from './skills';
 import { tokensIn } from './totals';
 
 // A readout follows the pointer until it is pinned, and only the mark says which of the two it is.

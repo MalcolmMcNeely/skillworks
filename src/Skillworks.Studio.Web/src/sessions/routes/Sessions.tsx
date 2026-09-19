@@ -5,7 +5,7 @@ import { RepositoryPicker } from '../../filters/components/RepositoryPicker';
 import { depthKeyOf, depthKeys } from '../../filters/lib/depthKeys';
 import { filterParams, readFilter, type Filter } from '../../filters/lib/filters';
 import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../filters/lib/spanKeys';
-import { SignalWord } from '../../gaps/components/SignalWord';
+import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { Keys } from '../../keys/components/Keys';
 import { UpButton } from '../../pages/components/UpButton';

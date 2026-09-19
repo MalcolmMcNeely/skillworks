@@ -1,4 +1,4 @@
-import type { Gap } from '../../gaps/lib/gaps';
+import type { Gap } from '../../shared/gaps/lib/gaps';
 import { depthTone, describeDepth, type Depth } from '../lib/panels/agents';
 
 // Drawn from the moment the head lands, not when the answer ends, so a reader watches Thin become Full.

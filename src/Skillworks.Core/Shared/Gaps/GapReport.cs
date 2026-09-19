@@ -2,7 +2,7 @@ using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Shared.Telemetry;
 
-namespace Skillworks.Core.Gaps;
+namespace Skillworks.Core.Shared.Gaps;
 
 public sealed class GapReport(TelemetrySwitch telemetry)
 {

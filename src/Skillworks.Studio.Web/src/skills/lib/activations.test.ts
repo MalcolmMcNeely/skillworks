@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Gap } from '../../gaps/lib/gaps';
+import type { Gap } from '../../shared/gaps/lib/gaps';
 import { describeFiredAt, firedInNoRun, foldActivationsLine, noActivations, type Activation } from './activations';
 
 const ended = (gap: Gap) => foldActivationsLine(noActivations, { kind: 'end', gap });

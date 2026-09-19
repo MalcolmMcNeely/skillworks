@@ -1,5 +1,5 @@
 import type { SymbolTable } from '../../alphabets/lib/alphabets';
-import { signalOf } from '../../gaps/lib/gaps';
+import { signalOf } from '../../shared/gaps/lib/gaps';
 import { noLink } from '../../http/lib/errors';
 import type { SkillsAnswer } from './answer';
 import { figureWords, type MapFigure } from './map';

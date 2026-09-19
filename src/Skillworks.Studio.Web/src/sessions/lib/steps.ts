@@ -1,4 +1,4 @@
-import type { Gap, StoresEnd } from '../../gaps/lib/gaps';
+import type { Gap, StoresEnd } from '../../shared/gaps/lib/gaps';
 import type { Range } from './view';
 import type { FindingsPage } from './findings';
 import type { Activation, ActivationsPage } from './panels/activations';

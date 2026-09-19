@@ -1,4 +1,4 @@
-import { missingWords } from '../../../skills/lib/skills';
+import { missingWords } from '../../../shared/gaps/lib/gaps';
 
 export interface ContextPoint {
   id: string;

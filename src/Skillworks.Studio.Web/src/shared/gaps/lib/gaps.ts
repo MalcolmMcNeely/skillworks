@@ -49,3 +49,12 @@ const signals: Record<GapKind, Signal> = {
 export function signalOf(kind: GapKind): Signal {
   return signals[kind];
 }
+
+export const missingWords = {
+  // A word, not a dash, which a screen reader reads as a pause or not at all.
+  none: 'None',
+  // A plugin outside Anthropic's marketplaces has its Turns sent unnamed, so the cost is hidden, not absent.
+  notNamed: 'Not named',
+  // Never a zero, so an outage never reads as a quiet week.
+  noAnswer: '—',
+} as const;
