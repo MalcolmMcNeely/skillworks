@@ -42,8 +42,8 @@ public static class StoresServiceCollectionExtensions
         {
             var collector = provider.GetRequiredService<IOptions<CollectorOptions>>().Value;
 
+            // No wait of its own: the reader waits a Patience on the Clock, which a busy machine cannot run out.
             client.BaseAddress = collector.ResolvedAddress();
-            client.Timeout = TimeSpan.FromSeconds(collector.TimeoutSeconds);
         });
 
         // Cleared wholesale, so no retry a shell adds, now or later, turns a down container's fast 502 into a slow timeout.
