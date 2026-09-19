@@ -32,15 +32,13 @@ public static class ArchitectureCheck
                 .. DocComments.Check(root, sourceFiles, rules.Placement, rules.Comments),
                 .. BannedWords.Check(root, sourceFiles, rules.Words, rules.Contexts),
                 .. WhenAskedFor(SliceFolders.Rule, () => SliceFolders.Check(root, sourceFiles, rules.Placement)),
-                .. WhenAskedFor(ConcernFolders.Rule, () => ConcernFolders.Check(root, sourceFiles, rules.Placement)),
-                .. WhenAskedFor(SlicesStayApart.Rule, () => SlicesStayApart.Check(root, sourceFiles, rules.Placement)),
-                .. WhenAskedFor(SharedStaysBelow.Rule, () => SharedStaysBelow.Check(root, sourceFiles, rules.Placement)),
+                .. ConcernFolders.Check(root, sourceFiles, rules.Placement),
+                .. SlicesStayApart.Check(root, sourceFiles, rules.Placement),
+                .. SharedStaysBelow.Check(root, sourceFiles, rules.Placement),
                 .. WhenAskedFor(
                     SharedNamesAWord.Rule,
                     () => SharedNamesAWord.Check(root, sourceFiles, rules.Placement, rules.Contexts)),
-                .. WhenAskedFor(
-                    SliceNamesMatch.Rule,
-                    () => SliceNamesMatch.Check(root, sourceFiles, rules.Placement)),
+                .. SliceNamesMatch.Check(root, sourceFiles, rules.Placement),
             ],
             sourceFiles.Count);
     }

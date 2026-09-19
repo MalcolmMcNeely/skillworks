@@ -15,7 +15,7 @@ public sealed partial class ArchitectureCheckTests
             .FrontEnd("web")
             .Write("web/src/watch/clock.ts");
 
-        Assert.Empty(tree.Breaches("slice-names-match"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public sealed partial class ArchitectureCheckTests
 
         Assert.Equal(
             [("slice-names-match", "src/Api/Endpoints/Watch"), ("slice-names-match", "web/src/routes/watch")],
-            tree.Breaches("slice-names-match"));
+            tree.Breaches());
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public sealed partial class ArchitectureCheckTests
 
         Assert.Equal(
             [("slice-names-match", "src/Api/Endpoints/watch"), ("slice-names-match", "web/src/routes/Sessions")],
-            tree.Breaches("slice-names-match"));
+            tree.Breaches());
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/Api")
             .Write("src/Api/Shared/Health.cs");
 
-        Assert.Empty(tree.Breaches("slice-names-match"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Watch/Sessions/Panel.cs");
 
-        Assert.Equal([("slice-names-match", "src/App/Watch/Sessions")], tree.Breaches("slice-names-match"));
+        Assert.Equal([("slice-names-match", "src/App/Watch/Sessions")], tree.Breaches());
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Reporting/Totals/Total.cs");
 
-        Assert.Empty(tree.Breaches("slice-names-match"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().Write("tools/Check/Watch/Clock.cs");
 
-        Assert.Empty(tree.Breaches("slice-names-match"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Api/Reporting/Report.cs")
             .Write("src/App/Api/Watch/Clock.cs");
 
-        Assert.Equal([("slice-names-match", "src/App/Api/Reporting")], tree.Breaches("slice-names-match"));
+        Assert.Equal([("slice-names-match", "src/App/Api/Reporting")], tree.Breaches());
     }
 
     [Fact]
@@ -117,20 +117,10 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/Api")
             .Write("src/Api/Endpoints/Watch/ClockEndpoints.cs");
 
-        var breach = Assert.Single(tree.Check("slice-names-match").Breaches);
+        var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Contains("`Watch`", breach.Message);
         Assert.Contains("`src/Api/Watch`", breach.Message);
         Assert.Contains("Move", breach.Message);
-    }
-
-    [Fact]
-    public void The_slice_names_match_check_is_not_in_the_run()
-    {
-        using var tree = new RulesTree()
-            .Project("src/Api")
-            .Write("src/Api/Endpoints/Watch/ClockEndpoints.cs");
-
-        Assert.Empty(tree.Breaches());
     }
 }

@@ -10,7 +10,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Watch/Clock.cs")
             .Reads("src/App/Shared/Trigger.cs", "App.Watch");
 
-        Assert.Equal([("shared-stays-below", "src/App/Shared/Trigger.cs")], tree.Breaches("shared-stays-below"));
+        Assert.Equal([("shared-stays-below", "src/App/Shared/Trigger.cs")], tree.Breaches());
     }
 
     [Fact]
@@ -22,7 +22,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/Api")
             .Write("src/Api/Sessions/SessionEndpoints.cs");
 
-        Assert.Equal([("shared-stays-below", "src/App/Shared/Trigger.cs")], tree.Breaches("shared-stays-below"));
+        Assert.Equal([("shared-stays-below", "src/App/Shared/Trigger.cs")], tree.Breaches());
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Shared/Health/Health.cs")
             .Reads("src/App/Shared/Trigger.cs", "App.Shared.Health");
 
-        Assert.Empty(tree.Breaches("shared-stays-below"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("tests/App.Tests")
             .Reads("tests/App.Tests/Shared/Trigger.Tests.cs", "App.Watch");
 
-        Assert.Empty(tree.Breaches("shared-stays-below"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Sessions/Session.cs")
             .Reads("src/App/Watch/Clock.cs", "App.Sessions");
 
-        Assert.Empty(tree.Breaches("shared-stays-below"));
+        Assert.DoesNotContain(tree.Breaches(), breach => breach.Rule == "shared-stays-below");
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Sessions/Session.cs")
             .Reads("src/App/Shared/Trigger.cs", "App.Watch", "App.Sessions");
 
-        Assert.Equal([("shared-stays-below", "src/App/Shared/Trigger.cs")], tree.Breaches("shared-stays-below"));
+        Assert.Equal([("shared-stays-below", "src/App/Shared/Trigger.cs")], tree.Breaches());
     }
 
     [Fact]
@@ -80,20 +80,9 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Watch/Clock.cs")
             .Reads("src/App/Shared/Trigger.cs", "App.Watch");
 
-        var breach = Assert.Single(tree.Check("shared-stays-below").Breaches);
+        var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Contains("`Shared`", breach.Message);
         Assert.Contains("`App.Watch`", breach.Message);
-    }
-
-    [Fact]
-    public void The_shared_stays_below_check_is_not_in_the_run()
-    {
-        using var tree = new RulesTree()
-            .Project("src/App")
-            .Write("src/App/Watch/Clock.cs")
-            .Reads("src/App/Shared/Trigger.cs", "App.Watch");
-
-        Assert.Empty(tree.Breaches());
     }
 }

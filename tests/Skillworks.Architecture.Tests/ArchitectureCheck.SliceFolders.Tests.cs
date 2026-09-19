@@ -68,7 +68,11 @@ public sealed partial class ArchitectureCheckTests
             .Write("web/src/watch/SHARED/format.ts");
 
         Assert.Equal(
-            [("slice-folders", "src/App/Watch/Shared"), ("slice-folders", "web/src/watch/SHARED")],
+            [
+                ("slice-folders", "src/App/Watch/Shared"),
+                ("slice-folders", "web/src/watch/SHARED"),
+                ("concern-folders", "web/src/watch/SHARED"),
+            ],
             tree.Breaches("slice-folders"));
     }
 

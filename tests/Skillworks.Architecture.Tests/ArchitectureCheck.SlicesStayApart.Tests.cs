@@ -12,7 +12,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Sessions/Session.cs")
             .Reads("src/App/Watch/Clock.cs", "App.Sessions");
 
-        Assert.Equal([("slices-stay-apart", "src/App/Watch/Clock.cs")], tree.Breaches("slices-stay-apart"));
+        Assert.Equal([("slices-stay-apart", "src/App/Watch/Clock.cs")], tree.Breaches());
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Watch/Queries/ClockQueries.cs")
             .Reads("src/App/Watch/Clock.cs", "App.Watch.Queries");
 
-        Assert.Empty(tree.Breaches("slices-stay-apart"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Shared/Trigger.cs")
             .Reads("src/App/Watch/Clock.cs", "App.Shared");
 
-        Assert.Empty(tree.Breaches("slices-stay-apart"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/Api")
             .Reads("src/Api/Watch/ClockEndpoints.cs", "App.Watch");
 
-        Assert.Empty(tree.Breaches("slices-stay-apart"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("tests/App.Tests")
             .Reads("tests/App.Tests/Watch/Clock.Tests.cs", "App.Sessions");
 
-        Assert.Empty(tree.Breaches("slices-stay-apart"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Watch/Clock.cs")
             .Reads("src/App/Shared/Trigger.cs", "App.Watch");
 
-        Assert.Empty(tree.Breaches("slices-stay-apart"));
+        Assert.DoesNotContain(tree.Breaches(), breach => breach.Rule == "slices-stay-apart");
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Sessions/Session.cs")
             .Reads("src/App/Program.cs", "App.Sessions");
 
-        Assert.Empty(tree.Breaches("slices-stay-apart"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed partial class ArchitectureCheckTests
 
         Assert.Equal(
             [("slices-stay-apart", "src/App/Watch/Clock.cs"), ("slices-stay-apart", "src/App/Watch/Dial.cs")],
-            tree.Breaches("slices-stay-apart"));
+            tree.Breaches());
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Author/Draft.cs")
             .Reads("src/App/Watch/Clock.cs", "App.Sessions", "App.Author");
 
-        Assert.Equal([("slices-stay-apart", "src/App/Watch/Clock.cs")], tree.Breaches("slices-stay-apart"));
+        Assert.Equal([("slices-stay-apart", "src/App/Watch/Clock.cs")], tree.Breaches());
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Reporting/Report.cs")
             .Reads("src/App/Watch/Clock.cs", "App.Reporting");
 
-        Assert.Equal([("slices-stay-apart", "src/App/Watch/Clock.cs")], tree.Breaches("slices-stay-apart"));
+        Assert.Equal([("slices-stay-apart", "src/App/Watch/Clock.cs")], tree.Breaches());
     }
 
     [Fact]
@@ -135,21 +135,10 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Sessions/Session.cs")
             .Reads("src/App/Watch/Clock.cs", "App.Sessions");
 
-        var breach = Assert.Single(tree.Check("slices-stay-apart").Breaches);
+        var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Contains("`Watch`", breach.Message);
         Assert.Contains("`App.Sessions`", breach.Message);
         Assert.Contains("`Shared`", breach.Message);
-    }
-
-    [Fact]
-    public void The_slices_stay_apart_check_is_not_in_the_run()
-    {
-        using var tree = new RulesTree()
-            .Project("src/App")
-            .Write("src/App/Sessions/Session.cs")
-            .Reads("src/App/Watch/Clock.cs", "App.Sessions");
-
-        Assert.Empty(tree.Breaches());
     }
 }

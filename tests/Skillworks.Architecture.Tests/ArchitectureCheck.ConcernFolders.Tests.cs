@@ -12,7 +12,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("web/src/watch/components/clock.tsx")
             .Write("web/src/watch/dials/dial.tsx");
 
-        Assert.Equal([("concern-folders", "web/src/watch/dials")], tree.Breaches("concern-folders"));
+        Assert.Equal([("concern-folders", "web/src/watch/dials")], tree.Breaches());
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("web/src/watch/lib/format.ts")
             .Write("web/src/watch/routes/watch.tsx");
 
-        Assert.Empty(tree.Breaches("concern-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().FrontEnd("web").Write("web/src/watch/clock.ts");
 
-        Assert.Empty(tree.Breaches("concern-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().FrontEnd("web").Write("web/src/watch/components/dials/dial.tsx");
 
-        Assert.Empty(tree.Breaches("concern-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Watch/Dials/Dial.cs");
 
-        Assert.Empty(tree.Breaches("concern-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().FrontEnd("web").Write("web/src/shared/http/get.ts");
 
-        Assert.Empty(tree.Breaches("concern-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().FrontEnd("web").Write("web/src/reporting/dials/report.ts");
 
-        Assert.Empty(tree.Breaches("concern-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("web/src/watch/dials/dial.tsx")
             .Write("web/src/watch/components/clock.tsx");
 
-        Assert.Equal([("concern-folders", "web/src/watch/components")], tree.Breaches("concern-folders"));
+        Assert.Equal([("concern-folders", "web/src/watch/components")], tree.Breaches());
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().FrontEnd("web").Write("web/src/watch/dials/dial.tsx");
 
-        var breach = Assert.Single(tree.Check("concern-folders").Breaches);
+        var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Contains("`api`", breach.Message);
         Assert.Contains("`components`", breach.Message);
@@ -103,16 +103,16 @@ public sealed partial class ArchitectureCheckTests
             .FrontEnd("web")
             .Write("web/src/watch/dials/dial.tsx");
 
-        var breach = Assert.Single(tree.Check("concern-folders").Breaches);
+        var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Contains("no folder the rules name", breach.Message);
     }
 
     [Fact]
-    public void The_concern_folders_check_is_not_in_the_run()
+    public void A_stray_Shared_inside_a_Slice_is_a_breach()
     {
-        using var tree = new RulesTree().FrontEnd("web").Write("web/src/watch/dials/dial.tsx");
+        using var tree = new RulesTree().FrontEnd("web").Write("web/src/watch/shared/format.ts");
 
-        Assert.Empty(tree.Breaches());
+        Assert.Equal([("concern-folders", "web/src/watch/shared")], tree.Breaches());
     }
 }
