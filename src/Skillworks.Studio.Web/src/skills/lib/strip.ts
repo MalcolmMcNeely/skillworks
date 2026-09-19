@@ -1,5 +1,5 @@
-import type { SymbolTable } from '../../alphabets/lib/alphabets';
-import { describeCount } from '../../figures/lib/figures';
+import type { SymbolTable } from '../../shared/alphabets/lib/alphabets';
+import { describeCount } from '../../shared/figures/lib/figures';
 import { describeDay } from '../../shared/filters/lib/filters';
 import type { SkillsDay, SkillsHead } from './skills';
 

@@ -6,11 +6,11 @@ import { depthKeyOf, depthKeys } from '../../shared/filters/lib/depthKeys';
 import { filterParams, readFilter, type Filter } from '../../shared/filters/lib/filters';
 import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../shared/filters/lib/spanKeys';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
-import { describeFetchFailure } from '../../http/lib/errors';
-import { Keys } from '../../keys/components/Keys';
-import { UpButton } from '../../pages/components/UpButton';
-import { useTabTitle } from '../../pages/components/useTabTitle';
-import { sessions as page } from '../../pages/lib/pages';
+import { describeFetchFailure } from '../../shared/http/lib/errors';
+import { Keys } from '../../shared/keys/components/Keys';
+import { UpButton } from '../../shared/pages/components/UpButton';
+import { useTabTitle } from '../../shared/pages/components/useTabTitle';
+import { sessions as page } from '../../shared/pages/lib/pages';
 import { fetchSessions } from '../api/sessions';
 import { SessionTable } from '../components/SessionTable';
 import {

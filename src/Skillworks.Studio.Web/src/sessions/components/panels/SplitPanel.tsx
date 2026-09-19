@@ -1,4 +1,4 @@
-import { describeLength, describeShare } from '../../../figures/lib/figures';
+import { describeLength, describeShare } from '../../../shared/figures/lib/figures';
 import type { Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';
 import { noSplitWord, shareOf, sharesOf, splitLength, type Share, type SplitPage } from '../../lib/panels/split';

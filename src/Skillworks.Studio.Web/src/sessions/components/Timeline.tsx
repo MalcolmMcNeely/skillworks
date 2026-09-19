@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import type { Range } from '../lib/view';
 import type { Band } from '../lib/panels/conversation';
-import { describeLength } from '../../figures/lib/figures';
+import { describeLength } from '../../shared/figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../lib/steps';
 import { Lanes } from './Lanes';
 import { Overview } from './Overview';

@@ -1,4 +1,4 @@
-import { describeCount, describeLength } from '../../../figures/lib/figures';
+import { describeCount, describeLength } from '../../../shared/figures/lib/figures';
 import { triggerMark } from '../../../shared/provenance/lib/triggers';
 import { madeIn, type Range } from '../../lib/view';
 import { tallyOf, type ActivationSpell } from '../../lib/panels/activations';

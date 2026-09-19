@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { describeCount, describeMoney } from '../../figures/lib/figures';
+import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
 import { nowhere, sessionAddress } from '../../shared/session/lib/where';
 import {
   describeRunLength,

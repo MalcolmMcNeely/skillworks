@@ -1,4 +1,4 @@
-import { describeCount, describeLength, describeMoney } from '../../../figures/lib/figures';
+import { describeCount, describeLength, describeMoney } from '../../../shared/figures/lib/figures';
 import { briefNote, noReport, noSubagentsWord, tallyOf, type AgentSpell } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';

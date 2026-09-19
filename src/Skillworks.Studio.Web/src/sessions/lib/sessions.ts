@@ -1,4 +1,4 @@
-import type { SymbolTable } from '../../alphabets/lib/alphabets';
+import type { SymbolTable } from '../../shared/alphabets/lib/alphabets';
 import { narrowsByDepth } from '../../shared/filters/lib/depthKeys';
 import type { Filter, Span } from '../../shared/filters/lib/filters';
 import type { Gap, GapEnd } from '../../shared/gaps/lib/gaps';

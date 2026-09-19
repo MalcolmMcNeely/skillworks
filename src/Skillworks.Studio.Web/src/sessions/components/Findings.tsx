@@ -1,4 +1,4 @@
-import { describeCount } from '../../figures/lib/figures';
+import { describeCount } from '../../shared/figures/lib/figures';
 import { namedIn, noFindingsWord, type FindingsPage, type Named } from '../lib/findings';
 
 function Row({ named, onOpen }: { named: Named; onOpen: (named: Named) => void }) {

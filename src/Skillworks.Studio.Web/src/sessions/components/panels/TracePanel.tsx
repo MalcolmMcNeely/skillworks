@@ -1,8 +1,8 @@
-import { describeCount } from '../../../figures/lib/figures';
+import { describeCount } from '../../../shared/figures/lib/figures';
 import { ranBy } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/view';
 import { notKnown } from '../../lib/sessions';
-import { describeLength } from '../../../figures/lib/figures';
+import { describeLength } from '../../../shared/figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 import { deepestOf, noTreeWord, treeOf } from '../../lib/panels/trace';
 

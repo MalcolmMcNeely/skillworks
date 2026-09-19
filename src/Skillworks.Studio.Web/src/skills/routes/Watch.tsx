@@ -5,11 +5,11 @@ import { filterParams, readFilter, type Filter } from '../../shared/filters/lib/
 import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../shared/filters/lib/spanKeys';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { HealthLamps } from '../../shared/health/components/HealthLamps';
-import { describeFetchFailure } from '../../http/lib/errors';
-import { Keys } from '../../keys/components/Keys';
-import { UpButton } from '../../pages/components/UpButton';
-import { useTabTitle } from '../../pages/components/useTabTitle';
-import { watch } from '../../pages/lib/pages';
+import { describeFetchFailure } from '../../shared/http/lib/errors';
+import { Keys } from '../../shared/keys/components/Keys';
+import { UpButton } from '../../shared/pages/components/UpButton';
+import { useTabTitle } from '../../shared/pages/components/useTabTitle';
+import { watch } from '../../shared/pages/lib/pages';
 import { TelemetrySwitch } from '../../shared/telemetry/components/TelemetrySwitch';
 import { fetchSkills } from '../api/skills';
 import { ActivityStrip } from '../components/ActivityStrip';

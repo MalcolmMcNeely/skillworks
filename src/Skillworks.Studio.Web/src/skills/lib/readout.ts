@@ -1,5 +1,5 @@
-import type { SymbolTable } from '../../alphabets/lib/alphabets';
-import { describeCount, describeTokens } from '../../figures/lib/figures';
+import type { SymbolTable } from '../../shared/alphabets/lib/alphabets';
+import { describeCount, describeTokens } from '../../shared/figures/lib/figures';
 import { missingWords } from '../../shared/gaps/lib/gaps';
 import { triggerMarks } from '../../shared/provenance/lib/triggers';
 import type { PlacedTile, Size } from './map';

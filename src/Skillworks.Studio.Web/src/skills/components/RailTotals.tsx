@@ -1,4 +1,4 @@
-import { describeCount, describeMoney, describeTokens } from '../../figures/lib/figures';
+import { describeCount, describeMoney, describeTokens } from '../../shared/figures/lib/figures';
 import { missingWords } from '../../shared/gaps/lib/gaps';
 import type { SkillsAnswer } from '../lib/answer';
 import { describeEach } from '../lib/skills';

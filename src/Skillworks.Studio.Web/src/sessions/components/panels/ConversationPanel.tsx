@@ -1,4 +1,4 @@
-import { describeCount, describeLength, describeMoney } from '../../../figures/lib/figures';
+import { describeCount, describeLength, describeMoney } from '../../../shared/figures/lib/figures';
 import { inRange, type Range } from '../../lib/view';
 import { describeWithheld, figuresOf, type Band } from '../../lib/panels/conversation';
 import { describeClock } from '../../lib/steps';

@@ -1,4 +1,4 @@
-import { describeCount, describeLength, describeShare } from '../../figures/lib/figures';
+import { describeCount, describeLength, describeShare } from '../../shared/figures/lib/figures';
 import { notKnown } from './sessions';
 
 export type FindingKind =

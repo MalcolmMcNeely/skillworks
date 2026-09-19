@@ -1,4 +1,4 @@
-import { getJson, putJson } from '../../../http/api/json';
+import { getJson, putJson } from '../../http/api/json';
 
 export interface TeamSettings {
   path: string;

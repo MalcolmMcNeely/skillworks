@@ -1,4 +1,4 @@
-import { describeCount, describeMoney } from '../../figures/lib/figures';
+import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
 import type { SkillsAnswer } from './answer';
 import { describeEach, describeSpend, type SkillSummary, type TurnTotals } from './skills';
 

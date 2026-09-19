@@ -2,7 +2,7 @@ import { useMemo, type PointerEvent } from 'react';
 import { inRange, type Range } from '../lib/view';
 import type { Band } from '../lib/panels/conversation';
 import { foldScale, ticksOf } from '../lib/fold';
-import { describeLength } from '../../figures/lib/figures';
+import { describeLength } from '../../shared/figures/lib/figures';
 import { describeClock, lanes, lanesOf, toneOf, type Lane, type Mark } from '../lib/steps';
 
 // Narrow marks are common and a cursor is not, so every mark is drawn at least this wide to stay reachable.

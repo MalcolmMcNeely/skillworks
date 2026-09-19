@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
-import { paletteProperties } from './palette/lib/palette';
+import { paletteProperties } from './shared/palette/lib/palette';
 import { router } from './router';
 import './styles.css';
 

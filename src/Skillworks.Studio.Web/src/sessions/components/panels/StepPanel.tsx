@@ -1,7 +1,7 @@
-import { describeCount } from '../../../figures/lib/figures';
+import { describeCount } from '../../../shared/figures/lib/figures';
 import { ranBy } from '../../lib/panels/agents';
 import { inRange, type Range } from '../../lib/view';
-import { describeLength } from '../../../figures/lib/figures';
+import { describeLength } from '../../../shared/figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 
 // A View can hold thousands of Steps, and a list that long is no more readable than the timeline above it.

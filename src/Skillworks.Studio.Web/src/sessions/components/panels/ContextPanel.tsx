@@ -1,4 +1,4 @@
-import { describeCount, describeShare, describeTokens } from '../../../figures/lib/figures';
+import { describeCount, describeShare, describeTokens } from '../../../shared/figures/lib/figures';
 import { inRange, type Range } from '../../lib/view';
 import { ceilingOf, describeInForce, inForceBands, tallyOf, type Level } from '../../lib/panels/context';
 import { describeClock } from '../../lib/steps';

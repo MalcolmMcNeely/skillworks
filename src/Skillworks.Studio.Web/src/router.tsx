@@ -1,8 +1,8 @@
 import { createBrowserRouter, replace } from 'react-router';
-import { Home } from './home/routes/Home';
-import { oldLinkRedirect } from './pages/lib/oldLinks';
-import { home, sessions, watch } from './pages/lib/pages';
-import { NoSuchPage } from './pages/routes/NoSuchPage';
+import { Home } from './shared/home/routes/Home';
+import { oldLinkRedirect } from './shared/pages/lib/oldLinks';
+import { home, sessions, watch } from './shared/pages/lib/pages';
+import { NoSuchPage } from './shared/pages/routes/NoSuchPage';
 import { Session } from './sessions/routes/Session';
 import { Sessions } from './sessions/routes/Sessions';
 import { Watch } from './skills/routes/Watch';

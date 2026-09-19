@@ -1,4 +1,4 @@
-import { sessions as page } from '../../../pages/lib/pages';
+import { sessions as page } from '../../pages/lib/pages';
 
 // The Session is in the address's path, its Repository and person come back with it, and the Filter owns them.
 export interface Where {
