@@ -1,53 +1,24 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
-using Skillworks.Core.Watch.Activations;
-using Skillworks.Core.Watch.Activations.Queries;
-using Skillworks.Core.Shared.Arriving;
-using Skillworks.Core.Shared.Catalogue;
-using Skillworks.Core.Shared.Filters;
-using Skillworks.Core.Shared.Gaps;
-using Skillworks.Core.Shared.Health;
-using Skillworks.Core.Sessions;
-using Skillworks.Core.Sessions.Queries;
-using Skillworks.Core.Sessions.Steps;
 using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
-using Skillworks.Core.Watch.Skills;
-using Skillworks.Core.Watch.Spend.Queries;
-using Skillworks.Core.Shared.Telemetry;
 
-namespace Skillworks.Core.Registration;
+namespace Skillworks.Core.Shared.Stores;
 
-public static class CoreServiceCollectionExtensions
+public static class StoresServiceCollectionExtensions
 {
-    public static IServiceCollection AddSkillworksCore(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddStores(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<CatalogueOptions>(configuration.GetSection(CatalogueOptions.SectionName));
-        services.Configure<ClaudeSettingsOptions>(configuration.GetSection(ClaudeSettingsOptions.SectionName));
         services.Configure<LokiOptions>(configuration.GetSection(LokiOptions.SectionName));
         services.Configure<TempoOptions>(configuration.GetSection(TempoOptions.SectionName));
         services.Configure<CollectorOptions>(configuration.GetSection(CollectorOptions.SectionName));
 
+        // Each registration that needs the clock adds it, so none has to trust another to.
         services.TryAddSingleton(TimeProvider.System);
-
-        services.AddSingleton<CatalogueLocator>();
-        services.AddSingleton<CatalogueSkills>();
-        services.AddSingleton(provider => new Lookback(
-            provider.GetRequiredService<IOptions<LokiOptions>>().Value.LookbackDays,
-            provider.GetRequiredService<TimeProvider>()));
-        services.AddSingleton<ClaudeSettingsFile>();
-        services.AddSingleton<TelemetrySwitch>();
-
-        services.AddSingleton<ActivationQueries>();
-        services.AddSingleton<SpendQueries>();
-        services.AddSingleton<SessionQueries>();
-        services.AddSingleton<StepQueries>();
-        services.AddSingleton<AgentQueries>();
-        services.AddSingleton<DepthQueries>();
 
         // A named client, not a typed one: a typed client held by a singleton keeps one handler for the app's life.
         services.AddHttpClient(EventsStoreReader.ClientName, (provider, client) =>
@@ -86,14 +57,6 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<EventsStoreReader>();
         services.AddSingleton<TraceStoreReader>();
         services.AddSingleton<CollectorReader>();
-        services.AddSingleton<GapReport>();
-        services.AddSingleton<ArrivingDays>();
-        services.AddSingleton<FilterChoices>();
-        services.AddSingleton<SkillReport>();
-        services.AddSingleton<ActivationReport>();
-        services.AddSingleton<SessionReport>();
-        services.AddSingleton<StepReport>();
-        services.AddSingleton<StudioHealth>();
 
         return services;
     }

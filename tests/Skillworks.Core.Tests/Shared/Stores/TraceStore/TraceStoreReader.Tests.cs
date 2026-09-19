@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Skillworks.Core.Registration;
+using Skillworks.Core.Shared.Stores;
 using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Tests.Harness;
 
@@ -393,7 +393,7 @@ public sealed partial class TraceStoreReaderTests
         }
 
         var services = new ServiceCollection()
-            .AddSkillworksCore(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+            .AddStores(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
 
         // Only the handler is replaced, and after the registration that clears them, so Studio's own timeout stays under test.
         if (store is not null)
