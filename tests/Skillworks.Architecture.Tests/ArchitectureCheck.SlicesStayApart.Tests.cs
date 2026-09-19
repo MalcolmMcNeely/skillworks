@@ -141,4 +141,55 @@ public sealed partial class ArchitectureCheckTests
         Assert.Contains("`App.Sessions`", breach.Message);
         Assert.Contains("`Shared`", breach.Message);
     }
+
+    [Fact]
+    public void A_project_wide_using_that_names_a_Slice_is_a_breach_of_the_project()
+    {
+        using var tree = new RulesTree()
+            .Project("src/App", "App.Sessions")
+            .Write("src/App/Sessions/Session.cs")
+            .Write("src/App/Watch/Clock.cs");
+
+        Assert.Equal([("slices-stay-apart", "src/App/App.csproj")], tree.Breaches());
+    }
+
+    [Fact]
+    public void A_project_wide_using_that_names_no_Slice_is_not_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Project("src/App", "App.Shared", "Xunit")
+            .Write("src/App/Shared/Trigger.cs")
+            .Write("src/App/Watch/Clock.cs");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_project_wide_using_in_a_test_project_is_not_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Project("src/App")
+            .Write("src/App/Sessions/Session.cs")
+            .Write("src/App/Watch/Clock.cs")
+            .Project("tests/App.Tests", "App.Sessions")
+            .Write("tests/App.Tests/Watch/Clock.Tests.cs");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_project_wide_using_breach_names_the_Slice_read_and_what_to_do()
+    {
+        using var tree = new RulesTree()
+            .Project("src/App", "App.Sessions")
+            .Write("src/App/Sessions/Session.cs")
+            .Write("src/App/Watch/Clock.cs");
+
+        var breach = Assert.Single(tree.Check().Breaches);
+
+        Assert.Contains("`App.Sessions`", breach.Message);
+        Assert.Contains("`Sessions`", breach.Message);
+        Assert.Contains("`Shared`", breach.Message);
+        Assert.Contains("files that need it", breach.Message);
+    }
 }

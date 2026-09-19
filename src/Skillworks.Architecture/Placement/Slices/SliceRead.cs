@@ -4,7 +4,7 @@ namespace Skillworks.Architecture.Placement.Slices;
 
 internal sealed record SliceRead(string CodeFile, string TopFolder, string Slice, string Namespace)
 {
-    // Every cross-namespace read in this repository's code files goes through a using directive in the file.
+    // A cross-namespace read reaches a file two ways: a using directive in it, or a `<Using>` in its project.
     public static IEnumerable<SliceRead> In(string root, IReadOnlyList<string> sourceFiles, PlacementRules rules)
     {
         var csharpFiles = sourceFiles.Where(CSharpFile.IsCSharp).ToList();
@@ -28,6 +28,28 @@ internal sealed record SliceRead(string CodeFile, string TopFolder, string Slice
             {
                 if (SliceNamed(slices, read) is { } slice)
                     yield return new SliceRead(file, top.Name, slice, read);
+            }
+        }
+    }
+
+    // A `<Using>` reaches every file in its project at once, so it is answered for by the project and not by them.
+    public static IEnumerable<ProjectRead> ByProjects(
+        string root,
+        IReadOnlyList<string> sourceFiles,
+        PlacementRules rules)
+    {
+        var folders = sourceFiles.Where(CSharpFile.IsCSharp).Select(SourceTree.FolderOf).Distinct().ToList();
+        var roots = CodeRoot.AboveEach(root, folders);
+        var projects = CSharpProject.AboveEach(root, folders);
+        var slices = SliceNamespaces(folders, roots, projects, rules);
+
+        // A test may read any Slice, so a test project may carry one for every test in it.
+        foreach (var project in projects.Values.OfType<CSharpProject>().Where(project => !project.IsTests).Distinct())
+        {
+            foreach (var read in project.Usings)
+            {
+                if (SliceNamed(slices, read) is { } slice)
+                    yield return new ProjectRead(project.File, slice, read);
             }
         }
     }

@@ -47,8 +47,10 @@ context that declares no Slices, is judged by the rest of these rules and by non
 5. **`Shared` has one door.** Every folder in `Shared` names a word from the glossary of the context
    that claims it, or the plural of one, because a folder holds many of a thing. Code with no word of
    its own settles one in the glossary before the folder appears, and machinery settles a word like
-   everything else. The test runs on the piece and not on the word: only what two Slices actually
-   read moves.
+   everything else. The test runs on the piece and not on the word: a word in the glossary does not
+   pull a Slice's code down with it. `Skill` is a word, but only the list of Skill names the Filter
+   offers sits in `Shared`, while the Map, the Tiles and the skill report stay in Watch. What moves
+   is what no one job owns, however many jobs happen to read it.
 6. **A Slice keeps its name everywhere.** A Slice folder sits at the same depth, and under the same
    name in that language's own case, in every project that holds its code, and in the front end.
 7. **Two Slices may hold a type with the same name.** They are two types about two jobs. Merging them
@@ -74,7 +76,9 @@ that tests use: a host, a fake or a record a test reads a response into.
 - A C# file holds one top-level type, named as the subject. A private nested type or a `file` type
   can stay with the type it serves. Any other nested type gets its own file. A `Program.cs` with
   top-level statements is the one file with no type.
-- Global usings go in the project file as `<Using>` items, so no C# file holds only usings.
+- Global usings go in the project file as `<Using>` items, so no C# file holds only usings. A
+  `<Using>` reaches every file the project builds, so outside a test project it never names a Slice:
+  rule 3 could not then tell which file did the reading.
 - A large type splits across aspect files: `BlobRepository.Async.cs` holds `partial BlobRepository`.
 - A C# namespace is the project's root namespace, then the folder path: a file in
   `Skillworks.Core/<Slice>/<Folder>/` is in `Skillworks.Core.<Slice>.<Folder>`.

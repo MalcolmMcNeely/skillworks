@@ -95,10 +95,17 @@ public sealed class RulesTree : IDisposable
     }
 
     // A project turns on the namespace rule, so a file beneath one is written with the namespace its folder asks for.
-    public RulesTree Project(string folder)
+    public RulesTree Project(string folder, params string[] usings)
     {
         _projects.Add(folder);
-        return Write($"{folder}/{Path.GetFileName(folder)}.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+
+        var items = string.Join('\n', usings.Select(name => $"    <Using Include=\"{name}\" />"));
+
+        return Write(
+            $"{folder}/{Path.GetFileName(folder)}.csproj",
+            usings.Length == 0
+                ? "<Project Sdk=\"Microsoft.NET.Sdk\" />\n"
+                : $"<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup>\n{items}\n  </ItemGroup>\n</Project>\n");
     }
 
     public RulesTree FrontEnd(string folder) => Write($"{folder}/package.json", "{}\n");
