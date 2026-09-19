@@ -67,13 +67,16 @@ failing or never answers, which a running container cannot be made to be.
 
 `contexts` names the contexts, from `CONTEXT-MAP.md`, whose C# this rule judges. A context joins the
 list the day its code can pass, because a rule switched on before the code can meet it leaves the
-suite red on purpose. The list is empty today. A name no context in the map carries is a breach, so
-the list cannot go stale and quietly judge nothing.
+suite red on purpose. Studio is on the list because it reads a Clock. Architecture is on the list
+because it reads none, and the rule is what keeps that true. A name no context in the map carries
+is a breach, so the list cannot go stale and quietly judge nothing.
 
 The check reads C# as code and never as text, so a file named for a reach, and a reach written inside
 a string, are both left alone. The front end is held to the same rule by its own linter.
 
 ```yaml
 clock: TimeProvider
-contexts: []
+contexts:
+  - studio
+  - architecture
 ```
