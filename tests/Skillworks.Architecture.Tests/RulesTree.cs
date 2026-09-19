@@ -5,7 +5,10 @@ public sealed class RulesTree : IDisposable
     public const string PlacementFile = ".claude/rules/file-placement.md";
     public const string CommentsFile = ".claude/rules/comments.md";
     public const string WordsFile = ".claude/rules/words.md";
+    public const string DeterminismFile = ".claude/rules/determinism.md";
     public const string ContextMapFile = "CONTEXT-MAP.md";
+
+    private const string SupportProject = "tests/App.Tests";
 
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("skillworks-architecture");
 
@@ -44,6 +47,12 @@ public sealed class RulesTree : IDisposable
         {
             ["banned-words"] = "{app: [Widget, \"Gadget box\"], check: []}",
             ["skip-folders"] = "[sketches]",
+        },
+        [DeterminismFile] = new()
+        {
+            ["clock"] = "TimeProvider",
+            // An empty list leaves every other rule's tree unjudged, so only a determinism test opts in.
+            ["contexts"] = "[]",
         },
     };
 
@@ -97,7 +106,8 @@ public sealed class RulesTree : IDisposable
     // A project turns on the namespace rule, so a file beneath one is written with the namespace its folder asks for.
     public RulesTree Project(string folder, params string[] usings)
     {
-        _projects.Add(folder);
+        if (!_projects.Contains(folder))
+            _projects.Add(folder);
 
         var items = string.Join('\n', usings.Select(name => $"    <Using Include=\"{name}\" />"));
 
@@ -124,6 +134,16 @@ public sealed class RulesTree : IDisposable
         return Write(path, $"{usings}\n{TypeNamedFor(path)}");
     }
 
+    // The test project above is what makes the check read this file as a Support file.
+    public RulesTree Support(string path, string body) =>
+        Project(SupportProject).Write($"{SupportProject}/{path}", NamespaceOf($"{SupportProject}/{path}") + body);
+
+    public RulesTree Quoting(string path, string code) =>
+        Write(
+            path,
+            $"{NamespaceOf(path)}public static class {SubjectOf(path)}\n" +
+            $"{{\n    public const string Code = \"{code}\";\n}}\n");
+
     public RulesTree Delete(string path)
     {
         File.Delete(Path.Combine(_root.FullName, path));
@@ -144,11 +164,13 @@ public sealed class RulesTree : IDisposable
         if (!fileName.EndsWith(".cs", StringComparison.Ordinal))
             return "";
 
-        var subject = fileName.Split('.')[0];
+        var subject = SubjectOf(path);
         var name = fileName.EndsWith(".Tests.cs", StringComparison.Ordinal) ? $"{subject}Tests" : subject;
 
         return $"{NamespaceOf(path)}public sealed partial class {name};\n";
     }
+
+    private static string SubjectOf(string path) => Path.GetFileName(path).Split('.')[0];
 
     private string NamespaceOf(string path)
     {

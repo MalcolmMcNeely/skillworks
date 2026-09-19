@@ -25,7 +25,7 @@ internal static class DocComments
             yield return new Breach(
                 Rule,
                 file,
-                $"Remove the doc comments at {(lines.Count == 1 ? "line" : "lines")} {string.Join(", ", lines)}. " +
+                $"Remove the doc comments at {Breach.AtLines(lines)}. " +
                 "Keep a reason a reader needs as an ordinary comment.");
         }
     }

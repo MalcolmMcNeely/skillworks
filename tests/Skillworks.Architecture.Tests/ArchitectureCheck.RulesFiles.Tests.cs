@@ -8,6 +8,7 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(PlacementFile)]
     [InlineData(CommentsFile)]
     [InlineData(WordsFile)]
+    [InlineData(DeterminismFile)]
     [InlineData(ContextMapFile)]
     public void A_missing_rules_file_is_a_breach(string file)
     {
@@ -20,6 +21,7 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(PlacementFile)]
     [InlineData(CommentsFile)]
     [InlineData(WordsFile)]
+    [InlineData(DeterminismFile)]
     [InlineData(ContextMapFile)]
     public void A_rules_file_with_no_yaml_block_is_a_breach(string file)
     {
@@ -40,6 +42,8 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(CommentsFile, "doc-comments")]
     [InlineData(WordsFile, "banned-words")]
     [InlineData(WordsFile, "skip-folders")]
+    [InlineData(DeterminismFile, "clock")]
+    [InlineData(DeterminismFile, "contexts")]
     public void A_rules_file_that_lacks_a_key_is_a_breach_that_names_the_key(string file, string key)
     {
         using var tree = new RulesTree().Remove(file, key);
@@ -65,6 +69,8 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(WordsFile, "banned-words", "[Widget]")]
     [InlineData(WordsFile, "banned-words", "{Widget: Gadget}")]
     [InlineData(WordsFile, "skip-folders", "sketches")]
+    [InlineData(DeterminismFile, "clock", "[TimeProvider]")]
+    [InlineData(DeterminismFile, "contexts", "app")]
     public void A_setting_of_the_wrong_shape_is_a_breach_that_names_the_key(string file, string key, string value)
     {
         using var tree = new RulesTree().Set(file, key, value);

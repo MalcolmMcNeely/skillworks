@@ -1,5 +1,6 @@
 using Skillworks.Architecture.Comments;
 using Skillworks.Architecture.Contexts;
+using Skillworks.Architecture.Determinism;
 using Skillworks.Architecture.Placement;
 using Skillworks.Architecture.Placement.Slices;
 using Skillworks.Architecture.Words;
@@ -36,6 +37,7 @@ public static class ArchitectureCheck
                 .. SharedStaysBelow.Check(root, sliceFiles, rules.Placement),
                 .. SharedNamesAWord.Check(root, sliceFiles, rules.Placement, rules.Contexts),
                 .. SliceNamesMatch.Check(root, sliceFiles, rules.Placement),
+                .. MachineClock.Check(root, sourceFiles, rules.Placement, rules.Contexts, rules.Determinism),
             ],
             sourceFiles.Count);
     }

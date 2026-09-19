@@ -64,3 +64,8 @@ opens to learn which glossary judges a file.
 **Breach**:
 One place the code is not true of a Rule. It names the Rule, the path and what to do.
 _Avoid_: Violation, error, failure
+
+**Reach**:
+One name in the code that goes around a seam the Rule holds, such as asking the machine what the time
+is instead of the Clock. A Breach names the Reach and every line that writes it.
+_Avoid_: Usage, call site, offence
