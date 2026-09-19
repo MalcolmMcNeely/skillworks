@@ -40,6 +40,7 @@ banned-words:
     - Stretch
     - Brush
     - Main thread
-  architecture: []
+  architecture:
+    - Feature
 skip-folders: []
 ```

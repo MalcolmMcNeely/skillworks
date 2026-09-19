@@ -12,6 +12,6 @@ internal static class MaxTypesPerFolder
             .Select(folder => new Breach(
                 Rule,
                 folder.Folder.Length == 0 ? "." : folder.Folder,
-                $"The folder holds {folder.TypeCount} types. Move types into feature or concern folders beneath it " +
-                $"until it holds at most {rules.MaxTypesPerFolder}."));
+                $"The folder holds {folder.TypeCount} types. Move types into folders beneath it, each named for " +
+                $"what its types have in common, until it holds at most {rules.MaxTypesPerFolder}."));
 }

@@ -13,7 +13,7 @@ internal static class BannedFolderNames
             .Select(folder => new Breach(
                 Rule,
                 folder,
-                $"Rename `{Path.GetFileName(folder)}` for the feature its code serves or for what the code does."));
+                $"Rename `{Path.GetFileName(folder)}` for the job its code serves or for what the code does."));
 
     private static IEnumerable<string> FoldersAbove(string file)
     {
