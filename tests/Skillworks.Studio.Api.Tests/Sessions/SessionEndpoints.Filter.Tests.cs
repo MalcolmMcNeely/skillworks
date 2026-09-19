@@ -1,4 +1,4 @@
-using Skillworks.Core.Tests.TraceStore;
+using Skillworks.Core.Tests.Shared.Stores.TraceStore;
 using Skillworks.Studio.Api.Tests.Harness;
 using Skillworks.Studio.Api.Tests.Harness.StandIns;
 

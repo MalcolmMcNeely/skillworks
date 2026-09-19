@@ -1,7 +1,7 @@
-using Skillworks.Core.EventsStore;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Split;
 using Skillworks.Core.Sessions.Steps;
+using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 

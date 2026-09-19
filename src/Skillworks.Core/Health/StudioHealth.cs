@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Catalogue;
-using Skillworks.Core.Collector;
-using Skillworks.Core.EventsStore;
+using Skillworks.Core.Shared.Stores.Collector;
+using Skillworks.Core.Shared.Stores.EventsStore;
+using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Telemetry;
-using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Health;
 

@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Skillworks.Core.Collector;
-using Skillworks.Core.EventsStore;
-using Skillworks.Core.TraceStore;
+using Skillworks.Core.Shared.Stores.Collector;
+using Skillworks.Core.Shared.Stores.EventsStore;
+using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
 

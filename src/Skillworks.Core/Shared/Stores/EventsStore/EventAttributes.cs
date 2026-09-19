@@ -1,4 +1,4 @@
-namespace Skillworks.Core.EventsStore;
+namespace Skillworks.Core.Shared.Stores.EventsStore;
 
 // Spelled as Claude Code sends them, on every event.
 public static class EventAttributes

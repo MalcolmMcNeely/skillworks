@@ -1,10 +1,10 @@
 using System.Globalization;
-using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Steps;
+using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 

@@ -1,4 +1,4 @@
-namespace Skillworks.Core.EventsStore;
+namespace Skillworks.Core.Shared.Stores.EventsStore;
 
 public sealed record EventLines(IReadOnlyList<EventLine> Lines, string? Unreachable)
 {

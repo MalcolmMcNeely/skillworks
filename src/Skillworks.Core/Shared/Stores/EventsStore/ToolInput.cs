@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Skillworks.Core.EventsStore;
+namespace Skillworks.Core.Shared.Stores.EventsStore;
 
 // Claude Code cuts each string inside this JSON to its opening characters, so the shape holds but a value may end early.
 public static class ToolInput

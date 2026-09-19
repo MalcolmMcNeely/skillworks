@@ -2,10 +2,10 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Skillworks.Core.Registration;
+using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Tests.Harness;
-using Skillworks.Core.TraceStore;
 
-namespace Skillworks.Core.Tests.TraceStore;
+namespace Skillworks.Core.Tests.Shared.Stores.TraceStore;
 
 public sealed partial class TraceStoreReaderTests
 {

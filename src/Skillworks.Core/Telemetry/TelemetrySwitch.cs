@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
-using Skillworks.Core.Collector;
+using Skillworks.Core.Shared.Stores.Collector;
 
 namespace Skillworks.Core.Telemetry;
 

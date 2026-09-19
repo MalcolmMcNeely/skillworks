@@ -7,18 +7,18 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Arriving;
 using Skillworks.Core.Catalogue;
-using Skillworks.Core.Collector;
-using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Gaps;
 using Skillworks.Core.Health;
 using Skillworks.Core.Sessions;
 using Skillworks.Core.Sessions.Queries;
 using Skillworks.Core.Sessions.Steps;
+using Skillworks.Core.Shared.Stores.Collector;
+using Skillworks.Core.Shared.Stores.EventsStore;
+using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Spend.Queries;
 using Skillworks.Core.Telemetry;
-using Skillworks.Core.TraceStore;
 
 namespace Skillworks.Core.Registration;
 

@@ -1,7 +1,7 @@
+using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Tests.Harness.StandIns;
-using Skillworks.Core.TraceStore;
 
-namespace Skillworks.Core.Tests.TraceStore;
+namespace Skillworks.Core.Tests.Shared.Stores.TraceStore;
 
 public sealed partial class TraceStoreReaderTests
 {

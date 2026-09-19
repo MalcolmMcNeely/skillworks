@@ -1,4 +1,4 @@
-using Skillworks.Core.EventsStore;
+using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Sessions.Steps;
 

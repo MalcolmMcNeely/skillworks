@@ -1,4 +1,4 @@
-namespace Skillworks.Core.EventsStore;
+namespace Skillworks.Core.Shared.Stores.EventsStore;
 
 // Every event Claude Code sends carries these attributes, so one narrowing serves them all.
 public sealed record EventQuery(string EventName, DateTimeOffset From, DateTimeOffset Until)

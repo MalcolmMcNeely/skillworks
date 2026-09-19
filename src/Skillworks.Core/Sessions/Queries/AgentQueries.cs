@@ -1,7 +1,7 @@
 using Skillworks.Core.Filters;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Trace;
-using Skillworks.Core.TraceStore;
+using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 

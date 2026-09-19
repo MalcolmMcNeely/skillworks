@@ -1,6 +1,6 @@
-using Skillworks.Core.EventsStore;
 using Skillworks.Core.Sessions.Measures;
-using Skillworks.Core.TraceStore;
+using Skillworks.Core.Shared.Stores.EventsStore;
+using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 

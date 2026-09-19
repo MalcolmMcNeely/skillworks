@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 
-namespace Skillworks.Core.Tests.TraceStore;
+namespace Skillworks.Core.Tests.Shared.Stores.TraceStore;
 
 // One Step as Claude Code sends it with CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 and traces exporting.
 public sealed record RecordedSpan(

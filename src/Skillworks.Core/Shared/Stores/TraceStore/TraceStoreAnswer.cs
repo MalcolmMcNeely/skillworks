@@ -1,4 +1,4 @@
-namespace Skillworks.Core.TraceStore;
+namespace Skillworks.Core.Shared.Stores.TraceStore;
 
 public sealed record TraceStoreAnswer(TraceStoreState State, string Detail)
 {

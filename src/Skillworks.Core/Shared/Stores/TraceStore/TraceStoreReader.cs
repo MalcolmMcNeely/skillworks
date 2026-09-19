@@ -4,7 +4,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
-namespace Skillworks.Core.TraceStore;
+namespace Skillworks.Core.Shared.Stores.TraceStore;
 
 public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoOptions> options, TimeProvider clock)
 {

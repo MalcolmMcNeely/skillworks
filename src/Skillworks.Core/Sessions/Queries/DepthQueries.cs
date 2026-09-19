@@ -1,5 +1,5 @@
 using Skillworks.Core.Filters;
-using Skillworks.Core.TraceStore;
+using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 

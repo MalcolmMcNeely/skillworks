@@ -2,8 +2,8 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Arriving;
 using Skillworks.Core.Catalogue;
-using Skillworks.Core.EventsStore;
 using Skillworks.Core.Filters;
+using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Spend;
 using Skillworks.Core.Spend.Queries;
 

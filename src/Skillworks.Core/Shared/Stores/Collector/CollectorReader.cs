@@ -1,7 +1,7 @@
 using System.Text;
 using Microsoft.Extensions.Options;
 
-namespace Skillworks.Core.Collector;
+namespace Skillworks.Core.Shared.Stores.Collector;
 
 public sealed class CollectorReader(IHttpClientFactory clients, IOptions<CollectorOptions> options)
 {

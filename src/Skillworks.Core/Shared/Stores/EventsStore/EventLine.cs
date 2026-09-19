@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Skillworks.Core.EventsStore;
+namespace Skillworks.Core.Shared.Stores.EventsStore;
 
 public sealed class EventLine(IReadOnlyDictionary<string, string> labels, DateTimeOffset at)
 {

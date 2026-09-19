@@ -1,4 +1,4 @@
-using Skillworks.Core.EventsStore;
+using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Studio.Api.Tests.Harness;
 using Skillworks.Studio.Api.Tests.Harness.StandIns;
 using Skillworks.Studio.Api.Tests.Sessions.Answers;

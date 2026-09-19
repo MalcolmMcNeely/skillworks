@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Skillworks.Core.Collector;
+using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Telemetry;
 // Owned by the test project of the reader they serve, and linked into this one.
 using Skillworks.Core.Tests.Harness;
-using Skillworks.Core.Tests.TraceStore;
+using Skillworks.Core.Tests.Shared.Stores.TraceStore;
 using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Harness;
