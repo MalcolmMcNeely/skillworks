@@ -1,8 +1,25 @@
-// Any depth, so a feature that nests, or a stray `src/lib`, is still held to the boundaries.
+const { readFileSync } = require('node:fs');
+const { join } = require('node:path');
+
+// Any depth, so a Concern that nests, or a stray `src/lib`, is still held to the boundaries.
 const layer = (names) => `^src/(.*/|)(${names})/`;
 
+// The same list the architecture check reads, so adding a job is one line and never half a line.
+const rulesFile = join(__dirname, '..', '..', '.claude', 'rules', 'file-placement.md');
+const settings = readFileSync(rulesFile, 'utf8').match(/^```ya?ml[ \t]*\r?\n([\s\S]*?)^```/m)?.[1] ?? '';
+const sliceNames = (settings.match(/^slices:[ \t]*\r?\n((?:[ \t]+-.*\r?\n)+)/m)?.[1] ?? '')
+  .split('\n')
+  .map((line) => line.replace(/^[ \t]*-[ \t]*/, '').trim())
+  .filter(Boolean)
+  .map((name) => name.toLowerCase());
+
+// A list that came back empty would build a rule that matches nothing and pass everything in silence.
+if (sliceNames.length === 0) {
+  throw new Error(`Read no slices from ${rulesFile}. The Slice boundaries would hold nothing.`);
+}
+
 // A Slice only sits at the first level, so a deeper match would catch a folder that is not one.
-const slice = '^src/(watch|sessions)/';
+const slice = `^src/(${sliceNames.join('|')})/`;
 const shared = '^src/shared/';
 
 // A test may read any Slice, because one that checks a seam has to see both sides of it.
