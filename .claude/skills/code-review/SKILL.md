@@ -64,21 +64,43 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 ### 4. Identify the architecture sources
 
-Two kinds, and the second outranks the first.
+Three kinds, and each outranks the one before it.
 
 **Documented** — anything in the repo that says how the code is *arranged*, as opposed to how it is written: `ARCHITECTURE.md`, `CONTEXT.md`, a `docs/adr/` or `decisions/` folder, a README section on layout. Decisions are often recorded somewhere a template wouldn't predict — if the repo has a doc telling agents where its decisions live, read that first and follow it.
 
-**Executable** — a boundary rule the repo can actually run. This is the higher-trust source, because it is enforced rather than aspired to:
+**Written as rules** — the placement rules in `.claude/rules/`, and the context map beside them. Step 3 hands the whole of `.claude/rules/` to Standards, but the half that says *where a file goes, and which folder may read which*, is an arrangement rule rather than a style one, and this axis is the one that judges by it. Read the context map too: a rule reaches only the code the map gives it, and a path two contexts claim breaches `contexts`.
+
+In this repo that file is `.claude/rules/file-placement.md`, and its eight Slice rules are the ones the agent wrote the code under. Read them there, and judge placement and direction against what they say. Cite a breach by the name of the check that catches it:
+
+| Check | The rule it runs |
+|---|---|
+| `slice-folders` | 1, a Slice comes first |
+| `concern-folders` | 2, a Concern comes beneath, in the front end |
+| `slices-stay-apart` | 3, a Slice never reads another Slice |
+| `shared-stays-below` | 4, `Shared` never reads a Slice |
+| `shared-names-a-word` | 5, `Shared` has one door |
+| `slice-names-match` | 6, a Slice keeps its name everywhere |
+
+Rules 7 and 8 have no check behind them, and nor does the exemption that lets a test read a Slice. The front end is held by `src/Skillworks.Studio.Web/.dependency-cruiser.cjs`, which names its own breaches, so quote whichever name the run printed. The table is an index from a breach back to a rule, and the rules themselves stay in the one file.
+
+Holding the author and the reviewer to one document is the point of this axis, so two baseline items bend wherever the repo has written the rule down:
+
+- **A shared folder with a written door is not grab-bag growth.** The baseline item is about a folder nobody decided on. Judge against the door the repo wrote, not against the name.
+- **Duplication across a boundary can be correct.** Where the repo says two modules may hold one name, the merge is the defect, not the duplication.
+
+**Executable** — a boundary rule the repo can actually run. This is the highest-trust source, because it is enforced rather than aspired to:
 
 | Look for | Ecosystem |
 |---|---|
 | `.dependency-cruiser.*`, `eslint-plugin-boundaries`, `import/no-restricted-paths`, Nx `tags` | JS / TS |
-| `ProjectReference` graph across `*.csproj`, `.editorconfig` layering rules | .NET |
+| An architecture test project, the `ProjectReference` graph across `*.csproj`, `.editorconfig` layering rules | .NET |
 | `importlinter` / `.importlinter`, `tach.toml` | Python |
 | `internal/` directories, `go.mod` boundaries | Go |
 | `module-info.java`, ArchUnit tests, Maven module graph | Java |
 
-**If an executable rule exists, run it rather than reason about it** — `npm run lint`, `depcruise`, `lint-imports`, `dotnet build`, whatever the repo wires it to. A violation it reports is a fact, not a judgement call, and belongs at the top of the axis. Say in the report which command you ran; if none exists, say that too, because "this repo cannot check its own boundaries" is itself the finding a reader wants.
+**If an executable rule exists, run it rather than reason about it** — `npm run lint`, `depcruise`, `lint-imports`, `dotnet test`, `dotnet build`, whatever the repo wires it to. A violation it reports is a fact, not a judgement call, and belongs at the top of the axis. Say in the report which command you ran; if none exists, say that too, because "this repo cannot check its own boundaries" is itself the finding a reader wants.
+
+Where a check of the repo's own reads the rules files, the last two kinds are one thing: the file is the text and the check is the run. Here `dotnet test Skillworks.slnx` runs `Skillworks.Architecture` over the whole tree, and `npm run lint` in `src/Skillworks.Studio.Web` runs dependency-cruiser over the front end. Each names the rule, the path and what to do about it, so quote a breach as it came.
 
 On top of whatever the repo has, the Architecture axis always carries the **arrangement baseline** in [`ARCHITECTURE-BASELINE.md`](ARCHITECTURE-BASELINE.md) — nine failures of placement and direction that apply even when a repo documents nothing, in the same *what it is* → *how to fix* shape as the smell baseline. It sits in its own file because only the sub-agent needs it; pass the path, don't paste the contents.
 
@@ -88,7 +110,7 @@ Three rules bind the axis, and the third is the one that decides whether anyone 
 - **Diff-introduced only.** Standing debt is not a finding. Report what this change introduced, or made materially worse. An axis that re-reports the same architecture every run gets skimmed and then skipped.
 - **Cite or drop it.** Every finding names either the doc/rule it breaches or the baseline item, and quotes the line — usually a single import. Architecture judgement without evidence is just taste, and it is the failure this axis is most prone to.
 
-**Skip the axis** when the diff sits inside one module and touches no config, no dependency manifest, and no file moves — there is no arrangement question to answer. Note the skip in the report.
+**Skip the axis** when the diff sits inside one module and touches no config, no dependency manifest, no new file and no file move — there is no arrangement question to answer. A new file asks which folder it belongs in and a moved file asks which way it now points, so neither of those skips. Note the skip in the report.
 
 ### 5. Spawn the sub-agents in parallel
 
@@ -109,9 +131,9 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 **Architecture sub-agent prompt** — include:
 
 - The diff command, the `--stat -M` command, and the commit list.
-- The architecture sources from step 4: the documented files by path, the executable rule and the exact command that runs it, and the path to `ARCHITECTURE-BASELINE.md` — the sub-agent reads that itself.
-- The three binding rules from step 4, verbatim.
-- The brief: "First run the repo's own boundary check if there is one, and report what it says. Then, for **every module the diff touches**: (a) does anything the diff added point the wrong way, cross a seam it shouldn't, or reach past a module's public entry point; (b) is every added or moved file in the module its dependencies say it belongs to; (c) does the change introduce a cycle. Cite the rule or name the baseline item for each finding, and quote the import or path it turns on. Report only what this diff introduced or worsened — standing debt is out of scope. Under 400 words."
+- The architecture sources from step 4: the documented files by path, the placement rules file and the context map by path, every executable check and the exact command that runs it, and the path to `ARCHITECTURE-BASELINE.md` — the sub-agent reads that itself.
+- The three binding rules from step 4, verbatim, and the two baseline bends beneath them.
+- The brief: "First run every boundary check the repo has, and report what each one says. Then read the placement rules file, because it is the document the code was written under, and the context map, because it says which code those rules reach. Then, for **every module the diff touches**: (a) does anything the diff added point the wrong way, cross a seam it shouldn't, or reach past a module's public entry point; (b) is every added or moved file in the module its dependencies say it belongs to, and in the Slice whose job it serves; (c) does the change introduce a cycle; (d) does any folder the diff creates breach a written placement rule. Cite the written rule by its name, or name the baseline item, for every finding, and quote the import or path it turns on. A finding with neither a rule nor a baseline item behind it is taste, so drop it. Report only what this diff introduced or worsened — standing debt is out of scope. Under 400 words."
 
 Unlike Standards, this axis needs to read outside the diff: an import line is only wrong relative to the module graph around it. Say so in the prompt, and let it read the tree.
 

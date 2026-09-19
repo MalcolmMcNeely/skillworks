@@ -184,6 +184,27 @@ npm test
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
 | `docs/agents/` | Written by `/skillworks-setup`. The tracker, label and domain doc references the skills read. |
 
+### How much of Studio is Shared
+
+The top folder under a code root is a Slice, named for a job Studio does, with `Shared` beside the
+Slices for the code no one job owns. `.claude/rules/file-placement.md` holds the rules, and
+[ADR 0017](docs/adr/0017-a-slice-is-named-for-a-job-studio-does.md) says why the line is drawn there
+and why `Shared` is close to half.
+
+Counted on 19 September 2026. The count covers three code roots — `Skillworks.Core`,
+`Skillworks.Studio.Api` and the front end's `src` — and code files only, so no test and nothing
+generated. Studio's test projects lay out in Slices too, and are left out on purpose.
+
+| Folder | Files | Share |
+|---|---|---|
+| `Watch` | 33 | 15% |
+| `Sessions` | 82 | 38% |
+| `Shared` | 103 | 47% |
+
+Recount when a job lands. Watch the ratio rather than worry about it: if `Shared` keeps growing
+faster than the Slices as Author, Test and Publish arrive, the Slice boundary is in the wrong place,
+and the answer is to redraw it rather than to push code out of `Shared`.
+
 ## Working on Skillworks
 
 ### Setup
