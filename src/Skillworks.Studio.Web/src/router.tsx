@@ -5,7 +5,7 @@ import { home, sessions, watch } from './shared/pages/lib/pages';
 import { NoSuchPage } from './shared/pages/routes/NoSuchPage';
 import { Session } from './sessions/routes/Session';
 import { Sessions } from './sessions/routes/Sessions';
-import { Watch } from './skills/routes/Watch';
+import { Watch } from './watch/routes/Watch';
 
 export const router = createBrowserRouter([
   {
