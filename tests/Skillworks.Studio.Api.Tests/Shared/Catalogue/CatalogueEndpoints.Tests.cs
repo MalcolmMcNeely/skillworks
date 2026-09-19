@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Skillworks.Studio.Api.Tests.Harness;
 
-namespace Skillworks.Studio.Api.Tests.Catalogue;
+namespace Skillworks.Studio.Api.Tests.Shared.Catalogue;
 
 public sealed class CatalogueEndpointsTests
 {

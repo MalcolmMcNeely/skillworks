@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace Skillworks.Core.Catalogue;
+namespace Skillworks.Core.Shared.Catalogue;
 
 public sealed class CatalogueLocator(IOptions<CatalogueOptions> options)
 {

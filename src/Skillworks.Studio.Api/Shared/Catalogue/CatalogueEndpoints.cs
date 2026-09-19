@@ -1,6 +1,6 @@
-using Skillworks.Core.Catalogue;
+using Skillworks.Core.Shared.Catalogue;
 
-namespace Skillworks.Studio.Api.Catalogue;
+namespace Skillworks.Studio.Api.Shared.Catalogue;
 
 public static class CatalogueEndpoints
 {

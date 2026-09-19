@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using Skillworks.Core.Catalogue;
+using Skillworks.Core.Shared.Catalogue;
 using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;

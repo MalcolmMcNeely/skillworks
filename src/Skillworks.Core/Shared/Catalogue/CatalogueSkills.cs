@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Catalogue;
+namespace Skillworks.Core.Shared.Catalogue;
 
 public sealed class CatalogueSkills(CatalogueLocator locator)
 {

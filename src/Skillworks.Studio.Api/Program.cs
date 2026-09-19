@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Skillworks.Core.Registration;
 using Skillworks.ServiceDefaults;
 using Skillworks.Studio.Api.Activations;
-using Skillworks.Studio.Api.Catalogue;
+using Skillworks.Studio.Api.Shared.Catalogue;
 using Skillworks.Studio.Api.Filters;
 using Skillworks.Studio.Api.Shared.Health;
 using Skillworks.Studio.Api.Sessions;
