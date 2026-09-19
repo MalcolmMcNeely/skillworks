@@ -1,4 +1,4 @@
-using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Sessions.Answers;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;

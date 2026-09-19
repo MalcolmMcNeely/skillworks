@@ -1,4 +1,4 @@
-namespace Skillworks.Studio.Api.Tests.Harness;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness;
 
 public sealed class TemporaryFolder : IDisposable
 {

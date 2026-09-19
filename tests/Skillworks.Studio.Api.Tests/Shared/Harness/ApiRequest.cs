@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Skillworks.Studio.Api.Tests.Harness;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness;
 
 // Claude Code sends every number on an event as a string.
 public sealed record ApiRequest(

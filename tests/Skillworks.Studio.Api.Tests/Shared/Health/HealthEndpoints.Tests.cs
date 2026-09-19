@@ -1,6 +1,6 @@
 using System.Net;
-using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Harness.StandIns;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Shared.Health;
 

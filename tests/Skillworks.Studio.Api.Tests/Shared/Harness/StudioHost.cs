@@ -3,11 +3,11 @@ using System.Text.Json.Nodes;
 using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Telemetry;
 // Owned by the test project of the reader they serve, and linked into this one.
-using Skillworks.Core.Tests.Harness;
+using Skillworks.Core.Tests.Shared.Harness;
 using Skillworks.Core.Tests.Shared.Stores.TraceStore;
-using Skillworks.Studio.Api.Tests.Harness.StandIns;
+using Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
-namespace Skillworks.Studio.Api.Tests.Harness;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness;
 
 public sealed class StudioHost : IDisposable
 {
@@ -129,7 +129,7 @@ public sealed class StudioHost : IDisposable
     public static T Read<T>(JsonNode? line) =>
         line.Deserialize<T>(Wire) ?? throw new InvalidOperationException($"A {typeof(T).Name} came back empty.");
 
-    public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Fixtures", "Catalogue");
+    public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Shared", "Fixtures", "Catalogue");
 
     public static IReadOnlyList<string> Fields(JsonNode? answer) =>
         [.. (answer?.AsObject() ?? []).Select(field => field.Key).Order(StringComparer.Ordinal)];

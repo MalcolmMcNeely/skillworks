@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Skillworks.Core.Tests.Harness;
+namespace Skillworks.Core.Tests.Shared.Harness;
 
 // A store chooses the blocks to read by when Spans arrived, so a fixture dated long ago sits in no block a window holds.
 public static class Recently

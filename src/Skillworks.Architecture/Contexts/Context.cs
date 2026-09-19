@@ -1,6 +1,6 @@
 namespace Skillworks.Architecture.Contexts;
 
-internal sealed record Context(string Name, string Glossary, IReadOnlyList<string> Code)
+internal sealed record Context(string Name, string Glossary, bool Slices, IReadOnlyList<string> Code)
 {
     public bool Claims(string path) => Code.Any(folder => Covers(folder, path));
 

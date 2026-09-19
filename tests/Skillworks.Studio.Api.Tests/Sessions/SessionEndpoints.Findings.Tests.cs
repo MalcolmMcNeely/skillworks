@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
 using Skillworks.Core.Tests.Shared.Stores.TraceStore;
-using Skillworks.Studio.Api.Tests.Harness;
-using Skillworks.Studio.Api.Tests.Harness.StandIns;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 using Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;

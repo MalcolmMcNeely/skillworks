@@ -1,5 +1,5 @@
 using Skillworks.Core.Shared.Stores.TraceStore;
-using Skillworks.Core.Tests.Harness.StandIns;
+using Skillworks.Core.Tests.Shared.Harness.StandIns;
 
 namespace Skillworks.Core.Tests.Shared.Stores.TraceStore;
 

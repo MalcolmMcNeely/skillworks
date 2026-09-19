@@ -23,16 +23,16 @@
 
   <!-- Linked, not referenced, because the AppHost's Program collides with the API's. -->
   <ItemGroup>
-    <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Harness\TempoImage.cs" />
+    <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Shared\Harness\TempoImage.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
-    <Using Include="Skillworks.Core.Tests.Harness.Recently" Static="true" />
+    <Using Include="Skillworks.Core.Tests.Shared.Harness.Recently" Static="true" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Harness\tempo.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Shared\Harness\tempo.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

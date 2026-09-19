@@ -8,17 +8,17 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/App/App.csproj", ProjectFile)
             .Write("src/App/Clock.cs", TypeIn("App", "Clock"))
-            .Write("src/App/Catalogue/Locators/CatalogueLocator.cs", TypeIn("App.Catalogue.Locators", "CatalogueLocator"))
+            .Write("src/App/Shared/Catalogue/Locators/CatalogueLocator.cs", TypeIn("App.Shared.Catalogue.Locators", "CatalogueLocator"))
             .Write("tests/App.Tests/App.Tests.csproj", ProjectFile)
             .Write("tests/App.Tests/Clock.Tests.cs", TypeIn("App.Tests", "ClockTests"))
-            .Write("tests/App.Tests/Catalogue/Locators/CatalogueLocator.Tests.cs", TypeIn("App.Tests.Catalogue.Locators", "CatalogueLocatorTests"))
-            .Write("tests/App.Tests/Catalogue/Locators/CatalogueLocator.Cache.Tests.cs", TypeIn("App.Tests.Catalogue.Locators", "CatalogueLocatorTests"));
+            .Write("tests/App.Tests/Shared/Catalogue/Locators/CatalogueLocator.Tests.cs", TypeIn("App.Tests.Shared.Catalogue.Locators", "CatalogueLocatorTests"))
+            .Write("tests/App.Tests/Shared/Catalogue/Locators/CatalogueLocator.Cache.Tests.cs", TypeIn("App.Tests.Shared.Catalogue.Locators", "CatalogueLocatorTests"));
 
         Assert.Empty(tree.Breaches());
     }
 
     [Theory]
-    [InlineData("src/App/Timers/Clock.cs", "App.Timers", "Clock")]
+    [InlineData("src/App/Shared/Timers/Clock.cs", "App.Shared.Timers", "Clock")]
     [InlineData("src/App/Timer.cs", "App", "Timer")]
     [InlineData("src/Tools/Clock.cs", "Tools", "Clock")]
     public void A_csharp_test_with_no_code_file_at_the_mirrored_path_is_a_breach(string codeFile, string namespaceName, string typeName)
@@ -37,14 +37,14 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/App/App.csproj", ProjectFile)
-            .Write("src/App/Timers/Clock.cs", TypeIn("App.Timers", "Clock"))
+            .Write("src/App/Shared/Timers/Clock.cs", TypeIn("App.Shared.Timers", "Clock"))
             .Write("tests/App.Tests/App.Tests.csproj", ProjectFile)
             .Write("tests/App.Tests/Clock.Tests.cs", TypeIn("App.Tests", "ClockTests"));
 
         var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Equal(("tests-mirror-code", "tests/App.Tests/Clock.Tests.cs"), (breach.Rule, breach.Path));
-        Assert.Contains("`tests/App.Tests/Timers/Clock.Tests.cs`", breach.Message);
+        Assert.Contains("`tests/App.Tests/Shared/Timers/Clock.Tests.cs`", breach.Message);
     }
 
     [Theory]
@@ -119,7 +119,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/App.csproj", ProjectFile)
             .Write("src/App/Clock.cs", TypeIn("App", "Clock"))
             .Write("tests/App.Tests/App.Tests.csproj", ProjectFile)
-            .Write("tests/App.Tests/Hosts/AppHost.cs", TypeIn("App.Tests.Hosts", "AppHost"))
+            .Write("tests/App.Tests/Shared/Hosts/AppHost.cs", TypeIn("App.Tests.Shared.Hosts", "AppHost"))
             .Write("web/src/skills/lib/fakeClock.ts");
 
         Assert.Empty(tree.Breaches());
@@ -130,9 +130,9 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/App/App.csproj", ProjectFile)
-            .Write("src/App/Alarms/Alarm.cs", TypeIn("App.Alarms", "Alarm"))
-            .Write("src/App/Snoozes/Alarm.cs", TypeIn("App.Snoozes", "Alarm"))
-            .Write("src/App/Timers/Clock.cs", TypeIn("App.Timers", "Clock"))
+            .Write("src/App/Shared/Alarms/Alarm.cs", TypeIn("App.Shared.Alarms", "Alarm"))
+            .Write("src/App/Shared/Snoozes/Alarm.cs", TypeIn("App.Shared.Snoozes", "Alarm"))
+            .Write("src/App/Shared/Timers/Clock.cs", TypeIn("App.Shared.Timers", "Clock"))
             .Write("tests/App.Tests/App.Tests.csproj", ProjectFile)
             .Write("tests/App.Tests/Alarm.Tests.cs", TypeIn("App.Tests", "AlarmTests"))
             .Write("tests/App.Tests/Clock.Tests.cs", TypeIn("App.Tests", "ClockTests"))

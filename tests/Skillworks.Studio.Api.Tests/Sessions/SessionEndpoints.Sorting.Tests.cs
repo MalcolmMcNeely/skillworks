@@ -1,5 +1,5 @@
 using System.Globalization;
-using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 

@@ -1,5 +1,5 @@
 using System.Net;
-using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Watch.Skills;
 
 namespace Skillworks.Studio.Api.Tests.Shared.Filters;

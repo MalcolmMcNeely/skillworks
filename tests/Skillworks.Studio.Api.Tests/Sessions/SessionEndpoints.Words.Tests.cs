@@ -1,5 +1,5 @@
 using Skillworks.Core.Shared.Telemetry;
-using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 

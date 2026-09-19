@@ -17,7 +17,7 @@ public sealed partial class ArchitectureCheckTests
     [Fact]
     public void A_path_two_contexts_claim_is_a_breach()
     {
-        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", "src");
+        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", slices: false, "src");
 
         Assert.Equal([("contexts", "src")], tree.Breaches());
     }
@@ -25,7 +25,7 @@ public sealed partial class ArchitectureCheckTests
     [Fact]
     public void A_path_inside_another_contexts_path_is_a_breach()
     {
-        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", "src/App");
+        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", slices: false, "src/App");
 
         Assert.Equal([("contexts", "src/App")], tree.Breaches());
     }
@@ -33,7 +33,7 @@ public sealed partial class ArchitectureCheckTests
     [Fact]
     public void A_breach_over_one_path_names_both_contexts()
     {
-        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", "src/App");
+        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", slices: false, "src/App");
 
         var breach = Assert.Single(tree.Check().Breaches);
 
@@ -44,7 +44,7 @@ public sealed partial class ArchitectureCheckTests
     [Fact]
     public void A_path_that_only_starts_with_another_path_is_not_a_breach()
     {
-        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", "srcery");
+        using var tree = new RulesTree().SetContext("check", "tools/Check/CONTEXT.md", slices: false, "srcery");
 
         Assert.Empty(tree.Breaches());
     }
@@ -52,7 +52,7 @@ public sealed partial class ArchitectureCheckTests
     [Fact]
     public void A_glossary_that_is_not_there_is_a_breach()
     {
-        using var tree = new RulesTree().SetContext("check", "tools/Check/WORDS.md", "tools/Check");
+        using var tree = new RulesTree().SetContext("check", "tools/Check/WORDS.md", slices: false, "tools/Check");
 
         Assert.Equal([("contexts", "tools/Check/WORDS.md")], tree.Breaches());
     }
@@ -69,8 +69,9 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Theory]
-    [InlineData("glossary", "    code:\n      - src")]
-    [InlineData("code", "    glossary: CONTEXT.md")]
+    [InlineData("glossary", "    slices: true\n    code:\n      - src")]
+    [InlineData("slices", "    glossary: CONTEXT.md\n    code:\n      - src")]
+    [InlineData("code", "    glossary: CONTEXT.md\n    slices: true")]
     public void A_context_that_lacks_a_field_is_a_breach_that_names_it(string field, string fields)
     {
         using var tree = new RulesTree().Write(

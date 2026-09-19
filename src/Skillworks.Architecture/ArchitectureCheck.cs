@@ -16,6 +16,9 @@ public static class ArchitectureCheck
 
         var sourceFiles = SourceTree.Find(root, rules.Placement);
 
+        // Slices are one context's way of laying code out, so a context laid out another way answers to none of them.
+        var sliceFiles = sourceFiles.Where(rules.Contexts.DeclaresSlices).ToList();
+
         // A rule is proved before it joins the run, so a caller can ask for one the tree cannot pass yet.
         IEnumerable<Breach> WhenAskedFor(string rule, Func<IEnumerable<Breach>> check) =>
             alsoRun.Contains(rule, StringComparer.Ordinal) ? check() : [];
@@ -31,14 +34,14 @@ public static class ArchitectureCheck
                 .. TestsMirrorCode.Check(root, sourceFiles, rules.Placement),
                 .. DocComments.Check(root, sourceFiles, rules.Placement, rules.Comments),
                 .. BannedWords.Check(root, sourceFiles, rules.Words, rules.Contexts),
-                .. WhenAskedFor(SliceFolders.Rule, () => SliceFolders.Check(root, sourceFiles, rules.Placement)),
-                .. ConcernFolders.Check(root, sourceFiles, rules.Placement),
-                .. SlicesStayApart.Check(root, sourceFiles, rules.Placement),
-                .. SharedStaysBelow.Check(root, sourceFiles, rules.Placement),
+                .. SliceFolders.Check(root, sliceFiles, rules.Placement),
+                .. ConcernFolders.Check(root, sliceFiles, rules.Placement),
+                .. SlicesStayApart.Check(root, sliceFiles, rules.Placement),
+                .. SharedStaysBelow.Check(root, sliceFiles, rules.Placement),
                 .. WhenAskedFor(
                     SharedNamesAWord.Rule,
-                    () => SharedNamesAWord.Check(root, sourceFiles, rules.Placement, rules.Contexts)),
-                .. SliceNamesMatch.Check(root, sourceFiles, rules.Placement),
+                    () => SharedNamesAWord.Check(root, sliceFiles, rules.Placement, rules.Contexts)),
+                .. SliceNamesMatch.Check(root, sliceFiles, rules.Placement),
             ],
             sourceFiles.Count);
     }

@@ -12,7 +12,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Watch/Clock.cs")
             .Write("src/App/Reporting/Report.cs");
 
-        Assert.Equal([("slice-folders", "src/App/Reporting")], tree.Breaches("slice-folders"));
+        Assert.Equal([("slice-folders", "src/App/Reporting")], tree.Breaches());
     }
 
     [Fact]
@@ -24,7 +24,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Sessions/Session.cs")
             .Write("src/App/Shared/Trigger.cs");
 
-        Assert.Empty(tree.Breaches("slice-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("web/src/shared/format.ts")
             .Write("web/src/reporting/report.ts");
 
-        Assert.Equal([("slice-folders", "web/src/reporting")], tree.Breaches("slice-folders"));
+        Assert.Equal([("slice-folders", "web/src/reporting")], tree.Breaches());
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed partial class ArchitectureCheckTests
                 ("slice-folders", "src/App/watch"),
                 ("slice-folders", "web/src/Sessions"),
             ],
-            tree.Breaches("slice-folders"));
+            tree.Breaches());
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed partial class ArchitectureCheckTests
                 ("slice-folders", "web/src/watch/SHARED"),
                 ("concern-folders", "web/src/watch/SHARED"),
             ],
-            tree.Breaches("slice-folders"));
+            tree.Breaches());
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public sealed partial class ArchitectureCheckTests
             .FrontEnd("web")
             .Write("web/src/router.tsx");
 
-        Assert.Empty(tree.Breaches("slice-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -95,15 +95,15 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Watch/Queries/ClockQueries.cs");
 
-        Assert.Empty(tree.Breaches("slice-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
     public void A_folder_outside_every_code_root_is_not_a_breach()
     {
-        using var tree = new RulesTree().Write("tools/Check/Timer.cs");
+        using var tree = new RulesTree().Write("src/Tools/Timer.cs");
 
-        Assert.Empty(tree.Breaches("slice-folders"));
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Reporting/Report.cs")
             .Write("src/App/Reporting/Totals/Total.cs");
 
-        Assert.Equal([("slice-folders", "src/App/Reporting")], tree.Breaches("slice-folders"));
+        Assert.Equal([("slice-folders", "src/App/Reporting")], tree.Breaches());
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public sealed partial class ArchitectureCheckTests
             .Write("src/App/Reporting/Report.cs")
             .Write("src/App/Watch/Clock.cs");
 
-        Assert.Equal([("slice-folders", "src/App/Watch")], tree.Breaches("slice-folders"));
+        Assert.Equal([("slice-folders", "src/App/Watch")], tree.Breaches());
     }
 
     [Fact]
@@ -136,20 +136,10 @@ public sealed partial class ArchitectureCheckTests
             .Project("src/App")
             .Write("src/App/Reporting/Report.cs");
 
-        var breach = Assert.Single(tree.Check("slice-folders").Breaches);
+        var breach = Assert.Single(tree.Check().Breaches);
 
         Assert.Contains("`Watch`", breach.Message);
         Assert.Contains("`Sessions`", breach.Message);
         Assert.Contains("`Shared`", breach.Message);
-    }
-
-    [Fact]
-    public void The_slice_folders_check_is_not_in_the_run()
-    {
-        using var tree = new RulesTree()
-            .Project("src/App")
-            .Write("src/App/Reporting/Report.cs");
-
-        Assert.Empty(tree.Breaches());
     }
 }

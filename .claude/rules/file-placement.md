@@ -29,6 +29,10 @@ of an Activation, and `Queries` beneath it holds `ActivationQueries`, as `name-m
 An agent asked to change one job opens that job's Slice and nothing else. Eight rules keep it that
 way.
 
+They reach only the contexts that set `slices` to `true` in `CONTEXT-MAP.md`, because a Slice is
+named for a job an app does and not every context is an app. Code no context claims, and code in a
+context that declares no Slices, is judged by the rest of these rules and by none of the eight.
+
 1. **A Slice comes first.** Every folder at the first level under a code root is a Slice from
    `slices`, or `Shared`. `Shared` sits at that level and nowhere else, in any letter case. A file
    that sits at a code root itself, such as the program entry point or the router, is untouched.

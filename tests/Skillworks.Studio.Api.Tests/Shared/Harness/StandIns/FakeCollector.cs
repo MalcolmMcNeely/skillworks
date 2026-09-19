@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Skillworks.Studio.Api.Tests.Harness.StandIns;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
 // Stands in for a Collector with a door shut, which a running Collector cannot be made to have.
 public sealed class FakeCollector(Func<HttpResponseMessage> events, Func<HttpResponseMessage> spans) : HttpMessageHandler

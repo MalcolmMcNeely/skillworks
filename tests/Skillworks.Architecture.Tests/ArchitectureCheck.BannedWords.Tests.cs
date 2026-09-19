@@ -239,7 +239,7 @@ public sealed partial class ArchitectureCheckTests
     public void A_renamed_context_does_not_quietly_disarm_its_words()
     {
         using var tree = new RulesTree()
-            .SetContext("studio", "CONTEXT.md", "src", "tests", "web")
+            .SetContext("studio", "CONTEXT.md", slices: true, "src", "tests", "web")
             .RemoveContext("app")
             .Write("src/App/Clock.cs", "// The Widget ticks.\npublic sealed class Clock;\n");
 

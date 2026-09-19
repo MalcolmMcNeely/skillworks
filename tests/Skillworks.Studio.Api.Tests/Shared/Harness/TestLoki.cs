@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 using DotNet.Testcontainers.Builders;
 using Skillworks.AppHost;
 
-namespace Skillworks.Studio.Api.Tests.Harness;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness;
 
 public static class TestLoki
 {
@@ -68,7 +68,7 @@ public static class TestLoki
 
     private static async Task<Uri> StartAsync()
     {
-        var configuration = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Harness", "loki.yaml"));
+        var configuration = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Shared", "Harness", "loki.yaml"));
 
         // Not disposed: Testcontainers' reaper removes it when the test run ends.
         var container = new ContainerBuilder($"{LokiImage.Name}:{LokiImage.Tag}")

@@ -13,7 +13,10 @@ internal sealed record ContextRules(IReadOnlyList<Context> Contexts)
             (name, context) => new Context(
                 name,
                 context.RequireText("glossary", "the path of the file that holds the context's words"),
+                context.RequireTrueOrFalse("slices"),
                 context.RequireList("code"))));
 
     public Context? ClaimOf(string path) => Contexts.FirstOrDefault(context => context.Claims(path));
+
+    public bool DeclaresSlices(string path) => ClaimOf(path) is { Slices: true };
 }

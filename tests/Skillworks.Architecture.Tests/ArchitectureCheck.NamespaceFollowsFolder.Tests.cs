@@ -10,14 +10,14 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
             .Write("src/Studio/Clock.cs", "namespace Skillworks.Studio;\n\npublic sealed class Clock;\n")
-            .Write("src/Studio/Catalogue/Locators/CatalogueLocator.cs", """
-                namespace Skillworks.Studio.Catalogue.Locators
+            .Write("src/Studio/Shared/Catalogue/Locators/CatalogueLocator.cs", """
+                namespace Skillworks.Studio.Shared.Catalogue.Locators
                 {
                     public sealed class CatalogueLocator;
                 }
                 """)
-            .Write("src/Studio/Catalogue/CatalogueOptions.cs", """
-                namespace Skillworks.Studio
+            .Write("src/Studio/Shared/Catalogue/CatalogueOptions.cs", """
+                namespace Skillworks.Studio.Shared
                 {
                     namespace Catalogue
                     {
@@ -26,8 +26,8 @@ public sealed partial class ArchitectureCheckTests
                 }
                 """)
             .Write("tests/Studio.Tests/Skillworks.Studio.Tests.csproj", ProjectFile)
-            .Write("tests/Studio.Tests/Catalogue/Locators/CatalogueLocator.Tests.cs", """
-                namespace Skillworks.Studio.Tests.Catalogue.Locators;
+            .Write("tests/Studio.Tests/Shared/Catalogue/Locators/CatalogueLocator.Tests.cs", """
+                namespace Skillworks.Studio.Tests.Shared.Catalogue.Locators;
 
                 public sealed class CatalogueLocatorTests;
                 """);
@@ -44,9 +44,11 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
-            .Write("src/Studio/Catalogue/CatalogueLocator.cs", content);
+            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", content);
 
-        Assert.Equal([("namespace-follows-folder", "src/Studio/Catalogue/CatalogueLocator.cs")], tree.Breaches());
+        Assert.Equal(
+            [("namespace-follows-folder", "src/Studio/Shared/Catalogue/CatalogueLocator.cs")],
+            tree.Breaches());
     }
 
     [Fact]
@@ -55,10 +57,12 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
             .Write("src/Studio/Plugins/Skillworks.Plugins.csproj", ProjectFile)
-            .Write("src/Studio/Plugins/Loading/PluginLoader.cs", "namespace Skillworks.Plugins.Loading;\n\npublic sealed class PluginLoader;\n")
-            .Write("src/Studio/Plugins/Loading/PluginCache.cs", "namespace Skillworks.Studio.Plugins.Loading;\n\npublic sealed class PluginCache;\n");
+            .Write("src/Studio/Plugins/Shared/Loading/PluginLoader.cs", "namespace Skillworks.Plugins.Shared.Loading;\n\npublic sealed class PluginLoader;\n")
+            .Write("src/Studio/Plugins/Shared/Loading/PluginCache.cs", "namespace Skillworks.Studio.Plugins.Shared.Loading;\n\npublic sealed class PluginCache;\n");
 
-        Assert.Equal([("namespace-follows-folder", "src/Studio/Plugins/Loading/PluginCache.cs")], tree.Breaches());
+        Assert.Equal(
+            [("namespace-follows-folder", "src/Studio/Plugins/Shared/Loading/PluginCache.cs")],
+            tree.Breaches());
     }
 
     [Fact]
@@ -67,7 +71,7 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFileWithRootNamespace("Acme.Studio"))
             .Write("src/Studio/Clock.cs", "namespace Acme.Studio;\n\npublic sealed class Clock;\n")
-            .Write("src/Studio/Catalogue/CatalogueLocator.cs", "namespace Acme.Studio.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
+            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", "namespace Acme.Studio.Shared.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
 
         Assert.Empty(tree.Breaches());
     }
@@ -77,9 +81,11 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFileWithRootNamespace("Acme.Studio"))
-            .Write("src/Studio/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
+            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Shared.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
 
-        Assert.Equal([("namespace-follows-folder", "src/Studio/Catalogue/CatalogueLocator.cs")], tree.Breaches());
+        Assert.Equal(
+            [("namespace-follows-folder", "src/Studio/Shared/Catalogue/CatalogueLocator.cs")],
+            tree.Breaches());
     }
 
     [Theory]
@@ -91,10 +97,12 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", projectFile)
-            .Write("src/Studio/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Catalogue;\n\npublic sealed class CatalogueLocator;\n")
-            .Write("src/Studio/Catalogue/CatalogueOptions.cs", "namespace Catalogue;\n\npublic sealed class CatalogueOptions;\n");
+            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Shared.Catalogue;\n\npublic sealed class CatalogueLocator;\n")
+            .Write("src/Studio/Shared/Catalogue/CatalogueOptions.cs", "namespace Catalogue;\n\npublic sealed class CatalogueOptions;\n");
 
-        Assert.Equal([("namespace-follows-folder", "src/Studio/Catalogue/CatalogueOptions.cs")], tree.Breaches());
+        Assert.Equal(
+            [("namespace-follows-folder", "src/Studio/Shared/Catalogue/CatalogueOptions.cs")],
+            tree.Breaches());
     }
 
     [Fact]

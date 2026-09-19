@@ -1,6 +1,6 @@
 using System.Globalization;
 using Skillworks.Core.Sessions;
-using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 

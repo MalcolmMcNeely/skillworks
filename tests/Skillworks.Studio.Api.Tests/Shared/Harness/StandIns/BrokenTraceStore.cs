@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 
-namespace Skillworks.Studio.Api.Tests.Harness.StandIns;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
 // Stands in for a store that is down, failing or still starting, which a running Tempo cannot be made to be.
 public sealed class BrokenTraceStore(Func<HttpResponseMessage> broken) : DelegatingHandler(new HttpClientHandler())

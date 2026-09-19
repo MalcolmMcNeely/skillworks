@@ -5,7 +5,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Skillworks.AppHost;
 
-namespace Skillworks.Core.Tests.Harness;
+namespace Skillworks.Core.Tests.Shared.Harness;
 
 public static class TestTempo
 {
@@ -33,7 +33,7 @@ public static class TestTempo
 
     private static async Task<IContainer> StartAsync()
     {
-        var configuration = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Harness", "tempo.yaml"));
+        var configuration = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Shared", "Harness", "tempo.yaml"));
 
         // Not disposed: Testcontainers' reaper removes it when the test run ends.
         var container = new ContainerBuilder($"{TempoImage.Name}:{TempoImage.Tag}")

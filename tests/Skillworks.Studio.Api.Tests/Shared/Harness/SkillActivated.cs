@@ -1,7 +1,7 @@
 using System.Globalization;
-using Skillworks.Core.Tests.Harness;
+using Skillworks.Core.Tests.Shared.Harness;
 
-namespace Skillworks.Studio.Api.Tests.Harness;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness;
 
 // As sent with OTEL_LOG_TOOL_DETAILS=1, the setting that keeps a plugin skill's names.
 public sealed record SkillActivated(

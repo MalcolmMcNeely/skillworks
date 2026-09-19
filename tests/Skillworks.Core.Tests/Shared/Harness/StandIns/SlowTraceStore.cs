@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Tests.Harness.StandIns;
+namespace Skillworks.Core.Tests.Shared.Harness.StandIns;
 
 // Stands in front of a real store to hold every request back, which a running Tempo cannot be made to do.
 public sealed class SlowTraceStore(TimeSpan held) : DelegatingHandler(new HttpClientHandler())

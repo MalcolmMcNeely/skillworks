@@ -93,6 +93,7 @@ public sealed partial class ArchitectureCheckTests
     public void The_glossary_is_the_one_the_context_map_names_for_that_context()
     {
         using var tree = new RulesTree()
+            .Slices("check", true)
             .Glossary("app", "Health")
             .Glossary("check", "Rule")
             .Project("src/App")

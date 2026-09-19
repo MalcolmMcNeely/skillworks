@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Skillworks.Core.Shared.Stores;
 using Skillworks.Core.Shared.Stores.TraceStore;
-using Skillworks.Core.Tests.Harness;
+using Skillworks.Core.Tests.Shared.Harness;
 
 namespace Skillworks.Core.Tests.Shared.Stores.TraceStore;
 

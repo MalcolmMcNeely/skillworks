@@ -7,7 +7,7 @@ using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
 
-namespace Skillworks.Studio.Api.Tests.Harness;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness;
 
 public sealed class StudioApiHost(
     HttpMessageHandler? events,

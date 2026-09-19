@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Net;
 using System.Web;
 
-namespace Skillworks.Studio.Api.Tests.Harness.StandIns;
+namespace Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
 // Stands in for a store that is down, failing or stops part way, which a running Loki cannot be made to be.
 public sealed class BrokenEventsStore : DelegatingHandler

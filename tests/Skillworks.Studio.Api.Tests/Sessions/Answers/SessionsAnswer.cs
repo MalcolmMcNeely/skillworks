@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Shared.Gaps;
-using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 namespace Skillworks.Studio.Api.Tests.Sessions.Answers;

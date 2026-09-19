@@ -1,5 +1,5 @@
 using Skillworks.Core.Tests.Shared.Stores.TraceStore;
-using Skillworks.Studio.Api.Tests.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 

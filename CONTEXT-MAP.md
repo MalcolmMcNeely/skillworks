@@ -32,10 +32,17 @@ Each context owns the paths listed beneath it. A source file is judged by the co
 and by no other. A file no context claims is judged by none of them, and a path two contexts claim is
 a breach, so the map cannot drift away from the tree.
 
+`slices` says whether a context lays its code out in Slices, and the Slice rules judge the code of a
+context that declares them and no other code. Studio declares them: a folder at the top of one of its
+code roots is a job Studio does, or `Shared`. Architecture does not: its top folders are named for
+the rules it holds the code to, and a rule is not a job an app does. A context laid out that way is
+left to its own shape rather than measured against one it was never built to.
+
 ```yaml
 contexts:
   studio:
     glossary: CONTEXT.md
+    slices: true
     code:
       - src/Skillworks.AppHost
       - src/Skillworks.Core
@@ -46,6 +53,7 @@ contexts:
       - tests/Skillworks.Studio.Api.Tests
   architecture:
     glossary: src/Skillworks.Architecture/CONTEXT.md
+    slices: false
     code:
       - src/Skillworks.Architecture
       - tests/Skillworks.Architecture.Tests

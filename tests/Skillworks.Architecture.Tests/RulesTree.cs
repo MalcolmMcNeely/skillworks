@@ -11,10 +11,10 @@ public sealed class RulesTree : IDisposable
 
     private readonly List<string> _projects = [];
 
-    private readonly Dictionary<string, (string Glossary, IReadOnlyList<string> Code)> _contexts = new()
+    private readonly Dictionary<string, Claim> _contexts = new()
     {
-        ["app"] = ("CONTEXT.md", ["src", "tests", "web"]),
-        ["check"] = ("tools/Check/CONTEXT.md", ["tools/Check"]),
+        ["app"] = new("CONTEXT.md", Slices: true, ["src", "tests", "web"]),
+        ["check"] = new("tools/Check/CONTEXT.md", Slices: false, ["tools/Check"]),
     };
 
     private readonly Dictionary<string, IReadOnlyList<string>> _headwords = [];
@@ -66,9 +66,15 @@ public sealed class RulesTree : IDisposable
         return WriteRules(file);
     }
 
-    public RulesTree SetContext(string name, string glossary, params string[] code)
+    public RulesTree SetContext(string name, string glossary, bool slices, params string[] code)
     {
-        _contexts[name] = (glossary, code);
+        _contexts[name] = new Claim(glossary, slices, code);
+        return WriteContextMap();
+    }
+
+    public RulesTree Slices(string name, bool declared)
+    {
+        _contexts[name] = _contexts[name] with { Slices = declared };
         return WriteContextMap();
     }
 
@@ -173,6 +179,7 @@ public sealed class RulesTree : IDisposable
             [
                 $"  {context.Key}:",
                 $"    glossary: {context.Value.Glossary}",
+                $"    slices: {(context.Value.Slices ? "true" : "false")}",
                 "    code:",
                 .. context.Value.Code.Select(path => $"      - {path}"),
             ]));
@@ -181,4 +188,6 @@ public sealed class RulesTree : IDisposable
             ContextMapFile,
             $"# Context Map\n\nThe text for Claude.\n\n```yaml\ncontexts:\n{string.Join('\n', contexts)}\n```\n");
     }
+
+    private sealed record Claim(string Glossary, bool Slices, IReadOnlyList<string> Code);
 }

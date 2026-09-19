@@ -63,11 +63,11 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void A_folder_inside_a_front_end_folder_that_is_no_Slice_is_not_a_breach()
+    public void A_folder_inside_a_front_end_folder_that_is_no_Slice_is_left_to_the_slice_folders_rule()
     {
         using var tree = new RulesTree().FrontEnd("web").Write("web/src/reporting/dials/report.ts");
 
-        Assert.Empty(tree.Breaches());
+        Assert.Equal([("slice-folders", "web/src/reporting")], tree.Breaches());
     }
 
     [Fact]
@@ -113,6 +113,8 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().FrontEnd("web").Write("web/src/watch/shared/format.ts");
 
-        Assert.Equal([("concern-folders", "web/src/watch/shared")], tree.Breaches());
+        Assert.Equal(
+            [("slice-folders", "web/src/watch/shared"), ("concern-folders", "web/src/watch/shared")],
+            tree.Breaches());
     }
 }
