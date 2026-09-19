@@ -1,5 +1,5 @@
 using System.Globalization;
-using Skillworks.Core.Telemetry;
+using Skillworks.Core.Shared.Telemetry;
 
 namespace Skillworks.Core.Gaps;
 

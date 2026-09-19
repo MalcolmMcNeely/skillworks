@@ -18,7 +18,7 @@ using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Skills;
 using Skillworks.Core.Spend.Queries;
-using Skillworks.Core.Telemetry;
+using Skillworks.Core.Shared.Telemetry;
 
 namespace Skillworks.Core.Registration;
 

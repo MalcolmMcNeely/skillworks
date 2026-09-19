@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Skillworks.Studio.Api.Tests.Telemetry;
+namespace Skillworks.Studio.Api.Tests.Shared.Telemetry;
 
 public sealed partial class TelemetrySwitchEndpointsTests
 {

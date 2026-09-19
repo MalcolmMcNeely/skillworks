@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace Skillworks.Core.Telemetry;
+namespace Skillworks.Core.Shared.Telemetry;
 
 public sealed class ClaudeSettingsFile
 {

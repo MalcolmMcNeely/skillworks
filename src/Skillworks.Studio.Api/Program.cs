@@ -8,7 +8,7 @@ using Skillworks.Studio.Api.Filters;
 using Skillworks.Studio.Api.Health;
 using Skillworks.Studio.Api.Sessions;
 using Skillworks.Studio.Api.Skills;
-using Skillworks.Studio.Api.Telemetry;
+using Skillworks.Studio.Api.Shared.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);
 

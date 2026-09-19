@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 
-namespace Skillworks.Core.Telemetry;
+namespace Skillworks.Core.Shared.Telemetry;
 
 // Never written: this file switches recording on for colleagues who are not at the keyboard, so a person commits it.
 public sealed record TeamSettings(string Path, string Text)

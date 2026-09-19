@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Skillworks.Core.Shared.Stores.Collector;
 
-namespace Skillworks.Core.Telemetry;
+namespace Skillworks.Core.Shared.Telemetry;
 
 // The address it writes is the one Health knocks on, so a Lamp can never pass a door nothing is sent to.
 public sealed class TelemetrySwitch(

@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Telemetry;
+namespace Skillworks.Core.Shared.Telemetry;
 
 public sealed class ClaudeSettingsOptions
 {

@@ -3,7 +3,7 @@ using Skillworks.Core.Catalogue;
 using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
-using Skillworks.Core.Telemetry;
+using Skillworks.Core.Shared.Telemetry;
 
 namespace Skillworks.Core.Health;
 

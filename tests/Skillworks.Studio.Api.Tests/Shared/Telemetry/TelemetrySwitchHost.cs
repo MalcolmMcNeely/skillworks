@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Harness;
 
-namespace Skillworks.Studio.Api.Tests.Telemetry;
+namespace Skillworks.Studio.Api.Tests.Shared.Telemetry;
 
 public sealed class TelemetrySwitchHost : IDisposable
 {

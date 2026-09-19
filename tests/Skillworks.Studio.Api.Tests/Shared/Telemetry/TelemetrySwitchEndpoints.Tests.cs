@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
 
-namespace Skillworks.Studio.Api.Tests.Telemetry;
+namespace Skillworks.Studio.Api.Tests.Shared.Telemetry;
 
 public sealed partial class TelemetrySwitchEndpointsTests
 {

@@ -7,7 +7,7 @@ import { mapNoticeSymbols } from '../../skills/lib/mapNotice';
 import { readoutSymbols } from '../../skills/lib/readout';
 import { missingSymbols } from '../../skills/lib/skills';
 import { sliceSymbols } from '../../skills/lib/strip';
-import { switchSymbols } from '../../telemetry/lib/telemetry';
+import { switchSymbols } from '../../shared/telemetry/lib/telemetry';
 import { crossings, type SymbolTable } from './alphabets';
 
 // Listed by hand, so a new table joins this list or the rule does not reach it.

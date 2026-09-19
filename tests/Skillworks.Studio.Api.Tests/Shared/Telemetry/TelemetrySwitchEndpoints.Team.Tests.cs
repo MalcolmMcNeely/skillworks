@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace Skillworks.Studio.Api.Tests.Telemetry;
+namespace Skillworks.Studio.Api.Tests.Shared.Telemetry;
 
 public sealed partial class TelemetrySwitchEndpointsTests
 {

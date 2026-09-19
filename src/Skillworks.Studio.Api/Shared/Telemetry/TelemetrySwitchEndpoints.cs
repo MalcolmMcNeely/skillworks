@@ -1,6 +1,6 @@
-using Skillworks.Core.Telemetry;
+using Skillworks.Core.Shared.Telemetry;
 
-namespace Skillworks.Studio.Api.Telemetry;
+namespace Skillworks.Studio.Api.Shared.Telemetry;
 
 public static class TelemetrySwitchEndpoints
 {

@@ -10,7 +10,7 @@ import { Keys } from '../../keys/components/Keys';
 import { UpButton } from '../../pages/components/UpButton';
 import { useTabTitle } from '../../pages/components/useTabTitle';
 import { watch } from '../../pages/lib/pages';
-import { TelemetrySwitch } from '../../telemetry/components/TelemetrySwitch';
+import { TelemetrySwitch } from '../../shared/telemetry/components/TelemetrySwitch';
 import { fetchSkills } from '../api/skills';
 import { ActivityStrip } from '../components/ActivityStrip';
 import { RailTotals } from '../components/RailTotals';

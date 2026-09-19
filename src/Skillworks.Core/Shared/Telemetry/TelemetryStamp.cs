@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Skillworks.Core.Telemetry;
+namespace Skillworks.Core.Shared.Telemetry;
 
 // Kept with Studio's own data, not in the settings file, because that file belongs to the developer.
 public sealed record TelemetryStamp(
