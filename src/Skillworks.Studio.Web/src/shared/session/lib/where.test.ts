@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFilter } from '../../shared/filters/lib/filters';
+import { readFilter } from '../../filters/lib/filters';
 import { nowhere, readWhere, sessionAddress, withWhere } from './where';
 
 const run = '8f1c0a9e-0000-4000-8000-000000000001';

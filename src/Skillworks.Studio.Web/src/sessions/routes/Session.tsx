@@ -26,7 +26,7 @@ import { levelsOf, type Level } from '../lib/panels/context';
 import { bandsOf, type Band } from '../lib/panels/conversation';
 import { describeRunLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpan, type Mark, type SessionAnswer } from '../lib/steps';
-import { readWhere, withWhere, type Where } from '../lib/where';
+import { readWhere, withWhere, type Where } from '../../shared/session/lib/where';
 
 interface Reading {
   // The run and the span the answer was asked for, as text, so the page can tell an answer for an older ask.
