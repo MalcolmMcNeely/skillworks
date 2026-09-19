@@ -126,10 +126,10 @@ telemetry reaches Studio and the whole of how Studio reads it back, so a figure 
 is one the Stores could not give it.
 _Avoid_: Backend, data layer, persistence, infrastructure
 
-**Budget**:
-How long Studio waits on a store before it gives up and reports a Gap. It is spent on the Clock and
-never on the machine's, so a busy machine cannot spend it for Studio.
-_Avoid_: Timeout, deadline, expiry
+**Patience**:
+How long Studio waits on a store before it gives up and reports a Gap. It is measured on the Clock
+and never on the machine's, so a busy machine cannot run it out for Studio.
+_Avoid_: Timeout, budget, deadline, expiry
 
 **Collector**:
 The part that takes everything Claude Code sends and hands it on, events to the Events store and
