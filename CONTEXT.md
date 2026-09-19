@@ -79,6 +79,12 @@ _Avoid_: Cell, box, block
 The events Claude Code sends while it is switched on. Everything Studio measures is telemetry.
 _Avoid_: Usage data, metrics
 
+**Stores**:
+The Events store, the Trace store, and the Collector that fills them both. They are the whole of how
+telemetry reaches Studio and the whole of how Studio reads it back, so a figure Studio cannot give
+is one the Stores could not give it.
+_Avoid_: Backend, data layer, persistence, infrastructure
+
 **Collector**:
 The part that takes everything Claude Code sends and hands it on, events to the Events store and
 Spans to the Trace store. Nothing Studio measures arrives any other way. It takes each kind on a
