@@ -103,9 +103,14 @@ answer comes whole or a line at a time. A broken Wire says only that the API was
 that a store fell short, so it is never read as a Gap.
 _Avoid_: HTTP, client, transport
 
+**Clock**:
+The one thing Studio asks what the time is. Everything that needs now, a wait or a delay reads it,
+so a test can hold time still and move it on purpose rather than race the machine's.
+_Avoid_: Time provider, timer, system clock
+
 **Harness**:
 What a test stands a part of Studio up on: a host to send requests to, a stand-in for a store, and a
-clock that does not move. Nothing in a Harness ships, so a Harness is built for the test to read and
+Clock that does not move. Nothing in a Harness ships, so a Harness is built for the test to read and
 never for the screen.
 _Avoid_: Fixtures, scaffolding, rig
 
@@ -120,6 +125,11 @@ The Events store, the Trace store, and the Collector that fills them both. They 
 telemetry reaches Studio and the whole of how Studio reads it back, so a figure Studio cannot give
 is one the Stores could not give it.
 _Avoid_: Backend, data layer, persistence, infrastructure
+
+**Budget**:
+How long Studio waits on a store before it gives up and reports a Gap. It is spent on the Clock and
+never on the machine's, so a busy machine cannot spend it for Studio.
+_Avoid_: Timeout, deadline, expiry
 
 **Collector**:
 The part that takes everything Claude Code sends and hands it on, events to the Events store and
