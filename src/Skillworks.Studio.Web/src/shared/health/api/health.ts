@@ -1,4 +1,4 @@
-import { getJson } from '../../http/api/json';
+import { getJson } from '../../../http/api/json';
 import type { Part } from '../lib/health';
 
 export interface Health {

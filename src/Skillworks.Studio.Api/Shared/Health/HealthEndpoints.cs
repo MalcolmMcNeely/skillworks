@@ -1,6 +1,6 @@
-using Skillworks.Core.Health;
+using Skillworks.Core.Shared.Health;
 
-namespace Skillworks.Studio.Api.Health;
+namespace Skillworks.Studio.Api.Shared.Health;
 
 public static class HealthEndpoints
 {

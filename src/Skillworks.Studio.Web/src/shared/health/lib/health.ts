@@ -1,4 +1,4 @@
-import type { SymbolTable } from '../../alphabets/lib/alphabets';
+import type { SymbolTable } from '../../../alphabets/lib/alphabets';
 
 export type PartState = 'working' | 'starting' | 'off' | 'broken';
 

@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Health;
+namespace Skillworks.Core.Shared.Health;
 
 public enum PartState
 {

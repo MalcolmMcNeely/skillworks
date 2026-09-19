@@ -5,7 +5,7 @@ using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
 using Skillworks.Core.Shared.Telemetry;
 
-namespace Skillworks.Core.Health;
+namespace Skillworks.Core.Shared.Health;
 
 public sealed class StudioHealth(
     CatalogueLocator catalogue,

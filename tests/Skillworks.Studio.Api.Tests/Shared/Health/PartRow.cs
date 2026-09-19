@@ -1,4 +1,4 @@
-namespace Skillworks.Studio.Api.Tests.Health;
+namespace Skillworks.Studio.Api.Tests.Shared.Health;
 
 public sealed record PartRow
 {

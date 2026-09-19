@@ -5,7 +5,7 @@ using Skillworks.ServiceDefaults;
 using Skillworks.Studio.Api.Activations;
 using Skillworks.Studio.Api.Catalogue;
 using Skillworks.Studio.Api.Filters;
-using Skillworks.Studio.Api.Health;
+using Skillworks.Studio.Api.Shared.Health;
 using Skillworks.Studio.Api.Sessions;
 using Skillworks.Studio.Api.Skills;
 using Skillworks.Studio.Api.Shared.Telemetry;

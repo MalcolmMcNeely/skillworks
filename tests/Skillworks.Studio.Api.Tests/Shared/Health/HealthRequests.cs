@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Harness;
 
-namespace Skillworks.Studio.Api.Tests.Health;
+namespace Skillworks.Studio.Api.Tests.Shared.Health;
 
 public static class HealthRequests
 {

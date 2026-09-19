@@ -9,7 +9,7 @@ using Skillworks.Core.Arriving;
 using Skillworks.Core.Catalogue;
 using Skillworks.Core.Filters;
 using Skillworks.Core.Gaps;
-using Skillworks.Core.Health;
+using Skillworks.Core.Shared.Health;
 using Skillworks.Core.Sessions;
 using Skillworks.Core.Sessions.Queries;
 using Skillworks.Core.Sessions.Steps;

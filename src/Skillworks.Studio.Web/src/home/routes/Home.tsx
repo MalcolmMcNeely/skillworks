@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { HealthLamps } from '../../health/components/HealthLamps';
+import { HealthLamps } from '../../shared/health/components/HealthLamps';
 import { useTabTitle } from '../../pages/components/useTabTitle';
 import { home, pagesBelow, type Page } from '../../pages/lib/pages';
 

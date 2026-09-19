@@ -2,7 +2,7 @@ using System.Net;
 using Skillworks.Studio.Api.Tests.Harness;
 using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
-namespace Skillworks.Studio.Api.Tests.Health;
+namespace Skillworks.Studio.Api.Tests.Shared.Health;
 
 public sealed partial class HealthEndpointsTests
 {
