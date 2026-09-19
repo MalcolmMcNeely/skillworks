@@ -1,6 +1,13 @@
 // Any depth, so a feature that nests, or a stray `src/lib`, is still held to the boundaries.
 const layer = (names) => `^src/(.*/|)(${names})/`;
 
+// A Slice only sits at the first level, so a deeper match would catch a folder that is not one.
+const slice = '^src/(watch|sessions)/';
+const shared = '^src/shared/';
+
+// A test may read any Slice, because one that checks a seam has to see both sides of it.
+const testFile = '\\.test\\.tsx?$';
+
 /**
  * Module boundaries for the front end. The spec keeps this layer thin: `lib` is plain TypeScript
  * with tests beside it, `api` only fetches, `routes` only renders. Dependencies point downward.
@@ -24,6 +31,24 @@ module.exports = {
       comment: 'An import nothing resolves to is a typo or a missing dependency.',
       from: {},
       to: { couldNotResolve: true },
+    },
+    {
+      name: 'slices-stay-apart',
+      severity: 'error',
+      comment:
+        'A Slice holds one job of Studio. Reading another Slice makes the brief both jobs, so move ' +
+        'the piece they share down into `shared`, or give this Slice one of its own.',
+      from: { path: slice, pathNot: testFile },
+      to: { path: slice, pathNot: '^src/$1/' },
+    },
+    {
+      name: 'shared-stays-below',
+      severity: 'error',
+      comment:
+        '`shared` never reads a Slice, so a Slice can be read in full without opening anything ' +
+        'above it. Move the piece it needs down, or move this file up into the Slice it serves.',
+      from: { path: shared, pathNot: testFile },
+      to: { path: slice },
     },
     {
       name: 'lib-stays-pure',
