@@ -153,7 +153,7 @@ _Avoid_: Lineage, delivery, history
 One number a list reports, read from the stores over a span. A Measure arrives on its own and falls
 short on its own, so a list can be whole in its rows and still be missing one. A Measure nobody has
 read yet is blank, and one that fell short is a dash.
-_Avoid_: Figure, metric, statistic
+_Avoid_: Metric, statistic
 
 **Figure**:
 A number as Studio writes it for a reader: money, a count, a share or a length, each in the form

@@ -88,3 +88,13 @@ table without a word, so a shortened Depth read narrows nothing either, and its 
 The rest of this ADR stands. The gate is now the five reads that name a run, plus the activation read
 under a Skill filter, plus the reads behind a Measure a reader sorted on. Where one of those falls
 short there are still no rows to stand.
+
+## Correction, 2026-09-19
+
+"Figure joins the banned words when that rename lands" no longer holds. ADR 0019 settled **Figure**
+as a word of its own: a Measure is the number, and a Figure is how that number is written for a
+reader, so one Measure is one Figure on a Tile and another in a table. Two meanings that both earn a
+word are two words, not a word and a loser. `Figure` therefore leaves _Avoid_ under **Measure** and
+never joins the banned words.
+
+The rest of this ADR stands.
