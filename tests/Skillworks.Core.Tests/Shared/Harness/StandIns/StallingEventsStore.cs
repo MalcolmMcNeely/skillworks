@@ -16,7 +16,7 @@ public sealed class StallingEventsStore : HttpMessageHandler
     {
         _asked.TrySetResult();
 
-        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        await Never.Answers(cancellationToken);
 
         throw new UnreachableException();
     }

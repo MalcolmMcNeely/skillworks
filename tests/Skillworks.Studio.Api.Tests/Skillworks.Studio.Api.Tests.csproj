@@ -27,10 +27,11 @@
     <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Shared\Harness\TempoImage.cs" />
   </ItemGroup>
 
-  <!-- Dating a fixture, and the Clock dated with it, are the same problem in both suites, so one copy serves both. -->
+  <!-- Dating a fixture, the Clock dated with it, and a held read are one problem in both suites, so one copy serves both. -->
   <ItemGroup>
     <Compile Include="..\Skillworks.Core.Tests\Shared\Harness\Recently.cs" Link="Shared\Harness\Recently.cs" />
     <Compile Include="..\Skillworks.Core.Tests\Shared\Harness\HarnessClock.cs" Link="Shared\Harness\HarnessClock.cs" />
+    <Compile Include="..\Skillworks.Core.Tests\Shared\Harness\Never.cs" Link="Shared\Harness\Never.cs" />
   </ItemGroup>
 
   <!-- Their subject is the reader in Core, so they are owned there and borrowed here, never the other way about. -->

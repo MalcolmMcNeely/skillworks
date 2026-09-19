@@ -18,7 +18,7 @@ public sealed class StallingTraceStore() : DelegatingHandler(new HttpClientHandl
         _asked.TrySetResult();
 
         // Cancellation is left to the send below, which throws what a real read given up on throws.
-        await Task.WhenAny(_letGo.Task, Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken));
+        await Task.WhenAny(_letGo.Task, Never.Answers(cancellationToken));
 
         return await base.SendAsync(request, cancellationToken);
     }

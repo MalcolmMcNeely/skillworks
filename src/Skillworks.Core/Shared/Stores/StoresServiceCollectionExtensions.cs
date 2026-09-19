@@ -46,7 +46,7 @@ public static class StoresServiceCollectionExtensions
             client.BaseAddress = collector.ResolvedAddress();
         });
 
-        // Cleared wholesale, so no retry a shell adds, now or later, turns a down container's fast 502 into a slow timeout.
+        // Cleared wholesale, so no retry a shell adds, now or later, turns a down container's fast 502 into a Patience that runs out.
         foreach (var clientName in new[] { EventsStoreReader.ClientName, TraceStoreReader.ClientName, CollectorReader.ClientName })
         {
             services.Configure<HttpClientFactoryOptions>(

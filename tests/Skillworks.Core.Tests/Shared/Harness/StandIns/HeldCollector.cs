@@ -29,7 +29,7 @@ public sealed class HeldCollector : HttpMessageHandler
         held.Knocked.TrySetResult();
 
         // Awaiting the winner rethrows what a real send given up on throws, which a completed WhenAny would swallow.
-        await await Task.WhenAny(held.LetGo.Task, Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken));
+        await await Task.WhenAny(held.LetGo.Task, Never.Answers(cancellationToken));
 
         return new HttpResponseMessage(HttpStatusCode.OK);
     }

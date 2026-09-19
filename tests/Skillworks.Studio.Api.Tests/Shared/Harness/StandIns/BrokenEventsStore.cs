@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Web;
+using Skillworks.Core.Tests.Shared.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
@@ -77,7 +78,7 @@ public sealed class BrokenEventsStore : DelegatingHandler
     {
         try
         {
-            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            await Never.Answers(cancellationToken);
         }
         catch (OperationCanceledException)
         {
