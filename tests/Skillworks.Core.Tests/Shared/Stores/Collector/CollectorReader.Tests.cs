@@ -10,11 +10,11 @@ namespace Skillworks.Core.Tests.Shared.Stores.Collector;
 
 public sealed class CollectorReaderTests
 {
-    // Longer than any run, so a Patience measured on the machine's clock could never be spent inside these tests.
-    private const int PatienceSeconds = 300;
+    // Under the ceiling a request's Patience is held to, or the sentence would name seconds nobody asked for.
+    private const int PatienceSeconds = 60;
 
     // Two of these outlast one Patience, so a wait shared by both doors would end a read that each door answered inside.
-    private const int PartOfIt = PatienceSeconds - 100;
+    private const int PartOfIt = PatienceSeconds - 20;
 
     [Fact]
     public async Task Reports_a_shut_door_when_the_first_knock_outlasts_the_Patience()
@@ -114,7 +114,7 @@ public sealed class CollectorReaderTests
 
     private static string Waited(string door, string route) =>
         $"The {door} door at {new CollectorOptions().ResolvedAddress()}{route} " +
-        $"did not answer inside the {PatienceSeconds} seconds Studio waits.";
+        $"did not answer inside the {PatienceSeconds} seconds Studio waits for one request.";
 
     // The real registration, so the address and the Patience under test are the ones Studio runs with.
     private static CollectorReader Reader(HttpMessageHandler collector, TimeProvider clock)

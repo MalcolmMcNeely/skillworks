@@ -6,8 +6,8 @@ namespace Skillworks.Core.Tests.Shared.Stores.TraceStore;
 
 public sealed partial class TraceStoreReaderTests
 {
-    // Longer than any run, so a Patience measured on the machine's clock could never be spent inside these tests.
-    private const int PatienceSeconds = 300;
+    // Under the ceiling a request's Patience is held to, or the sentence would name seconds nobody asked for.
+    private const int PatienceSeconds = 30;
 
     private const int BeyondReach = PatienceSeconds * 2;
 
@@ -36,7 +36,7 @@ public sealed partial class TraceStoreReaderTests
 
         // Assert
         Assert.Equal(
-            $"{TestTempo.Address} did not answer inside the {PatienceSeconds} seconds Studio waits for one request",
+            $"{TestTempo.Address} did not answer inside the {PatienceSeconds} seconds Studio waits for one request.",
             read.Unreachable);
         Assert.Empty(read.Sessions);
     }
@@ -73,7 +73,7 @@ public sealed partial class TraceStoreReaderTests
         // Assert
         // Taking this request's Patience off the token it sends inside leaves the session's wait out of reach.
         Assert.Equal(
-            $"{TestTempo.Address} did not answer inside the {PatienceSeconds} seconds Studio waits for one request",
+            $"{TestTempo.Address} did not answer inside the {PatienceSeconds} seconds Studio waits for one request.",
             read.Unreachable);
         Assert.Empty(read.Spans);
     }
@@ -101,7 +101,7 @@ public sealed partial class TraceStoreReaderTests
 
         // Assert
         Assert.Equal(
-            $"{TestTempo.Address} did not answer inside the {PatienceSeconds} seconds Studio waits for a whole session",
+            $"{TestTempo.Address} did not answer inside the {PatienceSeconds} seconds Studio waits for a whole session.",
             read.Unreachable);
         Assert.Empty(read.Spans);
     }

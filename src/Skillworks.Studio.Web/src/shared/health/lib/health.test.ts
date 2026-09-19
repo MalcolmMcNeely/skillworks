@@ -11,7 +11,7 @@ const catalogue: Part = {
 const store: Part = {
   name: 'Events store',
   state: 'broken',
-  detail: 'http://localhost:3100/ could not be read: connection refused.',
+  detail: 'http://localhost:3100/ could not be read (connection refused).',
   action: 'Start Studio’s containers with aspire run.',
 };
 
@@ -37,7 +37,7 @@ describe('lampsOf', () => {
         glyph: '✕',
         word: 'Broken',
         opens: {
-          detail: 'http://localhost:3100/ could not be read: connection refused.',
+          detail: 'http://localhost:3100/ could not be read (connection refused).',
           action: 'Start Studio’s containers with aspire run.',
         },
       },

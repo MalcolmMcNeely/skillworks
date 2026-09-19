@@ -75,7 +75,7 @@ public sealed record Gap(GapKind Kind, string? Missing)
         {
             ({ } reason, _, _, _) => (
                 GapKind.Unreachable,
-                $"Studio could not read the trace store: {reason}. Which agent ran each step is not known."),
+                $"Studio could not read the trace store: {reason} Which agent ran each step is not known."),
 
             // Ahead of the spans that did land, or a run the store cut in half would read as a whole one.
             (_, true, _, _) => (
@@ -113,7 +113,7 @@ public sealed record Gap(GapKind Kind, string? Missing)
         {
             ({ } reason, _) => (
                 GapKind.Unreachable,
-                $"Studio could not read the trace store: {reason}. Which runs can be read in full is not " +
+                $"Studio could not read the trace store: {reason} Which runs can be read in full is not " +
                 "known, so the table is not narrowed by it."),
 
             (_, true) => (
@@ -128,8 +128,9 @@ public sealed record Gap(GapKind Kind, string? Missing)
         return new Gap(kind, missing);
     }
 
+    // A reader hands over a whole sentence, ended, because the Health page stands the same words alone.
     private static string Unread(string reason, string missing) =>
-        $"Studio could not read the events store: {reason}. Nothing is shown for {missing}.";
+        $"Studio could not read the events store: {reason} Nothing is shown for {missing}.";
 
     private static string Listed(IReadOnlyList<DateOnly> days) =>
         Listed([.. days.Select(day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))]);

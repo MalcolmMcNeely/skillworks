@@ -10,8 +10,8 @@ namespace Skillworks.Core.Tests.Shared.Stores.EventsStore;
 
 public sealed class EventsStoreReaderTests
 {
-    // Longer than any run, so a Patience measured on the machine's clock could never be spent inside this test.
-    private const int PatienceSeconds = 300;
+    // Under the ceiling a request's Patience is held to, or the sentence would name seconds nobody asked for.
+    private const int PatienceSeconds = 60;
 
     // A wider period splits into a request each, so only one day puts a single Patience under test.
     private static readonly EventQuery OneDay = new(

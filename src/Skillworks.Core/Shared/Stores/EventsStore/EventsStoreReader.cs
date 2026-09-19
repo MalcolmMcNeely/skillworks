@@ -261,9 +261,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         }
 
         // One per request, as a long period is asked for a window at a time and one Patience over them all would cut it short.
-        var patience = Patience(loki.PatienceSeconds);
+        var patience = Patience.PerRequest(loki.PatienceSeconds);
 
-        using var spent = new CancellationTokenSource(patience, clock);
+        using var spent = new CancellationTokenSource(patience.Length, clock);
         using var within = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
 
         try
@@ -272,7 +272,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
             if (!response.IsSuccessStatusCode)
             {
-                return failed($"{address} answered {(int)response.StatusCode}");
+                return failed($"{address} answered {(int)response.StatusCode}.");
             }
 
             await using var body = await response.Content.ReadAsStreamAsync(within.Token);
@@ -284,13 +284,10 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         {
             // A Patience that ran out says so, or a reader is told only that something somewhere was cancelled.
             return failed(spent.IsCancellationRequested
-                ? $"{address} did not answer inside the {patience.TotalSeconds:0} seconds Studio waits"
-                : $"{address} could not be read: {failure.Message}");
+                ? patience.RanOut(address.ToString(), Patience.OneRequest)
+                : $"{address} could not be read ({failure.Message}).");
         }
     }
-
-    // At least a second, as a Patience of none would be spent before the request went out.
-    private static TimeSpan Patience(int seconds) => TimeSpan.FromSeconds(Math.Max(1, seconds));
 
     // Caller cancellation must propagate, or a closed browser tab would be reported as an outage.
     private static bool Outside(Exception failure, CancellationToken cancellationToken) =>

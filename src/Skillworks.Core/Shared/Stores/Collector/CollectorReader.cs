@@ -33,12 +33,13 @@ public sealed class CollectorReader(IHttpClientFactory clients, IOptions<Collect
     private async Task<string?> KnockAsync(Door door, Uri address, CancellationToken cancellationToken)
     {
         var client = clients.CreateClient(ClientName);
-        var patience = Patience(options.Value.PatienceSeconds);
+        var patience = Patience.PerRequest(options.Value.PatienceSeconds);
+        var subject = Subject(door, address);
 
         using var payload = new StringContent(door.Payload, Encoding.UTF8, "application/json");
 
         // One per door, so a Collector slow on the first still gets its whole Patience to answer on the second.
-        using var spent = new CancellationTokenSource(patience, clock);
+        using var spent = new CancellationTokenSource(patience.Length, clock);
         using var within = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
 
         try
@@ -47,19 +48,18 @@ public sealed class CollectorReader(IHttpClientFactory clients, IOptions<Collect
 
             return response.IsSuccessStatusCode
                 ? null
-                : $"The {door.Name} door at {address}{door.Route} answered {(int)response.StatusCode}.";
+                : $"{subject} answered {(int)response.StatusCode}.";
         }
         catch (Exception failure) when (Outside(failure, cancellationToken))
         {
             // A Patience that ran out says so, or a reader is told only that something somewhere was cancelled.
             return spent.IsCancellationRequested
-                ? $"The {door.Name} door at {address}{door.Route} did not answer inside the {patience.TotalSeconds:0} seconds Studio waits."
-                : $"The {door.Name} door at {address}{door.Route} could not be reached: {failure.Message}";
+                ? patience.RanOut(subject, Patience.OneRequest)
+                : $"{subject} could not be reached ({failure.Message}).";
         }
     }
 
-    // At least a second, as a Patience of none would be spent before the knock went out.
-    private static TimeSpan Patience(int seconds) => TimeSpan.FromSeconds(Math.Max(1, seconds));
+    private static string Subject(Door door, Uri address) => $"The {door.Name} door at {address}{door.Route}";
 
     // Caller cancellation must propagate, or a closed browser tab would be reported as an outage.
     private static bool Outside(Exception failure, CancellationToken cancellationToken) =>

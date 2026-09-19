@@ -18,10 +18,6 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
     private const string SessionAttribute = "session.id";
 
-    private const string OneRequest = "one request";
-
-    private const string AWholeSession = "a whole session";
-
     private const int SpanIdBytes = 8;
 
     private const int TraceIdBytes = 16;
@@ -32,10 +28,10 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         DateTimeOffset until,
         CancellationToken cancellationToken)
     {
-        var patience = Patience(options.Value.SessionPatienceSeconds);
+        var patience = Patience.PerRead(options.Value.SessionPatienceSeconds);
 
         // Each request has its own, but a session is hundreds of them, so the whole read needs a wait too.
-        using var spent = new CancellationTokenSource(patience, clock);
+        using var spent = new CancellationTokenSource(patience.Length, clock);
         using var whole = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
 
         var tokens = new Tokens(whole.Token, cancellationToken);
@@ -115,9 +111,9 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     {
         var address = options.Value.ResolvedAddress();
         var now = clock.GetUtcNow();
-        var patience = Patience(options.Value.RequestPatienceSeconds);
+        var patience = Patience.PerRequest(options.Value.RequestPatienceSeconds);
 
-        using var spent = new CancellationTokenSource(patience, clock);
+        using var spent = new CancellationTokenSource(patience.Length, clock);
         using var within = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
 
         try
@@ -133,14 +129,14 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
                 HttpStatusCode.ServiceUnavailable => TraceStoreAnswer.Starting(
                     $"{address} is still starting, so it is not answering reads yet."),
 
-                var status => TraceStoreAnswer.Unreachable($"{address} answered {(int)status}"),
+                var status => TraceStoreAnswer.Unreachable($"{address} answered {(int)status}."),
             };
         }
         catch (Exception failure) when (Outside(failure, cancellationToken))
         {
             return TraceStoreAnswer.Unreachable(spent.IsCancellationRequested
-                ? Waited(address, patience, OneRequest)
-                : $"{address} could not be read: {failure.Message}");
+                ? patience.RanOut(address.ToString(), Patience.OneRequest)
+                : $"{address} could not be read ({failure.Message}).");
         }
     }
 
@@ -150,17 +146,10 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     // At least one, as a limit of none asks the store for a default of its own and would never be reached.
     private static int Most(int asked) => Math.Max(1, asked);
 
-    // At least a second, as a Patience of none would be spent before the request went out.
-    private static TimeSpan Patience(int seconds) => TimeSpan.FromSeconds(Math.Max(1, seconds));
-
-    // The wait names what it covered, or a stalled request reads the same on screen as a whole session giving up.
-    private static string Waited(Uri address, TimeSpan patience, string over) =>
-        $"{address} did not answer inside the {patience.TotalSeconds:0} seconds Studio waits for {over}";
-
     // The wait over a whole read is the reading method's own, so it says so rather than leaving one request to guess.
-    private string Gap(string unreachable, CancellationTokenSource spent, TimeSpan patience) =>
+    private string Gap(string unreachable, CancellationTokenSource spent, Patience patience) =>
         spent.IsCancellationRequested
-            ? Waited(options.Value.ResolvedAddress(), patience, AWholeSession)
+            ? patience.RanOut(options.Value.ResolvedAddress().ToString(), Patience.AWholeSession)
             : unreachable;
 
     // Within a block a search keeps only the spans whose own times fall in the window, which a values read does not.
@@ -200,10 +189,10 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     private async Task<Answer<T>> AskAsync<T>(string route, Func<JsonElement, T> read, T none, Tokens tokens)
     {
         var address = options.Value.ResolvedAddress();
-        var patience = Patience(options.Value.RequestPatienceSeconds);
+        var patience = Patience.PerRequest(options.Value.RequestPatienceSeconds);
 
         // The client sets no wait of its own, so without this a single stalled request would never end.
-        using var spent = new CancellationTokenSource(patience, clock);
+        using var spent = new CancellationTokenSource(patience.Length, clock);
         using var within = CancellationTokenSource.CreateLinkedTokenSource(tokens.Within, spent.Token);
 
         try
@@ -212,7 +201,7 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
             if (!response.IsSuccessStatusCode)
             {
-                return new Answer<T>(none, $"{address} answered {(int)response.StatusCode}");
+                return new Answer<T>(none, $"{address} answered {(int)response.StatusCode}.");
             }
 
             await using var body = await response.Content.ReadAsStreamAsync(within.Token);
@@ -224,8 +213,8 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         {
             // Only this request's own Patience is knowable here, as the wait over a whole read belongs to the method that built it.
             return new Answer<T>(none, spent.IsCancellationRequested
-                ? Waited(address, patience, OneRequest)
-                : $"{address} could not be read: {failure.Message}");
+                ? patience.RanOut(address.ToString(), Patience.OneRequest)
+                : $"{address} could not be read ({failure.Message}).");
         }
     }
 
