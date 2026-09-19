@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { clock } from '../../shared/clock/lib/clock';
 import type { SkillsAnswer } from '../lib/answer';
 import { describeSlice, nowAt, sliceGlyphs, stripLabels } from '../lib/strip';
 
@@ -13,14 +14,10 @@ export function ActivityStrip({
   failure: string | null;
   arriving: boolean;
 }) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => clock().now());
 
   // Ticking, so the mark keeps up with the clock between one answer and the next.
-  useEffect(() => {
-    const ticking = setInterval(() => setNow(Date.now()), minute);
-
-    return () => clearInterval(ticking);
-  }, []);
+  useEffect(() => clock().tick(minute, () => setNow(clock().now())), []);
 
   if (answer === null) {
     // Not busy once the read has failed, or the strip would say an answer is still on its way.

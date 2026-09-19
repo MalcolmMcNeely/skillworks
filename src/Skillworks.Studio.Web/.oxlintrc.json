@@ -12,7 +12,60 @@
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
-    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }]
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "setInterval",
+        "message": "Tick on the Clock: clock().tick(everyMs, onTick) from src/shared/clock/lib/clock.ts."
+      },
+      {
+        "name": "setTimeout",
+        "message": "src/shared/clock/lib/clock.ts owns the front end's delays: add one to the Clock so a test can hold it still."
+      }
+    ],
+    "no-restricted-properties": [
+      "error",
+      {
+        "object": "Date",
+        "property": "now",
+        "message": "Read now from the Clock: clock().now() from src/shared/clock/lib/clock.ts."
+      },
+      {
+        "object": "performance",
+        "property": "now",
+        "message": "Read now from the Clock: clock().now() from src/shared/clock/lib/clock.ts."
+      },
+      {
+        "object": "window",
+        "property": "setInterval",
+        "message": "Tick on the Clock: clock().tick(everyMs, onTick) from src/shared/clock/lib/clock.ts."
+      },
+      {
+        "object": "globalThis",
+        "property": "setInterval",
+        "message": "Tick on the Clock: clock().tick(everyMs, onTick) from src/shared/clock/lib/clock.ts."
+      },
+      {
+        "object": "window",
+        "property": "setTimeout",
+        "message": "src/shared/clock/lib/clock.ts owns the front end's delays: add one to the Clock so a test can hold it still."
+      },
+      {
+        "object": "globalThis",
+        "property": "setTimeout",
+        "message": "src/shared/clock/lib/clock.ts owns the front end's delays: add one to the Clock so a test can hold it still."
+      }
+    ]
   },
+  "overrides": [
+    {
+      "files": ["src/shared/clock/lib/clock.ts"],
+      "rules": {
+        "no-restricted-globals": "off",
+        "no-restricted-properties": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist", "node_modules"]
 }

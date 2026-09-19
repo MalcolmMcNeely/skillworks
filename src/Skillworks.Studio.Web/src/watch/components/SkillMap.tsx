@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { clock } from '../../shared/clock/lib/clock';
 import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
 import { describeDay, type Filter } from '../../shared/filters/lib/filters';
 import { missingWords } from '../../shared/gaps/lib/gaps';
@@ -211,7 +212,7 @@ export function SkillMap({
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [pinned, setPinned] = useState<string | null>(null);
   const [probed, setProbed] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => clock().now());
 
   // Measured, as a squarified layout needs the map's shape in pixels and only the browser knows it.
   useLayoutEffect(() => {
@@ -231,11 +232,7 @@ export function SkillMap({
   }, []);
 
   // Ticking, so a readout left pinned does not keep saying the skill last fired an hour ago.
-  useEffect(() => {
-    const ticking = setInterval(() => setNow(Date.now()), minute);
-
-    return () => clearInterval(ticking);
-  }, []);
+  useEffect(() => clock().tick(minute, () => setNow(clock().now())), []);
 
   // On the window, so Escape lets go wherever the focus has moved to since the tile was pinned.
   useEffect(() => {

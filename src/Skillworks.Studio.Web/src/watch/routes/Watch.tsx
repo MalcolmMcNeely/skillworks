@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { clock } from '../../shared/clock/lib/clock';
 import { RepositoryPicker } from '../../shared/filters/components/RepositoryPicker';
 import { filterParams, readFilter, type Filter } from '../../shared/filters/lib/filters';
 import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../shared/filters/lib/spanKeys';
@@ -66,7 +67,7 @@ export function Watch() {
   const answer = reading?.answer ?? null;
   const forOlderFilter = reading !== null && reading.narrowing !== narrowing;
   const arriving = forOlderFilter || (answer?.arriving ?? false);
-  const today = todayUtc(new Date());
+  const today = todayUtc(new Date(clock().now()));
 
   // With no dates asked, the answer names the lookback, whose length only the API knows.
   const shownSpan = filter.from !== '' || filter.to !== '' ? filter : forOlderFilter ? null : (answer?.span ?? null);

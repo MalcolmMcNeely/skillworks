@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { clock } from '../../shared/clock/lib/clock';
 import { ChosenSkill } from '../../shared/filters/components/ChosenSkill';
 import { RepositoryPicker } from '../../shared/filters/components/RepositoryPicker';
 import { depthKeyOf, depthKeys } from '../../shared/filters/lib/depthKeys';
@@ -74,7 +75,7 @@ export function Sessions() {
   const forOlderAsk = reading !== null && reading.asked !== asked;
   const answer = forOlderAsk ? null : (reading?.answer ?? null);
   const failure = forOlderAsk ? null : (reading?.failure ?? null);
-  const today = todayUtc(new Date());
+  const today = todayUtc(new Date(clock().now()));
 
   // With no dates asked, the answer names the lookback, whose length only the API knows.
   const shownSpan = filter.from !== '' && filter.to !== '' ? filter : (answer?.span ?? null);
