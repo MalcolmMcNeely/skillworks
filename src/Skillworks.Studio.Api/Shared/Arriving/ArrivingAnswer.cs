@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
-using Skillworks.Core.Arriving;
+using Skillworks.Core.Shared.Arriving;
 
-namespace Skillworks.Studio.Api.Arriving;
+namespace Skillworks.Studio.Api.Shared.Arriving;
 
 // Flushed after every line, so a day is on screen as soon as it is read, not when the last day is.
 public sealed class ArrivingAnswer(IAsyncEnumerable<ArrivingLine> lines) : IResult

@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using Skillworks.Core.Gaps;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
-namespace Skillworks.Core.Arriving;
+namespace Skillworks.Core.Shared.Arriving;
 
 public sealed class ArrivingDays(GapReport gaps)
 {

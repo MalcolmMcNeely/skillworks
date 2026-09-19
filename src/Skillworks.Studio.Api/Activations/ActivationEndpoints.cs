@@ -1,6 +1,6 @@
 using Skillworks.Core.Activations;
 using Skillworks.Core.Filters;
-using Skillworks.Studio.Api.Arriving;
+using Skillworks.Studio.Api.Shared.Arriving;
 
 namespace Skillworks.Studio.Api.Activations;
 

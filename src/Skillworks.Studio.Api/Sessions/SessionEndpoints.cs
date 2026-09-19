@@ -1,7 +1,7 @@
 using Skillworks.Core.Filters;
 using Skillworks.Core.Sessions;
 using Skillworks.Core.Sessions.Steps;
-using Skillworks.Studio.Api.Arriving;
+using Skillworks.Studio.Api.Shared.Arriving;
 
 namespace Skillworks.Studio.Api.Sessions;
 

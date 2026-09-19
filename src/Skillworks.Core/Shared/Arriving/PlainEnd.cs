@@ -1,3 +1,3 @@
-namespace Skillworks.Core.Arriving;
+namespace Skillworks.Core.Shared.Arriving;
 
 public sealed record PlainEnd() : AnswerEnd;

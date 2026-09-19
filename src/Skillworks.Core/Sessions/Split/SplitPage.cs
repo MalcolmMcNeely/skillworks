@@ -1,4 +1,4 @@
-using Skillworks.Core.Arriving;
+using Skillworks.Core.Shared.Arriving;
 
 namespace Skillworks.Core.Sessions.Split;
 
