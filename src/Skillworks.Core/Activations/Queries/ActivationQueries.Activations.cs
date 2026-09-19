@@ -1,4 +1,4 @@
-using Skillworks.Core.Filters;
+using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Provenance;
 using Skillworks.Core.Shared.Stores.EventsStore;
 

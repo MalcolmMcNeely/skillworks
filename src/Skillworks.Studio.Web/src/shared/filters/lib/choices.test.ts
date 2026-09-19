@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { chunkedBody } from '../../http/lib/chunkedBody';
-import { readLines } from '../../http/lib/lines';
+import { chunkedBody } from '../../../http/lib/chunkedBody';
+import { readLines } from '../../../http/lib/lines';
 import { foldFilterChoicesLine, type FilterChoicesLine } from './choices';
 import { withChosen } from './filters';
 

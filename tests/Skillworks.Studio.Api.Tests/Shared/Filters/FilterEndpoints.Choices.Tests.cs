@@ -2,7 +2,7 @@ using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Studio.Api.Tests.Harness;
 using Skillworks.Studio.Api.Tests.Harness.StandIns;
 
-namespace Skillworks.Studio.Api.Tests.Filters;
+namespace Skillworks.Studio.Api.Tests.Shared.Filters;
 
 public sealed partial class FilterEndpointsTests
 {

@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Harness;
 
-namespace Skillworks.Studio.Api.Tests.Filters;
+namespace Skillworks.Studio.Api.Tests.Shared.Filters;
 
 public static class FilterRequests
 {

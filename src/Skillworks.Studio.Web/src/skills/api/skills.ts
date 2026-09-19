@@ -1,4 +1,4 @@
-import { filterQuery, type Filter } from '../../filters/lib/filters';
+import { filterQuery, type Filter } from '../../shared/filters/lib/filters';
 import { getLines } from '../../http/api/json';
 import type { SkillsLine } from '../lib/skills';
 

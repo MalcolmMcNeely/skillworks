@@ -1,4 +1,4 @@
-import { filterParams, type Filter } from '../../filters/lib/filters';
+import { filterParams, type Filter } from '../../shared/filters/lib/filters';
 import { getLines } from '../../http/api/json';
 import type { ActivationsLine } from '../lib/activations';
 

@@ -1,4 +1,4 @@
-using Skillworks.Core.Filters;
+using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Provenance;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
@@ -56,23 +56,6 @@ public sealed partial class ActivationQueries(EventsStoreReader events)
         }
 
         return hours;
-    }
-
-    public async Task<(IReadOnlyList<string> Repositories, EventTotals Period)> RepositoriesAsync(
-        DaySpan span,
-        CancellationToken cancellationToken)
-    {
-        var fired = await events.CountAsync(ActivationsIn(span), [EventAttributes.Owner, EventAttributes.RepositoryName], cancellationToken);
-
-        return (
-            [
-                .. fired.Groups
-                    .Select(count => count.Repository)
-                    .OfType<string>()
-                    .Distinct()
-                    .OrderBy(repository => repository, StringComparer.OrdinalIgnoreCase)
-            ],
-            fired);
     }
 
     private static EventQuery ActivationsIn(DaySpan span) => new(EventName, span.FromUtc, span.UntilUtc);

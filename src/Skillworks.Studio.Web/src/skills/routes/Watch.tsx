@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { RepositoryPicker } from '../../filters/components/RepositoryPicker';
-import { filterParams, readFilter, type Filter } from '../../filters/lib/filters';
-import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../filters/lib/spanKeys';
+import { RepositoryPicker } from '../../shared/filters/components/RepositoryPicker';
+import { filterParams, readFilter, type Filter } from '../../shared/filters/lib/filters';
+import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../shared/filters/lib/spanKeys';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { HealthLamps } from '../../shared/health/components/HealthLamps';
 import { describeFetchFailure } from '../../http/lib/errors';

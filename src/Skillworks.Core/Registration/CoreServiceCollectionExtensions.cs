@@ -7,7 +7,7 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Shared.Arriving;
 using Skillworks.Core.Shared.Catalogue;
-using Skillworks.Core.Filters;
+using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Gaps;
 using Skillworks.Core.Shared.Health;
 using Skillworks.Core.Sessions;
@@ -88,6 +88,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<CollectorReader>();
         services.AddSingleton<GapReport>();
         services.AddSingleton<ArrivingDays>();
+        services.AddSingleton<FilterChoices>();
         services.AddSingleton<SkillReport>();
         services.AddSingleton<ActivationReport>();
         services.AddSingleton<SessionReport>();

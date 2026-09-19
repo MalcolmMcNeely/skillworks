@@ -1,4 +1,4 @@
-using Skillworks.Studio.Api.Tests.Filters;
+using Skillworks.Studio.Api.Tests.Shared.Filters;
 
 namespace Skillworks.Studio.Api.Tests.Sessions.Rows;
 

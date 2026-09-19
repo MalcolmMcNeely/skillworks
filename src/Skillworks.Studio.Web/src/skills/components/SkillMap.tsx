@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { describeCount, describeMoney } from '../../figures/lib/figures';
-import { describeDay, type Filter } from '../../filters/lib/filters';
+import { describeDay, type Filter } from '../../shared/filters/lib/filters';
 import { missingWords } from '../../shared/gaps/lib/gaps';
 import { Keys } from '../../keys/components/Keys';
 import { triggerMarks } from '../../shared/provenance/lib/triggers';

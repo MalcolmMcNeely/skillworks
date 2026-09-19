@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { ChosenSkill } from '../../filters/components/ChosenSkill';
-import { RepositoryPicker } from '../../filters/components/RepositoryPicker';
-import { depthKeyOf, depthKeys } from '../../filters/lib/depthKeys';
-import { filterParams, readFilter, type Filter } from '../../filters/lib/filters';
-import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../filters/lib/spanKeys';
+import { ChosenSkill } from '../../shared/filters/components/ChosenSkill';
+import { RepositoryPicker } from '../../shared/filters/components/RepositoryPicker';
+import { depthKeyOf, depthKeys } from '../../shared/filters/lib/depthKeys';
+import { filterParams, readFilter, type Filter } from '../../shared/filters/lib/filters';
+import { spanKeyOf, spanKeys, todayUtc, withSpanKey } from '../../shared/filters/lib/spanKeys';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { describeFetchFailure } from '../../http/lib/errors';
 import { Keys } from '../../keys/components/Keys';

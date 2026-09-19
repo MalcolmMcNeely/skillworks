@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Filters;
+namespace Skillworks.Core.Shared.Filters;
 
 public sealed class Lookback(int days, TimeProvider clock)
 {

@@ -2,7 +2,7 @@ using Skillworks.Core.Activations;
 using Skillworks.Core.Activations.Queries;
 using Skillworks.Core.Shared.Arriving;
 using Skillworks.Core.Shared.Catalogue;
-using Skillworks.Core.Filters;
+using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Spend;
 using Skillworks.Core.Spend.Queries;
@@ -31,25 +31,6 @@ public sealed class SkillReport(
                 : [.. catalogue.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
 
         return arriving.AnswerAsync(head, days, (day, token) => DayAsync(day, filter, token), cancellationToken);
-    }
-
-    // Only the span narrows the choices, so picking a Repository never hides the others.
-    // A Gap here would count Activations alone, so a period that only spent would read as quiet.
-    public IAsyncEnumerable<ArrivingLine> ChoicesAsync(Filter filter, CancellationToken cancellationToken)
-    {
-        var span = lookback.SpanOf(filter);
-        var days = span.NewestFirst();
-
-        return arriving.AnswerWithoutGapAsync(new FilterChoicesHead(span, days), days, ChoicesDayAsync, cancellationToken);
-    }
-
-    private async Task<(FilterChoicesDay Line, EventTotals Period)> ChoicesDayAsync(
-        DateOnly day,
-        CancellationToken cancellationToken)
-    {
-        var (repositories, period) = await activations.RepositoriesAsync(DaySpan.Of(day), cancellationToken);
-
-        return (new FilterChoicesDay(day, repositories), period);
     }
 
     // Every query for the day runs before the next day starts, so a day is whole when it lands.

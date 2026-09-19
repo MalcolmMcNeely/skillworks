@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using Skillworks.Core.Shared.Arriving;
-using Skillworks.Core.Filters;
+using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Gaps;
 using Skillworks.Core.Sessions.Measures;
 using Skillworks.Core.Sessions.Queries;

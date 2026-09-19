@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Filters;
+namespace Skillworks.Core.Shared.Filters;
 
 // Days are UTC days, as Claude Code timestamps its events; a local day would move late sessions to the wrong day.
 public sealed record Filter

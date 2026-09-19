@@ -1,4 +1,4 @@
-using Skillworks.Core.Filters;
+using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Trace;
 using Skillworks.Core.Shared.Stores.TraceStore;

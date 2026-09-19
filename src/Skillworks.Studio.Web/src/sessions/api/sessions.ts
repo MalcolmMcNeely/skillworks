@@ -1,4 +1,4 @@
-import { everything, filterParams, type Filter, type Span } from '../../filters/lib/filters';
+import { everything, filterParams, type Filter, type Span } from '../../shared/filters/lib/filters';
 import { getLines } from '../../http/api/json';
 import { withOrder, type SessionOrder, type SessionsLine } from '../lib/sessions';
 import type { SessionLine } from '../lib/steps';

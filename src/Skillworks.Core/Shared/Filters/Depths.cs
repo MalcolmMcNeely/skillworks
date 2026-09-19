@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Filters;
+namespace Skillworks.Core.Shared.Filters;
 
 // Both halves or Thin, in one place, so asking the table for Full runs and opening one cannot disagree.
 public static class Depths

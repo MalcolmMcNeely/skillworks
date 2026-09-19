@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { describeCount } from '../../figures/lib/figures';
-import { everything, filterParams, readFilter, type Filter } from '../../filters/lib/filters';
+import { everything, filterParams, readFilter, type Filter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { missingWords } from '../../shared/gaps/lib/gaps';
 import { describeFetchFailure } from '../../http/lib/errors';

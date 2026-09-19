@@ -1,4 +1,4 @@
-namespace Skillworks.Studio.Api.Tests.Filters;
+namespace Skillworks.Studio.Api.Tests.Shared.Filters;
 
 public sealed record SpanRow
 {

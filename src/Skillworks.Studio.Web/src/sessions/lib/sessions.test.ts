@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { everything } from '../../filters/lib/filters';
+import { everything } from '../../shared/filters/lib/filters';
 import {
   describeNoSessions,
   describePeriod,

@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Filters;
+namespace Skillworks.Core.Shared.Filters;
 
 public sealed record DaySpan(DateOnly From, DateOnly To, bool Lookback)
 {
