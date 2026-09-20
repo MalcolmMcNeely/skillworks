@@ -26,6 +26,29 @@ case_a_finished_ticket_reaches_the_remote() {
   ! called npm || fail "the suite ran again"
 }
 
+case_a_plan_names_every_step_with_its_checks_and_lands_nothing() {
+  stub claude
+  stub dotnet
+  stub npm
+  local base step
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" --plan
+
+  assert_status 0 "$STATUS"
+  for step in verify fetch rebase resolve suite push; do
+    assert_says "$step" "$OUTPUT"
+  done
+  # The driver reads a name, what runs and the checks, so a line short of one says nothing.
+  assert_eq "lines short of all three fields" 0 \
+    "$(printf '%s\n' "$OUTPUT" \
+       | awk -F'\t' 'NF != 3 || $1 == "" || $2 == "" || $3 == ""' | wc -l | tr -d ' ')"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+  ! called claude || fail "a session was started"
+  ! called dotnet || fail "the suite ran"
+  ! called npm || fail "the suite ran"
+}
+
 case_a_moved_base_is_rebased_and_the_suite_runs_again() {
   stub dotnet
   stub npm

@@ -43,6 +43,11 @@ main() {
     esac
   }
 
+  plan_line() {  # <name> <what runs> [checks]
+    printf '      %-8s %s\n' "$1" "$2"
+    [ -z "${3:-}" ] || printf '               checks: %s\n' "$3"
+  }
+
   # The ticket now running counts as remaining, so the estimate never flatters the run.
   progress_suffix() {
     local position="$1" total="$2" mean="${3:-}" remaining
@@ -169,6 +174,7 @@ main() {
 
   export GH_PROMPT_DISABLED=1
   PERMISSION_MODE="${SPEC_LOOP_PERMISSION_MODE:-acceptEdits}"
+  NL=$'\n'
 
   LOG_DIR=".spec-loop/$SPEC"
   mkdir -p "$LOG_DIR"
@@ -202,18 +208,40 @@ main() {
   if [ "$DRY_RUN" = "1" ]; then
     say "DRY   repo=$REPO  me=$ME"
     say "DRY   spec #$SPEC: $spec_title"
-    gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
-      --jq '.[] | "\(.number)\t\(.state)\t\(.title)"' |
-      while IFS=$'\t' read -r n state title; do
-        printf '  #%s [%s] %s\n' "$n" "$state" "$title"
-        [ "$state" = "open" ] || continue
-        for step in build sweep finish; do
-          printf '      %-7s claude -p "%s"' "$step" "$(step_prompt "$n" "$step")"
-          [ "$step" = build ] || printf ' --resume <build session>'
-          printf '\n              checks: %s\n' "$(step_checks "$step")"
-        done
-      done | tee -a "$LOG"
-    say "DRY   no sessions were run"
+
+    # Asked of the scripts that do the work, so the plan cannot drift from the run.
+    integration=$(bash "$SCRIPTS/integrate-ticket.sh" --plan) && [ -n "$integration" ] \
+      || die "ABORT the integration steps would not be read, so the plan would be short of them."
+
+    tickets=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
+      --jq '.[] | "\(.number)\t\(.state)\t\(.title)"')
+
+    # Gathered whole and printed once, so a step that cannot be planned can still stop the run.
+    plan=""
+    while IFS=$'\t' read -r n state title; do
+      [ -n "$n" ] || continue
+      plan="$plan$(printf '  #%s [%s] %s' "$n" "$state" "$title")$NL"
+      [ "$state" = "open" ] || continue
+
+      IFS=$'\t' read -r tree branch <<<"$(worktree plan "ticket-$n")"
+      [ -n "$tree" ] || die "ABORT #$n could not be told where it would be built."
+      plan="$plan$(plan_line worktree "$tree")$NL"
+      plan="$plan$(plan_line branch "$branch")$NL"
+
+      for step in build sweep finish; do
+        call=$(printf 'claude -p "%s"' "$(step_prompt "$n" "$step")")
+        [ "$step" = build ] || call="$call --resume <build session>"
+        plan="$plan$(plan_line "$step" "$call" "$(step_checks "$step")")$NL"
+      done
+
+      while IFS=$'\t' read -r step call checks; do
+        [ -n "$step" ] || continue
+        plan="$plan$(plan_line "$step" "$call" "$checks")$NL"
+      done <<<"$integration"
+    done <<<"$tickets"
+
+    printf '%s' "$plan" | tee -a "$LOG"
+    say "DRY   no session was run, and nothing reached the remote"
     exit 0
   fi
 

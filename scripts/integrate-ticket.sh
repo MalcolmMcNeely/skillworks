@@ -3,9 +3,12 @@
 # Land one finished ticket on main.
 #
 #   scripts/integrate-ticket.sh <worktree> <ticket-number> [session-id]
+#   scripts/integrate-ticket.sh --plan
 #
 # Exits 0 once the ticket's commit is on the remote's main. Exits non-zero with
 # the reason on stderr, having pushed nothing.
+#
+# `--plan` prints the steps and their checks, tab separated, and does none of them.
 #
 # Another loop lands its own work while a ticket is built, so a moved base is
 # rebased onto, and the suite is asked again before the push.
@@ -73,8 +76,33 @@ main() {
 
   usage() {
     printf 'usage: scripts/integrate-ticket.sh <worktree> <ticket-number> [session-id]\n' >&2
+    printf '       scripts/integrate-ticket.sh --plan\n' >&2
     exit 64
   }
+
+  # These stay in the order the steps happen, or the plan lies about the run.
+  plan() {
+    printf '%s\t%s\t%s\n' \
+      verify  'the worktree, its tree and the trailer on its commit' \
+              'is-a-worktree tree-clean ticket-named'
+    printf '%s\t%s\t%s\n' \
+      fetch   'git fetch origin' \
+              'origin-has-main something-to-land'
+    printf '%s\t%s\t%s\n' \
+      rebase  'git rebase origin/main, when the base has moved' \
+              'commits-kept files-kept'
+    printf '%s\t%s\t%s\n' \
+      resolve 'the build session, when the rebase conflicts' \
+              'session-named no-refusal none-left-conflicting no-marker-staged rebase-carried-on'
+    printf '%s\t%s\t%s\n' \
+      suite   'the whole suite, when the base has moved' \
+              'suite-green'
+    printf '%s\t%s\t%s\n' \
+      push    'git push origin HEAD:main' \
+              "pushed (up to $ATTEMPTS attempts)"
+  }
+
+  [ "$WORKTREE" != "--plan" ] || { plan; return 0; }
 
   # The README's checks, skipped where there is none, so a throwaway repository runs this.
   suite() {

@@ -4,6 +4,7 @@
 #
 #   scripts/ticket-worktree.sh open  <checkout> <spec> <job>
 #   scripts/ticket-worktree.sh close <checkout> <spec> <job>
+#   scripts/ticket-worktree.sh plan  <checkout> <spec> <job>
 #   scripts/ticket-worktree.sh check <checkout> <spec>
 #
 # A job is one ticket, or the drift check at the end. It gets a worktree and a
@@ -18,6 +19,8 @@
 # `open` prints the worktree's path on stdout and nothing else, so the driver
 # can read it. Everything else it says goes to stderr.
 #
+# `plan` prints the path and the branch a job would get, tab separated, and makes neither.
+#
 # Worktrees are grouped by spec, so `check` turns down a spec whose group is
 # already there: another loop is working on it, or a failed one left it behind.
 
@@ -28,7 +31,7 @@ main() {
   die() { printf 'FAIL  %s\n' "$*" >&2; exit 1; }
 
   usage() {
-    printf 'usage: scripts/ticket-worktree.sh open|close <checkout> <spec> <job>\n' >&2
+    printf 'usage: scripts/ticket-worktree.sh open|close|plan <checkout> <spec> <job>\n' >&2
     printf '       scripts/ticket-worktree.sh check <checkout> <spec>\n' >&2
     exit 64
   }
@@ -45,9 +48,9 @@ main() {
   case "$SPEC" in ''|*[!0-9]*) usage ;; esac
   # A job names a folder and a branch, so anything else escapes the group or breaks the ref.
   case "$COMMAND" in
-    open|close) case "$JOB" in ''|*[!A-Za-z0-9-]*) usage ;; esac ;;
-    check)      [ -z "$JOB" ] || usage ;;
-    *)          usage ;;
+    open|close|plan) case "$JOB" in ''|*[!A-Za-z0-9-]*) usage ;; esac ;;
+    check)           [ -z "$JOB" ] || usage ;;
+    *)               usage ;;
   esac
 
   git -C "$CHECKOUT" rev-parse --git-dir >/dev/null 2>&1 \
@@ -96,6 +99,10 @@ main() {
     say "$JOB left nothing behind"
   }
 
+  plan_job() {
+    printf '%s\t%s\n' "$TREE" "$BRANCH"
+  }
+
   check_group() {
     git -C "$CHECKOUT" worktree prune
     [ -e "$GROUP" ] || return 0
@@ -117,6 +124,7 @@ main() {
   case "$COMMAND" in
     open)  open_job ;;
     close) close_job ;;
+    plan)  plan_job ;;
     check) check_group ;;
   esac
 }

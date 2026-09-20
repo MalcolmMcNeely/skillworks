@@ -36,6 +36,26 @@ case_a_dirty_checkout_still_gives_a_job_its_worktree() {
     "$(git -C "$(group 158)/ticket-164" rev-parse --abbrev-ref HEAD)"
 }
 
+case_a_plan_says_where_a_job_would_go_and_makes_nothing() {
+  run_script "$SCRIPT" plan "$WORKTREE" 158 ticket-168
+
+  assert_status 0 "$STATUS"
+  assert_eq "what it printed" \
+    "$(printf '%s\t%s' "$(group 158)/ticket-168" spec-loop/158/ticket-168)" "$OUTPUT"
+  [ ! -e "$(group 158)" ] || fail "the plan made a worktree group"
+  ! git -C "$WORKTREE" rev-parse --verify --quiet refs/heads/spec-loop/158/ticket-168 >/dev/null \
+    || fail "the plan made a branch"
+}
+
+case_a_plan_for_a_spec_with_a_worktree_group_is_still_given() {
+  given_job 158 ticket-164
+
+  run_script "$SCRIPT" plan "$WORKTREE" 158 ticket-168
+
+  assert_status 0 "$STATUS"
+  assert_says "$(group 158)/ticket-168" "$OUTPUT"
+}
+
 case_a_spec_with_no_worktree_is_clear_to_start() {
   run_script "$SCRIPT" check "$WORKTREE" 158
 
