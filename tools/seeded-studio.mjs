@@ -103,7 +103,7 @@ const skills = [
   { name: 'research', rate: 0.6, turns: [20, 60], models: { [sonnet]: 1 }, efforts: { high: 1 }, triggers: { 'claude-proactive': 5, 'user-slash': 3, 'agent-preload': 2 } },
   { name: 'writing-for-agents', rate: 0.6, turns: [4, 15], models: { [opus]: 1 }, efforts: { high: 1 }, triggers: { 'nested-skill': 7, 'claude-proactive': 3 } },
   { name: 'prototype', rate: 0.45, turns: [30, 120], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'user-slash': 1 } },
-  { name: 'resolving-merge-conflicts', rate: 0.4, turns: [5, 20], models: { [sonnet]: 1 }, efforts: { medium: 1 }, triggers: { 'claude-proactive': 1 } },
+  { name: 'resolve-conflict', rate: 0.4, turns: [5, 20], models: { [sonnet]: 1 }, efforts: { medium: 1 }, triggers: { 'user-slash': 1 } },
   { name: 'codebase-design', rate: 0.3, turns: [10, 40], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'claude-proactive': 5, 'nested-skill': 5 } },
   { name: 'wizard', rate: 0.12, turns: [5, 15], models: { [sonnet]: 1 }, efforts: { medium: 1 }, triggers: { 'user-slash': 1 } },
   { name: 'artifact-design', rate: 0.5, turns: [6, 18], source: 'bundled', models: { [opus]: 1 }, efforts: { high: 1 }, triggers: { 'nested-skill': 8, 'claude-proactive': 2 } },
