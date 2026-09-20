@@ -6,6 +6,12 @@ under, and the scripts that drive it.
 
 ## Language
 
+**Land**:
+A finished ticket reaching `main`. The driver rebases the ticket's worktree onto the newest `main`,
+proves the work survived and the suite is green, then pushes. A ticket Lands on its own, the moment
+it passes, so a stopped run leaves every ticket before it already on the remote.
+_Avoid_: Integrate, integration
+
 **Load**:
 One instruction file reaching a session. It names the file, where it came from, when it came and why.
 A Load is a fact about a session, never a judgement: a file that arrives when it should not have
