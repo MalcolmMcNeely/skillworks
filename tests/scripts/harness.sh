@@ -56,11 +56,12 @@ write_commit() {  # <repo> <file> <text> <message>
 # A remote and a checkout of it, level with each other.
 make_repo() {
   TMP=$(mktemp -d)
+  # PATH splits on colons, so a drive letter here would be two entries and find neither.
+  STUBS="$TMP/stubs"
   # Git reads /tmp as C:/tmp here, not where the shell put it. A drive letter suits both.
   command -v cygpath >/dev/null && TMP=$(cygpath -m "$TMP")
   ORIGIN="$TMP/origin.git"
   WORKTREE="$TMP/work"
-  STUBS="$TMP/stubs"
   PATH="$REAL_PATH"
   mkdir -p "$STUBS"
 
@@ -80,6 +81,15 @@ advance_origin() {  # <name>
   configure "$other"
   write_commit "$other" "$1.txt" "$1" "Somebody else's $1"
   git -C "$other" push --quiet origin main
+}
+
+# The markers the suite looks for, so a case can say whether it ran. Not the shell
+# tests: the suite would run these cases again, each laying the marker for the next.
+given_a_project() {
+  mkdir -p "$WORKTREE/src/Skillworks.Studio.Web"
+  write_commit "$WORKTREE" Skillworks.slnx "<Solution />" "A solution to check"
+  write_commit "$WORKTREE" src/Skillworks.Studio.Web/package.json "{}" "A front end to check"
+  git -C "$WORKTREE" push --quiet origin main
 }
 
 commit_for_ticket() {
@@ -109,8 +119,19 @@ stub() {
   PATH="$STUBS:$PATH"
 }
 
+# A check that turns its answer down, so a case can hold a failing suite against the push.
+stub_failure() {
+  stub "$1"
+  printf 'exit 1\n' >> "$STUBS/$1"
+}
+
 called() {
   grep -q "^$1 " "$TMP/calls" 2>/dev/null
+}
+
+# The whole call, for a case that wants one check of a suite and not another.
+ran() {
+  grep -qxF "$1" "$TMP/calls" 2>/dev/null
 }
 
 # --- running ----------------------------------------------------------------
