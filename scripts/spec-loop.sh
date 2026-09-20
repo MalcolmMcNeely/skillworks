@@ -39,6 +39,30 @@ main() {
     esac
   }
 
+  # Read off disk rather than handed on by a session, so no session has to remember to carry them.
+  review_reports() {  # <ticket>
+    local axis json report
+    for axis in $REVIEW_STEPS; do
+      json="$(step_log "$1" "$axis").json"
+      report=""
+      if [ -f "$json" ]; then report=$(json_field "$json" result); fi
+      if [ -z "$report" ]; then
+        printf 'the %s axis left no report at %s\n' "$axis" "$json" >&2
+        return 1
+      fi
+      printf '\n## The %s axis reported\n\n%s\n' "$axis" "$report"
+    done
+  }
+
+  # The checks and the plan read step_prompt, so nothing added below the command line reaches them.
+  step_body() {  # <ticket> <step>
+    local reports
+    [ "$2" = finish ] || { step_prompt "$1" "$2"; return 0; }
+    reports=$(review_reports "$1") || return 1
+    printf '%s\n\nThe three review axes have run. Their reports follow.\n%s' \
+      "$(step_prompt "$1" "$2")" "$reports"
+  }
+
   step_checks() {
     case "$1" in
       build)  printf 'no-error command-loaded ticket-open tree-changed' ;;
@@ -94,6 +118,8 @@ main() {
     node_e '
       const fs = require("fs"), os = require("os"), path = require("path")
       const [session, command, args] = process.argv.slice(1)
+      // Matched to the end of their first line, because the driver writes the reports below it.
+      const opening = `<command-args>${args}`
       const projects = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"), "projects")
       const transcript = fs.readdirSync(projects)
         .map(folder => path.join(projects, folder, `${session}.jsonl`))
@@ -106,7 +132,8 @@ main() {
         .map(line => JSON.parse(line))
         .some(entry => entry.type === "user" && typeof entry.message?.content === "string"
           && entry.message.content.includes(`<command-name>${command}</command-name>`)
-          && (args === "" || entry.message.content.includes(`<command-args>${args}</command-args>`)))
+          && (args === "" || entry.message.content.includes(`${opening}</command-args>`)
+            || entry.message.content.includes(`${opening}\n`)))
       if (!loaded) console.error(`"${`${command} ${args}`.trim()}" did not load as a command in ${transcript}`)
       process.exit(loaded ? 0 : 1)' "$@"
   }
@@ -162,12 +189,15 @@ main() {
   }
 
   run_step() {
-    local ticket="$1" step="$2" out check
+    local ticket="$1" step="$2" out check prompt
     shift 2
     out=$(step_log "$ticket" "$step")
     say "$(printf 'STEP  #%s %-13s%s' \
       "$ticket" "$step" "$(progress_suffix "$POSITION" "$TICKET_COUNT" "$MEAN_SECONDS")")"
-    claude_p "$(step_prompt "$ticket" "$step")" "$@" >"$out.json" 2>"$out.err" \
+    # Built before the session starts, so two axes out of three never reach a finishing step.
+    prompt=$(step_body "$ticket" "$step" 2>"$out.err") \
+      || stop_step "$ticket" "$step" "was short of a review axis report" "$out.err"
+    claude_p "$prompt" "$@" >"$out.json" 2>"$out.err" \
       || stop_step "$ticket" "$step" "exited non-zero" "$out.err and $out.json"
     for check in $(step_checks "$step"); do
       check_passes "$ticket" "$step" "$check" "$out.json" 2>>"$out.err" \
@@ -192,7 +222,8 @@ main() {
   SCRIPTS=$(cd "$(dirname "$0")" && pwd)
 
   # One list, read by the plan and by the run, so the two cannot drift apart.
-  STEPS="build sweep standards spec architecture finish"
+  REVIEW_STEPS="standards spec architecture"
+  STEPS="build sweep $REVIEW_STEPS finish"
 
   SPEC="${1:-}"
   DRY_RUN=0

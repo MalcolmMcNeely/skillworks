@@ -285,10 +285,10 @@ case_a_keep_that_succeeded_says_what_it_left_alone() {
 # given_the_tracker_holds stubs the node the checks need, so the real one goes back on PATH here.
 given_sessions_that_report() {
   rm -f "$STUBS/node"
-  mkdir -p "$TMP/said" "$TMP/refused" "$TMP/claude/projects/one"
+  mkdir -p "$TMP/said" "$TMP/refused" "$TMP/lost" "$TMP/claude/projects/one"
   stub claude
-  printf 'SAID="%s"\nREFUSED="%s"\nSESSIONS="%s"\n' \
-    "$TMP/said" "$TMP/refused" "$TMP/claude/projects/one" >> "$STUBS/claude"
+  printf 'SAID="%s"\nREFUSED="%s"\nLOST="%s"\nSESSIONS="%s"\n' \
+    "$TMP/said" "$TMP/refused" "$TMP/lost" "$TMP/claude/projects/one" >> "$STUBS/claude"
   cat >> "$STUBS/claude" <<'STUB'
 for arg in "$@"; do
   case "$arg" in /*) prompt=$arg; break ;; esac
@@ -297,11 +297,16 @@ name=${prompt%% *}
 args=${prompt#"$name"}
 step=${name#/}
 [ ! -f "$REFUSED/$step" ] || { echo "the $step session was turned down" >&2; exit 1; }
+[ ! -f "$LOST/$step" ] || rm -f "$(cat "$LOST/$step")"
 count=$(( $(cat "$SESSIONS/count" 2>/dev/null || echo 0) + 1 ))
 echo "$count" > "$SESSIONS/count"
 session="session-$count"
-printf '{"type":"user","message":{"content":"<command-name>%s</command-name><command-args>%s</command-args>"}}\n' \
-  "$name" "${args# }" > "$SESSIONS/$session.jsonl"
+MSYS_NO_PATHCONV=1 node -e '
+  const fs = require("fs")
+  const [file, name, args] = process.argv.slice(1)
+  fs.writeFileSync(file, JSON.stringify({ type: "user", message: {
+    content: `<command-name>${name}</command-name><command-args>${args}</command-args>`,
+  } }) + "\n")' "$SESSIONS/$session.jsonl" "$name" "${args# }"
 case "$step" in
   review-standards)    said="## Standards. Nothing found." ;;
   review-spec)         said="## Spec. Nothing found." ;;
@@ -322,8 +327,19 @@ given_an_axis_that_errors() {  # <axis>
   : > "$TMP/refused/review-$1"
 }
 
+# The step's own check reads the report as well, so only the axis after it can take it away.
+given_a_report_lost_after_the_last_axis() {  # <axis>
+  printf '%s/.spec-loop/158/ticket-168-%s.json\n' "$WORKTREE" "$1" \
+    > "$TMP/lost/review-architecture"
+}
+
 session_call() {  # <prompt>
   calls | grep -F -- "$1" | head -1
+}
+
+# The finishing step's prompt runs over many lines, and it is the last session the loop starts.
+finish_prompt() {
+  calls | awk 'index($0, "claude -p /implement 168 --finish") == 1 { found = 1 } found'
 }
 
 ticket_worktree() { printf '%s/.claude/worktrees/spec-158/ticket-168' "$WORKTREE"; }
@@ -388,6 +404,79 @@ case_a_review_step_that_errored_stops_the_loop_and_keeps_the_worktree() {
   case "$(calls)" in
     *"/implement 168 --finish"*) fail "the loop went on to finish the ticket" ;;
   esac
+}
+
+# --- the reports reaching the finishing step --------------------------------
+
+given_three_axes_with_something_to_say() {
+  given_an_axis_that_says standards "## Standards. The name box says nothing."
+  given_an_axis_that_says spec "## Spec. The third criterion is unmet."
+  given_an_axis_that_says architecture "## Architecture. The arrow points the wrong way."
+}
+
+case_the_finishing_step_is_given_what_all_three_axes_found() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_three_axes_with_something_to_say
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  local prompt
+  prompt=$(finish_prompt)
+  assert_says "The name box says nothing." "$prompt"
+  assert_says "The third criterion is unmet." "$prompt"
+  assert_says "The arrow points the wrong way." "$prompt"
+}
+
+case_the_finishing_step_is_told_which_axis_each_report_came_from() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_three_axes_with_something_to_say
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  local axis
+  for axis in standards spec architecture; do
+    assert_says "## The $axis axis reported" "$(finish_prompt)"
+  done
+}
+
+case_the_finishing_step_still_resumes_the_build_session() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "--resume session-1" "$(finish_prompt)"
+}
+
+case_a_missing_axis_report_stops_the_loop_before_the_finishing_step() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_a_report_lost_after_the_last_axis standards
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "step finish was short of a review axis report" "$OUTPUT"
+  case "$(calls)" in
+    *"/implement 168 --finish"*) fail "the finishing step ran on two axes out of three" ;;
+  esac
+}
+
+case_a_missing_axis_report_names_the_axis_it_came_from() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_a_report_lost_after_the_last_axis standards
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "the standards axis left no report" \
+    "$(cat "$WORKTREE/.spec-loop/158/ticket-168-finish.err")"
 }
 
 case_a_keep_that_left_nothing_alone_says_nothing() {
