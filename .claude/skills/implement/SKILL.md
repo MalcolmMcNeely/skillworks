@@ -51,5 +51,6 @@ Run /comment-sweep on the uncommitted change.
 2. **Fix the findings.** Fix each one. If you judge a finding wrong, leave it and give the reason in the closing comment.
 3. **Run the full test suite.** A ticket is done only once you have read the full suite's passing result. A partial pass or a skipped suite leaves the ticket open.
 4. **Commit to `main`.** Do NOT push. A spec loop pushes once at the end, after every ticket is done, so a half-finished spec never reaches the remote. This repo has no branches and no pull requests. Do not include "co-authored by" in the commit message.
+   - **Name the ticket in the message.** See "Two conventions the loop leans on" in `docs/agents/issue-tracker.md` for the form, and for why it is not a closing word.
 5. **Leave the working tree clean.** A caller may be driving you in a loop and will stop if it is not.
 6. **Close the ticket** with a comment saying what was done and which tests prove it.
