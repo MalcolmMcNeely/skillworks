@@ -11,7 +11,8 @@ internal sealed record PlacementRules(
     IReadOnlyList<string> TestFiles,
     IReadOnlyList<string> SkipFolders,
     IReadOnlyList<string> BannedFolderNames,
-    IReadOnlyDictionary<string, string> NameMap)
+    IReadOnlyDictionary<string, string> NameMap,
+    IReadOnlyDictionary<string, string> TestRoots)
 {
     public const string RelativePath = ".claude/rules/file-placement.md";
 
@@ -30,6 +31,10 @@ internal sealed record PlacementRules(
             "name-map",
             "a map from a name with `*` at the start or the end to a folder name, such as {\"*Queries\": Queries}",
             IsNamePattern);
+        var testRoots = file.RequireMap(
+            "test-roots",
+            "a map from a test folder to the folder it mirrors, such as {tests/scripts: scripts}",
+            IsFolderPath);
 
         return new(
             slices,
@@ -39,7 +44,8 @@ internal sealed record PlacementRules(
             testFiles,
             skipFolders,
             bannedFolderNames,
-            nameMap);
+            nameMap,
+            testRoots);
     }
 
     public string SharedFolderName(bool frontEnd) => InCase(Shared, frontEnd);
@@ -99,8 +105,18 @@ internal sealed record PlacementRules(
                 .Select(entry => (Pattern: entry.Key, Folder: entry.Value)),
         ];
 
+    public string? CodeFolderMirroredBy(string testFolder) =>
+        TestRoots
+            .Where(entry => testFolder == entry.Key || testFolder.StartsWith($"{entry.Key}/", StringComparison.Ordinal))
+            .Select(entry => $"{entry.Value}{testFolder[entry.Key.Length..]}")
+            .FirstOrDefault();
+
     // A Slice keeps its name in each language's own case.
     private static string InCase(string name, bool frontEnd) => frontEnd ? name.ToLowerInvariant() : name;
+
+    private static bool IsFolderPath(string path) =>
+        !path.Contains('\\', StringComparison.Ordinal)
+        && path.Split('/').All(segment => segment.Length > 0 && segment is not ("." or ".."));
 
     private static bool IsNamePattern(string pattern) =>
         pattern.Length > 1 && pattern.AsSpan().Count('*') == 1 && (pattern[0] == '*' || pattern[^1] == '*');

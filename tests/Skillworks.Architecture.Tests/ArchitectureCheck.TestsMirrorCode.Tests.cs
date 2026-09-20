@@ -155,6 +155,72 @@ public sealed partial class ArchitectureCheckTests
         Assert.All(breaches, breach => Assert.Contains("code file", breach.Message));
     }
 
+    [Fact]
+    public void A_shell_test_beneath_a_test_root_that_mirrors_its_code_file_is_not_a_breach()
+    {
+        using var tree = ShellTree()
+            .Write("scripts/spec-loop.sh", Script)
+            .Write("scripts/watch/tail.sh", Script)
+            .Write("tests/scripts/spec-loop.test.sh", Script)
+            .Write("tests/scripts/watch/tail.test.sh", Script);
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_shell_test_beside_the_code_file_it_tests_is_not_a_breach()
+    {
+        using var tree = ShellTree()
+            .Write("scripts/spec-loop.sh", Script)
+            .Write("scripts/spec-loop.test.sh", Script);
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_shell_test_beneath_a_test_root_is_told_the_folder_its_code_file_should_sit_in()
+    {
+        using var tree = ShellTree()
+            .Write("scripts/spec-loop.sh", Script)
+            .Write("tests/scripts/watch/tail.test.sh", Script);
+
+        var breach = Assert.Single(tree.Check().Breaches);
+
+        Assert.Equal(("tests-mirror-code", "tests/scripts/watch/tail.test.sh"), (breach.Rule, breach.Path));
+        Assert.Contains("`scripts/watch`", breach.Message);
+    }
+
+    [Fact]
+    public void A_shell_test_in_a_folder_no_test_root_covers_mirrors_nothing()
+    {
+        using var tree = ShellTree()
+            .Write("scripts/spec-loop.sh", Script)
+            .Write("tests/tools/spec-loop.test.sh", Script);
+
+        var breach = Assert.Single(tree.Check().Breaches);
+
+        Assert.Equal(("tests-mirror-code", "tests/tools/spec-loop.test.sh"), (breach.Rule, breach.Path));
+        Assert.Contains("beside", breach.Message);
+    }
+
+    [Fact]
+    public void A_support_script_beneath_a_test_root_is_not_a_breach()
+    {
+        using var tree = ShellTree()
+            .Write("scripts/spec-loop.sh", Script)
+            .Write("tests/scripts/harness.sh", Script);
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    private const string Script = "#!/usr/bin/env bash\n";
+
+    private static RulesTree ShellTree() =>
+        new RulesTree()
+            .Set(RulesTree.PlacementFile, "source-files", "[.cs, .ts, .tsx, .sh]")
+            .Set(RulesTree.PlacementFile, "test-files", "[\"*.Tests.cs\", \"*.test.ts\", \"*.test.tsx\", \"*.test.sh\"]")
+            .Set(RulesTree.PlacementFile, "test-roots", "{tests/scripts: scripts}");
+
     private static string TypeIn(string namespaceName, string typeName) =>
         $"namespace {namespaceName};\n\npublic sealed partial class {typeName};\n";
 }

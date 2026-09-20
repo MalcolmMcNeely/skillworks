@@ -38,6 +38,7 @@ public sealed class RulesTree : IDisposable
             ["skip-folders"] = "[Migrations, bin, obj, node_modules]",
             ["banned-folder-names"] = "[utils, helpers, common, misc]",
             ["name-map"] = "{\"*Queries\": Queries}",
+            ["test-roots"] = "{}",
         },
         [CommentsFile] = new()
         {

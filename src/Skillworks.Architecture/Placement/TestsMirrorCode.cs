@@ -25,8 +25,20 @@ internal static class TestsMirrorCode
 
             if (!CSharpFile.IsCSharp(test))
             {
-                if (!codeFiles.Contains((folder, subject, IsCSharp: false)))
-                    yield return new Breach(Rule, test, $"Move the test beside the `{subject}` code file it tests, or delete it.");
+                if (codeFiles.Contains((folder, subject, IsCSharp: false)))
+                    continue;
+
+                var mirroredFolder = rules.CodeFolderMirroredBy(folder);
+
+                if (mirroredFolder is not null && codeFiles.Contains((mirroredFolder, subject, IsCSharp: false)))
+                    continue;
+
+                yield return new Breach(
+                    Rule,
+                    test,
+                    mirroredFolder is null
+                        ? $"Move the test beside the `{subject}` code file it tests, or delete it."
+                        : $"No `{subject}` code file sits at `{mirroredFolder}`. Move the test to mirror the code file it tests, or delete it.");
 
                 continue;
             }

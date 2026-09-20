@@ -95,6 +95,9 @@ BlobRepositoryTests`, and the other aspect files of that test class hold the oth
 - Test folders mirror the folders of the code files they test. A C# test in project `X.Tests` sits at
   the same relative path as the code file it tests in project `X`.
 - A front-end test sits beside the code file it tests.
+- A test in a language with no project file sits beside the code file it tests, or at the same
+  relative path beneath a test root. `test-roots` maps a test root to the folder it mirrors, so a
+  script and the test that proves it stay apart the way a C# project and its `.Tests` project do.
 - Support files sit beside the tests that use them, or in a folder named for what they do. The size
   limit, the name map and the banned names apply to them too.
 
@@ -131,10 +134,13 @@ source-files:
   - .cs
   - .ts
   - .tsx
+  - .sh
+  - .ps1
 test-files:
   - "*.Tests.cs"
   - "*.test.ts"
   - "*.test.tsx"
+  - "*.test.sh"
 skip-folders:
   - Migrations
   - bin
@@ -147,4 +153,6 @@ banned-folder-names:
   - misc
 name-map:
   "*Queries": Queries
+test-roots:
+  tests/scripts: scripts
 ```
