@@ -44,4 +44,6 @@ When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which ti
 
 **A clean finish** takes two things together: the log reaches its `END` line, and the drift report `/spec-drift` posted as a comment on the spec issue lists nothing Missing, Partial or Contradicts. A drift check that found gaps still exits 0, so the log alone never settles it — read the comment. Then make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.
 
-**Anything else is an early stop.** The script stops on the first failure. Say what failed and give the log path. The close offer belongs to a clean finish alone. The failed ticket stays open, with the reason in the log and the session's stderr beside it. The fix is a human one. After the fix, re-running the same command resumes from the first open ticket.
+**Anything else is an early stop.** The script stops on the first failure. Say what failed and give the log path. The close offer belongs to a clean finish alone. The failed ticket stays open, with the reason in the log and the session's stderr beside it. Its worktree stays too, so the broken state can be read; the log names the path. The fix is a human one.
+
+Re-running the same command then refuses, because that worktree is still there. The refusal names the two ways out: carry on in the worktree, or throw it away with the command it prints. Once it is gone, re-running resumes from the first open ticket.

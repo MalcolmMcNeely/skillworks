@@ -72,6 +72,16 @@ make_repo() {
   git -C "$WORKTREE" push --quiet origin main
 }
 
+# A commit somebody else pushed, so only a fetch can find it.
+advance_origin() {  # <name>
+  local other="$TMP/other"
+  rm -rf "$other"
+  git clone --quiet "$ORIGIN" "$other"
+  configure "$other"
+  write_commit "$other" "$1.txt" "$1" "Somebody else's $1"
+  git -C "$other" push --quiet origin main
+}
+
 commit_for_ticket() {
   write_commit "$WORKTREE" work.txt "work" "$(printf 'Do the work\n\nTicket: #%s' "$1")"
 }

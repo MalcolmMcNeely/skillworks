@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # Drive one spec's tickets to done, sequentially, one fresh Claude session each.
-# Each ticket lands on the remote the moment it passes.
+# Each ticket is built in a throwaway worktree of its own, cut from the newest
+# origin/main, and lands on the remote the moment it passes. The main checkout
+# is never worked in, so it stays usable for the whole run.
 #
 #   scripts/spec-loop.sh <spec-issue-number> [--dry-run]
 #
@@ -52,9 +54,10 @@ main() {
 
   # Git Bash would pass "/comment-sweep" to claude as "C:/Program Files/Git/comment-sweep".
   claude_p() {
-    MSYS_NO_PATHCONV=1 env -u CLAUDECODE claude -p "$@" \
-      --permission-mode "$PERMISSION_MODE" \
-      --output-format json
+    ( cd "$JOB_WORKTREE" \
+      && MSYS_NO_PATHCONV=1 env -u CLAUDECODE claude -p "$@" \
+        --permission-mode "$PERMISSION_MODE" \
+        --output-format json )
   }
 
   # Git Bash has no jq. Path conversion would also rewrite "/implement" here.
@@ -99,9 +102,9 @@ main() {
         command_loaded "$(json_field "$json" session_id)" "$command" "$args" ;;
       ticket-open)   [ "$(issue_state "$ticket")" = open ] ;;
       ticket-closed) [ "$(issue_state "$ticket")" = closed ] ;;
-      tree-changed)  [ -n "$(git status --porcelain)" ] ;;
-      tree-clean)    [ -z "$(git status --porcelain)" ] ;;
-      new-commit)    [ "$(git rev-parse HEAD)" != "$TICKET_BASE" ] ;;
+      tree-changed)  [ -n "$(git -C "$JOB_WORKTREE" status --porcelain)" ] ;;
+      tree-clean)    [ -z "$(git -C "$JOB_WORKTREE" status --porcelain)" ] ;;
+      new-commit)    [ "$(git -C "$JOB_WORKTREE" rev-parse HEAD)" != "$TICKET_BASE" ] ;;
       *)             return 1 ;;
     esac
   }
@@ -113,7 +116,7 @@ main() {
       gh issue reopen "$ticket" >/dev/null \
         || say "WARN  #$ticket is closed and did not reopen. Reopen it by hand."
     fi
-    die "FAIL  #$ticket step $step $reason. See $log"
+    die "FAIL  #$ticket step $step $reason. Its worktree is at $JOB_WORKTREE. See $log"
   }
 
   run_step() {
@@ -128,6 +131,16 @@ main() {
       check_passes "$ticket" "$step" "$check" "$out.json" 2>>"$out.err" \
         || stop_step "$ticket" "$step" "failed check $check" "$out.json and $out.err"
     done
+  }
+
+  # A path comes back on stdout, so a reason has to take the other channel. It
+  # goes to the log as well, because a background run has nobody at the terminal.
+  worktree() {
+    local err status=0
+    err="$LOG_DIR/worktree.err"
+    bash "$SCRIPTS/ticket-worktree.sh" "$1" "$ROOT" "$SPEC" "${2:-}" 2>"$err" || status=$?
+    [ "$status" -eq 0 ] || tee -a "$LOG" <"$err" >&2
+    return "$status"
   }
 
   # Found from this file, not from the working directory, because the working
@@ -170,18 +183,13 @@ main() {
   TICKET_COUNT=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" --jq '.[].number' | wc -l)
   [ "$TICKET_COUNT" -gt 0 ] || die "ABORT spec #$SPEC has no sub-issues. Run /to-tickets first."
 
-  # --- working tree ---------------------------------------------------------
+  # --- the checkout the worktrees are cut from ------------------------------
 
-  # This repo commits straight to main. No branch, no PR. See CLAUDE.md.
-  BRANCH=$(git rev-parse --abbrev-ref HEAD)
-  [ "$BRANCH" = "main" ] || die "ABORT on branch '$BRANCH'. This repo works on main."
-
-  [ -z "$(git status --porcelain)" ] || die "ABORT working tree is dirty. Commit or stash first."
-
-  WORKTREE=$(git rev-parse --show-toplevel)
+  # No guard on the branch or on the edits: nothing is ever built in this checkout.
+  ROOT=$(git rev-parse --show-toplevel)
 
   if [ "$DRY_RUN" = "1" ]; then
-    say "DRY   repo=$REPO  me=$ME  branch=$BRANCH"
+    say "DRY   repo=$REPO  me=$ME"
     say "DRY   spec #$SPEC: $spec_title"
     gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
       --jq '.[] | "\(.number)\t\(.state)\t\(.title)"' |
@@ -198,16 +206,19 @@ main() {
     exit 0
   fi
 
-  # Behind the remote, every ticket's push is refused after a session spent money.
-  git pull --ff-only origin main
+  # A leftover group is work nobody has read yet, and not the driver's to throw away.
+  worktree check || die "ABORT spec #$SPEC already has a worktree group. Nothing was started."
+
+  # Every worktree is cut from origin/main, so the ref has to be current first.
+  git fetch --quiet origin || die "ABORT could not fetch from origin"
 
   # The drift check needs the commit this loop started from. Written once, so a
   # resumed run still measures against the original starting point.
   BASE_FILE="$LOG_DIR/base.sha"
-  [ -f "$BASE_FILE" ] || git rev-parse HEAD > "$BASE_FILE"
+  [ -f "$BASE_FILE" ] || git rev-parse origin/main > "$BASE_FILE"
   BASE=$(cat "$BASE_FILE")
 
-  say "LOOP  spec #$SPEC on $BRANCH from $BASE ($REPO)"
+  say "LOOP  spec #$SPEC from $BASE ($REPO)"
 
   # --- the loop -------------------------------------------------------------
 
@@ -263,7 +274,9 @@ main() {
     POSITION=$(( TICKET_COUNT - open_count + 1 ))
 
     say "START #$next $title"
-    TICKET_BASE=$(git rev-parse HEAD)
+    JOB_WORKTREE=$(worktree open "ticket-$next") \
+      || die "FAIL  #$next got no worktree to be built in."
+    TICKET_BASE=$(git -C "$JOB_WORKTREE" rev-parse HEAD)
     started=$(date -u +%s)
 
     run_step "$next" build
@@ -276,29 +289,42 @@ main() {
     # Finished work on one machine only is work at the mercy of that machine.
     land_out=$(step_log "$next" land).out
     landed=0
-    bash "$SCRIPTS/integrate-ticket.sh" "$WORKTREE" "$next" >"$land_out" 2>&1 || landed=$?
+    bash "$SCRIPTS/integrate-ticket.sh" "$JOB_WORKTREE" "$next" >"$land_out" 2>&1 || landed=$?
     say "$(cat "$land_out")"
-    [ "$landed" -eq 0 ] || die "FAIL  #$next did not reach main. See $land_out"
+    [ "$landed" -eq 0 ] \
+      || die "FAIL  #$next did not reach main. Its worktree is at $JOB_WORKTREE. See $land_out"
+
+    landed_at=$(git -C "$JOB_WORKTREE" rev-parse --short HEAD)
+
+    # A ticket that failed never gets here, so a worktree left behind means a stop.
+    worktree close "ticket-$next" \
+      || die "FAIL  #$next landed, but its worktree at $JOB_WORKTREE would not go."
 
     # A skipped ticket never reaches here, so nobody else's work is in the mean.
     TIMED_SECONDS=$(( TIMED_SECONDS + $(date -u +%s) - started ))
     TIMED_TICKETS=$(( TIMED_TICKETS + 1 ))
     MEAN_SECONDS=$(( TIMED_SECONDS / TIMED_TICKETS ))
 
-    say "DONE  #$next  $(git rev-parse --short HEAD)"
+    say "DONE  #$next  $landed_at"
   done
 
   # --- drift check ----------------------------------------------------------
 
   say "DRIFT all tickets closed. Checking the result against spec #$SPEC."
+
+  # The main checkout was never pulled, so only a fresh worktree holds the finished work.
+  JOB_WORKTREE=$(worktree open drift) \
+    || die "FAIL  the drift check got no worktree to run in."
   claude_p "/spec-drift $SPEC $BASE" >"$LOG_DIR/drift.json" 2>"$LOG_DIR/drift.err" \
     || say "WARN  drift check exited non-zero. See $LOG_DIR/drift.err"
 
-  if [ -n "$(git status --porcelain)" ]; then
-    die "FAIL  drift check left uncommitted changes. See git status."
+  if [ -n "$(git -C "$JOB_WORKTREE" status --porcelain)" ]; then
+    die "FAIL  drift check left uncommitted changes in $JOB_WORKTREE."
   fi
-  say "END   spec #$SPEC complete. Every ticket is on $BRANCH."
-  say "      Review it with: git log --oneline $BASE..HEAD"
+  worktree close drift || die "FAIL  the drift worktree at $JOB_WORKTREE would not go."
+
+  say "END   spec #$SPEC complete. Every ticket is on main."
+  say "      Review it with: git log --oneline $BASE..origin/main"
 }
 
 # Bash reads a script while it runs it, so an edit mid-run changes what runs next.
