@@ -232,10 +232,42 @@ case_closing_leaves_no_worktree_and_no_branch() {
   run_script "$SCRIPT" close "$WORKTREE" 158 ticket-164
 
   assert_status 0 "$STATUS"
+  assert_says "ticket-164 left nothing behind" "$OUTPUT"
   [ ! -e "$(group 158)/ticket-164" ] || fail "the worktree is still there"
   [ ! -e "$(group 158)" ] || fail "the spec's group is still there"
   ! git -C "$WORKTREE" rev-parse --verify --quiet refs/heads/spec-loop/158/ticket-164 >/dev/null \
     || fail "the branch is still there"
+}
+
+case_closing_a_job_left_with_only_its_branch_still_removes_it() {
+  given_job 158 ticket-164
+  git -C "$WORKTREE" worktree remove --force "$(group 158)/ticket-164"
+
+  run_script "$SCRIPT" close "$WORKTREE" 158 ticket-164
+
+  assert_status 0 "$STATUS"
+  assert_says "ticket-164 left nothing behind" "$OUTPUT"
+  ! has_branch 158 ticket-164 || fail "the branch is still there"
+  [ ! -e "$(group 158)" ] || fail "the spec's group is still there"
+}
+
+case_closing_a_job_of_a_spec_that_has_none_is_refused() {
+  run_script "$SCRIPT" close "$WORKTREE" 158 ticket-164
+
+  assert_status 1 "$STATUS"
+  assert_says "ticket-164" "$OUTPUT"
+  assert_says "no worktree and no branch" "$OUTPUT"
+}
+
+case_closing_a_job_under_a_name_the_spec_does_not_know_is_refused() {
+  given_job 158 ticket-164
+
+  run_script "$SCRIPT" close "$WORKTREE" 158 164
+
+  assert_status 1 "$STATUS"
+  assert_says "no worktree and no branch" "$OUTPUT"
+  [ -e "$(group 158)/ticket-164" ] || fail "the job that was there was removed"
+  has_branch 158 ticket-164 || fail "the branch of the job that was there is gone"
 }
 
 case_a_closed_job_leaves_nothing_to_keep() {

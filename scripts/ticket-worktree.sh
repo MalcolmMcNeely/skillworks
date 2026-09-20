@@ -21,6 +21,8 @@
 #
 # `plan` prints the path and the branch a job would get, tab separated, and makes neither.
 #
+# `close` removes the worktree and the branch a job still has, and refuses a job that has neither.
+#
 # Worktrees are grouped by spec, so `keep` takes the whole group a stopped run left
 # behind: each job's uncommitted work is committed, its branch is renamed out of the
 # way so the job can be opened again, and the worktree goes.
@@ -94,15 +96,23 @@ main() {
     # Git forgets a worktree whose folder somebody deleted by hand.
     git -C "$CHECKOUT" worktree prune
 
+    local found=0
+
     # Ignored build output holds the worktree open, and the commit is already on the remote.
     if [ -e "$TREE" ]; then
+      found=1
       git -C "$CHECKOUT" worktree remove --force "$TREE" >&2 \
         || die "git would not remove the worktree at $TREE."
     fi
     if branch_exists; then
+      found=1
       git -C "$CHECKOUT" branch --quiet -D "$BRANCH" >&2 \
         || die "git would not delete branch $BRANCH."
     fi
+
+    # A success on a name no job had would read exactly like a clean removal.
+    [ "$found" = 1 ] \
+      || die "$JOB of spec $SPEC has no worktree and no branch, so nothing was removed."
 
     drop_group
     say "$JOB left nothing behind"
