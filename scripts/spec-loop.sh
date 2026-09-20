@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Drive one spec's tickets to done, sequentially, one fresh Claude session each.
-# Commits per ticket, pushes once at the end.
+# Each ticket lands on the remote the moment it passes.
 #
 #   scripts/spec-loop.sh <spec-issue-number> [--dry-run]
 #
@@ -130,6 +130,10 @@ main() {
     done
   }
 
+  # Found from this file, not from the working directory, because the working
+  # directory is about to become whichever checkout the ticket is built in.
+  SCRIPTS=$(cd "$(dirname "$0")" && pwd)
+
   SPEC="${1:-}"
   DRY_RUN=0
   [ "${2:-}" = "--dry-run" ] && DRY_RUN=1
@@ -174,6 +178,8 @@ main() {
 
   [ -z "$(git status --porcelain)" ] || die "ABORT working tree is dirty. Commit or stash first."
 
+  WORKTREE=$(git rev-parse --show-toplevel)
+
   if [ "$DRY_RUN" = "1" ]; then
     say "DRY   repo=$REPO  me=$ME  branch=$BRANCH"
     say "DRY   spec #$SPEC: $spec_title"
@@ -192,7 +198,7 @@ main() {
     exit 0
   fi
 
-  # Behind the remote, the push at the end fails after the sessions spent money.
+  # Behind the remote, every ticket's push is refused after a session spent money.
   git pull --ff-only origin main
 
   # The drift check needs the commit this loop started from. Written once, so a
@@ -267,13 +273,18 @@ main() {
     run_step "$next" sweep --resume "$session"
     run_step "$next" finish --resume "$session"
 
+    # Finished work on one machine only is work at the mercy of that machine.
+    land_out=$(step_log "$next" land).out
+    landed=0
+    bash "$SCRIPTS/integrate-ticket.sh" "$WORKTREE" "$next" >"$land_out" 2>&1 || landed=$?
+    say "$(cat "$land_out")"
+    [ "$landed" -eq 0 ] || die "FAIL  #$next did not reach main. See $land_out"
+
     # A skipped ticket never reaches here, so nobody else's work is in the mean.
     TIMED_SECONDS=$(( TIMED_SECONDS + $(date -u +%s) - started ))
     TIMED_TICKETS=$(( TIMED_TICKETS + 1 ))
     MEAN_SECONDS=$(( TIMED_SECONDS / TIMED_TICKETS ))
 
-    # No push here. The loop pushes once at the end, so a half-finished spec
-    # never reaches the remote.
     say "DONE  #$next  $(git rev-parse --short HEAD)"
   done
 
@@ -286,11 +297,7 @@ main() {
   if [ -n "$(git status --porcelain)" ]; then
     die "FAIL  drift check left uncommitted changes. See git status."
   fi
-  # The one push. Everything up to here stayed local, so a failed loop leaves
-  # the remote untouched and a "git reset --hard $BASE" undoes the lot.
-  git push origin "$BRANCH"
-
-  say "END   spec #$SPEC complete and pushed to $BRANCH."
+  say "END   spec #$SPEC complete. Every ticket is on $BRANCH."
   say "      Review it with: git log --oneline $BASE..HEAD"
 }
 

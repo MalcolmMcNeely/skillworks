@@ -155,10 +155,13 @@ The tool never touches the AppHost's Loki, so your real telemetry stays as it is
 ### Checks
 
 The API tests start Loki in a container, so Docker must be running. Run the front-end checks from
-`src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally:
+`src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally. The
+shell tests build a throwaway repository in a temporary directory and touch nothing else:
 
 ```
 dotnet test Skillworks.slnx
+
+bash tests/scripts/run.sh
 
 cd src/Skillworks.Studio.Web
 npm run typecheck
@@ -178,6 +181,7 @@ npm test
 | `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks them. |
 | `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
+| `tests/scripts/` | The drivers in `scripts/`, run against a throwaway repository. |
 | `plugins/` | The folder of plugins Studio reads by default. Empty for now. |
 | `.claude/skills/` | Dev tooling for working in this repo. Mostly vendored, not shipped. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
@@ -240,7 +244,8 @@ Two stages. A human drives the first. A script drives the second.
                                /implement <n> --stop-after-tests
                                /comment-sweep
                                /implement <n> --finish     review, commit, close
-                          └─ at the end: /spec-drift against the spec, then ONE push
+                               scripts/integrate-ticket.sh  push it to main
+                          └─ at the end: /spec-drift against the spec
 ```
 
 The tickets are GitHub sub-issues of the spec. The driver reads one spec's children and nothing
