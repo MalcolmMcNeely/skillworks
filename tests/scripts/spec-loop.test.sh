@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# The spec loop's dry run, read against a throwaway repository.
+# The spec loop's plan and its steps, read against a throwaway repository.
 
 . "$(dirname "${BASH_SOURCE[0]}")/harness.sh"
 
@@ -10,12 +10,13 @@ ONE_OPEN_TICKET=$'168\topen\tTICKET: The dry run prints the plan'
 ONE_CLOSED_TICKET=$'161\tclosed\tTICKET: Already done'
 
 # The dry run puts its log where it is run, so it is run in the throwaway repository.
+# A session is looked for under this case's own folder, so no real one can answer a check here.
 run_loop() {  # <args...>
-  OUTPUT=$(cd "$WORKTREE" && bash "$ROOT/$SCRIPT" "$@" 2>&1)
+  OUTPUT=$(cd "$WORKTREE" && CLAUDE_CONFIG_DIR="$TMP/claude" bash "$ROOT/$SCRIPT" "$@" 2>&1)
   STATUS=$?
 }
 
-# Every answer the dry run asks for and no others, so an unplanned call fails rather than guesses.
+# Every answer the loop asks for and no others, so an unplanned call fails rather than guesses.
 given_the_tracker_holds() {  # <number, state and title per ticket, tab separated>
   printf '%s\n' "$1" > "$TMP/tickets"
   stub claude
@@ -27,6 +28,9 @@ case "$*" in
   "auth status")                                        exit 0 ;;
   "repo view --json nameWithOwner --jq .nameWithOwner")  echo owner/repo ;;
   "api user --jq .login")                               echo me ;;
+  "issue edit"*)                                        exit 0 ;;
+  *blocked_by*)                                         echo 0 ;;
+  *assignees*)                                          echo "" ;;
   *"--jq .state")                                       echo open ;;
   *"--jq .title")                                       echo "SPEC: A spec to plan" ;;
   *sub_issues*".[].number")                             cut -f1 "$TICKETS" ;;
@@ -35,6 +39,22 @@ case "$*" in
   *) echo "the gh stub has no answer for: $*" >&2;      exit 1 ;;
 esac
 STUB
+}
+
+# The step names in the order the plan prints them, so a case reads the order and not just the set.
+planned_steps() {
+  printf '%s\n' "$OUTPUT" | awk '/claude -p/ { printf "%s ", $1 }'
+}
+
+planned_call() {  # <step>
+  printf '%s\n' "$OUTPUT" | awk -v step="$1" '$1 == step && /claude -p/ { print; exit }'
+}
+
+# The checks sit on the line under the call they belong to, so a case reads the pair.
+planned_checks() {  # <step>
+  printf '%s\n' "$OUTPUT" | awk -v step="$1" '
+    $1 == step && /claude -p/ { under = 1; next }
+    under                     { sub(/^ *checks: /, ""); print; exit }'
 }
 
 case_the_dry_run_prints_the_worktree_and_the_branch() {
@@ -75,6 +95,49 @@ case_the_dry_run_still_prints_the_sessions_it_would_start() {
   assert_says '/implement 168 --finish' "$OUTPUT"
   assert_says 'checks: no-error command-loaded ticket-open tree-changed' "$OUTPUT"
   assert_says 'checks: no-error command-loaded new-commit tree-clean ticket-closed' "$OUTPUT"
+}
+
+case_the_dry_run_prints_the_three_review_steps_between_the_sweep_and_the_finish() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+
+  run_loop 158 --dry-run
+
+  assert_status 0 "$STATUS"
+  assert_says '/review-standards 168' "$OUTPUT"
+  assert_says '/review-spec 168' "$OUTPUT"
+  assert_says '/review-architecture 168' "$OUTPUT"
+  assert_eq "the order of the steps" \
+    "build sweep standards spec architecture finish " "$(planned_steps)"
+}
+
+case_the_dry_run_gives_every_review_step_the_same_checks() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+
+  run_loop 158 --dry-run
+
+  assert_status 0 "$STATUS"
+  local axis
+  for axis in standards spec architecture; do
+    assert_eq "the checks on the $axis step" \
+      "no-error command-loaded ticket-open axis-reported" "$(planned_checks "$axis")"
+  done
+}
+
+case_the_dry_run_starts_every_review_step_fresh_and_resumes_the_rest() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+
+  run_loop 158 --dry-run
+
+  assert_status 0 "$STATUS"
+  local step
+  for step in build standards spec architecture; do
+    case "$(planned_call "$step")" in
+      *--resume*) fail "the $step step would resume a session" ;;
+    esac
+  done
+  for step in sweep finish; do
+    assert_says '--resume <build session>' "$(planned_call "$step")"
+  done
 }
 
 case_a_closed_ticket_is_listed_and_given_no_plan() {
@@ -215,6 +278,116 @@ case_a_keep_that_succeeded_says_what_it_left_alone() {
   assert_status 0 "$STATUS"
   assert_says "$stray is no worktree of its own, so it was left where it is" \
     "$(cat "$WORKTREE/.spec-loop/158/loop.log")"
+}
+
+# --- the review steps, run for real -----------------------------------------
+
+# given_the_tracker_holds stubs the node the checks need, so the real one goes back on PATH here.
+given_sessions_that_report() {
+  rm -f "$STUBS/node"
+  mkdir -p "$TMP/said" "$TMP/refused" "$TMP/claude/projects/one"
+  stub claude
+  printf 'SAID="%s"\nREFUSED="%s"\nSESSIONS="%s"\n' \
+    "$TMP/said" "$TMP/refused" "$TMP/claude/projects/one" >> "$STUBS/claude"
+  cat >> "$STUBS/claude" <<'STUB'
+for arg in "$@"; do
+  case "$arg" in /*) prompt=$arg; break ;; esac
+done
+name=${prompt%% *}
+args=${prompt#"$name"}
+step=${name#/}
+[ ! -f "$REFUSED/$step" ] || { echo "the $step session was turned down" >&2; exit 1; }
+count=$(( $(cat "$SESSIONS/count" 2>/dev/null || echo 0) + 1 ))
+echo "$count" > "$SESSIONS/count"
+session="session-$count"
+printf '{"type":"user","message":{"content":"<command-name>%s</command-name><command-args>%s</command-args>"}}\n' \
+  "$name" "${args# }" > "$SESSIONS/$session.jsonl"
+case "$step" in
+  review-standards)    said="## Standards. Nothing found." ;;
+  review-spec)         said="## Spec. Nothing found." ;;
+  review-architecture) said="## Architecture. Nothing found." ;;
+  *)                   said="did the $step" ;;
+esac
+[ ! -f "$SAID/$step" ] || said=$(cat "$SAID/$step")
+case "$prompt" in *--stop-after-tests) printf 'built\n' >> built.txt ;; esac
+printf '{"is_error":false,"session_id":"%s","result":"%s"}\n' "$session" "$said"
+STUB
+}
+
+given_an_axis_that_says() {  # <axis> <what its turn ends with>
+  printf '%s' "$2" > "$TMP/said/review-$1"
+}
+
+given_an_axis_that_errors() {  # <axis>
+  : > "$TMP/refused/review-$1"
+}
+
+session_call() {  # <prompt>
+  calls | grep -F -- "$1" | head -1
+}
+
+ticket_worktree() { printf '%s/.claude/worktrees/spec-158/ticket-168' "$WORKTREE"; }
+
+# The finish step cannot pass its checks here, so the loop stops with all three axes on record.
+case_every_review_step_is_given_a_session_that_resumes_nothing() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  local axis
+  for axis in standards spec architecture; do
+    assert_says "/review-$axis 168" "$(calls)"
+    case "$(session_call "/review-$axis 168")" in
+      *--resume*) fail "the $axis step resumed a session" ;;
+    esac
+  done
+  assert_says '--resume session-1' "$(session_call /comment-sweep)"
+}
+
+case_a_review_step_that_reported_nothing_stops_the_loop() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_an_axis_that_says standards "I have finished looking."
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "step standards failed check axis-reported" "$OUTPUT"
+  case "$(calls)" in
+    *"/review-spec"*) fail "the loop carried on past an axis that reported nothing" ;;
+  esac
+}
+
+case_a_review_step_that_reported_no_findings_passes_its_check() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_an_axis_that_says standards "## Standards. No findings on this change."
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "/review-spec 168" "$(calls)"
+  case "$OUTPUT" in
+    *"step standards failed"*) fail "an axis that said it found nothing was failed" ;;
+  esac
+}
+
+case_a_review_step_that_errored_stops_the_loop_and_keeps_the_worktree() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_an_axis_that_errors spec
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "step spec exited non-zero" "$OUTPUT"
+  assert_says "$(ticket_worktree)" "$OUTPUT"
+  [ -d "$(ticket_worktree)" ] || fail "the worktree of the stopped ticket was thrown away"
+  case "$(calls)" in
+    *"/implement 168 --finish"*) fail "the loop went on to finish the ticket" ;;
+  esac
 }
 
 case_a_keep_that_left_nothing_alone_says_nothing() {

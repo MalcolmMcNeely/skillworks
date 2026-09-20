@@ -31,9 +31,11 @@ main() {
 
   step_prompt() {
     case "$2" in
-      build)  printf '/implement %s --stop-after-tests' "$1" ;;
-      sweep)  printf '/comment-sweep' ;;
-      finish) printf '/implement %s --finish' "$1" ;;
+      build)        printf '/implement %s --stop-after-tests' "$1" ;;
+      sweep)        printf '/comment-sweep' ;;
+      standards|spec|architecture)
+                    printf '/review-%s %s' "$2" "$1" ;;
+      finish)       printf '/implement %s --finish' "$1" ;;
     esac
   }
 
@@ -41,13 +43,24 @@ main() {
     case "$1" in
       build)  printf 'no-error command-loaded ticket-open tree-changed' ;;
       sweep)  printf 'no-error command-loaded ticket-open' ;;
+      standards|spec|architecture)
+              printf 'no-error command-loaded ticket-open axis-reported' ;;
       finish) printf 'no-error command-loaded new-commit tree-clean ticket-closed' ;;
     esac
   }
 
+  # A resumed axis would read the axis before it, and that separation is why there are three.
+  # Fresh is the default, so a step added without a line here cannot resume nothing at all.
+  step_resumes() {
+    case "$1" in
+      sweep|finish) return 0 ;;
+      *)            return 1 ;;
+    esac
+  }
+
   plan_line() {  # <name> <what runs> [checks]
-    printf '      %-8s %s\n' "$1" "$2"
-    [ -z "${3:-}" ] || printf '               checks: %s\n' "$3"
+    printf '      %-12s %s\n' "$1" "$2"
+    [ -z "${3:-}" ] || printf '                   checks: %s\n' "$3"
   }
 
   # The ticket now running counts as remaining, so the estimate never flatters the run.
@@ -100,6 +113,16 @@ main() {
 
   issue_state() { gh api "repos/$REPO/issues/$1" --jq .state; }
 
+  # A session can end its turn having said nothing, so the heading is what proves it did not.
+  axis_reported() {  # <the step's result file> <axis>
+    case "$(json_field "$1" result)" in
+      *"## ${2^}"*) ;;
+      *) printf 'the %s axis reported neither a finding nor a statement that it found none\n' \
+           "$2" >&2
+         return 1 ;;
+    esac
+  }
+
   check_passes() {
     local ticket="$1" step="$2" check="$3" json="$4" command args
     case "$check" in
@@ -107,6 +130,7 @@ main() {
       command-loaded)
         read -r command args <<<"$(step_prompt "$ticket" "$step")"
         command_loaded "$(json_field "$json" session_id)" "$command" "$args" ;;
+      axis-reported) axis_reported "$json" "$step" ;;
       ticket-open)   [ "$(issue_state "$ticket")" = open ] ;;
       ticket-closed) [ "$(issue_state "$ticket")" = closed ] ;;
       tree-changed)  [ -n "$(git -C "$JOB_WORKTREE" status --porcelain)" ] ;;
@@ -141,7 +165,7 @@ main() {
     local ticket="$1" step="$2" out check
     shift 2
     out=$(step_log "$ticket" "$step")
-    say "$(printf 'STEP  #%s %-10s%s' \
+    say "$(printf 'STEP  #%s %-13s%s' \
       "$ticket" "$step" "$(progress_suffix "$POSITION" "$TICKET_COUNT" "$MEAN_SECONDS")")"
     claude_p "$(step_prompt "$ticket" "$step")" "$@" >"$out.json" 2>"$out.err" \
       || stop_step "$ticket" "$step" "exited non-zero" "$out.err and $out.json"
@@ -166,6 +190,9 @@ main() {
   # Found from this file, not from the working directory, because the working
   # directory is about to become whichever checkout the ticket is built in.
   SCRIPTS=$(cd "$(dirname "$0")" && pwd)
+
+  # One list, read by the plan and by the run, so the two cannot drift apart.
+  STEPS="build sweep standards spec architecture finish"
 
   SPEC="${1:-}"
   DRY_RUN=0
@@ -234,9 +261,9 @@ main() {
       plan="$plan$(plan_line worktree "$tree")$NL"
       plan="$plan$(plan_line branch "$branch")$NL"
 
-      for step in build sweep finish; do
+      for step in $STEPS; do
         call=$(printf 'claude -p "%s"' "$(step_prompt "$n" "$step")")
-        [ "$step" = build ] || call="$call --resume <build session>"
+        if step_resumes "$step"; then call="$call --resume <build session>"; fi
         plan="$plan$(plan_line "$step" "$call" "$(step_checks "$step")")$NL"
       done
 
@@ -343,12 +370,18 @@ main() {
     TICKET_BASE=$(git -C "$JOB_WORKTREE" rev-parse HEAD)
     started=$(date -u +%s)
 
-    run_step "$next" build
-    build_json=$(step_log "$next" build).json
-    session=$(json_field "$build_json" session_id) && [ -n "$session" ] \
-      || die "FAIL  #$next step build gave no session id. See $build_json"
-    run_step "$next" sweep --resume "$session"
-    run_step "$next" finish --resume "$session"
+    session=""
+    for step in $STEPS; do
+      if step_resumes "$step"; then
+        run_step "$next" "$step" --resume "$session"
+      else
+        run_step "$next" "$step"
+      fi
+      [ "$step" = build ] || continue
+      build_json=$(step_log "$next" build).json
+      session=$(json_field "$build_json" session_id) && [ -n "$session" ] \
+        || die "FAIL  #$next step build gave no session id. See $build_json"
+    done
 
     # Finished work on one machine only is work at the mercy of that machine.
     # The session that wrote the ticket goes too, to resolve what it conflicts with.

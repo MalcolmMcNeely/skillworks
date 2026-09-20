@@ -1,0 +1,99 @@
+---
+name: review-architecture
+description: Review where a ticket's change sits and which way its dependencies point, against this repo's placement rules and boundary checks, and report under an Architecture heading.
+disable-model-invocation: true
+---
+
+# Review: Architecture
+
+One axis of the three-axis review. This one asks a single question: **is the code in the right place, and does it point the way this repo says it should?**
+
+The argument is the ticket's issue number.
+
+`/review-architecture 168`
+
+Two other axes run beside this one, each in a session of its own. Standards asks whether the code follows the written rules. Spec asks whether it is what was asked for. Neither is this axis's business.
+
+This axis reads outside the change. An import is only wrong against the module graph around it, so read the tree, not just the diff.
+
+## What to read
+
+### The change
+
+The loop runs this step before anything is committed, so the change is the working tree. The `-M` matters: it is what turns a rename into a rename rather than a delete and an add.
+
+```bash
+git add -N .
+git diff HEAD
+git diff HEAD --stat -M
+```
+
+If `git diff HEAD` is empty, stop and report that there is nothing to review.
+
+### The sources, in order of rank
+
+Three kinds, and each outranks the one before it.
+
+**Documented.** Anything that says how the code is *arranged* rather than how it is written: `CONTEXT-MAP.md`, each context's `CONTEXT.md`, and `docs/adr/`. `docs/agents/domain.md` says where this repo's decisions live. Read that first and follow it.
+
+**Written as rules.** `.claude/rules/file-placement.md` holds the eight Slice rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it:
+
+| Check | The rule it runs |
+|---|---|
+| `slice-folders` | 1, a Slice comes first |
+| `concern-folders` | 2, a Concern comes beneath, in the front end |
+| `slices-stay-apart` | 3, a Slice never reads another Slice |
+| `shared-stays-below` | 4, `Shared` never reads a Slice |
+| `shared-names-a-word` | 5, `Shared` has one door |
+| `slice-names-match` | 6, a Slice keeps its name everywhere |
+
+Rules 7 and 8 have no check behind them, and nor does the exemption that lets a test read a Slice.
+
+**Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
+
+| Command | What it runs |
+|---|---|
+| `dotnet test Skillworks.slnx` | `Skillworks.Architecture` over the whole tree |
+| `npm run lint` in `src/Skillworks.Studio.Web` | dependency-cruiser over the front end |
+
+Each names the rule, the path and what to do. Quote a breach as it came. Say which command you ran. Where no check exists for the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
+
+### The baseline
+
+On top of what the repo has, this axis always carries the arrangement baseline in [`../code-review/ARCHITECTURE-BASELINE.md`](../code-review/ARCHITECTURE-BASELINE.md). Read it yourself. Two items bend wherever the repo has written the rule down:
+
+- **A shared folder with a written door is not grab-bag growth.** The baseline item is about a folder nobody decided on. Judge against the door the repo wrote, not against the name.
+- **Duplication across a boundary can be correct.** Where the repo says two modules may hold one name, the merge is the defect, not the duplication.
+
+## The three binding rules
+
+- **The repo overrides.** A documented rule or a recorded decision wins. Do not re-litigate an ADR. If the change contradicts one, that is the finding. If the ADR itself looks wrong, say so once and move on.
+- **Diff-introduced only.** Standing debt is not a finding. Report what this change introduced, or made materially worse. An axis that re-reports the same architecture every run gets skimmed, and then skipped.
+- **Cite or drop it.** Every finding names the rule it breaches or the baseline item it matches, and quotes the line, usually a single import. Judgement without evidence is taste, and it is the failure this axis is most prone to.
+
+## What to look for
+
+Run every boundary check first and report what each said. Then, for every module the change touches:
+
+1. Does anything added point the wrong way, cross a seam it should not, or reach past a module's public entry point?
+2. Is every added or moved file in the module its dependencies say it belongs to, and in the Slice whose job it serves?
+3. Does the change introduce a cycle?
+4. Does any folder the change creates breach a written placement rule?
+
+Keep the whole report under 400 words.
+
+## When to skip
+
+Skip the axis when the change sits inside one module and touches no config, no dependency manifest, no new file and no file move. There is no arrangement question to answer. A new file asks which folder it belongs in, and a moved file asks which way it now points, so neither of those skips. Note the skip in the report.
+
+## How to end the turn
+
+End with the findings under an `## Architecture` heading. The driver reads that heading to prove the axis ran, so an axis that found nothing, or that skipped, still writes it:
+
+```
+## Architecture
+
+Skipped: the change sits inside one module and adds no file.
+```
+
+A turn that ends without that heading fails the step and stops the loop.
