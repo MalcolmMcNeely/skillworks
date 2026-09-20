@@ -211,6 +211,43 @@ given_a_conflict_beside_other_work() {  # <this ticket> <the other side's ticket
   git -C "$WORKTREE" commit --quiet -m "$(printf 'Do the work\n\nTicket: #%s' "$1")"
 }
 
+# Two files, so a count of one cannot pass for a measurement.
+given_two_conflicting_files() {  # <this ticket> <the other side's ticket>
+  local other
+  write_commit "$WORKTREE" shared.txt "start" "A file both sides will change"
+  write_commit "$WORKTREE" also.txt "start" "Another file both sides will change"
+  git -C "$WORKTREE" push --quiet origin main
+
+  other=$(other_checkout)
+  printf 'their line\n' >> "$other/shared.txt"
+  printf 'their line\n' >> "$other/also.txt"
+  git -C "$other" add -A
+  git -C "$other" commit --quiet -m \
+    "$(printf 'Somebody else got there first\n\nTicket: #%s' "$2")"
+  git -C "$other" push --quiet origin main
+
+  printf 'my line\n' >> "$WORKTREE/shared.txt"
+  printf 'my line\n' >> "$WORKTREE/also.txt"
+  git -C "$WORKTREE" add -A
+  git -C "$WORKTREE" commit --quiet -m "$(printf 'Do the work\n\nTicket: #%s' "$1")"
+}
+
+# Deleted on one side and changed on the other, so the file is unmerged with no marker in it.
+given_a_conflict_with_no_marker() {  # <this ticket> <the other side's ticket>
+  local other
+  write_commit "$WORKTREE" shared.txt "start" "A file one side will delete"
+  git -C "$WORKTREE" push --quiet origin main
+
+  other=$(other_checkout)
+  git -C "$other" rm --quiet shared.txt
+  git -C "$other" commit --quiet -m \
+    "$(printf 'Somebody else deleted it\n\nTicket: #%s' "$2")"
+  git -C "$other" push --quiet origin main
+
+  write_commit "$WORKTREE" shared.txt "my line" \
+    "$(printf 'Do the work\n\nTicket: #%s' "$1")"
+}
+
 stub_session() {  # <shell line, reading each conflicting file as "$f">
   stub claude
   {
@@ -242,11 +279,79 @@ case_a_conflict_is_handed_back_to_the_ticket_s_own_session() {
   # No answer gh gave holds the number, so only the commit message can have carried it.
   assert_says "#164" "$handed"
   assert_says "What that ticket set out to do." "$handed"
+  # Both sides of a hunk count, because the size is what has to be read to settle it.
+  assert_says "conflict #166 files=1 hunks=1 lines=2 outcome=resolved" "$OUTPUT"
   assert_eq "the remote's main" \
     "$(git -C "$WORKTREE" rev-parse HEAD)" "$(git -C "$ORIGIN" rev-parse main)"
   assert_eq "the resolved file on main" \
     "$(printf 'start\ntheir line\nmy line')" "$(git -C "$ORIGIN" show main:shared.txt)"
   ran "dotnet test Skillworks.slnx" || fail "the suite did not run on the resolution"
+}
+
+case_a_refusal_stops_the_run_and_names_the_rule_that_fired() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  # A refusal leaves the conflict where it stands, so this stub touches no file.
+  stub_saying claude "$(printf 'REFUSED 1: neither side says which count the tile shows.\n\nMine wanted a count per skill. Theirs wanted a count per session.')"
+  given_a_project
+  given_two_conflicting_files 167 164
+  local base mine
+  base=$(git -C "$ORIGIN" rev-parse main)
+  mine=$(git -C "$WORKTREE" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 167 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "refused under rule 1" "$OUTPUT"
+  # The developer fixes the cause from the log, so both intentions have to reach it.
+  assert_says "Mine wanted a count per skill." "$OUTPUT"
+  assert_says "Theirs wanted a count per session." "$OUTPUT"
+  assert_says "conflict #167 files=2 hunks=2 lines=4 outcome=refused" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+  [ -d "$WORKTREE" ] || fail "the worktree was removed"
+  assert_eq "the ticket's branch" "$mine" "$(git -C "$WORKTREE" rev-parse main)"
+  [ -n "$(git -C "$WORKTREE" diff --name-only --diff-filter=U)" ] \
+    || fail "the conflict was not left standing to be read"
+}
+
+case_a_refusal_that_staged_everything_still_stops_the_run() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  # Rule 2 fires after the checks fail, by which time the files can already be staged.
+  stub_session 'printf "resolved\n" > "$f"; git add "$f"'
+  printf 'echo "REFUSED 2: the typecheck still fails and I cannot see why."\n' >> "$STUBS/claude"
+  given_a_project
+  given_a_conflict 167 164
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 167 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "refused under rule 2" "$OUTPUT"
+  assert_says "outcome=refused" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+  ! called dotnet || fail "the suite ran on a resolution the session had refused"
+}
+
+case_a_conflict_with_no_marker_in_it_is_still_measured() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  stub_session 'git add "$f"'
+  given_a_project
+  given_a_conflict_with_no_marker 167 164
+
+  run_script "$SCRIPT" "$WORKTREE" 167 session-abc
+
+  assert_status 0 "$STATUS"
+  # A file with no marker in it counts none, rather than summing an empty field.
+  assert_says "conflict #167 files=1 hunks=0 lines=0 outcome=resolved" "$OUTPUT"
+  case "$OUTPUT" in
+    *arithmetic*) fail "counting a marker-free conflict broke the arithmetic" ;;
+  esac
 }
 
 case_a_leftover_conflict_marker_is_caught() {
@@ -264,6 +369,7 @@ case_a_leftover_conflict_marker_is_caught() {
   assert_status 1 "$STATUS"
   assert_says "conflict marker" "$OUTPUT"
   assert_says "shared.txt" "$OUTPUT"
+  assert_says "conflict #166 files=1 hunks=1 lines=2 outcome=caught" "$OUTPUT"
   assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
   ! called dotnet || fail "the suite ran on a half-finished resolution"
 }
@@ -282,6 +388,8 @@ case_a_session_that_resolves_nothing_leaves_the_conflict_standing() {
 
   assert_status 1 "$STATUS"
   assert_says "still conflicting" "$OUTPUT"
+  assert_says "named no rule" "$OUTPUT"
+  assert_says "outcome=refused" "$OUTPUT"
   assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
   [ -n "$(git -C "$WORKTREE" diff --name-only --diff-filter=U)" ] \
     || fail "the conflict was not left standing to be read"
@@ -391,6 +499,8 @@ case_a_later_commit_that_conflicts_too_stops_with_its_own_reason() {
 
   assert_status 1 "$STATUS"
   assert_says "a later commit of its own conflicted" "$OUTPUT"
+  # Two conflicts were met, so two are recorded, and neither was proved good.
+  assert_eq "conflicts recorded" 2 "$(printf '%s\n' "$OUTPUT" | grep -c 'conflict #166')"
   assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
 }
 

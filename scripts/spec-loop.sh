@@ -110,12 +110,23 @@ main() {
   }
 
   # The loop picks only open tickets, so a rerun would skip a closed one.
+  reopen() {
+    local state
+    # A read that failed is not a ticket that is open, and guessing it is loses the ticket.
+    state=$(issue_state "$1") \
+      || { say "WARN  #$1 would not be read, so it may still be closed and a rerun skip it."
+           return 0; }
+    [ "$state" = closed ] || return 0
+    if gh issue reopen "$1" >/dev/null; then
+      say "      #$1 is open again, so a rerun starts from it"
+    else
+      say "WARN  #$1 did not reopen. Reopen it by hand, or a rerun will skip it."
+    fi
+  }
+
   stop_step() {
     local ticket="$1" step="$2" reason="$3" log="$4"
-    if [ "$(issue_state "$ticket")" = closed ]; then
-      gh issue reopen "$ticket" >/dev/null \
-        || say "WARN  #$ticket is closed and did not reopen. Reopen it by hand."
-    fi
+    reopen "$ticket"
     die "FAIL  #$ticket step $step $reason. Its worktree is at $JOB_WORKTREE. See $log"
   }
 
@@ -293,8 +304,11 @@ main() {
     bash "$SCRIPTS/integrate-ticket.sh" "$JOB_WORKTREE" "$next" "$session" \
       >"$land_out" 2>&1 || landed=$?
     say "$(cat "$land_out")"
-    [ "$landed" -eq 0 ] \
-      || die "FAIL  #$next did not reach main. Its worktree is at $JOB_WORKTREE. See $land_out"
+    if [ "$landed" -ne 0 ]; then
+      # The finishing step closed it, and the work it closed on never reached the remote.
+      reopen "$next"
+      die "FAIL  #$next did not reach main. Its worktree is at $JOB_WORKTREE. See $land_out"
+    fi
 
     landed_at=$(git -C "$JOB_WORKTREE" rev-parse --short HEAD)
 

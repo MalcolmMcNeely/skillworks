@@ -27,8 +27,45 @@ main() {
 
   NL=$'\n'
 
+  # Empty when no conflict is in hand, so a stop can tell whether it has one to record.
+  CONFLICT_SIZE=""
+
   say() { printf 'ok    %s\n' "$*"; }
-  die() { printf 'FAIL  %s\n' "$*" >&2; exit 1; }
+
+  # A stop with a conflict in hand is the driver's, because a refusal records itself first.
+  die() {
+    [ -z "$CONFLICT_SIZE" ] || conflict_ended caught
+    printf 'FAIL  %s\n' "$*" >&2
+    exit 1
+  }
+
+  # No size limit is imposed, so this record is what lets one be set from real numbers.
+  conflict_ended() {  # <resolved|caught|refused>
+    printf 'note  conflict #%s %s outcome=%s\n' "$TICKET" "$CONFLICT_SIZE" "$1"
+    CONFLICT_SIZE=""
+  }
+
+  conflict_size() {  # <conflicting files>
+    local file counted files=0 hunks=0 lines=0
+    while IFS= read -r file; do
+      [ -n "$file" ] || continue
+      files=$(( files + 1 ))
+      # A modify/delete conflict leaves a file with no marker in it, and so does a binary one.
+      [ -f "$WORKTREE/$file" ] || continue
+      # The base section is not a side, so the count is the same in any conflict style.
+      counted=$(awk '
+        { sub(/\r$/, "") }
+        /^<<<<<<< /               { hunk = 1; side = 1; hunks += 1; next }
+        hunk && /^\|\|\|\|\|\|\|/ { side = 0; next }
+        hunk && /^=======$/       { side = 1; next }
+        hunk && /^>>>>>>> /       { hunk = 0; next }
+        hunk && side              { lines += 1 }
+        END { print hunks+0, lines+0 }' "$WORKTREE/$file")
+      hunks=$(( hunks + ${counted%% *} ))
+      lines=$(( lines + ${counted##* } ))
+    done <<<"$1"
+    printf 'files=%s hunks=%s lines=%s' "$files" "$hunks" "$lines"
+  }
 
   WORKTREE="${1:-}"
   TICKET="${2:-}"
@@ -132,16 +169,19 @@ main() {
   # --- resolving, and proving the resolution --------------------------------
 
   resolve_conflict() {  # <base> <what the rebase said>
-    local base="$1" refused="$2" conflicted prompt said left file carried
-
-    [ -n "$SESSION" ] || die "$(printf \
-      '#%s conflicts with what landed on main while it was being built, and no session was named to resolve it. The rebase is still open in %s, and nothing was pushed. Put it back with: git -C %s rebase --abort\ngit said:\n%s' \
-      "$TICKET" "$WORKTREE" "$WORKTREE" "$refused")"
+    local base="$1" refused="$2" conflicted prompt said left rule file carried next_conflict
 
     conflicted=$(git -C "$WORKTREE" diff --name-only --diff-filter=U)
     [ -n "$conflicted" ] || die "$(printf \
       '#%s stopped its rebase in %s with no conflicting file in it, so there is nothing to resolve. Nothing was pushed.\ngit said:\n%s' \
       "$TICKET" "$WORKTREE" "$refused")"
+
+    # Measured before the session is asked, so a conflict that goes nowhere is still counted.
+    CONFLICT_SIZE=$(conflict_size "$conflicted")
+
+    [ -n "$SESSION" ] || die "$(printf \
+      '#%s conflicts with what landed on main while it was being built, and no session was named to resolve it. The rebase is still open in %s, and nothing was pushed. Put it back with: git -C %s rebase --abort\ngit said:\n%s' \
+      "$TICKET" "$WORKTREE" "$WORKTREE" "$refused")"
 
     say "#$TICKET conflicts with the other side. Session $SESSION wrote its side, so it resolves it."
 
@@ -152,11 +192,24 @@ main() {
       '#%s handed its conflict to session %s, which exited non-zero. The rebase is still open in %s, and nothing was pushed. It said:\n%s' \
       "$TICKET" "$SESSION" "$WORKTREE" "$said")"
 
-    # The skill refuses by leaving the conflict where it stands.
+    # A refusal is what the session declares, whatever it went on to leave in the index.
+    rule=$(printf '%s' "$said" \
+      | sed -n 's/^[[:space:]]*REFUSED[[:space:]]*\([0-9][0-9]*\).*/\1/p' | sed -n 1p)
+    if [ -n "$rule" ]; then
+      conflict_ended refused
+      die "$(printf \
+        '#%s came back from session %s, which refused under rule %s. The rebase is still open in %s, and nothing was pushed. The session said:\n%s' \
+        "$TICKET" "$SESSION" "$rule" "$WORKTREE" "$said")"
+    fi
+
+    # Leaving the conflict standing is a refusal too, and one that named no rule may be broken.
     left=$(git -C "$WORKTREE" diff --name-only --diff-filter=U)
-    [ -z "$left" ] || die "$(printf \
-      '#%s came back from session %s with these files still conflicting:\n%s\nThe rebase is still open in %s, and nothing was pushed. The session said:\n%s' \
-      "$TICKET" "$SESSION" "$left" "$WORKTREE" "$said")"
+    if [ -n "$left" ]; then
+      conflict_ended refused
+      die "$(printf \
+        '#%s came back from session %s, which named no rule, with these files still conflicting:\n%s\nThe rebase is still open in %s, and nothing was pushed. The session said:\n%s' \
+        "$TICKET" "$SESSION" "$left" "$WORKTREE" "$said")"
+    fi
 
     # A commit is made of the index, so the index is what is read here.
     while IFS= read -r file; do
@@ -173,9 +226,15 @@ main() {
 
     if ! carried=$(GIT_EDITOR=true git -C "$WORKTREE" rebase --continue 2>&1); then
       # One call resolves one commit, so a ticket whose next commit conflicts stops here.
-      [ -z "$(git -C "$WORKTREE" diff --name-only --diff-filter=U)" ] || die "$(printf \
-        '#%s resolved its first conflict and a later commit of its own conflicted as well. Only the first is handed over, so the rebase is still open in %s, and nothing was pushed. Put it back with: git -C %s rebase --abort' \
-        "$TICKET" "$WORKTREE" "$WORKTREE")"
+      next_conflict=$(git -C "$WORKTREE" diff --name-only --diff-filter=U)
+      if [ -n "$next_conflict" ]; then
+        # The run stopped before anything could say the first resolution was any good.
+        conflict_ended caught
+        CONFLICT_SIZE=$(conflict_size "$next_conflict")
+        die "$(printf \
+          '#%s resolved its first conflict and a later commit of its own conflicted as well. Only the first is handed over, so the rebase is still open in %s, and nothing was pushed. Put it back with: git -C %s rebase --abort' \
+          "$TICKET" "$WORKTREE" "$WORKTREE")"
+      fi
       die "$(printf \
         '#%s resolved its conflicting files and the rebase would not carry on. The rebase is still open in %s, and nothing was pushed. git said:\n%s' \
         "$TICKET" "$WORKTREE" "$carried")"
@@ -225,6 +284,9 @@ main() {
     # A merge that resolves with no conflict can still break the program.
     run_suite
     say "#$TICKET passed the suite on the new base"
+
+    # Every check the resolution had to pass is behind it, so the outcome is settled.
+    [ -z "$CONFLICT_SIZE" ] || conflict_ended resolved
   }
 
   [ -n "$WORKTREE" ] || usage

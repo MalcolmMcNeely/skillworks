@@ -47,6 +47,8 @@ configure() {
   git -C "$1" config core.autocrlf false
   # A developer who records resolutions would otherwise have them replayed here.
   git -C "$1" config rerere.enabled false
+  # A developer who prefers diff3 would otherwise change what a conflict measures.
+  git -C "$1" config merge.conflictStyle merge
 }
 
 write_commit() {  # <repo> <file> <text> <message>
@@ -75,12 +77,20 @@ make_repo() {
   git -C "$WORKTREE" push --quiet origin main
 }
 
-# A commit somebody else pushed, so only a fetch can find it.
-push_from_elsewhere() {  # <file> <text> <message>
+# A case that changes more than one file on the other side needs the checkout itself.
+other_checkout() {
   local other="$TMP/other"
   rm -rf "$other"
-  git clone --quiet "$ORIGIN" "$other"
+  # A clone checks out before it can be configured, so the setting goes in on the command.
+  git clone --quiet -c core.autocrlf=false "$ORIGIN" "$other"
   configure "$other"
+  printf '%s' "$other"
+}
+
+# A commit somebody else pushed, so only a fetch can find it.
+push_from_elsewhere() {  # <file> <text> <message>
+  local other
+  other=$(other_checkout)
   write_commit "$other" "$1" "$2" "$3"
   git -C "$other" push --quiet origin main
 }

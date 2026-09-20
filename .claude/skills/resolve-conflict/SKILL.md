@@ -55,10 +55,20 @@ Two cases. Either one means stop:
 1. The answer is in neither side and in neither ticket.
 2. The project's checks are still failing after one attempt to fix them.
 
-A refusal leaves the conflict where it stands. Say which side wanted what, say what you could not
-settle, and stop. **A refusal never means resolve badly.** The loop stopping is the cheap outcome; a
-resolution that quietly deleted a ticket's work is the expensive one, and it is expensive later, when
-nobody is looking.
+A refusal leaves the conflict where it stands. Begin your answer with the rule that fired, on a line
+of its own:
+
+```
+REFUSED 1: the count the tile shows is on neither side.
+```
+
+Then say which side wanted what, side by side, and stop. The driver reads that first line, so the rule
+reaches the loop's log without anybody opening the transcript, and the two intentions beneath it are
+what the developer fixes the cause from.
+
+**A refusal never means resolve badly.** The loop stopping is the cheap outcome; a resolution that
+quietly deleted a ticket's work is the expensive one, and it is expensive later, when nobody is
+looking.
 
 ## Finishing
 
