@@ -15,7 +15,8 @@ _Avoid_: Integrate, integration
 **Load**:
 One instruction file reaching a session. It names the file, where it came from, when it came and why.
 A Load is a fact about a session, never a judgement: a file that arrives when it should not have
-still Loads.
+still Loads. A memory file Claude Code wrote is a Load like any other. Its source is the machine and
+not the repository, so two machines can Load different files at the same commit.
 _Avoid_: Arrival, injection, attachment
 
 **Session**:
