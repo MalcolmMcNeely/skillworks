@@ -39,7 +39,7 @@ storage:
       path: /var/tempo/wal
     local:
       path: /var/tempo/blocks
-    # A block just pushed is listed at once, so no test waits on it. A search covers the same spans.
+    # A Batch the store has just filed is listed at once, so no test waits on it. A search covers the same spans.
     blocklist_poll: 1s
 
 usage_report:
