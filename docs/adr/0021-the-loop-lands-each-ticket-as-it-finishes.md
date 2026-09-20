@@ -17,10 +17,9 @@ The driver stated a rule of its own: the loop commits per ticket and pushes once
 half-finished spec never reaches the remote. This decision takes it away, and a reader who later finds
 that rule gone should find this page.
 
-This page lands before the code that leans on it, which is the order the work was planned in. Until
-the rest of that work arrives, `scripts/spec-loop.sh`, `.claude/skills/implement/SKILL.md` and the
-README still state the old rule. Where one of them disagrees with this page, this page is the decision
-and that file is what has not caught up yet.
+This page landed before the code that leans on it, which is the order the work was planned in. The
+rest of that work has since arrived. `scripts/spec-loop.sh`, `.claude/skills/implement/SKILL.md` and
+the README now say what this page says, and none of them states the old rule any more.
 
 It went because what it protected was not worth what it cost. It treated the spec as the thing that
 has to be whole, and the spec is not: a ticket is. A ticket that has passed its review and the full
