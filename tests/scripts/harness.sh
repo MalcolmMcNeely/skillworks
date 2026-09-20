@@ -141,6 +141,28 @@ stub_failure() {
   printf 'exit 1\n' >> "$STUBS/$1"
 }
 
+# Real git but for the one command named, so a case can read what a failure part way left behind.
+refuse_git() {  # <a regular expression the arguments match>
+  local real
+  # A stub is on PATH by now, so finding git through it would have this one call itself for ever.
+  real=$(PATH="$REAL_PATH"; command -v git)
+  cat > "$STUBS/git" <<STUB
+#!/bin/sh
+if printf '%s' "\$*" | grep -Eq '$1'; then
+  echo "git was turned down: \$*" >&2
+  exit 1
+fi
+exec '$real' "\$@"
+STUB
+  chmod +x "$STUBS/git"
+  PATH="$STUBS:$PATH"
+}
+
+# A rename is a keep's last step and the group goes in name order, so jobs before this one are kept.
+refuse_keeping() {  # <job>
+  refuse_git "branch --quiet -m .*$1"
+}
+
 # A fixed answer, so a case can tell what the script gathered from what it made up.
 stub_saying() {  # <command> <text>
   stub "$1"

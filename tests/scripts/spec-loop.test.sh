@@ -116,13 +116,13 @@ case_the_plan_is_written_to_the_log_as_well() {
 # One closed ticket takes the run past the loop body, so the restart is what these cases read.
 leftover() { printf '%s/.claude/worktrees/spec-158/ticket-164' "$WORKTREE"; }
 
-given_a_leftover_worktree() {
-  bash "$ROOT/scripts/ticket-worktree.sh" open "$WORKTREE" 158 ticket-164 >/dev/null 2>&1
+given_a_leftover_worktree() {  # <job>
+  bash "$ROOT/scripts/ticket-worktree.sh" open "$WORKTREE" 158 "$1" >/dev/null 2>&1
 }
 
 case_a_restart_over_a_leftover_holding_work_carries_on() {
   given_the_tracker_holds "$ONE_CLOSED_TICKET"
-  given_a_leftover_worktree
+  given_a_leftover_worktree ticket-164
   printf 'half done\n' > "$(leftover)/loose.txt"
 
   run_loop 158
@@ -137,7 +137,7 @@ case_a_restart_over_a_leftover_holding_work_carries_on() {
 
 case_a_restart_over_a_leftover_holding_nothing_carries_on() {
   given_the_tracker_holds "$ONE_CLOSED_TICKET"
-  given_a_leftover_worktree
+  given_a_leftover_worktree ticket-164
 
   run_loop 158
 
@@ -151,7 +151,7 @@ case_a_restart_over_a_leftover_holding_nothing_carries_on() {
 
 case_the_log_names_the_job_and_the_branch_a_leftover_was_kept_on() {
   given_the_tracker_holds "$ONE_CLOSED_TICKET"
-  given_a_leftover_worktree
+  given_a_leftover_worktree ticket-164
 
   run_loop 158
 
@@ -160,6 +160,34 @@ case_the_log_names_the_job_and_the_branch_a_leftover_was_kept_on() {
   log=$(cat "$WORKTREE/.spec-loop/158/loop.log")
   assert_says "ticket-164" "$log"
   assert_says "spec-loop/158/ticket-164-kept-1" "$log"
+}
+
+# An open ticket, so a run that failed to stop would start a session and say so.
+case_a_keep_that_fails_part_way_still_names_the_job_it_kept() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_a_leftover_worktree ticket-164
+  given_a_leftover_worktree ticket-165
+  refuse_keeping ticket-165
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "KEPT  ticket-164" "$OUTPUT"
+  assert_says "spec-loop/158/ticket-164-kept-1" "$OUTPUT"
+  assert_says "Nothing was started" "$OUTPUT"
+  ! called claude || fail "a session was started"
+}
+
+case_the_log_names_a_job_kept_before_a_keep_failed() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_a_leftover_worktree ticket-164
+  given_a_leftover_worktree ticket-165
+  refuse_keeping ticket-165
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "spec-loop/158/ticket-164-kept-1" "$(cat "$WORKTREE/.spec-loop/158/loop.log")"
 }
 
 run_cases

@@ -248,8 +248,9 @@ main() {
   fi
 
   # Kept as branches rather than refused, so one command restarts the run and nothing is lost.
-  leftovers=$(worktree keep) \
-    || die "ABORT spec #$SPEC has a worktree group that would not be kept. Nothing was started."
+  # A job kept before a failure lives only on the branch named here, so the records go out first.
+  keep_status=0
+  leftovers=$(worktree keep) || keep_status=$?
   while IFS=$'\t' read -r job branch held; do
     [ -n "$job" ] || continue
     if [ "$held" = held ]; then
@@ -258,6 +259,8 @@ main() {
       say "KEPT  $job held nothing uncommitted. Its attempt is on branch $branch"
     fi
   done <<<"$leftovers"
+  [ "$keep_status" -eq 0 ] \
+    || die "ABORT spec #$SPEC has a worktree group that would not be kept. Nothing was started."
 
   # Every worktree is cut from origin/main, so the ref has to be current first.
   fetch_origin || die "ABORT could not fetch from origin"

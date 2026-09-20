@@ -183,6 +183,20 @@ case_every_leftover_in_the_group_is_kept() {
   has_branch 158 ticket-165-kept-1 || fail "ticket-165 was not kept"
 }
 
+case_a_keep_that_fails_on_a_later_job_still_records_the_one_it_kept() {
+  given_job 158 ticket-164
+  given_job 158 ticket-165
+  refuse_keeping ticket-165
+
+  run_keep 158
+
+  assert_status 1 "$STATUS"
+  assert_eq "the record" \
+    "$(printf 'ticket-164\tspec-loop/158/ticket-164-kept-1\tclean')" "$OUTPUT"
+  has_branch 158 ticket-164-kept-1 || fail "the job it kept is not on a kept branch"
+  assert_says "would not rename branch spec-loop/158/ticket-165" "$(cat "$TMP/keep.err")"
+}
+
 case_an_empty_group_is_taken_down() {
   given_job 158 ticket-164
   rm -rf "$(group 158)/ticket-164"
