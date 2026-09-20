@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# The integration script, run against a throwaway repository.
+# The landing script, run against a throwaway repository.
 
 . "$(dirname "${BASH_SOURCE[0]}")/harness.sh"
 
-SCRIPT=scripts/integrate-ticket.sh
+SCRIPT=scripts/land-ticket.sh
 
 case_a_finished_ticket_reaches_the_remote() {
   stub claude

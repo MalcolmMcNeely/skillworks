@@ -74,7 +74,7 @@ narrow 2020 model, and because a refusal stops the whole loop, refusing early sa
 failing later would not also cost. Each conflict's size and outcome is logged instead, so a threshold
 can later be set from this repository's own numbers.
 
-**Hold a lock across integration.** Rejected. The lock would be held across a full test run, blocking
+**Hold a lock across landing.** Rejected. The lock would be held across a full test run, blocking
 the other loop for minutes to prevent a collision lasting seconds. A rejected push costs less, and the
 bounded retry already answers it.
 

@@ -47,7 +47,7 @@ case_the_dry_run_prints_the_worktree_and_the_branch() {
   assert_says "spec-loop/158/ticket-168" "$OUTPUT"
 }
 
-case_the_dry_run_prints_every_integration_step_with_its_checks() {
+case_the_dry_run_prints_every_landing_step_with_its_checks() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
 
   run_loop 158 --dry-run
@@ -59,9 +59,9 @@ case_the_dry_run_prints_every_integration_step_with_its_checks() {
     found=$(( found + 1 ))
     assert_says "$what" "$OUTPUT"
     assert_says "checks: $checks" "$OUTPUT"
-  done < <(bash "$ROOT/scripts/integrate-ticket.sh" --plan)
+  done < <(bash "$ROOT/scripts/land-ticket.sh" --plan)
   # A plan that named no step would otherwise let this case pass having read nothing.
-  [ "$found" -gt 0 ] || fail "the integration script named no step to look for"
+  [ "$found" -gt 0 ] || fail "the landing script named no step to look for"
 }
 
 case_the_dry_run_still_prints_the_sessions_it_would_start() {

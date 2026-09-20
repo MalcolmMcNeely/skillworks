@@ -2,8 +2,8 @@
 #
 # Land one finished ticket on main.
 #
-#   scripts/integrate-ticket.sh <worktree> <ticket-number> [session-id]
-#   scripts/integrate-ticket.sh --plan
+#   scripts/land-ticket.sh <worktree> <ticket-number> [session-id]
+#   scripts/land-ticket.sh --plan
 #
 # Exits 0 once the ticket's commit is on the remote's main. Exits non-zero with
 # the reason on stderr, having pushed nothing.
@@ -75,8 +75,8 @@ main() {
   SESSION="${3:-}"
 
   usage() {
-    printf 'usage: scripts/integrate-ticket.sh <worktree> <ticket-number> [session-id]\n' >&2
-    printf '       scripts/integrate-ticket.sh --plan\n' >&2
+    printf 'usage: scripts/land-ticket.sh <worktree> <ticket-number> [session-id]\n' >&2
+    printf '       scripts/land-ticket.sh --plan\n' >&2
     exit 64
   }
 

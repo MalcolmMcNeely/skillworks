@@ -210,8 +210,8 @@ main() {
     say "DRY   spec #$SPEC: $spec_title"
 
     # Asked of the scripts that do the work, so the plan cannot drift from the run.
-    integration=$(bash "$SCRIPTS/integrate-ticket.sh" --plan) && [ -n "$integration" ] \
-      || die "ABORT the integration steps would not be read, so the plan would be short of them."
+    land_plan=$(bash "$SCRIPTS/land-ticket.sh" --plan) && [ -n "$land_plan" ] \
+      || die "ABORT the landing steps would not be read, so the plan would be short of them."
 
     tickets=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
       --jq '.[] | "\(.number)\t\(.state)\t\(.title)"')
@@ -237,7 +237,7 @@ main() {
       while IFS=$'\t' read -r step call checks; do
         [ -n "$step" ] || continue
         plan="$plan$(plan_line "$step" "$call" "$checks")$NL"
-      done <<<"$integration"
+      done <<<"$land_plan"
     done <<<"$tickets"
 
     printf '%s' "$plan" | tee -a "$LOG"
@@ -338,7 +338,7 @@ main() {
     # The session that wrote the ticket goes too, to resolve what it conflicts with.
     land_out=$(step_log "$next" land).out
     landed=0
-    bash "$SCRIPTS/integrate-ticket.sh" "$JOB_WORKTREE" "$next" "$session" \
+    bash "$SCRIPTS/land-ticket.sh" "$JOB_WORKTREE" "$next" "$session" \
       >"$land_out" 2>&1 || landed=$?
     say "$(cat "$land_out")"
     if [ "$landed" -ne 0 ]; then
