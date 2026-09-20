@@ -1,10 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clock, resetClock, setClock, type Clock } from './clock';
+import { clock } from './clock';
 
 const noon = Date.parse('2026-09-15T12:00:00Z');
 const minute = 60 * 1000;
-
-const stubClock = (): Clock => ({ now: () => noon, tick: () => vi.fn<() => void>() });
 
 describe('the browser Clock', () => {
   // Vitest's still clock, so nobody here hand-writes a queue of pending timers.
@@ -62,26 +60,5 @@ describe('the browser Clock', () => {
     vi.advanceTimersByTime(10 * minute);
 
     expect(onTick).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('the Clock a test supplies', () => {
-  afterEach(() => resetClock());
-
-  it('is the one everything reads once it is handed over', () => {
-    const still = stubClock();
-
-    setClock(still);
-
-    expect(clock()).toBe(still);
-  });
-
-  it('gives way to the browser Clock again once the test lets go', () => {
-    const still = stubClock();
-
-    setClock(still);
-    resetClock();
-
-    expect(clock()).not.toBe(still);
   });
 });

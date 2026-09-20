@@ -13,16 +13,8 @@ const browserClock: Clock = {
   },
 };
 
-let held: Clock = browserClock;
-
+// No seam to hand a test its own: a test holds this one still with vi.useFakeTimers, which stops
+// the two reads below at their source, so a second way to stand time up would only be the weaker one.
 export function clock(): Clock {
-  return held;
-}
-
-export function setClock(still: Clock): void {
-  held = still;
-}
-
-export function resetClock(): void {
-  held = browserClock;
+  return browserClock;
 }

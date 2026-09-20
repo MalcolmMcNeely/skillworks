@@ -97,9 +97,6 @@ public sealed class StudioHost : IDisposable
 
     public HttpClient Client => _client;
 
-    // A Clock standing still runs no Patience out, so a test moves it on purpose.
-    public FakeTimeProvider Clock => _clock;
-
     public Task Push(params SkillActivated[] events) => TestLoki.PushAsync(_tenant, events);
 
     public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);
