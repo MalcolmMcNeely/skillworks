@@ -43,5 +43,6 @@ banned-words:
     - Timeout
   architecture:
     - Feature
+  loop: []
 skip-folders: []
 ```

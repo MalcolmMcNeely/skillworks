@@ -8,6 +8,7 @@ judges a file.
 
 - [Studio](./CONTEXT.md) — the local app that watches, authors, tests and publishes the catalogue
 - [Architecture](./src/Skillworks.Architecture/CONTEXT.md) — the check that holds the shape of the code
+- [Loop](./.claude/CONTEXT.md) — the setup an agent runs under, and the scripts that drive it
 
 A context is a product area. A large repository splits its contexts by project; a small one splits by
 folder. The test is the same either way.
@@ -17,10 +18,13 @@ folder. The test is the same either way.
 - **Architecture → Studio**: the check reads Studio's glossary to decide which words a file may use.
   It reads Studio's code as text and never as code.
 - **Studio → Architecture**: nothing. Studio does not know the check exists.
+- **Architecture → Loop**: the check reads Loop's glossary to decide which words its scripts may use,
+  and judges the scripts the same way it judges the rest.
+- **Loop → Studio**: the scripts run Studio's build and its tests. They never read Studio's code.
 
 ## The next context
 
-The catalogue is a third product area, and `Skill` already means two things in this repository: a
+The catalogue is another product area, and `Skill` already means two things in this repository: a
 folder of instructions a developer writes, and a name in telemetry with Activations and a Cost. The
 catalogue gets its own context, and its own glossary, the day Author or Publish writes code of its
 own. Until then its words sit in Studio's glossary, because a context with no code gives the check
@@ -57,4 +61,11 @@ contexts:
     code:
       - src/Skillworks.Architecture
       - tests/Skillworks.Architecture.Tests
+  loop:
+    glossary: .claude/CONTEXT.md
+    slices: false
+    code:
+      - .claude
+      - scripts
+      - tests/scripts
 ```
