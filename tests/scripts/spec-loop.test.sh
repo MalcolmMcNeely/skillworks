@@ -7,6 +7,7 @@
 SCRIPT=scripts/spec-loop.sh
 
 ONE_OPEN_TICKET=$'168\topen\tTICKET: The dry run prints the plan'
+ONE_CLOSED_TICKET=$'161\tclosed\tTICKET: Already done'
 
 # The dry run puts its log where it is run, so it is run in the throwaway repository.
 run_loop() {  # <args...>
@@ -29,6 +30,7 @@ case "$*" in
   *"--jq .state")                                       echo open ;;
   *"--jq .title")                                       echo "SPEC: A spec to plan" ;;
   *sub_issues*".[].number")                             cut -f1 "$TICKETS" ;;
+  *sub_issues*'select(.state=="open")'*)                awk -F'\t' '$2=="open"{print $1}' "$TICKETS" ;;
   *sub_issues*)                                         cat "$TICKETS" ;;
   *) echo "the gh stub has no answer for: $*" >&2;      exit 1 ;;
 esac
@@ -109,6 +111,55 @@ case_the_plan_is_written_to_the_log_as_well() {
 
   assert_status 0 "$STATUS"
   assert_says "spec-loop/158/ticket-168" "$(cat "$WORKTREE/.spec-loop/158/loop.log")"
+}
+
+# One closed ticket takes the run past the loop body, so the restart is what these cases read.
+leftover() { printf '%s/.claude/worktrees/spec-158/ticket-164' "$WORKTREE"; }
+
+given_a_leftover_worktree() {
+  bash "$ROOT/scripts/ticket-worktree.sh" open "$WORKTREE" 158 ticket-164 >/dev/null 2>&1
+}
+
+case_a_restart_over_a_leftover_holding_work_carries_on() {
+  given_the_tracker_holds "$ONE_CLOSED_TICKET"
+  given_a_leftover_worktree
+  printf 'half done\n' > "$(leftover)/loose.txt"
+
+  run_loop 158
+
+  assert_status 0 "$STATUS"
+  assert_says "END   spec #158" "$OUTPUT"
+  assert_says "uncommitted work" "$OUTPUT"
+  [ ! -e "$(leftover)" ] || fail "the leftover worktree is still there"
+  git -C "$WORKTREE" cat-file -e spec-loop/158/ticket-164-kept-1:loose.txt 2>/dev/null \
+    || fail "the uncommitted work is not on the kept branch"
+}
+
+case_a_restart_over_a_leftover_holding_nothing_carries_on() {
+  given_the_tracker_holds "$ONE_CLOSED_TICKET"
+  given_a_leftover_worktree
+
+  run_loop 158
+
+  assert_status 0 "$STATUS"
+  assert_says "END   spec #158" "$OUTPUT"
+  assert_says "nothing uncommitted" "$OUTPUT"
+  [ ! -e "$(leftover)" ] || fail "the leftover worktree is still there"
+  git -C "$WORKTREE" rev-parse --verify --quiet refs/heads/spec-loop/158/ticket-164-kept-1 \
+    >/dev/null || fail "the kept branch is not there"
+}
+
+case_the_log_names_the_job_and_the_branch_a_leftover_was_kept_on() {
+  given_the_tracker_holds "$ONE_CLOSED_TICKET"
+  given_a_leftover_worktree
+
+  run_loop 158
+
+  assert_status 0 "$STATUS"
+  local log
+  log=$(cat "$WORKTREE/.spec-loop/158/loop.log")
+  assert_says "ticket-164" "$log"
+  assert_says "spec-loop/158/ticket-164-kept-1" "$log"
 }
 
 run_cases

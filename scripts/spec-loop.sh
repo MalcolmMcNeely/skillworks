@@ -245,8 +245,17 @@ main() {
     exit 0
   fi
 
-  # A leftover group is work nobody has read yet, and not the driver's to throw away.
-  worktree check || die "ABORT spec #$SPEC already has a worktree group. Nothing was started."
+  # Kept as branches rather than refused, so one command restarts the run and nothing is lost.
+  leftovers=$(worktree keep) \
+    || die "ABORT spec #$SPEC has a worktree group that would not be kept. Nothing was started."
+  while IFS=$'\t' read -r job branch held; do
+    [ -n "$job" ] || continue
+    if [ "$held" = held ]; then
+      say "KEPT  $job held uncommitted work. The whole attempt is on branch $branch"
+    else
+      say "KEPT  $job held nothing uncommitted. Its attempt is on branch $branch"
+    fi
+  done <<<"$leftovers"
 
   # Every worktree is cut from origin/main, so the ref has to be current first.
   git fetch --quiet origin || die "ABORT could not fetch from origin"
