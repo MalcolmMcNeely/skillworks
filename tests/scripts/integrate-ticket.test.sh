@@ -151,6 +151,59 @@ case_a_commit_that_names_no_ticket_is_refused() {
   assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
 }
 
+case_a_first_commit_that_names_no_ticket_is_refused() {
+  commit_naming_nothing
+  local first base
+  first=$(git -C "$WORKTREE" rev-parse --short HEAD)
+  commit_for_ticket 163
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 163
+
+  assert_status 1 "$STATUS"
+  assert_says "Ticket: #163" "$OUTPUT"
+  # The developer fixes the commit the message names, so the wrong one sends them nowhere.
+  assert_says "$first" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+}
+
+case_a_second_commit_that_names_no_ticket_is_refused() {
+  commit_for_ticket 163
+  commit_naming_nothing
+  local second base
+  second=$(git -C "$WORKTREE" rev-parse --short HEAD)
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 163
+
+  assert_status 1 "$STATUS"
+  assert_says "Ticket: #163" "$OUTPUT"
+  assert_says "$second" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+}
+
+case_every_commit_naming_the_ticket_reaches_the_remote() {
+  stub claude
+  stub dotnet
+  stub npm
+  given_a_project
+  commit_for_ticket 163
+  commit_for_ticket 163
+  local head
+  head=$(git -C "$WORKTREE" rev-parse HEAD)
+
+  run_script "$SCRIPT" "$WORKTREE" 163
+
+  assert_status 0 "$STATUS"
+  assert_eq "the remote's main" "$head" "$(git -C "$ORIGIN" rev-parse main)"
+  # Two lines of work, so a range that landed only its last commit cannot pass.
+  assert_eq "the ticket's file on main" "$(printf 'work\nwork')" \
+    "$(git -C "$ORIGIN" show main:work.txt)"
+  ! called claude || fail "a session was started"
+  ! called dotnet || fail "the suite ran again"
+  ! called npm || fail "the suite ran again"
+}
+
 case_a_commit_that_names_another_ticket_is_refused() {
   commit_for_ticket 999
   local base

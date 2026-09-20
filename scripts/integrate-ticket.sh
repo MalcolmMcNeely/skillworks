@@ -137,13 +137,24 @@ main() {
       "$TICKET" "$said")"
   }
 
-  # --- what the resolving session is given ----------------------------------
+  # --- reading a ticket off its commits -------------------------------------
 
   # Read from the message, so a commit reaches its ticket with no tracker call.
   ticket_of() {  # <commit>
     git -C "$WORKTREE" log -1 "$1" --format='%(trailers:key=Ticket,valueonly)' \
       | sed -n 1p | tr -d '[:space:]' | sed 's/^#//'
   }
+
+  # A worktree is cut from origin/main, so the fork point is where its own commits begin.
+  ticket_commits() {
+    local base
+    # A checkout with no such ref is one the fetch step turns down by name a moment later.
+    base=$(git -C "$WORKTREE" merge-base HEAD origin/main 2>/dev/null) \
+      || { git -C "$WORKTREE" rev-parse --short HEAD; return 0; }
+    git -C "$WORKTREE" log --reverse --format=%h "$base..HEAD"
+  }
+
+  # --- what the resolving session is given ----------------------------------
 
   # A ticket is closed with a comment, so the last one on it is that comment.
   # A session told a ticket said nothing would refuse on a reading it never got.
@@ -329,13 +340,18 @@ main() {
   [ -z "$(git -C "$WORKTREE" status --porcelain)" ] \
     || die "#$TICKET has uncommitted changes in $WORKTREE. Nothing was pushed."
 
-  # Without the trailer nothing can trace the commit back to what it was for.
+  # A commit with no trailer can never be traced back, and a ticket can make more than one.
   commit=$(git -C "$WORKTREE" rev-parse --short HEAD)
-  named=$(ticket_of HEAD)
-  [ -n "$named" ] \
-    || die "commit $commit carries no 'Ticket: #$TICKET' trailer, so it could never be traced back. Nothing was pushed."
-  [ "$named" = "$TICKET" ] \
-    || die "commit $commit names ticket #$named, and this is #$TICKET. Nothing was pushed."
+  made=$(ticket_commits) \
+    || die "#$TICKET could not be read against its base. Nothing was pushed."
+  while IFS= read -r sha; do
+    [ -n "$sha" ] || continue
+    named=$(ticket_of "$sha")
+    [ -n "$named" ] \
+      || die "commit $sha carries no 'Ticket: #$TICKET' trailer, so it could never be traced back. Nothing was pushed."
+    [ "$named" = "$TICKET" ] \
+      || die "commit $sha names ticket #$named, and this is #$TICKET. Nothing was pushed."
+  done <<<"$made"
 
   attempt=1
   while :; do
