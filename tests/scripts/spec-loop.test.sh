@@ -190,4 +190,43 @@ case_the_log_names_a_job_kept_before_a_keep_failed() {
   assert_says "spec-loop/158/ticket-164-kept-1" "$(cat "$WORKTREE/.spec-loop/158/loop.log")"
 }
 
+case_the_log_holds_the_reason_a_keep_failed() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_a_leftover_worktree ticket-164
+  given_a_leftover_worktree ticket-165
+  refuse_keeping ticket-165
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "would not rename branch spec-loop/158/ticket-165" \
+    "$(cat "$WORKTREE/.spec-loop/158/loop.log")"
+}
+
+case_a_keep_that_succeeded_says_what_it_left_alone() {
+  given_the_tracker_holds "$ONE_CLOSED_TICKET"
+  local stray
+  stray="$WORKTREE/.claude/worktrees/spec-158/stray"
+  mkdir -p "$stray"
+  printf 'notes\n' > "$stray/notes.txt"
+
+  run_loop 158
+
+  assert_status 0 "$STATUS"
+  assert_says "$stray is no worktree of its own, so it was left where it is" \
+    "$(cat "$WORKTREE/.spec-loop/158/loop.log")"
+}
+
+case_a_keep_that_left_nothing_alone_says_nothing() {
+  given_the_tracker_holds "$ONE_CLOSED_TICKET"
+  given_a_leftover_worktree ticket-164
+
+  run_loop 158
+
+  assert_status 0 "$STATUS"
+  case "$OUTPUT" in
+    *WARN*|*"left where it is"*) fail "a keep with nothing to leave alone still warned" ;;
+  esac
+}
+
 run_cases

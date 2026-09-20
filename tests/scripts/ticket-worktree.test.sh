@@ -219,6 +219,21 @@ case_a_folder_that_is_no_worktree_is_left_where_it_is() {
   assert_status 0 "$STATUS"
   assert_eq "the records" "" "$OUTPUT"
   [ -e "$stray/notes.txt" ] || fail "the folder was thrown away"
+  assert_says "$stray is no worktree of its own, so it was left where it is" "$(cat "$TMP/keep.err")"
+}
+
+case_a_worktree_on_no_branch_is_left_where_it_is() {
+  local tree
+  tree=$(group 158)/ticket-164
+  given_job 158 ticket-164
+  git -C "$tree" checkout --quiet --detach
+
+  run_keep 158
+
+  assert_status 0 "$STATUS"
+  assert_eq "the records" "" "$OUTPUT"
+  [ -e "$tree" ] || fail "the worktree was removed"
+  assert_says "$tree is on no branch, so it was left where it is" "$(cat "$TMP/keep.err")"
 }
 
 case_keeping_one_spec_leaves_another_alone() {

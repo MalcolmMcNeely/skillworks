@@ -154,12 +154,14 @@ main() {
   # A path comes back on stdout, so a reason has to take the other channel. It
   # goes to the log as well, because a background run has nobody at the terminal.
   worktree() {
-    local err status=0
-    err="$LOG_DIR/worktree.err"
-    bash "$SCRIPTS/ticket-worktree.sh" "$1" "$ROOT" "$SPEC" "${2:-}" 2>"$err" || status=$?
-    [ "$status" -eq 0 ] || tee -a "$LOG" <"$err" >&2
+    local status=0
+    bash "$SCRIPTS/ticket-worktree.sh" "$1" "$ROOT" "$SPEC" "${2:-}" 2>"$WORKTREE_ERR" || status=$?
+    [ "$status" -eq 0 ] || tee -a "$LOG" <"$WORKTREE_ERR" >&2
     return "$status"
   }
+
+  # Nothing reads the stderr of a command that worked, and the next call overwrites it.
+  worktree_warnings() { sed -n 's/^warn  //p' "$WORKTREE_ERR"; }
 
   # Found from this file, not from the working directory, because the working
   # directory is about to become whichever checkout the ticket is built in.
@@ -181,6 +183,8 @@ main() {
   LOG_DIR=".spec-loop/$SPEC"
   mkdir -p "$LOG_DIR"
   LOG="$LOG_DIR/loop.log"
+  # Written and read in two places, and a warning read from the wrong file goes missing in silence.
+  WORKTREE_ERR="$LOG_DIR/worktree.err"
 
   # --- preflight ------------------------------------------------------------
 
@@ -251,6 +255,13 @@ main() {
   # A job kept before a failure lives only on the branch named here, so the records go out first.
   keep_status=0
   leftovers=$(worktree keep) || keep_status=$?
+  # A keep that failed has had its whole stderr read out already.
+  if [ "$keep_status" -eq 0 ]; then
+    while IFS= read -r warning; do
+      [ -n "$warning" ] || continue
+      say "WARN  $warning"
+    done <<<"$(worktree_warnings)"
+  fi
   while IFS=$'\t' read -r job branch held; do
     [ -n "$job" ] || continue
     if [ "$held" = held ]; then
