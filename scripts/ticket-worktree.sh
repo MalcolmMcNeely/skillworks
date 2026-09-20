@@ -28,6 +28,8 @@
 # `keep` prints one line per job, tab separated: the job, the branch it is kept on,
 # and `held` if the worktree had uncommitted changes or `clean` if it had none.
 
+. "$(dirname "$0")/fetch-origin.sh"
+
 main() {
   set -euo pipefail
 
@@ -74,7 +76,7 @@ main() {
     [ ! -e "$TREE" ] || die "$TREE is already there. Remove it with: $(removal "$JOB")"
     ! branch_exists || die "branch $BRANCH is already there. Remove it with: $(removal "$JOB")"
 
-    git -C "$CHECKOUT" fetch --quiet origin \
+    fetch_origin -C "$CHECKOUT" \
       || die "could not fetch from origin, so nothing could be cut from it."
     git -C "$CHECKOUT" rev-parse --verify --quiet origin/main >/dev/null \
       || die "origin has no main branch to cut a worktree from."

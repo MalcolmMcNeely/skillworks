@@ -22,6 +22,8 @@
 # A script of its own, so the risky part can be proved against a throwaway
 # repository without running a session.
 
+. "$(dirname "$0")/fetch-origin.sh"
+
 main() {
   set -euo pipefail
 
@@ -86,7 +88,7 @@ main() {
       verify  'the worktree, its tree and the trailer on its commit' \
               'is-a-worktree tree-clean ticket-named'
     printf '%s\t%s\t%s\n' \
-      fetch   'git fetch origin' \
+      fetch   "git fetch origin (up to $FETCH_ATTEMPTS attempts)" \
               'origin-has-main something-to-land'
     printf '%s\t%s\t%s\n' \
       rebase  'git rebase origin/main, when the base has moved' \
@@ -355,7 +357,7 @@ main() {
 
   attempt=1
   while :; do
-    git -C "$WORKTREE" fetch --quiet origin \
+    fetch_origin -C "$WORKTREE" \
       || die "#$TICKET could not fetch from origin. Nothing was pushed."
     git -C "$WORKTREE" rev-parse --verify --quiet origin/main >/dev/null \
       || die "origin has no main branch. Nothing was pushed."

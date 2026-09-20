@@ -19,6 +19,8 @@
 # Written against gh 2.92.0, which has no dependency flags. Everything goes
 # through `gh api`. See docs/research/harness/ticket-state-guardrails.md.
 
+. "$(dirname "$0")/fetch-origin.sh"
+
 main() {
   set -euo pipefail
 
@@ -258,7 +260,7 @@ main() {
   done <<<"$leftovers"
 
   # Every worktree is cut from origin/main, so the ref has to be current first.
-  git fetch --quiet origin || die "ABORT could not fetch from origin"
+  fetch_origin || die "ABORT could not fetch from origin"
 
   # The drift check needs the commit this loop started from. Written once, so a
   # resumed run still measures against the original starting point.
