@@ -339,6 +339,12 @@ The organisation's store that Claude Code's Spans arrive in, once traces are swi
 apart from the Events store, and it falls short apart from it.
 _Avoid_: Tempo, span store, tracing backend
 
+**Batch**:
+The Spans the Trace store took in together, stamped with when they reached it and never with when
+they happened. The store chooses which Batches to read by that stamp, so a period that ends before
+the Spans arrived reads none of them, however well their own times fit it.
+_Avoid_: Block, chunk, partition
+
 **Span**:
 One Step as the Trace store holds it, with the Steps that ran inside it. A Span says what an event
 cannot: which Subagent ran a Tool call, how long it waited for a person's permission, and what came
