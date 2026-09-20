@@ -189,4 +189,227 @@ case_arguments_of_the_wrong_shape_print_the_usage() {
   assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
 }
 
+given_the_other_side_changed() {  # <the other side's ticket>
+  write_commit "$WORKTREE" shared.txt "start" "A file both sides will change"
+  git -C "$WORKTREE" push --quiet origin main
+  push_from_elsewhere shared.txt "their line" \
+    "$(printf 'Somebody else got there first\n\nTicket: #%s' "$1")"
+}
+
+given_a_conflict() {  # <this ticket> <the other side's ticket>
+  given_the_other_side_changed "$2"
+  write_commit "$WORKTREE" shared.txt "my line" \
+    "$(printf 'Do the work\n\nTicket: #%s' "$1")"
+}
+
+# Two files in one commit, so dropping one still leaves a commit to replay.
+given_a_conflict_beside_other_work() {  # <this ticket> <the other side's ticket>
+  given_the_other_side_changed "$2"
+  printf 'my line\n' >> "$WORKTREE/shared.txt"
+  printf 'work\n' >> "$WORKTREE/work.txt"
+  git -C "$WORKTREE" add -A
+  git -C "$WORKTREE" commit --quiet -m "$(printf 'Do the work\n\nTicket: #%s' "$1")"
+}
+
+stub_session() {  # <shell line, reading each conflicting file as "$f">
+  stub claude
+  {
+    printf 'cd "%s" || exit 1\n' "$WORKTREE"
+    printf 'git diff --name-only --diff-filter=U | while IFS= read -r f; do\n'
+    printf '  %s\n' "$1"
+    printf 'done\n'
+  } >> "$STUBS/claude"
+}
+
+case_a_conflict_is_handed_back_to_the_ticket_s_own_session() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  stub_session 'printf "start\ntheir line\nmy line\n" > "$f"; git add "$f"'
+  given_a_project
+  given_a_conflict 166 164
+  local theirs handed
+  theirs=$(git -C "$ORIGIN" rev-parse --short main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 0 "$STATUS"
+  handed=$(calls)
+  assert_says "/resolve-conflict" "$handed"
+  assert_says "--resume session-abc" "$handed"
+  assert_says "$theirs" "$handed"
+  assert_says "Somebody else got there first" "$handed"
+  # No answer gh gave holds the number, so only the commit message can have carried it.
+  assert_says "#164" "$handed"
+  assert_says "What that ticket set out to do." "$handed"
+  assert_eq "the remote's main" \
+    "$(git -C "$WORKTREE" rev-parse HEAD)" "$(git -C "$ORIGIN" rev-parse main)"
+  assert_eq "the resolved file on main" \
+    "$(printf 'start\ntheir line\nmy line')" "$(git -C "$ORIGIN" show main:shared.txt)"
+  ran "dotnet test Skillworks.slnx" || fail "the suite did not run on the resolution"
+}
+
+case_a_leftover_conflict_marker_is_caught() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  stub_session 'printf "<<<<<<< HEAD\nmine\n=======\ntheirs\n>>>>>>> them\n" > "$f"; git add "$f"'
+  given_a_project
+  given_a_conflict 166 164
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "conflict marker" "$OUTPUT"
+  assert_says "shared.txt" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+  ! called dotnet || fail "the suite ran on a half-finished resolution"
+}
+
+case_a_session_that_resolves_nothing_leaves_the_conflict_standing() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  stub_session ':'
+  given_a_project
+  given_a_conflict 166 164
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "still conflicting" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+  [ -n "$(git -C "$WORKTREE" diff --name-only --diff-filter=U)" ] \
+    || fail "the conflict was not left standing to be read"
+}
+
+case_a_resolution_that_drops_the_ticket_s_change_is_caught() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  # During a rebase "ours" is the new base, so this takes the other side wholesale.
+  stub_session 'git checkout --ours -- "$f"; git add "$f"'
+  given_a_project
+  given_a_conflict_beside_other_work 166 164
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "dropped" "$OUTPUT"
+  assert_says "shared.txt" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+}
+
+case_a_conflict_with_no_session_named_is_left_standing() {
+  stub dotnet
+  stub npm
+  stub claude
+  given_a_project
+  given_a_conflict 166 164
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166
+
+  assert_status 1 "$STATUS"
+  assert_says "rebase --abort" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+  ! called claude || fail "a session was started with no id to resume"
+}
+
+case_a_ticket_whose_closing_comment_cannot_be_read_is_still_named() {
+  stub dotnet
+  stub npm
+  stub_failure gh
+  stub_session 'printf "start\ntheir line\nmy line\n" > "$f"; git add "$f"'
+  given_a_project
+  given_a_conflict 166 164
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 0 "$STATUS"
+  assert_says "#164" "$(calls)"
+  # A silent tracker is not a ticket with nothing to say, and a refusal turns on which it was.
+  assert_says "would not answer for #164" "$(calls)"
+}
+
+case_a_ticket_closed_with_no_comment_is_still_named() {
+  stub dotnet
+  stub npm
+  stub gh
+  stub_session 'printf "start\ntheir line\nmy line\n" > "$f"; git add "$f"'
+  given_a_project
+  given_a_conflict 166 164
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 0 "$STATUS"
+  assert_says "#164" "$(calls)"
+  assert_says "closed with no comment" "$(calls)"
+}
+
+case_a_marker_staged_behind_a_clean_working_file_is_caught() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  # The marker reaches the index and never the working tree, so only the index shows it.
+  stub_session 'printf "<<<<<<< HEAD\nmine\n=======\ntheirs\n>>>>>>> them\n" > "$f"; git add "$f"; printf "clean\n" > "$f"'
+  given_a_project
+  given_a_conflict 166 164
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "conflict marker" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+}
+
+case_a_later_commit_that_conflicts_too_stops_with_its_own_reason() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  # A resolution that keeps neither side leaves the next commit nothing to apply to.
+  stub_session 'printf "resolved\n" > "$f"; git add "$f"'
+  given_a_project
+  given_the_other_side_changed 164
+  write_commit "$WORKTREE" shared.txt "my line" \
+    "$(printf 'Do the first half\n\nTicket: #166')"
+  write_commit "$WORKTREE" shared.txt "my second line" \
+    "$(printf 'Do the second half\n\nTicket: #166')"
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "a later commit of its own conflicted" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+}
+
+case_a_conflict_marker_in_a_crlf_file_is_caught() {
+  stub dotnet
+  stub npm
+  stub_saying gh "What that ticket set out to do."
+  # Only the middle marker is left, so the carriage return is what the check must see past.
+  stub_session 'printf "mine\r\n=======\r\ntheirs\r\n" > "$f"; git add "$f"'
+  given_a_project
+  given_a_conflict 166 164
+  local base
+  base=$(git -C "$ORIGIN" rev-parse main)
+
+  run_script "$SCRIPT" "$WORKTREE" 166 session-abc
+
+  assert_status 1 "$STATUS"
+  assert_says "conflict marker" "$OUTPUT"
+  assert_eq "the remote's main" "$base" "$(git -C "$ORIGIN" rev-parse main)"
+}
+
 run_cases

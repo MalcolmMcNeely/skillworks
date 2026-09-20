@@ -45,6 +45,8 @@ configure() {
   git -C "$1" config user.email "test@example.invalid"
   git -C "$1" config commit.gpgsign false
   git -C "$1" config core.autocrlf false
+  # A developer who records resolutions would otherwise have them replayed here.
+  git -C "$1" config rerere.enabled false
 }
 
 write_commit() {  # <repo> <file> <text> <message>
@@ -74,13 +76,17 @@ make_repo() {
 }
 
 # A commit somebody else pushed, so only a fetch can find it.
-advance_origin() {  # <name>
+push_from_elsewhere() {  # <file> <text> <message>
   local other="$TMP/other"
   rm -rf "$other"
   git clone --quiet "$ORIGIN" "$other"
   configure "$other"
-  write_commit "$other" "$1.txt" "$1" "Somebody else's $1"
+  write_commit "$other" "$1" "$2" "$3"
   git -C "$other" push --quiet origin main
+}
+
+advance_origin() {  # <name>
+  push_from_elsewhere "$1.txt" "$1" "Somebody else's $1"
 }
 
 # The markers the suite looks for, so a case can say whether it ran. Not the shell
@@ -125,6 +131,13 @@ stub_failure() {
   printf 'exit 1\n' >> "$STUBS/$1"
 }
 
+# A fixed answer, so a case can tell what the script gathered from what it made up.
+stub_saying() {  # <command> <text>
+  stub "$1"
+  printf '%s\n' "$2" > "$TMP/$1.said"
+  printf 'cat "%s"\n' "$TMP/$1.said" >> "$STUBS/$1"
+}
+
 called() {
   grep -q "^$1 " "$TMP/calls" 2>/dev/null
 }
@@ -132,6 +145,10 @@ called() {
 # The whole call, for a case that wants one check of a suite and not another.
 ran() {
   grep -qxF "$1" "$TMP/calls" 2>/dev/null
+}
+
+calls() {
+  cat "$TMP/calls" 2>/dev/null
 }
 
 # --- running ----------------------------------------------------------------

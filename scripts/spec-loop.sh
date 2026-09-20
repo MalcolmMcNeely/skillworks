@@ -287,9 +287,11 @@ main() {
     run_step "$next" finish --resume "$session"
 
     # Finished work on one machine only is work at the mercy of that machine.
+    # The session that wrote the ticket goes too, to resolve what it conflicts with.
     land_out=$(step_log "$next" land).out
     landed=0
-    bash "$SCRIPTS/integrate-ticket.sh" "$JOB_WORKTREE" "$next" >"$land_out" 2>&1 || landed=$?
+    bash "$SCRIPTS/integrate-ticket.sh" "$JOB_WORKTREE" "$next" "$session" \
+      >"$land_out" 2>&1 || landed=$?
     say "$(cat "$land_out")"
     [ "$landed" -eq 0 ] \
       || die "FAIL  #$next did not reach main. Its worktree is at $JOB_WORKTREE. See $land_out"
