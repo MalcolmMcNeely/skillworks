@@ -20,7 +20,7 @@ export interface Session extends SessionRow {
   toolCalls: number;
   cost: number;
   faults: number;
-  // Never added to Faults: somebody chose a refusal and a hook block, so a clean run still reads clean.
+  // Somebody chose it, so it is never added to Faults and a clean run still reads clean.
   friction: number;
 }
 
