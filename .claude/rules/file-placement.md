@@ -17,7 +17,10 @@ C# and TypeScript share one shape: Slices first, Concerns beneath.
   the glossary.
 - Every folder name says what its code serves or does, so the names in `banned-folder-names` are
   never used, in any letter case.
-- Folders in `skip-folders` hold code nobody writes by hand. These rules skip them.
+- Folders in `skip-folders` hold code these rules never judge. A folder earns its place for one of
+  two reasons: nobody writes its code by hand, or it is transient and belongs to one machine, so no
+  one else will ever read what is in it. Judging either would let the same commit pass on one
+  machine and fail on the next.
 - A folder with its own `.git`, such as an agent's worktree, is another checkout. These rules skip it
   too.
 
@@ -136,6 +139,7 @@ source-files:
   - .tsx
   - .sh
   - .ps1
+  - .mjs
 test-files:
   - "*.Tests.cs"
   - "*.test.ts"
@@ -146,6 +150,7 @@ skip-folders:
   - bin
   - obj
   - node_modules
+  - .handoff
 banned-folder-names:
   - utils
   - helpers
