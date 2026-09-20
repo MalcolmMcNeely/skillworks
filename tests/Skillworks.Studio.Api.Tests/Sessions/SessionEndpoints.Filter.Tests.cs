@@ -252,7 +252,7 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(Morning, MorningTrace, Traced(MorningSpan));
         await studio.PushSpans(Evening, EveningTrace, Traced(EveningSpan));
 
-        // The store reads the block a Span arrived in, and these arrived now, so the days asked for reach today.
+        // The store reads the Batch a Span arrived in, and these arrived now, so the days asked for reach today.
         var span = $"?from={Written(Yesterday)}&to={Written(Today)}";
 
         var names = (await studio.SessionsIn($"{span}&repository=acme/xi&skill=tdd&depth=full"))

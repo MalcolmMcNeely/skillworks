@@ -153,7 +153,7 @@ public sealed partial class TraceStoreReaderTests
         await Push(tenant, session, Prompt, WholeRun());
 
         // Act
-        // A search bounds by the block strictly, so an end close to when the spans arrived still holds.
+        // A search bounds by the Batch strictly, so an end close to when the spans arrived still holds.
         var read = await Reader(tenant).OfSessionAsync(
             session,
             From,
@@ -161,7 +161,6 @@ public sealed partial class TraceStoreReaderTests
             CancellationToken.None);
 
         // Assert
-        // The spans' own times fall inside this period, so only the day the store took them in leaves them out.
         Assert.Null(read.Unreachable);
         Assert.Empty(read.Spans);
     }
@@ -284,11 +283,10 @@ public sealed partial class TraceStoreReaderTests
         await Push(tenant, Session(), Prompt, [new RecordedSpan(Interaction, At(DaysBack(3), "11:00:00"), At(DaysBack(3), "11:00:05"), "d100000000000001")]);
 
         // Act
-        // An end minutes from when the spans arrived reads the block holding them.
+        // An end minutes from when the spans arrived would still read their Batch, so this one stays a day clear.
         var read = await Reader(tenant).OfPeriodAsync(From, Moment(At(Yesterday, "00:00:00")), CancellationToken.None);
 
         // Assert
-        // The spans' own times fall inside this period, so only the day the store took them in leaves them out.
         Assert.Null(read.Unreachable);
         Assert.Empty(read.Sessions);
     }
