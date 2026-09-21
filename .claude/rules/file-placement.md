@@ -140,16 +140,22 @@ source-files:
   - .sh
   - .ps1
   - .mjs
+  - .py
 test-files:
   - "*.Tests.cs"
   - "*.test.ts"
   - "*.test.tsx"
   - "*.test.sh"
+  - "*_test.py"
 skip-folders:
   - Migrations
   - bin
   - obj
   - node_modules
+  - __pycache__
+  - .venv
+  - venv
+  - site-packages
   - .handoff
 banned-folder-names:
   - utils

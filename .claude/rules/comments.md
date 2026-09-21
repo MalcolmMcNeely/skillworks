@@ -26,6 +26,11 @@ between its `/**` and its `*/` that is not empty, with any leading `*` removed, 
 after a tag belongs to that tag, so `/** @type {Config} */` and `/** @deprecated Use b instead. */`
 hold only tags.
 
+In Python, a doc comment is a docstring: a `"""` or a `'''` that opens a module, a class or a
+function. It opens one when nothing but space sits before it on its line, and the nearest line above
+it that is neither empty nor a `#` comment ends with `:`, or there is no such line. A triple quote
+anywhere else opens a value, so `QUERY = """`, and the mark that closes it, are both free.
+
 `doc-comments` decides where they go:
 
 - `false`: no file has doc comments. The names of types and members document the code.
