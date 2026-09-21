@@ -14,7 +14,8 @@
 # A step can exit 0 and do nothing, so the script checks facts after each one.
 #
 # Env:
-#   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits)
+#   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits). A spec whose
+#                               tickets write under .claude/ needs bypassPermissions.
 #
 # Written against gh 2.92.0, which has no dependency flags. Everything goes
 # through `gh api`. See docs/research/harness/ticket-state-guardrails.md.
@@ -182,10 +183,13 @@ main() {
     fi
   }
 
+  # A session blocked by the sensitive-file wall leaves the ticket open, so any stop may be it.
   stop_step() {
     local ticket="$1" step="$2" reason="$3" log="$4"
     reopen "$ticket"
-    die "FAIL  #$ticket step $step $reason. Its worktree is at $JOB_WORKTREE. See $log"
+    say "FAIL  #$ticket step $step $reason. Its worktree is at $JOB_WORKTREE. See $log"
+    die "      A write under .claude/ is refused as a sensitive file, whatever the allow list" \
+        "says. If that was the wall, rerun with SPEC_LOOP_PERMISSION_MODE=bypassPermissions"
   }
 
   run_step() {

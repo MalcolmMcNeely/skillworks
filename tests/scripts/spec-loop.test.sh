@@ -479,6 +479,31 @@ case_a_missing_axis_report_names_the_axis_it_came_from() {
     "$(cat "$WORKTREE/.spec-loop/158/ticket-168-finish.err")"
 }
 
+# --- the way past a refused write -------------------------------------------
+
+# A session that met the wall leaves the ticket open, so any stop the loop makes may be that wall.
+case_a_ticket_left_open_is_told_the_way_past_the_wall() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "SPEC_LOOP_PERMISSION_MODE=bypassPermissions" "$OUTPUT"
+  assert_says "$(ticket_worktree)" "$OUTPUT"
+}
+
+case_the_way_past_the_wall_reaches_the_log_as_well() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_says "SPEC_LOOP_PERMISSION_MODE=bypassPermissions" \
+    "$(cat "$WORKTREE/.spec-loop/158/loop.log")"
+}
+
 case_a_keep_that_left_nothing_alone_says_nothing() {
   given_the_tracker_holds "$ONE_CLOSED_TICKET"
   given_a_leftover_worktree ticket-164
