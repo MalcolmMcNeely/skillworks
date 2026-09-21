@@ -186,7 +186,7 @@ npm test
 | `.claude/skills/` | Dev tooling for working in this repo. Mostly vendored, not shipped. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
-| `docs/agents/` | Written by `/skillworks-setup`. The tracker, label and domain doc references the skills read. |
+| `docs/agents/` | Reference text more than one skill reads. `/skillworks-setup` writes the tracker and domain seeds; the review baselines are this repo's own. |
 
 ### How much of Studio is Shared
 
