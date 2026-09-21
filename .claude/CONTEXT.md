@@ -39,6 +39,10 @@ still Loads. A memory file Claude Code wrote is a Load like any other. Its sourc
 not the repository, so two machines can Load different files at the same commit.
 _Avoid_: Arrival, injection, attachment
 
+**Runner**:
+The one way the driver reaches another program. It is injected, so a test supplies its own rather
+than putting a fake on `PATH`.
+_Avoid_: Spawn, shell, executor
 **Session**:
 One run of Claude Code, from the first prompt to the last. It carries an identity that every Load and
 every telemetry event of that run shares, which is what lets the two be read together.
