@@ -33,6 +33,10 @@ NOT_FOUND = 127
 
 
 class Subprocess:
+    # Finding a program is the first half of reaching one, so a test answers for this too.
+    def found(self, name):
+        return shutil.which(name) is not None
+
     def run(self, args, where=None, env=None):
         args = [str(a) for a in args]
         # Windows reads PATHEXT and CreateProcess does not, so npm, which is npm.CMD, is lost.

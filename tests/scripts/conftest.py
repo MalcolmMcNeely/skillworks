@@ -134,6 +134,11 @@ class RecordingRunner:
         self.calls = []
         self.refusals = []
         self.stubs = {}
+        # A stub that writes a file needs the folder its call runs in.
+        self.where = None
+
+    def found(self, name):
+        return name in self.stubs or self.real.found(name)
 
     # A mark is matched against the whole command, temporary path and all, as one line.
     def refuse(self, mark, says, times=None):
@@ -145,6 +150,7 @@ class RecordingRunner:
     def run(self, args, where=None, env=None):
         args = [str(a) for a in args]
         self.calls.append(args)
+        self.where = where
         line = " ".join(args)
         for refusal in self.refusals:
             mark, says, times = refusal
@@ -156,7 +162,10 @@ class RecordingRunner:
         if args[0] in self.stubs:
             says, status, does = self.stubs[args[0]]
             if does is not None:
-                does()
+                # An answer of its own is how a stub varies with the call it was given.
+                answered = does()
+                if answered is not None:
+                    return answered
             return Ran(status, says, "")
         assert args[0] not in NEVER_REAL, "this case would have started " + args[0] + " for real"
         return self.real.run(args, where, env)

@@ -161,8 +161,9 @@ class Landing:
         wanted = []
         if (tree / "Skillworks.slnx").is_file():
             wanted.append((["dotnet", "test", "Skillworks.slnx"], tree))
-        if (tree / "tests" / "scripts" / "run.sh").is_file():
-            wanted.append((["bash", "tests/scripts/run.sh"], tree))
+        # pytest is asked for on the command line, because the scripts carry no project file.
+        if (tree / "tests" / "scripts").is_dir():
+            wanted.append((["uv", "run", "--with", "pytest", "pytest", "tests/scripts"], tree))
         if (web / "package.json").is_file():
             # A fresh worktree has nothing installed unless the ticket touched the front end.
             if not (web / "node_modules").is_dir():
@@ -213,7 +214,9 @@ class Landing:
     def closing_comment(self, ticket):
         ran = self.runner.run(
             ["gh", "issue", "view", ticket, "--json", "comments", "--jq",
-             ".comments[-1].body"], self.worktree)
+             ".comments[-1].body"], self.worktree,
+            # gh asks at a terminal, and a landing has nobody at one.
+            {"GH_PROMPT_DISABLED": "1"})
         if ran.status != 0:
             return ("(The tracker would not answer for #{}, so its closing comment is "
                     "missing.)".format(ticket))
