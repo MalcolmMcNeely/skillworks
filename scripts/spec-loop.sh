@@ -33,9 +33,10 @@ main() {
   step_prompt() {
     case "$2" in
       build)        printf '/implement %s --stop-after-tests' "$1" ;;
-      sweep)        printf '/comment-sweep' ;;
       standards|spec|architecture)
                     printf '/review-%s %s' "$2" "$1" ;;
+      fix)          printf '/implement %s --fix' "$1" ;;
+      sweep)        printf '/comment-sweep' ;;
       finish)       printf '/implement %s --finish' "$1" ;;
     esac
   }
@@ -58,7 +59,7 @@ main() {
   # The checks and the plan read step_prompt, so nothing added below the command line reaches them.
   step_body() {  # <ticket> <step>
     local reports
-    [ "$2" = finish ] || { step_prompt "$1" "$2"; return 0; }
+    [ "$2" = fix ] || { step_prompt "$1" "$2"; return 0; }
     reports=$(review_reports "$1") || return 1
     printf '%s\n\nThe three review axes have run. Their reports follow.\n%s' \
       "$(step_prompt "$1" "$2")" "$reports"
@@ -67,19 +68,21 @@ main() {
   step_checks() {
     case "$1" in
       build)  printf 'no-error command-loaded ticket-open tree-changed' ;;
-      sweep)  printf 'no-error command-loaded ticket-open' ;;
       standards|spec|architecture)
               printf 'no-error command-loaded ticket-open axis-reported' ;;
+      fix|sweep)
+              printf 'no-error command-loaded ticket-open' ;;
       finish) printf 'no-error command-loaded new-commit tree-clean ticket-closed' ;;
     esac
   }
 
   # A resumed axis would read the axis before it, and that separation is why there are three.
+  # The sweep is fresh too, so it reads the whole ticket and not only what the build session wrote.
   # Fresh is the default, so a step added without a line here cannot resume nothing at all.
   step_resumes() {
     case "$1" in
-      sweep|finish) return 0 ;;
-      *)            return 1 ;;
+      fix|finish) return 0 ;;
+      *)          return 1 ;;
     esac
   }
 
@@ -198,7 +201,7 @@ main() {
     out=$(step_log "$ticket" "$step")
     say "$(printf 'STEP  #%s %-13s%s' \
       "$ticket" "$step" "$(progress_suffix "$POSITION" "$TICKET_COUNT" "$MEAN_SECONDS")")"
-    # Built before the session starts, so two axes out of three never reach a finishing step.
+    # Built before the session starts, so two axes out of three never reach a reconciling step.
     prompt=$(step_body "$ticket" "$step" 2>"$out.err") \
       || stop_step "$ticket" "$step" "was short of a review axis report" "$out.err"
     claude_p "$prompt" "$@" >"$out.json" 2>"$out.err" \
@@ -227,7 +230,7 @@ main() {
 
   # One list, read by the plan and by the run, so the two cannot drift apart.
   REVIEW_STEPS="standards spec architecture"
-  STEPS="build sweep $REVIEW_STEPS finish"
+  STEPS="build $REVIEW_STEPS fix sweep finish"
 
   SPEC="${1:-}"
   DRY_RUN=0

@@ -96,13 +96,14 @@ case_the_dry_run_still_prints_the_sessions_it_would_start() {
 
   assert_status 0 "$STATUS"
   assert_says '/implement 168 --stop-after-tests' "$OUTPUT"
+  assert_says '/implement 168 --fix' "$OUTPUT"
   assert_says '/comment-sweep' "$OUTPUT"
   assert_says '/implement 168 --finish' "$OUTPUT"
   assert_says 'checks: no-error command-loaded ticket-open tree-changed' "$OUTPUT"
   assert_says 'checks: no-error command-loaded new-commit tree-clean ticket-closed' "$OUTPUT"
 }
 
-case_the_dry_run_prints_the_three_review_steps_between_the_sweep_and_the_finish() {
+case_the_dry_run_prints_all_seven_steps_in_order() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
 
   run_loop 158 --dry-run
@@ -112,7 +113,7 @@ case_the_dry_run_prints_the_three_review_steps_between_the_sweep_and_the_finish(
   assert_says '/review-spec 168' "$OUTPUT"
   assert_says '/review-architecture 168' "$OUTPUT"
   assert_eq "the order of the steps" \
-    "build sweep standards spec architecture finish " "$(planned_steps)"
+    "build standards spec architecture fix sweep finish " "$(planned_steps)"
 }
 
 case_the_dry_run_gives_every_review_step_the_same_checks() {
@@ -128,19 +129,31 @@ case_the_dry_run_gives_every_review_step_the_same_checks() {
   done
 }
 
-case_the_dry_run_starts_every_review_step_fresh_and_resumes_the_rest() {
+# Read off the plan rather than written out, so the two move together or this case fails.
+case_the_dry_run_gives_the_reconciling_step_the_checks_the_sweep_has() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+
+  run_loop 158 --dry-run
+
+  assert_status 0 "$STATUS"
+  assert_eq "the checks on the fix step" "$(planned_checks sweep)" "$(planned_checks fix)"
+  assert_eq "the checks on the sweep step" \
+    "no-error command-loaded ticket-open" "$(planned_checks sweep)"
+}
+
+case_the_dry_run_resumes_the_build_session_for_the_fix_and_the_finish_alone() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
 
   run_loop 158 --dry-run
 
   assert_status 0 "$STATUS"
   local step
-  for step in build standards spec architecture; do
+  for step in build standards spec architecture sweep; do
     case "$(planned_call "$step")" in
       *--resume*) fail "the $step step would resume a session" ;;
     esac
   done
-  for step in sweep finish; do
+  for step in fix finish; do
     assert_says '--resume <build session>' "$(planned_call "$step")"
   done
 }
@@ -342,29 +355,52 @@ session_call() {  # <prompt>
   calls | grep -F -- "$1" | head -1
 }
 
-# The finishing step's prompt runs over many lines, and it is the last session the loop starts.
-finish_prompt() {
-  calls | awk 'index($0, "claude -p /implement 168 --finish") == 1 { found = 1 } found'
+# A prompt carrying the reports runs over many lines, so the next session's call is what ends it.
+step_call() {  # <the first line of the call>
+  calls | awk -v marker="$1" '
+    index($0, marker) == 1        { found = 1 }
+    found && shown && index($0, "claude -p ") == 1 { exit }
+    found                         { shown = 1; print }'
 }
+
+fix_prompt() { step_call "claude -p /implement 168 --fix"; }
+
+finish_prompt() { step_call "claude -p /implement 168 --finish"; }
 
 ticket_worktree() { printf '%s/.claude/worktrees/spec-158/ticket-168' "$WORKTREE"; }
 
 # The finish step cannot pass its checks here, so the loop stops with all three axes on record.
-case_every_review_step_is_given_a_session_that_resumes_nothing() {
+# All four read the change cold: no axis reads another's mind, and the sweep sees the whole ticket.
+case_the_review_steps_and_the_sweep_are_given_sessions_that_resume_nothing() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_sessions_that_report
 
   run_loop 158
 
   assert_status 1 "$STATUS"
-  local axis
-  for axis in standards spec architecture; do
-    assert_says "/review-$axis 168" "$(calls)"
-    case "$(session_call "/review-$axis 168")" in
-      *--resume*) fail "the $axis step resumed a session" ;;
+  local prompt
+  for prompt in "/review-standards 168" "/review-spec 168" "/review-architecture 168" \
+    "/comment-sweep"; do
+    assert_says "$prompt" "$(calls)"
+    case "$(session_call "$prompt")" in
+      *--resume*) fail "$prompt resumed a session" ;;
     esac
   done
-  assert_says '--resume session-1' "$(session_call /comment-sweep)"
+}
+
+implement_flags() {
+  calls | sed -n 's|^claude -p /implement 168 \(--[a-z-]*\).*|\1|p'
+}
+
+case_the_reconciling_step_and_the_finishing_step_each_run_under_their_own_flag() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  assert_eq "the flags the /implement steps ran under" \
+    "$(printf -- '--stop-after-tests\n--fix\n--finish')" "$(implement_flags)"
 }
 
 case_a_review_step_that_reported_nothing_stops_the_loop() {
@@ -407,11 +443,14 @@ case_a_review_step_that_errored_stops_the_loop_and_keeps_the_worktree() {
   assert_says "$(ticket_worktree)" "$OUTPUT"
   [ -d "$(ticket_worktree)" ] || fail "the worktree of the stopped ticket was thrown away"
   case "$(calls)" in
+    *"/implement 168 --fix"*) fail "the loop went on to reconcile the ticket" ;;
+  esac
+  case "$(calls)" in
     *"/implement 168 --finish"*) fail "the loop went on to finish the ticket" ;;
   esac
 }
 
-# --- the reports reaching the finishing step --------------------------------
+# --- the reports reaching the reconciling step ------------------------------
 
 given_three_axes_with_something_to_say() {
   given_an_axis_that_says standards "## Standards. The name box says nothing."
@@ -419,7 +458,7 @@ given_three_axes_with_something_to_say() {
   given_an_axis_that_says architecture "## Architecture. The arrow points the wrong way."
 }
 
-case_the_finishing_step_is_given_what_all_three_axes_found() {
+case_the_reconciling_step_is_given_what_all_three_axes_found() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_sessions_that_report
   given_three_axes_with_something_to_say
@@ -428,13 +467,13 @@ case_the_finishing_step_is_given_what_all_three_axes_found() {
 
   assert_status 1 "$STATUS"
   local prompt
-  prompt=$(finish_prompt)
+  prompt=$(fix_prompt)
   assert_says "The name box says nothing." "$prompt"
   assert_says "The third criterion is unmet." "$prompt"
   assert_says "The arrow points the wrong way." "$prompt"
 }
 
-case_the_finishing_step_is_told_which_axis_each_report_came_from() {
+case_the_reconciling_step_is_told_which_axis_each_report_came_from() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_sessions_that_report
   given_three_axes_with_something_to_say
@@ -444,21 +483,36 @@ case_the_finishing_step_is_told_which_axis_each_report_came_from() {
   assert_status 1 "$STATUS"
   local axis
   for axis in standards spec architecture; do
-    assert_says "## The $axis axis reported" "$(finish_prompt)"
+    assert_says "## The $axis axis reported" "$(fix_prompt)"
   done
 }
 
-case_the_finishing_step_still_resumes_the_build_session() {
+# The reports stop at the step that reconciles, so carrying them on would be the same work twice.
+case_the_finishing_step_is_given_no_axis_report() {
+  given_the_tracker_holds "$ONE_OPEN_TICKET"
+  given_sessions_that_report
+  given_three_axes_with_something_to_say
+
+  run_loop 158
+
+  assert_status 1 "$STATUS"
+  case "$(finish_prompt)" in
+    *"axis reported"*) fail "the finishing step was given the reports again" ;;
+  esac
+}
+
+case_the_reconciling_step_and_the_finishing_step_both_resume_the_build_session() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_sessions_that_report
 
   run_loop 158
 
   assert_status 1 "$STATUS"
+  assert_says "--resume session-1" "$(fix_prompt)"
   assert_says "--resume session-1" "$(finish_prompt)"
 }
 
-case_a_missing_axis_report_stops_the_loop_before_the_finishing_step() {
+case_a_missing_axis_report_stops_the_loop_before_the_reconciling_step() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_sessions_that_report
   given_a_report_lost_after_the_last_axis standards
@@ -466,9 +520,9 @@ case_a_missing_axis_report_stops_the_loop_before_the_finishing_step() {
   run_loop 158
 
   assert_status 1 "$STATUS"
-  assert_says "step finish was short of a review axis report" "$OUTPUT"
+  assert_says "step fix was short of a review axis report" "$OUTPUT"
   case "$(calls)" in
-    *"/implement 168 --finish"*) fail "the finishing step ran on two axes out of three" ;;
+    *"/implement 168 --fix"*) fail "the reconciling step ran on two axes out of three" ;;
   esac
 }
 
@@ -481,7 +535,7 @@ case_a_missing_axis_report_names_the_axis_it_came_from() {
 
   assert_status 1 "$STATUS"
   assert_says "the standards axis left no report" \
-    "$(cat "$WORKTREE/.spec-loop/158/ticket-168-finish.err")"
+    "$(cat "$WORKTREE/.spec-loop/158/ticket-168-fix.err")"
 }
 
 # --- the way past a refused write -------------------------------------------
