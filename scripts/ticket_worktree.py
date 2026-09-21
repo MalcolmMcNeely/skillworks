@@ -39,6 +39,7 @@ from typing import NamedTuple
 
 from fetch_origin import fetch_origin
 from runner import Subprocess
+from stop import Stop, is_a_number, misuse, refusal
 
 USAGE = (
     "usage: scripts/ticket_worktree.py open|close|plan <checkout> <spec> <job>\n"
@@ -59,27 +60,11 @@ COMMANDS = {
     "keep": Command(False, lambda worktrees, job: worktrees.keep_group()),
 }
 
-DIGITS = "0123456789"
 # A job names a folder and a branch, so anything else escapes the group or breaks the ref.
 JOB_LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
 
 # Named in full, because the way out it offers is read after a cd somewhere else.
 SELF = Path(__file__).resolve().as_posix()
-
-
-class Stop(Exception):
-    def __init__(self, status, said):
-        super().__init__(said)
-        self.status = status
-        self.said = said
-
-
-def refusal(said):
-    return Stop(1, "FAIL  " + said + "\n")
-
-
-def misuse():
-    return Stop(64, USAGE)
 
 
 def arguments(argv):
@@ -89,16 +74,16 @@ def arguments(argv):
     job = argv[3] if len(argv) > 3 else ""
 
     if not checkout:
-        raise misuse()
-    if not spec or any(c not in DIGITS for c in spec):
-        raise misuse()
+        raise misuse(USAGE)
+    if not is_a_number(spec):
+        raise misuse(USAGE)
     if command not in COMMANDS:
-        raise misuse()
+        raise misuse(USAGE)
     if COMMANDS[command].names_a_job:
         if not job or any(c not in JOB_LETTERS for c in job):
-            raise misuse()
+            raise misuse(USAGE)
     elif job:
-        raise misuse()
+        raise misuse(USAGE)
     return command, checkout, spec, job
 
 

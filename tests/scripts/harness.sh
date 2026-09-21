@@ -100,33 +100,6 @@ advance_origin() {  # <name>
   push_from_elsewhere "$1.txt" "$1" "Somebody else's $1"
 }
 
-# The markers the suite looks for, so a case can say whether it ran. Not the shell
-# tests: the suite would run these cases again, each laying the marker for the next.
-given_a_project() {
-  mkdir -p "$WORKTREE/src/Skillworks.Studio.Web"
-  write_commit "$WORKTREE" Skillworks.slnx "<Solution />" "A solution to check"
-  write_commit "$WORKTREE" src/Skillworks.Studio.Web/package.json "{}" "A front end to check"
-  git -C "$WORKTREE" push --quiet origin main
-}
-
-commit_for_ticket() {
-  write_commit "$WORKTREE" work.txt "work" "$(printf 'Do the work\n\nTicket: #%s' "$1")"
-}
-
-commit_naming_nothing() {
-  write_commit "$WORKTREE" work.txt "work" "Do the work"
-}
-
-# Counting the tries is how a bounded retry is measured and not guessed at.
-refuse_pushes() {
-  printf '#!/bin/sh\necho try >> "%s"\nexit 1\n' "$TMP/push-tries" > "$ORIGIN/hooks/pre-receive"
-  chmod +x "$ORIGIN/hooks/pre-receive"
-}
-
-push_tries() {
-  if [ -f "$TMP/push-tries" ]; then wc -l < "$TMP/push-tries" | tr -d ' '; else printf '0'; fi
-}
-
 # --- stubs ------------------------------------------------------------------
 
 # A recorded call is how a test says a session was never started.
@@ -134,12 +107,6 @@ stub() {
   printf '#!/bin/sh\necho "%s $*" >> "%s"\n' "$1" "$TMP/calls" > "$STUBS/$1"
   chmod +x "$STUBS/$1"
   PATH="$STUBS:$PATH"
-}
-
-# A check that turns its answer down, so a case can hold a failing suite against the push.
-stub_failure() {
-  stub "$1"
-  printf 'exit 1\n' >> "$STUBS/$1"
 }
 
 # A rename is a keep's last step and the group goes in name order, so jobs before this one are kept.
@@ -150,20 +117,8 @@ refuse_keeping() {  # <spec> <job>
   git -C "$WORKTREE" branch "spec-loop/$1/$2-kept-1/blocker" main
 }
 
-# A fixed answer, so a case can tell what the script gathered from what it made up.
-stub_saying() {  # <command> <text>
-  stub "$1"
-  printf '%s\n' "$2" > "$TMP/$1.said"
-  printf 'cat "%s"\n' "$TMP/$1.said" >> "$STUBS/$1"
-}
-
 called() {
   grep -q "^$1 " "$TMP/calls" 2>/dev/null
-}
-
-# The whole call, for a case that wants one check of a suite and not another.
-ran() {
-  grep -qxF "$1" "$TMP/calls" 2>/dev/null
 }
 
 calls() {
@@ -171,13 +126,6 @@ calls() {
 }
 
 # --- running ----------------------------------------------------------------
-
-run_script() {  # <script> <args...>
-  local script="$1"
-  shift
-  OUTPUT=$(bash "$ROOT/$script" "$@" 2>&1)
-  STATUS=$?
-}
 
 run_cases() {
   local name

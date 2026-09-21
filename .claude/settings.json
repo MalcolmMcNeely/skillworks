@@ -22,7 +22,7 @@
       "Bash(git push:*)",
       "Bash(bash scripts/spec-loop.sh:*)",
       "Bash(bash scripts/skillworks-preflight.sh:*)",
-      "Bash(bash scripts/land-ticket.sh:*)",
+      "Bash(uv run scripts/land_ticket.py:*)",
       "Bash(uv run scripts/ticket_worktree.py:*)",
       "Bash(bash tests/scripts/run.sh:*)",
       "Bash(dotnet:*)",

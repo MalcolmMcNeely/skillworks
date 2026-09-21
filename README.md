@@ -245,7 +245,7 @@ Two stages. A human drives the first. A script drives the second.
                                /implement <n> --stop-after-tests
                                /comment-sweep
                                /implement <n> --finish     review, commit, close
-                               scripts/land-ticket.sh       push it to main
+                               scripts/land_ticket.py       push it to main
                           └─ at the end: /spec-drift against the spec
 ```
 

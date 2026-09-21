@@ -284,7 +284,7 @@ main() {
     say "DRY   spec #$SPEC: $spec_title"
 
     # Asked of the scripts that do the work, so the plan cannot drift from the run.
-    land_plan=$(bash "$SCRIPTS/land-ticket.sh" --plan) && [ -n "$land_plan" ] \
+    land_plan=$(uv run "$SCRIPTS/land_ticket.py" --plan) && [ -n "$land_plan" ] \
       || die "ABORT the landing steps would not be read, so the plan would be short of them."
 
     tickets=$(gh api --paginate "repos/$REPO/issues/$SPEC/sub_issues" \
@@ -428,7 +428,7 @@ main() {
     # The session that wrote the ticket goes too, to resolve what it conflicts with.
     land_out=$(step_log "$next" land).out
     landed=0
-    bash "$SCRIPTS/land-ticket.sh" "$JOB_WORKTREE" "$next" "$session" \
+    uv run "$SCRIPTS/land_ticket.py" "$JOB_WORKTREE" "$next" "$session" \
       >"$land_out" 2>&1 || landed=$?
     say "$(cat "$land_out")"
     if [ "$landed" -ne 0 ]; then

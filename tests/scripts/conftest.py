@@ -46,6 +46,7 @@ class Repo:
         self.root = root
         self.origin = root / "origin.git"
         self.work = root / "work"
+        self.tries = root / "push-tries"
         self.checkouts = 0
 
         run(["git", "init", "--quiet", "--bare", "--initial-branch=main", self.origin.as_posix()])
@@ -78,10 +79,26 @@ class Repo:
         return other
 
     # A commit somebody else pushed, so only a fetch can find it.
-    def advance_origin(self, name):
+    def push_from_elsewhere(self, name, text, message):
         other = self.other_checkout()
-        self.write_commit(other, name + ".txt", name, "Somebody else's " + name)
+        self.write_commit(other, name, text, message)
         git(other, "push", "--quiet", "origin", "main")
+
+    def advance_origin(self, name):
+        self.push_from_elsewhere(name + ".txt", name, "Somebody else's " + name)
+
+    # Counting the tries is how a bounded retry is measured and not guessed at.
+    def refuse_pushes(self):
+        hook = self.origin / "hooks" / "pre-receive"
+        hook.write_text(
+            '#!/bin/sh\necho try >> "{}"\nexit 1\n'.format(self.tries.as_posix()),
+            encoding="utf-8", newline="\n")
+        hook.chmod(0o755)
+
+    def push_tries(self):
+        if not self.tries.exists():
+            return 0
+        return len(self.tries.read_text(encoding="utf-8").splitlines())
 
     def group(self, spec):
         return self.work / ".claude" / "worktrees" / "spec-{}".format(spec)
@@ -106,18 +123,26 @@ def run(args):
     return done.stdout
 
 
+# No test may start these for real: they reach the network, a model or the front-end build.
+NEVER_REAL = ("gh", "claude", "npm", "dotnet")
+
+
 class RecordingRunner:
     # Real git runs unless a case turns it down, because branch behaviour is what may be wrong.
     def __init__(self):
         self.real = Subprocess()
         self.calls = []
         self.refusals = []
+        self.stubs = {}
 
     # A mark is matched against the whole command, temporary path and all, as one line.
     def refuse(self, mark, says, times=None):
         self.refusals.append([mark, says, times])
 
-    def run(self, args):
+    def stub(self, name, says="", status=0, does=None):
+        self.stubs[name] = (says, status, does)
+
+    def run(self, args, where=None, env=None):
         args = [str(a) for a in args]
         self.calls.append(args)
         line = " ".join(args)
@@ -128,10 +153,19 @@ class RecordingRunner:
             if times is not None:
                 refusal[2] = times - 1
             return Ran(1, "", says + "\n")
-        return self.real.run(args)
+        if args[0] in self.stubs:
+            says, status, does = self.stubs[args[0]]
+            if does is not None:
+                does()
+            return Ran(status, says, "")
+        assert args[0] not in NEVER_REAL, "this case would have started " + args[0] + " for real"
+        return self.real.run(args, where, env)
 
     def built(self, mark):
         return [call for call in self.calls if mark in " ".join(call)]
+
+    def started(self, name):
+        return [call for call in self.calls if call[0] == name]
 
 
 @pytest.fixture
