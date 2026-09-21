@@ -216,7 +216,7 @@ main() {
   # goes to the log as well, because a background run has nobody at the terminal.
   worktree() {
     local status=0
-    bash "$SCRIPTS/ticket-worktree.sh" "$1" "$ROOT" "$SPEC" "${2:-}" 2>"$WORKTREE_ERR" || status=$?
+    uv run "$SCRIPTS/ticket_worktree.py" "$1" "$ROOT" "$SPEC" "${2:-}" 2>"$WORKTREE_ERR" || status=$?
     [ "$status" -eq 0 ] || tee -a "$LOG" <"$WORKTREE_ERR" >&2
     return "$status"
   }
@@ -226,7 +226,9 @@ main() {
 
   # Found from this file, not from the working directory, because the working
   # directory is about to become whichever checkout the ticket is built in.
-  SCRIPTS=$(cd "$(dirname "$0")" && pwd)
+  #
+  # A native form, because whether the shell converts one on the way out to uv is not set here.
+  SCRIPTS=$(cd "$(dirname "$0")" && { pwd -W 2>/dev/null || pwd; })
 
   # One list, read by the plan and by the run, so the two cannot drift apart.
   REVIEW_STEPS="standards spec architecture"

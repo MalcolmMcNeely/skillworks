@@ -156,7 +156,8 @@ The tool never touches the AppHost's Loki, so your real telemetry stays as it is
 
 The API tests start Loki in a container, so Docker must be running. Run the front-end checks from
 `src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally. The
-shell tests build a throwaway repository in a temporary directory and touch nothing else:
+script tests build a throwaway repository in a temporary directory and touch nothing else. Some of
+the scripts are Python, so `uv` has to be on PATH for their tests to run:
 
 ```
 dotnet test Skillworks.slnx

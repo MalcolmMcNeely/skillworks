@@ -153,6 +153,7 @@ skip-folders:
   - obj
   - node_modules
   - __pycache__
+  - .pytest_cache
   - .venv
   - venv
   - site-packages

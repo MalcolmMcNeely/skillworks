@@ -6,7 +6,8 @@
 # Every case gets a repository of its own in a temporary directory, so no case
 # can see what another one left behind, and none can touch this one.
 
-ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+# A native form, because whether the shell converts one on the way out to uv is not set here.
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && { pwd -W 2>/dev/null || pwd; })
 REAL_PATH="$PATH"
 
 CASES_RUN=0
@@ -141,26 +142,12 @@ stub_failure() {
   printf 'exit 1\n' >> "$STUBS/$1"
 }
 
-# Real git but for the one command named, so a case can read what a failure part way left behind.
-refuse_git() {  # <a regular expression the arguments match>
-  local real
-  # A stub is on PATH by now, so finding git through it would have this one call itself for ever.
-  real=$(PATH="$REAL_PATH"; command -v git)
-  cat > "$STUBS/git" <<STUB
-#!/bin/sh
-if printf '%s' "\$*" | grep -Eq '$1'; then
-  echo "git was turned down: \$*" >&2
-  exit 1
-fi
-exec '$real' "\$@"
-STUB
-  chmod +x "$STUBS/git"
-  PATH="$STUBS:$PATH"
-}
-
 # A rename is a keep's last step and the group goes in name order, so jobs before this one are kept.
-refuse_keeping() {  # <job>
-  refuse_git "branch --quiet -m .*$1"
+#
+# Real git refuses a ref where a folder of refs sits. A stub on PATH cannot do it: Windows
+# reads PATHEXT, so a native program never starts an extensionless shell file.
+refuse_keeping() {  # <spec> <job>
+  git -C "$WORKTREE" branch "spec-loop/$1/$2-kept-1/blocker" main
 }
 
 # A fixed answer, so a case can tell what the script gathered from what it made up.

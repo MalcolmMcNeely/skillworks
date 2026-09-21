@@ -198,7 +198,7 @@ case_the_plan_is_written_to_the_log_as_well() {
 leftover() { printf '%s/.claude/worktrees/spec-158/ticket-164' "$WORKTREE"; }
 
 given_a_leftover_worktree() {  # <job>
-  bash "$ROOT/scripts/ticket-worktree.sh" open "$WORKTREE" 158 "$1" >/dev/null 2>&1
+  uv run "$ROOT/scripts/ticket_worktree.py" open "$WORKTREE" 158 "$1" >/dev/null 2>&1
 }
 
 case_a_restart_over_a_leftover_holding_work_carries_on() {
@@ -248,7 +248,7 @@ case_a_keep_that_fails_part_way_still_names_the_job_it_kept() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_a_leftover_worktree ticket-164
   given_a_leftover_worktree ticket-165
-  refuse_keeping ticket-165
+  refuse_keeping 158 ticket-165
 
   run_loop 158
 
@@ -263,7 +263,7 @@ case_the_log_names_a_job_kept_before_a_keep_failed() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_a_leftover_worktree ticket-164
   given_a_leftover_worktree ticket-165
-  refuse_keeping ticket-165
+  refuse_keeping 158 ticket-165
 
   run_loop 158
 
@@ -275,7 +275,7 @@ case_the_log_holds_the_reason_a_keep_failed() {
   given_the_tracker_holds "$ONE_OPEN_TICKET"
   given_a_leftover_worktree ticket-164
   given_a_leftover_worktree ticket-165
-  refuse_keeping ticket-165
+  refuse_keeping 158 ticket-165
 
   run_loop 158
 

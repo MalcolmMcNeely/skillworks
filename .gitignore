@@ -37,3 +37,11 @@ docs/research/
 
 # Prototypes. A prototype is a throwaway and never reaches main.
 prototypes/
+
+# Python bytecode and test caches. Rebuilt on every run, per-machine.
+__pycache__/
+.pytest_cache/
+
+# Python virtual environments. Per-machine.
+.venv/
+venv/
