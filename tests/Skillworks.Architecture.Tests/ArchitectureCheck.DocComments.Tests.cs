@@ -31,6 +31,46 @@ public sealed partial class ArchitectureCheckTests
         Assert.Equal([("doc-comments", file)], tree.Breaches());
     }
 
+    [Theory]
+    [InlineData("\"\"\"Tells the time.\"\"\"\n")]
+    [InlineData("\"\"\"\nTells the time.\n\"\"\"\n")]
+    [InlineData("class Clock:\n    \"\"\"Tells the time.\"\"\"\n")]
+    [InlineData("def now():\n    '''Tells the time.'''\n    return 1\n")]
+    [InlineData("# Reads the machine.\ndef now():\n\n    \"\"\"Tells the time.\"\"\"\n    return 1\n")]
+    public void A_python_docstring_is_a_breach(string content)
+    {
+        using var tree = new RulesTree()
+            .Set(PlacementFile, "source-files", "[.cs, .ts, .tsx, .py]")
+            .Write("src/App/clock.py", content);
+
+        Assert.Equal([("doc-comments", "src/App/clock.py")], tree.Breaches());
+    }
+
+    [Fact]
+    public void Python_comments_and_triple_quoted_values_are_not_a_breach()
+    {
+        using var tree = new RulesTree()
+            .Set(PlacementFile, "source-files", "[.cs, .ts, .tsx, .py]")
+            .Write("src/App/clock.py", """"
+                # An ordinary comment.
+                TEMPLATE = """
+                def render():
+                """
+
+                HELP = dedent(
+                    """
+                    Reads the clock.
+                    """
+                )
+
+
+                def now():
+                    return TEMPLATE
+                """");
+
+        Assert.Empty(tree.Breaches());
+    }
+
     [Fact]
     public void A_file_is_one_breach_that_names_the_line_of_each_doc_comment()
     {

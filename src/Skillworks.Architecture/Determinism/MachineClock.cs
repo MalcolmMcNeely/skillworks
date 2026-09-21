@@ -58,6 +58,7 @@ internal static class MachineClock
         foreach (var breach in ContextsThatMatchNoContext(contexts, determinism))
             yield return breach;
 
+        // Only C# is judged for time: finding a Reach needs a parser, and a text scan would report a name in a string.
         var judged = sourceFiles
             .Where(CSharpFile.IsCSharp)
             .Where(file => contexts.ClaimOf(file) is { } context && determinism.Judges(context.Name))
