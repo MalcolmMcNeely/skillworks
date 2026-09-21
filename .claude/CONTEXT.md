@@ -6,6 +6,26 @@ under, and the scripts that drive it.
 
 ## Language
 
+**Clean**:
+A worktree git reports nothing uncommitted in. A Kept job is Clean when its branch carries only the
+commits the job had already made, and the driver reads the same fact of a finishing worktree before
+it lets a step pass. One word, because a job that stopped and a job that finished are asked the same
+question.
+_Avoid_: Pristine, unmodified
+
+**Held**:
+A worktree that had uncommitted work in it when the run stopped. A Keep commits that work to the
+job's branch before the worktree goes, so Held says the branch carries work that reached no commit of
+the job's own. Held is the case a Keep exists for, and Clean is the other one.
+_Avoid_: Dirty, unsaved
+
+**Keep**:
+What the loop does to the worktree group a stopped run left behind. Each job's uncommitted work is
+committed, its branch is renamed out of the way so the job can be opened again, and the worktree
+goes. A Keep discards nothing, which is what lets one command restart a stopped run. Closing is its
+opposite: a job that passed has its worktree and its branch both removed.
+_Avoid_: Stash, salvage
+
 **Land**:
 A finished ticket reaching `main`. The driver rebases the ticket's worktree onto the newest `main`,
 proves the work survived and the suite is green, then pushes. A ticket Lands on its own, the moment
