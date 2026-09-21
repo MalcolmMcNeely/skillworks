@@ -57,7 +57,9 @@ public sealed partial class SkillEndpointsTests
 
         // Two figures for one day that disagree would leave the developer unsure which to believe.
         Assert.Equal([1, 3, 1], days.Select(grilling => grilling.Activations));
-        Assert.Equal(days.Select(grilling => grilling.Activations), days.Select(grilling => grilling.Hours.Sum()));
+        Assert.Equal(
+            [Hours((0, 1)), Hours((0, 1), (13, 1), (23, 1)), Hours((23, 1))],
+            days.Select(grilling => grilling.Hours));
     }
 
     [Fact]

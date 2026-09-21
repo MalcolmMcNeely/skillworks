@@ -182,7 +182,9 @@ public sealed partial class ArchitectureCheckTests
     [Fact]
     public void A_front_end_file_is_left_to_the_front_end_linter()
     {
-        using var tree = Judging("app").Write("web/src/clock.ts", "export const now = () => Date.now();\n");
+        // The reach that breaches under any other extension, so the file is left alone for the
+        // extension it carries and not for the words it happens to hold.
+        using var tree = Judging("app").Write("web/src/clock.ts", Running("Clock", "var now = DateTimeOffset.UtcNow;"));
 
         Assert.Empty(tree.Breaches());
     }

@@ -73,15 +73,20 @@ case_the_dry_run_prints_every_landing_step_with_its_checks() {
   run_loop 158 --dry-run
 
   assert_status 0 "$STATUS"
-  local step what checks found=0
-  while IFS=$'\t' read -r step what checks; do
-    [ -n "$step" ] || continue
-    found=$(( found + 1 ))
-    assert_says "$what" "$OUTPUT"
-    assert_says "checks: $checks" "$OUTPUT"
-  done < <(bash "$ROOT/scripts/land-ticket.sh" --plan)
-  # A plan that named no step would otherwise let this case pass having read nothing.
-  [ "$found" -gt 0 ] || fail "the landing script named no step to look for"
+  # Written out, so a step the landing script renames, drops or reorders fails here
+  # rather than moving both sides of the comparison together.
+  assert_says "the worktree, its tree and the trailer on its commit" "$OUTPUT"
+  assert_says "checks: is-a-worktree tree-clean ticket-named" "$OUTPUT"
+  assert_says "git fetch origin (up to 5 attempts)" "$OUTPUT"
+  assert_says "checks: origin-has-main something-to-land" "$OUTPUT"
+  assert_says "git rebase origin/main, when the base has moved" "$OUTPUT"
+  assert_says "checks: commits-kept files-kept" "$OUTPUT"
+  assert_says "the build session, when the rebase conflicts" "$OUTPUT"
+  assert_says "checks: session-named no-refusal none-left-conflicting no-marker-staged rebase-carried-on" "$OUTPUT"
+  assert_says "the whole suite, when the base has moved" "$OUTPUT"
+  assert_says "checks: suite-green" "$OUTPUT"
+  assert_says "git push origin HEAD:main" "$OUTPUT"
+  assert_says "checks: pushed (up to 3 attempts)" "$OUTPUT"
 }
 
 case_the_dry_run_still_prints_the_sessions_it_would_start() {
