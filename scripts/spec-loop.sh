@@ -256,6 +256,7 @@ main() {
   command -v gh >/dev/null || die "ABORT gh is not installed"
   command -v claude >/dev/null || die "ABORT claude is not on PATH"
   command -v node >/dev/null || die "ABORT node is not on PATH"
+  command -v uv >/dev/null || die "ABORT uv is not on PATH"
   gh auth status >/dev/null 2>&1 || die "ABORT gh is not authenticated. Run: gh auth login"
 
   REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
