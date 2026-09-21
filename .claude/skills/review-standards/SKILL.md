@@ -56,6 +56,13 @@ Skip anything tooling already enforces. Each item reads *what it is* → *how to
 - **Middle Man** — a class or function that mostly just delegates onward. → Cut it, call the real target direct.
 - **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → Drop the inheritance, use composition.
 
+The items above judge code. A test carries them and four of its own, under one question: **what change to the code would make this test fail?** A test with no answer is reported however tidy it reads, because a suite that cannot go red buys nothing and is read as proof.
+
+- **Tautological Assertion** — the expected side is worked out the way the code works it out, so both sides move together and no defect can show. → Write the expected value out by hand.
+- **Untriggered Fixture** — the input holds nothing the behaviour under test acts on, so the assertion would still hold with that behaviour deleted. → Put the trigger in the fixture, and settle it by deleting the behaviour and watching the test go red.
+- **Unguarded Enumeration** — a test walks files, rows or elements and judges what it found without proving it found any, so an empty walk passes. → Pin the count the walk is expected to reach.
+- **Stub Echo** — a stub is handed a value and the assertion only checks that value came back, so it measures the stub. → Assert on what the code made of the value, not on the value.
+
 ## What to report
 
 Report per file and hunk where that helps:

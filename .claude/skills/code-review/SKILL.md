@@ -62,6 +62,13 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 - **Middle Man** — a class or function that mostly just delegates onward. → cut it, call the real target direct.
 - **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
+Those judge code. A test carries them and four of its own, under one question: **what change to the code would make this test fail?** A test with no answer is a finding however tidy it reads, because a suite that can't go red buys nothing and gets read as proof.
+
+- **Tautological Assertion** — the expected side is worked out the way the code works it out, so both sides move together and no defect can show. → write the expected value out by hand.
+- **Untriggered Fixture** — the input holds nothing the behaviour under test acts on, so the assertion would still hold with that behaviour deleted. → put the trigger in the fixture, and settle it by deleting the behaviour and watching the test go red.
+- **Unguarded Enumeration** — a test walks files, rows, or elements and judges what it found without proving it found any, so an empty walk passes. → pin the count the walk is expected to reach.
+- **Stub Echo** — a stub is handed a value and the assertion only checks that value came back, so it measures the stub. → assert on what the code made of the value, not on the value.
+
 ### 4. Identify the architecture sources
 
 Three kinds, and each outranks the one before it.
