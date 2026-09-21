@@ -33,6 +33,11 @@ The spec loop runs the sweep and the review as its own steps, in one session thr
 with the commit and the close. A step written into a skill can be skipped, and a step in the script
 cannot. Run by hand with no flag, `/implement` still does every step itself.
 
+_The first of those three sentences is superseded by
+[ADR 0024](0024-a-review-axis-edits-and-the-sweep-follows-the-last-writer.md). The loop now runs
+seven steps, the review is three of them, and each runs in a session of its own. The other two
+sentences stand._
+
 The existing code breaks the rules, so it is restructured before or with the test, never after:
 feature folders then concern folders, one type per file, namespaces that match folders, and test
 folders that mirror source folders. The front end moves from layer first to feature first, so the
