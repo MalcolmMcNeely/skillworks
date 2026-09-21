@@ -9,6 +9,7 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 
@@ -127,15 +128,29 @@ def run(args):
 NEVER_REAL = ("gh", "claude", "npm", "dotnet")
 
 
+class Call(NamedTuple):
+    args: list
+    where: str
+    env: dict
+
+
 class RecordingRunner:
     # Real git runs unless a case turns it down, because branch behaviour is what may be wrong.
     def __init__(self):
         self.real = Subprocess()
-        self.calls = []
+        self.made = []
         self.refusals = []
         self.stubs = {}
-        # A stub that writes a file needs the folder its call runs in.
-        self.where = None
+
+    # Most cases read the words alone, and the whole call is there for the few that do not.
+    @property
+    def calls(self):
+        return [call.args for call in self.made]
+
+    # A stub that writes a file needs the folder its call runs in.
+    @property
+    def where(self):
+        return self.made[-1].where if self.made else None
 
     def found(self, name):
         return name in self.stubs or self.real.found(name)
@@ -149,8 +164,7 @@ class RecordingRunner:
 
     def run(self, args, where=None, env=None):
         args = [str(a) for a in args]
-        self.calls.append(args)
-        self.where = where
+        self.made.append(Call(args, where, env))
         line = " ".join(args)
         for refusal in self.refusals:
             mark, says, times = refusal
@@ -185,3 +199,20 @@ def repo(tmp_path):
 @pytest.fixture
 def runner():
     return RecordingRunner()
+
+
+# The fast set is the default, so a landing is never gated on a login or on an install.
+# The real set works out its lines on import, so the whole file is kept out, not its cases.
+REAL_BINARIES = "real_binaries"
+
+
+def pytest_addoption(parser):
+    parser.addoption("--real-binaries", action="store_true",
+                     help="run only the tests that start the real gh and the real claude")
+
+
+def pytest_ignore_collect(collection_path, config):
+    if not collection_path.name.endswith("_test.py"):
+        return None
+    real = collection_path.name.startswith(REAL_BINARIES)
+    return real != config.getoption("--real-binaries")

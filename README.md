@@ -171,6 +171,18 @@ npm run lint
 npm test
 ```
 
+The script tests come in two sets, told apart by one flag on the same path. The command above runs
+the fast set, which answers for `gh` and `claude` through the Runner, so it needs neither installed
+and starts no model session. It is the set a landing runs, so landing is never gated on a login.
+
+The other set starts the real `gh` and the real `claude`, far enough to prove each one accepts the
+argument lines the driver builds for it and no further. It needs both programs on PATH. It makes no
+request, changes no issue and starts no model session, and it takes a few seconds:
+
+```
+uv run --with pytest pytest tests/scripts --real-binaries
+```
+
 ## Repo layout
 
 | Path | What it is |
