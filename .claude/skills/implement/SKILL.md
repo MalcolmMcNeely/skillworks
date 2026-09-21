@@ -31,6 +31,18 @@ Anything but `0` means stop, name the open blockers, and do nothing else.
 
 Tests, typechecks and lints are deterministic validation: their result, not your expectation of it, decides the next step. Run each one in the foreground, with a timeout long enough for it to finish, and read its result before your next action. A caller may drive you with `claude -p`, which ends the session the moment your turn ends, so a run still going at that moment is lost, and so is the commit it would have allowed.
 
+## A write under `.claude/` refused
+
+A write under `.claude/` is refused as a sensitive file. No allow rule lifts it, only the permission mode does, so the refusal is the harness and not a fault in the call you made. Do not try the write again, and do not route around it with a shell redirection, a patch command or any other tool.
+
+One refused write blocks one line of the ticket and nothing else. Do every other part of the ticket, and run the tests over what you did write. Then:
+
+1. **Commit the verified work**, with the ticket named in the message as Finishing says. Under `--stop-after-tests` the change stays uncommitted, as that flag already says.
+2. **Leave the ticket open.** Work that is not done is not closed, and the driver reads the open ticket as the stop.
+3. **Write the wall on the ticket.** Comment with the exact path, the exact change you could not write, and that the write was refused as a sensitive file. A developer has to be able to make that change from the comment alone, without opening anything else.
+
+Say the same in your report, so it reaches the driver's log as well.
+
 ## Building
 
 Use /tdd where possible, at pre-agreed seams.
