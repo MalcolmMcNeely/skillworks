@@ -210,6 +210,7 @@ background.
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
 | `docs/agents/` | Reference text more than one skill reads. `/skillworks-setup` writes the tracker and domain seeds; the review baselines are this repo's own. |
+| `docs/agentic-development/` | How the dev loop works, for a human reading it rather than a skill. |
 
 ### How much of Studio is Shared
 
@@ -256,26 +257,15 @@ It asks before it overwrites anything you have edited.
 
 ### The dev loop
 
-Two stages. A human drives the first. A script drives the second.
+Two stages, and two commands. A human drives the first. A script drives the second.
 
 ```
-/grill-with-docs        argue it out; CONTEXT.md and ADRs get written
-                          └─ on your yes, /to-spec runs: a SPEC: issue on
-                             GitHub, docs committed and pushed
-/spec-loop <spec#>      /to-tickets, then scripts/spec_loop.py takes over
-                          └─ per ticket, one fresh session:
-                               /implement <n> --stop-after-tests
-                               /comment-sweep
-                               /implement <n> --finish     review, commit, close
-                               scripts/land_ticket.py       push it to main
-                          └─ at the end: /spec-drift against the spec
+/grill-with-docs        argue the design out, and publish the spec
+/spec-loop <spec#>      build it, ticket by ticket, unattended
 ```
 
-The tickets are GitHub sub-issues of the spec. The driver reads one spec's children and nothing
-else, so two people running the loop on two specs never take each other's work.
-
-The script picks the next ticket, never the model. You can read, stop and resume control flow that
-lives in a script. You cannot do that inside a context window.
+[docs/agentic-development/agentic-loop.md](docs/agentic-development/agentic-loop.md) explains what
+each one does.
 
 Lost? `/what-next` looks at where you are and tells you which skill fits.
 
