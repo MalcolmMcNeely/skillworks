@@ -57,7 +57,7 @@ PLAN = (
      "session-named no-refusal none-left-conflicting no-marker-staged rebase-carried-on"),
     ("suite",
      "the whole suite, when the base has moved",
-     "suite-green"),
+     "suite-can-run suite-green"),
     ("push",
      "git push origin HEAD:main",
      "pushed (up to {} attempts)".format(ATTEMPTS)),
@@ -157,11 +157,16 @@ class Landing:
 
     # The suite says a great deal, and only a failure is worth reading.
     def run_suite(self):
-        passed, said = Suite(self.runner, self.worktree).run()
-        if not passed:
+        outcome = Suite(self.runner, self.worktree).run()
+        # A suite that never started says nothing about the ticket, so it is named apart.
+        if not outcome.ready:
+            raise self.die(
+                "#{} could not be proved on the new base, because the suite could not start. "
+                "Nothing was pushed. The reason was: {}".format(self.ticket, outcome.said))
+        if not outcome.passed:
             raise self.die(
                 "#{} passed on its own and then failed the suite on the new base. Nothing was "
-                "pushed. The suite said:\n{}".format(self.ticket, said))
+                "pushed. The suite said:\n{}".format(self.ticket, outcome.said))
 
     # Read from the message, so a commit reaches its ticket with no tracker call.
     def ticket_of(self, commit):

@@ -118,6 +118,7 @@ def given_a_conflict_with_no_marker(repo, mine, theirs):
 
 
 def given_the_suite_passes(runner):
+    runner.stub("docker")
     runner.stub("dotnet")
     runner.stub("npm")
 
@@ -206,8 +207,8 @@ def test_a_moved_base_is_rebased_and_the_suite_runs_again(repo, runner):
 
 
 def test_a_suite_that_fails_on_the_new_base_is_not_pushed(repo, runner):
+    given_the_suite_passes(runner)
     runner.stub("dotnet", status=1)
-    runner.stub("npm")
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
@@ -217,6 +218,23 @@ def test_a_suite_that_fails_on_the_new_base_is_not_pushed(repo, runner):
 
     assert ran.status == 1
     assert "failed the suite" in report(ran)
+    assert main_of(repo) == base
+
+
+def test_a_suite_that_could_not_start_on_the_new_base_is_not_the_ticket_s_fault(repo, runner):
+    given_the_suite_passes(runner)
+    runner.stub("docker", says="the daemon is not running", status=1)
+    given_a_project(repo)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    base = main_of(repo)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 1
+    assert "Docker" in report(ran)
+    assert "failed the suite" not in report(ran)
+    assert not runner.started("dotnet")
     assert main_of(repo) == base
 
 

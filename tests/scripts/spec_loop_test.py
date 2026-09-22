@@ -270,7 +270,7 @@ def test_the_dry_run_prints_every_landing_step_with_its_checks(loop):
         "checks: session-named no-refusal none-left-conflicting no-marker-staged "
         "rebase-carried-on",
         "the whole suite, when the base has moved",
-        "checks: suite-green",
+        "checks: suite-can-run suite-green",
         "git push origin HEAD:main",
         "checks: pushed (up to 3 attempts)",
     ):

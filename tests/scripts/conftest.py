@@ -125,7 +125,7 @@ def run(args):
 
 
 # No test may start these for real: they reach the network, a model, a build, or this suite again.
-NEVER_REAL = ("gh", "claude", "npm", "dotnet", "uv")
+NEVER_REAL = ("gh", "claude", "npm", "dotnet", "uv", "docker")
 
 
 class Call(NamedTuple):
@@ -141,6 +141,7 @@ class RecordingRunner:
         self.made = []
         self.refusals = []
         self.stubs = {}
+        self.hidden = set()
 
     # Most cases read the words alone, and the whole call is there for the few that do not.
     @property
@@ -153,7 +154,11 @@ class RecordingRunner:
         return self.made[-1].where if self.made else None
 
     def found(self, name):
-        return name in self.stubs or self.real.found(name)
+        return name not in self.hidden and (name in self.stubs or self.real.found(name))
+
+    # A machine that has the program would otherwise answer for a case about it missing.
+    def hide(self, name):
+        self.hidden.add(name)
 
     # A mark is matched against the whole command, temporary path and all, as one line.
     def refuse(self, mark, says, times=None):
