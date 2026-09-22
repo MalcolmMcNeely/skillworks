@@ -42,32 +42,7 @@ Anything in the repo that documents how code should be written, such as `CODING_
 
 Always include the Claude rules files: every file in `.claude/rules/`. Claude wrote the code under those rules, so the review holds it to the same ones.
 
-On top of whatever the repo documents, the Standards axis always carries the **smell baseline** below — a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
-
-- **The repo overrides.** A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.
-- **Always a judgement call.** Each smell is a labelled heuristic ("possible Feature Envy"), never a hard violation — and, like any standard here, skip anything tooling already enforces.
-
-Each smell reads *what it is* → *how to fix*; match it against the diff:
-
-- **Mysterious Name** — a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.
-- **Duplicated Code** — the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.
-- **Feature Envy** — a method that reaches into another object's data more than its own. → move the method onto the data it envies.
-- **Data Clumps** — the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.
-- **Primitive Obsession** — a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.
-- **Repeated Switches** — the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.
-- **Shotgun Surgery** — one logical change forces scattered edits across many files in the diff. → gather what changes together into one module.
-- **Divergent Change** — one file or module is edited for several unrelated reasons. → split so each module changes for one reason.
-- **Speculative Generality** — abstraction, parameters, or hooks added for needs the spec doesn't have. → delete it; inline back until a real need shows.
-- **Message Chains** — long `a.b().c().d()` navigation the caller shouldn't depend on. → hide the walk behind one method on the first object.
-- **Middle Man** — a class or function that mostly just delegates onward. → cut it, call the real target direct.
-- **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
-
-Those judge code. A test carries them and four of its own, under one question: **what change to the code would make this test fail?** A test with no answer is a finding however tidy it reads, because a suite that can't go red buys nothing and gets read as proof.
-
-- **Tautological Assertion** — the expected side is worked out the way the code works it out, so both sides move together and no defect can show. → write the expected value out by hand.
-- **Untriggered Fixture** — the input holds nothing the behaviour under test acts on, so the assertion would still hold with that behaviour deleted. → put the trigger in the fixture, and settle it by deleting the behaviour and watching the test go red.
-- **Unguarded Enumeration** — a test walks files, rows, or elements and judges what it found without proving it found any, so an empty walk passes. → pin the count the walk is expected to reach.
-- **Stub Echo** — a stub is handed a value and the assertion only checks that value came back, so it measures the stub. → assert on what the code made of the value, not on the value.
+On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in [`docs/agents/smell-baseline.md`](../../../docs/agents/smell-baseline.md) — twelve Fowler code smells (_Refactoring_, ch.3) and four test smells beneath them, which apply even when a repo documents nothing. It carries the two rules that bind it, so read it there. It sits outside this skill because `/review-standards` reads the same text; pass the path, don't paste the contents.
 
 ### 4. Identify the architecture sources
 
@@ -77,23 +52,7 @@ Three kinds, and each outranks the one before it.
 
 **Written as rules** — the placement rules in `.claude/rules/`, and the context map beside them. Step 3 hands the whole of `.claude/rules/` to Standards, but the half that says *where a file goes, and which folder may read which*, is an arrangement rule rather than a style one, and this axis is the one that judges by it. Read the context map too: a rule reaches only the code the map gives it, and a path two contexts claim breaches `contexts`.
 
-In this repo that file is `.claude/rules/file-placement.md`, and its eight Slice rules are the ones the agent wrote the code under. Read them there, and judge placement and direction against what they say. Cite a breach by the name of the check that catches it:
-
-| Check | The rule it runs |
-|---|---|
-| `slice-folders` | 1, a Slice comes first |
-| `concern-folders` | 2, a Concern comes beneath, in the front end |
-| `slices-stay-apart` | 3, a Slice never reads another Slice |
-| `shared-stays-below` | 4, `Shared` never reads a Slice |
-| `shared-names-a-word` | 5, `Shared` has one door |
-| `slice-names-match` | 6, a Slice keeps its name everywhere |
-
-Rules 7 and 8 have no check behind them, and nor does the exemption that lets a test read a Slice. The front end is held by `src/Skillworks.Studio.Web/.dependency-cruiser.cjs`, which names its own breaches, so quote whichever name the run printed. The table is an index from a breach back to a rule, and the rules themselves stay in the one file.
-
-Holding the author and the reviewer to one document is the point of this axis, so two baseline items bend wherever the repo has written the rule down:
-
-- **A shared folder with a written door is not grab-bag growth.** The baseline item is about a folder nobody decided on. Judge against the door the repo wrote, not against the name.
-- **Duplication across a boundary can be correct.** Where the repo says two modules may hold one name, the merge is the defect, not the duplication.
+In this repo that file is `.claude/rules/file-placement.md`, and its eight Slice rules are the ones the agent wrote the code under. Read them there, and judge placement and direction against what they say. Cite a breach by the name of the check that catches it, from the table in [`docs/agents/placement-checks.md`](../../../docs/agents/placement-checks.md). That file maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down. It sits outside this skill because `/review-architecture` reads the same text; pass the path, don't paste the contents.
 
 **Executable** — a boundary rule the repo can actually run. This is the highest-trust source, because it is enforced rather than aspired to:
 
@@ -109,7 +68,7 @@ Holding the author and the reviewer to one document is the point of this axis, s
 
 Where a check of the repo's own reads the rules files, the last two kinds are one thing: the file is the text and the check is the run. Here `dotnet test Skillworks.slnx` runs `Skillworks.Architecture` over the whole tree, and `npm run lint` in `src/Skillworks.Studio.Web` runs dependency-cruiser over the front end. Each names the rule, the path and what to do about it, so quote a breach as it came.
 
-On top of whatever the repo has, the Architecture axis always carries the **arrangement baseline** in [`ARCHITECTURE-BASELINE.md`](ARCHITECTURE-BASELINE.md) — nine failures of placement and direction that apply even when a repo documents nothing, in the same *what it is* → *how to fix* shape as the smell baseline. It sits in its own file because only the sub-agent needs it; pass the path, don't paste the contents.
+On top of whatever the repo has, the Architecture axis always carries the **arrangement baseline** in [`docs/agents/arrangement-baseline.md`](../../../docs/agents/arrangement-baseline.md) — nine failures of placement and direction that apply even when a repo documents nothing, in the same *what it is* → *how to fix* shape as the smell baseline. It sits outside this skill because `/review-architecture` reads the same text; pass the path, don't paste the contents.
 
 Three rules bind the axis, and the third is the one that decides whether anyone keeps reading its reports:
 
@@ -124,7 +83,7 @@ Three rules bind the axis, and the third is the one that decides whether anyone 
 **Standards sub-agent prompt** — include:
 
 - The full diff command and commit list.
-- The list of standards-source files you found in step 3, **plus the smell baseline from step 3** pasted in full — the sub-agent has no other access to it.
+- The list of standards-source files you found in step 3, **plus the path to `docs/agents/smell-baseline.md`** — the sub-agent reads that itself.
 - The brief: "Report — per file/hunk where relevant — (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls — documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
 
 **Spec sub-agent prompt** — include:
@@ -138,8 +97,8 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 **Architecture sub-agent prompt** — include:
 
 - The diff command, the `--stat -M` command, and the commit list.
-- The architecture sources from step 4: the documented files by path, the placement rules file and the context map by path, every executable check and the exact command that runs it, and the path to `ARCHITECTURE-BASELINE.md` — the sub-agent reads that itself.
-- The three binding rules from step 4, verbatim, and the two baseline bends beneath them.
+- The architecture sources from step 4: the documented files by path, the placement rules file and the context map by path, every executable check and the exact command that runs it, and the paths to `docs/agents/arrangement-baseline.md` and `docs/agents/placement-checks.md` — the sub-agent reads those itself.
+- The three binding rules from step 4, verbatim, and a line saying the two baseline bends sit beneath the check table in `docs/agents/placement-checks.md`.
 - The brief: "First run every boundary check the repo has, and report what each one says. Then read the placement rules file, because it is the document the code was written under, and the context map, because it says which code those rules reach. Then, for **every module the diff touches**: (a) does anything the diff added point the wrong way, cross a seam it shouldn't, or reach past a module's public entry point; (b) is every added or moved file in the module its dependencies say it belongs to, and in the Slice whose job it serves; (c) does the change introduce a cycle; (d) does any folder the diff creates breach a written placement rule. Cite the written rule by its name, or name the baseline item, for every finding, and quote the import or path it turns on. A finding with neither a rule nor a baseline item behind it is taste, so drop it. Report only what this diff introduced or worsened — standing debt is out of scope. Under 400 words."
 
 Unlike Standards, this axis needs to read outside the diff: an import line is only wrong relative to the module graph around it. Say so in the prompt, and let it read the tree.

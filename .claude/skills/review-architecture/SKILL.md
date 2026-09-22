@@ -36,18 +36,7 @@ Three kinds, and each outranks the one before it.
 
 **Documented.** Anything that says how the code is *arranged* rather than how it is written: `CONTEXT-MAP.md`, each context's `CONTEXT.md`, and `docs/adr/`. `docs/agents/domain.md` says where this repo's decisions live. Read that first and follow it.
 
-**Written as rules.** `.claude/rules/file-placement.md` holds the eight Slice rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it:
-
-| Check | The rule it runs |
-|---|---|
-| `slice-folders` | 1, a Slice comes first |
-| `concern-folders` | 2, a Concern comes beneath, in the front end |
-| `slices-stay-apart` | 3, a Slice never reads another Slice |
-| `shared-stays-below` | 4, `Shared` never reads a Slice |
-| `shared-names-a-word` | 5, `Shared` has one door |
-| `slice-names-match` | 6, a Slice keeps its name everywhere |
-
-Rules 7 and 8 have no check behind them, and nor does the exemption that lets a test read a Slice.
+**Written as rules.** `.claude/rules/file-placement.md` holds the eight Slice rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in [`docs/agents/placement-checks.md`](../../../docs/agents/placement-checks.md). Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
 
 **Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
 
@@ -60,10 +49,7 @@ Each names the rule, the path and what to do. Quote a breach as it came. Say whi
 
 ### The baseline
 
-On top of what the repo has, this axis always carries the arrangement baseline in [`../code-review/ARCHITECTURE-BASELINE.md`](../code-review/ARCHITECTURE-BASELINE.md). Read it yourself. Two items bend wherever the repo has written the rule down:
-
-- **A shared folder with a written door is not grab-bag growth.** The baseline item is about a folder nobody decided on. Judge against the door the repo wrote, not against the name.
-- **Duplication across a boundary can be correct.** Where the repo says two modules may hold one name, the merge is the defect, not the duplication.
+On top of what the repo has, this axis always carries the arrangement baseline in [`docs/agents/arrangement-baseline.md`](../../../docs/agents/arrangement-baseline.md). Read it yourself, and read the two bends that sit beneath the check table in [`docs/agents/placement-checks.md`](../../../docs/agents/placement-checks.md) with it.
 
 ## The three binding rules
 
