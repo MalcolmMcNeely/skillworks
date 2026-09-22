@@ -116,7 +116,7 @@ public static class TestTempo
         throw new InvalidOperationException($"Tempo never made the spans of {session} searchable.");
     }
 
-    // Tempo picks Batches by when the spans reached it, so the window reaches now as well as the spans' own times.
+    // The store picks Batches by arrival, so the window reaches now as well as the spans' own times.
     private static string Window(IReadOnlyList<JsonObject> spans)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

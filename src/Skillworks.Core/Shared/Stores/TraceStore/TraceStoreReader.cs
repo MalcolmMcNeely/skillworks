@@ -152,14 +152,14 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
             ? patience.RanOut(options.Value.ResolvedAddress().ToString(), Patience.AWholeSession)
             : unreachable;
 
-    // Within a Batch a search keeps only the spans whose own times fall in the window, which a values read does not.
+    // A search also drops spans whose own times fall outside the window, which a values read never does.
     private static string Search(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
         $"api/search?q={Uri.EscapeDataString(traceQl)}&{Window(from, until)}&limit={limit}";
 
     private static string Values(DateTimeOffset from, DateTimeOffset until, int limit) =>
         $"api/v2/search/tag/span.{SessionAttribute}/values?{Window(from, until)}&limit={limit}";
 
-    // The period picks Batches, so it bounds when the spans reached the store and never their own times.
+    // The store picks Batches by this window, so it bounds arrival and never the spans' own times.
     private static string Window(DateTimeOffset from, DateTimeOffset until) =>
         $"start={from.ToUnixTimeSeconds()}&end={SecondsRoundedUp(until)}";
 

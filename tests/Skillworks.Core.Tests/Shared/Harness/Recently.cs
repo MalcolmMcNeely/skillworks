@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Skillworks.Core.Tests.Shared.Harness;
 
-// A fixture dated long ago sits in no Batch a period reads.
+// A fixture dated long ago falls outside the period a test asks for, so nothing comes back.
 public static class Recently
 {
     // One moment for the whole run, or a fixture and the clock a host reads could land on different days.
