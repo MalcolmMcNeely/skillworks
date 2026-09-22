@@ -42,8 +42,8 @@ from runner import Subprocess
 from stop import Stop, is_a_number, misuse, refusal
 
 USAGE = (
-    "usage: scripts/ticket_worktree.py open|close|plan <checkout> <spec> <job>\n"
-    "       scripts/ticket_worktree.py keep <checkout> <spec>\n"
+    "usage: uv run scripts/ticket_worktree.py open|close|plan <checkout> <spec> <job>\n"
+    "       uv run scripts/ticket_worktree.py keep <checkout> <spec>\n"
 )
 
 
