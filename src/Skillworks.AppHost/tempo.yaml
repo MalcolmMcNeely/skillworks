@@ -11,7 +11,7 @@ distributor:
           endpoint: 0.0.0.0:4318
 
 ingester:
-  # A span older than half an hour is found only once the store has filed its Batch.
+  # Past half an hour the store answers from filed Batches alone, and by default holds one open exactly as long.
   max_block_duration: 5m
 
 compactor:
