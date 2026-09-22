@@ -106,6 +106,13 @@ branch removed. A ticket that fails keeps both, so the broken state can be read.
 
 ### Eight steps per ticket
 
+<!-- steps -->
+build → standards → spec → architecture → fix → sweep → suite → finish
+
+The line above is held to the driver's own list by a test, so a step added there fails the suite until
+this document names it. The mark is what the test finds; every other word here is free to be
+reworded.
+
 Seven of them are a `claude -p` call of their own, run inside the ticket's worktree, asked for JSON so
 the driver can read the result. The eighth, `suite`, is the driver's own work and asks nobody
 anything.
@@ -288,8 +295,10 @@ The position counts closed tickets rather than this run's, so a rerun starts at 
 estimate is a mean of the tickets this run has finished, with the one now running counted as
 remaining, so it never flatters the run.
 
-Expect hours. On a six-ticket spec a build step ran between six and sixty-three minutes, and a ticket
-took one to four hours end to end.
+Expect a long run. Across specs #192 and #207, under the Python driver, a build step ran six to
+eighteen minutes and a ticket took roughly half an hour to an hour end to end. The bash driver before
+it measured six to sixty-three minutes for a build step and one to four hours for a ticket, but its
+tickets were larger, so the gap between the two sets says nothing about either driver.
 
 `--dry-run` prints the whole plan instead of running it: every ticket, the worktree and branch it
 would get, every step's command line and checks, and the landing steps asked of `land_ticket.py`

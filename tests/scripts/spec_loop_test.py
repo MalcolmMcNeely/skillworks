@@ -9,7 +9,7 @@ import pytest
 
 import spec_loop
 import ticket_worktree
-from conftest import Ran, git
+from conftest import ROOT, Ran, git
 
 SPEC = "158"
 
@@ -1215,3 +1215,65 @@ def test_a_ticket_is_claimed_and_read_back_after_a_wait(loop, runner):
     assert ran.status == 1
     assert loop.waits == [3]
     assert runner.built("issue edit 168 --add-assignee @me")
+
+
+# --- the documents held to the step list -------------------------------------
+
+# An ADR records what was decided on a day, so it keeps its old list and is not held here.
+LIVE_DOCUMENTS = (
+    "docs/agentic-development/agentic-loop.md",
+    ".claude/skills/what-next/SKILL.md",
+)
+
+# A list gone short would leave the walk below silent rather than red, so it is counted first.
+LIVE_DOCUMENT_COUNT = 2
+
+# An HTML comment, so a reader of the rendered page never sees it and a writer editing the file does.
+STEP_MARK = "<!-- steps -->"
+
+
+def as_an_arrow(names):
+    return " → ".join(names)
+
+
+def the_step_list():
+    return as_an_arrow(step.name for step in spec_loop.STEPS)
+
+
+# Only the marked line is read, so the prose around it can be reworded freely.
+def marked_line(text):
+    lines = [line.strip() for line in text.splitlines()]
+    marked = [at for at, line in enumerate(lines) if line == STEP_MARK]
+    assert len(marked) == 1, "expected one marked line, found {}".format(len(marked))
+    return lines[marked[0] + 1]
+
+
+def given_a_document_marked_with(line):
+    return "Prose a writer may reword.\n\n{}\n{}\n\nAnd more of it.\n".format(STEP_MARK, line)
+
+
+def test_every_live_document_carries_the_step_list_as_its_marked_line():
+    assert len(LIVE_DOCUMENTS) == LIVE_DOCUMENT_COUNT
+
+    for path in LIVE_DOCUMENTS:
+        held = (ROOT / path).read_text(encoding="utf-8")
+
+        assert marked_line(held) == the_step_list(), path + " does not carry the step list"
+
+
+def test_a_document_that_missed_a_step_added_to_the_driver_is_caught():
+    missing = as_an_arrow(step.name for step in spec_loop.STEPS[:-1])
+
+    assert marked_line(given_a_document_marked_with(missing)) == missing != the_step_list()
+
+
+def test_a_document_that_holds_the_steps_out_of_order_is_caught():
+    turned = as_an_arrow(step.name for step in reversed(spec_loop.STEPS))
+
+    assert marked_line(given_a_document_marked_with(turned)) == turned != the_step_list()
+
+
+def test_the_prose_around_the_marked_line_is_never_read():
+    reworded = given_a_document_marked_with(the_step_list())
+
+    assert marked_line(reworded) == the_step_list()
