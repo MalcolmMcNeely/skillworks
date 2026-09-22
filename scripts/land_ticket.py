@@ -31,6 +31,7 @@ from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from runner import Subprocess
 from stop import Stop, is_a_number, misuse, refusal
+from suite import Suite
 
 USAGE = (
     "usage: uv run scripts/land_ticket.py <worktree> <ticket-number> [session-id]\n"
@@ -154,42 +155,9 @@ class Landing:
     def unmerged(self):
         return listed(self.git("diff", "--name-only", "--diff-filter=U").out)
 
-    # The README's checks, skipped where there is none, so a throwaway repository runs this.
-    def checks(self):
-        tree = Path(self.worktree)
-        web = tree / "src" / "Skillworks.Studio.Web"
-        wanted = []
-        if (tree / "Skillworks.slnx").is_file():
-            wanted.append((["dotnet", "test", "Skillworks.slnx"], tree))
-        # pytest is asked for on the command line, because the scripts carry no project file.
-        if (tree / "tests" / "scripts").is_dir():
-            wanted.append((["uv", "run", "--with", "pytest", "pytest", "tests/scripts"], tree))
-        if (web / "package.json").is_file():
-            # A fresh worktree has nothing installed unless the ticket touched the front end.
-            if not (web / "node_modules").is_dir():
-                wanted.append((["npm", "ci"], web))
-            wanted.append((["npm", "run", "typecheck"], web))
-            wanted.append((["npm", "run", "lint"], web))
-            wanted.append((["npm", "test"], web))
-        return wanted
-
-    def suite(self):
-        wanted = self.checks()
-        # A checkout holding none of them is broken, and a suite that ran nothing cannot pass.
-        if not wanted:
-            return False, "this checkout holds none of the checks the README names\n"
-
-        said = ""
-        for args, where in wanted:
-            ran = self.runner.run(args, where.as_posix())
-            said += ran.out + ran.err
-            if ran.status != 0:
-                return False, said
-        return True, said
-
     # The suite says a great deal, and only a failure is worth reading.
     def run_suite(self):
-        passed, said = self.suite()
+        passed, said = Suite(self.runner, self.worktree).run()
         if not passed:
             raise self.die(
                 "#{} passed on its own and then failed the suite on the new base. Nothing was "

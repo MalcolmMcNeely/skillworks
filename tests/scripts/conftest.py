@@ -124,8 +124,8 @@ def run(args):
     return done.stdout
 
 
-# No test may start these for real: they reach the network, a model or the front-end build.
-NEVER_REAL = ("gh", "claude", "npm", "dotnet")
+# No test may start these for real: they reach the network, a model, a build, or this suite again.
+NEVER_REAL = ("gh", "claude", "npm", "dotnet", "uv")
 
 
 class Call(NamedTuple):
