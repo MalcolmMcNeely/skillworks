@@ -44,6 +44,7 @@ class Subprocess:
         if found is None:
             return Ran(NOT_FOUND, "", args[0] + ": not found\n")
 
+        # A wait short enough to catch a wedged session is short enough to kill an honest hour-long one.
         done = subprocess.run(
             [found] + args[1:],
             cwd=where,

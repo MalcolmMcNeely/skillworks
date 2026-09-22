@@ -35,6 +35,9 @@
       "Bash(mkdir:*)"
     ]
   },
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "600000"
+  },
   "outputStyle": "skillworks",
   "promptCacheTtl": "1h",
   "subagentPromptCacheTtl": "1h"

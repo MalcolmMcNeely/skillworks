@@ -183,6 +183,15 @@ request, changes no issue and starts no model session, and it takes a few second
 uv run --with pytest pytest tests/scripts --real-binaries
 ```
 
+A session waits ten minutes on a command before it gives up, rather than the two minutes it would
+otherwise. `.claude/settings.json` sets that. The script suite took 184, 299, 321 and 413 seconds
+across four runs of the same tests on this machine, and the spread is machine load, so two minutes
+loses the result and a session has to run the suite in the background and poll it instead. The wait
+is a ceiling and never a delay, so a run that takes three minutes still answers in three.
+
+This does not reach the loop itself, which runs for hours and still has to be started in the
+background.
+
 ## Repo layout
 
 | Path | What it is |
