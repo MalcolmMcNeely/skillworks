@@ -134,6 +134,13 @@ the tests can run at all: Docker answering, `uv` on `PATH`, the front end instal
 there stops the loop naming what is missing, and no Session is ever asked about it, because no Session
 can start Docker.
 
+A flake is not a red suite either. The container-backed Span tests flake here, and a Session handed a
+failure it cannot reproduce may weaken a test or edit code that was never broken, so `suite` runs the
+whole thing a second time before anything acts on a red one. A second run that passes carries the
+loop on to `finish`. A first run that passes is never run again, so the cost is paid only when
+something went red. The log names which of the two runs each line is, and both runs' output is kept
+in the step's record, so a flake is read afterwards rather than inferred.
+
 ### Which Sessions resume, and why
 
 The `build` step's Session id is read out of its JSON result and carried forward. Three later calls

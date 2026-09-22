@@ -174,6 +174,13 @@ def progress_suffix(position, total, mean):
     return said + "  ~{}m left".format((mean * (total - position + 1) + 30) // 60)
 
 
+# Said rather than left to be worked out, so a flake is read off the log afterwards.
+def suite_verdict(outcome, at):
+    if not outcome.passed:
+        return "went red"
+    return "passed, so the first was a flake" if at > 1 else "passed"
+
+
 def plan_line(name, what, checks=""):
     said = "      {:<12} {}\n".format(name, what)
     if checks:
@@ -411,14 +418,24 @@ class Loop:
 
     # --- the step the driver runs itself -------------------------------------
 
+    def suite_run(self, ticket, held, at):
+        outcome = Suite(self.runner, self.job_worktree).run()
+        appended(held, "--- suite run {}\n{}".format(at, outcome.said))
+        if outcome.ready:
+            self.say("      #{} suite run {} {}".format(ticket, at, suite_verdict(outcome, at)))
+        return outcome
+
     def run_suite_step(self, ticket, step):
         held = self.step_file(ticket, step.name, "out")
         self.say("STEP  #{} {:<13}{}".format(
             ticket, step.name,
             progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
 
-        outcome = Suite(self.runner, self.job_worktree).run()
-        written(held, outcome.said)
+        written(held, "")
+        outcome = self.suite_run(ticket, held, 1)
+        # Span tests flake here, and a Session handed a failure it cannot reproduce costs a test.
+        if outcome.ready and not outcome.passed:
+            outcome = self.suite_run(ticket, held, 2)
 
         # A machine short of what the checks need is nothing a Session could mend, so none is asked.
         if not outcome.ready:

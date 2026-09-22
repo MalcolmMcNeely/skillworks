@@ -892,6 +892,108 @@ def test_the_loop_says_which_step_the_suite_is(loop):
     assert "STEP  #168 suite" in loop.log()
 
 
+# --- a red suite run a second time ------------------------------------------
+
+# The second run falls through to the passing stub, so one case holds a flake and nothing else.
+def given_a_suite_red_on_its_first_run_alone(runner):
+    runner.refuse(SOLUTION, "a Span test failed", times=1)
+
+
+def given_a_suite_red_on_every_run(runner):
+    runner.stub("dotnet", says="a test failed", status=1)
+
+
+def test_a_red_suite_is_run_a_second_time_before_it_is_believed(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(runner.started("dotnet")) == 2
+
+
+def test_a_green_first_run_is_never_run_again(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(runner.started("dotnet")) == 1
+
+
+def test_a_second_run_that_passes_carries_the_loop_on_to_the_finishing_step(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert call_asking(runner, "/implement 168 --finish") is not None
+    assert "failed check suite-green" not in said(ran)
+
+
+def test_the_log_names_which_of_the_two_runs_each_one_is(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "suite run 1 went red" in loop.log()
+    assert "suite run 2 went red" in loop.log()
+
+
+def test_the_log_names_the_one_run_a_green_suite_took(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "suite run 1 passed" in loop.log()
+    assert "suite run 2" not in loop.log()
+
+
+def test_a_second_run_that_passes_says_the_first_was_a_flake(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "suite run 2 passed, so the first was a flake" in loop.log()
+
+
+def test_both_runs_are_kept_where_the_other_step_records_are(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "a Span test failed" in suite_output(loop)
+    assert "the solution passed" in suite_output(loop)
+
+
+# A second run cannot start Docker either, so nothing is spent proving that twice.
+def test_a_machine_short_of_what_the_suite_needs_is_never_run_again(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    runner.stub("docker", says="the daemon is not running", status=1)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(runner.started("docker")) == 1
+
+
 # --- the way past a refused write -------------------------------------------
 
 # A session that met the wall leaves the ticket open, so any stop the loop makes may be that wall.
