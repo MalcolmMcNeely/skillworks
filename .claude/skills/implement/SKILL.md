@@ -66,15 +66,17 @@ The findings it returns are what the Fixing section acts on.
 
 ## Fixing
 
-Findings reach this section two ways, and it covers both:
+Work reaches this section three ways, and it covers all of them:
 
 - **Under the spec loop**, `--fix` selects it. Each axis has run in a session of its own, and the reports arrive in this prompt under the axis that wrote each one, each beside the Edit that axis made.
+- **Under the spec loop after a red suite**, `--fix` selects it a second time. The prompt carries the three reports again and, beside them, the output of a suite the driver ran twice and saw fail both times.
 - **Under a hand run**, the Reviewing section produced them in this same session.
 
 1. **Fix every finding, from every axis.** Under the spec loop an axis fixes what it finds, so the Edit beside a report says what is already done — read the change before you fix the same thing twice. Under a hand run the axes only report, so nothing is fixed yet.
 2. **Settle a disagreement.** This is the one session holding all three reports at once, so a contradiction between two axes is settled here and nowhere else.
 3. **Leave a finding you judge wrong**, and keep the reason for the closing comment.
-4. **A prompt carrying no reports has nothing to fix**, so go straight on.
+4. **Fix a failing suite the prompt carries.** The driver ran the whole suite twice and read a failure both times, so it is the work and not a flake. Make the suite green. Do not weaken a test to get there, and say so in your report if the failure turns out to be nothing this ticket caused.
+5. **A prompt carrying neither a report nor a failing suite has nothing to fix**, so go straight on.
 
 Leave the change uncommitted. The sweep has still to run, and committing is Finishing's job.
 

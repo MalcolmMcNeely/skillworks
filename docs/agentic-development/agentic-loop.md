@@ -141,6 +141,26 @@ loop on to `finish`. A first run that passes is never run again, so the cost is 
 something went red. The log names which of the two runs each line is, and both runs' output is kept
 in the step's record, so a flake is read afterwards rather than inferred.
 
+### A red suite goes round once
+
+Red on both runs is the ticket's own, so the loop goes back to `fix`, then `sweep`, then `suite`, in
+that order and once only.
+
+```
+suite red → run again → still red → fix → sweep → suite red → run again → still red → stop
+```
+
+The way back is never `fix` straight to `suite`. `fix` writes, and a sweep has to follow whatever
+wrote last, or the retry's comments reach the commit having never been trimmed. The driver holds the
+failing output and puts it into the `fix` prompt beside the three axis reports, so the Session acting
+on it reads what failed rather than guessing. That retry is the same `/implement <n> --fix` as the
+step in the ordinary run, on a different input, so there is no flag of its own to learn.
+
+A suite that goes green after the circuit carries the loop on to `finish`. Red on both runs again
+stops the loop. There is never a second circuit: one is the bound, small enough to hold in your head
+at two in the morning. The worktree and its branch stay where they are, the `FAIL` line names the
+worktree's path, and the step's record holds what the suite said on both sides of the circuit.
+
 ### Which Sessions resume, and why
 
 The `build` step's Session id is read out of its JSON result and carried forward. Three later calls
@@ -217,7 +237,8 @@ Nothing is pushed unless every step passes.
 
 ### When a step fails
 
-The run stops at the first failure. It does not carry on and it does not try to rescue itself.
+The run stops at the first failure. The one rescue it tries is the circuit above, where a red suite
+goes back to `fix` once. Every other failure stops the run where it stands.
 
 The driver reopens the ticket, because the loop only picks open tickets and the `finish` step may have
 closed one whose work never reached the remote. The `FAIL` line names the worktree and the two files

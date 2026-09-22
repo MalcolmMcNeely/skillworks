@@ -209,6 +209,11 @@ def prompt_asking(runner, mark):
     return "" if call is None else call[2]
 
 
+# The circuit runs a step a second time, so a case reads them all and picks the one it means.
+def prompts_asking(runner, mark):
+    return [call[2] for call in session_calls(runner) if call[2].startswith(mark)]
+
+
 def edit_of(loop, axis):
     for line in loop.log().split("\n"):
         words = line.split()
@@ -222,6 +227,10 @@ def call_at(runner, mark):
         if mark in " ".join(call):
             return at
     return -1
+
+
+def every_call_at(runner, mark):
+    return [at for at, call in enumerate(runner.calls) if mark in " ".join(call)]
 
 
 def implement_flags(runner):
@@ -906,7 +915,7 @@ def given_a_suite_red_on_every_run(runner):
 def test_a_red_suite_is_run_a_second_time_before_it_is_believed(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
-    given_a_suite_red_on_every_run(runner)
+    given_a_suite_red_on_its_first_run_alone(runner)
 
     ran = loop.run(SPEC)
 
@@ -992,6 +1001,132 @@ def test_a_machine_short_of_what_the_suite_needs_is_never_run_again(loop, runner
 
     assert ran.status == 1
     assert len(runner.started("docker")) == 1
+
+
+# --- a red suite goes round once --------------------------------------------
+
+# Red on both runs is the ticket's own, and a third run is the one the circuit leads back to.
+def given_a_suite_red_until_the_loop_goes_round(runner):
+    runner.refuse(SOLUTION, "the runs before the circuit failed", times=2)
+
+
+def test_red_on_both_runs_goes_to_fix_then_sweep_then_suite(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_until_the_loop_goes_round(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    went_round = every_call_at(runner, "/implement 168 --fix")[1]
+    swept = every_call_at(runner, "/comment-sweep")[1]
+    assert went_round < swept < every_call_at(runner, SOLUTION)[2]
+
+
+def test_the_failure_output_reaches_the_fix_prompt(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "a test failed" in prompts_asking(runner, "/implement 168 --fix")[1]
+
+
+def test_the_fix_step_before_the_suite_is_told_of_no_failure(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "a test failed" not in prompts_asking(runner, "/implement 168 --fix")[0]
+
+
+def test_the_retry_runs_under_the_fix_flag_and_no_other(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_until_the_loop_goes_round(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert implement_flags(runner) == [
+        "--stop-after-tests", "--fix", "--fix", "--finish"]
+
+
+def test_a_suite_green_after_the_circuit_carries_the_loop_on(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_until_the_loop_goes_round(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert call_asking(runner, "/implement 168 --finish") is not None
+    assert "failed check suite-green" not in said(ran)
+
+
+def test_a_second_circuit_never_happens(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(prompts_asking(runner, "/implement 168 --fix")) == 2
+    assert len(prompts_asking(runner, "/comment-sweep")) == 2
+    assert len(runner.started("dotnet")) == 4
+
+
+def test_red_after_the_circuit_stops_the_loop_before_the_finishing_step(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step suite failed check suite-green" in said(ran)
+    assert call_asking(runner, "/implement 168 --finish") is None
+
+
+def test_a_stop_after_the_circuit_leaves_the_worktree_and_names_it_in_the_log(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert ticket_worktree_of(loop).is_dir()
+    assert ticket_worktree_of(loop).as_posix() in loop.log()
+
+
+def test_the_log_says_the_loop_went_round_and_where_it_went(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "goes round once: fix, then sweep, then suite" in loop.log()
+
+
+def test_the_record_keeps_what_the_suite_said_on_both_sides_of_the_circuit(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_until_the_loop_goes_round(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert suite_output(loop).count("the runs before the circuit failed") == 2
+    assert "the solution passed" in suite_output(loop)
 
 
 # --- the way past a refused write -------------------------------------------

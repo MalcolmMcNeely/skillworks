@@ -77,6 +77,13 @@ STEPS = (
             "no-error command-loaded new-commit tree-clean ticket-closed", True))
 )
 
+# The sweep follows the fix, because the fix writes and a sweep has to follow whatever wrote last.
+CIRCUIT = ("fix", "sweep", "suite")
+
+
+def step_named(name):
+    return next(step for step in STEPS if step.name == name)
+
 
 # Not `refusal`: that writes straight to stderr, and what the loop says goes to the log too.
 def stop(said):
@@ -209,6 +216,9 @@ class Loop:
         self.ticket_base = ""
         self.position = 0
 
+        # Not being None is also the record that the loop has already been round.
+        self.red_suite = None
+
         # Nothing is read from an earlier run, so a rerun grows a mean of its own.
         self.timed_tickets = 0
         self.timed_seconds = 0
@@ -294,8 +304,13 @@ class Loop:
         reports, reason = self.review_reports(ticket)
         if reports is None:
             return None, reason
-        return ("{}\n\nThe three review axes have run. Their reports follow, each with the Edit "
-                "that axis made.\n{}").format(asked, reports.rstrip("\n")), ""
+        said = ("{}\n\nThe three review axes have run. Their reports follow, each with the Edit "
+                "that axis made.\n{}").format(asked, reports.rstrip("\n"))
+        if self.red_suite is not None:
+            said += ("\n\n## The suite went red\n\nIt was run twice and failed both times, so "
+                     "this is not a flake. What it said follows.\n\n{}\n").format(
+                         self.red_suite.said.rstrip("\n"))
+        return said, ""
 
     # --- the checks ----------------------------------------------------------
 
@@ -425,13 +440,16 @@ class Loop:
             self.say("      #{} suite run {} {}".format(ticket, at, suite_verdict(outcome, at)))
         return outcome
 
+    # Red is handed back rather than raised, so the caller chooses between a circuit and a stop.
     def run_suite_step(self, ticket, step):
         held = self.step_file(ticket, step.name, "out")
         self.say("STEP  #{} {:<13}{}".format(
             ticket, step.name,
             progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
 
-        written(held, "")
+        # The red that sent the loop round is why it ran again, so a second run adds to the record.
+        if self.red_suite is None:
+            written(held, "")
         outcome = self.suite_run(ticket, held, 1)
         # Span tests flake here, and a Session handed a failure it cannot reproduce costs a test.
         if outcome.ready and not outcome.passed:
@@ -442,8 +460,7 @@ class Loop:
             raise stop("ABORT #{} failed check suite-can-run, so no Session was asked to mend "
                        "it: {}\n      Its worktree is at {}. See {}".format(
                            ticket, outcome.said.strip(), self.job_worktree, held))
-        if not outcome.passed:
-            raise self.stop_step(ticket, step.name, "failed check suite-green", held)
+        return None if outcome.passed else outcome
 
     # --- getting started -----------------------------------------------------
 
@@ -578,15 +595,36 @@ class Loop:
 
     # --- one ticket ----------------------------------------------------------
 
+    # One way in for both kinds of step, so the circuit cannot run them differently from the run.
+    def run_any_step(self, ticket, step, session):
+        if not step.session:
+            return self.run_suite_step(ticket, step)
+        if step.resumes:
+            self.run_step(ticket, step, "--resume", session)
+        else:
+            self.run_step(ticket, step)
+        return None
+
+    # The circuit ends at the suite, so the verdict of its last step is the circuit's own.
+    def go_round(self, ticket, session, red):
+        self.red_suite = red
+        self.say("      #{} the suite went red on both runs, so the loop goes round once: "
+                 "{}".format(ticket, ", then ".join(CIRCUIT)))
+        outcome = None
+        for name in CIRCUIT:
+            outcome = self.run_any_step(ticket, step_named(name), session)
+        return outcome
+
     def build_ticket(self, ticket):
         session = ""
         for step in STEPS:
-            if not step.session:
-                self.run_suite_step(ticket, step)
-            elif step.resumes:
-                self.run_step(ticket, step, "--resume", session)
-            else:
-                self.run_step(ticket, step)
+            red = self.run_any_step(ticket, step, session)
+            # One circuit is the bound, small enough to hold in your head at two in the morning.
+            if red is not None and self.red_suite is None:
+                red = self.go_round(ticket, session, red)
+            if red is not None:
+                raise self.stop_step(ticket, step.name, "failed check suite-green",
+                                     self.step_file(ticket, step.name, "out"))
             if step.name != "build":
                 continue
             held = self.step_file(ticket, "build", "json")
@@ -611,6 +649,7 @@ class Loop:
     def run_ticket(self, ticket):
         self.say("START #{} {}".format(ticket, self.issue_field(ticket, ".title").out.strip()))
 
+        self.red_suite = None
         self.job_worktree = self.opened("ticket-" + ticket)
         if not self.job_worktree:
             raise stop("FAIL  #{} got no worktree to be built in.".format(ticket))
