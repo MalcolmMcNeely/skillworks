@@ -38,6 +38,7 @@ import ticket_worktree
 from fetch_origin import fetch_origin
 from runner import Subprocess
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
+from suite import Suite
 
 USAGE = "usage: uv run scripts/spec_loop.py <spec-issue-number> [--dry-run]\n"
 
@@ -50,11 +51,13 @@ CLAIM_WAIT = 3
 
 class Step(NamedTuple):
     name: str
-    # The ticket number goes in the one placeholder, so a step with no number ignores it.
+    # The ticket number goes in the one placeholder; a driver's own step holds a description.
     asks: str
     checks: str
     # A resumed step would read the one before it, so each axis and the sweep starts fresh.
     resumes: bool
+    # False where the driver does the work, so nothing asks a Session for a result it never gave.
+    session: bool = True
 
 
 AXIS_CHECKS = "no-error command-loaded ticket-open axis-reported"
@@ -68,6 +71,8 @@ STEPS = (
     + tuple(Step(axis, "/review-" + axis + " {}", AXIS_CHECKS, False) for axis in REVIEW_STEPS)
     + (Step("fix", "/implement {} --fix", "no-error command-loaded ticket-open", True),
        Step("sweep", "/comment-sweep", "no-error command-loaded ticket-open", False),
+       Step("suite", "the whole suite, as the README names it",
+            "suite-can-run suite-green", False, session=False),
        Step("finish", "/implement {} --finish",
             "no-error command-loaded new-commit tree-clean ticket-closed", True))
 )
@@ -404,6 +409,25 @@ class Loop:
                 raise self.stop_step(ticket, step.name, "failed check " + check,
                                      "{} and {}".format(held, reasons))
 
+    # --- the step the driver runs itself -------------------------------------
+
+    def run_suite_step(self, ticket, step):
+        held = self.step_file(ticket, step.name, "out")
+        self.say("STEP  #{} {:<13}{}".format(
+            ticket, step.name,
+            progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
+
+        outcome = Suite(self.runner, self.job_worktree).run()
+        written(held, outcome.said)
+
+        # A machine short of what the checks need is nothing a Session could mend, so none is asked.
+        if not outcome.ready:
+            raise stop("ABORT #{} failed check suite-can-run, so no Session was asked to mend "
+                       "it: {}\n      Its worktree is at {}. See {}".format(
+                           ticket, outcome.said.strip(), self.job_worktree, held))
+        if not outcome.passed:
+            raise self.stop_step(ticket, step.name, "failed check suite-green", held)
+
     # --- getting started -----------------------------------------------------
 
     def preflight(self):
@@ -466,6 +490,9 @@ class Loop:
             plan += plan_line("branch", told[1])
 
             for step in STEPS:
+                if not step.session:
+                    plan += plan_line(step.name, step.asks, step.checks)
+                    continue
                 call = 'claude -p "{}"'.format(step.asks.format(number))
                 if step.resumes:
                     call += " --resume <build session>"
@@ -537,7 +564,9 @@ class Loop:
     def build_ticket(self, ticket):
         session = ""
         for step in STEPS:
-            if step.resumes:
+            if not step.session:
+                self.run_suite_step(ticket, step)
+            elif step.resumes:
                 self.run_step(ticket, step, "--resume", session)
             else:
                 self.run_step(ticket, step)

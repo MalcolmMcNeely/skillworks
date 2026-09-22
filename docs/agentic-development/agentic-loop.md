@@ -104,10 +104,11 @@ there means it unassigns itself and moves on. That detects a race; it does not p
 any branch, with any edits in it, for the whole run. A ticket that passes has its worktree and its
 branch removed. A ticket that fails keeps both, so the broken state can be read.
 
-### Seven Sessions per ticket
+### Eight steps per ticket
 
-Each step is its own `claude -p` call, run inside the ticket's worktree, asked for JSON so the driver
-can read the result.
+Seven of them are a `claude -p` call of their own, run inside the ticket's worktree, asked for JSON so
+the driver can read the result. The eighth, `suite`, is the driver's own work and asks nobody
+anything.
 
 | Step | What it runs | Session | Checks after it |
 |---|---|---|---|
@@ -117,13 +118,21 @@ can read the result.
 | `architecture` | `/review-architecture <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
 | `fix` | `/implement <n> --fix` | resumes `build` | no-error, command-loaded, ticket-open |
 | `sweep` | `/comment-sweep` | fresh | no-error, command-loaded, ticket-open |
+| `suite` | The whole suite, as the README names it | none: the driver runs it | suite-can-run, suite-green |
 | `finish` | `/implement <n> --finish` | resumes `build` | no-error, command-loaded, new-commit, tree-clean, ticket-closed |
 
 `build` leaves its change uncommitted. The three axes each read that change, report under a heading of
 their own, and fix what they find. `fix` reconciles: it is the only step that holds all three reports
 and all three Edits at once. `sweep` writes last, because every step that writes now runs after the
-place the sweep used to sit, and each one could put back what it had just cut. `finish` runs the whole
-suite, commits and closes the ticket. It never pushes.
+place the sweep used to sit, and each one could put back what it had just cut. `suite` is the driver's
+own: it runs the whole suite, reads the exit status and keeps the output, so the gate that says a
+ticket is done rests on nothing a Session said about itself. `finish` runs the suite once more, then
+commits and closes the ticket. It never pushes.
+
+A machine short of what the suite needs is not a red suite. Before it runs anything, `suite` proves
+the tests can run at all: Docker answering, `uv` on `PATH`, the front end installed. A fact missing
+there stops the loop naming what is missing, and no Session is ever asked about it, because no Session
+can start Docker.
 
 ### Which Sessions resume, and why
 
@@ -165,7 +174,7 @@ the suite both run after all three, which is what makes that asymmetry affordabl
 ### The checks
 
 A step can exit 0 and do nothing. So after every step the driver reads a fact, out of the step's
-result, out of git, or off the tracker.
+result, out of git, off the tracker, or out of the run it made itself.
 
 | Check | What it reads |
 |---|---|
@@ -175,6 +184,8 @@ result, out of git, or off the tracker.
 | `ticket-open`, `ticket-closed` | The issue's state on the tracker. |
 | `tree-changed`, `tree-clean` | Whether git reports anything uncommitted in the worktree. |
 | `new-commit` | `HEAD` differs from what it was before the first step ran. |
+| `suite-can-run` | The facts the checks need are there: Docker answers, `uv` is on `PATH`, the front end is installed. |
+| `suite-green` | Every check the checkout earns exited zero. |
 
 ### Landing
 
@@ -187,7 +198,7 @@ already on the remote. `scripts/land_ticket.py` does it, in six steps:
 | `fetch` | Get `origin`, and check there is something left to land. |
 | `rebase` | Onto the newest `origin/main`, but only when the base has moved. Then check no commit and no file was lost. |
 | `resolve` | Only when the rebase conflicts. The build Session is resumed to fix it. |
-| `suite` | The whole suite again, on the new base. An unmoved base is one the `finish` step's own run already answers for. |
+| `suite` | The whole suite again, on the new base. An unmoved base is one the `suite` step's own run already answers for. |
 | `push` | `HEAD` onto `main`, retried up to three times when another loop wins the race. |
 
 The resumed conflict Session is told its own bias outright: you wrote one side of this and the other

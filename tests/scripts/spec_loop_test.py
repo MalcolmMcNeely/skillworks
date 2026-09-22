@@ -157,7 +157,17 @@ class Sessions:
             json.dumps(entry) + "\n", encoding="utf-8", newline="\n")
 
 
+# A worktree is cut from the remote, so the marker the suite looks for has to reach it first.
+def given_a_suite_that_passes(loop):
+    loop.repo.write_commit(loop.repo.work, "Skillworks.slnx", "<Solution />", "A solution")
+    git(loop.repo.work, "push", "--quiet", "origin", "main")
+    loop.runner.stub("docker")
+    loop.runner.stub("dotnet", says="the solution passed")
+
+
+# The driver runs the suite itself, so a case about the steps needs one it can run.
 def given_sessions_that_report(loop):
+    given_a_suite_that_passes(loop)
     return Sessions(loop.repo, loop.runner)
 
 
@@ -207,6 +217,13 @@ def edit_of(loop, axis):
     return ""
 
 
+def call_at(runner, mark):
+    for at, call in enumerate(runner.calls):
+        if mark in " ".join(call):
+            return at
+    return -1
+
+
 def implement_flags(runner):
     return [call[2].split()[2] for call in session_calls(runner)
             if call[2].startswith("/implement 168 ")]
@@ -214,8 +231,19 @@ def implement_flags(runner):
 
 # --- reading the plan -------------------------------------------------------
 
+# The plan indents every line it gives a step, and these two name where a ticket is built.
+WHERE_IT_IS_BUILT = ("worktree", "branch")
+
+
+def indented(ran):
+    return [line for line in ran.out.split("\n") if line.startswith("      ") and line.strip()]
+
+
+# The driver's steps print before the landing's, so a name both lists hold reads as the driver's.
 def plan_calls(ran):
-    return [line for line in ran.out.split("\n") if "claude -p" in line]
+    return [line.strip() for line in indented(ran)
+            if not line.strip().startswith("checks: ")
+            and line.split()[0] not in WHERE_IT_IS_BUILT]
 
 
 # The step names in the order the plan prints them, so a case reads the order and not just the set.
@@ -232,9 +260,9 @@ def planned_call(ran, step):
 
 # The checks sit on the line under the call they belong to, so a case reads the pair.
 def planned_checks(ran, step):
-    lines = ran.out.split("\n")
-    for at, line in enumerate(lines):
-        if "claude -p" in line and line.split()[0] == step:
+    lines = indented(ran)
+    for at, line in enumerate(lines[:-1]):
+        if line.split()[0] == step:
             under = lines[at + 1].strip()
             return under[len("checks: "):] if under.startswith("checks: ") else under
     return ""
@@ -294,7 +322,7 @@ def test_the_dry_run_still_prints_the_sessions_it_would_start(loop):
         assert line in said(ran)
 
 
-def test_the_dry_run_prints_all_seven_steps_in_order(loop):
+def test_the_dry_run_prints_all_eight_steps_in_order(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 
     ran = loop.run(SPEC, "--dry-run")
@@ -302,8 +330,20 @@ def test_the_dry_run_prints_all_seven_steps_in_order(loop):
     assert ran.status == 0
     for line in ("/review-standards 168", "/review-spec 168", "/review-architecture 168"):
         assert line in said(ran)
-    assert planned_steps(ran) == [
-        "build", "standards", "spec", "architecture", "fix", "sweep", "finish"]
+    assert planned_steps(ran)[:8] == [
+        "build", "standards", "spec", "architecture", "fix", "sweep", "suite", "finish"]
+
+
+def test_the_dry_run_gives_the_suite_step_no_session(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0
+    planned = planned_call(ran, "suite")
+    assert "as the README names it" in planned
+    assert "claude -p" not in planned
+    assert planned_checks(ran, "suite") == "suite-can-run suite-green"
 
 
 def test_the_dry_run_gives_every_review_step_the_same_checks(loop):
@@ -738,6 +778,118 @@ def test_an_axis_that_edits_does_not_stop_the_loop(loop, runner):
     assert "step standards failed" not in said(ran)
     assert call_asking(runner, "/review-spec 168") is not None
     assert call_asking(runner, "/implement 168 --fix") is not None
+
+
+# --- the suite the driver runs itself ---------------------------------------
+
+SOLUTION = "dotnet test Skillworks.slnx"
+
+
+def suite_output(loop):
+    return (loop.records() / "ticket-168-suite.out").read_text(encoding="utf-8")
+
+
+def test_the_driver_runs_the_suite_and_asks_no_session_to(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert runner.built(SOLUTION)
+    assert len(session_calls(runner)) == 7
+
+
+def test_the_suite_runs_in_the_ticket_worktree(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert [call.where for call in runner.made if call.args[0] == "dotnet"] == [
+        ticket_worktree_of(loop).as_posix()]
+
+
+def test_the_suite_runs_after_the_sweep_and_a_green_one_runs_the_finishing_step(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert call_at(runner, "/comment-sweep") < call_at(runner, SOLUTION)
+    assert call_at(runner, SOLUTION) < call_at(runner, "/implement 168 --finish")
+
+
+def test_the_suite_keeps_what_it_said_with_the_other_step_records(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "the solution passed" in suite_output(loop)
+
+
+def test_a_red_suite_stops_the_loop_before_the_finishing_step(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    runner.stub("dotnet", says="a test failed", status=1)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step suite failed check suite-green" in said(ran)
+    assert call_asking(runner, "/implement 168 --finish") is None
+
+
+def test_a_red_suite_keeps_what_it_said_and_the_worktree_it_said_it_in(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    loop.runner.stub("dotnet", says="a test failed", status=1)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "a test failed" in suite_output(loop)
+    assert ticket_worktree_of(loop).as_posix() in said(ran)
+    assert ticket_worktree_of(loop).is_dir()
+
+
+def test_a_machine_short_of_what_the_suite_needs_stops_the_loop_naming_it(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    loop.runner.stub("docker", says="the daemon is not running", status=1)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "Docker" in said(ran)
+    assert "the daemon is not running" in said(ran)
+
+
+# No session can start Docker, so handing this to one would spend a step on a failure it cannot mend.
+def test_a_machine_short_of_what_the_suite_needs_starts_no_session_to_mend_it(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    runner.stub("docker", says="the daemon is not running", status=1)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(session_calls(runner)) == 6
+    assert not runner.started("dotnet")
+
+
+def test_the_loop_says_which_step_the_suite_is(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "STEP  #168 suite" in loop.log()
 
 
 # --- the way past a refused write -------------------------------------------
