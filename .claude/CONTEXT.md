@@ -13,6 +13,13 @@ it lets a step pass. One word, because a job that stopped and a job that finishe
 question.
 _Avoid_: Pristine, unmodified
 
+**Edit**:
+What a review axis changed in the worktree, as the driver read it and not as the session said it. The
+driver takes a reading before the step and another after, and the difference between them is the
+Edit. It is a record and never a judgement: an axis that edits is doing its job, so no Edit stops the
+loop. What an Edit cannot be is silent.
+_Avoid_: Record, change, diff
+
 **Held**:
 A worktree that had uncommitted work in it when the run stopped. A Keep commits that work to the
 job's branch before the worktree goes, so Held says the branch carries work that reached no commit of
@@ -43,6 +50,7 @@ _Avoid_: Arrival, injection, attachment
 The one way the driver reaches another program. It is injected, so a test supplies its own rather
 than putting a fake on `PATH`.
 _Avoid_: Spawn, shell, executor
+
 **Session**:
 One run of Claude Code, from the first prompt to the last. It carries an identity that every Load and
 every telemetry event of that run shares, which is what lets the two be read together.
