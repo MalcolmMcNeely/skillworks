@@ -111,6 +111,8 @@ class Sessions:
         self.says = {}
         self.refuses = set()
         self.removes = {}
+        self.writes = {}
+        self.stages = set()
         self.folder = repo.root / "claude" / "projects" / "one"
         self.folder.mkdir(parents=True, exist_ok=True)
         runner.stub("claude", does=self.answer)
@@ -126,6 +128,11 @@ class Sessions:
             return Ran(1, "", "the {} session was turned down\n".format(step))
         if step in self.removes:
             Path(self.removes[step]).unlink(missing_ok=True)
+        if step in self.writes:
+            name, text = self.writes[step]
+            (Path(self.runner.where) / name).write_text(text, encoding="utf-8", newline="\n")
+        if step in self.stages:
+            git(self.runner.where, "add", "-N", ".")
 
         self.count += 1
         session = "session-{}".format(self.count)
@@ -160,6 +167,15 @@ def given_three_axes_with_something_to_say(sessions):
     sessions.says["review-architecture"] = "## Architecture. The arrow points the wrong way."
 
 
+def given_an_axis_that_writes(sessions, axis, name, text):
+    sessions.writes["review-" + axis] = (name, text)
+
+
+# What every axis is told to run first, and nothing else.
+def given_an_axis_that_only_stages(sessions, axis):
+    sessions.stages.add("review-" + axis)
+
+
 # The step's own check reads the report as well, so only the axis after it can take it away.
 def given_a_report_lost_after_the_last_axis(loop, sessions, axis):
     sessions.removes["review-architecture"] = loop.records() / "ticket-168-{}.json".format(axis)
@@ -181,6 +197,14 @@ def call_asking(runner, mark):
 def prompt_asking(runner, mark):
     call = call_asking(runner, mark)
     return "" if call is None else call[2]
+
+
+def recorded(loop, axis):
+    for line in loop.log().split("\n"):
+        words = line.split()
+        if len(words) > 4 and words[1] == "EDITS" and words[3] == axis:
+            return " ".join(words[4:])
+    return ""
 
 
 def implement_flags(runner):
@@ -617,6 +641,91 @@ def test_a_missing_axis_report_names_the_axis_it_came_from(loop):
     assert ran.status == 1
     assert "the standards axis left no report" in (
         loop.records() / "ticket-168-fix.err").read_text(encoding="utf-8")
+
+
+# --- the record of what each axis changed ------------------------------------
+
+def test_an_axis_that_changed_nothing_is_recorded_as_having_changed_nothing(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert recorded(loop, "standards") == "changed nothing"
+    assert call_asking(runner, "/review-spec 168") is not None
+
+
+def test_every_axis_leaves_its_record_in_the_log(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    for axis in ("standards", "spec", "architecture"):
+        assert recorded(loop, axis) != ""
+
+
+def test_an_axis_that_added_a_file_has_it_named_in_its_record(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_writes(
+        given_sessions_that_report(loop), "standards", "named.txt", "the name box\n")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert recorded(loop, "standards") == "changed named.txt"
+
+
+# The build step already left built.txt, so only a reading of the bytes can see this edit.
+def test_an_axis_that_edited_a_file_the_build_changed_is_still_recorded(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_writes(
+        given_sessions_that_report(loop), "spec", "built.txt", "built, then mended\n")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert recorded(loop, "spec") == "changed built.txt"
+
+
+# Without the driver taking its reading the same way either side, this would read as an edit.
+def test_an_axis_that_only_ran_the_command_its_brief_opens_with_changed_nothing(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_only_stages(given_sessions_that_report(loop), "standards")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert recorded(loop, "standards") == "changed nothing"
+
+
+def test_the_reconciling_step_is_told_what_each_axis_changed(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_an_axis_that_writes(sessions, "standards", "named.txt", "the name box\n")
+    given_an_axis_that_writes(sessions, "architecture", "built.txt", "built, then turned round\n")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    asked = prompt_asking(runner, "/implement 168 --fix")
+    assert "The standards axis changed named.txt." in asked
+    assert "The spec axis changed nothing." in asked
+    assert "The architecture axis changed built.txt." in asked
+
+
+def test_an_axis_that_edits_does_not_stop_the_loop(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_writes(
+        given_sessions_that_report(loop), "standards", "named.txt", "the name box\n")
+
+    ran = loop.run(SPEC)
+
+    assert "step standards failed" not in said(ran)
+    assert call_asking(runner, "/review-spec 168") is not None
+    assert call_asking(runner, "/implement 168 --fix") is not None
 
 
 # --- the way past a refused write -------------------------------------------

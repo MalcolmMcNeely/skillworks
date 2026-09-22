@@ -23,6 +23,7 @@
 # Written against gh 2.92.0, which has no dependency flags. Everything goes
 # through `gh api`. See docs/research/harness/ticket-state-guardrails.md.
 
+import hashlib
 import io
 import json
 import os
@@ -108,6 +109,18 @@ def listed(said):
 # Every record the loop reads is three tab separated columns, and a short one still reads as three.
 def columns(line):
     return (line.split("\t") + ["", ""])[:3]
+
+
+# The bytes and not the file list, so an edit inside a file already changed is still seen.
+def digest(path):
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
+def changed_between(before, after):
+    return sorted(path for path in set(before) | set(after) if before.get(path) != after.get(path))
 
 
 def sessions_folder():
@@ -243,6 +256,12 @@ class Loop:
     def step_file(self, ticket, step, kind):
         return self.log_dir / "ticket-{}-{}.{}".format(ticket, step, kind)
 
+    def edits_recorded(self, ticket, axis):
+        held = self.step_file(ticket, axis, "changed")
+        if not held.is_file():
+            return "left no record of what it changed"
+        return held.read_text(encoding="utf-8", errors="replace").strip()
+
     # Read off disk rather than handed on by a session, so no session has to remember to carry them.
     def review_reports(self, ticket):
         said = ""
@@ -252,6 +271,7 @@ class Loop:
             if not report:
                 return None, "the {} axis left no report at {}\n".format(axis, held)
             said += "\n## The {} axis reported\n\n{}\n".format(axis, report)
+            said += "\nThe {} axis {}.\n".format(axis, self.edits_recorded(ticket, axis))
         return said, ""
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
@@ -262,8 +282,8 @@ class Loop:
         reports, reason = self.review_reports(ticket)
         if reports is None:
             return None, reason
-        return "{}\n\nThe three review axes have run. Their reports follow.\n{}".format(
-            asked, reports.rstrip("\n")), ""
+        return ("{}\n\nThe three review axes have run. Their reports follow, each with a record "
+                "of what that axis changed.\n{}").format(asked, reports.rstrip("\n")), ""
 
     # --- the checks ----------------------------------------------------------
 
@@ -308,6 +328,22 @@ class Loop:
             return head != self.ticket_base, ""
         return False, "no check is named {}\n".format(check)
 
+    # --- what an axis changed ------------------------------------------------
+
+    # Every axis runs `git add -N .` first, so a reading without it reads that command as an edit.
+    def reading_of_job(self):
+        self.git(self.job_worktree, "add", "-N", ".")
+        named = self.git(self.job_worktree, "diff", "HEAD", "--name-only", "-z").out
+        return {path: digest(Path(self.job_worktree) / path)
+                for path in named.split("\0") if path}
+
+    # A record and not a check, so an axis doing its job never stops the loop.
+    def record_edits(self, ticket, axis, before):
+        changed = changed_between(before, self.reading_of_job())
+        said = "changed " + (", ".join(changed) if changed else "nothing")
+        written(self.step_file(ticket, axis, "changed"), said + "\n")
+        self.say("EDITS #{} {:<13}{}".format(ticket, axis, said))
+
     # --- running one step ----------------------------------------------------
 
     # The loop picks only open tickets, so a rerun would skip a closed one.
@@ -348,9 +384,14 @@ class Loop:
             written(reasons, reason)
             raise self.stop_step(ticket, step.name, "was short of a review axis report", reasons)
 
+        # Nothing but the session runs between the two readings, so the record is that axis alone.
+        before = self.reading_of_job() if step.name in REVIEW_STEPS else None
+
         ran = self.claude_p(prompt, *rest)
         written(held, ran.out)
         written(reasons, ran.err)
+        if before is not None:
+            self.record_edits(ticket, step.name, before)
         if ran.status != 0:
             raise self.stop_step(ticket, step.name, "exited non-zero",
                                  "{} and {}".format(reasons, held))
