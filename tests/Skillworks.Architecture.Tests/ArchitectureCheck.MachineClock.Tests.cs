@@ -79,7 +79,7 @@ public sealed partial class ArchitectureCheckTests
     public void A_reach_in_a_support_file_is_not_a_breach()
     {
         using var tree = Judging("app")
-            .Support("Shared/Clock/TestTempo.cs", Running("TestTempo", "Thread.Sleep(200);"));
+            .Support("Shared/Clock/TestClock.cs", Running("TestClock", "Thread.Sleep(200);"));
 
         Assert.Empty(tree.Breaches());
     }

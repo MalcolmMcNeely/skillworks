@@ -44,7 +44,7 @@ public sealed class StudioHost : IDisposable
         string? cataloguePath = null,
         // Only for a store that is down, failing or stops part way; data comes from the test Loki.
         BrokenEventsStore? events = null,
-        // Only for a store that is down, failing or still starting; spans come from the test Tempo.
+        // Only for a store that is down, failing or still starting; spans come from the test Trace store.
         BrokenTraceStore? traces = null,
         // Always a fake: no test starts a Collector, and a real one on this machine would answer for it.
         FakeCollector? collector = null,
@@ -55,7 +55,7 @@ public sealed class StudioHost : IDisposable
         string? settings = null,
         int? lookbackDays = null,
         string? collectorAddress = null,
-        // Only to make the test Tempo cut an answer short, which it will not do on the handful of spans a test pushes.
+        // Only to make the test Trace store cut an answer short, which it will not do on the handful of spans a test pushes.
         int? mostTraces = null,
         int? mostSessions = null)
     {
@@ -81,7 +81,7 @@ public sealed class StudioHost : IDisposable
                 ("Loki:Address", TestLoki.Address.ToString()),
                 ("Loki:Tenant", _tenant),
                 ("Loki:MaxQueryDays", TestLoki.MaxQueryDays.ToString()),
-                ("Tempo:Address", TestTempo.Address.ToString()),
+                ("Tempo:Address", TestTraceStore.Address.ToString()),
                 ("Tempo:Tenant", _tenant),
                 ("ClaudeSettings:Path", settingsPath),
                 ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
@@ -105,7 +105,7 @@ public sealed class StudioHost : IDisposable
 
     // One trace at a time, because Claude Code writes a Session as several and a span belongs to one of them.
     public Task PushSpans(string session, string trace, params RecordedSpan[] spans) =>
-        TestTempo.PushAsync(_tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
+        TestTraceStore.PushAsync(_tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
 
     // Headers first and then one line at a time, as a browser reads an answer that arrives day by day.
     public async Task<IReadOnlyList<JsonObject>> Lines(string path, int count = int.MaxValue)

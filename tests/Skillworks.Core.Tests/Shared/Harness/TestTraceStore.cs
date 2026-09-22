@@ -7,7 +7,7 @@ using Skillworks.AppHost;
 
 namespace Skillworks.Core.Tests.Shared.Harness;
 
-public static class TestTempo
+public static class TestTraceStore
 {
     private const int HttpPort = 3200;
 
@@ -15,7 +15,7 @@ public static class TestTempo
 
     private const string ClaudeCodeVersion = "2.1.268";
 
-    // One per run, as Tempo starts slowly; on the thread pool, so a waiting constructor cannot deadlock xUnit.
+    // One per run, as the store starts slowly; on the thread pool, so a waiting constructor cannot deadlock xUnit.
     private static readonly Lazy<IContainer> Started = new(() => Task.Run(StartAsync).GetAwaiter().GetResult());
 
     private static readonly HttpClient Client = new();
@@ -26,7 +26,7 @@ public static class TestTempo
     {
         await SendAsync(new Uri(Mapped(OtlpPort), "v1/traces"), tenant, Traces(spans));
 
-        // Tempo searches what has reached its store, not what it is still holding.
+        // The store searches what has reached it, not what it is still holding.
         await FlushAsync();
         await SearchableAsync(tenant, session, spans);
     }
@@ -63,11 +63,11 @@ public static class TestTempo
 
         using var response = await Client.SendAsync(request);
 
-        // Tempo names the span it refused only in the body.
+        // The store names the span it refused only in the body.
         if (!response.IsSuccessStatusCode)
         {
             throw new InvalidOperationException(
-                $"Tempo refused the spans with {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+                $"The Trace store refused the spans with {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
         }
     }
 
@@ -97,10 +97,11 @@ public static class TestTempo
             using var response = await Client.SendAsync(request);
             var answered = await response.Content.ReadAsStringAsync();
 
-            // Tempo says why it refused a window only in the body.
+            // The store says why it refused a window only in the body.
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidOperationException($"Tempo refused {route} with {(int)response.StatusCode}: {answered}");
+                throw new InvalidOperationException(
+                    $"The Trace store refused {route} with {(int)response.StatusCode}: {answered}");
             }
 
             var found = JsonNode.Parse(answered)?["traces"] as JsonArray ?? [];
@@ -113,7 +114,7 @@ public static class TestTempo
             await Task.Delay(200);
         }
 
-        throw new InvalidOperationException($"Tempo never made the spans of {session} searchable.");
+        throw new InvalidOperationException($"The Trace store never made the spans of {session} searchable.");
     }
 
     // The store picks Batches by arrival, so the window reaches now as well as the spans' own times.
@@ -129,7 +130,7 @@ public static class TestTempo
     private static long Seconds(JsonObject span, string field) =>
         long.Parse((string)span[field]!, CultureInfo.InvariantCulture) / 1_000_000_000;
 
-    // Tempo answers with a trace id stripped of its leading zeroes.
+    // The store answers with a trace id stripped of its leading zeroes.
     private static string Shortened(string traceId) => traceId.TrimStart('0');
 
     private static JsonObject Traces(IReadOnlyList<JsonObject> spans) => new()

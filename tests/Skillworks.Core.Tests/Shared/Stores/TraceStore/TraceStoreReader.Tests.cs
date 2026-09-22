@@ -359,7 +359,7 @@ public sealed partial class TraceStoreReaderTests
     ];
 
     private static Task Push(string tenant, string session, string trace, IReadOnlyList<RecordedSpan> spans) =>
-        TestTempo.PushAsync(tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
+        TestTraceStore.PushAsync(tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
 
     // The real registration, so the address and the two Patiences under test are the ones Studio runs with.
     private static TraceStoreReader Reader(
@@ -374,7 +374,7 @@ public sealed partial class TraceStoreReaderTests
     {
         var settings = new Dictionary<string, string?>
         {
-            ["Tempo:Address"] = address ?? TestTempo.Address.ToString(),
+            ["Tempo:Address"] = address ?? TestTraceStore.Address.ToString(),
             ["Tempo:Tenant"] = tenant,
         };
 

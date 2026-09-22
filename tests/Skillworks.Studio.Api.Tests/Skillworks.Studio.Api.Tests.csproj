@@ -36,7 +36,7 @@
 
   <!-- Their subject is the reader in Core, so they are owned there and borrowed here, never the other way about. -->
   <ItemGroup>
-    <Compile Include="..\Skillworks.Core.Tests\Shared\Harness\TestTempo.cs" Link="Shared\Harness\TestTempo.cs" />
+    <Compile Include="..\Skillworks.Core.Tests\Shared\Harness\TestTraceStore.cs" Link="Shared\Harness\TestTraceStore.cs" />
     <Compile Include="..\Skillworks.Core.Tests\Shared\Stores\TraceStore\RecordedSpan.cs" Link="Shared\Harness\RecordedSpan.cs" />
     <Content Include="..\Skillworks.Core.Tests\Shared\Harness\tempo.yaml" Link="Shared\Harness\tempo.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

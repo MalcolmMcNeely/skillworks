@@ -1,6 +1,6 @@
 namespace Skillworks.Core.Tests.Shared.Harness.StandIns;
 
-// Stands in front of a real store to hold every request back, which a running Tempo cannot be made to do.
+// A running container cannot be made to hold every request back.
 public sealed class StallingTraceStore() : DelegatingHandler(new HttpClientHandler())
 {
     private readonly TaskCompletionSource _asked = new(TaskCreationOptions.RunContinuationsAsynchronously);
