@@ -121,7 +121,7 @@ can read the result.
 
 `build` leaves its change uncommitted. The three axes each read that change, report under a heading of
 their own, and fix what they find. `fix` reconciles: it is the only step that holds all three reports
-and all three records at once. `sweep` writes last, because every step that writes now runs after the
+and all three Edits at once. `sweep` writes last, because every step that writes now runs after the
 place the sweep used to sit, and each one could put back what it had just cut. `finish` runs the whole
 suite, commits and closes the ticket. It never pushes.
 
@@ -141,21 +141,22 @@ that Session had written.
 prompt only has to carry what is new.
 
 The three reports never travel inside a Session. Each axis writes its report to disk, and the driver
-reads all three back and builds the `fix` prompt **before** that Session starts. So a reconciling step
-never runs on two axes out of three, and no Session has to remember to carry anything.
+reads all three back and builds the `fix` prompt **before** that Session starts. So `fix` never runs
+on two axes out of three, and no Session has to remember to carry anything.
 
-### What each axis changed
+### The Edit each axis made
 
 An axis may write, so an axis could write silently: a change the build Session never made, that no
 report names, and that the closing step commits under a message written by someone who never saw it.
 
 The driver takes a reading of the worktree immediately before each axis step and again immediately
-after. The difference is what that axis changed. It reaches the log as an `EDITS` line and rides into
-the `fix` prompt beside that axis's report.
+after. The difference is the **Edit** that axis made. It reaches the log as an `EDIT` line, is written
+beside that step's result as `ticket-<n>-<axis>.edit`, and rides into the `fix` prompt beside that
+axis's report.
 
 The reading is of the bytes of every changed file, not of the file list, because an axis that edits a
-line inside a file the build Session already changed leaves the file list identical. It is a record
-and not a check: an axis that edits is doing its job, so nothing here ever stops the loop.
+line inside a file the build Session already changed leaves the file list identical. An Edit is not a
+check: an axis that edits is doing its job, so nothing here ever stops the loop.
 
 Ordering therefore matters. `standards` edits before `spec` and `architecture` read, so two more axes
 see its work; `architecture` edits after every other axis has finished, so none of them do. `fix` and
@@ -234,7 +235,7 @@ The log is `.spec-loop/<spec>/loop.log`, and every step's result and error outpu
 15:55:22 START #202 TICKET: Preflight checks for uv
 15:55:32 STEP  #202 build        2/6
 15:57:41 STEP  #202 standards    2/6
-15:59:38 EDITS #202 standards    changed scripts/spec_loop.py
+15:59:38 EDIT  #202 standards    changed scripts/spec_loop.py
 16:00:31 STEP  #202 architecture 2/6
 16:02:18 STEP  #202 fix          2/6
 16:29:54 STEP  #202 finish       2/6

@@ -256,10 +256,10 @@ class Loop:
     def step_file(self, ticket, step, kind):
         return self.log_dir / "ticket-{}-{}.{}".format(ticket, step, kind)
 
-    def edits_recorded(self, ticket, axis):
-        held = self.step_file(ticket, axis, "changed")
+    def edit_of(self, ticket, axis):
+        held = self.step_file(ticket, axis, "edit")
         if not held.is_file():
-            return "left no record of what it changed"
+            return "left no Edit"
         return held.read_text(encoding="utf-8", errors="replace").strip()
 
     # Read off disk rather than handed on by a session, so no session has to remember to carry them.
@@ -271,7 +271,7 @@ class Loop:
             if not report:
                 return None, "the {} axis left no report at {}\n".format(axis, held)
             said += "\n## The {} axis reported\n\n{}\n".format(axis, report)
-            said += "\nThe {} axis {}.\n".format(axis, self.edits_recorded(ticket, axis))
+            said += "\nThe {} axis {}.\n".format(axis, self.edit_of(ticket, axis))
         return said, ""
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
@@ -282,8 +282,8 @@ class Loop:
         reports, reason = self.review_reports(ticket)
         if reports is None:
             return None, reason
-        return ("{}\n\nThe three review axes have run. Their reports follow, each with a record "
-                "of what that axis changed.\n{}").format(asked, reports.rstrip("\n")), ""
+        return ("{}\n\nThe three review axes have run. Their reports follow, each with the Edit "
+                "that axis made.\n{}").format(asked, reports.rstrip("\n")), ""
 
     # --- the checks ----------------------------------------------------------
 
@@ -328,7 +328,7 @@ class Loop:
             return head != self.ticket_base, ""
         return False, "no check is named {}\n".format(check)
 
-    # --- what an axis changed ------------------------------------------------
+    # --- the Edit an axis made -----------------------------------------------
 
     # Every axis runs `git add -N .` first, so a reading without it reads that command as an edit.
     def reading_of_job(self):
@@ -337,12 +337,12 @@ class Loop:
         return {path: digest(Path(self.job_worktree) / path)
                 for path in named.split("\0") if path}
 
-    # A record and not a check, so an axis doing its job never stops the loop.
-    def record_edits(self, ticket, axis, before):
+    # An Edit and not a check, so an axis doing its job never stops the loop.
+    def record_edit(self, ticket, axis, before):
         changed = changed_between(before, self.reading_of_job())
         said = "changed " + (", ".join(changed) if changed else "nothing")
-        written(self.step_file(ticket, axis, "changed"), said + "\n")
-        self.say("EDITS #{} {:<13}{}".format(ticket, axis, said))
+        written(self.step_file(ticket, axis, "edit"), said + "\n")
+        self.say("EDIT  #{} {:<13}{}".format(ticket, axis, said))
 
     # --- running one step ----------------------------------------------------
 
@@ -378,20 +378,20 @@ class Loop:
             ticket, step.name,
             progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
 
-        # Built before the session starts, so two axes out of three never reach a reconciling step.
+        # Built before the session starts, so two axes out of three never reach the fix step.
         prompt, reason = self.step_body(ticket, step)
         if prompt is None:
             written(reasons, reason)
             raise self.stop_step(ticket, step.name, "was short of a review axis report", reasons)
 
-        # Nothing but the session runs between the two readings, so the record is that axis alone.
+        # Nothing but the session runs between the two readings, so the Edit is that axis alone.
         before = self.reading_of_job() if step.name in REVIEW_STEPS else None
 
         ran = self.claude_p(prompt, *rest)
         written(held, ran.out)
         written(reasons, ran.err)
         if before is not None:
-            self.record_edits(ticket, step.name, before)
+            self.record_edit(ticket, step.name, before)
         if ran.status != 0:
             raise self.stop_step(ticket, step.name, "exited non-zero",
                                  "{} and {}".format(reasons, held))

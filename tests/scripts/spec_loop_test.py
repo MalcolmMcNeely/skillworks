@@ -199,10 +199,10 @@ def prompt_asking(runner, mark):
     return "" if call is None else call[2]
 
 
-def recorded(loop, axis):
+def edit_of(loop, axis):
     for line in loop.log().split("\n"):
         words = line.split()
-        if len(words) > 4 and words[1] == "EDITS" and words[3] == axis:
+        if len(words) > 4 and words[1] == "EDIT" and words[3] == axis:
             return " ".join(words[4:])
     return ""
 
@@ -317,7 +317,7 @@ def test_the_dry_run_gives_every_review_step_the_same_checks(loop):
 
 
 # Read off the plan rather than written out, so the two move together or this case fails.
-def test_the_dry_run_gives_the_reconciling_step_the_checks_the_sweep_has(loop):
+def test_the_dry_run_gives_the_fix_step_the_checks_the_sweep_has(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 
     ran = loop.run(SPEC, "--dry-run")
@@ -518,7 +518,7 @@ def test_the_review_steps_and_the_sweep_are_given_sessions_that_resume_nothing(l
         assert "--resume" not in call
 
 
-def test_the_reconciling_step_and_the_finishing_step_each_run_under_their_own_flag(loop, runner):
+def test_the_fix_step_and_the_finishing_step_each_run_under_their_own_flag(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
 
@@ -567,9 +567,9 @@ def test_a_review_step_that_errored_stops_the_loop_and_keeps_the_worktree(loop, 
     assert call_asking(runner, "/implement 168 --finish") is None
 
 
-# --- the reports reaching the reconciling step ------------------------------
+# --- the reports reaching the fix step --------------------------------------
 
-def test_the_reconciling_step_is_given_what_all_three_axes_found(loop, runner):
+def test_the_fix_step_is_given_what_all_three_axes_found(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_three_axes_with_something_to_say(given_sessions_that_report(loop))
 
@@ -582,7 +582,7 @@ def test_the_reconciling_step_is_given_what_all_three_axes_found(loop, runner):
     assert "The arrow points the wrong way." in asked
 
 
-def test_the_reconciling_step_is_told_which_axis_each_report_came_from(loop, runner):
+def test_the_fix_step_is_told_which_axis_each_report_came_from(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_three_axes_with_something_to_say(given_sessions_that_report(loop))
 
@@ -594,7 +594,7 @@ def test_the_reconciling_step_is_told_which_axis_each_report_came_from(loop, run
             runner, "/implement 168 --fix")
 
 
-# The reports stop at the step that reconciles, so carrying them on would be the same work twice.
+# The reports stop at `fix`, which reconciles, so carrying them on would be the same work twice.
 def test_the_finishing_step_is_given_no_axis_report(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_three_axes_with_something_to_say(given_sessions_that_report(loop))
@@ -607,7 +607,7 @@ def test_the_finishing_step_is_given_no_axis_report(loop, runner):
     assert "axis reported" not in asked
 
 
-def test_the_reconciling_step_and_the_finishing_step_both_resume_the_build_session(loop, runner):
+def test_the_fix_step_and_the_finishing_step_both_resume_the_build_session(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
 
@@ -619,7 +619,7 @@ def test_the_reconciling_step_and_the_finishing_step_both_resume_the_build_sessi
         assert call[call.index("--resume") + 1] == "session-1"
 
 
-def test_a_missing_axis_report_stops_the_loop_before_the_reconciling_step(loop, runner):
+def test_a_missing_axis_report_stops_the_loop_before_the_fix_step(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
     given_a_report_lost_after_the_last_axis(loop, sessions, "standards")
@@ -643,20 +643,20 @@ def test_a_missing_axis_report_names_the_axis_it_came_from(loop):
         loop.records() / "ticket-168-fix.err").read_text(encoding="utf-8")
 
 
-# --- the record of what each axis changed ------------------------------------
+# --- the Edit each axis made ------------------------------------------------
 
-def test_an_axis_that_changed_nothing_is_recorded_as_having_changed_nothing(loop, runner):
+def test_an_axis_that_changed_nothing_has_an_edit_saying_it_changed_nothing(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert recorded(loop, "standards") == "changed nothing"
+    assert edit_of(loop, "standards") == "changed nothing"
     assert call_asking(runner, "/review-spec 168") is not None
 
 
-def test_every_axis_leaves_its_record_in_the_log(loop):
+def test_every_axis_leaves_its_edit_in_the_log(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
 
@@ -664,10 +664,22 @@ def test_every_axis_leaves_its_record_in_the_log(loop):
 
     assert ran.status == 1
     for axis in ("standards", "spec", "architecture"):
-        assert recorded(loop, axis) != ""
+        assert edit_of(loop, axis) != ""
 
 
-def test_an_axis_that_added_a_file_has_it_named_in_its_record(loop):
+def test_every_axis_leaves_its_edit_on_disk_under_its_own_name(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    for axis in ("standards", "spec", "architecture"):
+        held = loop.records() / "ticket-168-{}.edit".format(axis)
+        assert held.read_text(encoding="utf-8").strip() == "changed nothing"
+
+
+def test_an_axis_that_added_a_file_has_it_named_in_its_edit(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_an_axis_that_writes(
         given_sessions_that_report(loop), "standards", "named.txt", "the name box\n")
@@ -675,11 +687,11 @@ def test_an_axis_that_added_a_file_has_it_named_in_its_record(loop):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert recorded(loop, "standards") == "changed named.txt"
+    assert edit_of(loop, "standards") == "changed named.txt"
 
 
 # The build step already left built.txt, so only a reading of the bytes can see this edit.
-def test_an_axis_that_edited_a_file_the_build_changed_is_still_recorded(loop):
+def test_an_axis_that_edited_a_file_the_build_changed_still_has_an_edit(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_an_axis_that_writes(
         given_sessions_that_report(loop), "spec", "built.txt", "built, then mended\n")
@@ -687,7 +699,7 @@ def test_an_axis_that_edited_a_file_the_build_changed_is_still_recorded(loop):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert recorded(loop, "spec") == "changed built.txt"
+    assert edit_of(loop, "spec") == "changed built.txt"
 
 
 # Without the driver taking its reading the same way either side, this would read as an edit.
@@ -698,10 +710,10 @@ def test_an_axis_that_only_ran_the_command_its_brief_opens_with_changed_nothing(
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert recorded(loop, "standards") == "changed nothing"
+    assert edit_of(loop, "standards") == "changed nothing"
 
 
-def test_the_reconciling_step_is_told_what_each_axis_changed(loop, runner):
+def test_the_fix_step_is_told_what_each_axis_changed(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
     given_an_axis_that_writes(sessions, "standards", "named.txt", "the name box\n")

@@ -68,10 +68,10 @@ The findings it returns are what the Fixing section acts on.
 
 Findings reach this section two ways, and it covers both:
 
-- **Under the spec loop**, `--fix` selects it. Each axis has run in a session of its own, and the reports arrive in this prompt under the axis that wrote each one, each beside a record of what that axis changed.
+- **Under the spec loop**, `--fix` selects it. Each axis has run in a session of its own, and the reports arrive in this prompt under the axis that wrote each one, each beside the Edit that axis made.
 - **Under a hand run**, the Reviewing section produced them in this same session.
 
-1. **Fix every finding, from every axis.** Under the spec loop an axis fixes what it finds, so a record beside a report says what is already done — read the change before you fix the same thing twice. Under a hand run the axes only report, so nothing is fixed yet.
+1. **Fix every finding, from every axis.** Under the spec loop an axis fixes what it finds, so the Edit beside a report says what is already done — read the change before you fix the same thing twice. Under a hand run the axes only report, so nothing is fixed yet.
 2. **Settle a disagreement.** This is the one session holding all three reports at once, so a contradiction between two axes is settled here and nowhere else.
 3. **Leave a finding you judge wrong**, and keep the reason for the closing comment.
 4. **A prompt carrying no reports has nothing to fix**, so go straight on.
@@ -86,7 +86,7 @@ It runs after the findings are fixed, because anything that writes after a sweep
 
 ## Finishing
 
-Run no review of your own, and fix no finding here. Under the spec loop the three axes — Standards, Spec and Architecture — have each already run in a session of its own, and the fixing step has already acted on what they found. Under a hand run the Reviewing and Fixing sections have already done the same. A review run again here would be the same work twice, and the two could disagree.
+Run no review of your own, and fix no finding here. Under the spec loop the three axes — Standards, Spec and Architecture — have each already run in a session of its own, and `fix` has already acted on what they found. Under a hand run the Reviewing and Fixing sections have already done the same. A review run again here would be the same work twice, and the two could disagree.
 
 1. **Run the full test suite.** A ticket is done only once you have read the full suite's passing result. A partial pass or a skipped suite leaves the ticket open.
 2. **Commit to `main`.** Do NOT push. A spec loop pushes the ticket itself, by a step of its own that runs after this one, so the push is checked rather than taken on trust. This repo has no branches and no pull requests. Do not include "co-authored by" in the commit message.
