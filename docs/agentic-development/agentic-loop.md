@@ -126,8 +126,9 @@ their own, and fix what they find. `fix` reconciles: it is the only step that ho
 and all three Edits at once. `sweep` writes last, because every step that writes now runs after the
 place the sweep used to sit, and each one could put back what it had just cut. `suite` is the driver's
 own: it runs the whole suite, reads the exit status and keeps the output, so the gate that says a
-ticket is done rests on nothing a Session said about itself. `finish` runs the suite once more, then
-commits and closes the ticket. It never pushes.
+ticket is done rests on nothing a Session said about itself. `finish` runs no tests at all: it is
+handed the passing output, so its closing comment still names what proved the work, and it commits
+and closes the ticket. It never pushes.
 
 A machine short of what the suite needs is not a red suite. Before it runs anything, `suite` proves
 the tests can run at all: Docker answering, `uv` on `PATH`, the front end installed. A fact missing

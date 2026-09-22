@@ -11,7 +11,7 @@ The flag after the ticket number decides which sections run:
 
 | Call | Sections, in order |
 |---|---|
-| `/implement <n>` | Before you start, Building, Reviewing, Fixing, Sweeping comments, Finishing |
+| `/implement <n>` | Before you start, Building, Reviewing, Fixing, Sweeping comments, Running the suite, Finishing |
 | `/implement <n> --stop-after-tests` | Before you start, Building |
 | `/implement <n> --fix` | Before you start, if this session has not read the ticket; then Fixing |
 | `/implement <n> --finish` | Before you start, if this session has not read the ticket; then Finishing |
@@ -86,11 +86,19 @@ Run /comment-sweep on the uncommitted change.
 
 It runs after the findings are fixed, because anything that writes after a sweep puts back the comments the sweep cut.
 
+## Running the suite
+
+Run the whole suite, as `README.md` names it under Checks, and read its passing result. A partial pass or a skipped suite leaves the ticket open.
+
+Under the spec loop this section never runs. The driver runs the suite as a step of its own, reads the result itself, and hands the passing output to Finishing, so the gate that says a ticket is done rests on nothing a session said about itself.
+
 ## Finishing
 
 Run no review of your own, and fix no finding here. Under the spec loop the three axes — Standards, Spec and Architecture — have each already run in a session of its own, and `fix` has already acted on what they found. Under a hand run the Reviewing and Fixing sections have already done the same. A review run again here would be the same work twice, and the two could disagree.
 
-1. **Run the full test suite.** A ticket is done only once you have read the full suite's passing result. A partial pass or a skipped suite leaves the ticket open.
+Run no tests here either. One step owns that gate: under the spec loop the driver ran the whole suite and put the passing output in this prompt, and under a hand run the section above has just run it. A result reported here would be one nobody else saw.
+
+1. **Read the passing suite output you were handed.** It is what proved the work, and the closing comment names it.
 2. **Commit to `main`.** Do NOT push. A spec loop pushes the ticket itself, by a step of its own that runs after this one, so the push is checked rather than taken on trust. This repo has no branches and no pull requests. Do not include "co-authored by" in the commit message.
    - **Name the ticket in the message.** See "Two conventions the loop leans on" in `docs/agents/issue-tracker.md` for the form, and for why it is not a closing word.
 3. **Leave the working tree clean.** A caller may be driving you in a loop and will stop if it is not.

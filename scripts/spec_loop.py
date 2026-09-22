@@ -219,6 +219,9 @@ class Loop:
         # Not being None is also the record that the loop has already been round.
         self.red_suite = None
 
+        # The driver read this one, so the finishing Session names it rather than proving it again.
+        self.green_suite = None
+
         # Nothing is read from an earlier run, so a rerun grows a mean of its own.
         self.timed_tickets = 0
         self.timed_seconds = 0
@@ -296,9 +299,18 @@ class Loop:
             said += "\nThe {} axis {}.\n".format(axis, self.edit_of(ticket, axis))
         return said, ""
 
+    def suite_report(self):
+        if self.green_suite is None:
+            return ""
+        return ("\n\n## The suite passed\n\nThe driver ran the whole suite and read the result, so "
+                "run no tests yourself. Name what follows in the closing comment as what proved "
+                "the work.\n\n{}\n").format(self.green_suite.said.rstrip("\n"))
+
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
         asked = step.asks.format(ticket)
+        if step.name == "finish":
+            return asked + self.suite_report(), ""
         if step.name != "fix":
             return asked, ""
         reports, reason = self.review_reports(ticket)
@@ -460,6 +472,7 @@ class Loop:
             raise stop("ABORT #{} failed check suite-can-run, so no Session was asked to mend "
                        "it: {}\n      Its worktree is at {}. See {}".format(
                            ticket, outcome.said.strip(), self.job_worktree, held))
+        self.green_suite = outcome if outcome.passed else None
         return None if outcome.passed else outcome
 
     # --- getting started -----------------------------------------------------
@@ -650,6 +663,7 @@ class Loop:
         self.say("START #{} {}".format(ticket, self.issue_field(ticket, ".title").out.strip()))
 
         self.red_suite = None
+        self.green_suite = None
         self.job_worktree = self.opened("ticket-" + ticket)
         if not self.job_worktree:
             raise stop("FAIL  #{} got no worktree to be built in.".format(ticket))

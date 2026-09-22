@@ -1129,6 +1129,57 @@ def test_the_record_keeps_what_the_suite_said_on_both_sides_of_the_circuit(loop,
     assert "the solution passed" in suite_output(loop)
 
 
+# --- the passing suite reaching the finishing step ---------------------------
+
+def finish_prompt(runner):
+    return prompt_asking(runner, "/implement 168 --finish")
+
+
+def test_the_finishing_step_is_handed_the_output_of_the_suite_that_passed(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "the solution passed" in finish_prompt(runner)
+
+
+# One step owns the gate, so a Session cannot report a result the driver never saw.
+def test_the_finishing_step_is_told_the_driver_ran_the_suite_and_to_run_none(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "The driver ran the whole suite" in finish_prompt(runner)
+    assert "run no tests" in finish_prompt(runner)
+
+
+def test_the_suite_runs_before_the_finishing_step(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert call_at(runner, SOLUTION) < call_at(runner, "/implement 168 --finish")
+
+
+# A flake spends a run, and the run that proved the work is the one the closing comment names.
+def test_the_finishing_step_is_handed_the_run_that_passed_and_not_the_one_that_failed(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "the solution passed" in finish_prompt(runner)
+    assert "a Span test failed" not in finish_prompt(runner)
+
+
 # --- the way past a refused write -------------------------------------------
 
 # A session that met the wall leaves the ticket open, so any stop the loop makes may be that wall.
