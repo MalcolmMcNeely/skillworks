@@ -74,6 +74,16 @@ Mark each finding as a hard breach or a judgement call. A documented standard ca
 
 Keep the whole report under 400 words.
 
+## Fix what you find
+
+This axis edits the worktree, and it should. A finding you can fix, you fix here. The session that read the code is the one that understands the finding, so a one-line rename never waits for a later session to retype it.
+
+Fix only what this axis owns. A finding that belongs to Spec or Architecture is dropped rather than reported here, so it is not yours to fix either.
+
+A finding you judge not worth fixing is named in the report and left, with the reason. A baseline smell is a judgement call, so leaving one is an ordinary answer and not a failure.
+
+The report names every finding either way, and says which ones you fixed.
+
 ## How to end the turn
 
 End with the findings under a `## Standards` heading. The driver reads that heading to prove the axis ran, so an axis that found nothing still writes it:

@@ -86,6 +86,18 @@ Keep the whole report under 400 words.
 
 Skip the axis when the change sits inside one module and touches no config, no dependency manifest, no new file and no file move. There is no arrangement question to answer. A new file asks which folder it belongs in, and a moved file asks which way it now points, so neither of those skips. Note the skip in the report.
 
+## Fix what you find
+
+This axis edits the worktree, and it should. A finding you can fix, you fix here. The session that read the module graph is the one that knows where a file belongs, so a file in the wrong folder is moved here rather than described for somebody else to move.
+
+Fix only what this axis owns. A finding that belongs to Standards or Spec is dropped rather than reported here, so it is not yours to fix either.
+
+Run the boundary checks again after a fix, and report what they said about the code as it now stands.
+
+A finding you judge not worth fixing is named in the report and left, with the reason. A move that would spread into modules this change never touched is of that kind.
+
+The report names every finding either way, and says which ones you fixed.
+
 ## How to end the turn
 
 End with the findings under an `## Architecture` heading. The driver reads that heading to prove the axis ran, so an axis that found nothing, or that skipped, still writes it:
