@@ -50,6 +50,9 @@ def loop(repo, runner, monkeypatch):
     monkeypatch.chdir(repo.work)
     # A session is looked for under this case's own folder, so no real one can answer a check here.
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", (repo.root / "claude").as_posix())
+    # A suite run from inside a Session inherits both, so a case names the Parent it means or none.
+    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID", raising=False)
+    monkeypatch.delenv("OTEL_RESOURCE_ATTRIBUTES", raising=False)
     return Driver(repo, runner)
 
 
@@ -1202,6 +1205,68 @@ def test_the_way_past_the_wall_reaches_the_log_as_well(loop):
 
     assert ran.status == 1
     assert "SPEC_LOOP_PERMISSION_MODE=bypassPermissions" in loop.log()
+
+
+# --- the Parent each Session names -------------------------------------------
+
+PARENT = "skillworks.parent.session.id=parent-session"
+
+
+def changes_given_to_sessions(runner):
+    return [call.env or {} for call in runner.made if call.args[0] == "claude"]
+
+
+def test_every_step_session_names_the_session_that_started_the_driver(loop, runner, monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    asked = [call[2].split(" ")[0] for call in session_calls(runner)]
+    assert asked == ["/implement", "/review-standards", "/review-spec", "/review-architecture",
+                     "/implement", "/comment-sweep", "/implement"]
+    for changes in changes_given_to_sessions(runner):
+        assert changes.get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
+
+
+def test_the_drift_session_names_the_session_that_started_the_driver(loop, runner, monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
+    given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert call_asking(runner, "/spec-drift") is not None
+    assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
+
+
+def test_attributes_already_set_are_kept_and_the_parent_is_added(loop, runner, monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
+    monkeypatch.setenv("OTEL_RESOURCE_ATTRIBUTES", "team=studio,host.kind=laptop")
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    changes = changes_given_to_sessions(runner)
+    assert changes
+    for change in changes:
+        assert change.get("OTEL_RESOURCE_ATTRIBUTES") == "team=studio,host.kind=laptop," + PARENT
+
+
+def test_a_driver_started_by_hand_names_no_parent(loop, runner, monkeypatch):
+    monkeypatch.setenv("OTEL_RESOURCE_ATTRIBUTES", "team=studio")
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    changes = changes_given_to_sessions(runner)
+    assert changes
+    for change in changes:
+        assert "OTEL_RESOURCE_ATTRIBUTES" not in change
 
 
 # --- the claim --------------------------------------------------------------

@@ -48,6 +48,8 @@ GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
 # Long enough for another loop's write to be visible, and injected so a test need not pay it.
 CLAIM_WAIT = 3
 
+PARENT_KEY = "skillworks.parent.session.id"
+
 
 class Step(NamedTuple):
     name: str
@@ -188,6 +190,20 @@ def suite_verdict(outcome, at):
     return "passed, so the first was a flake" if at > 1 else "passed"
 
 
+# Only a Session sets this ID and a Child inherits the attribute, so all below name the first Parent.
+def session_changes():
+    # Claude Code sets this, and the session must not read as nested in this one.
+    changes = {"CLAUDECODE": None}
+    parent = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if not parent:
+        return changes
+    # Appended, because the attributes a developer set still have to arrive.
+    held = os.environ.get("OTEL_RESOURCE_ATTRIBUTES", "")
+    named = "{}={}".format(PARENT_KEY, parent)
+    changes["OTEL_RESOURCE_ATTRIBUTES"] = held + "," + named if held else named
+    return changes
+
+
 def plan_line(name, what, checks=""):
     said = "      {:<12} {}\n".format(name, what)
     if checks:
@@ -203,6 +219,7 @@ class Loop:
         self.err = err
         self.wait = wait
         self.permission_mode = os.environ.get("SPEC_LOOP_PERMISSION_MODE", "acceptEdits")
+        self.session_changes = session_changes()
         self.log_dir = Path(".spec-loop") / spec
         self.log = self.log_dir / "loop.log"
 
@@ -247,8 +264,7 @@ class Loop:
             ["claude", "-p", prompt] + [str(a) for a in rest]
             + ["--permission-mode", self.permission_mode, "--output-format", "json"],
             self.job_worktree,
-            # Claude Code sets this, and the session must not read as nested in this one.
-            {"CLAUDECODE": None})
+            self.session_changes)
 
     # A path comes back on stdout, so a reason takes stderr, and the log too for a background run.
     def worktree(self, command, job=""):
