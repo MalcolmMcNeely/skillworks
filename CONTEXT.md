@@ -38,7 +38,7 @@ _Avoid_: Slash command, manual skill
 The local app for watching, authoring and testing the catalogue. It runs on the developer's own
 machine because authoring writes files and evals start `claude`. What it measures it reads from the
 organisation's stores, never from the machine it runs on.
-_Avoid_: Reader, console, dashboard, portal
+_Avoid_: Reader, console, portal
 
 **Health**:
 How each **part** of Studio is doing, in one place. A part is working, starting, off or broken. A
@@ -53,7 +53,7 @@ part is in, so colour is never the only signal.
 _Avoid_: Indicator, light, badge
 
 **Home**:
-The page Studio opens on. It holds a panel for each of Studio's jobs, Watch, Author, Test and
+The page Studio opens on. It holds a panel for each of Studio's jobs, Dashboard, Author, Test and
 Publish, and one for Sessions, and leads to the ones that are built.
 _Avoid_: Landing page, start page, index
 
@@ -63,13 +63,13 @@ above it. Home is the only Page with none above it, so every other Page has one 
 nobody built is still named, so Home can show the job and say it is not there yet.
 _Avoid_: Screen, place, destination
 
-**Watch**:
+**Dashboard**:
 Studio's first job, and the page that does it: which skills fire, how often, in which Repositories,
 and what they cost.
-_Avoid_: Dashboard, summary, overview
+_Avoid_: Watch, summary, overview
 
 **Map**:
-The picture Watch draws: one Tile for each Skill, sized by the figure the reader picked. It shows
+The picture the Dashboard draws: one Tile for each Skill, sized by the figure the reader picked. It shows
 the largest 25 Skills, so every Tile's area is true. A Skill it leaves out is named beneath it, with
 the reason.
 _Avoid_: Treemap, chart, grid
