@@ -42,7 +42,7 @@ function page<Above extends Page | null>(
 
 export const pageGlyphs = {
   home: '⌂',
-  watch: '▦',
+  dashboard: '▦',
   sessions: '▤',
   author: '✎',
   test: '✓',
@@ -53,14 +53,14 @@ export const pageSymbols: SymbolTable = { alphabet: 'identity', glyphs: Object.v
 
 export const home = page('/', 'Home', pageGlyphs.home, null, true);
 
-export const watch: PageBelowHome = page('/watch', 'Watch', pageGlyphs.watch, home, true);
+export const dashboard: PageBelowHome = page('/dashboard', 'Dashboard', pageGlyphs.dashboard, home, true);
 
 export const sessions: PageBelowHome = page('/sessions', 'Sessions', pageGlyphs.sessions, home, true);
 
 // Home shows a panel for every job, so a job still to come is listed before it is built.
 export const pages: readonly Page[] = [
   home,
-  watch,
+  dashboard,
   sessions,
   page('/author', 'Author', pageGlyphs.author, home, false),
   page('/test', 'Test', pageGlyphs.test, home, false),

@@ -78,7 +78,7 @@ main {
   line-height: 1;
 }
 
-.watch {
+.dashboard {
   column-gap: clamp(0.6rem, 1.2vw, 1rem);
   display: grid;
   grid-template-columns: clamp(188px, 17vw, 236px) minmax(0, 1fr);
@@ -2377,7 +2377,7 @@ a.home-panel-face:hover::before {
 }
 
 @media (max-width: 640px) {
-  .watch {
+  .dashboard {
     grid-template-columns: minmax(0, 1fr);
     height: auto;
     min-height: 100dvh;
@@ -2403,7 +2403,7 @@ a.home-panel-face:hover::before {
     margin-left: 0;
   }
 
-  /* The width at which Watch's rail moves on top, so both pages break at one width. */
+  /* The width at which the Dashboard's rail moves on top, so both pages break at one width. */
   .home-panels {
     grid-template-columns: minmax(0, 1fr);
   }

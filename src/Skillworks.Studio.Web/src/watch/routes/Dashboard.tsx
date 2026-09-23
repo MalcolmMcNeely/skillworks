@@ -10,7 +10,7 @@ import { describeFetchFailure } from '../../shared/wire/lib/errors';
 import { Keys } from '../../shared/keys/components/Keys';
 import { UpButton } from '../../shared/pages/components/UpButton';
 import { useTabTitle } from '../../shared/pages/components/useTabTitle';
-import { watch } from '../../shared/pages/lib/pages';
+import { dashboard } from '../../shared/pages/lib/pages';
 import { TelemetrySwitch } from '../../shared/telemetry/components/TelemetrySwitch';
 import { fetchSkills } from '../api/skills';
 import { ActivityStrip } from '../components/ActivityStrip';
@@ -26,14 +26,14 @@ interface Reading {
   failure: string | null;
 }
 
-export function Watch() {
+export function Dashboard() {
   const [reading, setReading] = useState<Reading | null>(null);
 
-  useTabTitle(watch.tabTitle);
+  useTabTitle(dashboard.tabTitle);
 
   // Filter, figure and order live in the address bar, so a reload, a bookmark or the back button lands on the same map.
   const [params, setParams] = useSearchParams();
-  // No skill: Watch offers no way to see or clear one, so an old link naming a skill must not narrow it unseen.
+  // No skill: the Dashboard offers no way to see or clear one, so an old link naming a skill must not narrow it unseen.
   const filter: Filter = { ...readFilter(params), skill: '' };
   const choice = readMapChoice(params);
 
@@ -77,11 +77,11 @@ export function Watch() {
     setParams(withMapChoice(filterParams(nextFilter), nextChoice), { replace: true });
 
   return (
-    <main className="page watch">
+    <main className="page dashboard">
       <aside className="rail" aria-label="Instruments">
         <div className="rail-brand">
-          <UpButton parent={watch.parent} />
-          <h1>{watch.name}</h1>
+          <UpButton parent={dashboard.parent} />
+          <h1>{dashboard.name}</h1>
           <SignalWord gap={answer?.gap ?? null} failure={reading?.failure ?? null} />
         </div>
 
