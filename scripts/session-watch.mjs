@@ -6,11 +6,13 @@ import { promisify } from "node:util";
 
 const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-// A Session's first answer waits on this hook, so a silent Collector must not hold it to the hook limit.
-const POST_LIMIT_MS = 1000;
+// A Session's first answer waits on this hook, so a slow git or a silent Collector must not hold it to the hook limit.
+const HOOK_LIMIT_MS = 1000;
 
 // A machine with no Collector is not served, so it pays nothing, not even a socket.
 if (!endpoint) process.exit(0);
+
+const limit = AbortSignal.timeout(HOOK_LIMIT_MS);
 
 try {
   const payload = JSON.parse(await text(process.stdin));
@@ -19,7 +21,7 @@ try {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(recordOf(payload, repository)),
-    signal: AbortSignal.timeout(POST_LIMIT_MS),
+    signal: limit,
   });
 } catch {
   // Silent and exit zero on purpose: a hook must never interrupt a Session for a store that is down.
@@ -28,7 +30,9 @@ try {
 async function repositoryOf(cwd) {
   if (!["1", "true"].includes(process.env.OTEL_METRICS_INCLUDE_REPOSITORY?.toLowerCase())) return {};
   try {
-    const { stdout } = await promisify(execFile)("git", ["-C", cwd ?? process.cwd(), "remote", "get-url", "origin"]);
+    const { stdout } = await promisify(execFile)("git", ["-C", cwd ?? process.cwd(), "remote", "get-url", "origin"], {
+      signal: limit,
+    });
     const [owner, name] = stdout.trim().replace(/\.git$/, "").split(/[/:]/).slice(-2);
     return owner && name ? { owner, name } : {};
   } catch {

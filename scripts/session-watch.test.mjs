@@ -2,7 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createServer as createSocketServer } from "node:net";
-import { tmpdir } from "node:os";
+import { platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
@@ -99,6 +99,27 @@ async function silentEndpoint() {
     return new Promise((resolve) => server.close(resolve));
   };
   return { endpoint, accepted: () => accepted, close };
+}
+
+// Git reads its global config before anything else, so a config that never finishes arriving holds every git call.
+async function endlessGitConfig() {
+  if (platform() !== "win32") {
+    const fifo = join(temp, "endless-config");
+    execFileSync("mkfifo", [fifo]);
+    return { path: fifo, close: async () => {} };
+  }
+  const pipe = `\\\\.\\pipe\\session-watch-${process.pid}-${Math.random().toString(36).slice(2)}`;
+  const sockets = new Set();
+  const server = createSocketServer((socket) => {
+    sockets.add(socket);
+    socket.on("error", () => {});
+  });
+  await new Promise((resolve) => server.listen(pipe, resolve));
+  const close = () => {
+    for (const socket of sockets) socket.destroy();
+    return new Promise((resolve) => server.close(resolve));
+  };
+  return { path: pipe, close };
 }
 
 async function hookLimits() {
@@ -303,6 +324,54 @@ for (const [name, payload] of EVENTS) {
       assert.equal(ran.err, "");
       assert.ok(spent < limit / 2, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
     } finally {
+      await store.close();
+    }
+  });
+}
+
+for (const [name, payload] of EVENTS) {
+  const limit = LIMITS[payload.hook_event_name];
+
+  test(`${name} with the Repository switch on whose Collector never answers exits zero well inside the hook limit`, { timeout: limit }, async (t) => {
+    // Arrange
+    const store = await silentEndpoint();
+    const cwd = await repository(ORIGINS[0]);
+
+    try {
+      // Act
+      const started = performance.now();
+      const ran = await watch({ ...payload, cwd }, store.endpoint, REPOSITORY_ON, t.signal);
+      const spent = performance.now() - started;
+
+      // Assert
+      assert.ok(store.accepted() > 0, "the Collector took the connection");
+      assert.equal(ran.status, 0);
+      assert.equal(ran.err, "");
+      assert.ok(spent < limit / 2, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
+    } finally {
+      await store.close();
+    }
+  });
+
+  test(`${name} whose Repository lookup never ends exits zero well inside the hook limit`, { timeout: limit }, async (t) => {
+    // Arrange
+    const store = await collector();
+    const config = await endlessGitConfig();
+    const cwd = await repository(ORIGINS[0]);
+
+    try {
+      // Act
+      const started = performance.now();
+      const ran = await watch({ ...payload, cwd }, store.endpoint, { ...REPOSITORY_ON, GIT_CONFIG_GLOBAL: config.path }, t.signal);
+      const spent = performance.now() - started;
+
+      // Assert
+      assert.equal(ran.status, 0);
+      assert.equal(ran.err, "");
+      assert.ok(spent < limit / 2, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
+      assert.equal(store.received.length, 0);
+    } finally {
+      await config.close();
       await store.close();
     }
   });
