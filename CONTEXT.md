@@ -280,6 +280,18 @@ Session is **Running** while its last event is recent and never again after that
 title Claude Code wrote for it, and the first Prompt where it wrote none.
 _Avoid_: Conversation, thread, transcript
 
+**Parent**:
+A Session that started other Sessions of its own, each a Child. The list of Sessions shows a Parent
+and never its Children, so one piece of work reads as one row. A Session with no Children is not a
+Parent, and it shows as it always did.
+_Avoid_: Owner, root session, group
+
+**Child**:
+A Session another Session started, as its own separate run of Claude Code. It names its Parent, which
+is what keeps it out of the list. A Session that names no Parent is never a Child, however it was
+started.
+_Avoid_: Owned session, spawned session, sub-session
+
 **Prompt**:
 The words a person typed, and nothing that followed them.
 _Avoid_: Message, instruction, query
