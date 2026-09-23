@@ -22,6 +22,7 @@
       "Bash(bash scripts/skillworks-preflight.sh:*)"
     ]
   },
+  "autoMemoryEnabled": false,
   "promptCacheTtl": "1h",
   "subagentPromptCacheTtl": "1h"
 }
