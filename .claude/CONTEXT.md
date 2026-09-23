@@ -52,6 +52,11 @@ still Loads. A memory file Claude Code wrote is a Load like any other. Its sourc
 not the repository, so two machines can Load different files at the same commit.
 _Avoid_: Arrival, injection, attachment
 
+**Machinery**:
+What the Plugin runs and no team edits: the skills, the scripts they drive, the hooks and the output
+style. It runs from the Plugin, so every repo runs the same code and one update reaches them all.
+_Avoid_: Engine, tooling, framework
+
 **Runner**:
 The one way the driver reaches another program. It is injected, so a test supplies its own rather
 than putting a fake on `PATH`.
@@ -66,6 +71,12 @@ _Avoid_: Conversation, chat, transcript
 The part of a context window in which a model still keeps every instruction it was given. A session
 is planned to finish its work inside it.
 _Avoid_: Context budget, token limit, sharp window
+
+**Steering**:
+What a repo tells the loop about itself: its rules, its tracker docs, its review baselines and its
+Suite. Setup copies a starting version into the repo as files, and the team owns them from then on.
+A skill reads a fact about one repo from its Steering and never carries it.
+_Avoid_: Config, guidance, policy
 
 **Suite**:
 The checks a repo names for the loop to run before a ticket Lands. The repo owns the list, so each
