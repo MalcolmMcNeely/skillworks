@@ -10,8 +10,10 @@ repo's steering.
 
 Machinery is what runs the loop: the skills, the scripts they drive, the hooks and the output
 style. It stays in the Plugin and runs from there. Every repo runs the same code, and a fix reaches
-every repo with the next update. The output style is machinery because the loop's reports must read
-the same in every repo, so no team edits it; `skillworks-setup` only switches it on.
+every repo with the next update. The output style is machinery, and the Plugin forces it with
+`force-for-plugin`, so it is on wherever the Plugin is and beats any `outputStyle` a repo or a
+developer sets. Skillworks is for developers new to Claude, and its opinions are what make it easy
+to pick up, so the way Claude reports is one of them.
 
 ## Considered options
 
