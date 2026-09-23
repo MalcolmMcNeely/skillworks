@@ -137,8 +137,12 @@ recorded.
 Two hooks in `.claude/settings.json` run `scripts/session-watch.mjs`. `SessionStart` posts one record
 for each Session, with how it began. `InstructionsLoaded` posts one Load for each instruction file
 that reaches it. Both go to `OTEL_EXPORTER_OTLP_ENDPOINT`, and both carry the Session's `session.id`,
-so one Loki query reads them beside Claude Code's own events. A Session record with no Loads after it
-says the Rules did not arrive. No records at all says the Collector was not there.
+so one Loki query reads them beside Claude Code's own events. With `OTEL_METRICS_INCLUDE_REPOSITORY`
+on, both also carry the Repository as `vcs.owner.name` and `vcs.repository.name`, read from the
+`origin` remote the way Claude Code reads it, so a query filtered by Repository finds them too. With
+the switch off, or no `origin` to read, the Repository is left off and the record still goes. A
+Session record with no Loads after it says the Rules did not arrive. No records at all says the
+Collector was not there.
 
 A hook that fails is silent. Its exit code and its errors reach no one, so the watcher can stop
 watching and nothing says so. To see a hook fail, run `claude --debug hooks`.

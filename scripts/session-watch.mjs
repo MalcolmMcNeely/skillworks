@@ -1,6 +1,8 @@
 // The record copies the shape of Claude Code's own events, so one Loki query reads both.
 
+import { execFile } from "node:child_process";
 import { text } from "node:stream/consumers";
+import { promisify } from "node:util";
 
 const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
@@ -9,21 +11,36 @@ if (!endpoint) process.exit(0);
 
 try {
   const payload = JSON.parse(await text(process.stdin));
+  const repository = await repositoryOf(payload.cwd);
   await fetch(new URL("v1/logs", endpoint.endsWith("/") ? endpoint : `${endpoint}/`), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(recordOf(payload)),
+    body: JSON.stringify(recordOf(payload, repository)),
   });
 } catch {
   // Silent and exit zero on purpose: a hook must never interrupt a Session for a store that is down.
 }
 
-function recordOf(payload) {
+async function repositoryOf(cwd) {
+  if (!["1", "true"].includes(process.env.OTEL_METRICS_INCLUDE_REPOSITORY?.toLowerCase())) return {};
+  try {
+    const { stdout } = await promisify(execFile)("git", ["-C", cwd ?? process.cwd(), "remote", "get-url", "origin"]);
+    const [owner, name] = stdout.trim().replace(/\.git$/, "").split(/[/:]/).slice(-2);
+    return owner && name ? { owner, name } : {};
+  } catch {
+    // A Repository that cannot be read must not stop the record going.
+    return {};
+  }
+}
+
+function recordOf(payload, repository) {
   const event = snakeCase(payload.hook_event_name);
   const attributes = [
     attribute("event.name", event),
     attribute("session.id", payload.session_id),
     attribute("prompt.id", payload.prompt_id),
+    attribute("vcs.owner.name", repository.owner),
+    attribute("vcs.repository.name", repository.name),
     ...Object.entries(payload).map(([key, value]) => attribute(key, value)),
   ].filter(Boolean);
 

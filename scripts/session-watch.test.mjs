@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
@@ -80,10 +80,19 @@ async function refusingEndpoint() {
   return `http://127.0.0.1:${port}`;
 }
 
-function watch(payload, endpoint) {
+async function repository(origin) {
+  const dir = await mkdtemp(join(temp, "repository-"));
+  execFileSync("git", ["init", "--quiet", dir]);
+  if (origin !== undefined) execFileSync("git", ["-C", dir, "remote", "add", "origin", origin]);
+  return dir;
+}
+
+function watch(payload, endpoint, extra = {}) {
   const env = { ...process.env };
   delete env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  delete env.OTEL_METRICS_INCLUDE_REPOSITORY;
   if (endpoint !== undefined) env.OTEL_EXPORTER_OTLP_ENDPOINT = endpoint;
+  Object.assign(env, extra);
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [SCRIPT], { cwd: temp, env });
     let err = "";
@@ -94,10 +103,10 @@ function watch(payload, endpoint) {
   });
 }
 
-async function recordFor(payload) {
+async function recordFor(payload, extra) {
   const store = await collector();
   try {
-    const ran = await watch(payload, store.endpoint);
+    const ran = await watch(payload, store.endpoint, extra);
     assert.equal(ran.status, 0, ran.err);
     assert.equal(store.received.length, 1);
     return store.received[0];
@@ -302,3 +311,66 @@ test("a Session and a Load from it carry the same session.id", async () => {
     await store.close();
   }
 });
+
+const REPOSITORY_ON = { OTEL_METRICS_INCLUDE_REPOSITORY: "true" };
+
+function assertNoRepository(record) {
+  const keys = record.attributes.map((a) => a.key);
+  assert.ok(!keys.includes("vcs.owner.name"), "vcs.owner.name is absent");
+  assert.ok(!keys.includes("vcs.repository.name"), "vcs.repository.name is absent");
+}
+
+const ORIGINS = [
+  "https://github.com/octo-org/widgets.git",
+  "https://github.com/octo-org/widgets",
+  "git@github.com:octo-org/widgets.git",
+  "ssh://git@github.com/octo-org/widgets.git",
+];
+
+for (const [name, payload] of [["a Load", REQUIRED], ["a Session", SESSION]]) {
+  for (const origin of ORIGINS) {
+    test(`${name} from a repository at ${origin} carries its owner and name with the switch on`, async () => {
+      // Arrange
+      const cwd = await repository(origin);
+
+      // Act
+      const record = onlyRecord(await recordFor({ ...payload, cwd }, REPOSITORY_ON));
+
+      // Assert
+      const got = attributes(record);
+      assert.equal(got["vcs.owner.name"], "octo-org");
+      assert.equal(got["vcs.repository.name"], "widgets");
+    });
+  }
+
+  for (const [state, extra] of [["off", { OTEL_METRICS_INCLUDE_REPOSITORY: "false" }], ["unset", {}]]) {
+    test(`${name} from a repository carries no Repository with the switch ${state}`, async () => {
+      // Arrange
+      const cwd = await repository(ORIGINS[0]);
+
+      // Act
+      const record = onlyRecord(await recordFor({ ...payload, cwd }, extra));
+
+      // Assert
+      assertNoRepository(record);
+    });
+  }
+
+  for (const [where, cwdOf] of [
+    ["a repository with no origin", () => repository(undefined)],
+    ["a folder that is no repository", () => mkdtemp(join(temp, "plain-"))],
+    ["a folder that does not exist", async () => join(temp, "gone")],
+  ]) {
+    test(`${name} from ${where} is still sent, without a Repository, and exits zero`, async () => {
+      // Arrange
+      const cwd = await cwdOf();
+
+      // Act
+      const record = onlyRecord(await recordFor({ ...payload, cwd }, REPOSITORY_ON));
+
+      // Assert
+      assertNoRepository(record);
+      assert.equal(attributes(record).session_id, payload.session_id);
+    });
+  }
+}
