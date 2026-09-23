@@ -26,3 +26,10 @@ none of them.
 
 **Copy the output style into each repo.** Rejected. A team could change how the loop reports, and a
 repo copy with the Plugin's name would leave it unclear which one a session loaded.
+
+## Consequences
+
+A forced style holds for the whole session, not only while a Skillworks skill runs. When two enabled
+plugins force a style, the first one loaded wins, and the docs do not say what order installed
+plugins load in. So the preflight warns, and does not stop, when another enabled plugin forces a
+style, because Skillworks could lose that race without a word.
