@@ -243,6 +243,15 @@ test("the record is OTLP JSON posted where the Collector takes logs", async () =
 });
 
 for (const [name, payload] of EVENTS) {
+  test(`${name} is sent under the scope Studio leaves out of Claude Code's events`, async () => {
+    // Act
+    const request = await recordFor(payload);
+
+    // Assert
+    const scopes = request.body.resourceLogs.flatMap((resource) => resource.scopeLogs.map((scope) => scope.scope.name));
+    assert.deepEqual(scopes, ["skillworks.session-watch"]);
+  });
+
   test(`${name} with the endpoint unset sends nothing and exits zero`, async () => {
     // Arrange
     const store = await collector();

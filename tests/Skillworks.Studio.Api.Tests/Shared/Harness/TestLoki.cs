@@ -46,12 +46,21 @@ public static class TestLoki
             events.Select(recorded =>
                 LogRecord(recorded.EventName, recorded.Moment, recorded.Session, recorded.Person, recorded.Attributes)));
 
-    private static async Task PushAsync(string tenant, IEnumerable<JsonObject> records)
+    public static Task PushAsync(string tenant, IReadOnlyList<HookRecord> records) =>
+        PushAsync(
+            tenant,
+            records.Select(record => LogRecordOf(record.Moment, record.EventName, Attributes(record.Attributes))),
+            new JsonObject { ["name"] = HookRecord.Scope });
+
+    private static Task PushAsync(string tenant, IEnumerable<JsonObject> records) =>
+        PushAsync(tenant, records, new JsonObject { ["name"] = "com.anthropic.claude_code.events", ["version"] = ClaudeCodeVersion });
+
+    private static async Task PushAsync(string tenant, IEnumerable<JsonObject> records, JsonObject scope)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Address, "otlp/v1/logs"))
         {
             // Without a charset: Loki's OTLP route refuses "application/json; charset=utf-8".
-            Content = new StringContent(Logs(records).ToJsonString(), new MediaTypeHeaderValue("application/json")),
+            Content = new StringContent(Logs(records, scope).ToJsonString(), new MediaTypeHeaderValue("application/json")),
         };
 
         request.Headers.Add("X-Scope-OrgID", tenant);
@@ -84,7 +93,7 @@ public static class TestLoki
         return new UriBuilder(Uri.UriSchemeHttp, container.Hostname, container.GetMappedPublicPort(Port)).Uri;
     }
 
-    private static JsonObject Logs(IEnumerable<JsonObject> records) => new()
+    private static JsonObject Logs(IEnumerable<JsonObject> records, JsonObject scope) => new()
     {
         ["resourceLogs"] = new JsonArray(new JsonObject
         {
@@ -94,7 +103,7 @@ public static class TestLoki
             },
             ["scopeLogs"] = new JsonArray(new JsonObject
             {
-                ["scope"] = new JsonObject { ["name"] = "com.anthropic.claude_code.events", ["version"] = ClaudeCodeVersion },
+                ["scope"] = scope,
                 ["logRecords"] = new JsonArray([.. records]),
             }),
         }),
@@ -105,16 +114,8 @@ public static class TestLoki
         DateTimeOffset at,
         string session,
         string? person,
-        IEnumerable<(string Key, string? Value)> attributes)
-    {
-        var nanoseconds = ((at.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100).ToString(CultureInfo.InvariantCulture);
-
-        return new JsonObject
-        {
-            ["timeUnixNano"] = nanoseconds,
-            ["observedTimeUnixNano"] = nanoseconds,
-            ["body"] = new JsonObject { ["stringValue"] = $"claude_code.{eventName}" },
-            ["attributes"] = Attributes(
+        IEnumerable<(string Key, string? Value)> attributes) =>
+        LogRecordOf(at, eventName, Attributes(
             [
                 ("user.id", "a68801ea0000400080000000000000001"),
                 ("user.email", person),
@@ -128,7 +129,18 @@ public static class TestLoki
                 ("event.sequence", Interlocked.Increment(ref _sequence).ToString(CultureInfo.InvariantCulture)),
                 ("prompt.id", "3b0537fa-0000-4000-8000-000000000001"),
                 .. attributes,
-            ]),
+            ]));
+
+    private static JsonObject LogRecordOf(DateTimeOffset at, string eventName, JsonArray attributes)
+    {
+        var nanoseconds = ((at.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100).ToString(CultureInfo.InvariantCulture);
+
+        return new JsonObject
+        {
+            ["timeUnixNano"] = nanoseconds,
+            ["observedTimeUnixNano"] = nanoseconds,
+            ["body"] = new JsonObject { ["stringValue"] = $"claude_code.{eventName}" },
+            ["attributes"] = attributes,
         };
     }
 

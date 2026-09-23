@@ -54,6 +54,7 @@ function recordOf(payload, repository) {
         resource: { attributes: [attribute("service.name", "claude-code")] },
         scopeLogs: [
           {
+            // Studio's events reader leaves this scope out, so a record never passes for Claude Code's own event.
             scope: { name: "skillworks.session-watch" },
             logRecords: [
               {

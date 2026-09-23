@@ -17,6 +17,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private const string AnyStream = "{service_name=~\".+\"}";
 
+    // The session-watch hook names this scope on purpose, as its records copy the shape of Claude Code's own.
+    private const string NotHookRecords = "| scope_name!=\"skillworks.session-watch\"";
+
     private static readonly TimeSpan Hour = TimeSpan.FromHours(1);
 
     // Under Loki's own cap, so the store never refuses a page.
@@ -192,7 +195,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private static string Selected(EventQuery query)
     {
-        var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\"";
+        var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\" {NotHookRecords}";
 
         if (query.Session is { } session)
         {

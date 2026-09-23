@@ -103,6 +103,8 @@ public sealed class StudioHost : IDisposable
 
     public Task Push(params SessionEvent[] events) => TestLoki.PushAsync(_tenant, events);
 
+    public Task Push(params HookRecord[] records) => TestLoki.PushAsync(_tenant, records);
+
     // One trace at a time, because Claude Code writes a Session as several and a span belongs to one of them.
     public Task PushSpans(string session, string trace, params RecordedSpan[] spans) =>
         TestTraceStore.PushAsync(_tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
