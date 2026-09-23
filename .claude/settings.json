@@ -39,6 +39,7 @@
     "BASH_DEFAULT_TIMEOUT_MS": "600000"
   },
   "outputStyle": "skillworks",
+  "autoMemoryEnabled": false,
   "promptCacheTtl": "1h",
   "subagentPromptCacheTtl": "1h"
 }
