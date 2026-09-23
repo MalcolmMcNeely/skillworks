@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createServer as createSocketServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
@@ -41,6 +42,8 @@ const SESSION = {
   model: "claude-opus-5-5",
 };
 
+const EVENTS = [["a Load", FULL], ["a Session", SESSION]];
+
 const SOURCES = ["startup", "resume", "clear", "compact", "fork"];
 
 const OTLP_VALUES = ["stringValue", "boolValue", "intValue", "doubleValue", "arrayValue", "kvlistValue"];
@@ -80,6 +83,31 @@ async function refusingEndpoint() {
   return `http://127.0.0.1:${port}`;
 }
 
+async function silentEndpoint() {
+  const sockets = new Set();
+  let accepted = 0;
+  const server = createSocketServer((socket) => {
+    accepted += 1;
+    sockets.add(socket);
+    socket.on("error", () => {});
+    socket.on("close", () => sockets.delete(socket));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const endpoint = `http://127.0.0.1:${server.address().port}`;
+  const close = () => {
+    for (const socket of sockets) socket.destroy();
+    return new Promise((resolve) => server.close(resolve));
+  };
+  return { endpoint, accepted: () => accepted, close };
+}
+
+async function hookLimits() {
+  const settings = JSON.parse(await readFile(join(import.meta.dirname, "..", ".claude", "settings.json"), "utf8"));
+  return Object.fromEntries(
+    Object.entries(settings.hooks).map(([event, groups]) => [event, groups[0].hooks[0].timeout * 1000]),
+  );
+}
+
 async function repository(origin) {
   const dir = await mkdtemp(join(temp, "repository-"));
   execFileSync("git", ["init", "--quiet", dir]);
@@ -87,17 +115,17 @@ async function repository(origin) {
   return dir;
 }
 
-function watch(payload, endpoint, extra = {}) {
+function watch(payload, endpoint, extra = {}, signal) {
   const env = { ...process.env };
   delete env.OTEL_EXPORTER_OTLP_ENDPOINT;
   delete env.OTEL_METRICS_INCLUDE_REPOSITORY;
   if (endpoint !== undefined) env.OTEL_EXPORTER_OTLP_ENDPOINT = endpoint;
   Object.assign(env, extra);
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [SCRIPT], { cwd: temp, env });
+    const child = spawn(process.execPath, [SCRIPT], { cwd: temp, env, signal });
     let err = "";
     child.stderr.on("data", (chunk) => (err += chunk));
-    child.on("error", reject);
+    child.on("error", (error) => (error.name === "AbortError" ? undefined : reject(error)));
     child.on("close", (status) => resolve({ status, err }));
     child.stdin.end(JSON.stringify(payload));
   });
@@ -214,7 +242,7 @@ test("the record is OTLP JSON posted where the Collector takes logs", async () =
   }
 });
 
-for (const [name, payload] of [["a Load", FULL], ["a Session", SESSION]]) {
+for (const [name, payload] of EVENTS) {
   test(`${name} with the endpoint unset sends nothing and exits zero`, async () => {
     // Arrange
     const store = await collector();
@@ -242,6 +270,32 @@ for (const [name, payload] of [["a Load", FULL], ["a Session", SESSION]]) {
     // Assert
     assert.equal(ran.status, 0);
     assert.equal(ran.err, "");
+  });
+}
+
+const LIMITS = await hookLimits();
+
+for (const [name, payload] of EVENTS) {
+  const limit = LIMITS[payload.hook_event_name];
+
+  test(`${name} whose Collector never answers exits zero well inside the hook limit`, { timeout: limit }, async (t) => {
+    // Arrange
+    const store = await silentEndpoint();
+
+    try {
+      // Act
+      const started = performance.now();
+      const ran = await watch(payload, store.endpoint, {}, t.signal);
+      const spent = performance.now() - started;
+
+      // Assert
+      assert.ok(store.accepted() > 0, "the Collector took the connection");
+      assert.equal(ran.status, 0);
+      assert.equal(ran.err, "");
+      assert.ok(spent < limit / 2, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
+    } finally {
+      await store.close();
+    }
   });
 }
 

@@ -6,6 +6,9 @@ import { promisify } from "node:util";
 
 const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
+// A Session's first answer waits on this hook, so a silent Collector must not hold it to the hook limit.
+const POST_LIMIT_MS = 1000;
+
 // A machine with no Collector is not served, so it pays nothing, not even a socket.
 if (!endpoint) process.exit(0);
 
@@ -16,6 +19,7 @@ try {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(recordOf(payload, repository)),
+    signal: AbortSignal.timeout(POST_LIMIT_MS),
   });
 } catch {
   // Silent and exit zero on purpose: a hook must never interrupt a Session for a store that is down.

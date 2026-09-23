@@ -38,8 +38,20 @@ buildable on top.
 
 The hook is written for node. Measured on a developer machine, the whole hook takes about 100 ms
 under node and about 750 ms under PowerShell, and PowerShell has to be installed on macOS and Linux.
-The event does not block, so neither number reaches the developer, but the setup ships to machines
-that are not this one.
+The setup ships to machines that are not this one, so the slower runtime would cost every one of them.
+
+The two events treat their hooks differently. `InstructionsLoaded` does not wait: its hook runs in the
+background, Claude Code ignores its exit code, and the file loads whatever the hook does.
+`SessionStart` waits, in part. Its hooks run in the background, so the developer can type at once, but
+their output becomes context for the Session, so Claude's first answer waits until they end. Switching
+conversations with `/resume` waits for them in full. Its exit code stops nothing: an exit of 2 only
+shows the developer what the hook wrote to standard error. A Collector that takes the connection and never answers would therefore hold the first
+answer of every Session until the hook limit of 5 s ran out.
+
+The post has a time limit of its own, 1 s, well under the hook limit. When it runs out, the hook gives
+up quietly and exits zero. A Collector that is down or hung delays a Session's first answer by at most
+that second, and a Collector that answers delays it by the 100 ms above. `InstructionsLoaded` never
+waits, so the limit there only stops a hung hook from running on in the background.
 
 A hook that fails says nothing. A bad exit code, and anything written to standard error, reach no
 one: only `claude --debug hooks` shows them. The watcher can therefore stop watching in silence, and
