@@ -9,7 +9,7 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/App/utils/Clock.cs")
-            .Write("src/App/Catalogue/CatalogueLocator.cs");
+            .Write("src/App/Ledger/LedgerLocator.cs");
 
         Assert.Equal([("banned-folder-names", "src/App/utils")], tree.Breaches());
     }

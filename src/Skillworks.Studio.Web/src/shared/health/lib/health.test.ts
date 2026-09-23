@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { lampsOf, type Part } from './health';
 
-const catalogue: Part = {
-  name: 'Catalogue',
+const plugin: Part = {
+  name: 'Plugin',
   state: 'working',
   detail: 'Reading skills from /home/me/skillworks/plugins.',
   action: null,
@@ -24,8 +24,8 @@ const traces: Part = {
 
 describe('lampsOf', () => {
   it('shows a working part as a lamp with a glyph and a call sign, and opens nothing from it', () => {
-    expect(lampsOf({ parts: [catalogue] }, null)).toEqual([
-      { callSign: 'Catalogue', state: 'working', glyph: '●', word: 'Working', opens: null },
+    expect(lampsOf({ parts: [plugin] }, null)).toEqual([
+      { callSign: 'Plugin', state: 'working', glyph: '●', word: 'Working', opens: null },
     ]);
   });
 
@@ -59,7 +59,7 @@ describe('lampsOf', () => {
 
   it('gives each state a glyph of its own, so colour is never the only signal', () => {
     const glyphs = (['working', 'starting', 'off', 'broken'] as const).map(
-      (state) => lampsOf({ parts: [{ ...catalogue, state }] }, null)[0]?.glyph,
+      (state) => lampsOf({ parts: [{ ...plugin, state }] }, null)[0]?.glyph,
     );
 
     expect(new Set(glyphs).size).toBe(4);
@@ -73,9 +73,9 @@ describe('lampsOf', () => {
       action: 'Turn telemetry on with the Telemetry switch.',
     };
 
-    expect(lampsOf({ parts: [store, telemetry, catalogue] }, null).map((lamp) => lamp.callSign)).toEqual([
+    expect(lampsOf({ parts: [store, telemetry, plugin] }, null).map((lamp) => lamp.callSign)).toEqual([
       'Events store',
-      'Catalogue',
+      'Plugin',
     ]);
   });
 
@@ -87,7 +87,7 @@ describe('lampsOf', () => {
   });
 
   it('keeps the name of the part it lights', () => {
-    const [lamp] = lampsOf({ parts: [{ ...catalogue, name: 'Collector' }] }, null);
+    const [lamp] = lampsOf({ parts: [{ ...plugin, name: 'Collector' }] }, null);
 
     expect(lamp?.callSign).toBe('Collector');
   });
@@ -111,7 +111,7 @@ describe('lampsOf', () => {
   });
 
   it('drops the parts of an earlier answer when checking again fails, as they may no longer hold', () => {
-    const lamps = lampsOf({ parts: [catalogue] }, 'Failed to fetch');
+    const lamps = lampsOf({ parts: [plugin] }, 'Failed to fetch');
 
     expect(lamps.map((lamp) => [lamp.callSign, lamp.state])).toEqual([['API', 'broken']]);
   });

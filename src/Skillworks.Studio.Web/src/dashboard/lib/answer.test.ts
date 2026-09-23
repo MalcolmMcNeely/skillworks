@@ -30,8 +30,8 @@ const span = {
   untilUtc: '2026-09-16T00:00:00+00:00',
 };
 
-function head(catalogueSkills: string[] = [], days = ['2026-09-15', '2026-09-14']): SkillsLine {
-  return { kind: 'head', span, days, catalogueSkills };
+function head(pluginSkills: string[] = [], days = ['2026-09-15', '2026-09-14']): SkillsLine {
+  return { kind: 'head', span, days, pluginSkills };
 }
 
 function daysBack(count: number): string[] {
@@ -220,7 +220,7 @@ describe('foldSkillsLine', () => {
     expect(states.map((state) => state.unnamedSpend)).toEqual([null, null, null]);
   });
 
-  it('lists the catalogue skills at zero from the head, until a day names them', async () => {
+  it('lists the plugin skills at zero from the head, until a day names them', async () => {
     const [atHead, afterDay] = await statesOf(
       wire(head(['probekit:probe-local', 'probekit:probe-plugin']), day('2026-09-15', [fired('probekit:probe-plugin', 2, null)])),
     );
@@ -231,7 +231,7 @@ describe('foldSkillsLine', () => {
     ]);
     expect(atHead?.totals.skills).toBe(2);
 
-    // The catalogue's zero named no Turns, so it does not outweigh a day that says they went unnamed.
+    // The plugin's zero named no Turns, so it does not outweigh a day that says they went unnamed.
     expect(afterDay?.skills.map((skill) => [skill.name, skill.activations, skill.spend])).toEqual([
       ['probekit:probe-local', 0, spent(0)],
       ['probekit:probe-plugin', 2, null],
@@ -452,7 +452,7 @@ describe('foldSkillsLine', () => {
     expect(states.at(-1)?.skills[0]?.spark).toHaveLength(states.at(-1)?.slices.length ?? 0);
   });
 
-  it('gives a catalogue skill that never fired a chart of nothing rather than no chart', async () => {
+  it('gives a plugin skill that never fired a chart of nothing rather than no chart', async () => {
     const [atHead] = await statesOf(wire(head(['probekit:probe-local'], ['2026-09-15'])));
 
     expect(atHead?.skills[0]?.spark).toEqual(Array.from({ length: 24 }, () => 0));

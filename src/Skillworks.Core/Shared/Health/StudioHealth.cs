@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using Skillworks.Core.Shared.Catalogue;
+using Skillworks.Core.Shared.Plugin;
 using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
@@ -8,7 +8,7 @@ using Skillworks.Core.Shared.Telemetry;
 namespace Skillworks.Core.Shared.Health;
 
 public sealed class StudioHealth(
-    CatalogueLocator catalogue,
+    PluginLocator plugin,
     EventsStoreReader events,
     TraceStoreReader traces,
     CollectorReader collector,
@@ -28,7 +28,7 @@ public sealed class StudioHealth(
                 Traces(answering, telemetry.TracesOn()),
                 Collector(doors),
                 Switch(emitting),
-                Catalogue(catalogue.Locate()),
+                Plugin(plugin.Locate()),
             ]);
     }
 
@@ -95,11 +95,11 @@ public sealed class StudioHealth(
             TelemetrySwitch.TurnOnNote),
     };
 
-    private static StudioPart Catalogue(CatalogueLocation location) => location.Exists
-        ? new StudioPart("Catalogue", PartState.Working, $"Reading skills from {location.Path}.", null)
+    private static StudioPart Plugin(PluginLocation location) => location.Exists
+        ? new StudioPart("Plugin", PartState.Working, $"Reading skills from {location.Path}.", null)
         : new StudioPart(
-            "Catalogue",
+            "Plugin",
             PartState.Broken,
-            $"There is no catalogue at {location.Path}.",
-            "Point Catalogue:Path at it. Without it, a skill that has never fired is not listed at all.");
+            $"There is no plugin at {location.Path}.",
+            "Point Plugin:Path at it. Without it, a skill that has never fired is not listed at all.");
 }

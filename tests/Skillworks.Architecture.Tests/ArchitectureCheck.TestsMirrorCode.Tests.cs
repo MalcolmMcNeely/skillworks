@@ -8,11 +8,11 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/App/App.csproj", ProjectFile)
             .Write("src/App/Clock.cs", TypeIn("App", "Clock"))
-            .Write("src/App/Shared/Catalogue/Locators/CatalogueLocator.cs", TypeIn("App.Shared.Catalogue.Locators", "CatalogueLocator"))
+            .Write("src/App/Shared/Ledger/Locators/LedgerLocator.cs", TypeIn("App.Shared.Ledger.Locators", "LedgerLocator"))
             .Write("tests/App.Tests/App.Tests.csproj", ProjectFile)
             .Write("tests/App.Tests/Clock.Tests.cs", TypeIn("App.Tests", "ClockTests"))
-            .Write("tests/App.Tests/Shared/Catalogue/Locators/CatalogueLocator.Tests.cs", TypeIn("App.Tests.Shared.Catalogue.Locators", "CatalogueLocatorTests"))
-            .Write("tests/App.Tests/Shared/Catalogue/Locators/CatalogueLocator.Cache.Tests.cs", TypeIn("App.Tests.Shared.Catalogue.Locators", "CatalogueLocatorTests"));
+            .Write("tests/App.Tests/Shared/Ledger/Locators/LedgerLocator.Tests.cs", TypeIn("App.Tests.Shared.Ledger.Locators", "LedgerLocatorTests"))
+            .Write("tests/App.Tests/Shared/Ledger/Locators/LedgerLocator.Cache.Tests.cs", TypeIn("App.Tests.Shared.Ledger.Locators", "LedgerLocatorTests"));
 
         Assert.Empty(tree.Breaches());
     }

@@ -18,7 +18,7 @@ export interface SkillsAnswer {
   // Null while arriving, as whether the answer fell short is known only once its last day lands.
   gap: Gap | null;
   // The first day that names one replaces its zero rather than adding to it, as the zero named no Turns.
-  catalogueAtZero: string[];
+  pluginAtZero: string[];
 }
 
 const nothingSpent: TurnTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, cost: 0 };
@@ -124,7 +124,7 @@ function withTotals(answer: Omit<SkillsAnswer, 'totals'>): SkillsAnswer {
   return { ...answer, totals: totalsOf(answer) };
 }
 
-// The catalogue's zeros land with the head, and shown before a day lands they would read as a quiet week.
+// The plugin's zeros land with the head, and shown before a day lands they would read as a quiet week.
 export function showsFigures(answer: SkillsAnswer | null): answer is SkillsAnswer {
   return answer !== null && answer.landedDays.length > 0;
 }
@@ -139,7 +139,7 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
       landedDays: [],
       missingDays: [],
       slices,
-      skills: line.catalogueSkills.map((name) =>
+      skills: line.pluginSkills.map((name) =>
         summaryOf(
           { name, activations: 0, triggers: [], repositories: [], models: [], efforts: [], spend: nothingSpent, origins: [] },
           null,
@@ -149,7 +149,7 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
       unnamedSpend: null,
       arriving: true,
       gap: null,
-      catalogueAtZero: line.catalogueSkills,
+      pluginAtZero: line.pluginSkills,
     });
   }
 
@@ -174,7 +174,7 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
 
   for (const { hours, ...figures } of line.skills) {
     const landed = skills.get(figures.name);
-    const earlier = landed === undefined || answer.catalogueAtZero.includes(figures.name) ? null : landed;
+    const earlier = landed === undefined || answer.pluginAtZero.includes(figures.name) ? null : landed;
     const lastFired = lastFiredOn(line.day, hours);
     const spark = withHoursLanded(earlier?.spark ?? nothingYet, answer.slices, line.day, hours);
 
@@ -190,6 +190,6 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
     slices: withDayLanded(answer.slices, line),
     skills: [...skills.values()].toSorted((a, b) => a.name.localeCompare(b.name)),
     unnamedSpend: plus(answer.unnamedSpend, line.unnamedSpend),
-    catalogueAtZero: answer.catalogueAtZero.filter((name) => !line.skills.some((skill) => skill.name === name)),
+    pluginAtZero: answer.pluginAtZero.filter((name) => !line.skills.some((skill) => skill.name === name)),
   });
 }

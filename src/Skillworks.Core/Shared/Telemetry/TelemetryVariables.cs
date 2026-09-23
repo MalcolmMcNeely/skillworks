@@ -6,7 +6,7 @@ public static class TelemetryVariables
     public static IReadOnlyList<KeyValuePair<string, string>> For(string collectorEndpoint) =>
         [.. Events(collectorEndpoint), .. Words, .. Traces];
 
-    // Metrics stay off: their skill.name label reads third-party for a private catalogue.
+    // Metrics stay off: their skill.name label reads third-party for a private plugin.
     private static IReadOnlyList<KeyValuePair<string, string>> Events(string collectorEndpoint) =>
     [
         // Nothing is exported at all without this one.

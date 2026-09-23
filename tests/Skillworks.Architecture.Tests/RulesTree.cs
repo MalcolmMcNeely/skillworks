@@ -23,7 +23,7 @@ public sealed class RulesTree : IDisposable
     // Every folder in Shared names a glossary word, so the default settles the words the trees are written with.
     private readonly Dictionary<string, IReadOnlyList<string>> _headwords = new()
     {
-        ["app"] = ["Alarm", "Catalogue", "Clock", "Health", "Host", "Snooze", "Timer", "Wire"],
+        ["app"] = ["Alarm", "Clock", "Health", "Host", "Ledger", "Snooze", "Timer", "Wire"],
     };
 
     private readonly Dictionary<string, Dictionary<string, string>> _settings = new()

@@ -149,28 +149,28 @@ public sealed partial class FilterEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_a_catalogue_skill_that_never_fired_out_of_a_narrowed_answer()
+    public async Task Leaves_a_plugin_skill_that_never_fired_out_of_a_narrowed_answer()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Plugins());
 
         await studio.Push(
             new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "nu"));
 
         // A never-fired skill's zero belongs to the unfiltered answer; it did not happen there.
-        Assert.Contains("probekit:probe-local", (await studio.SkillAnswer()).Head.CatalogueSkills);
-        Assert.Empty((await studio.SkillAnswer("?repository=acme/nu")).Head.CatalogueSkills);
-        Assert.Empty((await studio.SkillAnswer($"?from={Written(Yesterday)}&to={Written(Yesterday)}")).Head.CatalogueSkills);
+        Assert.Contains("probekit:probe-local", (await studio.SkillAnswer()).Head.PluginSkills);
+        Assert.Empty((await studio.SkillAnswer("?repository=acme/nu")).Head.PluginSkills);
+        Assert.Empty((await studio.SkillAnswer($"?from={Written(Yesterday)}&to={Written(Yesterday)}")).Head.PluginSkills);
     }
 
     [Fact]
-    public async Task Keeps_a_catalogue_skill_that_never_fired_when_it_is_the_skill_asked_for()
+    public async Task Keeps_a_plugin_skill_that_never_fired_when_it_is_the_skill_asked_for()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Plugins());
 
         var answer = await studio.SkillAnswer("?skill=probekit:probe-local");
 
         // Narrowing to one skill is narrowing the same list, not asking what happened somewhere.
-        Assert.Equal(["probekit:probe-local"], answer.Head.CatalogueSkills);
+        Assert.Equal(["probekit:probe-local"], answer.Head.PluginSkills);
     }
 
     private static Task PushNuAndXi(StudioHost studio) => studio.Push(

@@ -45,7 +45,7 @@ export function mapNoticeOf(state: {
     return { glyph: noticeGlyphs.failed, word: signalOf(answer.gap.kind).word, tone: 'failed', busy: false };
   }
 
-  // The catalogue's zeros land before any day, and a day still to come may give them a tile.
+  // The plugin's zeros land before any day, and a day still to come may give them a tile.
   if (answer.gap === null) {
     return arriving;
   }

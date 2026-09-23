@@ -53,7 +53,7 @@ public sealed partial class SkillEndpointsTests
         var head = await studio.SkillLine("head");
         var day = await studio.SkillLine("day", OnlyYesterday);
 
-        Assert.Equal(["catalogueSkills", "days", "kind", "span"], StudioHost.Fields(head));
+        Assert.Equal(["days", "kind", "pluginSkills", "span"], StudioHost.Fields(head));
         Assert.Equal(["from", "fromUtc", "lookback", "to", "untilUtc"], StudioHost.Fields(head["span"]));
 
         // No Each: a day's Each would not add up across days, so the screen works it out from the totals.
@@ -165,14 +165,14 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillAnswer();
 
-        Assert.Empty(answer.Head.CatalogueSkills);
+        Assert.Empty(answer.Head.PluginSkills);
         Assert.Empty(answer.Skills);
     }
 
     [Fact]
-    public async Task Lists_a_catalogue_skill_that_did_not_fire_in_the_lookback_in_the_head()
+    public async Task Lists_a_plugin_skill_that_did_not_fire_in_the_lookback_in_the_head()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Plugins());
 
         await studio.Push(
             new SkillActivated("probekit:probe-local", At(DaysBack(14), "09:00:00.000")),
@@ -182,7 +182,7 @@ public sealed partial class SkillEndpointsTests
         var answer = await studio.SkillAnswer();
 
         // probe-local last fired before the lookback, and its zero says its description may have stopped working.
-        Assert.Equal(["probekit:probe-local", "probekit:probe-plugin"], answer.Head.CatalogueSkills);
+        Assert.Equal(["probekit:probe-local", "probekit:probe-plugin"], answer.Head.PluginSkills);
         Assert.DoesNotContain("probekit:probe-local", answer.Skills.Select(skill => skill.Name));
         Assert.Equal(2, (await studio.SkillOn(Yesterday, "probekit:probe-plugin")).Activations);
     }

@@ -69,7 +69,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Answers_with_lines_that_offer_no_skill_choices()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Plugins());
 
         await studio.Push(new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "nu"));
 

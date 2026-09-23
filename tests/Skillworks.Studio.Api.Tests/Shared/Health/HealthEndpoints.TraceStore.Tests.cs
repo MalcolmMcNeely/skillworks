@@ -10,7 +10,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Says_the_trace_store_answered_when_it_did()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Plugins());
 
         var part = await studio.Part("Trace store");
 
@@ -22,7 +22,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_a_trace_store_that_is_down_as_broken_and_says_how_to_start_it()
     {
         using var traces = BrokenTraceStore.Down();
-        using var studio = new StudioHost(StudioHost.Catalogue(), traces: traces);
+        using var studio = new StudioHost(StudioHost.Plugins(), traces: traces);
 
         var part = await studio.Part("Trace store");
 
@@ -34,7 +34,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_a_trace_store_that_answers_badly_as_broken_too()
     {
         using var traces = BrokenTraceStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Catalogue(), traces: traces);
+        using var studio = new StudioHost(StudioHost.Plugins(), traces: traces);
 
         var part = await studio.Part("Trace store");
 
@@ -46,7 +46,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_a_trace_store_that_is_still_starting_as_starting_rather_than_as_broken()
     {
         using var traces = BrokenTraceStore.StartingUp();
-        using var studio = new StudioHost(StudioHost.Catalogue(), traces: traces);
+        using var studio = new StudioHost(StudioHost.Plugins(), traces: traces);
 
         var part = await studio.Part("Trace store");
 
@@ -59,7 +59,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reads_the_trace_store_with_a_real_search_rather_than_asking_if_it_is_up()
     {
         using var traces = BrokenTraceStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Catalogue(), traces: traces);
+        using var studio = new StudioHost(StudioHost.Plugins(), traces: traces);
 
         await studio.Part("Trace store");
 
@@ -71,7 +71,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Reports_traces_that_were_never_switched_on_as_off_rather_than_as_broken()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue(), tracing: false);
+        using var studio = new StudioHost(StudioHost.Plugins(), tracing: false);
 
         var part = await studio.Part("Trace store");
 
@@ -85,7 +85,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Reads_the_trace_store_as_working_once_the_telemetry_switch_has_been_thrown()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue(), emitting: false, tracing: false);
+        using var studio = new StudioHost(StudioHost.Plugins(), emitting: false, tracing: false);
 
         Assert.Equal("off", (await studio.Part("Trace store")).State);
 
@@ -104,8 +104,8 @@ public sealed partial class HealthEndpointsTests
     public async Task Tells_a_trace_store_that_is_down_apart_from_traces_that_are_switched_off()
     {
         using var down = BrokenTraceStore.Down();
-        using var broken = new StudioHost(StudioHost.Catalogue(), traces: down);
-        using var off = new StudioHost(StudioHost.Catalogue(), tracing: false);
+        using var broken = new StudioHost(StudioHost.Plugins(), traces: down);
+        using var off = new StudioHost(StudioHost.Plugins(), tracing: false);
 
         // A Session reads Thin either way, but the part at fault and the developer's next step differ.
         Assert.Equal("broken", (await broken.Part("Trace store")).State);
@@ -116,7 +116,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Tells_the_two_stores_apart_when_only_one_of_them_is_down()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Catalogue(), events: events);
+        using var studio = new StudioHost(StudioHost.Plugins(), events: events);
 
         var health = await studio.Health();
 

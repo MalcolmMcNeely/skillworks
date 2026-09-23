@@ -6,7 +6,7 @@ judges a file.
 
 ## Contexts
 
-- [Studio](./CONTEXT.md) — the local app that watches, authors, tests and publishes the catalogue
+- [Studio](./CONTEXT.md) — the local app that watches, authors, tests and publishes the Plugin
 - [Architecture](./src/Skillworks.Architecture/CONTEXT.md) — the check that holds the shape of the code
 - [Loop](./.claude/CONTEXT.md) — the setup an agent runs under, and the scripts that drive it
 
@@ -24,9 +24,9 @@ folder. The test is the same either way.
 
 ## The next context
 
-The catalogue is another product area, and `Skill` already means two things in this repository: a
+The Plugin is another product area, and `Skill` already means two things in this repository: a
 folder of instructions a developer writes, and a name in telemetry with Activations and a Cost. The
-catalogue gets its own context, and its own glossary, the day Author or Publish writes code of its
+Plugin gets its own context, and its own glossary, the day Author or Publish writes code of its
 own. Until then its words sit in Studio's glossary, because a context with no code gives the check
 nothing to judge.
 

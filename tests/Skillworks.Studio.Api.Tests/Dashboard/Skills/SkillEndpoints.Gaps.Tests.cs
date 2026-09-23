@@ -10,7 +10,7 @@ public sealed partial class SkillEndpointsTests
     public async Task Ends_with_no_day_and_the_unreachable_Gap_when_the_store_cannot_be_read_from_the_start()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Catalogue(), events: events);
+        using var studio = new StudioHost(StudioHost.Plugins(), events: events);
 
         var answer = await studio.SkillAnswer();
 
@@ -18,8 +18,8 @@ public sealed partial class SkillEndpointsTests
         Assert.NotNull(answer.Gap.Missing);
         Assert.Empty(answer.Days);
 
-        // The catalogue still lists its skills, and the Gap is what says their zeros are not known.
-        Assert.NotEmpty(answer.Head.CatalogueSkills);
+        // The plugin still lists its skills, and the Gap is what says their zeros are not known.
+        Assert.NotEmpty(answer.Head.PluginSkills);
     }
 
     [Fact]

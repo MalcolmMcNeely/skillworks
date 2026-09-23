@@ -43,7 +43,7 @@ export interface SkillsHead {
   span: Span & { lookback: boolean; fromUtc: string; untilUtc: string };
   // Newest first, the order the days arrive in.
   days: string[];
-  catalogueSkills: string[];
+  pluginSkills: string[];
 }
 
 export interface SkillsDay {

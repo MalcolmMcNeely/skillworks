@@ -2,7 +2,7 @@ using Skillworks.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// The catalogue is the folder beside us today; when it moves to its own repository, only this line changes.
+// The plugins are the folder beside us today; when they move to their own repository, only this line changes.
 var repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", ".."));
 
 // Persistent, pinned and unproxied: Claude Code sends events while the AppHost is stopped, to the address in its settings.
@@ -38,7 +38,7 @@ builder.AddContainer("collector", "otel/opentelemetry-collector-contrib", "0.138
 // No WaitFor on the containers: Studio starts without Loki, and its Gaps say the Events store is unreachable.
 var api = builder.AddProject<Projects.Skillworks_Studio_Api>("api")
     .WithHttpHealthCheck("/health")
-    .WithEnvironment("Catalogue__Path", Path.Combine(repositoryRoot, "plugins"))
+    .WithEnvironment("Plugin__Path", Path.Combine(repositoryRoot, "plugins"))
     .WithEnvironment("Collector__Address", collectorAddress)
     // Pinned, so the address holds whether or not Loki was up when Studio started.
     .WithEnvironment("Loki__Address", loki.GetEndpoint("http"))

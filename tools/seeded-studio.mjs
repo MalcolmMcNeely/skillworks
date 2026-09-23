@@ -312,7 +312,7 @@ children.push(
       Loki__Address: loki,
       // A month of this volume takes Loki longer than the API's 5 second default to sum.
       Loki__TimeoutSeconds: '30',
-      Catalogue__Path: join(root, 'plugins'),
+      Plugin__Path: join(root, 'plugins'),
     },
   }),
 );

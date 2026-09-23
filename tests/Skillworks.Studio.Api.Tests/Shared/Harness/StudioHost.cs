@@ -41,7 +41,7 @@ public sealed class StudioHost : IDisposable
     private readonly HttpClient _client;
 
     public StudioHost(
-        string? cataloguePath = null,
+        string? pluginPath = null,
         // Only for a store that is down, failing or stops part way; data comes from the test Loki.
         BrokenEventsStore? events = null,
         // Only for a store that is down, failing or still starting; spans come from the test Trace store.
@@ -85,7 +85,7 @@ public sealed class StudioHost : IDisposable
                 ("Tempo:Tenant", _tenant),
                 ("ClaudeSettings:Path", settingsPath),
                 ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
-                ("Catalogue:Path", cataloguePath ?? Path.Combine(_folder.Path, "no-catalogue")),
+                ("Plugin:Path", pluginPath ?? Path.Combine(_folder.Path, "no-plugin")),
                 .. lookback,
                 .. address,
                 .. perRun,
@@ -132,7 +132,7 @@ public sealed class StudioHost : IDisposable
     public static T Read<T>(JsonNode? line) =>
         line.Deserialize<T>(Wire) ?? throw new InvalidOperationException($"A {typeof(T).Name} came back empty.");
 
-    public static string Catalogue() => Path.Combine(AppContext.BaseDirectory, "Shared", "Harness", "Catalogue");
+    public static string Plugins() => Path.Combine(AppContext.BaseDirectory, "Shared", "Harness", "Plugins");
 
     public static IReadOnlyList<string> Fields(JsonNode? answer) =>
         [.. (answer?.AsObject() ?? []).Select(field => field.Key).Order(StringComparer.Ordinal)];

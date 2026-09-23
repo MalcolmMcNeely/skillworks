@@ -10,44 +10,44 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
             .Write("src/Studio/Clock.cs", "namespace Skillworks.Studio;\n\npublic sealed class Clock;\n")
-            .Write("src/Studio/Shared/Catalogue/Locators/CatalogueLocator.cs", """
-                namespace Skillworks.Studio.Shared.Catalogue.Locators
+            .Write("src/Studio/Shared/Ledger/Locators/LedgerLocator.cs", """
+                namespace Skillworks.Studio.Shared.Ledger.Locators
                 {
-                    public sealed class CatalogueLocator;
+                    public sealed class LedgerLocator;
                 }
                 """)
-            .Write("src/Studio/Shared/Catalogue/CatalogueOptions.cs", """
+            .Write("src/Studio/Shared/Ledger/LedgerOptions.cs", """
                 namespace Skillworks.Studio.Shared
                 {
-                    namespace Catalogue
+                    namespace Ledger
                     {
-                        public sealed class CatalogueOptions;
+                        public sealed class LedgerOptions;
                     }
                 }
                 """)
             .Write("tests/Studio.Tests/Skillworks.Studio.Tests.csproj", ProjectFile)
-            .Write("tests/Studio.Tests/Shared/Catalogue/Locators/CatalogueLocator.Tests.cs", """
-                namespace Skillworks.Studio.Tests.Shared.Catalogue.Locators;
+            .Write("tests/Studio.Tests/Shared/Ledger/Locators/LedgerLocator.Tests.cs", """
+                namespace Skillworks.Studio.Tests.Shared.Ledger.Locators;
 
-                public sealed class CatalogueLocatorTests;
+                public sealed class LedgerLocatorTests;
                 """);
 
         Assert.Empty(tree.Breaches());
     }
 
     [Theory]
-    [InlineData("namespace Skillworks.Studio;\n\npublic sealed class CatalogueLocator;\n")]
-    [InlineData("namespace Skillworks.Studio.Locators;\n\npublic sealed class CatalogueLocator;\n")]
-    [InlineData("namespace Studio.Catalogue;\n\npublic sealed class CatalogueLocator;\n")]
-    [InlineData("public sealed class CatalogueLocator;\n")]
+    [InlineData("namespace Skillworks.Studio;\n\npublic sealed class LedgerLocator;\n")]
+    [InlineData("namespace Skillworks.Studio.Locators;\n\npublic sealed class LedgerLocator;\n")]
+    [InlineData("namespace Studio.Ledger;\n\npublic sealed class LedgerLocator;\n")]
+    [InlineData("public sealed class LedgerLocator;\n")]
     public void A_namespace_that_differs_from_its_folder_path_is_a_breach(string content)
     {
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
-            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", content);
+            .Write("src/Studio/Shared/Ledger/LedgerLocator.cs", content);
 
         Assert.Equal(
-            [("namespace-follows-folder", "src/Studio/Shared/Catalogue/CatalogueLocator.cs")],
+            [("namespace-follows-folder", "src/Studio/Shared/Ledger/LedgerLocator.cs")],
             tree.Breaches());
     }
 
@@ -57,11 +57,11 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFile)
             .Write("src/Studio/Plugins/Skillworks.Plugins.csproj", ProjectFile)
-            .Write("src/Studio/Plugins/Shared/Catalogue/PluginLoader.cs", "namespace Skillworks.Plugins.Shared.Catalogue;\n\npublic sealed class PluginLoader;\n")
-            .Write("src/Studio/Plugins/Shared/Catalogue/PluginCache.cs", "namespace Skillworks.Studio.Plugins.Shared.Catalogue;\n\npublic sealed class PluginCache;\n");
+            .Write("src/Studio/Plugins/Shared/Ledger/PluginLoader.cs", "namespace Skillworks.Plugins.Shared.Ledger;\n\npublic sealed class PluginLoader;\n")
+            .Write("src/Studio/Plugins/Shared/Ledger/PluginCache.cs", "namespace Skillworks.Studio.Plugins.Shared.Ledger;\n\npublic sealed class PluginCache;\n");
 
         Assert.Equal(
-            [("namespace-follows-folder", "src/Studio/Plugins/Shared/Catalogue/PluginCache.cs")],
+            [("namespace-follows-folder", "src/Studio/Plugins/Shared/Ledger/PluginCache.cs")],
             tree.Breaches());
     }
 
@@ -71,7 +71,7 @@ public sealed partial class ArchitectureCheckTests
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFileWithRootNamespace("Acme.Studio"))
             .Write("src/Studio/Clock.cs", "namespace Acme.Studio;\n\npublic sealed class Clock;\n")
-            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", "namespace Acme.Studio.Shared.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
+            .Write("src/Studio/Shared/Ledger/LedgerLocator.cs", "namespace Acme.Studio.Shared.Ledger;\n\npublic sealed class LedgerLocator;\n");
 
         Assert.Empty(tree.Breaches());
     }
@@ -81,10 +81,10 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", ProjectFileWithRootNamespace("Acme.Studio"))
-            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Shared.Catalogue;\n\npublic sealed class CatalogueLocator;\n");
+            .Write("src/Studio/Shared/Ledger/LedgerLocator.cs", "namespace Skillworks.Studio.Shared.Ledger;\n\npublic sealed class LedgerLocator;\n");
 
         Assert.Equal(
-            [("namespace-follows-folder", "src/Studio/Shared/Catalogue/CatalogueLocator.cs")],
+            [("namespace-follows-folder", "src/Studio/Shared/Ledger/LedgerLocator.cs")],
             tree.Breaches());
     }
 
@@ -97,11 +97,11 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree()
             .Write("src/Studio/Skillworks.Studio.csproj", projectFile)
-            .Write("src/Studio/Shared/Catalogue/CatalogueLocator.cs", "namespace Skillworks.Studio.Shared.Catalogue;\n\npublic sealed class CatalogueLocator;\n")
-            .Write("src/Studio/Shared/Catalogue/CatalogueOptions.cs", "namespace Catalogue;\n\npublic sealed class CatalogueOptions;\n");
+            .Write("src/Studio/Shared/Ledger/LedgerLocator.cs", "namespace Skillworks.Studio.Shared.Ledger;\n\npublic sealed class LedgerLocator;\n")
+            .Write("src/Studio/Shared/Ledger/LedgerOptions.cs", "namespace Ledger;\n\npublic sealed class LedgerOptions;\n");
 
         Assert.Equal(
-            [("namespace-follows-folder", "src/Studio/Shared/Catalogue/CatalogueOptions.cs")],
+            [("namespace-follows-folder", "src/Studio/Shared/Ledger/LedgerOptions.cs")],
             tree.Breaches());
     }
 

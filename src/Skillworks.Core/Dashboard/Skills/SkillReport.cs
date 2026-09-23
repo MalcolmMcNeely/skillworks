@@ -3,17 +3,17 @@ using Skillworks.Core.Dashboard.Activations.Queries;
 using Skillworks.Core.Dashboard.Spend;
 using Skillworks.Core.Dashboard.Spend.Queries;
 using Skillworks.Core.Shared.Arriving;
-using Skillworks.Core.Shared.Catalogue;
 using Skillworks.Core.Shared.Filters;
+using Skillworks.Core.Shared.Plugin;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Dashboard.Skills;
 
-// Lists catalogue skills that never fired, so a broken description shows up as a zero rather than a gap.
+// Lists plugin skills that never fired, so a broken description shows up as a zero rather than a gap.
 public sealed class SkillReport(
     ActivationQueries activations,
     SpendQueries spend,
-    CatalogueSkills catalogue,
+    PluginSkills pluginSkills,
     ArrivingDays arriving,
     Lookback lookback)
 {
@@ -28,7 +28,7 @@ public sealed class SkillReport(
             // A never-fired skill's zero belongs to the unfiltered answer; a filter asks what happened, and it did not.
             filter.AsksWhatHappened
                 ? []
-                : [.. catalogue.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
+                : [.. pluginSkills.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
 
         return arriving.AnswerAsync(head, days, (day, token) => DayAsync(day, filter, token), cancellationToken);
     }

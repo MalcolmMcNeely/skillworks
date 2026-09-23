@@ -8,7 +8,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Says_the_collector_answered_when_both_of_its_doors_did()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue());
+        using var studio = new StudioHost(StudioHost.Plugins());
 
         var part = await studio.Part("Collector");
 
@@ -20,7 +20,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_a_collector_that_refuses_spans_as_broken_and_names_the_shut_door()
     {
         using var collector = FakeCollector.SpansShut();
-        using var studio = new StudioHost(StudioHost.Catalogue(), collector: collector);
+        using var studio = new StudioHost(StudioHost.Plugins(), collector: collector);
 
         var part = await studio.Part("Collector");
 
@@ -33,7 +33,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_a_collector_that_refuses_events_as_broken_and_names_the_shut_door()
     {
         using var collector = FakeCollector.EventsShut();
-        using var studio = new StudioHost(StudioHost.Catalogue(), collector: collector);
+        using var studio = new StudioHost(StudioHost.Plugins(), collector: collector);
 
         var part = await studio.Part("Collector");
 
@@ -46,7 +46,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_a_collector_nothing_answers_for_as_broken()
     {
         using var collector = FakeCollector.Down();
-        using var studio = new StudioHost(StudioHost.Catalogue(), collector: collector);
+        using var studio = new StudioHost(StudioHost.Plugins(), collector: collector);
 
         var part = await studio.Part("Collector");
 
@@ -58,7 +58,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Tells_the_developer_to_restart_the_collector_so_that_it_reads_its_settings_again()
     {
         using var collector = FakeCollector.SpansShut();
-        using var studio = new StudioHost(StudioHost.Catalogue(), collector: collector);
+        using var studio = new StudioHost(StudioHost.Plugins(), collector: collector);
 
         var part = await studio.Part("Collector");
 
@@ -70,7 +70,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_one_shut_door_against_the_collector_alone()
     {
         using var collector = FakeCollector.SpansShut();
-        using var studio = new StudioHost(StudioHost.Catalogue(), collector: collector);
+        using var studio = new StudioHost(StudioHost.Plugins(), collector: collector);
 
         var broken = (await studio.Health()).Parts.Where(part => part.State == "broken").Select(part => part.Name);
 
@@ -82,8 +82,8 @@ public sealed partial class HealthEndpointsTests
     public async Task Never_reads_the_collector_as_off_whether_it_is_answering_or_not()
     {
         using var down = FakeCollector.Down();
-        using var stopped = new StudioHost(StudioHost.Catalogue(), collector: down, emitting: false, tracing: false);
-        using var running = new StudioHost(StudioHost.Catalogue(), emitting: false, tracing: false);
+        using var stopped = new StudioHost(StudioHost.Plugins(), collector: down, emitting: false, tracing: false);
+        using var running = new StudioHost(StudioHost.Plugins(), emitting: false, tracing: false);
 
         Assert.Equal("broken", (await stopped.Part("Collector")).State);
         Assert.Equal("working", (await running.Part("Collector")).State);
@@ -93,9 +93,9 @@ public sealed partial class HealthEndpointsTests
     public async Task Tells_a_shut_spans_door_apart_from_a_trace_store_that_stopped_answering()
     {
         using var collector = FakeCollector.SpansShut();
-        using var shut = new StudioHost(StudioHost.Catalogue(), collector: collector);
+        using var shut = new StudioHost(StudioHost.Plugins(), collector: collector);
         using var traces = BrokenTraceStore.Down();
-        using var down = new StudioHost(StudioHost.Catalogue(), traces: traces);
+        using var down = new StudioHost(StudioHost.Plugins(), traces: traces);
 
         // A Session reads Thin either way, but the part at fault and the developer's next step differ.
         Assert.Equal("broken", (await shut.Part("Collector")).State);
@@ -108,7 +108,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Knocks_on_the_same_address_it_writes_into_the_developer_settings()
     {
-        using var studio = new StudioHost(StudioHost.Catalogue(), collectorAddress: "   ");
+        using var studio = new StudioHost(StudioHost.Plugins(), collectorAddress: "   ");
 
         // A Lamp that settled a blank address differently would pass a door Claude Code never sends to.
         Assert.Equal("working", (await studio.Part("Claude Code telemetry")).State);
@@ -119,7 +119,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Knocks_on_each_door_with_a_payload_that_holds_no_event_and_no_span()
     {
         using var collector = FakeCollector.Open();
-        using var studio = new StudioHost(StudioHost.Catalogue(), collector: collector);
+        using var studio = new StudioHost(StudioHost.Plugins(), collector: collector);
 
         await studio.Health();
 

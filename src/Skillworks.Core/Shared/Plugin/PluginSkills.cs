@@ -1,24 +1,24 @@
-namespace Skillworks.Core.Shared.Catalogue;
+namespace Skillworks.Core.Shared.Plugin;
 
-public sealed class CatalogueSkills(CatalogueLocator locator)
+public sealed class PluginSkills(PluginLocator locator)
 {
     public IReadOnlyList<string> Names()
     {
-        var catalogue = locator.Locate();
+        var location = locator.Locate();
 
-        if (!catalogue.Exists)
+        if (!location.Exists)
         {
             return [];
         }
 
         return
         [
-            .. from plugin in Directory.EnumerateDirectories(catalogue.Path)
+            .. from plugin in Directory.EnumerateDirectories(location.Path)
                let folder = Path.Combine(plugin, "skills")
                where Directory.Exists(folder)
                from skill in Directory.EnumerateDirectories(folder)
                where File.Exists(Path.Combine(skill, "SKILL.md"))
-               // Spelled as Claude Code invokes a plugin skill, or a catalogue name never meets its Activations.
+               // Spelled as Claude Code invokes a plugin skill, or a listed name never meets its Activations.
                select $"{Path.GetFileName(plugin)}:{Path.GetFileName(skill)}"
         ];
     }

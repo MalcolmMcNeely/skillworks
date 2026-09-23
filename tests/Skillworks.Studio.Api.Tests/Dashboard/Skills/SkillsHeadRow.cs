@@ -8,5 +8,5 @@ public sealed record SkillsHeadRow
 
     public required DateOnly[] Days { get; init; }
 
-    public required string[] CatalogueSkills { get; init; }
+    public required string[] PluginSkills { get; init; }
 }
