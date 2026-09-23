@@ -47,6 +47,8 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         EventAttributes.Person,
     ];
 
+    private static readonly string[] ByParent = [EventAttributes.Session, EventAttributes.Parent];
+
     private static readonly string[] ByTitle = [EventAttributes.Session, EventAttributes.Response];
 
     private static readonly string[] ByPrompt = [EventAttributes.Session, EventAttributes.Prompt];
@@ -77,6 +79,9 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         var titling = events.EarliestAsync(Titles(span, filter), ByTitle, cancellationToken);
         var prompting = events.EarliestAsync(everything with { EventName = PromptEvent }, ByPrompt, cancellationToken);
 
+        // In the gate too, because a Child folded into its Parent is a row that does not exist.
+        var parenting = events.CountAsync(everything with { NamesParent = true }, ByParent, cancellationToken);
+
         // In the gate too, because a Skill decides which runs are listed.
         var activating = filter.Skill is null
             ? Task.FromResult(EventTotals.Of([]))
@@ -104,6 +109,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             await ending,
             await titling,
             await prompting,
+            await parenting,
             await activating);
 
         // A reader who arrived sorted on a Measure waits for it here, so the rows are drawn once, in that order.
@@ -203,10 +209,21 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         // Taken from the read that names a run, so the words half of a Depth costs no second question.
         var withheld = Keyed(gate.Prompted.Groups.Where(Withheld));
 
+        var standing = Identified(gate.Placed.Groups)
+            .Where(run => firstEvent.ContainsKey(run.Key) && lastEvent.ContainsKey(run.Key))
+            .ToList();
+
+        var parents = ParentsOf(gate.Parented, [.. standing.Select(run => run.Key)]);
+
+        // A Parent sits idle while its Children work, so its own last event would read the work as finished.
+        var workEnded = standing
+            .GroupBy(run => parents.GetValueOrDefault(run.Key, run.Key), run => lastEvent[run.Key])
+            .ToDictionary(work => work.Key, work => work.Max());
+
         var sessions =
-            from run in Identified(gate.Placed.Groups)
+            from run in standing
             let id = run.Key
-            where firstEvent.ContainsKey(id) && lastEvent.ContainsKey(id)
+            where !parents.ContainsKey(id)
             where firedIn is null || firedIn.Contains(id)
             // Narrowing by a read that fell short would hide runs nobody asked to hide.
             where traced.FellShort || filter.Covers(Depths.Of(traced.Sessions.Contains(id), withheld.Contains(id)))
@@ -218,11 +235,25 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
                 repository,
                 MostlySaid(run, total => total.Attribute(EventAttributes.Person)),
                 SessionName.Of(titles.GetValueOrDefault(id), prompts.GetValueOrDefault(id), repository, startedAt),
-                (long)(lastEvent[id] - startedAt).TotalMilliseconds,
-                RunningWindow.Covers(lastEvent[id], now));
+                (long)(workEnded[id] - startedAt).TotalMilliseconds,
+                RunningWindow.Covers(workEnded[id], now));
 
         return order.Sorted(sessions, ranked);
     }
+
+    // A Parent with no events in the store has no row to take its Children in, so they keep rows of their own.
+    private static Dictionary<string, string> ParentsOf(EventTotals parented, HashSet<string> standing) =>
+        Identified(parented.Groups)
+            .Select(run => (
+                Child: run.Key,
+                Parent: run
+                    .Select(total => total.Attribute(EventAttributes.Parent))
+                    .OfType<string>()
+                    .Where(parent => parent != run.Key && standing.Contains(parent))
+                    .Order(StringComparer.Ordinal)
+                    .FirstOrDefault()))
+            .Where(link => link.Parent is not null)
+            .ToDictionary(link => link.Child, link => link.Parent!);
 
     // An older Claude Code puts the repository on no event, and a run with no origin remote has none.
     // The store returns a run's groups in no order, so what most of its events said wins, and a tie goes by name.
@@ -288,10 +319,11 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         EventTotals Ended,
         EventTotals Titled,
         EventTotals Prompted,
+        EventTotals Parented,
         EventTotals Fired)
     {
         public string? Unreachable =>
             Placed.Unreachable ?? Started.Unreachable ?? Ended.Unreachable ?? Titled.Unreachable ??
-            Prompted.Unreachable ?? Fired.Unreachable;
+            Prompted.Unreachable ?? Parented.Unreachable ?? Fired.Unreachable;
     }
 }

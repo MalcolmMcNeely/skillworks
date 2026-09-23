@@ -212,6 +212,12 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             logql += $" | {EventAttributes.LabelOf(EventAttributes.QuerySource)}={Quoted(source)}";
         }
 
+        // An event with no such key reads as empty, so only a Child's events pass.
+        if (query.NamesParent)
+        {
+            logql += $" | {EventAttributes.LabelOf(EventAttributes.Parent)}!=\"\"";
+        }
+
         if (query.Repository is { } repository)
         {
             var (owner, name) = EventAttributes.OwnerAndName(repository);

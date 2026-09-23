@@ -13,4 +13,6 @@ public sealed record EventQuery(string EventName, DateTimeOffset From, DateTimeO
     public string? Skill { get; init; }
 
     public string? QuerySource { get; init; }
+
+    public bool NamesParent { get; init; }
 }

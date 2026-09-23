@@ -11,6 +11,9 @@ public static class EventAttributes
 
     public const string Session = "session.id";
 
+    // Not Claude Code's own: the spec loop driver sets it in OTEL_RESOURCE_ATTRIBUTES, and Claude Code copies it on.
+    public const string Parent = "skillworks.parent.session.id";
+
     // The signed-in address, on every event and with no switch of its own to leave it off.
     public const string Person = "user.email";
 
