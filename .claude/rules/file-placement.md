@@ -24,7 +24,7 @@ C# and TypeScript share one shape: Slices first, Concerns beneath.
 - A folder with its own `.git`, such as an agent's worktree, is another checkout. These rules skip it
   too.
 
-`src/Skillworks.Core/Watch/Activations` shows the shape beneath a Slice: the folder holds the types
+`src/Skillworks.Core/Dashboard/Activations` shows the shape beneath a Slice: the folder holds the types
 of an Activation, and `Queries` beneath it holds `ActivationQueries`, as `name-map` says.
 
 ## Slices
@@ -52,7 +52,7 @@ context that declares no Slices, is judged by the rest of these rules and by non
    its own settles one in the glossary before the folder appears, and machinery settles a word like
    everything else. The test runs on the piece and not on the word: a word in the glossary does not
    pull a Slice's code down with it. `Skill` is a word, but only the list of Skill names the Filter
-   offers sits in `Shared`, while the Map, the Tiles and the skill report stay in Watch. What moves
+   offers sits in `Shared`, while the Map, the Tiles and the skill report stay in Dashboard. What moves
    is what no one job owns, however many jobs happen to read it.
 6. **A Slice keeps its name everywhere.** A Slice folder sits at the same depth, and under the same
    name in that language's own case, in every project that holds its code, and in the front end.
@@ -65,8 +65,8 @@ Rules 3 and 4 hold code files only. A test may read any Slice, because a test th
 to see both sides of it. The exemption belongs to being a test, so no list of exempt tests is kept,
 because a list goes stale.
 
-A Slice name and `Shared` are matched in each language's own case: `Watch` and `Shared` in C#,
-`watch` and `shared` in the front end. Rule 1 turns down a folder holding the right word in the wrong
+A Slice name and `Shared` are matched in each language's own case: `Dashboard` and `Shared` in C#,
+`dashboard` and `shared` in the front end. Rule 1 turns down a folder holding the right word in the wrong
 case, and turns down `Shared` in any case below the first level, which is the work
 `banned-folder-names` did for `shared` before `Shared` earned its place.
 
@@ -125,7 +125,7 @@ Each pattern in `name-map` is a name with `*` at the start or the end, such as `
 
 ```yaml
 slices:
-  - Watch
+  - Dashboard
   - Sessions
 concerns:
   - api

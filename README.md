@@ -5,7 +5,7 @@ skills its developers use.
 
 The app is called Studio. It has four jobs, in this order:
 
-1. **Watch.** Read the organisation's Claude Code telemetry. See which skills fire, how often, in
+1. **Dashboard.** Read the organisation's Claude Code telemetry. See which skills fire, how often, in
    which repositories, and what they cost.
 2. **Author.** Write a skill and its evals.
 3. **Test.** Run the evals before anyone else gets the skill.
@@ -15,7 +15,7 @@ Then it goes round again. Once the plugin is out, the telemetry shows whether it
 
 | Job | Built? |
 |---|---|
-| Watch | Yes. Watch lists every skill with its Activations, Cost, Tokens, Models, Efforts and Repositories. |
+| Dashboard | Yes. The Dashboard lists every skill with its Activations, Cost, Tokens, Models, Efforts and Repositories. |
 | Author | Not yet. |
 | Test | Not yet. |
 | Publish | Not yet. |
@@ -217,7 +217,7 @@ background.
 |---|---|
 | `src/Skillworks.Core/` | The domain. No HTTP. The API is a thin shell over it. |
 | `src/Skillworks.Studio.Api/` | The ASP.NET Core shell. HTTP and nothing else. |
-| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped. Any rule of its own lives in a `lib` folder, such as `src/watch/lib/`, with a test beside it. |
+| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped. Any rule of its own lives in a `lib` folder, such as `src/dashboard/lib/`, with a test beside it. |
 | `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
 | `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service discovery setup. |
 | `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks them. |
@@ -244,7 +244,7 @@ generated. Studio's test projects lay out in Slices too, and are left out on pur
 
 | Folder | Files | Share |
 |---|---|---|
-| `Watch` | 33 | 15% |
+| `Dashboard` | 33 | 15% |
 | `Sessions` | 82 | 38% |
 | `Shared` | 103 | 47% |
 

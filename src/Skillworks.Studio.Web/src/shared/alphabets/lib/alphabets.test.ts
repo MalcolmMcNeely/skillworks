@@ -3,10 +3,10 @@ import { lampSymbols } from '../../health/lib/health';
 import { pageSymbols } from '../../pages/lib/pages';
 import { triggerSymbols } from '../../provenance/lib/triggers';
 import { measureSymbols, sortSymbols } from '../../../sessions/lib/sessions';
-import { mapNoticeSymbols } from '../../../watch/lib/mapNotice';
-import { readoutSymbols } from '../../../watch/lib/readout';
-import { missingSymbols } from '../../../watch/lib/skills';
-import { sliceSymbols } from '../../../watch/lib/strip';
+import { mapNoticeSymbols } from '../../../dashboard/lib/mapNotice';
+import { readoutSymbols } from '../../../dashboard/lib/readout';
+import { missingSymbols } from '../../../dashboard/lib/skills';
+import { sliceSymbols } from '../../../dashboard/lib/strip';
 import { switchSymbols } from '../../telemetry/lib/telemetry';
 import { crossings, type SymbolTable } from './alphabets';
 

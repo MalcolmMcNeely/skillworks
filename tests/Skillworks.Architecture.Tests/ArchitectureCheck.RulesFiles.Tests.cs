@@ -56,7 +56,7 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Theory]
-    [InlineData(PlacementFile, "slices", "Watch")]
+    [InlineData(PlacementFile, "slices", "Dashboard")]
     [InlineData(PlacementFile, "concerns", "{api: api}")]
     [InlineData(PlacementFile, "max-types-per-folder", "many")]
     [InlineData(PlacementFile, "max-types-per-folder", "0")]

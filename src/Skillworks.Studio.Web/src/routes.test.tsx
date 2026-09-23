@@ -5,7 +5,7 @@ import { routes } from './routes';
 import { Home } from './shared/home/routes/Home';
 import { dashboard, home } from './shared/pages/lib/pages';
 import { NoSuchPage } from './shared/pages/routes/NoSuchPage';
-import { Dashboard } from './watch/routes/Dashboard';
+import { Dashboard } from './dashboard/routes/Dashboard';
 
 function screenAt(address: string): unknown {
   const element = matchRoutes(routes, address)?.at(-1)?.route.element;

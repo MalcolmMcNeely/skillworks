@@ -4,7 +4,7 @@ import { dashboard, home, sessions } from './shared/pages/lib/pages';
 import { NoSuchPage } from './shared/pages/routes/NoSuchPage';
 import { Session } from './sessions/routes/Session';
 import { Sessions } from './sessions/routes/Sessions';
-import { Dashboard } from './watch/routes/Dashboard';
+import { Dashboard } from './dashboard/routes/Dashboard';
 
 // Apart from the router, because a browser router cannot be built where a test runs.
 export const routes: RouteObject[] = [
