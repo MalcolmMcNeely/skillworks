@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 
 namespace Skillworks.Core.Shared.Stores.EventsStore;
@@ -200,6 +201,11 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         if (query.Session is { } session)
         {
             logql += $" | {EventAttributes.LabelOf(EventAttributes.Session)}={Quoted(session)}";
+        }
+
+        if (query.Sessions is { } sessions)
+        {
+            logql += $" | {EventAttributes.LabelOf(EventAttributes.Session)}=~{Quoted(string.Join("|", sessions.Select(Regex.Escape)))}";
         }
 
         if (query.Skill is { } skill)

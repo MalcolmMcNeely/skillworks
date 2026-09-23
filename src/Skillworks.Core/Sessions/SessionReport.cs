@@ -41,7 +41,7 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
             }
         }
 
-        var period = await read.Period;
+        var period = read.Period;
 
         yield return new GapEnd(Shown(
             gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()),

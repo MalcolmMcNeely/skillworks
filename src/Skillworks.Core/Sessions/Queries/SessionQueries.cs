@@ -60,14 +60,18 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
 
     private static readonly IReadOnlyDictionary<string, decimal> NoValues = new Dictionary<string, decimal>();
 
+    // A Parent waits on its Children for hours, so a week back reaches the start of any Parent still at work.
+    private static readonly TimeSpan ParentReach = TimeSpan.FromDays(7);
+
     // Totals, never a list of events: a busy organisation's week is more lines than one read holds.
+    // A Repository is judged here and not in the store, as a Parent row stands for Children in other Repositories.
     public async Task<SessionsRead> ListAsync(
         DaySpan span,
         Filter filter,
         SessionOrder order,
         CancellationToken cancellationToken)
     {
-        var everything = Events(span, filter);
+        var everything = Events(span);
 
         // Started with the totals, so a Depth costs a reader no wait the events store was not already taking.
         var tracing = depths.OfPeriodAsync(span, filter, cancellationToken);
@@ -76,7 +80,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         var placing = events.CountAsync(everything, ByWhereabouts, cancellationToken);
         var starting = events.EarliestAsync(everything, BySession, cancellationToken);
         var ending = events.LatestAsync(everything, BySession, cancellationToken);
-        var titling = events.EarliestAsync(Titles(span, filter), ByTitle, cancellationToken);
+        var titling = events.EarliestAsync(Titles(everything), ByTitle, cancellationToken);
         var prompting = events.EarliestAsync(everything with { EventName = PromptEvent }, ByPrompt, cancellationToken);
 
         // In the gate too, because a Child folded into its Parent is a row that does not exist.
@@ -92,9 +96,6 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         var erring = events.CountAsync(everything with { EventName = ModelErrorEvent }, BySession, cancellationToken);
         var costing = events.SumAsync(everything with { EventName = TurnEvent }, CostAttribute, BySession, cancellationToken);
 
-        // Judged on the period, not on what was asked, or a Repository with no runs would read as a quiet week.
-        var surveying = filter.Repository is null ? placing : events.CountAsync(Events(span), [], cancellationToken);
-
         var measuring = new Dictionary<Measure, Task<MeasureLanding>>
         {
             [Measure.ToolCalls] = TotalledAsync(Measure.ToolCalls, calling, read => TotalledIn(read.Groups)),
@@ -103,14 +104,19 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
             [Measure.Friction] = TotalledAsync(Measure.Friction, deciding, read => TotalledIn(read.Groups.Where(Refused))),
         };
 
-        var gate = new Gate(
-            await placing,
-            await starting,
-            await ending,
-            await titling,
-            await prompting,
-            await parenting,
-            await activating);
+        var period = await placing;
+
+        var gate = await WithParentsBeforeSpanAsync(
+            new Gate(
+                period,
+                await starting,
+                await ending,
+                await titling,
+                await prompting,
+                await parenting,
+                await activating),
+            span,
+            cancellationToken);
 
         var standing = Standing(gate);
         var parents = ParentsOf(gate.Parented, standing);
@@ -122,19 +128,60 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
 
         if ((gate.Unreachable ?? ranking?.Unreachable) is { } unreachable)
         {
-            var empty = PeriodAsync(unreachable, surveying, standing: null);
-
-            return new SessionsRead(unreachable, [], AsyncEnumerable.Empty<MeasureLanding>(), empty, traced);
+            return new SessionsRead(
+                unreachable,
+                [],
+                AsyncEnumerable.Empty<MeasureLanding>(),
+                period with { Unreachable = unreachable },
+                traced);
         }
 
         var rows = Rows(gate, standing, parents, filter, order, traced, Folded(ranking?.Values ?? NoValues, parents));
 
-        return new SessionsRead(
-            null,
-            rows,
-            LandingAsync(measuring.Values, rows, parents, cancellationToken),
-            PeriodAsync(null, surveying, rows.Count > 0 ? gate.Placed : null),
-            traced);
+        return new SessionsRead(null, rows, LandingAsync(measuring.Values, rows, parents, cancellationToken), period, traced);
+    }
+
+    // A Parent that began before the span still names the row its Children inside the span are folded into.
+    private async Task<Gate> WithParentsBeforeSpanAsync(Gate gate, DaySpan span, CancellationToken cancellationToken)
+    {
+        if (gate.Unreachable is not null)
+        {
+            return gate;
+        }
+
+        var standing = Standing(gate);
+
+        string[] outside =
+        [
+            .. gate.Parented.Groups
+                .Select(total => total.Attribute(EventAttributes.Parent))
+                .OfType<string>()
+                .Where(parent => parent.Length > 0 && !standing.Contains(parent))
+                .Distinct()
+                .Order(StringComparer.Ordinal),
+        ];
+
+        if (outside.Length == 0)
+        {
+            return gate;
+        }
+
+        var before = new EventQuery(EventQuery.AnyEvent, span.FromUtc - ParentReach, span.FromUtc) { Sessions = outside };
+
+        var placing = events.CountAsync(before, ByWhereabouts, cancellationToken);
+        var starting = events.EarliestAsync(before, BySession, cancellationToken);
+        var ending = events.LatestAsync(before, BySession, cancellationToken);
+        var titling = events.EarliestAsync(Titles(before), ByTitle, cancellationToken);
+        var prompting = events.EarliestAsync(before with { EventName = PromptEvent }, ByPrompt, cancellationToken);
+
+        return gate with
+        {
+            Placed = gate.Placed.Plus(await placing),
+            Started = gate.Started.Plus(await starting),
+            Ended = gate.Ended.Plus(await ending),
+            Titled = gate.Titled.Plus(await titling),
+            Prompted = gate.Prompted.Plus(await prompting),
+        };
     }
 
     // Each lands on its own, so nothing ready is held back to buy an order a test could read top to bottom.
@@ -177,20 +224,6 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         return new MeasureLanding(Measure.Faults, values, unreachable);
     }
 
-    // The survey only tells a quiet period from a narrowed one, and rows on the table answer that already,
-    // so where they stand the read that named them speaks for a survey that fell short.
-    private static async Task<EventTotals> PeriodAsync(string? gated, Task<EventTotals> surveying, EventTotals? standing)
-    {
-        var surveyed = await surveying;
-
-        if (gated is not null)
-        {
-            return surveyed with { Unreachable = gated };
-        }
-
-        return surveyed.Unreachable is null || standing is null ? surveyed : standing;
-    }
-
     // A run no row names was narrowed away, and handing its figure back would undo the narrowing.
     private static IReadOnlyDictionary<string, decimal> Only(
         IReadOnlyList<SessionRow> rows,
@@ -225,20 +258,19 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         // Taken from the read that names a run, so the words half of a Depth costs no second question.
         var withheld = Keyed(gate.Prompted.Groups.Where(Withheld));
 
-        var runs = Identified(gate.Placed.Groups).Where(run => standing.Contains(run.Key)).ToList();
+        var runs = Identified(gate.Placed.Groups).Where(run => standing.Contains(run.Key)).ToDictionary(run => run.Key);
 
-        // A Parent sits idle while its Children work, so its own last event would read the work as finished.
-        var workEnded = runs
-            .GroupBy(run => parents.GetValueOrDefault(run.Key, run.Key), run => lastEvent[run.Key])
-            .ToDictionary(work => work.Key, work => work.Max());
-
+        // Each Filter is met when the Parent or any one Child meets it, as the row stands for the whole piece of work.
         var sessions =
-            from run in runs
-            let id = run.Key
-            where !parents.ContainsKey(id)
-            where firedIn is null || firedIn.Contains(id)
+            from work in runs.Values.GroupBy(run => parents.GetValueOrDefault(run.Key, run.Key))
+            let id = work.Key
+            let run = runs[id]
+            where filter.Repository is null || work.Any(member => member.Any(total => total.Repository == filter.Repository))
+            where firedIn is null || work.Any(member => firedIn.Contains(member.Key))
             // Narrowing by a read that fell short would hide runs nobody asked to hide.
-            where traced.FellShort || filter.Covers(Depths.Of(traced.Sessions.Contains(id), withheld.Contains(id)))
+            where traced.FellShort || work.Any(member => filter.Covers(Depths.Of(traced.Sessions.Contains(member.Key), withheld.Contains(member.Key))))
+            // A Parent sits idle while its Children work, so its own last event would read the work as finished.
+            let workEnded = work.Max(member => lastEvent[member.Key])
             let repository = MostlySaid(run, total => total.Repository)
             let startedAt = firstEvent[id]
             select new SessionRow(
@@ -247,8 +279,8 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
                 repository,
                 MostlySaid(run, total => total.Attribute(EventAttributes.Person)),
                 SessionName.Of(titles.GetValueOrDefault(id), prompts.GetValueOrDefault(id), repository, startedAt),
-                (long)(workEnded[id] - startedAt).TotalMilliseconds,
-                RunningWindow.Covers(workEnded[id], now));
+                (long)(workEnded - startedAt).TotalMilliseconds,
+                RunningWindow.Covers(workEnded, now));
 
         return order.Sorted(sessions, ranked);
     }
@@ -324,13 +356,8 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
 
     private static EventQuery Events(DaySpan span) => new(EventQuery.AnyEvent, span.FromUtc, span.UntilUtc);
 
-    // Claude Code names a Repository on every event of a run or on none, so no run is left half read.
-    private static EventQuery Events(DaySpan span, Filter filter) => Events(span) with { Repository = filter.Repository };
+    private static EventQuery Titles(EventQuery events) => events with { EventName = TitleEvent, QuerySource = TitleSource };
 
-    private static EventQuery Titles(DaySpan span, Filter filter) =>
-        Events(span, filter) with { EventName = TitleEvent, QuerySource = TitleSource };
-
-    // The Repository is left off, as the rows this narrows are narrowed by it already.
     private static EventQuery ActivationsIn(DaySpan span, Filter filter) =>
         Events(span) with { EventName = ActivationEvent, Skill = filter.Skill };
 

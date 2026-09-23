@@ -12,9 +12,6 @@ public sealed partial class SessionEndpointsTests
     // Tool calls and the tool half of Faults, and no part of Cost or Friction.
     private const string ToolResultRead = "claude_code.tool_result";
 
-    // The one read grouped by nothing, so no other read of the answer is spelled this way.
-    private const string SurveyRead = "sum (count_over_time";
-
     // One of the five that name a run, and no Measure's.
     private const string PromptRead = "claude_code.user_prompt";
 
@@ -116,25 +113,6 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Draws_the_rows_narrowed_by_a_repository_while_the_survey_is_still_out()
-    {
-        // A Repository narrows every other read in the store, so the one that names no repository is the survey.
-        using var events = BrokenEventsStore.StallingOn(read => !read.Contains("acme", StringComparison.Ordinal));
-        using var studio = new StudioHost(events: events);
-
-        await studio.Push(
-            Ran(Morning, At(Yesterday, "09:00:00.000"), "The chosen run", "acme/xi"),
-            Ran(Afternoon, At(Yesterday, "14:00:00.000"), "The other run", "acme/nu"));
-
-        // The survey only tells a quiet period from a narrowed one, which the end line reports.
-        var lines = await studio.SessionLines("?repository=acme/xi", count: 2);
-
-        Assert.Equal(["The chosen run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
-
-        await StillOut(events, SurveyRead);
-    }
-
-    [Fact]
     public async Task Draws_the_rows_once_in_the_order_of_the_measure_a_reader_sorted_on()
     {
         using var studio = new StudioHost();
@@ -157,7 +135,7 @@ public sealed partial class SessionEndpointsTests
 
         var answer = await studio.SessionAnswer("?repository=acme/xi");
 
-        // The survey left the gate, and it is the read a quiet period is judged on.
+        // A period is judged on every run in it, whatever the Repository asked for.
         Assert.Empty(answer.Sessions);
         Assert.Equal("quiet", answer.Gap.Kind);
     }
@@ -208,21 +186,6 @@ public sealed partial class SessionEndpointsTests
         // Rows drawn in an order this read never gave would settle again the moment it landed.
         Assert.Empty(answer.Sessions);
         Assert.Equal("unreachable", answer.Gap.Kind);
-    }
-
-    [Fact]
-    public async Task Draws_the_rows_when_the_survey_read_fell_short()
-    {
-        using var events = Breaking(SurveyRead);
-        using var studio = new StudioHost(events: events);
-
-        await studio.Push(Ran(Morning, At(Yesterday, "09:00:00.000"), "The run", "acme/xi"));
-
-        var answer = await studio.SessionAnswer("?repository=acme/xi");
-
-        // The survey tells a quiet period from a narrowed one, which a table with rows on it answers already.
-        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
-        Assert.Equal("complete", answer.Gap.Kind);
     }
 
     private static BrokenEventsStore Holding(string read) =>

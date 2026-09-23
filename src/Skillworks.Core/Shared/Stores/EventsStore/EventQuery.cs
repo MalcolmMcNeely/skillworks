@@ -10,6 +10,8 @@ public sealed record EventQuery(string EventName, DateTimeOffset From, DateTimeO
 
     public string? Session { get; init; }
 
+    public IReadOnlyCollection<string>? Sessions { get; init; }
+
     public string? Skill { get; init; }
 
     public string? QuerySource { get; init; }

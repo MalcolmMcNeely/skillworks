@@ -9,6 +9,5 @@ public sealed record SessionsRead(
     string? Unreachable,
     IReadOnlyList<SessionRow> Rows,
     IAsyncEnumerable<MeasureLanding> Measures,
-    // A wait still, because the survey is out of the gate and must not hold the rows back.
-    Task<EventTotals> Period,
+    EventTotals Period,
     TracedSessions Traced);
