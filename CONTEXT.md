@@ -1,23 +1,20 @@
 # Skillworks
 
-Skillworks builds, ships and measures Claude Code agent skills. It publishes a catalogue as a
+Skillworks builds, ships and measures Claude Code agent skills. It publishes one Plugin through a
 Claude Code plugin marketplace, and it runs a local app for watching how those skills behave.
 
 ## Language
 
-### The catalogue
-
-**Catalogue**:
-The set of plugins Skillworks publishes. It is the product.
-_Avoid_: Library, registry, pack
+### The plugin
 
 **Marketplace**:
-The git repository a developer adds to Claude Code so the catalogue installs and updates itself.
+The git repository a developer adds to Claude Code so the Plugin installs and updates itself.
 _Avoid_: Feed, source, channel
 
 **Plugin**:
-One installable unit of the catalogue. It holds skills, hooks, output styles and MCP servers.
-_Avoid_: Package, bundle, module
+The one installable unit Skillworks publishes. It holds skills, hooks, output styles and MCP
+servers. It is the product.
+_Avoid_: Catalogue, package, bundle, module, library, registry, pack
 
 **Skill**:
 A folder of instructions Claude reads when a task matches it.
@@ -35,7 +32,7 @@ _Avoid_: Slash command, manual skill
 ### The app
 
 **Studio**:
-The local app for watching, authoring and testing the catalogue. It runs on the developer's own
+The local app for watching, authoring and testing the Plugin. It runs on the developer's own
 machine because authoring writes files and evals start `claude`. What it measures it reads from the
 organisation's stores, never from the machine it runs on.
 _Avoid_: Reader, console, portal
