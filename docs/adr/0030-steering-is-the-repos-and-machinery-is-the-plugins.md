@@ -2,12 +2,16 @@
 
 The Plugin ships two kinds of thing, and they travel differently.
 
-Steering is what tells an agent how this team works: the rules, the tracker docs and the output
-style. `skillworks-setup` copies it into each repo as files, and the repo owns it from then on. A
-team edits its copy to suit itself, and a plugin update never overwrites it.
+Steering is what tells an agent how this team works and what this repo holds: the rules, the
+tracker docs, the review baselines and the Suite. `skillworks-setup` copies it into each repo as
+files, and the repo owns it from then on. A team edits its copy to suit itself, and a plugin update
+never overwrites it. No skill in the Plugin names a fact about one repo; it reads the fact from the
+repo's steering.
 
-Machinery is what runs the loop: the skills and the scripts they drive. It stays in the Plugin and
-runs from there. Every repo runs the same code, and a fix reaches every repo with the next update.
+Machinery is what runs the loop: the skills, the scripts they drive, the hooks and the output
+style. It stays in the Plugin and runs from there. Every repo runs the same code, and a fix reaches
+every repo with the next update. The output style is machinery because the loop's reports must read
+the same in every repo, so no team edits it; `skillworks-setup` only switches it on.
 
 ## Considered options
 
@@ -17,3 +21,6 @@ would also make the Plugin, and not the repo, the source of what a session loads
 
 **Copy the scripts into each repo.** Rejected. Each copy drifts from the next, and a fix reaches
 none of them.
+
+**Copy the output style into each repo.** Rejected. A team could change how the loop reports, and a
+repo copy with the Plugin's name would leave it unclear which one a session loaded.
