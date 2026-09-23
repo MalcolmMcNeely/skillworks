@@ -32,6 +32,17 @@ const OPTIONAL = ["prompt_id", "globs", "trigger_file_path", "parent_file_path"]
 
 const REASONS = ["session_start", "nested_traversal", "path_glob_match", "include", "compact"];
 
+const SESSION = {
+  session_id: REQUIRED.session_id,
+  transcript_path: REQUIRED.transcript_path,
+  cwd: REQUIRED.cwd,
+  hook_event_name: "SessionStart",
+  source: "startup",
+  model: "claude-opus-5-5",
+};
+
+const SOURCES = ["startup", "resume", "clear", "compact", "fork"];
+
 const OTLP_VALUES = ["stringValue", "boolValue", "intValue", "doubleValue", "arrayValue", "kvlistValue"];
 
 let temp;
@@ -194,23 +205,100 @@ test("the record is OTLP JSON posted where the Collector takes logs", async () =
   }
 });
 
-test("an unset endpoint exits zero without an error", async () => {
+for (const [name, payload] of [["a Load", FULL], ["a Session", SESSION]]) {
+  test(`${name} with the endpoint unset sends nothing and exits zero`, async () => {
+    // Arrange
+    const store = await collector();
+
+    try {
+      // Act
+      const ran = await watch(payload, undefined);
+
+      // Assert
+      assert.equal(ran.status, 0);
+      assert.equal(ran.err, "");
+      assert.equal(store.received.length, 0);
+    } finally {
+      await store.close();
+    }
+  });
+
+  test(`${name} whose connection is refused exits zero without an error`, async () => {
+    // Arrange
+    const endpoint = await refusingEndpoint();
+
+    // Act
+    const ran = await watch(payload, endpoint);
+
+    // Assert
+    assert.equal(ran.status, 0);
+    assert.equal(ran.err, "");
+  });
+}
+
+test("a Session arrives as one record carrying how it began", async () => {
   // Act
-  const ran = await watch(FULL, undefined);
+  const record = onlyRecord(await recordFor(SESSION));
 
   // Assert
-  assert.equal(ran.status, 0);
-  assert.equal(ran.err, "");
+  const got = attributes(record);
+  for (const [key, value] of Object.entries(SESSION)) assert.deepEqual(got[key], value, key);
+  assert.equal(got["event.name"], "session_start");
+  assert.equal(got["session.id"], SESSION.session_id);
+  assert.equal(record.body.stringValue, "claude_code.session_start");
+  assert.equal(record.severityText, "INFO");
 });
 
-test("a refused connection exits zero without an error", async () => {
+for (const source of SOURCES) {
+  test(`a Session begun by ${source} says so unchanged`, async () => {
+    // Act
+    const record = onlyRecord(await recordFor({ ...SESSION, source }));
+
+    // Assert
+    assert.equal(attributes(record).source, source);
+  });
+}
+
+test("a Session is recorded when no Load follows it", async () => {
   // Arrange
-  const endpoint = await refusingEndpoint();
+  const store = await collector();
 
-  // Act
-  const ran = await watch(FULL, endpoint);
+  try {
+    // Act
+    const ran = await watch(SESSION, store.endpoint);
 
-  // Assert
-  assert.equal(ran.status, 0);
-  assert.equal(ran.err, "");
+    // Assert
+    assert.equal(ran.status, 0, ran.err);
+    const records = store.received.map(onlyRecord);
+    assert.deepEqual(
+      records.map((r) => r.body.stringValue),
+      ["claude_code.session_start"],
+    );
+  } finally {
+    await store.close();
+  }
+});
+
+test("a Session and a Load from it carry the same session.id", async () => {
+  // Arrange
+  const store = await collector();
+
+  try {
+    // Act
+    const session = await watch(SESSION, store.endpoint);
+    const load = await watch(REQUIRED, store.endpoint);
+
+    // Assert
+    assert.equal(session.status, 0, session.err);
+    assert.equal(load.status, 0, load.err);
+    const records = store.received.map(onlyRecord);
+    assert.deepEqual(
+      records.map((r) => r.body.stringValue),
+      ["claude_code.session_start", "claude_code.instructions_loaded"],
+    );
+    const ids = records.map((r) => attributes(r)["session.id"]);
+    assert.deepEqual(ids, [SESSION.session_id, SESSION.session_id]);
+  } finally {
+    await store.close();
+  }
 });

@@ -132,6 +132,17 @@ It names the session's `origin` remote on every event, and Studio shows that as 
 Code, or a session with no `origin` remote, sends none, and Studio shows the Repository as not
 recorded.
 
+### What each Session was given
+
+Two hooks in `.claude/settings.json` run `scripts/session-watch.mjs`. `SessionStart` posts one record
+for each Session, with how it began. `InstructionsLoaded` posts one Load for each instruction file
+that reaches it. Both go to `OTEL_EXPORTER_OTLP_ENDPOINT`, and both carry the Session's `session.id`,
+so one Loki query reads them beside Claude Code's own events. A Session record with no Loads after it
+says the Rules did not arrive. No records at all says the Collector was not there.
+
+A hook that fails is silent. Its exit code and its errors reach no one, so the watcher can stop
+watching and nothing says so. To see a hook fail, run `claude --debug hooks`.
+
 ### Studio on a seeded month
 
 To judge a screen at real volume without your own telemetry, run Studio against a throwaway Loki.
