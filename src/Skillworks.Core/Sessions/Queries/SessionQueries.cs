@@ -141,7 +141,7 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
         return new SessionsRead(null, rows, LandingAsync(measuring.Values, rows, parents, cancellationToken), period, traced);
     }
 
-    // A Parent that began before the span still names the row its Children inside the span are folded into.
+    // A Parent that began before the span names and starts its Children's row, even when it spoke inside the span too.
     private async Task<Gate> WithParentsBeforeSpanAsync(Gate gate, DaySpan span, CancellationToken cancellationToken)
     {
         if (gate.Unreachable is not null)
@@ -151,26 +151,33 @@ public sealed class SessionQueries(EventsStoreReader events, DepthQueries depths
 
         var standing = Standing(gate);
 
-        string[] outside =
+        string[] named =
         [
             .. gate.Parented.Groups
                 .Select(total => total.Attribute(EventAttributes.Parent))
                 .OfType<string>()
-                .Where(parent => parent.Length > 0 && !standing.Contains(parent))
+                .Where(parent => parent.Length > 0)
                 .Distinct()
                 .Order(StringComparer.Ordinal),
         ];
 
-        if (outside.Length == 0)
+        if (named.Length == 0)
         {
             return gate;
         }
 
-        var before = new EventQuery(EventQuery.AnyEvent, span.FromUtc - ParentReach, span.FromUtc) { Sessions = outside };
+        string[] outside = [.. named.Where(parent => !standing.Contains(parent))];
 
-        var placing = events.CountAsync(before, ByWhereabouts, cancellationToken);
+        var before = new EventQuery(EventQuery.AnyEvent, span.FromUtc - ParentReach, span.FromUtc) { Sessions = named };
+
+        // Moments fold to the earlier, so a Parent seen inside the span would be cut short, and the span already reads its Repository.
+        var placing = outside.Length == 0
+            ? Task.FromResult(EventTotals.Of([]))
+            : events.CountAsync(before with { Sessions = outside }, ByWhereabouts, cancellationToken);
+        var ending = outside.Length == 0
+            ? Task.FromResult(EventTotals.Of([]))
+            : events.LatestAsync(before with { Sessions = outside }, BySession, cancellationToken);
         var starting = events.EarliestAsync(before, BySession, cancellationToken);
-        var ending = events.LatestAsync(before, BySession, cancellationToken);
         var titling = events.EarliestAsync(Titles(before), ByTitle, cancellationToken);
         var prompting = events.EarliestAsync(before with { EventName = PromptEvent }, ByPrompt, cancellationToken);
 
