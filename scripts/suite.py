@@ -33,6 +33,9 @@ class Suite:
     def has_script_tests(self):
         return (self.tree / "tests" / "scripts").is_dir()
 
+    def has_node_tests(self):
+        return any((self.tree / "scripts").glob("*.test.mjs"))
+
     def has_front_end(self):
         return (self.web / "package.json").is_file()
 
@@ -44,6 +47,9 @@ class Suite:
         # pytest is asked for on the command line, because the scripts carry no project file.
         if self.has_script_tests():
             wanted.append((["uv", "run", "--with", "pytest", "pytest", "tests/scripts"], self.tree))
+        # node expands the pattern itself, so no shell is needed to spell it.
+        if self.has_node_tests():
+            wanted.append((["node", "--test", "scripts/*.test.mjs"], self.tree))
         if self.has_front_end():
             wanted.append((["npm", "run", "typecheck"], self.web))
             wanted.append((["npm", "run", "lint"], self.web))
@@ -61,6 +67,9 @@ class Suite:
         if self.has_script_tests() and not self.runner.found("uv"):
             return ("uv is not on PATH, and the script tests are Python carrying no project file, "
                     "so uv is what runs them. Install uv and run this again.\n")
+        if self.has_node_tests() and not self.runner.found("node"):
+            return ("node is not on PATH, and the hook tests run under node's own test runner. "
+                    "Install node and run this again.\n")
         # A fresh worktree has nothing installed unless the work touched the front end.
         if self.has_front_end() and not (self.web / "node_modules").is_dir():
             installed = self.runner.run(["npm", "ci"], self.web.as_posix())

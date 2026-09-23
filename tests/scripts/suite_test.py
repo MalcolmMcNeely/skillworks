@@ -12,6 +12,12 @@ def given_script_tests(tree):
     (tree / "tests" / "scripts").mkdir(parents=True)
 
 
+def given_node_tests(tree):
+    scripts = tree / "scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "hook.test.mjs").write_text("", encoding="utf-8")
+
+
 def given_a_front_end(tree):
     web = tree / "src" / "Skillworks.Studio.Web"
     web.mkdir(parents=True)
@@ -27,12 +33,14 @@ def given_every_check_passes(runner):
     runner.stub("docker")
     runner.stub("dotnet")
     runner.stub("uv")
+    runner.stub("node")
     runner.stub("npm")
 
 
 def test_a_checkout_earns_one_check_for_each_marker_it_holds(tmp_path, runner):
     given_a_solution(tmp_path)
     given_script_tests(tmp_path)
+    given_node_tests(tmp_path)
     given_a_front_end(tmp_path)
     given_every_check_passes(runner)
 
@@ -44,6 +52,7 @@ def test_a_checkout_earns_one_check_for_each_marker_it_holds(tmp_path, runner):
         ["npm", "ci"],
         ["dotnet", "test", "Skillworks.slnx"],
         ["uv", "run", "--with", "pytest", "pytest", "tests/scripts"],
+        ["node", "--test", "scripts/*.test.mjs"],
         ["npm", "run", "typecheck"],
         ["npm", "run", "lint"],
         ["npm", "test"],
@@ -59,6 +68,7 @@ def test_a_marker_the_checkout_is_short_of_earns_no_check(tmp_path, runner):
     assert outcome.passed
     assert runner.built("dotnet test Skillworks.slnx")
     assert not runner.started("uv")
+    assert not runner.started("node")
     assert not runner.started("npm")
 
 
@@ -183,6 +193,31 @@ def test_a_checkout_with_no_script_tests_needs_no_uv(tmp_path, runner):
     given_a_solution(tmp_path)
     given_every_check_passes(runner)
     runner.hide("uv")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.ready
+    assert outcome.passed
+
+
+def test_node_missing_from_the_path_stops_before_any_check(tmp_path, runner):
+    given_a_solution(tmp_path)
+    given_node_tests(tmp_path)
+    given_every_check_passes(runner)
+    runner.hide("node")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert not outcome.passed
+    assert "node" in outcome.said
+    assert not runner.started("dotnet")
+
+
+def test_a_checkout_with_no_node_tests_needs_no_node(tmp_path, runner):
+    given_a_solution(tmp_path)
+    given_every_check_passes(runner)
+    runner.hide("node")
 
     outcome = Suite(runner, tmp_path).run()
 

@@ -158,12 +158,16 @@ The API tests start Loki in a container, so Docker must be running. Run the fron
 `src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally. The
 script tests build a throwaway repository in a temporary directory and touch nothing else. The
 scripts are Python, so `uv` has to be on PATH for their tests to run. pytest is asked for on the
-command line, because the scripts carry no project file:
+command line, because the scripts carry no project file. The hook script that records each Load is
+node, and its tests sit beside it and use the test runner built into node, so they add no
+dependency. node expands the quoted pattern itself:
 
 ```
 dotnet test Skillworks.slnx
 
 uv run --with pytest pytest tests/scripts
+
+node --test "scripts/*.test.mjs"
 
 cd src/Skillworks.Studio.Web
 npm run typecheck
