@@ -74,9 +74,29 @@ def settings(work, text):
     (work.repo / ".claude" / "settings.json").write_text(text, encoding="utf-8", newline="\n")
 
 
-def preflight(work, *args):
+# Node can share /usr/bin with the tools preflight calls, so that folder is mirrored, not dropped.
+TOOLS = ("git", "awk", "sort", "head", "grep")
+
+
+def without_node(path, spare):
+    folders = []
+    for folder in path.split(os.pathsep):
+        if not shutil.which("node", path=folder):
+            folders.append(folder)
+        elif any(shutil.which(tool, path=folder) for tool in TOOLS):
+            mirror = spare / f"path-{len(folders)}"
+            mirror.mkdir()
+            for entry in Path(folder).iterdir():
+                if entry.stem != "node":
+                    (mirror / entry.name).symlink_to(entry)
+            folders.append(str(mirror))
+    return os.pathsep.join(folders)
+
+
+def preflight(work, *args, node=True):
     env = dict(os.environ)
-    env["PATH"] = str(work.stand_ins) + os.pathsep + env["PATH"]
+    path = env["PATH"] if node else without_node(env["PATH"], work.stand_ins.parent)
+    env["PATH"] = str(work.stand_ins) + os.pathsep + path
     done = subprocess.run(
         [BASH, PREFLIGHT.as_posix(), *args],
         cwd=work.repo, env=env, capture_output=True, encoding="utf-8", errors="replace")
@@ -129,6 +149,17 @@ def test_a_settings_file_that_is_not_json_warns_and_does_not_crash(work):
 
     assert ran.status == 0, said(ran)
     assert WARNING in ran.out
+
+
+def test_a_machine_without_node_warns_that_the_setting_could_not_be_checked(work):
+    settings(work, '{"autoMemoryEnabled": false}')
+
+    ran = preflight(work, node=False)
+
+    assert ran.status == 0, said(ran)
+    assert "could not check autoMemoryEnabled" in ran.out
+    assert "node is not on PATH" in ran.out
+    assert WARNING not in said(ran)
 
 
 def test_check_only_prints_the_same_warning(work):

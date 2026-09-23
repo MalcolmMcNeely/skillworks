@@ -98,7 +98,10 @@ fi
 
 # The file is piped in, so node never has to read a path that bash spelled.
 settings="$(git rev-parse --show-toplevel)/.claude/settings.json"
-if [ -f "$settings" ] && node -e '
+# node is not required, so without it the setting is unknown rather than wrong.
+if ! command -v node >/dev/null; then
+  warn "could not check autoMemoryEnabled in .claude/settings.json, because node is not on PATH."
+elif [ -f "$settings" ] && node -e '
   let text = "";
   process.stdin.on("data", chunk => text += chunk);
   process.stdin.on("end", () => {
