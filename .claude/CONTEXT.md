@@ -13,6 +13,12 @@ it lets a step pass. One word, because a job that stopped and a job that finishe
 question.
 _Avoid_: Pristine, unmodified
 
+**Dumb zone**:
+The part of a context window past the Smart zone. A model there does not fail loudly. It leaves out
+an instruction, a constraint or the middle of what it read, and still sounds sure, so the error is
+something missing and is easy to miss. Too many constraints push a model into it sooner.
+_Avoid_: Degradation, drift, forgetting
+
 **Edit**:
 What a review axis changed in the worktree, as the driver read it and not as the session said it. The
 driver takes a reading before the step and another after, and the difference between them is the
@@ -55,6 +61,11 @@ _Avoid_: Spawn, shell, executor
 One run of Claude Code, from the first prompt to the last. It carries an identity that every Load and
 every telemetry event of that run shares, which is what lets the two be read together.
 _Avoid_: Conversation, chat, transcript
+
+**Smart zone**:
+The part of a context window in which a model still keeps every instruction it was given. A session
+is planned to finish its work inside it.
+_Avoid_: Context budget, token limit, sharp window
 
 **Suite**:
 The checks a repo names for the loop to run before a ticket Lands. The repo owns the list, so each
