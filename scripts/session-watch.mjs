@@ -9,6 +9,9 @@ const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 // A Session's first answer waits on this hook, so a slow git or a silent Collector must not hold it to the hook limit.
 const HOOK_LIMIT_MS = 1000;
 
+// Claude Code's own events carry this key from OTEL_RESOURCE_ATTRIBUTES, so the hook's records must too, or a Child reaches the Sessions list alone.
+const PARENT_KEY = "skillworks.parent.session.id";
+
 // A machine with no Collector is not served, so it pays nothing, not even a socket.
 if (!endpoint) process.exit(0);
 
@@ -46,6 +49,7 @@ function recordOf(payload, repository) {
   const attributes = [
     attribute("event.name", event),
     attribute("session.id", payload.session_id),
+    attribute(PARENT_KEY, resourceAttribute(PARENT_KEY)),
     attribute("prompt.id", payload.prompt_id),
     attribute("vcs.owner.name", repository.owner),
     attribute("vcs.repository.name", repository.name),
@@ -75,6 +79,14 @@ function recordOf(payload, repository) {
       },
     ],
   };
+}
+
+function resourceAttribute(key) {
+  for (const pair of (process.env.OTEL_RESOURCE_ATTRIBUTES ?? "").split(",")) {
+    const [name, ...value] = pair.split("=");
+    if (name.trim() === key) return value.join("=").trim() || undefined;
+  }
+  return undefined;
 }
 
 function attribute(key, value) {

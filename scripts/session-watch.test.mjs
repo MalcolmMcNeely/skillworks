@@ -140,6 +140,7 @@ function watch(payload, endpoint, extra = {}, signal) {
   const env = { ...process.env };
   delete env.OTEL_EXPORTER_OTLP_ENDPOINT;
   delete env.OTEL_METRICS_INCLUDE_REPOSITORY;
+  delete env.OTEL_RESOURCE_ATTRIBUTES;
   if (endpoint !== undefined) env.OTEL_EXPORTER_OTLP_ENDPOINT = endpoint;
   Object.assign(env, extra);
   return new Promise((resolve, reject) => {
@@ -443,6 +444,51 @@ test("a Session and a Load from it carry the same session.id", async () => {
     await store.close();
   }
 });
+
+const PARENT_KEY = "skillworks.parent.session.id";
+
+const PARENT = "7c4e2b9a-1d3f-4a6e-9b8c-5e0f2a7d1c93";
+
+const PARENT_LISTS = [
+  ["alone", `${PARENT_KEY}=${PARENT}`],
+  ["first", `${PARENT_KEY}=${PARENT},team=studio,deployment.environment=dev`],
+  ["in the middle", `team=studio,${PARENT_KEY}=${PARENT},deployment.environment=dev`],
+  ["last", `team=studio,deployment.environment=dev,${PARENT_KEY}=${PARENT}`],
+  ["among spaces", `team=studio , ${PARENT_KEY} = ${PARENT} , deployment.environment=dev`],
+];
+
+const NO_PARENT_LISTS = [
+  ["no OTEL_RESOURCE_ATTRIBUTES", {}],
+  ["an empty OTEL_RESOURCE_ATTRIBUTES", { OTEL_RESOURCE_ATTRIBUTES: "" }],
+  ["other keys only", { OTEL_RESOURCE_ATTRIBUTES: "team=studio,deployment.environment=dev" }],
+  ["a key that only ends with the Parent key", { OTEL_RESOURCE_ATTRIBUTES: `my.${PARENT_KEY}=${PARENT}` }],
+];
+
+for (const [name, payload] of EVENTS) {
+  for (const [where, list] of PARENT_LISTS) {
+    test(`${name} carries the Parent beside session.id when the Parent key sits ${where} in the list`, async () => {
+      // Act
+      const record = onlyRecord(await recordFor(payload, { OTEL_RESOURCE_ATTRIBUTES: list }));
+
+      // Assert
+      const got = attributes(record);
+      assert.equal(got[PARENT_KEY], PARENT);
+      assert.equal(got["session.id"], payload.session_id);
+    });
+  }
+
+  for (const [state, extra] of NO_PARENT_LISTS) {
+    test(`${name} with ${state} carries no Parent`, async () => {
+      // Act
+      const record = onlyRecord(await recordFor(payload, extra));
+
+      // Assert
+      const keys = record.attributes.map((a) => a.key);
+      assert.ok(!keys.includes(PARENT_KEY), `${PARENT_KEY} is absent`);
+      assert.equal(attributes(record)["session.id"], payload.session_id);
+    });
+  }
+}
 
 const REPOSITORY_ON = { OTEL_METRICS_INCLUDE_REPOSITORY: "true" };
 
