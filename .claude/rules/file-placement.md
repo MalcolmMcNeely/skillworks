@@ -146,6 +146,7 @@ test-files:
   - "*.test.ts"
   - "*.test.tsx"
   - "*.test.sh"
+  - "*.test.mjs"
   - "*_test.py"
 skip-folders:
   - Migrations

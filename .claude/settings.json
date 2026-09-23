@@ -38,6 +38,21 @@
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "600000"
   },
+  "hooks": {
+    "InstructionsLoaded": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/scripts/session-watch.mjs"],
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
   "outputStyle": "skillworks",
   "autoMemoryEnabled": false,
   "promptCacheTtl": "1h",
