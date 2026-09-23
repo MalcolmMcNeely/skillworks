@@ -287,8 +287,8 @@ Parent, and it shows as it always did.
 _Avoid_: Owner, root session, group
 
 **Child**:
-A Session another Session started, as its own separate run of Claude Code. It names its Parent, which
-is what keeps it out of the list. A Session that names no Parent is never a Child, however it was
+A Session another Session started, as its own separate run of Claude Code. It names its Parent, and it
+stays out of the list while that Parent is there to stand for it. A Session that names no Parent is never a Child, however it was
 started.
 _Avoid_: Owned session, spawned session, sub-session
 
