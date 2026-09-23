@@ -68,11 +68,6 @@ probe=$(gh api "repos/$REPO" --jq .has_issues)
 [ "$probe" = "true" ] || die "Issues are disabled on $REPO. Enable them in repo settings."
 ok "issues enabled"
 
-if [ "$CHECK_ONLY" = "1" ]; then
-  ok "check-only: no labels were written"
-  exit 0
-fi
-
 # --- labels -----------------------------------------------------------------
 #
 # Nothing in the loop READS a label. The driver finds work by sub-issue
@@ -91,6 +86,31 @@ label() {
   fi
 }
 
-label ready-for-agent 0e8a16 "Fully specified. An agent can take it."
+if [ "$CHECK_ONLY" = "1" ]; then
+  ok "check-only: no labels were written"
+else
+  label ready-for-agent 0e8a16 "Fully specified. An agent can take it."
+fi
 
-printf '\nReady. Next: the rest of /skillworks-setup.\n'
+# --- configuration ----------------------------------------------------------
+#
+# A check here warns and never fails: a team may have chosen otherwise on purpose.
+
+# The file is piped in, so node never has to read a path that bash spelled.
+settings="$(git rev-parse --show-toplevel)/.claude/settings.json"
+if [ -f "$settings" ] && node -e '
+  let text = "";
+  process.stdin.on("data", chunk => text += chunk);
+  process.stdin.on("end", () => {
+    try { process.exit(JSON.parse(text).autoMemoryEnabled === false ? 0 : 1); }
+    catch { process.exit(1); }
+  });
+' < "$settings" 2>/dev/null; then
+  ok "auto-memory off"
+else
+  warn "autoMemoryEnabled is not false in .claude/settings.json, so each session loads memory files only this machine holds. Add \"autoMemoryEnabled\": false to that file."
+fi
+
+if [ "$CHECK_ONLY" = "0" ]; then
+  printf '\nReady. Next: the rest of /skillworks-setup.\n'
+fi
