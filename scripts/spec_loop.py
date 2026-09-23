@@ -73,7 +73,7 @@ STEPS = (
     + tuple(Step(axis, "/review-" + axis + " {}", AXIS_CHECKS, False) for axis in REVIEW_STEPS)
     + (Step("fix", "/implement {} --fix", "no-error command-loaded ticket-open", True),
        Step("sweep", "/comment-sweep", "no-error command-loaded ticket-open", False),
-       Step("suite", "the whole suite, as the README names it",
+       Step("suite", "the whole suite, as the Suite file names it",
             "suite-can-run suite-green", False, session=False),
        Step("finish", "/implement {} --finish",
             "no-error command-loaded new-commit tree-clean ticket-closed", True))

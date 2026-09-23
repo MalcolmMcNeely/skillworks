@@ -9,7 +9,7 @@ import pytest
 
 import spec_loop
 import ticket_worktree
-from conftest import ROOT, Ran, git
+from conftest import ROOT, Ran, git, project_suite, write_suite
 
 SPEC = "158"
 
@@ -160,9 +160,11 @@ class Sessions:
             json.dumps(entry) + "\n", encoding="utf-8", newline="\n")
 
 
-# A worktree is cut from the remote, so the marker the suite looks for has to reach it first.
+# A worktree is cut from the remote, so the Suite file has to reach it first.
 def given_a_suite_that_passes(loop):
-    loop.repo.write_commit(loop.repo.work, "Skillworks.slnx", "<Solution />", "A solution")
+    write_suite(loop.repo.work, project_suite()[0])
+    git(loop.repo.work, "add", "-A")
+    git(loop.repo.work, "commit", "--quiet", "-m", "A Suite")
     git(loop.repo.work, "push", "--quiet", "origin", "main")
     loop.runner.stub("docker")
     loop.runner.stub("dotnet", says="the solution passed")
@@ -353,7 +355,7 @@ def test_the_dry_run_gives_the_suite_step_no_session(loop):
 
     assert ran.status == 0
     planned = planned_call(ran, "suite")
-    assert "as the README names it" in planned
+    assert "as the Suite file names it" in planned
     assert "claude -p" not in planned
     assert planned_checks(ran, "suite") == "suite-can-run suite-green"
 

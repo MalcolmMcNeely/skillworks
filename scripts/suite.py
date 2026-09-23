@@ -1,13 +1,18 @@
 #
-# The whole suite, as the README names it.
+# The whole suite, as the repo's Suite file names it.
 #
-# Two callers, the landing and the driver, so one implementation is what keeps the
-# command list and the rule that stops the run from coming to differ between them.
+# Two callers, the landing and the driver, so one implementation keeps their stop rule the same.
 #
+# The repo owns the list, so nothing here names a command, a folder or a tool of any one repo.
 # A machine short of what the checks need is not a red suite, so readiness is proved first.
+# A command is an argument list and never a shell line, so it reads the same on every machine.
+# An `unless` path that exists skips its readiness command, so an install is not done twice.
 
+import json
 from pathlib import Path
 from typing import NamedTuple
+
+SUITE_FILE = "docs/agents/suite.json"
 
 
 class Outcome(NamedTuple):
@@ -17,81 +22,89 @@ class Outcome(NamedTuple):
     ready: bool = True
 
 
-# A docker client with nothing behind it exits non-zero, so only the daemon's answer proves it.
-DOCKER = ["docker", "info"]
+class Ready(NamedTuple):
+    command: list
+    message: str
+    unless: str
+
+
+class Check(NamedTuple):
+    command: list
+    folder: Path
+    ready: Ready
+
+
+class Unreadable(Exception):
+    pass
+
+
+def command_of(entry):
+    command = entry.get("command") if isinstance(entry, dict) else None
+    if not isinstance(command, list) or not command or not all(
+            isinstance(word, str) and word for word in command):
+        raise Unreadable("a command that is not a list of words")
+    return command
 
 
 class Suite:
     def __init__(self, runner, worktree):
         self.runner = runner
         self.tree = Path(worktree)
-        self.web = self.tree / "src" / "Skillworks.Studio.Web"
 
-    def has_solution(self):
-        return (self.tree / "Skillworks.slnx").is_file()
-
-    def has_script_tests(self):
-        return (self.tree / "tests" / "scripts").is_dir()
-
-    def has_node_tests(self):
-        return any((self.tree / "scripts").glob("*.test.mjs"))
-
-    def has_front_end(self):
-        return (self.web / "package.json").is_file()
-
-    # The README's checks, skipped where there is none, so a throwaway repository runs this.
     def checks(self):
+        path = self.tree / SUITE_FILE
+        if not path.is_file():
+            raise Unreadable("no such file")
+        try:
+            parsed = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError as fault:
+            raise Unreadable("it is not JSON: {}".format(fault))
+        entries = parsed.get("checks") if isinstance(parsed, dict) else None
+        if not isinstance(entries, list) or not entries:
+            raise Unreadable("it names no checks")
+
         wanted = []
-        if self.has_solution():
-            wanted.append((["dotnet", "test", "Skillworks.slnx"], self.tree))
-        # pytest is asked for on the command line, because the scripts carry no project file.
-        if self.has_script_tests():
-            wanted.append((["uv", "run", "--with", "pytest", "pytest", "tests/scripts"], self.tree))
-        # node expands the pattern itself, so no shell is needed to spell it.
-        if self.has_node_tests():
-            wanted.append((["node", "--test", "scripts/*.test.mjs"], self.tree))
-        if self.has_front_end():
-            wanted.append((["npm", "run", "typecheck"], self.web))
-            wanted.append((["npm", "run", "lint"], self.web))
-            wanted.append((["npm", "test"], self.web))
+        for entry in entries:
+            ready = entry.get("ready") if isinstance(entry, dict) else None
+            if ready is not None:
+                ready = Ready(command_of(ready), str(ready.get("message", "")),
+                              ready.get("unless"))
+            wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready))
         return wanted
 
     # Read as facts, never out of a runner's output, which is reworded with every version.
-    def short_of(self):
-        if self.has_solution():
-            asked = self.runner.run(DOCKER, self.tree.as_posix())
+    def short_of(self, wanted):
+        for check in wanted:
+            for command in [check.command] + ([check.ready.command] if check.ready else []):
+                if not self.runner.found(command[0]):
+                    return ("{} is not on PATH, and the Suite file names it. Install it and run "
+                            "this again.\n").format(command[0])
+
+        for check in wanted:
+            ready = check.ready
+            if ready is None or (ready.unless and (self.tree / ready.unless).exists()):
+                continue
+            asked = self.runner.run(ready.command, check.folder.as_posix())
             if asked.status != 0:
-                return ("Docker does not answer, and the API tests start Loki in a container. "
-                        "Start Docker and run this again. Docker said:\n"
-                        + (asked.out + asked.err))
-        if self.has_script_tests() and not self.runner.found("uv"):
-            return ("uv is not on PATH, and the script tests are Python carrying no project file, "
-                    "so uv is what runs them. Install uv and run this again.\n")
-        if self.has_node_tests() and not self.runner.found("node"):
-            return ("node is not on PATH, and the hook tests run under node's own test runner. "
-                    "Install node and run this again.\n")
-        # A fresh worktree has nothing installed unless the work touched the front end.
-        if self.has_front_end() and not (self.web / "node_modules").is_dir():
-            installed = self.runner.run(["npm", "ci"], self.web.as_posix())
-            if installed.status != 0:
-                return ("the front end has nothing installed and npm ci would not install it. "
-                        "npm said:\n" + (installed.out + installed.err))
+                return "{}\n{} said:\n{}".format(
+                    ready.message.rstrip("\n"), " ".join(ready.command), asked.out + asked.err)
         return ""
 
     def run(self):
-        wanted = self.checks()
-        # A checkout holding none of them is broken, and a suite that ran nothing cannot pass.
-        if not wanted:
-            return Outcome(
-                False, "this checkout holds none of the checks the README names\n", ready=False)
+        try:
+            wanted = self.checks()
+        # A suite that ran nothing cannot pass, so a file that names nothing is never green.
+        except Unreadable as fault:
+            return Outcome(False, "the Suite file {} cannot be run, because {}\n".format(
+                SUITE_FILE, fault), ready=False)
 
-        short = self.short_of()
+        short = self.short_of(wanted)
         if short:
             return Outcome(False, short, ready=False)
 
         said = ""
-        for args, where in wanted:
-            ran = self.runner.run(args, where.as_posix())
+        for check in wanted:
+            ran = self.runner.run(check.command, check.folder.as_posix())
             said += ran.out + ran.err
             if ran.status != 0:
                 return Outcome(False, said)

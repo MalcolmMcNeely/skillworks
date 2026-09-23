@@ -1,261 +1,247 @@
 #
-# The shared suite, run against a checkout made of the markers it looks for.
+# The programs are made up, so a case proves the Suite runs what the file names and nothing else.
 
-from suite import Suite
+import json
 
-
-def given_a_solution(tree):
-    (tree / "Skillworks.slnx").write_text("<Solution />", encoding="utf-8")
-
-
-def given_script_tests(tree):
-    (tree / "tests" / "scripts").mkdir(parents=True)
+from conftest import ROOT, check, write_suite
+from suite import SUITE_FILE, Suite
 
 
-def given_node_tests(tree):
-    scripts = tree / "scripts"
-    scripts.mkdir(parents=True)
-    (scripts / "hook.test.mjs").write_text("", encoding="utf-8")
+def given_every_program_passes(runner):
+    for name in ("compile", "prove", "lint", "ping", "install"):
+        runner.stub(name)
 
 
-def given_a_front_end(tree):
-    web = tree / "src" / "Skillworks.Studio.Web"
-    web.mkdir(parents=True)
-    (web / "package.json").write_text("{}", encoding="utf-8")
-    return web
+def given_this_repo_s_programs_pass(runner):
+    for name in ("docker", "dotnet", "uv", "node", "npm"):
+        runner.stub(name)
 
 
-def given_the_front_end_is_installed(tree):
-    (tree / "src" / "Skillworks.Studio.Web" / "node_modules").mkdir()
+def given_a_suite_file_reading(tree, text):
+    write_suite(tree)
+    (tree / SUITE_FILE).write_text(text, encoding="utf-8")
 
 
-def given_every_check_passes(runner):
-    runner.stub("docker")
-    runner.stub("dotnet")
-    runner.stub("uv")
-    runner.stub("node")
-    runner.stub("npm")
-
-
-def test_a_checkout_earns_one_check_for_each_marker_it_holds(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_script_tests(tmp_path)
-    given_node_tests(tmp_path)
-    given_a_front_end(tmp_path)
-    given_every_check_passes(runner)
+def test_the_checks_run_in_the_order_the_file_names_them(tmp_path, runner):
+    write_suite(tmp_path, check("compile", "all"), check("prove", "all"), check("lint"))
+    given_every_program_passes(runner)
 
     outcome = Suite(runner, tmp_path).run()
 
     assert outcome.passed
-    assert runner.calls == [
-        ["docker", "info"],
-        ["npm", "ci"],
-        ["dotnet", "test", "Skillworks.slnx"],
-        ["uv", "run", "--with", "pytest", "pytest", "tests/scripts"],
-        ["node", "--test", "scripts/*.test.mjs"],
-        ["npm", "run", "typecheck"],
-        ["npm", "run", "lint"],
-        ["npm", "test"],
-    ]
+    assert outcome.ready
+    assert runner.calls == [["compile", "all"], ["prove", "all"], ["lint"]]
 
 
-def test_a_marker_the_checkout_is_short_of_earns_no_check(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_every_check_passes(runner)
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert outcome.passed
-    assert runner.built("dotnet test Skillworks.slnx")
-    assert not runner.started("uv")
-    assert not runner.started("node")
-    assert not runner.started("npm")
-
-
-def test_the_front_end_checks_run_in_the_front_end_folder(tmp_path, runner):
-    given_a_solution(tmp_path)
-    web = given_a_front_end(tmp_path)
-    given_every_check_passes(runner)
+def test_each_check_runs_in_its_own_folder_under_the_repo_root(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("lint", folder="web/app"))
+    given_every_program_passes(runner)
 
     Suite(runner, tmp_path).run()
 
     where = {call.args[0]: call.where for call in runner.made}
-    assert where["dotnet"] == tmp_path.as_posix()
-    assert where["npm"] == web.as_posix()
+    assert where["compile"] == tmp_path.as_posix()
+    assert where["lint"] == (tmp_path / "web" / "app").as_posix()
 
 
-def test_a_front_end_with_nothing_installed_is_installed_first(tmp_path, runner):
-    given_a_front_end(tmp_path)
-    given_every_check_passes(runner)
-
-    Suite(runner, tmp_path).run()
-
-    assert runner.calls[0] == ["npm", "ci"]
-
-
-def test_a_front_end_already_installed_is_not_installed_again(tmp_path, runner):
-    given_a_front_end(tmp_path)
-    given_the_front_end_is_installed(tmp_path)
-    given_every_check_passes(runner)
-
-    Suite(runner, tmp_path).run()
-
-    assert not runner.built("npm ci")
-
-
-def test_the_first_failing_check_stops_the_run(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_a_front_end(tmp_path)
-    given_every_check_passes(runner)
-    runner.stub("dotnet", says="a test failed", status=1)
+def test_every_readiness_command_runs_before_the_first_check(tmp_path, runner):
+    write_suite(tmp_path,
+                check("compile", ready=["ping"], message="ping failed"),
+                check("lint", folder="web", ready=["install"], message="install failed"))
+    given_every_program_passes(runner)
 
     outcome = Suite(runner, tmp_path).run()
 
+    assert outcome.passed
+    assert runner.calls == [["ping"], ["install"], ["compile"], ["lint"]]
+
+
+def test_a_readiness_command_runs_in_the_folder_of_its_check(tmp_path, runner):
+    write_suite(tmp_path, check("lint", folder="web", ready=["install"], message="no install"))
+    given_every_program_passes(runner)
+
+    Suite(runner, tmp_path).run()
+
+    assert runner.made[0].where == (tmp_path / "web").as_posix()
+
+
+def test_a_failing_readiness_command_is_not_ready_with_its_message(tmp_path, runner):
+    write_suite(tmp_path,
+                check("compile", ready=["ping"], message="The store does not answer."),
+                check("lint"))
+    given_every_program_passes(runner)
+    runner.stub("ping", says="nobody home", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert not outcome.passed
+    assert "The store does not answer." in outcome.said
+    assert "nobody home" in outcome.said
+    assert not runner.started("compile")
+    assert not runner.started("lint")
+
+
+def test_a_readiness_command_is_skipped_when_what_it_would_make_is_there(tmp_path, runner):
+    (tmp_path / "web" / "installed").mkdir(parents=True)
+    write_suite(tmp_path, check("lint", folder="web", ready=["install"], message="no install",
+                                unless="web/installed"))
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.passed
+    assert runner.calls == [["lint"]]
+
+
+def test_a_readiness_command_runs_when_what_it_would_make_is_missing(tmp_path, runner):
+    write_suite(tmp_path, check("lint", folder="web", ready=["install"], message="no install",
+                                unless="web/installed"))
+    given_every_program_passes(runner)
+
+    Suite(runner, tmp_path).run()
+
+    assert runner.calls == [["install"], ["lint"]]
+
+
+def test_a_failing_check_is_red_and_stops_the_run(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("prove"), check("lint"))
+    given_every_program_passes(runner)
+    runner.stub("prove", says="a test failed", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.ready
     assert not outcome.passed
     assert "a test failed" in outcome.said
-    assert not runner.built("npm test")
-
-
-def test_a_run_that_passes_keeps_what_every_check_said(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_a_front_end(tmp_path)
-    given_every_check_passes(runner)
-    runner.stub("dotnet", says="the solution passed")
-    runner.stub("npm", says="the front end passed")
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert outcome.passed
-    assert "the solution passed" in outcome.said
-    assert "the front end passed" in outcome.said
-
-
-def test_a_checkout_holding_no_marker_at_all_cannot_pass(tmp_path, runner):
-    given_every_check_passes(runner)
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert not outcome.passed
-    assert not outcome.ready
-    assert "none of the checks" in outcome.said
-    assert runner.calls == []
-
-
-def test_docker_is_asked_before_any_check_runs(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_script_tests(tmp_path)
-    given_every_check_passes(runner)
-
-    Suite(runner, tmp_path).run()
-
-    assert runner.calls[0] == ["docker", "info"]
-
-
-def test_a_docker_that_does_not_answer_stops_before_any_check(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_every_check_passes(runner)
-    runner.stub("docker", says="the daemon is not running", status=1)
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert not outcome.ready
-    assert not outcome.passed
-    assert "Docker" in outcome.said
-    assert "the daemon is not running" in outcome.said
-    assert not runner.started("dotnet")
-
-
-def test_a_checkout_with_no_solution_is_never_asked_about_docker(tmp_path, runner):
-    given_script_tests(tmp_path)
-    given_every_check_passes(runner)
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert outcome.passed
-    assert not runner.started("docker")
-
-
-def test_uv_missing_from_the_path_stops_before_any_check(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_script_tests(tmp_path)
-    given_every_check_passes(runner)
-    runner.hide("uv")
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert not outcome.ready
-    assert not outcome.passed
-    assert "uv" in outcome.said
-    assert not runner.started("dotnet")
-
-
-def test_a_checkout_with_no_script_tests_needs_no_uv(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_every_check_passes(runner)
-    runner.hide("uv")
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert outcome.ready
-    assert outcome.passed
-
-
-def test_node_missing_from_the_path_stops_before_any_check(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_node_tests(tmp_path)
-    given_every_check_passes(runner)
-    runner.hide("node")
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert not outcome.ready
-    assert not outcome.passed
-    assert "node" in outcome.said
-    assert not runner.started("dotnet")
-
-
-def test_a_checkout_with_no_node_tests_needs_no_node(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_every_check_passes(runner)
-    runner.hide("node")
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert outcome.ready
-    assert outcome.passed
-
-
-def test_a_front_end_that_will_not_install_stops_rather_than_failing(tmp_path, runner):
-    given_a_front_end(tmp_path)
-    given_every_check_passes(runner)
-    runner.refuse("npm ci", says="the registry would not answer")
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert not outcome.ready
-    assert not outcome.passed
-    assert "the registry would not answer" in outcome.said
-    assert not runner.built("npm test")
-
-
-def test_a_failing_check_is_a_red_suite_and_not_a_machine_short_of_something(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_every_check_passes(runner)
-    runner.stub("dotnet", says="a test failed", status=1)
-
-    outcome = Suite(runner, tmp_path).run()
-
-    assert outcome.ready
-    assert not outcome.passed
+    assert not runner.started("lint")
 
 
 # Reading the output would make a passing machine look broken on the day a runner reworded itself.
-def test_a_check_that_fails_naming_docker_is_still_a_red_suite(tmp_path, runner):
-    given_a_solution(tmp_path)
-    given_every_check_passes(runner)
-    runner.stub("dotnet", says="Cannot connect to the Docker daemon", status=1)
+def test_a_check_that_fails_saying_it_was_not_ready_is_still_red(tmp_path, runner):
+    write_suite(tmp_path, check("compile", ready=["ping"], message="no store"))
+    given_every_program_passes(runner)
+    runner.stub("compile", says="Cannot connect to the store", status=1)
 
     outcome = Suite(runner, tmp_path).run()
 
     assert outcome.ready
     assert not outcome.passed
+
+
+def test_a_run_that_passes_keeps_what_every_check_said(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("lint"))
+    given_every_program_passes(runner)
+    runner.stub("compile", says="the build passed")
+    runner.stub("lint", says="the lint passed")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.passed
+    assert "the build passed" in outcome.said
+    assert "the lint passed" in outcome.said
+
+
+def test_a_program_missing_from_the_path_is_not_ready_before_any_check(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("prove"))
+    given_every_program_passes(runner)
+    runner.hide("prove")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert not outcome.passed
+    assert "prove" in outcome.said
+    assert runner.calls == []
+
+
+def test_a_readiness_program_missing_from_the_path_is_not_ready(tmp_path, runner):
+    write_suite(tmp_path, check("compile", ready=["ping"], message="no store"))
+    given_every_program_passes(runner)
+    runner.hide("ping")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert "ping" in outcome.said
+    assert runner.calls == []
+
+
+def test_a_checkout_with_no_suite_file_is_not_ready(tmp_path, runner):
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert not outcome.passed
+    assert SUITE_FILE in outcome.said
+    assert runner.calls == []
+
+
+def test_a_suite_file_naming_no_checks_is_not_ready(tmp_path, runner):
+    write_suite(tmp_path)
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert not outcome.passed
+    assert SUITE_FILE in outcome.said
+    assert runner.calls == []
+
+
+def test_an_empty_suite_file_is_not_ready(tmp_path, runner):
+    given_a_suite_file_reading(tmp_path, "")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert SUITE_FILE in outcome.said
+
+
+def test_a_suite_file_that_does_not_parse_is_not_ready(tmp_path, runner):
+    given_a_suite_file_reading(tmp_path, "{ checks: ")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert SUITE_FILE in outcome.said
+
+
+# Whether the front end is installed differs between checkouts, so the install is left out.
+def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
+    given_this_repo_s_programs_pass(runner)
+
+    outcome = Suite(runner, ROOT).run()
+
+    web = (ROOT / "src" / "Skillworks.Studio.Web").as_posix()
+    assert outcome.passed
+    assert runner.calls[0] == ["docker", "info"]
+    assert [(call.args, call.where) for call in runner.made if call.args[:2] != ["npm", "ci"]][1:] == [
+        (["dotnet", "test", "Skillworks.slnx"], ROOT.as_posix()),
+        (["uv", "run", "--with", "pytest", "pytest", "tests/scripts"], ROOT.as_posix()),
+        (["node", "--test", "scripts/*.test.mjs"], ROOT.as_posix()),
+        (["npm", "run", "typecheck"], web),
+        (["npm", "run", "lint"], web),
+        (["npm", "test"], web),
+    ]
+
+
+def test_this_repo_s_front_end_is_installed_when_nothing_is(tmp_path, runner):
+    given_a_suite_file_reading(tmp_path, (ROOT / SUITE_FILE).read_text(encoding="utf-8"))
+    given_this_repo_s_programs_pass(runner)
+
+    Suite(runner, tmp_path).run()
+
+    assert runner.calls[:2] == [["docker", "info"], ["npm", "ci"]]
+    assert runner.made[1].where == (tmp_path / "src" / "Skillworks.Studio.Web").as_posix()
+
+
+def test_a_check_with_no_command_is_not_ready(tmp_path, runner):
+    given_a_suite_file_reading(
+        tmp_path, json.dumps({"checks": [{"command": [], "folder": "."}]}))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert SUITE_FILE in outcome.said

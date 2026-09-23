@@ -1,0 +1,37 @@
+{
+  "checks": [
+    {
+      "command": ["dotnet", "test", "Skillworks.slnx"],
+      "folder": ".",
+      "ready": {
+        "command": ["docker", "info"],
+        "message": "Docker does not answer, and the API tests start Loki in a container. Start Docker and run this again."
+      }
+    },
+    {
+      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/scripts"],
+      "folder": "."
+    },
+    {
+      "command": ["node", "--test", "scripts/*.test.mjs"],
+      "folder": "."
+    },
+    {
+      "command": ["npm", "run", "typecheck"],
+      "folder": "src/Skillworks.Studio.Web",
+      "ready": {
+        "command": ["npm", "ci"],
+        "message": "The front end has nothing installed, and npm ci would not install it.",
+        "unless": "src/Skillworks.Studio.Web/node_modules"
+      }
+    },
+    {
+      "command": ["npm", "run", "lint"],
+      "folder": "src/Skillworks.Studio.Web"
+    },
+    {
+      "command": ["npm", "test"],
+      "folder": "src/Skillworks.Studio.Web"
+    }
+  ]
+}

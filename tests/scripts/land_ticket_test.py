@@ -5,7 +5,8 @@ import io
 from pathlib import Path
 
 import land_ticket
-from conftest import Ran, git
+from conftest import Ran, git, project_suite, write_suite
+from suite import SUITE_FILE
 
 
 # A fixed answer, so a case can tell what the script gathered from what it made up.
@@ -42,12 +43,11 @@ def unmerged(repo):
     return [name for name in said.split("\n") if name]
 
 
-# The markers the suite looks for, so a case can say whether it ran.
+# A Suite file, so a case can say whether the suite ran.
 def given_a_project(repo):
-    (repo.work / "src" / "Skillworks.Studio.Web").mkdir(parents=True, exist_ok=True)
-    repo.write_commit(repo.work, "Skillworks.slnx", "<Solution />", "A solution to check")
-    repo.write_commit(
-        repo.work, "src/Skillworks.Studio.Web/package.json", "{}", "A front end to check")
+    write_suite(repo.work, *project_suite())
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "A Suite to check")
     git(repo.work, "push", "--quiet", "origin", "main")
 
 
@@ -238,7 +238,7 @@ def test_a_suite_that_could_not_start_on_the_new_base_is_not_the_ticket_s_fault(
     assert main_of(repo) == base
 
 
-def test_a_checkout_with_no_checks_at_all_is_refused(repo, runner):
+def test_a_checkout_with_no_suite_file_is_refused(repo, runner):
     given_the_suite_passes(runner)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
@@ -247,7 +247,8 @@ def test_a_checkout_with_no_checks_at_all_is_refused(repo, runner):
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
-    assert "none of the checks" in report(ran)
+    assert "could not start" in report(ran)
+    assert SUITE_FILE in report(ran)
     assert main_of(repo) == base
 
 

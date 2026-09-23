@@ -6,6 +6,7 @@
 # The scripts folder goes on the import path here, because a test imports the program
 # it reads rather than starting it, which is what lets it hand the program a Runner.
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from runner import Ran, Subprocess
+from suite import SUITE_FILE
 
 
 def git(where, *args):
@@ -116,6 +118,36 @@ class Repo:
              "spec-loop/{}/{}".format(spec, leaf)],
             capture_output=True, encoding="utf-8", errors="replace")
         return done.stdout.strip()
+
+
+def check(*command, folder=".", ready=None, message="", unless=None):
+    entry = {"command": list(command), "folder": folder}
+    if ready is not None:
+        entry["ready"] = {"command": list(ready), "message": message}
+        if unless is not None:
+            entry["ready"]["unless"] = unless
+    return entry
+
+
+def write_suite(tree, *checks):
+    path = Path(tree) / SUITE_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"checks": list(checks)}, indent=2), encoding="utf-8", newline="\n")
+    return path.relative_to(tree).as_posix()
+
+
+# Shaped like this repo's own Suite file, so a caller's case reads the way the loop meets it here.
+def project_suite():
+    web = "src/Skillworks.Studio.Web"
+    return (
+        check("dotnet", "test", "Skillworks.slnx",
+              ready=["docker", "info"], message="Docker does not answer."),
+        check("npm", "run", "typecheck", folder=web,
+              ready=["npm", "ci"], message="npm ci would not install the front end.",
+              unless=web + "/node_modules"),
+        check("npm", "run", "lint", folder=web),
+        check("npm", "test", folder=web),
+    )
 
 
 def run(args):

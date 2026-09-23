@@ -125,7 +125,7 @@ anything.
 | `architecture` | `/review-architecture <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
 | `fix` | `/implement <n> --fix` | resumes `build` | no-error, command-loaded, ticket-open |
 | `sweep` | `/comment-sweep` | fresh | no-error, command-loaded, ticket-open |
-| `suite` | The whole suite, as the README names it | none: the driver runs it | suite-can-run, suite-green |
+| `suite` | The whole suite, as the Suite file names it | none: the driver runs it | suite-can-run, suite-green |
 | `finish` | `/implement <n> --finish` | resumes `build` | no-error, command-loaded, new-commit, tree-clean, ticket-closed |
 
 `build` leaves its change uncommitted. The three axes each read that change, report under a heading of
