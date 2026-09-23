@@ -37,7 +37,8 @@ _Avoid_: Slash command, manual skill
 **Studio**:
 The local app for watching, authoring and testing the catalogue. It runs on the developer's own
 machine because authoring writes files and evals start `claude`. What it measures it reads from the
-organisation's stores, never from the machine it runs on.
+Stores and from nothing else. It never mines the transcripts Claude Code keeps in a developer's
+Claude folder, because what one machine holds speaks for that machine alone.
 _Avoid_: Reader, console, portal
 
 **Health**:
