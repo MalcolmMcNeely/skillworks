@@ -1,4 +1,4 @@
-# Git and node stay real, so the settings file is really read.
+# Git and node stay real, so the settings file is really read. One case takes node off PATH.
 
 import os
 import shutil
@@ -75,6 +75,7 @@ def settings(work, text):
 
 
 # Node can share /usr/bin with the tools preflight calls, so that folder is mirrored, not dropped.
+# Where node has a folder of its own, as on Windows, the folder is dropped and no mirror is made.
 TOOLS = ("git", "awk", "sort", "head", "grep")
 
 
