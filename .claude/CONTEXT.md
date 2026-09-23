@@ -55,3 +55,9 @@ _Avoid_: Spawn, shell, executor
 One run of Claude Code, from the first prompt to the last. It carries an identity that every Load and
 every telemetry event of that run shares, which is what lets the two be read together.
 _Avoid_: Conversation, chat, transcript
+
+**Suite**:
+The checks a repo names for the loop to run before a ticket Lands. The repo owns the list, so each
+team says what green means for its own code. A Suite ends one of two ways that are never confused: it
+went red, and the ticket goes round again, or the machine was not ready to run it, and the loop stops.
+_Avoid_: Test run, pipeline, CI
