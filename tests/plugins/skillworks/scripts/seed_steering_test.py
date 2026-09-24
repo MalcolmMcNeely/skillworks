@@ -6,7 +6,8 @@ import seed_steering
 from conftest import PLUGIN, Ran, git, launch
 from suite import Suite
 
-SETUP = PLUGIN / "skills" / "skillworks-setup"
+SKILLS = PLUGIN / "skills"
+SETUP = SKILLS / "skillworks-setup"
 
 WHERE = {
     "comments.md": ".claude/rules/comments.md",
@@ -178,3 +179,56 @@ def test_the_seed_command_seeds_the_top_of_the_repository(repo):
     assert (repo.work / "docs" / "agents" / "suite.json").is_file()
     assert not (below / "docs").exists()
     assert git(repo.work, "status", "--porcelain", "--", "docs").strip()
+
+
+LINK = re.compile(r"\]\(([^)\s]+)\)")
+
+
+# A link that climbs out of the Plugin resolves only while the Plugin sits in this repo.
+def links_out_of_the_plugin(page, text):
+    out = []
+    for target in LINK.findall(text):
+        path = target.split("#")[0]
+        if not path or "://" in path or path.startswith("mailto:"):
+            continue
+        if not (page.parent / path).resolve().is_relative_to(PLUGIN.resolve()):
+            out.append(target)
+    return out
+
+
+def test_no_plugin_skill_links_out_of_the_plugin():
+    pages = sorted(SKILLS.rglob("*.md"))
+    assert pages
+
+    for page in pages:
+        assert links_out_of_the_plugin(page, page.read_text(encoding="utf-8")) == [], page
+
+
+def test_a_link_that_climbs_out_of_the_plugin_is_caught():
+    page = SKILLS / "spec-loop" / "SKILL.md"
+    text = "[suite](../../../../docs/agents/suite.json) and [skill](../tdd/SKILL.md)"
+
+    assert links_out_of_the_plugin(page, text) == ["../../../../docs/agents/suite.json"]
+
+
+STEERING_NAMED = {
+    "review-standards": ["smell-baseline.md"],
+    "review-architecture": ["placement-checks.md", "suite.json", "arrangement-baseline.md"],
+    "code-review": ["smell-baseline.md", "placement-checks.md", "suite.json",
+                    "arrangement-baseline.md"],
+}
+
+
+def test_the_review_skills_name_each_steering_file_by_its_path_from_the_repo_root():
+    for skill, names in STEERING_NAMED.items():
+        text = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+        for name in names:
+            assert "`{}`".format(WHERE[name]) in text, "{} names {}".format(skill, name)
+            assert "`{}`](".format(WHERE[name]) not in text, "{} links {}".format(skill, name)
+
+
+def test_spec_loop_says_why_the_script_picks_the_ticket_and_links_no_research_note():
+    text = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "docs/research" not in text
+    assert "A script reads the blocking edges and picks the same ticket every time." in text

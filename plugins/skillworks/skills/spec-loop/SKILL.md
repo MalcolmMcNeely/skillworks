@@ -36,7 +36,7 @@ spec-loop <spec-number>
 
 Tell the user the log path: `.spec-loop/<spec-number>/loop.log`.
 
-**Do not implement any ticket yourself.** The script owns the loop. It picks the next unblocked ticket and starts a fresh `claude -p` session for each one. If you pick instead, the choice moves back inside a model, which is the one thing this design exists to avoid. See [agent-patterns-for-the-implement-loop](../../../../docs/research/claude/agent-patterns-for-the-implement-loop.md).
+**Do not implement any ticket yourself.** The script owns the loop. It picks the next unblocked ticket and starts a fresh `claude -p` session for each one. If you pick instead, the choice moves back inside a model, which is the one thing this design exists to avoid. A script reads the blocking edges and picks the same ticket every time. A model can skip a blocker, lose its place as its context fills, and still sound sure.
 
 ### 4. Report
 

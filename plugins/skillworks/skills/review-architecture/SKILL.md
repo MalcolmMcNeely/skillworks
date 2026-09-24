@@ -36,17 +36,17 @@ Three kinds, and each outranks the one before it.
 
 **Documented.** Anything that says how the code is *arranged* rather than how it is written: `CONTEXT-MAP.md`, each context's `CONTEXT.md`, and `docs/adr/`. `docs/agents/domain.md` says where this repo's decisions live. Read that first and follow it.
 
-**Written as rules.** `.claude/rules/file-placement.md` holds the eight Slice rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in [`docs/agents/placement-checks.md`](../../../../docs/agents/placement-checks.md). Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
+**Written as rules.** `.claude/rules/file-placement.md` holds the eight Slice rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
 
 **Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
 
-Run the Suite. The Suite file, [`docs/agents/suite.json`](../../../../docs/agents/suite.json), lists its checks in order. Run each check's command in its folder, and run a check's readiness command first, unless its `unless` path exists. The placement-checks file names the checks in the Suite that prove placement, so read their output for this axis.
+Run the Suite. The Suite file, `docs/agents/suite.json`, lists its checks in order. Run each check's command in its folder, and run a check's readiness command first, unless its `unless` path exists. The placement-checks file names the checks in the Suite that prove placement, so read their output for this axis.
 
 Each names the rule, the path and what to do. Quote a breach as it came. Say which checks you ran. Where no check exists for the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
 
 ### The baseline
 
-On top of what the repo has, this axis always carries the arrangement baseline in [`docs/agents/arrangement-baseline.md`](../../../../docs/agents/arrangement-baseline.md). Read it yourself, and read the two bends that sit beneath the check table in [`docs/agents/placement-checks.md`](../../../../docs/agents/placement-checks.md) with it.
+On top of what the repo has, this axis always carries the arrangement baseline in `docs/agents/arrangement-baseline.md`. Read it yourself, and read the two bends that sit beneath the check table in `docs/agents/placement-checks.md` with it.
 
 ## The three binding rules
 

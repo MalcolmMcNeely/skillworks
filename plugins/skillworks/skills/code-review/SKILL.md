@@ -42,7 +42,7 @@ Anything in the repo that documents how code should be written, such as `CODING_
 
 Always include the Claude rules files: every file in `.claude/rules/`. Claude wrote the code under those rules, so the review holds it to the same ones.
 
-On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in [`docs/agents/smell-baseline.md`](../../../../docs/agents/smell-baseline.md) — twelve Fowler code smells (_Refactoring_, ch.3) and four test smells beneath them, which apply even when a repo documents nothing. It carries the two rules that bind it, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
+On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in `docs/agents/smell-baseline.md` — twelve Fowler code smells (_Refactoring_, ch.3) and four test smells beneath them, which apply even when a repo documents nothing. It carries the two rules that bind it, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
 
 ### 4. Identify the architecture sources
 
@@ -52,7 +52,7 @@ Three kinds, and each outranks the one before it.
 
 **Written as rules** — the placement rules in `.claude/rules/`, and the context map beside them. Step 3 hands the whole of `.claude/rules/` to Standards, but the half that says *where a file goes, and which folder may read which*, is an arrangement rule rather than a style one, and this axis is the one that judges by it. Read the context map too: a rule reaches only the code the map gives it, and a path two contexts claim breaches `contexts`.
 
-In this repo that file is `.claude/rules/file-placement.md`, and its eight Slice rules are the ones the agent wrote the code under. Read them there, and judge placement and direction against what they say. Cite a breach by the name of the check that catches it, from the table in [`docs/agents/placement-checks.md`](../../../../docs/agents/placement-checks.md). That file maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
+In this repo that file is `.claude/rules/file-placement.md`, and its eight Slice rules are the ones the agent wrote the code under. Read them there, and judge placement and direction against what they say. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. That file maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
 
 **Executable** — a boundary rule the repo can actually run. This is the highest-trust source, because it is enforced rather than aspired to:
 
@@ -64,11 +64,11 @@ In this repo that file is `.claude/rules/file-placement.md`, and its eight Slice
 | `internal/` directories, `go.mod` boundaries | Go |
 | `module-info.java`, ArchUnit tests, Maven module graph | Java |
 
-**If an executable rule exists, run it rather than reason about it.** The repo wires its checks into the Suite, so run the Suite: the Suite file, [`docs/agents/suite.json`](../../../../docs/agents/suite.json), lists its checks in order. Run each check's command in its folder, and run a check's readiness command first, unless its `unless` path exists. A violation a check reports is a fact, not a judgement call, and belongs at the top of the axis. Say in the report which checks you ran; if none exists, say that too, because "this repo cannot check its own boundaries" is itself the finding a reader wants.
+**If an executable rule exists, run it rather than reason about it.** The repo wires its checks into the Suite, so run the Suite: the Suite file, `docs/agents/suite.json`, lists its checks in order. Run each check's command in its folder, and run a check's readiness command first, unless its `unless` path exists. A violation a check reports is a fact, not a judgement call, and belongs at the top of the axis. Say in the report which checks you ran; if none exists, say that too, because "this repo cannot check its own boundaries" is itself the finding a reader wants.
 
 Where a check of the repo's own reads the rules files, the last two kinds are one thing: the file is the text and the check is the run. `docs/agents/placement-checks.md` names the checks in the Suite that prove placement, and what each one runs. Each names the rule, the path and what to do about it, so quote a breach as it came.
 
-On top of whatever the repo has, the Architecture axis always carries the **arrangement baseline** in [`docs/agents/arrangement-baseline.md`](../../../../docs/agents/arrangement-baseline.md) — nine failures of placement and direction that apply even when a repo documents nothing, in the same *what it is* → *how to fix* shape as the smell baseline. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
+On top of whatever the repo has, the Architecture axis always carries the **arrangement baseline** in `docs/agents/arrangement-baseline.md` — nine failures of placement and direction that apply even when a repo documents nothing, in the same *what it is* → *how to fix* shape as the smell baseline. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
 
 Three rules bind the axis, and the third is the one that decides whether anyone keeps reading its reports:
 
