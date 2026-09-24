@@ -31,7 +31,7 @@ Let it finish. Every ticket must come back as a **sub-issue of the spec** — th
 Run, in the background:
 
 ```bash
-uv run scripts/spec_loop.py <spec-number>
+spec-loop <spec-number>
 ```
 
 Tell the user the log path: `.spec-loop/<spec-number>/loop.log`.

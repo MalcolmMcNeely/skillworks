@@ -20,7 +20,7 @@ The route most work travels. You have an idea and want it built.
    - **`/skillworks:prototype`** to answer the question with throwaway code,
    - **`/skillworks:handoff`** back what you learned, and reference it from the original idea thread.
 3. **Branch — is this a multi-session build?**
-   - **Yes** → **`/skillworks:spec-loop <spec#>`** on the spec the grill published, then walk away. Typing the command is the whole of your consent, and nothing after it asks you anything until the end. It cuts the spec into tickets, prints the slices for you to read, publishes them as **sub-issues of the spec**, then hands the rest to `scripts/spec_loop.py`. The script picks the next unblocked ticket and spends **eight steps** on it, in order:
+   - **Yes** → **`/skillworks:spec-loop <spec#>`** on the spec the grill published, then walk away. Typing the command is the whole of your consent, and nothing after it asks you anything until the end. It cuts the spec into tickets, prints the slices for you to read, publishes them as **sub-issues of the spec**, then hands the rest to the `spec-loop` command. The script picks the next unblocked ticket and spends **eight steps** on it, in order:
 
      <!-- steps -->
      build → standards → spec → architecture → fix → sweep → suite → finish

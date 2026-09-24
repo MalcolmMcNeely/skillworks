@@ -3,14 +3,13 @@
 import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from conftest import ROOT, Ran, git, run
+from conftest import BASH, SCRIPTS, Ran, git, launch, run
 
-PREFLIGHT = ROOT / "scripts" / "skillworks-preflight.sh"
+PREFLIGHT = SCRIPTS / "skillworks-preflight.sh"
 
 WARNING = "autoMemoryEnabled is not false in .claude/settings.json"
 
@@ -38,17 +37,6 @@ UV = """#!/usr/bin/env bash
 echo "unplanned uv call: $*" >&2
 exit 97
 """
-
-
-# On Windows the first bash on PATH can be WSL's, which cannot see this repository.
-def git_bash():
-    if sys.platform != "win32":
-        return shutil.which("bash")
-    git_home = Path(run(["git", "--exec-path"]).strip()).parents[2]
-    return str(git_home / "bin" / "bash.exe")
-
-
-BASH = git_bash()
 
 
 class Work:
@@ -94,13 +82,18 @@ def without_node(path, spare):
     return os.pathsep.join(folders)
 
 
-def preflight(work, *args, node=True):
+def with_stand_ins(work, node=True):
     env = dict(os.environ)
     path = env["PATH"] if node else without_node(env["PATH"], work.stand_ins.parent)
     env["PATH"] = str(work.stand_ins) + os.pathsep + path
+    return env
+
+
+def preflight(work, *args, node=True):
     done = subprocess.run(
         [BASH, PREFLIGHT.as_posix(), *args],
-        cwd=work.repo, env=env, capture_output=True, encoding="utf-8", errors="replace")
+        cwd=work.repo, env=with_stand_ins(work, node), capture_output=True, encoding="utf-8",
+        errors="replace")
     return Ran(done.returncode, done.stdout, done.stderr)
 
 
@@ -178,3 +171,22 @@ def test_the_warning_comes_after_the_label_work(work):
 
     assert ran.status == 0, said(ran)
     assert ran.out.index("label ready-for-agent") < ran.out.index(WARNING)
+
+
+def test_the_preflight_command_reads_the_settings_at_the_top_of_the_repository(work):
+    settings(work, '{"autoMemoryEnabled": false}')
+    below = work.repo / "src" / "deep"
+    below.mkdir(parents=True)
+
+    ran = launch("skillworks-preflight", where=below, env=with_stand_ins(work))
+
+    assert ran.status == 0, said(ran)
+    assert "auto-memory off" in ran.out
+    assert WARNING not in said(ran)
+
+
+def test_the_preflight_command_names_itself_in_its_usage(work):
+    ran = launch("skillworks-preflight", "--no-such-flag", where=work.repo, env=with_stand_ins(work))
+
+    assert ran.status == 64
+    assert ran.err == "usage: skillworks-preflight [--check-only]\n"

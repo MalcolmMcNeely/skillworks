@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+plugin="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# A repo with a Python project of its own would otherwise have it built first.
+exec uv run --no-project --quiet "$plugin/scripts/land_ticket.py" "$@"

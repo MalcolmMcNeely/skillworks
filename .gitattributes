@@ -1,0 +1,2 @@
+# A launcher bash reads with a carriage return in it fails on the first line.
+plugins/skillworks/bin/* text eol=lf

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+plugin="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Bash and not uv: the preflight is what checks uv is on the machine.
+exec bash "$plugin/scripts/skillworks-preflight.sh" "$@"

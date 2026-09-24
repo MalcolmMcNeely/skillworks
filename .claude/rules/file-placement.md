@@ -167,5 +167,5 @@ banned-folder-names:
 name-map:
   "*Queries": Queries
 test-roots:
-  tests/scripts: scripts
+  tests/plugins/skillworks/scripts: plugins/skillworks/scripts
 ```

@@ -1,8 +1,8 @@
 #
 # Land one finished ticket on main.
 #
-#   uv run scripts/land_ticket.py <worktree> <ticket-number> [session-id]
-#   uv run scripts/land_ticket.py --plan
+#   land-ticket <worktree> <ticket-number> [session-id]
+#   land-ticket --plan
 #
 # Exits 0 once the ticket's commit is on the remote's main. Exits non-zero with
 # the reason on stderr, having pushed nothing.
@@ -34,8 +34,8 @@ from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
 
 USAGE = (
-    "usage: uv run scripts/land_ticket.py <worktree> <ticket-number> [session-id]\n"
-    "       uv run scripts/land_ticket.py --plan\n"
+    "usage: land-ticket <worktree> <ticket-number> [session-id]\n"
+    "       land-ticket --plan\n"
 )
 
 # Enough for a collision with another loop, few enough that this cannot spin.

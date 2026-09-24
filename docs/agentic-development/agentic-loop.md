@@ -69,8 +69,7 @@ Four steps, and only the last one speaks to you.
    go through every layer, each sized for one fresh context window, each declaring the tickets that
    block it. Every ticket is published as a **sub-issue of the spec**. That parentage is the only
    thing stopping two people's loops taking each other's work.
-3. **Hand over to the driver.** Start `uv run scripts/spec_loop.py <spec>` in the background and say
-   where the log is.
+3. **Hand over to the driver.** Start `spec-loop <spec>` in the background and say where the log is.
 4. **Report.** When the script exits, read the log and say which tickets closed.
 
 The skill is forbidden from implementing a ticket itself. If a model picks the next ticket, the choice
@@ -82,9 +81,9 @@ line, **and** the drift comment on the spec must list nothing Missing, Partial o
 
 ### The driver
 
-`scripts/spec_loop.py` holds the control flow. It is a script and not a prompt so that a run can be
-read, stopped and resumed. A model can skip a step a skill asks for, so every step is a separate call
-here. A step can exit 0 and do nothing, so the script reads a fact after each one.
+`plugins/skillworks/scripts/spec_loop.py` holds the control flow. It is a script and not a prompt so
+that a run can be read, stopped and resumed. A model can skip a step a skill asks for, so every step
+is a separate call here. A step can exit 0 and do nothing, so the script reads a fact after each one.
 
 **Before it starts** it checks that `gh` is installed and logged in, that `claude` is on `PATH`, that
 the spec reads and is open, and that the spec has at least one sub-issue. Then it Keeps any worktree
@@ -225,7 +224,7 @@ result, out of git, off the tracker, or out of the run it made itself.
 ### Landing
 
 A ticket Lands the moment it passes, on its own, so a stopped run leaves every ticket before it
-already on the remote. `scripts/land_ticket.py` does it, in six steps:
+already on the remote. `plugins/skillworks/scripts/land_ticket.py` does it, in six steps:
 
 | Step | What it does |
 |---|---|
@@ -309,9 +308,10 @@ itself. It starts no Session and reaches no remote.
 | Path | What it is |
 |---|---|
 | `plugins/skillworks/skills/` | The skills each step calls, in the `skillworks` Plugin. |
-| `scripts/spec_loop.py` | The driver. Picks the ticket, runs the steps, reads the facts. |
-| `scripts/land_ticket.py` | Gets one finished ticket onto `main`. |
-| `scripts/ticket_worktree.py` | Makes, Keeps and removes the worktree a job is built in. |
+| `plugins/skillworks/scripts/spec_loop.py` | The driver. Picks the ticket, runs the steps, reads the facts. |
+| `plugins/skillworks/scripts/land_ticket.py` | Gets one finished ticket onto `main`. |
+| `plugins/skillworks/scripts/ticket_worktree.py` | Makes, Keeps and removes the worktree a job is built in. |
+| `plugins/skillworks/bin/` | The short commands on PATH, such as `spec-loop`. Each runs its script from the Plugin, against the repo it was started in. |
 | `.claude/CONTEXT.md` | The glossary for all of the above. Clean, Held, Keep, Land, Load, Runner and Session are defined there. |
 | `docs/adr/` | Why the loop is shaped this way. ADR 0021 on landing each ticket as it finishes, ADR 0024 on the axes editing and the sweep running last, ADR 0025 on the driver being Python. |
 | `.spec-loop/<spec>/` | What one run of that spec did. |

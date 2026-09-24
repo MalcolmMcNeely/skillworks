@@ -7,6 +7,7 @@
 # it reads rather than starting it, which is what lets it hand the program a Runner.
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,8 +15,10 @@ from typing import NamedTuple
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "scripts"))
+ROOT = Path(__file__).resolve().parents[4]
+PLUGIN = ROOT / "plugins" / "skillworks"
+SCRIPTS = PLUGIN / "scripts"
+sys.path.insert(0, str(SCRIPTS))
 
 from runner import Ran, Subprocess
 from suite import SUITE_FILE
@@ -154,6 +157,24 @@ def run(args):
     done = subprocess.run(args, capture_output=True, encoding="utf-8", errors="replace")
     assert done.returncode == 0, done.stdout + done.stderr
     return done.stdout
+
+
+# On Windows the first bash on PATH can be WSL's, which cannot see this repository.
+def git_bash():
+    if sys.platform != "win32":
+        return shutil.which("bash")
+    git_home = Path(run(["git", "--exec-path"]).strip()).parents[2]
+    return str(git_home / "bin" / "bash.exe")
+
+
+BASH = git_bash()
+
+
+def launch(command, *args, where, env=None):
+    done = subprocess.run(
+        [BASH, (PLUGIN / "bin" / command).as_posix(), *[str(a) for a in args]],
+        cwd=where, env=env, capture_output=True, encoding="utf-8", errors="replace")
+    return Ran(done.returncode, done.stdout, done.stderr)
 
 
 # No test may start these for real: they reach the network, a model, a build, or this suite again.

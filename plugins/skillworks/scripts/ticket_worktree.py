@@ -1,10 +1,10 @@
 #
 # Make and remove the throwaway worktree one job of a spec loop is built in.
 #
-#   uv run scripts/ticket_worktree.py open  <checkout> <spec> <job>
-#   uv run scripts/ticket_worktree.py close <checkout> <spec> <job>
-#   uv run scripts/ticket_worktree.py plan  <checkout> <spec> <job>
-#   uv run scripts/ticket_worktree.py keep  <checkout> <spec>
+#   ticket-worktree open  <checkout> <spec> <job>
+#   ticket-worktree close <checkout> <spec> <job>
+#   ticket-worktree plan  <checkout> <spec> <job>
+#   ticket-worktree keep  <checkout> <spec>
 #
 # A job is one ticket, or the drift check at the end. It gets a worktree and a
 # branch of its own, cut from the newest `origin/main`, and both go when it passes.
@@ -42,8 +42,8 @@ from runner import Subprocess
 from stop import Stop, is_a_number, misuse, refusal
 
 USAGE = (
-    "usage: uv run scripts/ticket_worktree.py open|close|plan <checkout> <spec> <job>\n"
-    "       uv run scripts/ticket_worktree.py keep <checkout> <spec>\n"
+    "usage: ticket-worktree open|close|plan <checkout> <spec> <job>\n"
+    "       ticket-worktree keep <checkout> <spec>\n"
 )
 
 

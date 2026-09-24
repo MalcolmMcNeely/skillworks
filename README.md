@@ -175,16 +175,17 @@ added here goes in that file too.
 
 The API tests start Loki in a container, so Docker must be running. Run the front-end checks from
 `src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally. The
-script tests build a throwaway repository in a temporary directory and touch nothing else. The
-scripts are Python, so `uv` has to be on PATH for their tests to run. pytest is asked for on the
-command line, because the scripts carry no project file. The hook script that records each Load is
-node, and its tests sit beside it and use the test runner built into node, so they add no
-dependency. node expands the quoted pattern itself:
+loop's scripts live in the Plugin, at `plugins/skillworks/scripts/`, and their tests sit at the same
+path under `tests/`. The script tests build a throwaway repository in a temporary directory and touch
+nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest is
+asked for on the command line, because the scripts carry no project file. The hook script that
+records each Load is node, and its tests sit beside it and use the test runner built into node, so
+they add no dependency. node expands the quoted pattern itself:
 
 ```
 dotnet test Skillworks.slnx
 
-uv run --with pytest pytest tests/scripts
+uv run --with pytest pytest tests/plugins/skillworks/scripts
 
 node --test "scripts/*.test.mjs"
 
@@ -205,7 +206,7 @@ model the API does not offer, so no model answers. It needs both programs on PAT
 issue and starts no model session, and it takes a few seconds:
 
 ```
-uv run --with pytest pytest tests/scripts --real-binaries
+uv run --with pytest pytest tests/plugins/skillworks/scripts --real-binaries
 ```
 
 A session waits ten minutes on a command before it gives up, rather than the two minutes it would
@@ -229,12 +230,15 @@ background.
 | `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks them. |
 | `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
-| `tests/scripts/` | The drivers in `scripts/`, run against a throwaway repository. |
+| `tests/plugins/skillworks/scripts/` | The Plugin's scripts, run against a throwaway repository. |
 | `plugins/` | The local Marketplace. It holds the one Plugin, `skillworks`, and this repo loads its skills from there. Studio reads it by default. |
+| `plugins/skillworks/scripts/` | The loop's scripts: the driver, the landing, the worktrees, the Suite and the preflight. They read the repo from the git top level of the folder they start in, never from where the Plugin sits. |
+| `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree` and `skillworks-preflight`. Each runs its script from the Plugin. |
 | `.claude/skills/` | The skills that are not in the Plugin. Dev tooling for this repo, mostly vendored. |
-| `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
+| `scripts/` | The hook script that records each Load. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
 | `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` writes the tracker and domain seeds; the review baselines are this repo's own. |
+| `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
 | `docs/agentic-development/` | How the dev loop works, for a human reading it rather than a skill. |
 
 ### How much of Studio is Shared

@@ -5,7 +5,7 @@ import io
 from pathlib import Path
 
 import land_ticket
-from conftest import Ran, git, project_suite, write_suite
+from conftest import Ran, git, launch, project_suite, write_suite
 from suite import SUITE_FILE
 
 
@@ -646,3 +646,10 @@ def test_a_conflict_marker_in_a_crlf_file_is_caught(repo, runner):
     assert ran.status == 1
     assert "conflict marker" in report(ran)
     assert main_of(repo) == base
+
+
+def test_the_land_ticket_command_starts_the_landing_script_in_the_plugin(repo):
+    ran = launch("land-ticket", where=repo.work)
+
+    assert ran.status == 64
+    assert ran.err.startswith("usage: land-ticket <worktree> <ticket-number> [session-id]\n")

@@ -9,7 +9,7 @@
       }
     },
     {
-      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/scripts"],
+      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts"],
       "folder": "."
     },
     {

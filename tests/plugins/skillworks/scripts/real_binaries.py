@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 import land_ticket
 import spec_loop
-from conftest import ROOT, Ran, RecordingRunner
+from conftest import PLUGIN, ROOT, Ran, RecordingRunner
 from runner import Subprocess
 
 SPEC = "200"
@@ -145,7 +145,6 @@ def usage_of(said):
 
 
 # The Plugin loads far enough to report itself, and the API turns down a model it does not offer.
-PLUGIN = ROOT / "plugins" / "skillworks"
 NO_SUCH_MODEL = "zzznosuchmodel"
 FORCED = "skillworks:skillworks"
 # A style set by the project, which the forced style has to beat.

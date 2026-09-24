@@ -9,7 +9,7 @@ import pytest
 
 import spec_loop
 import ticket_worktree
-from conftest import ROOT, Ran, git, project_suite, write_suite
+from conftest import ROOT, Ran, git, launch, project_suite, write_suite
 
 SPEC = "158"
 
@@ -1362,3 +1362,25 @@ def test_the_prose_around_the_marked_line_is_never_read():
     reworded = given_a_document_marked_with(the_step_list())
 
     assert marked_line(reworded) == the_step_list()
+
+
+# --- the command the Plugin puts on PATH ------------------------------------
+
+def test_a_loop_started_below_the_top_of_the_repository_logs_at_the_top(loop, monkeypatch):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    below = loop.repo.work / "src" / "deep"
+    below.mkdir(parents=True)
+    monkeypatch.chdir(below)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert "spec-loop/158/ticket-168" in loop.log()
+    assert not (below / ".spec-loop").exists()
+
+
+def test_the_spec_loop_command_starts_the_driver_in_the_plugin(repo):
+    ran = launch("spec-loop", where=repo.work)
+
+    assert ran.status == 64
+    assert ran.err == "usage: spec-loop <spec-issue-number> [--dry-run]\n"

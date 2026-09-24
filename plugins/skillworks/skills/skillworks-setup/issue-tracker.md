@@ -23,7 +23,7 @@ Run `gh issue view <number> --comments`.
 
 ## Spec loop operations
 
-Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift` and `scripts/spec_loop.py`.
+Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift` and the `spec-loop` command.
 
 A **spec** issue is the parent. Its **tickets** are GitHub sub-issues of it. That parentage scopes the loop: a driver reads one spec's children and nothing else, so two people running the loop on two specs cannot take each other's tickets.
 

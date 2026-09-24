@@ -18,8 +18,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(uv run scripts/spec_loop.py:*)",
-      "Bash(bash scripts/skillworks-preflight.sh:*)"
+      "Bash(spec-loop:*)",
+      "Bash(skillworks-preflight:*)"
     ]
   },
   "autoMemoryEnabled": false,

@@ -2,7 +2,7 @@
 #
 # Check this repo can run the Skillworks loop, then create the label it needs.
 #
-#   bash scripts/skillworks-preflight.sh [--check-only]
+#   skillworks-preflight [--check-only]
 #
 # Idempotent. Run it again any time to repair.
 #
@@ -14,7 +14,7 @@ CHECK_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --check-only) CHECK_ONLY=1 ;;
-    *) printf "usage: skillworks-preflight.sh [--check-only]\n" >&2; exit 64 ;;
+    *) printf "usage: skillworks-preflight [--check-only]\n" >&2; exit 64 ;;
   esac
 done
 

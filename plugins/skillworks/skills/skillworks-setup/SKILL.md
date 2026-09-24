@@ -26,7 +26,7 @@ The outputs:
 ### 1. Preflight and labels
 
 ```bash
-bash scripts/skillworks-preflight.sh
+skillworks-preflight
 ```
 
 It checks `gh`, the login, and that `origin` is GitHub, then creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label. Safe to run again.

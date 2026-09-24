@@ -7,9 +7,9 @@ import subprocess
 from pathlib import Path
 
 import ticket_worktree
-from conftest import ROOT, Ran, git
+from conftest import SCRIPTS, Ran, git, launch
 
-SCRIPT = (ROOT / "scripts" / "ticket_worktree.py").as_posix()
+SCRIPT = (SCRIPTS / "ticket_worktree.py").as_posix()
 
 
 def run_worktree(runner, *args):
@@ -364,3 +364,13 @@ def test_an_unknown_command_prints_the_usage(repo, runner):
 
     assert ran.status == 64
     assert "usage:" in ran.err
+
+
+def test_the_ticket_worktree_command_plans_from_the_top_of_the_repository(repo):
+    below = repo.work / "src" / "deep"
+    below.mkdir(parents=True)
+
+    ran = launch("ticket-worktree", "plan", ".", 158, "ticket-168", where=below)
+
+    assert ran.status == 0, ran.err
+    assert ran.out == "{}\tspec-loop/158/ticket-168\n".format(repo.tree(158, "ticket-168").as_posix())

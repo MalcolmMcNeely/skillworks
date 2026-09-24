@@ -4,7 +4,7 @@
 # origin/main, and lands on the remote the moment it passes. The main checkout
 # is never worked in, so it stays usable for the whole run.
 #
-#   uv run scripts/spec_loop.py <spec-issue-number> [--dry-run]
+#   spec-loop <spec-issue-number> [--dry-run]
 #
 # The script picks the next ticket. The model never picks. Control flow lives
 # here so a run is inspectable, stoppable and resumable.
@@ -40,7 +40,7 @@ from runner import Subprocess
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 
-USAGE = "usage: uv run scripts/spec_loop.py <spec-issue-number> [--dry-run]\n"
+USAGE = "usage: spec-loop <spec-issue-number> [--dry-run]\n"
 
 # gh asks at a terminal, and a loop run has nobody at one.
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
@@ -730,13 +730,15 @@ class Loop:
     # --- the whole run -------------------------------------------------------
 
     def run(self, dry):
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-
         # No guard on the branch or on the edits: nothing is ever built in this checkout.
         found = self.git(Path.cwd(), "rev-parse", "--show-toplevel")
         if found.status != 0:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
             raise stop("ABORT {} is not a git worktree.".format(Path.cwd().as_posix()))
         self.root = Path(found.out.strip())
+        self.log_dir = self.root / ".spec-loop" / self.spec
+        self.log = self.log_dir / "loop.log"
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
         self.preflight()
         if dry:
