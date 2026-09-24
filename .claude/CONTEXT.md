@@ -13,6 +13,13 @@ it lets a step pass. One word, because a job that stopped and a job that finishe
 question.
 _Avoid_: Pristine, unmodified
 
+**Denial**:
+A tool call Claude Code turned down because the session had no permission for it: a write to a
+protected path, or a command no allow rule names. A session with no human cannot be asked, so a
+Denial is final. Many Denials are worked around. One that stops a step is the case for running the
+loop again in bypass mode.
+_Avoid_: Refusal, wall, block
+
 **Dumb zone**:
 The part of a context window past the Smart zone. A model there does not fail loudly. It leaves out
 an instruction, a constraint or the middle of what it read, and still sounds sure, so the error is
