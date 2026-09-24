@@ -81,7 +81,32 @@ refusing=$(gh api "repos/$REPO/rules/branches/main" --jq '.[].type' \
   | paste -sd, - || true)
 [ -z "$refusing" ] \
   || die "a rule on main in $REPO refuses a direct push ($refusing). The loop lands every ticket by pushing to main."
-ok "$login may push to main"
+# Classic protection is readable with admin rights only, and an admin passes it unless it holds admins too.
+if classic=$(gh api "repos/$REPO/branches/main/protection" --jq '
+    (if .enforce_admins.enabled then "enforced" else empty end),
+    (if .required_pull_request_reviews then "pull_request" else empty end),
+    (if .required_status_checks then "required_status_checks" else empty end),
+    (if .lock_branch.enabled then "lock_branch" else empty end),
+    (if .restrictions then "restrictions" else empty end),
+    "user " + .restrictions.users[]?.login,
+    "team " + .restrictions.teams[]?.slug' 2>&1); then
+  if grep -qx enforced <<< "$classic"; then
+    refusing=$(grep -xE 'pull_request|required_status_checks|lock_branch' <<< "$classic" | paste -sd, - || true)
+    [ -z "$refusing" ] \
+      || die "classic branch protection on main in $REPO refuses a direct push ($refusing). The loop lands every ticket by pushing to main."
+    if grep -qx restrictions <<< "$classic" && ! grep -qx "user $login" <<< "$classic"; then
+      teams=$(sed -n 's/^team //p' <<< "$classic" | paste -sd, - || true)
+      [ -n "$teams" ] \
+        || die "classic branch protection on main in $REPO restricts who may push, and $login is not one of them. The loop lands every ticket by pushing to main."
+      warn "classic branch protection on main in $REPO lets teams push ($teams), and $login is not named. If $login is on none of those teams, the loop cannot land a ticket on main."
+    fi
+  fi
+  ok "$login may push to main"
+elif grep -q "Branch not protected" <<< "$classic"; then
+  ok "$login may push to main"
+else
+  warn "could not read the classic branch protection on main in $REPO, so a rule there that refuses a direct push was not checked. Reading it needs admin rights on $REPO."
+fi
 
 # --- labels -----------------------------------------------------------------
 #

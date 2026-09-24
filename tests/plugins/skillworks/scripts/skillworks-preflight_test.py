@@ -27,6 +27,7 @@ case "$*" in
   "api repos/owner/repo --jq .default_branch") cat "$here/default-branch" ;;
   "api repos/owner/repo --jq .permissions.push") cat "$here/may-push" ;;
   "api repos/owner/repo/rules/branches/main --jq .[].type") cat "$here/main-rules" ;;
+  "api repos/owner/repo/branches/main/protection --jq "*) cat "$here/main-protection"; exit "$(cat "$here/main-protection-status")" ;;
   "label list --limit 200 --json name --jq .[].name") echo ready-for-agent ;;
   *) echo "unplanned gh call: $*" >&2; exit 97 ;;
 esac
@@ -67,10 +68,15 @@ class Work:
         self.answer("default-branch", "main")
         self.answer("may-push", "true")
         self.answer("main-rules", "")
+        self.protect("gh: Branch not protected (HTTP 404)", status=1)
         self.install("skillworks", forces=True)
 
     def answer(self, name, text):
         (self.stand_ins / name).write_text(text + "\n" if text else "", encoding="utf-8", newline="\n")
+
+    def protect(self, *lines, status=0):
+        self.answer("main-protection", "\n".join(lines))
+        self.answer("main-protection-status", str(status))
 
     def install(self, name, forces=False, enabled=True, scope="user", project=None, styles=None):
         home = self.root / "plugins" / f"{name}-{len(self.plugins)}"
@@ -334,3 +340,61 @@ def test_a_rule_that_lets_a_push_through_passes(work):
 
     assert ran.status == 0, said(ran)
     assert "may push to main" in ran.out
+
+
+@pytest.mark.parametrize("protection", ["pull_request", "required_status_checks", "lock_branch"])
+def test_classic_protection_that_refuses_a_push_to_main_fails_naming_the_protection(work, protection):
+    work.protect("enforced", protection)
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert f"FAIL  classic branch protection on main in owner/repo refuses a direct push ({protection})" in ran.err
+    assert "label ready-for-agent" not in ran.out
+
+
+def test_classic_protection_that_lets_admins_through_passes(work):
+    work.protect("pull_request", "restrictions")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "me may push to main" in ran.out
+
+
+def test_classic_protection_that_restricts_pushes_to_others_fails(work):
+    work.protect("enforced", "restrictions", "user someone")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  classic branch protection on main in owner/repo restricts who may push, and me is not one of them." in ran.err
+
+
+def test_classic_protection_that_restricts_pushes_to_this_login_passes(work):
+    work.protect("enforced", "restrictions", "user someone", "user me")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "me may push to main" in ran.out
+
+
+def test_classic_protection_that_restricts_pushes_to_a_team_warns_and_passes(work):
+    work.protect("enforced", "restrictions", "team builders")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "warn  classic branch protection on main in owner/repo lets teams push (builders)" in ran.out
+
+
+def test_classic_protection_that_cannot_be_read_warns_and_passes(work):
+    work.protect("gh: Must have admin rights to Repository. (HTTP 403)", status=1)
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "warn  could not read the classic branch protection on main in owner/repo" in ran.out
+    assert "may push to main" not in ran.out
+    assert "label ready-for-agent" in ran.out
