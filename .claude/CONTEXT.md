@@ -83,3 +83,10 @@ The checks a repo names for the loop to run before a ticket Lands. The repo owns
 team says what green means for its own code. A Suite ends one of two ways that are never confused: it
 went red, and the ticket goes round again, or the machine was not ready to run it, and the loop stops.
 _Avoid_: Test run, pipeline, CI
+
+**Turn**:
+The right to push to `main`, held by one loop at a time in one clone. A loop that lost a push race
+waits for its Turn and holds it until it Lands, so the loops beside it cannot beat it again. A loop
+that has not lost takes its Turn only for the push. A Turn orders the loops of one clone and no
+others: a push from anywhere else can still beat it, and the loop tries again.
+_Avoid_: Lock, mutex, queue
