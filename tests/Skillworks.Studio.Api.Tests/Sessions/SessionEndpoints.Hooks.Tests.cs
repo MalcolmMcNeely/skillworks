@@ -9,7 +9,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Pushes_hook_records_under_the_scope_the_session_watch_hook_writes()
     {
-        var script = await File.ReadAllTextAsync(Path.Combine(StudioHost.RepositoryRoot(), "scripts", "session-watch.mjs"));
+        var script = await File.ReadAllTextAsync(Path.Combine(StudioHost.RepositoryRoot(), "plugins", "skillworks", "scripts", "session-watch.mjs"));
 
         Assert.Contains($"scope: {{ name: \"{HookRecord.Scope}\" }}", script, StringComparison.Ordinal);
     }

@@ -7,7 +7,13 @@ import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 
-const SCRIPT = join(import.meta.dirname, "session-watch.mjs");
+const ROOT = join(import.meta.dirname, "..", "..", "..", "..");
+
+const PLUGIN = join(ROOT, "plugins", "skillworks");
+
+const SCRIPT = join(PLUGIN, "scripts", "session-watch.mjs");
+
+const HOOKED = ["InstructionsLoaded", "SessionStart"];
 
 const REQUIRED = {
   session_id: "3f2a9c1e-5b7d-4e8f-a1c2-9d0e6b4f7a31",
@@ -122,10 +128,13 @@ async function endlessGitConfig() {
   return { path: pipe, close };
 }
 
+async function pluginHooks() {
+  return JSON.parse(await readFile(join(PLUGIN, "hooks", "hooks.json"), "utf8")).hooks;
+}
+
 async function hookLimits() {
-  const settings = JSON.parse(await readFile(join(import.meta.dirname, "..", ".claude", "settings.json"), "utf8"));
   return Object.fromEntries(
-    Object.entries(settings.hooks).map(([event, groups]) => [event, groups[0].hooks[0].timeout * 1000]),
+    Object.entries(await pluginHooks()).map(([event, groups]) => [event, groups[0].hooks[0].timeout * 1000]),
   );
 }
 
@@ -303,6 +312,28 @@ for (const [name, payload] of EVENTS) {
     assert.equal(ran.err, "");
   });
 }
+
+for (const event of HOOKED) {
+  test(`the Plugin runs this script on ${event} from the Plugin root`, async () => {
+    // Act
+    const groups = (await pluginHooks())[event];
+
+    // Assert
+    assert.equal(groups.length, 1);
+    const [hook] = groups[0].hooks;
+    assert.equal(hook.type, "command");
+    assert.equal(hook.command, "node");
+    assert.deepEqual(hook.args, ["${CLAUDE_PLUGIN_ROOT}/scripts/session-watch.mjs"]);
+  });
+}
+
+test("the project settings register no hook of their own", async () => {
+  // Act
+  const settings = JSON.parse(await readFile(join(ROOT, ".claude", "settings.json"), "utf8"));
+
+  // Assert
+  assert.equal(settings.hooks, undefined);
+});
 
 const LIMITS = await hookLimits();
 

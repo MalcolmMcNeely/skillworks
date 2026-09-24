@@ -67,6 +67,5 @@ contexts:
     code:
       - .claude
       - plugins/skillworks
-      - scripts
       - tests/plugins/skillworks/scripts
 ```

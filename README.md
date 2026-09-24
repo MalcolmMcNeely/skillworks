@@ -134,15 +134,16 @@ recorded.
 
 ### What each Session was given
 
-Two hooks in `.claude/settings.json` run `scripts/session-watch.mjs`. `SessionStart` posts one record
-for each Session, with how it began. `InstructionsLoaded` posts one Load for each instruction file
-that reaches it. Both go to `OTEL_EXPORTER_OTLP_ENDPOINT`, and both carry the Session's `session.id`,
-so one Loki query reads them beside Claude Code's own events. With `OTEL_METRICS_INCLUDE_REPOSITORY`
-on, both also carry the Repository as `vcs.owner.name` and `vcs.repository.name`, read from the
-`origin` remote the way Claude Code reads it, so a query filtered by Repository finds them too. With
-the switch off, or no `origin` to read, the Repository is left off and the record still goes. A
-Session record with no Loads after it says the Rules did not arrive. No records at all says the
-Collector was not there.
+The Plugin's two hooks, in `plugins/skillworks/hooks/hooks.json`, run
+`plugins/skillworks/scripts/session-watch.mjs`, so every repo with the Plugin records its Loads.
+`SessionStart` posts one record for each Session, with how it began. `InstructionsLoaded` posts one
+Load for each instruction file that reaches it. Both go to `OTEL_EXPORTER_OTLP_ENDPOINT`, and both
+carry the Session's `session.id`, so one Loki query reads them beside Claude Code's own events.
+With `OTEL_METRICS_INCLUDE_REPOSITORY` on, both also carry the Repository as `vcs.owner.name` and
+`vcs.repository.name`, read from the `origin` remote the way Claude Code reads it, so a query
+filtered by Repository finds them too. With the switch off, or no `origin` to read, the Repository
+is left off and the record still goes. A Session record with no Loads after it says the Rules did
+not arrive. No records at all says the Collector was not there.
 
 A hook that fails is silent. Its exit code and its errors reach no one, so the watcher can stop
 watching and nothing says so. To see a hook fail, run `claude --debug hooks`.
@@ -179,15 +180,15 @@ loop's scripts live in the Plugin, at `plugins/skillworks/scripts/`, and their t
 path under `tests/`. The script tests build a throwaway repository in a temporary directory and touch
 nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest is
 asked for on the command line, because the scripts carry no project file. The hook script that
-records each Load is node, and its tests sit beside it and use the test runner built into node, so
-they add no dependency. node expands the quoted pattern itself:
+records each Load is node, and its tests sit beside the script tests and use the test runner built
+into node, so they add no dependency. node expands the quoted pattern itself:
 
 ```
 dotnet test Skillworks.slnx
 
 uv run --with pytest pytest tests/plugins/skillworks/scripts
 
-node --test "scripts/*.test.mjs"
+node --test "tests/plugins/skillworks/scripts/*.test.mjs"
 
 cd src/Skillworks.Studio.Web
 npm run typecheck
@@ -232,10 +233,10 @@ background.
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
 | `tests/plugins/skillworks/scripts/` | The Plugin's scripts, run against a throwaway repository. |
 | `plugins/` | The local Marketplace. It holds the one Plugin, `skillworks`, and this repo loads its skills from there. Studio reads it by default. |
-| `plugins/skillworks/scripts/` | The loop's scripts: the driver, the landing, the worktrees, the Suite and the preflight. They read the repo from the git top level of the folder they start in, never from where the Plugin sits. |
+| `plugins/skillworks/scripts/` | The loop's scripts: the driver, the landing, the worktrees, the Suite, the preflight, and the hook script that records each Load. They read the repo from the git top level of the folder they start in, never from where the Plugin sits. |
+| `plugins/skillworks/hooks/` | The Plugin's hooks. They run the hook script on `SessionStart` and `InstructionsLoaded`, and do nothing unless telemetry is on. |
 | `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree` and `skillworks-preflight`. Each runs its script from the Plugin. |
 | `.claude/skills/` | The skills that are not in the Plugin. Dev tooling for this repo, mostly vendored. |
-| `scripts/` | The hook script that records each Load. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
 | `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` writes the tracker and domain seeds; the review baselines are this repo's own. |
 | `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |

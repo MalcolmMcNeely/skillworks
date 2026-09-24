@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Skillworks.Studio.Api.Tests.Shared.Harness;
 
-// As scripts/session-watch.mjs posts it: Claude Code's own shape, under a scope of the hook's own.
+// As plugins/skillworks/scripts/session-watch.mjs posts it: Claude Code's own shape, under a scope of the hook's own.
 public sealed record HookRecord(string Session, string EventName, string HookEventName, string At)
 {
     internal const string Scope = "skillworks.session-watch";

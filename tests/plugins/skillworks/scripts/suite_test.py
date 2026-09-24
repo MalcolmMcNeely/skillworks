@@ -220,7 +220,7 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
     assert [(call.args, call.where) for call in runner.made if call.args[:2] != ["npm", "ci"]][1:] == [
         (["dotnet", "test", "Skillworks.slnx"], ROOT.as_posix()),
         (["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts"], ROOT.as_posix()),
-        (["node", "--test", "scripts/*.test.mjs"], ROOT.as_posix()),
+        (["node", "--test", "tests/plugins/skillworks/scripts/*.test.mjs"], ROOT.as_posix()),
         (["npm", "run", "typecheck"], web),
         (["npm", "run", "lint"], web),
         (["npm", "test"], web),

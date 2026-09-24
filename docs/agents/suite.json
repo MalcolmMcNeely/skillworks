@@ -13,7 +13,7 @@
       "folder": "."
     },
     {
-      "command": ["node", "--test", "scripts/*.test.mjs"],
+      "command": ["node", "--test", "tests/plugins/skillworks/scripts/*.test.mjs"],
       "folder": "."
     },
     {

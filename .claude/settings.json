@@ -49,34 +49,6 @@
   "enabledPlugins": {
     "skillworks@skillworks": true
   },
-  "hooks": {
-    "InstructionsLoaded": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PROJECT_DIR}/scripts/session-watch.mjs"],
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PROJECT_DIR}/scripts/session-watch.mjs"],
-            "timeout": 5
-          }
-        ]
-      }
-    ]
-  },
   "autoMemoryEnabled": false,
   "promptCacheTtl": "1h",
   "subagentPromptCacheTtl": "1h"
