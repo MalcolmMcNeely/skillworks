@@ -245,3 +245,49 @@ def test_a_check_with_no_command_is_not_ready(tmp_path, runner):
 
     assert not outcome.ready
     assert SUITE_FILE in outcome.said
+
+
+REVIEW_SKILLS = (
+    ".claude/skills/code-review/SKILL.md",
+    ".claude/skills/review-architecture/SKILL.md",
+)
+
+PLACEMENT_CHECKS = "docs/agents/placement-checks.md"
+
+
+def this_repo_s_checks():
+    return json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["checks"]
+
+
+# A skill that names a program, folder or path from this repo's Suite works in no other repo.
+def this_repo_s_facts():
+    facts = set()
+    for entry in this_repo_s_checks():
+        facts.add(entry["command"][0])
+        facts.update(word for word in entry["command"][1:] if "." in word or "/" in word)
+        if entry["folder"] != ".":
+            facts.add(entry["folder"])
+    return facts
+
+
+def test_the_review_skills_run_the_suite_file():
+    for skill in REVIEW_SKILLS:
+        assert SUITE_FILE in (ROOT / skill).read_text(encoding="utf-8"), skill
+
+
+def test_the_review_skills_name_no_fact_of_this_repo_s_suite():
+    facts = this_repo_s_facts()
+    assert {"dotnet", "Skillworks.slnx", "src/Skillworks.Studio.Web"} <= facts
+
+    for skill in REVIEW_SKILLS:
+        text = (ROOT / skill).read_text(encoding="utf-8")
+        assert [fact for fact in sorted(facts) if fact in text] == [], skill
+
+
+def test_the_placement_checks_name_the_suite_checks_that_prove_placement_here():
+    text = (ROOT / PLACEMENT_CHECKS).read_text(encoding="utf-8")
+
+    named = {" ".join(entry["command"]) for entry in this_repo_s_checks()
+             if "`{}`".format(" ".join(entry["command"])) in text}
+
+    assert named == {"dotnet test Skillworks.slnx", "npm run lint"}

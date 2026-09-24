@@ -15,6 +15,15 @@ Cite a breach by the name of the check that catches it:
 
 Rules 7 and 8 have no check behind them, and nor does the exemption that lets a test read a Slice. The front end is held by `src/Skillworks.Studio.Web/.dependency-cruiser.cjs`, which names its own breaches, so quote whichever name the run printed. The table is an index from a breach back to a rule, and the rules themselves stay in the one file.
 
+## The checks that prove placement
+
+Two checks in the Suite file, [`suite.json`](suite.json), prove placement here. A review runs the whole Suite, and reads these two for placement:
+
+| Suite check | What it runs |
+|---|---|
+| `dotnet test Skillworks.slnx` | `Skillworks.Architecture` over the whole tree |
+| `npm run lint` | dependency-cruiser over the front end, in `src/Skillworks.Studio.Web` |
+
 ## The two bends
 
 Holding the author and the reviewer to one document is the point of the Architecture axis, so two items of the arrangement baseline in [`arrangement-baseline.md`](arrangement-baseline.md) bend wherever the repo has written the rule down:
