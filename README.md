@@ -172,7 +172,8 @@ The tool never touches the AppHost's Loki, so your real telemetry stays as it is
 
 `docs/agents/suite.json` is the Suite file. It lists these checks in order, with the folder each one
 runs in and what must be ready first. The loop runs the checks it names and nothing else, so a check
-added here goes in that file too.
+added here goes in that file too. Its `runs` is 2, because the container-backed Span tests flake here,
+so the loop runs a red Suite a second time before it believes it.
 
 The API tests start Loki in a container, so Docker must be running. Run the front-end checks from
 `src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally. The

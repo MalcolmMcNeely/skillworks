@@ -1,4 +1,5 @@
 {
+  "runs": 2,
   "checks": [
     {
       "command": ["dotnet", "test", "Skillworks.slnx"],

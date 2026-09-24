@@ -141,16 +141,17 @@ the tests can run at all: Docker answering, `uv` on `PATH`, the front end instal
 there stops the loop naming what is missing, and no Session is ever asked about it, because no Session
 can start Docker.
 
-A flake is not a red suite either. The container-backed Span tests flake here, and a Session handed a
-failure it cannot reproduce may weaken a test or edit code that was never broken, so `suite` runs the
-whole thing a second time before anything acts on a red one. A second run that passes carries the
-loop on to `finish`. A first run that passes is never run again, so the cost is paid only when
-something went red. The log names which of the two runs each line is, and both runs' output is kept
+A flake is not a red suite either. A Session handed a failure it cannot reproduce may weaken a test
+or edit code that was never broken, so a repo whose tests flake sets `runs` in its Suite file, and
+`suite` runs a red Suite that many times before anything acts on it. With no `runs`, a red Suite is
+believed on its first run. The container-backed Span tests flake here, so this repo sets `runs` to 2.
+A later run that passes carries the loop on to `finish`. A run that passes is never run again, so the
+cost is paid only when something went red. The log numbers each run, and every run's output is kept
 in the step's record, so a flake is read afterwards rather than inferred.
 
 ### A red suite goes round once
 
-Red on both runs is the ticket's own, so the loop goes back to `fix`, then `sweep`, then `suite`, in
+Red on every run is the ticket's own, so the loop goes back to `fix`, then `sweep`, then `suite`, in
 that order and once only.
 
 ```
@@ -163,7 +164,7 @@ failing output and puts it into the `fix` prompt beside the three axis reports, 
 on it reads what failed rather than guessing. That retry is the same `/skillworks:implement <n> --fix` as the
 step in the ordinary run, on a different input, so there is no flag of its own to learn.
 
-A suite that goes green after the circuit carries the loop on to `finish`. Red on both runs again
+A suite that goes green after the circuit carries the loop on to `finish`. Red on every run again
 stops the loop. There is never a second circuit: one is the bound, small enough to hold in your head
 at two in the morning. The worktree and its branch stay where they are, the `FAIL` line names the
 worktree's path, and the step's record holds what the suite said on both sides of the circuit.

@@ -109,7 +109,7 @@ def test_the_starting_suite_is_valid_and_left_empty_is_not_ready(repo, runner):
     parsed = json.loads((repo.work / "docs" / "agents" / "suite.json").read_text(encoding="utf-8"))
     ran = Suite(runner, repo.work).run()
 
-    assert parsed == {"checks": []}
+    assert parsed == {"runs": 1, "checks": []}
     assert not ran.passed
     assert not ran.ready
 

@@ -190,7 +190,7 @@ def progress_suffix(position, total, mean):
 def suite_verdict(outcome, at):
     if not outcome.passed:
         return "went red"
-    return "passed, so the first was a flake" if at > 1 else "passed"
+    return "passed, so the red before it was a flake" if at > 1 else "passed"
 
 
 # Only a Session sets this ID and a Child inherits the attribute, so all below name the first Parent.
@@ -338,8 +338,8 @@ class Loop:
         said = ("{}\n\nThe three review axes have run. Their reports follow, each with the Edit "
                 "that axis made.\n{}").format(asked, reports.rstrip("\n"))
         if self.red_suite is not None:
-            said += ("\n\n## The suite went red\n\nIt was run twice and failed both times, so "
-                     "this is not a flake. What it said follows.\n\n{}\n").format(
+            said += ("\n\n## The suite went red\n\nThe driver ran it as often as the Suite file "
+                     "asks, and it went red every time. What it said follows.\n\n{}\n").format(
                          self.red_suite.said.rstrip("\n"))
         return said, ""
 
@@ -464,12 +464,11 @@ class Loop:
 
     # --- the step the driver runs itself -------------------------------------
 
-    def suite_run(self, ticket, held, at):
-        outcome = Suite(self.runner, self.job_worktree).run()
-        appended(held, "--- suite run {}\n{}".format(at, outcome.said))
-        if outcome.ready:
+    def suite_heard(self, ticket, held):
+        def heard(outcome, at):
+            appended(held, "--- suite run {}\n{}".format(at, outcome.said))
             self.say("      #{} suite run {} {}".format(ticket, at, suite_verdict(outcome, at)))
-        return outcome
+        return heard
 
     # Red is handed back rather than raised, so the caller chooses between a circuit and a stop.
     def run_suite_step(self, ticket, step):
@@ -481,13 +480,11 @@ class Loop:
         # The red that sent the loop round is why it ran again, so a second run adds to the record.
         if self.red_suite is None:
             written(held, "")
-        outcome = self.suite_run(ticket, held, 1)
-        # Span tests flake here, and a Session handed a failure it cannot reproduce costs a test.
-        if outcome.ready and not outcome.passed:
-            outcome = self.suite_run(ticket, held, 2)
+        outcome = Suite(self.runner, self.job_worktree).run(self.suite_heard(ticket, held))
 
         # A machine short of what the checks need is nothing a Session could mend, so none is asked.
         if not outcome.ready:
+            appended(held, "--- the suite could not start\n{}".format(outcome.said))
             raise stop("ABORT #{} failed check suite-can-run, so no Session was asked to mend "
                        "it: {}\n      Its worktree is at {}. See {}".format(
                            ticket, outcome.said.strip(), self.job_worktree, held))
@@ -640,8 +637,8 @@ class Loop:
     # The circuit ends at the suite, so the verdict of its last step is the circuit's own.
     def go_round(self, ticket, session, red):
         self.red_suite = red
-        self.say("      #{} the suite went red on both runs, so the loop goes round once: "
-                 "{}".format(ticket, ", then ".join(CIRCUIT)))
+        self.say("      #{} the suite went red on every run it was given, so the loop goes "
+                 "round once: {}".format(ticket, ", then ".join(CIRCUIT)))
         outcome = None
         for name in CIRCUIT:
             outcome = self.run_any_step(ticket, step_named(name), session)

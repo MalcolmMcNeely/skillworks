@@ -7,6 +7,7 @@
 # A machine short of what the checks need is not a red suite, so readiness is proved first.
 # A command is an argument list and never a shell line, so it reads the same on every machine.
 # An `unless` path that exists skips its readiness command, so an install is not done twice.
+# Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
 
 import json
 from pathlib import Path
@@ -51,7 +52,7 @@ class Suite:
         self.runner = runner
         self.tree = Path(worktree)
 
-    def checks(self):
+    def read(self):
         path = self.tree / SUITE_FILE
         if not path.is_file():
             raise Unreadable("no such file")
@@ -59,7 +60,13 @@ class Suite:
             parsed = json.loads(path.read_text(encoding="utf-8"))
         except ValueError as fault:
             raise Unreadable("it is not JSON: {}".format(fault))
-        entries = parsed.get("checks") if isinstance(parsed, dict) else None
+        if not isinstance(parsed, dict):
+            raise Unreadable("it names no checks")
+        runs = parsed.get("runs", 1)
+        # Python counts a JSON true as an int, and a Suite run true times means nothing.
+        if not isinstance(runs, int) or isinstance(runs, bool) or runs < 1:
+            raise Unreadable("runs is not a count of 1 or more")
+        entries = parsed.get("checks")
         if not isinstance(entries, list) or not entries:
             raise Unreadable("it names no checks")
 
@@ -70,7 +77,7 @@ class Suite:
                 ready = Ready(command_of(ready), str(ready.get("message", "")),
                               ready.get("unless"))
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready))
-        return wanted
+        return wanted, runs
 
     # Read as facts, never out of a runner's output, which is reworded with every version.
     def short_of(self, wanted):
@@ -90,9 +97,9 @@ class Suite:
                     ready.message.rstrip("\n"), " ".join(ready.command), asked.out + asked.err)
         return ""
 
-    def run(self):
+    def run(self, heard=None):
         try:
-            wanted = self.checks()
+            wanted, runs = self.read()
         # A suite that ran nothing cannot pass, so a file that names nothing is never green.
         except Unreadable as fault:
             return Outcome(False, "the Suite file {} cannot be run, because {}\n".format(
@@ -102,6 +109,15 @@ class Suite:
         if short:
             return Outcome(False, short, ready=False)
 
+        for at in range(1, runs + 1):
+            outcome = self.run_checks(wanted)
+            if heard is not None:
+                heard(outcome, at)
+            if outcome.passed:
+                break
+        return outcome
+
+    def run_checks(self, wanted):
         said = ""
         for check in wanted:
             ran = self.runner.run(check.command, check.folder.as_posix())

@@ -73,3 +73,8 @@ because a document that can silently contradict the script is the same defect on
 Fixing no longer covers review findings alone. A prompt carrying a failing suite has that to fix, and
 the section says so. The flag does not change: the retry is `--fix`, because it is the same act on a
 different input.
+
+Later, [ADR 0030](0030-steering-is-the-repos-and-machinery-is-the-plugins.md) moved the second run out
+of the driver. The flake is a fact about this repo, and the driver is Machinery every repo runs. The
+Suite file now sets how many times a red Suite runs, and one run is the default, so in another repo
+the first red is red. This repo's Suite file asks for two runs, for the reason given above.

@@ -44,8 +44,8 @@ def unmerged(repo):
 
 
 # A Suite file, so a case can say whether the suite ran.
-def given_a_project(repo):
-    write_suite(repo.work, *project_suite())
+def given_a_project(repo, runs=None):
+    write_suite(repo.work, *project_suite(), runs=runs)
     git(repo.work, "add", "-A")
     git(repo.work, "commit", "--quiet", "-m", "A Suite to check")
     git(repo.work, "push", "--quiet", "origin", "main")
@@ -218,6 +218,52 @@ def test_a_suite_that_fails_on_the_new_base_is_not_pushed(repo, runner):
 
     assert ran.status == 1
     assert "failed the suite" in report(ran)
+    assert main_of(repo) == base
+
+
+def test_with_no_setting_a_suite_red_once_on_the_new_base_is_not_pushed(repo, runner):
+    given_the_suite_passes(runner)
+    runner.refuse("dotnet test", "a test failed", times=1)
+    given_a_project(repo)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    base = main_of(repo)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 1
+    assert len(runner.started("dotnet")) == 1
+    assert main_of(repo) == base
+
+
+def test_a_suite_red_then_green_on_the_new_base_lands_when_a_second_run_is_asked_for(
+        repo, runner):
+    given_the_suite_passes(runner)
+    runner.refuse("dotnet test", "a test failed", times=1)
+    given_a_project(repo, runs=2)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 0, report(ran)
+    assert len(runner.started("dotnet")) == 2
+    assert main_of(repo) == head_of(repo)
+
+
+def test_a_suite_red_twice_on_the_new_base_is_not_pushed_when_a_second_run_is_asked_for(
+        repo, runner):
+    given_the_suite_passes(runner)
+    runner.stub("dotnet", says="a test failed", status=1)
+    given_a_project(repo, runs=2)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    base = main_of(repo)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 1
+    assert len(runner.started("dotnet")) == 2
     assert main_of(repo) == base
 
 

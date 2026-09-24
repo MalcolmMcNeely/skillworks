@@ -247,6 +247,111 @@ def test_a_check_with_no_command_is_not_ready(tmp_path, runner):
     assert SUITE_FILE in outcome.said
 
 
+# --- how many times a red Suite runs -----------------------------------------
+
+def given_a_check_red_on_its_first_run_alone(runner):
+    runner.refuse("prove", "a test failed", times=1)
+
+
+def test_with_no_setting_one_red_run_is_red(tmp_path, runner):
+    write_suite(tmp_path, check("prove"))
+    given_every_program_passes(runner)
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.ready
+    assert not outcome.passed
+    assert runner.calls == [["prove"]]
+
+
+def test_a_second_run_asked_for_passes_a_suite_red_then_green(tmp_path, runner):
+    write_suite(tmp_path, check("prove"), runs=2)
+    given_every_program_passes(runner)
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.passed
+    assert runner.calls == [["prove"], ["prove"]]
+
+
+def test_a_second_run_asked_for_leaves_a_suite_red_twice_red(tmp_path, runner):
+    write_suite(tmp_path, check("prove"), runs=2)
+    given_every_program_passes(runner)
+    runner.stub("prove", says="a test failed", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.ready
+    assert not outcome.passed
+    assert runner.calls == [["prove"], ["prove"]]
+
+
+def test_a_green_run_is_never_run_again(tmp_path, runner):
+    write_suite(tmp_path, check("prove"), runs=3)
+    given_every_program_passes(runner)
+
+    Suite(runner, tmp_path).run()
+
+    assert runner.calls == [["prove"]]
+
+
+def test_each_run_is_heard_with_its_number(tmp_path, runner):
+    write_suite(tmp_path, check("prove"), runs=2)
+    given_every_program_passes(runner)
+    given_a_check_red_on_its_first_run_alone(runner)
+    heard = []
+
+    Suite(runner, tmp_path).run(lambda outcome, at: heard.append((at, outcome.passed)))
+
+    assert heard == [(1, False), (2, True)]
+
+
+# A second run cannot make a missing tool appear, so nothing is spent proving that twice.
+def test_a_machine_that_is_not_ready_is_never_run_again(tmp_path, runner):
+    write_suite(tmp_path, check("prove", ready=["ping"], message="no store"), runs=2)
+    given_every_program_passes(runner)
+    runner.stub("ping", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert runner.calls == [["ping"]]
+
+
+def test_a_readiness_command_runs_once_however_many_runs_there_are(tmp_path, runner):
+    write_suite(tmp_path, check("prove", ready=["ping"], message="no store"), runs=2)
+    given_every_program_passes(runner)
+    runner.stub("prove", status=1)
+
+    Suite(runner, tmp_path).run()
+
+    assert runner.calls == [["ping"], ["prove"], ["prove"]]
+
+
+def test_a_setting_that_is_not_a_count_is_not_ready(tmp_path, runner):
+    for runs in (0, -1, "2", 1.5, True):
+        write_suite(tmp_path, check("prove"), runs=runs)
+        given_every_program_passes(runner)
+
+        outcome = Suite(runner, tmp_path).run()
+
+        assert not outcome.ready, runs
+        assert "runs" in outcome.said, runs
+    assert runner.calls == []
+
+
+def test_this_repo_s_suite_file_asks_for_a_second_run():
+    assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 2
+
+
+def test_the_seeded_suite_file_shows_the_setting_at_its_default():
+    seed = ROOT / "plugins/skillworks/skills/skillworks-setup/seeds/suite.json"
+
+    assert json.loads(seed.read_text(encoding="utf-8"))["runs"] == 1
+
+
 REVIEW_SKILLS = (
     "plugins/skillworks/skills/code-review/SKILL.md",
     "plugins/skillworks/skills/review-architecture/SKILL.md",

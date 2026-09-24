@@ -162,8 +162,8 @@ class Sessions:
 
 
 # A worktree is cut from the remote, so the Suite file has to reach it first.
-def given_a_suite_that_passes(loop):
-    write_suite(loop.repo.work, project_suite()[0])
+def given_a_suite_that_passes(loop, runs=None):
+    write_suite(loop.repo.work, project_suite()[0], runs=runs)
     git(loop.repo.work, "add", "-A")
     git(loop.repo.work, "commit", "--quiet", "-m", "A Suite")
     git(loop.repo.work, "push", "--quiet", "origin", "main")
@@ -172,8 +172,8 @@ def given_a_suite_that_passes(loop):
 
 
 # The driver runs the suite itself, so a case about the steps needs one it can run.
-def given_sessions_that_report(loop):
-    given_a_suite_that_passes(loop)
+def given_sessions_that_report(loop, runs=None):
+    given_a_suite_that_passes(loop, runs)
     return Sessions(loop.repo, loop.runner)
 
 
@@ -925,6 +925,19 @@ def test_the_loop_says_which_step_the_suite_is(loop):
 
 # --- a red suite run a second time ------------------------------------------
 
+# The Suite file says how often red runs, so a repo with no flakes pays for no second run.
+def test_with_no_setting_a_red_suite_is_believed_on_its_first_run(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "suite run 2" not in loop.log()
+    assert "a Span test failed" in prompts_asking(runner, "/skillworks:implement 168 --fix")[1]
+
+
 # The second run falls through to the passing stub, so one case holds a flake and nothing else.
 def given_a_suite_red_on_its_first_run_alone(runner):
     runner.refuse(SOLUTION, "a Span test failed", times=1)
@@ -936,7 +949,7 @@ def given_a_suite_red_on_every_run(runner):
 
 def test_a_red_suite_is_run_a_second_time_before_it_is_believed(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_its_first_run_alone(runner)
 
     ran = loop.run(SPEC)
@@ -947,7 +960,7 @@ def test_a_red_suite_is_run_a_second_time_before_it_is_believed(loop, runner):
 
 def test_a_green_first_run_is_never_run_again(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
 
     ran = loop.run(SPEC)
 
@@ -957,7 +970,7 @@ def test_a_green_first_run_is_never_run_again(loop, runner):
 
 def test_a_second_run_that_passes_carries_the_loop_on_to_the_finishing_step(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_its_first_run_alone(runner)
 
     ran = loop.run(SPEC)
@@ -969,7 +982,7 @@ def test_a_second_run_that_passes_carries_the_loop_on_to_the_finishing_step(loop
 
 def test_the_log_names_which_of_the_two_runs_each_one_is(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -981,7 +994,7 @@ def test_the_log_names_which_of_the_two_runs_each_one_is(loop, runner):
 
 def test_the_log_names_the_one_run_a_green_suite_took(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
 
     ran = loop.run(SPEC)
 
@@ -992,18 +1005,18 @@ def test_the_log_names_the_one_run_a_green_suite_took(loop):
 
 def test_a_second_run_that_passes_says_the_first_was_a_flake(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_its_first_run_alone(runner)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert "suite run 2 passed, so the first was a flake" in loop.log()
+    assert "suite run 2 passed, so the red before it was a flake" in loop.log()
 
 
 def test_both_runs_are_kept_where_the_other_step_records_are(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_its_first_run_alone(runner)
 
     ran = loop.run(SPEC)
@@ -1016,7 +1029,7 @@ def test_both_runs_are_kept_where_the_other_step_records_are(loop, runner):
 # A second run cannot start Docker either, so nothing is spent proving that twice.
 def test_a_machine_short_of_what_the_suite_needs_is_never_run_again(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     runner.stub("docker", says="the daemon is not running", status=1)
 
     ran = loop.run(SPEC)
@@ -1034,7 +1047,7 @@ def given_a_suite_red_until_the_loop_goes_round(runner):
 
 def test_red_on_both_runs_goes_to_fix_then_sweep_then_suite(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -1047,7 +1060,7 @@ def test_red_on_both_runs_goes_to_fix_then_sweep_then_suite(loop, runner):
 
 def test_the_failure_output_reaches_the_fix_prompt(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -1058,7 +1071,7 @@ def test_the_failure_output_reaches_the_fix_prompt(loop, runner):
 
 def test_the_fix_step_before_the_suite_is_told_of_no_failure(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -1069,7 +1082,7 @@ def test_the_fix_step_before_the_suite_is_told_of_no_failure(loop, runner):
 
 def test_the_retry_runs_under_the_fix_flag_and_no_other(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -1081,7 +1094,7 @@ def test_the_retry_runs_under_the_fix_flag_and_no_other(loop, runner):
 
 def test_a_suite_green_after_the_circuit_carries_the_loop_on(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -1093,7 +1106,7 @@ def test_a_suite_green_after_the_circuit_carries_the_loop_on(loop, runner):
 
 def test_a_second_circuit_never_happens(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -1106,7 +1119,7 @@ def test_a_second_circuit_never_happens(loop, runner):
 
 def test_red_after_the_circuit_stops_the_loop_before_the_finishing_step(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -1118,7 +1131,7 @@ def test_red_after_the_circuit_stops_the_loop_before_the_finishing_step(loop, ru
 
 def test_a_stop_after_the_circuit_leaves_the_worktree_and_names_it_in_the_log(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -1130,7 +1143,7 @@ def test_a_stop_after_the_circuit_leaves_the_worktree_and_names_it_in_the_log(lo
 
 def test_the_log_says_the_loop_went_round_and_where_it_went(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -1141,7 +1154,7 @@ def test_the_log_says_the_loop_went_round_and_where_it_went(loop, runner):
 
 def test_the_record_keeps_what_the_suite_said_on_both_sides_of_the_circuit(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -1192,7 +1205,7 @@ def test_the_suite_runs_before_the_finishing_step(loop, runner):
 # A flake spends a run, and the run that proved the work is the one the closing comment names.
 def test_the_finishing_step_is_handed_the_run_that_passed_and_not_the_one_that_failed(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_sessions_that_report(loop, runs=2)
     given_a_suite_red_on_its_first_run_alone(runner)
 
     ran = loop.run(SPEC)
@@ -1384,3 +1397,13 @@ def test_the_spec_loop_command_starts_the_driver_in_the_plugin(repo):
 
     assert ran.status == 64
     assert ran.err == "usage: spec-loop <spec-issue-number> [--dry-run]\n"
+
+
+# The Plugin reaches repos with no Docker and no flaky tests, so what it tells them holds for any repo.
+def test_what_next_leaves_the_reruns_to_the_suite_file_and_names_no_tool_of_this_repo():
+    text = (ROOT / "plugins/skillworks/skills/what-next/SKILL.md").read_text(encoding="utf-8")
+
+    assert "Docker" not in text
+    assert "`uv`" not in text
+    assert "container" not in text
+    assert "Suite file sets how many times" in text
