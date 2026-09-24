@@ -8,6 +8,7 @@
       "Bash(gh pr diff:*)",
       "Bash(gh label list:*)",
       "Bash(gh repo view:*)",
+      "Bash(git -C:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -16,11 +17,26 @@
       "Bash(git branch:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
+      "Bash(git mv:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
+      "Bash(skillworks-preflight:*)",
+      "Bash(seed-steering:*)",
       "Bash(spec-loop:*)",
-      "Bash(skillworks-preflight:*)"
+      "Bash(land-ticket:*)",
+      "Bash(ticket-worktree:*)"
     ]
+  },
+  "extraKnownMarketplaces": {
+    "skillworks": {
+      "source": {
+        "source": "directory",
+        "path": "<the folder that holds .claude-plugin/marketplace.json>"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "skillworks@skillworks": true
   },
   "autoMemoryEnabled": false,
   "promptCacheTtl": "1h",

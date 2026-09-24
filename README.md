@@ -235,10 +235,10 @@ background.
 | `plugins/` | The local Marketplace. It holds the one Plugin, `skillworks`, and this repo loads its skills from there. Studio reads it by default. |
 | `plugins/skillworks/scripts/` | The loop's scripts: the driver, the landing, the worktrees, the Suite, the preflight, and the hook script that records each Load. They read the repo from the git top level of the folder they start in, never from where the Plugin sits. |
 | `plugins/skillworks/hooks/` | The Plugin's hooks. They run the hook script on `SessionStart` and `InstructionsLoaded`, and do nothing unless telemetry is on. |
-| `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree` and `skillworks-preflight`. Each runs its script from the Plugin. |
+| `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree`, `skillworks-preflight` and `seed-steering`. Each runs its script from the Plugin. |
 | `.claude/skills/` | The skills that are not in the Plugin. Dev tooling for this repo, mostly vendored. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
-| `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` writes the tracker and domain seeds; the review baselines are this repo's own. |
+| `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |
 | `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
 | `docs/agentic-development/` | How the dev loop works, for a human reading it rather than a skill. |
 
@@ -281,9 +281,10 @@ Then, in Claude Code:
 
 Run it once per clone. Run it again any time to repair.
 
-It creates the `ready-for-agent` label, writes `docs/agents/`, points `CLAUDE.md` at it, installs
-the permission allowlist the loop needs to run unattended, and sets the `skillworks` output style.
-It asks before it overwrites anything you have edited.
+It creates the `ready-for-agent` label, seeds the Steering (the rules, `docs/agents/` and a starting
+Suite file) where it is missing, points `CLAUDE.md` at it, enables the Plugin, and installs the
+permission allowlist the loop needs to run unattended. It never overwrites a file you have edited: it
+shows you the difference instead.
 
 ### The dev loop
 

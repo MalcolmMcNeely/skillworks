@@ -84,4 +84,4 @@ Off the main flow entirely.
 
 ## Precondition
 
-**`/skillworks:skillworks-setup`** — run once per repo before your first engineering flow. It creates the `ready-for-agent` label on GitHub and writes the tracker and domain-doc references the other skills read. GitHub only.
+**`/skillworks:skillworks-setup`** — run once per repo before your first engineering flow. It creates the `ready-for-agent` label on GitHub and seeds the Steering the other skills read: the rules, the tracker and domain docs, the review baselines and a starting Suite file. GitHub only.
