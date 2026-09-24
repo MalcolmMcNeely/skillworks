@@ -9,19 +9,19 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Reports_every_part_of_studio_in_one_answer()
     {
-        using var studio = new StudioHost(StudioHost.Plugins());
+        using var studio = new StudioHost(StudioHost.Marketplace());
 
         // Sorted here, because the report's order is the screen's choice and not part of the answer.
         var parts = (await studio.Health()).Parts.Select(part => part.Name).Order();
 
         // A part missing from here is a part a developer has to go and check by hand.
-        Assert.Equal(["Claude Code telemetry", "Collector", "Events store", "Plugin", "Trace store"], parts);
+        Assert.Equal(["Claude Code telemetry", "Collector", "Events store", "Marketplace", "Trace store"], parts);
     }
 
     [Fact]
     public async Task Answers_with_its_parts_alone()
     {
-        using var studio = new StudioHost(StudioHost.Plugins());
+        using var studio = new StudioHost(StudioHost.Marketplace());
 
         // An empty screen is explained by its Gap, so health carries no reason for one.
         Assert.Equal(["parts"], await studio.HealthFields());
@@ -30,7 +30,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Says_every_part_is_working_and_leaves_nothing_to_do_when_nothing_is_wrong()
     {
-        using var studio = new StudioHost(StudioHost.Plugins());
+        using var studio = new StudioHost(StudioHost.Marketplace());
 
         var health = await studio.Health();
 
@@ -41,7 +41,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Says_the_events_store_answered_when_it_did()
     {
-        using var studio = new StudioHost(StudioHost.Plugins());
+        using var studio = new StudioHost(StudioHost.Marketplace());
 
         var part = await studio.Part("Events store");
 
@@ -73,7 +73,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Says_it_cannot_tell_whether_telemetry_is_on_when_it_cannot_read_the_settings()
     {
-        using var studio = new StudioHost(StudioHost.Plugins(), settings: "{ not json");
+        using var studio = new StudioHost(StudioHost.Marketplace(), settings: "{ not json");
 
         var part = await studio.Part("Claude Code telemetry");
 
@@ -86,7 +86,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_an_events_store_that_is_down_as_broken_and_says_how_to_start_it()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Plugins(), events: events);
+        using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         var part = await studio.Part("Events store");
 
@@ -98,7 +98,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reports_an_events_store_that_answers_badly_as_broken_too()
     {
         using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Plugins(), events: events);
+        using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         var part = await studio.Part("Events store");
 
@@ -111,7 +111,7 @@ public sealed partial class HealthEndpointsTests
     public async Task Reads_the_events_store_with_a_real_query_rather_than_asking_if_it_is_up()
     {
         using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
-        using var studio = new StudioHost(StudioHost.Plugins(), events: events);
+        using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         await studio.Part("Events store");
 
@@ -123,7 +123,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Reports_telemetry_that_was_never_switched_on_as_off_rather_than_as_broken()
     {
-        using var studio = new StudioHost(StudioHost.Plugins(), emitting: false);
+        using var studio = new StudioHost(StudioHost.Marketplace(), emitting: false);
 
         var part = await studio.Part("Claude Code telemetry");
 
@@ -136,8 +136,8 @@ public sealed partial class HealthEndpointsTests
     public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_is_switched_off()
     {
         using var down = BrokenEventsStore.Down();
-        using var broken = new StudioHost(StudioHost.Plugins(), events: down);
-        using var off = new StudioHost(StudioHost.Plugins(), emitting: false);
+        using var broken = new StudioHost(StudioHost.Marketplace(), events: down);
+        using var off = new StudioHost(StudioHost.Marketplace(), emitting: false);
 
         var outage = await broken.Health();
         var never = await off.Health();
@@ -151,13 +151,13 @@ public sealed partial class HealthEndpointsTests
     }
 
     [Fact]
-    public async Task Names_the_missing_plugin_and_what_it_costs()
+    public async Task Names_the_missing_Marketplace_and_what_it_costs()
     {
         using var studio = new StudioHost();
 
-        var part = await studio.Part("Plugin");
+        var part = await studio.Part("Marketplace");
 
         Assert.Equal("broken", part.State);
-        Assert.Contains("Plugin:Path", part.Action ?? "");
+        Assert.Contains("Marketplace:Path", part.Action ?? "");
     }
 }

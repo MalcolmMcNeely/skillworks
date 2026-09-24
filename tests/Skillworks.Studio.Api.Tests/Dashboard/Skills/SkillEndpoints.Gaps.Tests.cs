@@ -10,7 +10,7 @@ public sealed partial class SkillEndpointsTests
     public async Task Ends_with_no_day_and_the_unreachable_Gap_when_the_store_cannot_be_read_from_the_start()
     {
         using var events = BrokenEventsStore.Down();
-        using var studio = new StudioHost(StudioHost.Plugins(), events: events);
+        using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         var answer = await studio.SkillAnswer();
 

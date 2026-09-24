@@ -76,7 +76,7 @@ database.
 In an organisation, the Events store is the organisation's Loki. Until one exists, the AppHost's
 Collector and Loki stand in for it, and Studio shows only what this machine sent.
 
-Studio finds the Events store and the plugins through these settings:
+Studio finds the Events store and the Marketplace through these settings:
 
 | Setting | What it does | Default |
 |---|---|---|
@@ -84,7 +84,7 @@ Studio finds the Events store and the plugins through these settings:
 | `Loki__Tenant` | Sent as `X-Scope-OrgID`, for a Loki with several tenants. | Not sent |
 | `Loki__LookbackDays` | The lookback: how many days a list covers when the Filter has no start day. | `7` |
 | `Loki__MaxQueryDays` | The most days one Loki query may cover. Studio splits a longer span. | `30` |
-| `Plugin__Path` | The folder of plugins Studio reads skill names from, so a skill that never fired still shows, with zero Activations. The AppHost sets it to `plugins/` in this repo. | `plugins` |
+| `Marketplace__Path` | The Marketplace folder. Studio reads the skill names of every plugin in it, so a skill that never fired still shows, with zero Activations. The AppHost sets it to `plugins/` in this repo. | `plugins` |
 
 ### What telemetry cannot tell you
 

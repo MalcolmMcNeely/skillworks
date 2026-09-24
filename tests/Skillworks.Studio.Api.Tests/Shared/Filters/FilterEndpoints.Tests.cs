@@ -151,7 +151,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Leaves_a_plugin_skill_that_never_fired_out_of_a_narrowed_answer()
     {
-        using var studio = new StudioHost(StudioHost.Plugins());
+        using var studio = new StudioHost(StudioHost.Marketplace());
 
         await studio.Push(
             new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "nu"));
@@ -165,7 +165,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Keeps_a_plugin_skill_that_never_fired_when_it_is_the_skill_asked_for()
     {
-        using var studio = new StudioHost(StudioHost.Plugins());
+        using var studio = new StudioHost(StudioHost.Marketplace());
 
         var answer = await studio.SkillAnswer("?skill=probekit:probe-local");
 

@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using Skillworks.Core.Shared.Plugin;
+using Skillworks.Core.Shared.Marketplace;
 using Skillworks.Core.Shared.Stores.Collector;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
@@ -8,7 +8,7 @@ using Skillworks.Core.Shared.Telemetry;
 namespace Skillworks.Core.Shared.Health;
 
 public sealed class StudioHealth(
-    PluginLocator plugin,
+    MarketplaceLocator marketplace,
     EventsStoreReader events,
     TraceStoreReader traces,
     CollectorReader collector,
@@ -28,7 +28,7 @@ public sealed class StudioHealth(
                 Traces(answering, telemetry.TracesOn()),
                 Collector(doors),
                 Switch(emitting),
-                Plugin(plugin.Locate()),
+                Marketplace(marketplace.Locate()),
             ]);
     }
 
@@ -95,11 +95,11 @@ public sealed class StudioHealth(
             TelemetrySwitch.TurnOnNote),
     };
 
-    private static StudioPart Plugin(PluginLocation location) => location.Exists
-        ? new StudioPart("Plugin", PartState.Working, $"Reading skills from {location.Path}.", null)
+    private static StudioPart Marketplace(MarketplaceLocation location) => location.Exists
+        ? new StudioPart("Marketplace", PartState.Working, $"Reading skills from {location.Path}.", null)
         : new StudioPart(
-            "Plugin",
+            "Marketplace",
             PartState.Broken,
-            $"There is no plugin at {location.Path}.",
-            "Point Plugin:Path at it. Without it, a skill that has never fired is not listed at all.");
+            $"There is no Marketplace at {location.Path}.",
+            "Point Marketplace:Path at it. Without it, a skill that has never fired is not listed at all.");
 }

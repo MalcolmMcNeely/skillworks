@@ -172,7 +172,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Lists_a_plugin_skill_that_did_not_fire_in_the_lookback_in_the_head()
     {
-        using var studio = new StudioHost(StudioHost.Plugins());
+        using var studio = new StudioHost(StudioHost.Marketplace());
 
         await studio.Push(
             new SkillActivated("probekit:probe-local", At(DaysBack(14), "09:00:00.000")),

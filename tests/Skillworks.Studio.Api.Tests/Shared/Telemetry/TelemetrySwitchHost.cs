@@ -35,7 +35,7 @@ public sealed class TelemetrySwitchHost : IDisposable
             ("ClaudeSettings:Path", _settingsPath),
             ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, StampName)),
             ("Collector:Address", Collector),
-            ("Plugin:Path", Path.Combine(_folder.Path, "no-plugin")));
+            ("Marketplace:Path", Path.Combine(_folder.Path, "no-marketplace")));
 
         _client = _api.CreateClient();
     }

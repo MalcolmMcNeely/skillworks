@@ -4,7 +4,7 @@ using Skillworks.Core.Dashboard.Spend;
 using Skillworks.Core.Dashboard.Spend.Queries;
 using Skillworks.Core.Shared.Arriving;
 using Skillworks.Core.Shared.Filters;
-using Skillworks.Core.Shared.Plugin;
+using Skillworks.Core.Shared.Marketplace;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Dashboard.Skills;
@@ -13,7 +13,7 @@ namespace Skillworks.Core.Dashboard.Skills;
 public sealed class SkillReport(
     ActivationQueries activations,
     SpendQueries spend,
-    PluginSkills pluginSkills,
+    MarketplaceSkills marketplaceSkills,
     ArrivingDays arriving,
     Lookback lookback)
 {
@@ -28,7 +28,7 @@ public sealed class SkillReport(
             // A never-fired skill's zero belongs to the unfiltered answer; a filter asks what happened, and it did not.
             filter.AsksWhatHappened
                 ? []
-                : [.. pluginSkills.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
+                : [.. marketplaceSkills.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
 
         return arriving.AnswerAsync(head, days, (day, token) => DayAsync(day, filter, token), cancellationToken);
     }

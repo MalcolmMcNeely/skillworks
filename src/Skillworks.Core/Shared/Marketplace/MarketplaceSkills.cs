@@ -1,6 +1,6 @@
-namespace Skillworks.Core.Shared.Plugin;
+namespace Skillworks.Core.Shared.Marketplace;
 
-public sealed class PluginSkills(PluginLocator locator)
+public sealed class MarketplaceSkills(MarketplaceLocator locator)
 {
     public IReadOnlyList<string> Names()
     {

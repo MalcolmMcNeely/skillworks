@@ -38,7 +38,7 @@ builder.AddContainer("collector", "otel/opentelemetry-collector-contrib", "0.138
 // No WaitFor on the containers: Studio starts without Loki, and its Gaps say the Events store is unreachable.
 var api = builder.AddProject<Projects.Skillworks_Studio_Api>("api")
     .WithHttpHealthCheck("/health")
-    .WithEnvironment("Plugin__Path", Path.Combine(repositoryRoot, "plugins"))
+    .WithEnvironment("Marketplace__Path", Path.Combine(repositoryRoot, "plugins"))
     .WithEnvironment("Collector__Address", collectorAddress)
     // Pinned, so the address holds whether or not Loki was up when Studio started.
     .WithEnvironment("Loki__Address", loki.GetEndpoint("http"))

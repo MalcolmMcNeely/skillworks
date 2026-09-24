@@ -20,7 +20,8 @@ folder. The test is the same either way.
 - **Studio → Architecture**: nothing. Studio does not know the check exists.
 - **Architecture → Loop**: the check reads Loop's glossary to decide which words its scripts may use,
   and judges the scripts the same way it judges the rest.
-- **Loop → Studio**: the scripts run Studio's build and its tests. They never read Studio's code.
+- **Loop → Studio**: nothing. The scripts run the checks the repo's Suite file names, and know
+  nothing of Studio.
 
 ## The next context
 

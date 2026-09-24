@@ -13,7 +13,9 @@ styles and MCP servers.
 _Avoid_: Catalogue, package, bundle, module, library, registry, pack
 
 **Marketplace**:
-The git repository a developer adds to Claude Code so the Plugin installs and updates itself.
+The place a developer adds to Claude Code so the Plugin installs and updates itself: a git
+repository, or a local folder added as a `directory` source. This repo's `plugins/` folder is a
+local Marketplace, and Studio reads the skills of every plugin it holds.
 _Avoid_: Feed, source, channel
 
 **Skill**:
