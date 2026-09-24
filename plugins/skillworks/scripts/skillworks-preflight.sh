@@ -31,7 +31,8 @@ command -v claude >/dev/null || die "claude is not on PATH. The loop shells out 
 command -v uv >/dev/null || die "uv is not on PATH. The loop's scripts are Python and run under it. https://docs.astral.sh/uv"
 
 gh auth status >/dev/null 2>&1 || die "gh is not authenticated. Run: gh auth login"
-ok "gh authenticated as $(gh api user --jq .login)"
+login=$(gh api user --jq .login)
+ok "gh authenticated as $login"
 
 git rev-parse --git-dir >/dev/null 2>&1 || die "not inside a git repository"
 
@@ -67,6 +68,20 @@ fi
 probe=$(gh api "repos/$REPO" --jq .has_issues)
 [ "$probe" = "true" ] || die "Issues are disabled on $REPO. Enable them in repo settings."
 ok "issues enabled"
+
+default=$(gh api "repos/$REPO" --jq .default_branch)
+[ "$default" = "main" ] || die "the default branch of $REPO is $default, not main. The loop lands every ticket on main."
+ok "default branch main"
+
+[ "$(gh api "repos/$REPO" --jq .permissions.push)" = "true" ] \
+  || die "$login may not push to $REPO, so the loop cannot land a ticket on main."
+# A ruleset can refuse a login that may push, and its rule list is readable without admin rights.
+refusing=$(gh api "repos/$REPO/rules/branches/main" --jq '.[].type' \
+  | grep -xE 'pull_request|update|required_status_checks|required_deployments|merge_queue' \
+  | paste -sd, - || true)
+[ -z "$refusing" ] \
+  || die "a rule on main in $REPO refuses a direct push ($refusing). The loop lands every ticket by pushing to main."
+ok "$login may push to main"
 
 # --- labels -----------------------------------------------------------------
 #
@@ -112,6 +127,47 @@ elif [ -f "$settings" ] && node -e '
   ok "auto-memory off"
 else
   warn "autoMemoryEnabled is not false in .claude/settings.json, so each session loads memory files only this machine holds. Add \"autoMemoryEnabled\": false to that file."
+fi
+
+if ! command -v node >/dev/null; then
+  warn "could not check which plugins force an output style, because node is not on PATH."
+elif ! plugins=$(claude plugin list --json 2>/dev/null) || ! forcing=$(printf '%s' "$plugins" | node -e '
+  const fs = require("fs");
+  const path = require("path");
+  const key = p => process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p);
+  const top = key(process.argv[1]);
+  const forces = file => {
+    const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(fs.readFileSync(file, "utf8"));
+    return front !== null && /^force-for-plugin:\s*true\s*$/m.test(front[1]);
+  };
+  const styles = where => {
+    if (!fs.existsSync(where)) return [];
+    if (!fs.statSync(where).isDirectory()) return [where];
+    return fs.readdirSync(where).filter(name => name.endsWith(".md")).map(name => path.join(where, name));
+  };
+  let text = "";
+  process.stdin.on("data", chunk => text += chunk);
+  process.stdin.on("end", () => {
+    for (const plugin of JSON.parse(text)) {
+      if (!plugin.enabled || plugin.id.startsWith("skillworks@")) continue;
+      if (plugin.projectPath && key(plugin.projectPath) !== top) continue;
+      const places = ["output-styles"];
+      try {
+        const manifest = JSON.parse(fs.readFileSync(path.join(plugin.installPath, ".claude-plugin", "plugin.json"), "utf8"));
+        places.push(...[].concat(manifest.outputStyles ?? []));
+      } catch {}
+      const files = places.flatMap(place => styles(path.resolve(plugin.installPath, place)));
+      if (files.some(forces)) console.log(plugin.id);
+    }
+  });
+' "$(git rev-parse --show-toplevel)"); then
+  warn "could not check which plugins force an output style, because claude plugin list --json gave nothing node could read."
+elif [ -n "$forcing" ]; then
+  while IFS= read -r id; do
+    warn "$id also forces an output style. When two plugins force one the first loaded wins, so the loop's reports may not come in the skillworks style."
+  done <<< "$forcing"
+else
+  ok "no other plugin forces an output style"
 fi
 
 if [ "$CHECK_ONLY" = "0" ]; then

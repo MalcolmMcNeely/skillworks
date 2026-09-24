@@ -29,7 +29,7 @@ The outputs:
 skillworks-preflight
 ```
 
-It checks `gh`, the login, and that `origin` is GitHub, then creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label. Safe to run again.
+It checks `gh`, the login, that `origin` is GitHub, that the default branch is `main` and that the loop may push to it, then creates the `ready-for-agent` label. It warns, and does not fail, when another enabled plugin also forces an output style. It creates only what is missing and never overwrites an existing label. Safe to run again.
 
 Expect a permission prompt here on a first run. The allowlist that would clear it is written in step 4, which has not happened yet.
 

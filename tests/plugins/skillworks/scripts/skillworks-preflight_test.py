@@ -1,5 +1,6 @@
 # Git and node stay real, so the settings file is really read. One case takes node off PATH.
 
+import json
 import os
 import shutil
 import subprocess
@@ -14,13 +15,18 @@ PREFLIGHT = SCRIPTS / "skillworks-preflight.sh"
 WARNING = "autoMemoryEnabled is not false in .claude/settings.json"
 
 # Every call preflight makes is answered, and any other one fails, so a new call cannot pass on a guess.
+# Varied answers sit in files beside the stand-ins, so one stand-in serves every case.
 GH = """#!/usr/bin/env bash
+here="$(dirname "$0")"
 case "$*" in
   "auth status") exit 0 ;;
   "api user --jq .login") echo me ;;
   "repo view --json nameWithOwner --jq .nameWithOwner") echo owner/repo ;;
   "--version") echo "gh version 2.94.0 (2026-01-01)" ;;
   "api repos/owner/repo --jq .has_issues") echo true ;;
+  "api repos/owner/repo --jq .default_branch") cat "$here/default-branch" ;;
+  "api repos/owner/repo --jq .permissions.push") cat "$here/may-push" ;;
+  "api repos/owner/repo/rules/branches/main --jq .[].type") cat "$here/main-rules" ;;
   "label list --limit 200 --json name --jq .[].name") echo ready-for-agent ;;
   *) echo "unplanned gh call: $*" >&2; exit 97 ;;
 esac
@@ -29,6 +35,7 @@ esac
 CLAUDE = """#!/usr/bin/env bash
 case "$*" in
   "--version") echo "2.1.242 (Claude Code)" ;;
+  "plugin list --json") cat "$(dirname "$0")/plugins.json" ;;
   *) echo "unplanned claude call: $*" >&2; exit 97 ;;
 esac
 """
@@ -38,18 +45,50 @@ echo "unplanned uv call: $*" >&2
 exit 97
 """
 
+FORCED = "---\nname: {name}\nforce-for-plugin: true\n---\n\nTalk like a pirate.\n"
+PLAIN = "---\nname: {name}\n---\n\nPlain.\n"
+
 
 class Work:
     def __init__(self, root):
+        self.root = root
         self.repo = root / "work"
         self.stand_ins = root / "stand-ins"
         run(["git", "init", "--quiet", "--initial-branch=main", self.repo.as_posix()])
         git(self.repo, "remote", "add", "origin", "https://github.com/owner/repo.git")
+        # Git can spell a temporary folder differently from the way pytest handed it out.
+        self.top = git(self.repo, "rev-parse", "--show-toplevel").strip()
         self.stand_ins.mkdir()
         for name, text in (("gh", GH), ("claude", CLAUDE), ("uv", UV)):
             stand_in = self.stand_ins / name
             stand_in.write_text(text, encoding="utf-8", newline="\n")
             stand_in.chmod(0o755)
+        self.plugins = []
+        self.answer("default-branch", "main")
+        self.answer("may-push", "true")
+        self.answer("main-rules", "")
+        self.install("skillworks", forces=True)
+
+    def answer(self, name, text):
+        (self.stand_ins / name).write_text(text + "\n" if text else "", encoding="utf-8", newline="\n")
+
+    def install(self, name, forces=False, enabled=True, scope="user", project=None, styles=None):
+        home = self.root / "plugins" / f"{name}-{len(self.plugins)}"
+        (home / ".claude-plugin").mkdir(parents=True)
+        manifest = {"name": name}
+        folder = home / "output-styles"
+        if styles is not None:
+            manifest["outputStyles"] = styles
+            folder = home / styles.strip("./")
+        (home / ".claude-plugin" / "plugin.json").write_text(json.dumps(manifest), encoding="utf-8")
+        folder.mkdir(parents=True)
+        style = (FORCED if forces else PLAIN).format(name=name)
+        (folder / f"{name}.md").write_text(style, encoding="utf-8", newline="\n")
+        entry = {"id": f"{name}@market", "scope": scope, "enabled": enabled, "installPath": str(home)}
+        if project is not None:
+            entry["projectPath"] = project
+        self.plugins.append(entry)
+        (self.stand_ins / "plugins.json").write_text(json.dumps(self.plugins), encoding="utf-8")
 
 
 @pytest.fixture
@@ -64,7 +103,7 @@ def settings(work, text):
 
 # Node can share /usr/bin with the tools preflight calls, so that folder is mirrored, not dropped.
 # Where node has a folder of its own, as on Windows, the folder is dropped and no mirror is made.
-TOOLS = ("git", "awk", "sort", "head", "grep")
+TOOLS = ("git", "awk", "sort", "head", "grep", "paste")
 
 
 def without_node(path, spare):
@@ -190,3 +229,108 @@ def test_the_preflight_command_names_itself_in_its_usage(work):
 
     assert ran.status == 64
     assert ran.err == "usage: skillworks-preflight [--check-only]\n"
+
+
+STYLE_WARNING = "also forces an output style"
+
+
+def test_no_other_plugin_forcing_a_style_draws_no_warning(work):
+    work.install("quiet")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert STYLE_WARNING not in said(ran)
+    assert "no other plugin forces an output style" in ran.out
+
+
+def test_a_second_enabled_plugin_that_forces_a_style_warns_and_passes(work):
+    work.install("pirate", forces=True)
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "warn  pirate@market " + STYLE_WARNING in ran.out
+
+
+def test_a_forced_style_in_the_folder_the_manifest_names_warns(work):
+    work.install("pirate", forces=True, styles="./voices")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "pirate@market " + STYLE_WARNING in ran.out
+
+
+def test_a_disabled_plugin_that_forces_a_style_draws_no_warning(work):
+    work.install("pirate", forces=True, enabled=False)
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert STYLE_WARNING not in said(ran)
+
+
+def test_a_plugin_enabled_for_another_project_draws_no_warning(work):
+    work.install("pirate", forces=True, scope="project", project=str(work.root / "elsewhere"))
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert STYLE_WARNING not in said(ran)
+
+
+def test_a_plugin_enabled_for_this_project_that_forces_a_style_warns(work):
+    work.install("pirate", forces=True, scope="project", project=work.top)
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "pirate@market " + STYLE_WARNING in ran.out
+
+
+def test_a_machine_without_node_warns_that_forced_styles_could_not_be_checked(work):
+    work.install("pirate", forces=True)
+
+    ran = preflight(work, node=False)
+
+    assert ran.status == 0, said(ran)
+    assert "could not check which plugins force an output style" in ran.out
+    assert STYLE_WARNING not in said(ran)
+
+
+def test_a_default_branch_other_than_main_fails_naming_the_branch(work):
+    work.answer("default-branch", "trunk")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  the default branch of owner/repo is trunk, not main." in ran.err
+    assert "label ready-for-agent" not in ran.out
+
+
+def test_a_repo_that_refuses_this_login_a_push_fails(work):
+    work.answer("may-push", "false")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  me may not push to owner/repo, so the loop cannot land a ticket on main." in ran.err
+
+
+def test_a_rule_that_refuses_a_push_to_main_fails_naming_the_rule(work):
+    work.answer("main-rules", "deletion\npull_request")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  a rule on main in owner/repo refuses a direct push (pull_request)" in ran.err
+
+
+def test_a_rule_that_lets_a_push_through_passes(work):
+    work.answer("main-rules", "deletion\nnon_fast_forward")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "may push to main" in ran.out
