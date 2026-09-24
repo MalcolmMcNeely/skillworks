@@ -76,7 +76,7 @@ can later be set from this repository's own numbers.
 
 **Hold a lock across landing.** Rejected. The lock would be held across a full test run, blocking
 the other loop for minutes to prevent a collision lasting seconds. A rejected push costs less, and the
-bounded retry already answers it.
+bounded retry already answers it. ADR 0032 has since replaced this: the logs proved the retry did not.
 
 **Close the ticket from the commit message.** Rejected. It is one fewer call, and it closes the issue
 with no comment. The closing comment names the files touched, the tests run, and the findings the
