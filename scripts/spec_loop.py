@@ -62,20 +62,23 @@ class Step(NamedTuple):
     session: bool = True
 
 
+# The skills load from the Plugin, and Claude Code names a Plugin skill with the Plugin in front.
+PLUGIN = "/skillworks:"
+
 AXIS_CHECKS = "no-error command-loaded ticket-open axis-reported"
 
 # One list, read by the plan and by the run, so the two cannot drift apart.
 REVIEW_STEPS = ("standards", "spec", "architecture")
 
 STEPS = (
-    (Step("build", "/implement {} --stop-after-tests",
+    (Step("build", PLUGIN + "implement {} --stop-after-tests",
           "no-error command-loaded ticket-open tree-changed", False),)
-    + tuple(Step(axis, "/review-" + axis + " {}", AXIS_CHECKS, False) for axis in REVIEW_STEPS)
-    + (Step("fix", "/implement {} --fix", "no-error command-loaded ticket-open", True),
-       Step("sweep", "/comment-sweep", "no-error command-loaded ticket-open", False),
+    + tuple(Step(axis, PLUGIN + "review-" + axis + " {}", AXIS_CHECKS, False) for axis in REVIEW_STEPS)
+    + (Step("fix", PLUGIN + "implement {} --fix", "no-error command-loaded ticket-open", True),
+       Step("sweep", PLUGIN + "comment-sweep", "no-error command-loaded ticket-open", False),
        Step("suite", "the whole suite, as the Suite file names it",
             "suite-can-run suite-green", False, session=False),
-       Step("finish", "/implement {} --finish",
+       Step("finish", PLUGIN + "implement {} --finish",
             "no-error command-loaded new-commit tree-clean ticket-closed", True))
 )
 
@@ -516,7 +519,7 @@ class Loop:
         # --paginate runs --jq once per page, so a length would count only the first hundred.
         self.ticket_count = len(listed(self.sub_issues(".[].number").out))
         if self.ticket_count == 0:
-            raise stop("ABORT spec #{} has no sub-issues. Run /to-tickets first.".format(self.spec))
+            raise stop("ABORT spec #{} has no sub-issues. Run /skillworks:to-tickets first.".format(self.spec))
 
     # --- the dry run ---------------------------------------------------------
 
@@ -711,7 +714,7 @@ class Loop:
         if not self.job_worktree:
             raise stop("FAIL  the drift check got no worktree to run in.")
 
-        ran = self.claude_p("/spec-drift {} {}".format(self.spec, base))
+        ran = self.claude_p(PLUGIN + "spec-drift {} {}".format(self.spec, base))
         written(self.log_dir / "drift.json", ran.out)
         written(self.log_dir / "drift.err", ran.err)
         if ran.status != 0:

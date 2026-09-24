@@ -411,7 +411,7 @@ def test_a_conflict_is_handed_back_to_the_ticket_s_own_session(repo, runner):
 
     assert ran.status == 0
     handed = "\n".join(" ".join(call) for call in runner.started("claude"))
-    assert "/resolve-conflict" in handed
+    assert "/skillworks:resolve-conflict" in handed
     assert "--resume session-abc" in handed
     assert theirs in handed
     assert "Somebody else got there first" in handed

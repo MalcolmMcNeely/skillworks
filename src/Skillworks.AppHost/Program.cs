@@ -2,7 +2,7 @@ using Skillworks.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// The plugins are the folder beside us today; when they move to their own repository, only this line changes.
+// The Marketplace is the folder beside us today; when it moves to its own repository, only this line changes.
 var repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", ".."));
 
 // Persistent, pinned and unproxied: Claude Code sends events while the AppHost is stopped, to the address in its settings.

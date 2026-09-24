@@ -1,0 +1,13 @@
+{
+  "name": "privateprobe",
+  "owner": {
+    "name": "Skillworks"
+  },
+  "plugins": [
+    {
+      "name": "probekit",
+      "source": "./probekit",
+      "description": "A two-skill plugin, here only so the plugin reader has something to read."
+    }
+  ]
+}

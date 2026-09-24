@@ -111,13 +111,13 @@ def driver_lines():
         loop.reopen(TICKET)
         loop.next_ticket([TICKET])
         loop.claimed(TICKET)
-        loop.claude_p("/implement {} --stop-after-tests".format(TICKET))
-        loop.claude_p("/implement {} --fix".format(TICKET), "--resume", SESSION)
+        loop.claude_p("/skillworks:implement {} --stop-after-tests".format(TICKET))
+        loop.claude_p("/skillworks:implement {} --fix".format(TICKET), "--resume", SESSION)
 
         landing = land_ticket.Landing(
             runner, folder, TICKET, SESSION, io.StringIO(), io.StringIO())
         landing.closing_comment(TICKET)
-        landing.resolve_call("/resolve-conflict")
+        landing.resolve_call("/skillworks:resolve-conflict")
     return once(runner.made)
 
 

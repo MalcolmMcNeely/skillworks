@@ -1,13 +1,13 @@
 # Third-party notices
 
-The skills under `.claude/skills/` are vendored from the projects below. Both are
+The skills under `plugins/skillworks/skills/` and `.claude/skills/` are vendored from the projects below. Both are
 MIT licensed, which the Apache 2.0 licence on this repo permits. Their
 copyright notices are reproduced here, as MIT requires.
 
 ## mattpocock/skills
 
 Source: https://github.com/mattpocock/skills
-Covers: every skill under `.claude/skills/` except `unslop`, `skillworks-setup`,
+Covers: every skill under `plugins/skillworks/skills/` and `.claude/skills/` except `unslop`, `skillworks-setup`,
 `spec-loop`, `spec-drift` and `comment-sweep`, which are ours and carry this
 repo's Apache 2.0 licence. `implement`, `to-spec`, `to-tickets`, `code-review`,
 `wayfinder` and `what-next` (upstream `ask-matt`) are upstream skills we have
@@ -40,7 +40,7 @@ SOFTWARE.
 ## cursor/plugins (pstack)
 
 Source: https://github.com/cursor/plugins/tree/main/pstack
-Covers: `.claude/skills/unslop/`. Its description was rewritten so Claude Code
+Covers: `plugins/skillworks/skills/unslop/`. Its description was rewritten so Claude Code
 matches it as a trigger; the body is otherwise upstream.
 
 ```

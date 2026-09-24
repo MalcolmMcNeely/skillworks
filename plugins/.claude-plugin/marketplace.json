@@ -1,0 +1,13 @@
+{
+  "name": "skillworks",
+  "owner": {
+    "name": "Malcolm McNeely"
+  },
+  "plugins": [
+    {
+      "name": "skillworks",
+      "source": "./skillworks",
+      "description": "The Skillworks loop: the skills that grill an idea into a spec, cut it into tickets, and build, review and land each one."
+    }
+  ]
+}

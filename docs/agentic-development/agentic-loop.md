@@ -9,7 +9,7 @@ Stage two is a script. It breaks the design into tickets and drives each one to 
 a throwaway worktree, through a fixed run of Claude Code Sessions. Nobody watches it.
 
 ```
-/grill-with-docs   →   you confirm   →   /spec-loop <spec#>   →   every ticket on main
+/skillworks:grill-with-docs   →   you confirm   →   /skillworks:spec-loop <spec#>   →   every ticket on main
      stage one            the gate              stage two
 ```
 
@@ -18,7 +18,7 @@ end asks you anything.
 
 ## Stage one: settle the design
 
-### /grill-with-docs
+### /skillworks:grill-with-docs
 
 The skill runs two others on every round. `grilling` owns the questions. `domain-modeling` owns the
 words.
@@ -47,25 +47,25 @@ On **no**, the frontier was not empty after all: what you said becomes the next 
 Say **yes** and everything afterwards runs unattended, which is why the summary is the thing you
 consent to. It carries every decision the spec will be built from.
 
-### /to-spec
+### /skillworks:to-spec
 
-On your yes, `/to-spec` runs. It publishes a `SPEC:` issue to the tracker with the `ready-for-agent`
+On your yes, `/skillworks:to-spec` runs. It publishes a `SPEC:` issue to the tracker with the `ready-for-agent`
 label, commits and pushes whatever the interview changed on disk, and reports the spec's number.
 
 The push matters as much as the issue. The spec points at decisions that must already be in the
 repository, because no later Session can see this one.
 
-That number is the argument to `/spec-loop`.
+That number is the argument to `/skillworks:spec-loop`.
 
 ## Stage two: build it
 
-### /spec-loop, the skill
+### /skillworks:spec-loop, the skill
 
 Four steps, and only the last one speaks to you.
 
 1. **Check the spec.** Read the issue in full. It must be open, because the loop needs it as the
    parent of its tickets. If it already has sub-issues, the breakdown has happened.
-2. **Break it into tickets.** `/to-tickets` cuts the spec into tracer bullets: narrow slices that each
+2. **Break it into tickets.** `/skillworks:to-tickets` cuts the spec into tracer bullets: narrow slices that each
    go through every layer, each sized for one fresh context window, each declaring the tickets that
    block it. Every ticket is published as a **sub-issue of the spec**. That parentage is the only
    thing stopping two people's loops taking each other's work.
@@ -119,14 +119,14 @@ anything.
 
 | Step | What it runs | Session | Checks after it |
 |---|---|---|---|
-| `build` | `/implement <n> --stop-after-tests` | fresh, and its id is kept | no-error, command-loaded, ticket-open, tree-changed |
-| `standards` | `/review-standards <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
-| `spec` | `/review-spec <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
-| `architecture` | `/review-architecture <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
-| `fix` | `/implement <n> --fix` | resumes `build` | no-error, command-loaded, ticket-open |
-| `sweep` | `/comment-sweep` | fresh | no-error, command-loaded, ticket-open |
+| `build` | `/skillworks:implement <n> --stop-after-tests` | fresh, and its id is kept | no-error, command-loaded, ticket-open, tree-changed |
+| `standards` | `/skillworks:review-standards <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
+| `spec` | `/skillworks:review-spec <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
+| `architecture` | `/skillworks:review-architecture <n>` | fresh | no-error, command-loaded, ticket-open, axis-reported |
+| `fix` | `/skillworks:implement <n> --fix` | resumes `build` | no-error, command-loaded, ticket-open |
+| `sweep` | `/skillworks:comment-sweep` | fresh | no-error, command-loaded, ticket-open |
 | `suite` | The whole suite, as the Suite file names it | none: the driver runs it | suite-can-run, suite-green |
-| `finish` | `/implement <n> --finish` | resumes `build` | no-error, command-loaded, new-commit, tree-clean, ticket-closed |
+| `finish` | `/skillworks:implement <n> --finish` | resumes `build` | no-error, command-loaded, new-commit, tree-clean, ticket-closed |
 
 `build` leaves its change uncommitted. The three axes each read that change, report under a heading of
 their own, and fix what they find. `fix` reconciles: it is the only step that holds all three reports
@@ -161,7 +161,7 @@ suite red → run again → still red → fix → sweep → suite red → run ag
 The way back is never `fix` straight to `suite`. `fix` writes, and a sweep has to follow whatever
 wrote last, or the retry's comments reach the commit having never been trimmed. The driver holds the
 failing output and puts it into the `fix` prompt beside the three axis reports, so the Session acting
-on it reads what failed rather than guessing. That retry is the same `/implement <n> --fix` as the
+on it reads what failed rather than guessing. That retry is the same `/skillworks:implement <n> --fix` as the
 step in the ordinary run, on a different input, so there is no flag of its own to learn.
 
 A suite that goes green after the circuit carries the loop on to `finish`. Red on both runs again
@@ -265,7 +265,7 @@ past it. The default is `acceptEdits`.
 Every ticket passed its own acceptance criteria. Nothing so far has asked whether the pile of them is
 what the spec wanted.
 
-So the driver opens one last worktree and runs `/spec-drift <spec> <base>` in a fresh Session. It
+So the driver opens one last worktree and runs `/skillworks:spec-drift <spec> <base>` in a fresh Session. It
 classifies every user story and implementation decision as Done, Partial, Missing or Contradicts,
 lists anything Unrequested, and looks for the failure no per-ticket check can see: two tickets that
 introduced competing names for one idea, with the glossary as arbiter. It judges against the spec and
@@ -308,7 +308,7 @@ itself. It starts no Session and reaches no remote.
 
 | Path | What it is |
 |---|---|
-| `.claude/skills/` | The skills each step calls. |
+| `plugins/skillworks/skills/` | The skills each step calls, in the `skillworks` Plugin. |
 | `scripts/spec_loop.py` | The driver. Picks the ticket, runs the steps, reads the facts. |
 | `scripts/land_ticket.py` | Gets one finished ticket onto `main`. |
 | `scripts/ticket_worktree.py` | Makes, Keeps and removes the worktree a job is built in. |

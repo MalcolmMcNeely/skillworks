@@ -116,6 +116,7 @@ class Sessions:
         self.removes = {}
         self.writes = {}
         self.stages = set()
+        self.bare = set()
         self.folder = repo.root / "claude" / "projects" / "one"
         self.folder.mkdir(parents=True, exist_ok=True)
         runner.stub("claude", does=self.answer)
@@ -125,7 +126,7 @@ class Sessions:
         command = asked.split(" ")[0]
         args = asked[len(command):]
         args = args[1:] if args.startswith(" ") else args
-        step = command[1:]
+        step = command[1:].removeprefix("skillworks:")
 
         if step in self.refuses:
             return Ran(1, "", "the {} session was turned down\n".format(step))
@@ -139,7 +140,7 @@ class Sessions:
 
         self.count += 1
         session = "session-{}".format(self.count)
-        self.record(session, command, args)
+        self.record(session, "/" + step if step in self.bare else command, args)
 
         # The step that builds leaves the worktree changed, which is what its check reads.
         if asked.endswith("--stop-after-tests"):
@@ -240,7 +241,7 @@ def every_call_at(runner, mark):
 
 def implement_flags(runner):
     return [call[2].split()[2] for call in session_calls(runner)
-            if call[2].startswith("/implement 168 ")]
+            if call[2].startswith("/skillworks:implement 168 ")]
 
 
 # --- reading the plan -------------------------------------------------------
@@ -326,10 +327,10 @@ def test_the_dry_run_still_prints_the_sessions_it_would_start(loop):
 
     assert ran.status == 0
     for line in (
-        "/implement 168 --stop-after-tests",
-        "/implement 168 --fix",
-        "/comment-sweep",
-        "/implement 168 --finish",
+        "/skillworks:implement 168 --stop-after-tests",
+        "/skillworks:implement 168 --fix",
+        "/skillworks:comment-sweep",
+        "/skillworks:implement 168 --finish",
         "checks: no-error command-loaded ticket-open tree-changed",
         "checks: no-error command-loaded new-commit tree-clean ticket-closed",
     ):
@@ -342,7 +343,8 @@ def test_the_dry_run_prints_all_eight_steps_in_order(loop):
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0
-    for line in ("/review-standards 168", "/review-spec 168", "/review-architecture 168"):
+    for line in ("/skillworks:review-standards 168", "/skillworks:review-spec 168",
+                 "/skillworks:review-architecture 168"):
         assert line in said(ran)
     assert planned_steps(ran)[:8] == [
         "build", "standards", "spec", "architecture", "fix", "sweep", "suite", "finish"]
@@ -565,8 +567,8 @@ def test_the_review_steps_and_the_sweep_are_given_sessions_that_resume_nothing(l
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    for asked in ("/review-standards 168", "/review-spec 168", "/review-architecture 168",
-                  "/comment-sweep"):
+    for asked in ("/skillworks:review-standards 168", "/skillworks:review-spec 168",
+                  "/skillworks:review-architecture 168", "/skillworks:comment-sweep"):
         call = call_asking(runner, asked)
         assert call is not None
         assert "--resume" not in call
@@ -591,7 +593,7 @@ def test_a_review_step_that_reported_nothing_stops_the_loop(loop, runner):
 
     assert ran.status == 1
     assert "step standards failed check axis-reported" in said(ran)
-    assert call_asking(runner, "/review-spec") is None
+    assert call_asking(runner, "/skillworks:review-spec") is None
 
 
 def test_a_review_step_that_reported_no_findings_passes_its_check(loop, runner):
@@ -602,8 +604,23 @@ def test_a_review_step_that_reported_no_findings_passes_its_check(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert call_asking(runner, "/review-spec 168") is not None
+    assert call_asking(runner, "/skillworks:review-spec 168") is not None
     assert "step standards failed" not in said(ran)
+
+
+# A bare name is what loads from the project skills folder, so it is not the Plugin's skill.
+def test_a_step_whose_session_loaded_the_bare_name_did_not_load_the_plugin_skill(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.bare.add("review-spec")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step spec failed check command-loaded" in said(ran)
+    reasons = (loop.records() / "ticket-168-spec.err").read_text(encoding="utf-8")
+    assert '"/skillworks:review-spec 168" did not load as a command' in reasons
+    assert call_asking(runner, "/skillworks:implement 168 --fix") is None
 
 
 def test_a_review_step_that_errored_stops_the_loop_and_keeps_the_worktree(loop, runner):
@@ -617,8 +634,8 @@ def test_a_review_step_that_errored_stops_the_loop_and_keeps_the_worktree(loop, 
     assert "step spec exited non-zero" in said(ran)
     assert ticket_worktree_of(loop).as_posix() in said(ran)
     assert ticket_worktree_of(loop).is_dir()
-    assert call_asking(runner, "/implement 168 --fix") is None
-    assert call_asking(runner, "/implement 168 --finish") is None
+    assert call_asking(runner, "/skillworks:implement 168 --fix") is None
+    assert call_asking(runner, "/skillworks:implement 168 --finish") is None
 
 
 # --- the reports reaching the fix step --------------------------------------
@@ -630,7 +647,7 @@ def test_the_fix_step_is_given_what_all_three_axes_found(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    asked = prompt_asking(runner, "/implement 168 --fix")
+    asked = prompt_asking(runner, "/skillworks:implement 168 --fix")
     assert "The name box says nothing." in asked
     assert "The third criterion is unmet." in asked
     assert "The arrow points the wrong way." in asked
@@ -645,7 +662,7 @@ def test_the_fix_step_is_told_which_axis_each_report_came_from(loop, runner):
     assert ran.status == 1
     for axis in ("standards", "spec", "architecture"):
         assert "## The {} axis reported".format(axis) in prompt_asking(
-            runner, "/implement 168 --fix")
+            runner, "/skillworks:implement 168 --fix")
 
 
 # The reports stop at `fix`, which reconciles, so carrying them on would be the same work twice.
@@ -656,7 +673,7 @@ def test_the_finishing_step_is_given_no_axis_report(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    asked = prompt_asking(runner, "/implement 168 --finish")
+    asked = prompt_asking(runner, "/skillworks:implement 168 --finish")
     assert asked != ""
     assert "axis reported" not in asked
 
@@ -668,7 +685,7 @@ def test_the_fix_step_and_the_finishing_step_both_resume_the_build_session(loop,
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    for mark in ("/implement 168 --fix", "/implement 168 --finish"):
+    for mark in ("/skillworks:implement 168 --fix", "/skillworks:implement 168 --finish"):
         call = call_asking(runner, mark)
         assert call[call.index("--resume") + 1] == "session-1"
 
@@ -682,7 +699,7 @@ def test_a_missing_axis_report_stops_the_loop_before_the_fix_step(loop, runner):
 
     assert ran.status == 1
     assert "step fix was short of a review axis report" in said(ran)
-    assert call_asking(runner, "/implement 168 --fix") is None
+    assert call_asking(runner, "/skillworks:implement 168 --fix") is None
 
 
 def test_a_missing_axis_report_names_the_axis_it_came_from(loop):
@@ -707,7 +724,7 @@ def test_an_axis_that_changed_nothing_has_an_edit_saying_it_changed_nothing(loop
 
     assert ran.status == 1
     assert edit_of(loop, "standards") == "changed nothing"
-    assert call_asking(runner, "/review-spec 168") is not None
+    assert call_asking(runner, "/skillworks:review-spec 168") is not None
 
 
 def test_every_axis_leaves_its_edit_in_the_log(loop):
@@ -776,7 +793,7 @@ def test_the_fix_step_is_told_what_each_axis_changed(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    asked = prompt_asking(runner, "/implement 168 --fix")
+    asked = prompt_asking(runner, "/skillworks:implement 168 --fix")
     assert "The standards axis changed named.txt." in asked
     assert "The spec axis changed nothing." in asked
     assert "The architecture axis changed built.txt." in asked
@@ -790,8 +807,8 @@ def test_an_axis_that_edits_does_not_stop_the_loop(loop, runner):
     ran = loop.run(SPEC)
 
     assert "step standards failed" not in said(ran)
-    assert call_asking(runner, "/review-spec 168") is not None
-    assert call_asking(runner, "/implement 168 --fix") is not None
+    assert call_asking(runner, "/skillworks:review-spec 168") is not None
+    assert call_asking(runner, "/skillworks:implement 168 --fix") is not None
 
 
 # --- the suite the driver runs itself ---------------------------------------
@@ -832,8 +849,8 @@ def test_the_suite_runs_after_the_sweep_and_a_green_one_runs_the_finishing_step(
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert call_at(runner, "/comment-sweep") < call_at(runner, SOLUTION)
-    assert call_at(runner, SOLUTION) < call_at(runner, "/implement 168 --finish")
+    assert call_at(runner, "/skillworks:comment-sweep") < call_at(runner, SOLUTION)
+    assert call_at(runner, SOLUTION) < call_at(runner, "/skillworks:implement 168 --finish")
 
 
 def test_the_suite_keeps_what_it_said_with_the_other_step_records(loop):
@@ -855,7 +872,7 @@ def test_a_red_suite_stops_the_loop_before_the_finishing_step(loop, runner):
 
     assert ran.status == 1
     assert "step suite failed check suite-green" in said(ran)
-    assert call_asking(runner, "/implement 168 --finish") is None
+    assert call_asking(runner, "/skillworks:implement 168 --finish") is None
 
 
 def test_a_red_suite_keeps_what_it_said_and_the_worktree_it_said_it_in(loop):
@@ -946,7 +963,7 @@ def test_a_second_run_that_passes_carries_the_loop_on_to_the_finishing_step(loop
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert call_asking(runner, "/implement 168 --finish") is not None
+    assert call_asking(runner, "/skillworks:implement 168 --finish") is not None
     assert "failed check suite-green" not in said(ran)
 
 
@@ -1023,8 +1040,8 @@ def test_red_on_both_runs_goes_to_fix_then_sweep_then_suite(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    went_round = every_call_at(runner, "/implement 168 --fix")[1]
-    swept = every_call_at(runner, "/comment-sweep")[1]
+    went_round = every_call_at(runner, "/skillworks:implement 168 --fix")[1]
+    swept = every_call_at(runner, "/skillworks:comment-sweep")[1]
     assert went_round < swept < every_call_at(runner, SOLUTION)[2]
 
 
@@ -1036,7 +1053,7 @@ def test_the_failure_output_reaches_the_fix_prompt(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert "a test failed" in prompts_asking(runner, "/implement 168 --fix")[1]
+    assert "a test failed" in prompts_asking(runner, "/skillworks:implement 168 --fix")[1]
 
 
 def test_the_fix_step_before_the_suite_is_told_of_no_failure(loop, runner):
@@ -1047,7 +1064,7 @@ def test_the_fix_step_before_the_suite_is_told_of_no_failure(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert "a test failed" not in prompts_asking(runner, "/implement 168 --fix")[0]
+    assert "a test failed" not in prompts_asking(runner, "/skillworks:implement 168 --fix")[0]
 
 
 def test_the_retry_runs_under_the_fix_flag_and_no_other(loop, runner):
@@ -1070,7 +1087,7 @@ def test_a_suite_green_after_the_circuit_carries_the_loop_on(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert call_asking(runner, "/implement 168 --finish") is not None
+    assert call_asking(runner, "/skillworks:implement 168 --finish") is not None
     assert "failed check suite-green" not in said(ran)
 
 
@@ -1082,8 +1099,8 @@ def test_a_second_circuit_never_happens(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert len(prompts_asking(runner, "/implement 168 --fix")) == 2
-    assert len(prompts_asking(runner, "/comment-sweep")) == 2
+    assert len(prompts_asking(runner, "/skillworks:implement 168 --fix")) == 2
+    assert len(prompts_asking(runner, "/skillworks:comment-sweep")) == 2
     assert len(runner.started("dotnet")) == 4
 
 
@@ -1096,7 +1113,7 @@ def test_red_after_the_circuit_stops_the_loop_before_the_finishing_step(loop, ru
 
     assert ran.status == 1
     assert "step suite failed check suite-green" in said(ran)
-    assert call_asking(runner, "/implement 168 --finish") is None
+    assert call_asking(runner, "/skillworks:implement 168 --finish") is None
 
 
 def test_a_stop_after_the_circuit_leaves_the_worktree_and_names_it_in_the_log(loop, runner):
@@ -1137,7 +1154,7 @@ def test_the_record_keeps_what_the_suite_said_on_both_sides_of_the_circuit(loop,
 # --- the passing suite reaching the finishing step ---------------------------
 
 def finish_prompt(runner):
-    return prompt_asking(runner, "/implement 168 --finish")
+    return prompt_asking(runner, "/skillworks:implement 168 --finish")
 
 
 def test_the_finishing_step_is_handed_the_output_of_the_suite_that_passed(loop, runner):
@@ -1169,7 +1186,7 @@ def test_the_suite_runs_before_the_finishing_step(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert call_at(runner, SOLUTION) < call_at(runner, "/implement 168 --finish")
+    assert call_at(runner, SOLUTION) < call_at(runner, "/skillworks:implement 168 --finish")
 
 
 # A flake spends a run, and the run that proved the work is the one the closing comment names.
@@ -1227,8 +1244,9 @@ def test_every_step_session_names_the_session_that_started_the_driver(loop, runn
 
     assert ran.status == 1
     asked = [call[2].split(" ")[0] for call in session_calls(runner)]
-    assert asked == ["/implement", "/review-standards", "/review-spec", "/review-architecture",
-                     "/implement", "/comment-sweep", "/implement"]
+    assert asked == ["/skillworks:" + name for name in (
+        "implement", "review-standards", "review-spec", "review-architecture",
+        "implement", "comment-sweep", "implement")]
     for changes in changes_given_to_sessions(runner):
         assert changes.get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
@@ -1240,7 +1258,7 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
 
     loop.run(SPEC)
 
-    assert call_asking(runner, "/spec-drift") is not None
+    assert call_asking(runner, "/skillworks:spec-drift") is not None
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
 
@@ -1289,7 +1307,7 @@ def test_a_ticket_is_claimed_and_read_back_after_a_wait(loop, runner):
 # An ADR records what was decided on a day, so it keeps its old list and is not held here.
 LIVE_DOCUMENTS = (
     "docs/agentic-development/agentic-loop.md",
-    ".claude/skills/what-next/SKILL.md",
+    "plugins/skillworks/skills/what-next/SKILL.md",
 )
 
 # A list gone short would leave the walk below silent rather than red, so it is counted first.

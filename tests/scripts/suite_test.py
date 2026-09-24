@@ -248,8 +248,8 @@ def test_a_check_with_no_command_is_not_ready(tmp_path, runner):
 
 
 REVIEW_SKILLS = (
-    ".claude/skills/code-review/SKILL.md",
-    ".claude/skills/review-architecture/SKILL.md",
+    "plugins/skillworks/skills/code-review/SKILL.md",
+    "plugins/skillworks/skills/review-architecture/SKILL.md",
 )
 
 PLACEMENT_CHECKS = "docs/agents/placement-checks.md"

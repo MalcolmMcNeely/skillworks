@@ -38,6 +38,17 @@
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "600000"
   },
+  "extraKnownMarketplaces": {
+    "skillworks": {
+      "source": {
+        "source": "directory",
+        "path": "./plugins"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "skillworks@skillworks": true
+  },
   "hooks": {
     "InstructionsLoaded": [
       {

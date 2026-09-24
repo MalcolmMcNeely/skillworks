@@ -228,11 +228,11 @@ background.
 | `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
 | `tests/scripts/` | The drivers in `scripts/`, run against a throwaway repository. |
-| `plugins/` | The folder of plugins Studio reads by default. Empty for now. |
-| `.claude/skills/` | Dev tooling for working in this repo. Mostly vendored, not shipped. |
+| `plugins/` | The local Marketplace. It holds the one Plugin, `skillworks`, and this repo loads its skills from there. Studio reads it by default. |
+| `.claude/skills/` | The skills that are not in the Plugin. Dev tooling for this repo, mostly vendored. |
 | `scripts/` | Drivers the skills shell out to. Not meant to be run by hand. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
-| `docs/agents/` | Reference text more than one skill reads. `/skillworks-setup` writes the tracker and domain seeds; the review baselines are this repo's own. |
+| `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` writes the tracker and domain seeds; the review baselines are this repo's own. |
 | `docs/agentic-development/` | How the dev loop works, for a human reading it rather than a skill. |
 
 ### How much of Studio is Shared
@@ -269,7 +269,7 @@ You need three things on your machine:
 Then, in Claude Code:
 
 ```
-/skillworks-setup
+/skillworks:skillworks-setup
 ```
 
 Run it once per clone. Run it again any time to repair.
@@ -283,18 +283,18 @@ It asks before it overwrites anything you have edited.
 Two stages, and two commands. A human drives the first. A script drives the second.
 
 ```
-/grill-with-docs        argue the design out, and publish the spec
-/spec-loop <spec#>      build it, ticket by ticket, unattended
+/skillworks:grill-with-docs        argue the design out, and publish the spec
+/skillworks:spec-loop <spec#>      build it, ticket by ticket, unattended
 ```
 
 [docs/agentic-development/agentic-loop.md](docs/agentic-development/agentic-loop.md) explains what
 each one does.
 
-Lost? `/what-next` looks at where you are and tells you which skill fits.
+Lost? `/skillworks:what-next` looks at where you are and tells you which skill fits.
 
 ## Licence
 
 Apache 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-Most skills under `.claude/skills/` are vendored from other projects and stay MIT.
+Most skills under `plugins/skillworks/skills/` and `.claude/skills/` are vendored from other projects and stay MIT.
 See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for which are ours and which are theirs.

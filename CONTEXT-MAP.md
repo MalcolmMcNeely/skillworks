@@ -66,6 +66,7 @@ contexts:
     slices: false
     code:
       - .claude
+      - plugins/skillworks
       - scripts
       - tests/scripts
 ```

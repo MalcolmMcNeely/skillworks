@@ -218,7 +218,7 @@ class Landing:
         if rest is None:
             return None
         return (
-            "/resolve-conflict\n\n"
+            "/skillworks:resolve-conflict\n\n"
             "Ticket #{t} was rebased onto the newest origin/main and stopped on a conflict.\n"
             "Its worktree is {w}, and the rebase is open in it.\n\n"
             "## The conflicting files\n\n{f}\n\n"

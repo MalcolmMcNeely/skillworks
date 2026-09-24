@@ -71,8 +71,8 @@ ok "issues enabled"
 # --- labels -----------------------------------------------------------------
 #
 # Nothing in the loop READS a label. The driver finds work by sub-issue
-# parentage, blocked_by and assignee. One label exists only because /to-spec
-# and /to-tickets APPLY it, and `gh issue create` fails on a label that is
+# parentage, blocked_by and assignee. One label exists only because /skillworks:to-spec
+# and /skillworks:to-tickets APPLY it, and `gh issue create` fails on a label that is
 # not there.
 
 # Create if missing. Never overwrite one that exists - the colour or wording
@@ -115,5 +115,5 @@ else
 fi
 
 if [ "$CHECK_ONLY" = "0" ]; then
-  printf '\nReady. Next: the rest of /skillworks-setup.\n'
+  printf '\nReady. Next: the rest of /skillworks:skillworks-setup.\n'
 fi

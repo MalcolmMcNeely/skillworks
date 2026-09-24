@@ -134,6 +134,16 @@ public sealed class StudioHost : IDisposable
 
     public static string Plugins() => Path.Combine(AppContext.BaseDirectory, "Shared", "Harness", "Plugins");
 
+    public static string RepositoryRoot()
+    {
+        var folder = new DirectoryInfo(AppContext.BaseDirectory);
+        while (folder is not null && !File.Exists(Path.Combine(folder.FullName, "Skillworks.slnx")))
+            folder = folder.Parent;
+
+        return folder?.FullName ?? throw new InvalidOperationException(
+            $"No folder above {AppContext.BaseDirectory} holds Skillworks.slnx.");
+    }
+
     public static IReadOnlyList<string> Fields(JsonNode? answer) =>
         [.. (answer?.AsObject() ?? []).Select(field => field.Key).Order(StringComparer.Ordinal)];
 

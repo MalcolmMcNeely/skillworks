@@ -9,7 +9,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Pushes_hook_records_under_the_scope_the_session_watch_hook_writes()
     {
-        var script = await File.ReadAllTextAsync(Path.Combine(RepositoryRoot(), "scripts", "session-watch.mjs"));
+        var script = await File.ReadAllTextAsync(Path.Combine(StudioHost.RepositoryRoot(), "scripts", "session-watch.mjs"));
 
         Assert.Contains($"scope: {{ name: \"{HookRecord.Scope}\" }}", script, StringComparison.Ordinal);
     }
@@ -110,15 +110,5 @@ public sealed partial class SessionEndpointsTests
         var steps = await studio.StepsIn(Morning);
 
         Assert.Equal(["prompt", "tool"], steps.Select(step => step.Kind));
-    }
-
-    private static string RepositoryRoot()
-    {
-        var folder = new DirectoryInfo(AppContext.BaseDirectory);
-        while (folder is not null && !File.Exists(Path.Combine(folder.FullName, "Skillworks.slnx")))
-            folder = folder.Parent;
-
-        return folder?.FullName ?? throw new InvalidOperationException(
-            $"No folder above {AppContext.BaseDirectory} holds Skillworks.slnx.");
     }
 }
