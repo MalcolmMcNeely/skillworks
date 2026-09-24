@@ -4,6 +4,7 @@
 # claude parses the whole line before the session lookup, so an unknown option is turned down first.
 
 import io
+import json
 import tempfile
 from pathlib import Path
 from typing import NamedTuple
@@ -141,3 +142,35 @@ def usage_of(said):
         if line.strip() == "USAGE" and at + 1 < len(lines):
             return lines[at + 1].strip()
     return ""
+
+
+# The Plugin loads far enough to report itself, and the API turns down a model it does not offer.
+PLUGIN = ROOT / "plugins" / "skillworks"
+NO_SUCH_MODEL = "zzznosuchmodel"
+FORCED = "skillworks:skillworks"
+# A style set by the project, which the forced style has to beat.
+PROJECT_STYLE = "Explanatory"
+SKILL = "skillworks:implement"
+
+
+# The init event reports the style setting and not the forced one, so the debug log is read too.
+def started_with_the_plugin(folder):
+    (folder / ".claude").mkdir()
+    (folder / ".claude" / "settings.json").write_text(
+        json.dumps({"outputStyle": PROJECT_STYLE}), encoding="utf-8")
+    debug = folder / "debug.log"
+    ran = REAL.run(
+        ["claude", "-p", "hello", "--plugin-dir", PLUGIN.as_posix(),
+         "--output-format", "stream-json", "--verbose", "--model", NO_SUCH_MODEL,
+         "--no-session-persistence", "--debug-file", debug.as_posix()],
+        folder.as_posix())
+    return ran, debug.read_text(encoding="utf-8", errors="replace")
+
+
+def init_event(out):
+    for line in out.splitlines():
+        if line.startswith("{"):
+            event = json.loads(line)
+            if event.get("subtype") == "init":
+                return event
+    raise AssertionError("claude printed no init event:\n" + out)

@@ -1,6 +1,7 @@
 ---
 name: skillworks
 description: Plain short words. What was done, did it work, what to do now.
+force-for-plugin: true
 keep-coding-instructions: true
 ---
 

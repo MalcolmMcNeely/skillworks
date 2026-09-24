@@ -199,8 +199,10 @@ the fast set, which answers for `gh` and `claude` through the Runner, so it need
 and starts no model session. It is the set a landing runs, so landing is never gated on a login.
 
 The other set starts the real `gh` and the real `claude`, far enough to prove each one accepts the
-argument lines the driver builds for it and no further. It needs both programs on PATH. It makes no
-request, changes no issue and starts no model session, and it takes a few seconds:
+argument lines the driver builds for it and no further. It also starts `claude` with the Plugin, to
+prove the Plugin forces its output style and resolves a `skillworks:` skill. That session asks for a
+model the API does not offer, so no model answers. It needs both programs on PATH. It changes no
+issue and starts no model session, and it takes a few seconds:
 
 ```
 uv run --with pytest pytest tests/scripts --real-binaries

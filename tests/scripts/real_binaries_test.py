@@ -3,8 +3,8 @@
 
 import pytest
 
-from real_binaries import (CLAUDE, GH, GH_FIELDS, NOWHERE, Line, listed, report,
-                           usage_of)
+from real_binaries import (CLAUDE, FORCED, GH, GH_FIELDS, NOWHERE, PROJECT_STYLE, SKILL, Line,
+                           init_event, listed, report, started_with_the_plugin, usage_of)
 
 # A line the driver stops building is the drift this set catches, so a count moves only on purpose.
 GH_LINES = 13
@@ -66,3 +66,16 @@ def test_the_real_claude_accepts_a_line_the_driver_builds(line):
     assert NOWHERE in ran.out + ran.err, (
         "claude stopped short of the session lookup, so it turned part of the line "
         "down:\n" + report(asked, ran))
+
+
+def test_the_real_claude_forces_the_plugin_style_and_resolves_a_plugin_skill(tmp_path):
+    # Act
+    ran, debug = started_with_the_plugin(tmp_path)
+
+    # Assert
+    init = init_event(ran.out)
+    assert init["output_style"] == PROJECT_STYLE, (
+        "claude did not read the project's style, so beating it proves nothing:\n" + ran.out)
+    assert "Using forced plugin output style: " + FORCED in debug, (
+        "claude did not force the Plugin's style:\n" + debug)
+    assert SKILL in init["skills"], "claude did not resolve " + SKILL + ":\n" + ran.out
