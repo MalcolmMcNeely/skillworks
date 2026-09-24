@@ -12,6 +12,7 @@ This command is _informed_ by the project's domain model and built on a shared d
 
 - Call the Skill tool with "codebase-design" for the architecture vocabulary (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) and its principles (the deletion test, "the interface is the test surface", "one adapter = hypothetical seam, two = real"). Use these terms exactly in every suggestion — don't drift into "component," "service," "API," or "boundary."
 - The domain language in `CONTEXT.md` gives names to good seams; ADRs in `docs/adr/` record decisions this command should not re-litigate.
+- It surveys the whole codebase for candidates. **`/review-architecture`** does a different job: it reviews one change, as an axis of `/code-review` and a step of `/spec-loop`. If the user wants a change reviewed, send them there.
 
 ## Process
 
