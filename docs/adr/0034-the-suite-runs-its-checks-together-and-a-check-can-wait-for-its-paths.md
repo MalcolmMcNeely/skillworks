@@ -5,7 +5,7 @@ minutes, and landing ran it again whenever `main` had moved. The architecture ax
 before its review and again after a fix. Most of that time went to one file: the 27 preflight tests,
 at about 30 seconds each, proving a script that runs once, when a repo sets the Plugin up.
 
-Three things change.
+Two things change.
 
 **The checks run together.** Every repo's Suite starts all its checks at once, after every readiness
 command has run one by one. The Suite then takes as long as its slowest check, not the sum of them.
@@ -23,9 +23,10 @@ names what was not run beside what proved the work.
 Here the preflight tests become a check of their own, woken by the script, its short command, its
 test, and the shared test support.
 
-**The architecture axis runs its placement checks, not the Suite.** The placement-checks file names
-the exact commands, and the axis runs those. Here that is the Architecture tests alone and the front
-end's lint. The API tests take six minutes and prove nothing about placement.
+The architecture axis no longer runs the Suite at all.
+[ADR 0033](0033-a-session-that-stops-short-is-nudged-by-the-driver.md) settled that, and owns it: the
+axis runs only the checks the placement-checks file names. Here that is the Architecture tests alone
+and the front end's lint. The API tests take six minutes and prove nothing about placement.
 
 ## Considered options
 
