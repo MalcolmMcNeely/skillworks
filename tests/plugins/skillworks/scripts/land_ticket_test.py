@@ -206,6 +206,24 @@ def test_a_moved_base_is_rebased_and_the_suite_runs_again(repo, runner):
     assert git(repo.origin, "show", "main:work.txt").strip() == "work"
 
 
+def test_a_landed_commit_keeps_its_session_trailers_after_the_rebase(repo, runner):
+    given_the_suite_passes(runner)
+    given_a_project(repo)
+    repo.advance_origin("later")
+    repo.write_commit(
+        repo.work, "work.txt", "work",
+        "Do the work\n\nTicket: #165\n"
+        "Skillworks-Session: first-session\nSkillworks-Session: second-session")
+    before = head_of(repo)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 0
+    assert main_of(repo) != before
+    assert git(repo.origin, "log", "-1", "--format=%(trailers:key=Skillworks-Session,valueonly)",
+               "main").split() == ["first-session", "second-session"]
+
+
 def test_a_suite_that_fails_on_the_new_base_is_not_pushed(repo, runner):
     given_the_suite_passes(runner)
     runner.stub("dotnet", status=1)

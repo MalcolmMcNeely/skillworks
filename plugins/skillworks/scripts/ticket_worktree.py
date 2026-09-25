@@ -210,6 +210,16 @@ class Worktrees:
                 return name
             n += 1
 
+    def recorded_sessions(self, tree):
+        folder = self.git(tree, "rev-parse", "--absolute-git-dir").out.strip()
+        # An empty answer would read a record from wherever the script was started.
+        if not folder:
+            return []
+        try:
+            return (Path(folder) / SESSIONS_RECORD).read_text(encoding="utf-8").split()
+        except OSError:
+            return []
+
     def keep_group(self):
         self.git(self.checkout, "worktree", "prune", echo=True)
         if not self.group.exists():
@@ -244,9 +254,19 @@ class Worktrees:
                 # A line ending alone stages to nothing, and git refuses to commit that.
                 if self.git(tree, "diff", "--cached", "--quiet").status != 0:
                     state = "held"
+                    sessions = self.recorded_sessions(tree)
+                    # Losing the work costs more than losing the Session's name.
+                    if not sessions:
+                        self.err.write(
+                            "warn  {} has no record of a Session, so its Keep names none.\n".format(
+                                tree.as_posix()))
+                    trailers = []
+                    for session in sessions:
+                        trailers += ["--trailer", "Skillworks-Session: " + session]
                     committed = self.git(
                         tree, "commit", "--quiet", "-m",
-                        "What a stopped attempt at " + job + " had not committed", echo=True)
+                        "What a stopped attempt at " + job + " had not committed", *trailers,
+                        echo=True)
                     if committed.status != 0:
                         raise refusal("git would not commit what is in " + tree.as_posix()
                                      + ", so nothing was removed.")

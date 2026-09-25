@@ -32,6 +32,21 @@ def record(job, leaf, state):
     return "{}\tspec-loop/158/{}\t{}\n".format(job, leaf, state)
 
 
+def given_sessions(tree, *sessions):
+    folder = Path(git(tree, "rev-parse", "--absolute-git-dir").strip())
+    (folder / ticket_worktree.SESSIONS_RECORD).write_text(
+        "".join(s + "\n" for s in sessions), encoding="utf-8", newline="\n")
+
+
+def given_held(tree):
+    (tree / "added.txt").write_text("new\n", encoding="utf-8", newline="\n")
+
+
+def sessions_named(repo, leaf):
+    return git(repo.work, "log", "-1", "--format=%(trailers:key=Skillworks-Session,valueonly)",
+               "spec-loop/158/" + leaf).split()
+
+
 def test_a_job_is_branched_from_the_newest_origin_main(repo, runner):
     repo.advance_origin("later")
     newest = git(repo.origin, "rev-parse", "main").strip()
@@ -122,6 +137,62 @@ def test_a_leftover_holding_nothing_uncommitted_is_still_kept(repo, runner):
     assert ran.out == record("ticket-164", "ticket-164-kept-1", "clean")
     assert not repo.tree(158, "ticket-164").exists()
     assert repo.head_of(158, "ticket-164-kept-1") == before
+
+
+def test_a_held_keep_names_every_recorded_session_in_order(repo, runner):
+    given_job(repo, runner, 158, "ticket-164")
+    tree = repo.tree(158, "ticket-164")
+    given_sessions(tree, "first-session", "second-session")
+    given_held(tree)
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert ran.status == 0
+    assert ran.out == record("ticket-164", "ticket-164-kept-1", "held")
+    assert sessions_named(repo, "ticket-164-kept-1") == ["first-session", "second-session"]
+
+
+def test_a_held_keep_names_a_session_that_already_committed(repo, runner):
+    given_job(repo, runner, 158, "ticket-164")
+    tree = repo.tree(158, "ticket-164")
+    given_sessions(tree, "first-session")
+    repo.write_commit(
+        tree, "early.txt", "early", "Early work\n\nSkillworks-Session: first-session")
+    given_held(tree)
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert ran.status == 0
+    assert sessions_named(repo, "ticket-164-kept-1") == ["first-session"]
+
+
+def test_a_held_keep_with_no_record_commits_and_warns(repo, runner):
+    given_job(repo, runner, 158, "ticket-164")
+    tree = repo.tree(158, "ticket-164")
+    before = repo.head_of(158, "ticket-164")
+    given_held(tree)
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert ran.status == 0
+    assert ran.out == record("ticket-164", "ticket-164-kept-1", "held")
+    assert repo.head_of(158, "ticket-164-kept-1") != before
+    assert sessions_named(repo, "ticket-164-kept-1") == []
+    assert "warn  " + tree.as_posix() in ran.err
+
+
+def test_a_clean_keep_with_a_record_commits_nothing_and_warns_of_nothing(repo, runner):
+    given_job(repo, runner, 158, "ticket-164")
+    tree = repo.tree(158, "ticket-164")
+    given_sessions(tree, "first-session")
+    before = repo.head_of(158, "ticket-164")
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert ran.status == 0
+    assert ran.out == record("ticket-164", "ticket-164-kept-1", "clean")
+    assert repo.head_of(158, "ticket-164-kept-1") == before
+    assert "warn" not in ran.err
 
 
 def test_a_leftover_changed_only_in_its_line_endings_is_kept(repo, runner):
