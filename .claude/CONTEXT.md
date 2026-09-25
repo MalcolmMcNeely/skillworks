@@ -64,6 +64,13 @@ What the Plugin runs and no team edits: the skills, the scripts they drive, the 
 style. It runs from the Plugin, so every repo runs the same code and one update reaches them all.
 _Avoid_: Engine, tooling, framework
 
+**Nudge**:
+What the driver sends to resume a Session whose step ended with work still owed. It names what is
+owed, so the Session carries on with its context rather than starting again. A Nudge answers a
+Session that stopped short, never one that could not run, and a step that still owes work after two
+of them stops the loop.
+_Avoid_: Continuation, retry, prod
+
 **Runner**:
 The one way the driver reaches another program. It is injected, so a test supplies its own rather
 than putting a fake on `PATH`.
