@@ -1402,6 +1402,27 @@ def test_a_driver_started_by_hand_names_no_parent(loop, runner, monkeypatch):
         assert "OTEL_RESOURCE_ATTRIBUTES" not in change
 
 
+# --- the Bash limit each Session runs with -----------------------------------
+
+FORTY_FIVE_MINUTES_MS = "2700000"
+
+
+def test_every_session_runs_with_a_45_minute_bash_limit_and_background_tasks_on(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    calls = [call for call in runner.made if call.args[0] == "claude"]
+    assert any("--resume" in call.args for call in calls)
+    assert any("--resume" not in call.args for call in calls)
+    for call in calls:
+        changes = call.env or {}
+        assert changes.get("BASH_DEFAULT_TIMEOUT_MS") == FORTY_FIVE_MINUTES_MS
+        assert changes.get("BASH_MAX_TIMEOUT_MS") == FORTY_FIVE_MINUTES_MS
+        assert "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS" not in changes
+
+
 # --- the claim --------------------------------------------------------------
 
 def test_a_ticket_is_claimed_and_read_back_after_a_wait(loop, runner):
