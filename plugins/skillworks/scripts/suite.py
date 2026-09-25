@@ -7,6 +7,7 @@
 # A machine short of what the checks need is not a red suite, so readiness is proved first.
 # Readiness runs one command at a time, because two checks can share one install.
 # The checks then run together, so the Suite takes as long as its slowest check.
+# A slow check of a rarely changed file names its paths, so it runs only when they change.
 # A command is an argument list and never a shell line, so it reads the same on every machine.
 # An `unless` path that exists skips its readiness command, so an install is not done twice.
 # Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
@@ -36,24 +37,50 @@ class Check(NamedTuple):
     command: list
     folder: Path
     ready: Ready
+    when: list = None
+
+    def woken_by(self, changed):
+        if self.when is None or changed is None:
+            return True
+        return any(name == path or name.startswith(path + "/")
+                   for path in self.when for name in changed)
 
 
 class Unreadable(Exception):
     pass
 
 
+def is_list_of_words(value):
+    return isinstance(value, list) and bool(value) and all(
+        isinstance(word, str) and word for word in value)
+
+
 def command_of(entry):
     command = entry.get("command") if isinstance(entry, dict) else None
-    if not isinstance(command, list) or not command or not all(
-            isinstance(word, str) and word for word in command):
+    if not is_list_of_words(command):
         raise Unreadable("a command that is not a list of words")
     return command
 
 
+def paths_of(entry):
+    if "when" not in entry:
+        return None
+    if not is_list_of_words(entry["when"]):
+        raise Unreadable("a when that is not a list of paths")
+    return [path.rstrip("/") for path in entry["when"]]
+
+
+def did_not_run(check):
+    return "{} did not run, because the change touches none of the paths it names\n".format(
+        " ".join(check.command))
+
+
 class Suite:
-    def __init__(self, runner, worktree):
+    # An unread change runs every check, because running one not needed is the safe way to be wrong.
+    def __init__(self, runner, worktree, base=None):
         self.runner = runner
         self.tree = Path(worktree)
+        self.base = base
 
     def read(self):
         path = self.tree / SUITE_FILE
@@ -79,8 +106,23 @@ class Suite:
             if ready is not None:
                 ready = Ready(command_of(ready), str(ready.get("message", "")),
                               ready.get("unless"))
-            wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready))
+            wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
+                                paths_of(entry)))
         return wanted, runs
+
+    # Measured from the base and not from main, so work that landed meanwhile wakes nothing.
+    def changed(self):
+        if not self.base:
+            return None
+        tree = self.tree.as_posix()
+        differ = self.runner.run(
+            ["git", "-C", tree, "diff", "--name-only", "--no-renames", "-z", self.base], tree)
+        untracked = self.runner.run(
+            ["git", "-C", tree, "ls-files", "--others", "--exclude-standard", "--full-name", "-z"],
+            tree)
+        if differ.status != 0 or untracked.status != 0:
+            return None
+        return {name for name in (differ.out + untracked.out).split("\0") if name}
 
     # Read as facts, never out of a runner's output, which is reworded with every version.
     def short_of(self, wanted):
@@ -112,8 +154,9 @@ class Suite:
         if short:
             return Outcome(False, short, ready=False)
 
+        changed = self.changed()
         for at in range(1, runs + 1):
-            outcome = self.run_checks(wanted)
+            outcome = self.run_checks(wanted, changed)
             if heard is not None:
                 heard(outcome, at)
             if outcome.passed:
@@ -121,10 +164,11 @@ class Suite:
         return outcome
 
     # A red check lets the others finish, so the one fix circuit reads every failure, not the first.
-    def run_checks(self, wanted):
+    def run_checks(self, wanted, changed):
         with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
             running = [pool.submit(self.runner.run, check.command, check.folder.as_posix())
-                       for check in wanted]
-            ran = [each.result() for each in running]
-        said = "".join(each.out + each.err for each in ran)
-        return Outcome(all(each.status == 0 for each in ran), said)
+                       if check.woken_by(changed) else None for check in wanted]
+            ran = [each.result() if each else None for each in running]
+        said = "".join(did_not_run(check) if each is None else each.out + each.err
+                       for check, each in zip(wanted, ran))
+        return Outcome(all(each.status == 0 for each in ran if each), said)

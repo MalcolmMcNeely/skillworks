@@ -156,8 +156,9 @@ class Landing:
         return listed(self.git("diff", "--name-only", "--diff-filter=U").out)
 
     # The suite says a great deal, and only a failure is worth reading.
-    def run_suite(self):
-        outcome = Suite(self.runner, self.worktree).run()
+    # Measured from the commit rebased onto, so what landed meanwhile wakes no check.
+    def run_suite(self, onto):
+        outcome = Suite(self.runner, self.worktree, onto).run()
         # A suite that never started says nothing about the ticket, so it is named apart.
         if not outcome.ready:
             raise self.die(
@@ -342,6 +343,7 @@ class Landing:
         mine_files = listed(self.read("has files git would not list against its base",
                                       "diff", "--name-only", base, "HEAD"))
 
+        onto = self.git("rev-parse", "origin/main").out.strip()
         said = self.git("rebase", "origin/main")
         if said.status != 0:
             self.resolve_conflict(base, (said.out + said.err).rstrip("\n"))
@@ -353,7 +355,7 @@ class Landing:
             self.ticket, self.git("rev-parse", "--short", "origin/main").out.strip(), commit))
 
         # A merge that resolves with no conflict can still break the program.
-        self.run_suite()
+        self.run_suite(onto)
         self.say("#{} passed the suite on the new base".format(self.ticket))
 
         # Every check the resolution had to pass is behind it, so the outcome is settled.

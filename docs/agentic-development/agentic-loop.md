@@ -147,6 +147,15 @@ lets the others finish, so `fix` reads every failure in its one circuit. The Sui
 check is red. Its output keeps the order of the Suite file, each check's output whole, so two runs of
 one Suite read the same whatever finished first.
 
+A check can wait for its paths. A check with `when` lists paths from the repo root, each a file or a
+folder, and it runs only when the ticket's own change touches one of them. The change is every file
+that differs from the commit the ticket's worktree was cut from, uncommitted and untracked files
+included, so a check wakes for what the ticket did and never for what came in on `main`. A check
+without `when` runs on every ticket. A change the driver cannot read runs every check, because running
+a check that was not needed is the safe way to be wrong. A check that did not run says so in one line
+of the Suite output, naming the check, so a ticket's record shows what was not proved as well as what
+was.
+
 A flake is not a red suite either. A Session handed a failure it cannot reproduce may weaken a test
 or edit code that was never broken, so a repo whose tests flake sets `runs` in its Suite file, and
 `suite` runs a red Suite that many times before anything acts on it. With no `runs`, a red Suite is
@@ -239,7 +248,7 @@ already on the remote. `plugins/skillworks/scripts/land_ticket.py` does it, in s
 | `fetch` | Get `origin`, and check there is something left to land. |
 | `rebase` | Onto the newest `origin/main`, but only when the base has moved. Then check no commit and no file was lost. |
 | `resolve` | Only when the rebase conflicts. The build Session is resumed to fix it. |
-| `suite` | The whole suite again, on the new base. An unmoved base is one the `suite` step's own run already answers for. |
+| `suite` | The whole suite again, on the new base. An unmoved base is one the `suite` step's own run already answers for. A check with `when` wakes for the ticket's own commits, measured from the commit it was rebased onto, so what landed meanwhile wakes nothing. |
 | `push` | `HEAD` onto `main`, retried up to three times when another loop wins the race. |
 
 The resumed conflict Session is told its own bias outright: you wrote one side of this and the other

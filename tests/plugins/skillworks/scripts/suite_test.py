@@ -4,7 +4,7 @@
 import json
 import threading
 
-from conftest import ROOT, Ran, check, write_suite
+from conftest import ROOT, Ran, check, git, write_suite
 from suite import SUITE_FILE, Suite
 
 
@@ -427,6 +427,152 @@ def test_a_setting_that_is_not_a_count_is_not_ready(tmp_path, runner):
     assert runner.calls == []
 
 
+# --- the paths that wake a check ----------------------------------------------
+
+def given_a_suite_at_the_base(repo, *checks):
+    write_suite(repo.work, *checks)
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "A Suite")
+    return git(repo.work, "rev-parse", "HEAD").strip()
+
+
+def writing(repo, name, text="changed"):
+    path = repo.work / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8", newline="\n") as file:
+        file.write(text + "\n")
+
+
+def committing(repo, name):
+    writing(repo, name)
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Change " + name)
+
+
+def did_not_run(*command):
+    return "{} did not run, because the change touches none of the paths it names\n".format(
+        " ".join(command))
+
+
+def test_a_committed_change_under_a_named_path_wakes_its_check(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", when=["web"]))
+    given_every_program_passes(runner)
+    committing(repo, "web/page.ts")
+
+    outcome = Suite(runner, repo.work, base).run()
+
+    assert outcome.passed
+    assert runner.started("lint")
+
+
+def test_a_change_to_an_unrelated_file_skips_the_check_and_says_so(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", "all", when=["web"]),
+                                     check("prove"))
+    given_every_program_passes(runner)
+    runner.stub("compile", says="compiled\n")
+    runner.stub("prove", says="proved\n")
+    committing(repo, "api/handler.cs")
+
+    outcome = Suite(runner, repo.work, base).run()
+
+    assert outcome.passed
+    assert not runner.started("lint")
+    assert outcome.said == "compiled\n" + did_not_run("lint", "all") + "proved\n"
+
+
+def test_an_uncommitted_change_wakes_its_check(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("lint", when=["base.txt"]))
+    given_every_program_passes(runner)
+    writing(repo, "base.txt")
+
+    Suite(runner, repo.work, base).run()
+
+    assert runner.started("lint")
+
+
+def test_an_untracked_file_wakes_its_check(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("lint", when=["web/new.ts"]))
+    given_every_program_passes(runner)
+    writing(repo, "web/new.ts")
+
+    Suite(runner, repo.work, base).run()
+
+    assert runner.started("lint")
+
+
+def test_a_folder_path_wakes_on_any_file_beneath_it(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("lint", when=["other", "web/"]))
+    given_every_program_passes(runner)
+    committing(repo, "web/app/deep/page.ts")
+
+    Suite(runner, repo.work, base).run()
+
+    assert runner.started("lint")
+
+
+def test_a_folder_path_never_wakes_on_a_name_that_only_begins_with_it(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("lint", when=["web"]))
+    given_every_program_passes(runner)
+    committing(repo, "website/page.ts")
+
+    outcome = Suite(runner, repo.work, base).run()
+
+    assert not runner.started("lint")
+    assert did_not_run("lint") in outcome.said
+
+
+def test_a_check_without_paths_always_runs(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", when=["web"]))
+    given_every_program_passes(runner)
+
+    Suite(runner, repo.work, base).run()
+
+    assert runner.started("compile")
+    assert not runner.started("lint")
+
+
+def test_a_change_the_suite_cannot_read_runs_every_check(repo, runner):
+    given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, repo.work, "no-such-commit").run()
+
+    assert outcome.passed
+    assert by_words(runner.started("compile") + runner.started("lint")) == [["compile"], ["lint"]]
+
+
+def test_a_change_git_will_not_list_untracked_files_for_runs_every_check(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("lint", when=["web"]))
+    given_every_program_passes(runner)
+    runner.refuse("ls-files", "git broke")
+
+    Suite(runner, repo.work, base).run()
+
+    assert runner.started("lint")
+
+
+def test_a_suite_handed_no_base_runs_every_check(tmp_path, runner):
+    write_suite(tmp_path, check("compile", when=["api"]), check("lint", when=["web"]))
+    given_every_program_passes(runner)
+
+    Suite(runner, tmp_path).run()
+
+    assert by_words(runner.calls) == [["compile"], ["lint"]]
+
+
+def test_a_when_that_is_not_a_list_of_words_makes_the_suite_file_unreadable(tmp_path, runner):
+    for when in ("web", [], [""], [3], {"web": True}, None):
+        given_a_suite_file_reading(tmp_path, json.dumps(
+            {"checks": [{"command": ["lint"], "folder": ".", "when": when}]}))
+        given_every_program_passes(runner)
+
+        outcome = Suite(runner, tmp_path).run()
+
+        assert not outcome.ready, when
+        assert SUITE_FILE in outcome.said, when
+    assert runner.calls == []
+
+
 def test_this_repo_s_suite_file_asks_for_a_second_run():
     assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 2
 
@@ -435,6 +581,12 @@ def test_the_loop_docs_say_the_checks_run_together():
     for doc in ("docs/agentic-development/agentic-loop.md", "docs/agentic-development/checks.md"):
         text = " ".join((ROOT / doc).read_text(encoding="utf-8").split())
         assert "the checks run together" in text, doc
+
+
+def test_the_loop_docs_and_the_setup_docs_say_how_a_check_names_its_paths():
+    for doc in ("docs/agentic-development/agentic-loop.md", "docs/agentic-development/checks.md",
+                "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
+        assert "`when`" in (ROOT / doc).read_text(encoding="utf-8"), doc
 
 
 def test_the_seeded_suite_file_shows_the_setting_at_its_default():

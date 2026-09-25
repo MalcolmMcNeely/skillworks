@@ -9,8 +9,10 @@ the script tests do.
 what must be ready first. The loop runs the checks it names and nothing else, so a check added to the
 README goes in that file too. Every readiness command runs first, one by one. Then the checks run
 together, and a red check lets the others finish. The output keeps the order of the file, each
-check's output whole, whatever finished first. Its `runs` is 2, because the container-backed Span tests
-flake here, so the loop runs a red Suite a second time before it believes it.
+check's output whole, whatever finished first. A check with `when` names the paths that wake it, each
+a file or a folder from the repo root, and runs only when the ticket's own change touches one. A check
+that did not run says so in one line of the output. Its `runs` is 2, because the container-backed
+Span tests flake here, so the loop runs a red Suite a second time before it believes it.
 
 ## The script tests
 

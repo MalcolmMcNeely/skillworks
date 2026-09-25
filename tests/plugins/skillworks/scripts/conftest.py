@@ -123,8 +123,10 @@ class Repo:
         return done.stdout.strip()
 
 
-def check(*command, folder=".", ready=None, message="", unless=None):
+def check(*command, folder=".", ready=None, message="", unless=None, when=None):
     entry = {"command": list(command), "folder": folder}
+    if when is not None:
+        entry["when"] = when
     if ready is not None:
         entry["ready"] = {"command": list(ready), "message": message}
         if unless is not None:

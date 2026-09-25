@@ -10,7 +10,7 @@ import pytest
 
 import spec_loop
 import ticket_worktree
-from conftest import ROOT, Ran, git, launch, project_suite, write_suite
+from conftest import ROOT, Ran, check, git, launch, project_suite, write_suite
 
 SPEC = "158"
 
@@ -1415,6 +1415,30 @@ def test_a_red_suite_keeps_what_it_said_and_the_worktree_it_said_it_in(loop):
     assert "a test failed" in suite_output(loop)
     assert ticket_worktree_of(loop).as_posix() in said(ran)
     assert ticket_worktree_of(loop).is_dir()
+
+
+# Main moves while the ticket is built, and measured from main its new file would wake a check.
+def test_the_suite_is_woken_by_the_change_since_the_worktree_was_cut(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    write_suite(loop.repo.work, check("dotnet", "test", "Skillworks.slnx", when=["built.txt"]),
+                check("npm", "test", when=["later.txt"]))
+    git(loop.repo.work, "add", "-A")
+    git(loop.repo.work, "commit", "--quiet", "-m", "A Suite")
+    git(loop.repo.work, "push", "--quiet", "origin", "main")
+    runner.stub("dotnet", says="the solution passed\n")
+    runner.stub("npm")
+    sessions = Sessions(loop.repo, runner)
+
+    def main_moves():
+        loop.repo.advance_origin("later")
+        git(loop.repo.work, "fetch", "--quiet", "origin")
+    sessions.then["--stop-after-tests"] = main_moves
+
+    loop.run(SPEC)
+
+    assert suite_output(loop).endswith(
+        "the solution passed\n"
+        "npm test did not run, because the change touches none of the paths it names\n")
 
 
 def test_a_machine_short_of_what_the_suite_needs_stops_the_loop_naming_it(loop):

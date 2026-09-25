@@ -5,7 +5,7 @@ import io
 from pathlib import Path
 
 import land_ticket
-from conftest import Ran, git, launch, project_suite, write_suite
+from conftest import Ran, check, git, launch, project_suite, write_suite
 from suite import SUITE_FILE
 
 
@@ -204,6 +204,24 @@ def test_a_moved_base_is_rebased_and_the_suite_runs_again(repo, runner):
     assert len(git(repo.work, "log", "-1", "--format=%P").split()) == 1
     assert git(repo.origin, "show", "main:later.txt").strip() == "later"
     assert git(repo.origin, "show", "main:work.txt").strip() == "work"
+
+
+# Measured from the old fork point, the other side's file would be part of the change too.
+def test_the_suite_on_the_new_base_is_woken_by_the_ticket_s_own_commits_alone(repo, runner):
+    given_the_suite_passes(runner)
+    write_suite(repo.work, check("dotnet", "test", "Skillworks.slnx", when=["work.txt"]),
+                check("npm", "test", when=["later.txt"]))
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "A Suite to check")
+    git(repo.work, "push", "--quiet", "origin", "main")
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 0, report(ran)
+    assert runner.built("dotnet test Skillworks.slnx")
+    assert not runner.built("npm test")
 
 
 def test_a_landed_commit_keeps_its_session_trailers_after_the_rebase(repo, runner):

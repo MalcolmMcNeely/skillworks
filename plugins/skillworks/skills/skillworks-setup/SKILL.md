@@ -102,7 +102,7 @@ Write nothing under `~/.claude`.
 
 Say what was written and what was kept. Say that auto-memory is off for this repository, or that the user chose to keep it on. Then tell them what the team fills in before the loop can finish a ticket:
 
-- `docs/agents/suite.json`: the checks that prove their code, each with a command, the folder it runs in, and optionally a readiness command with its message. `runs` says how many times a red Suite runs before the loop believes it. It starts at 1, and a team with tests that flake raises it. Until it names a check, the loop stops with the Suite not ready.
+- `docs/agents/suite.json`: the checks that prove their code, each with a command, the folder it runs in, and optionally a readiness command with its message. A check may also name the paths that wake it, as `"when": ["scripts/setup.sh", "tests/setup"]`: each is a file or a folder from the repo root, and the check runs only when a ticket's own change touches one of them. A check without `when` runs on every ticket, so a slow check that proves a rarely changed file is the one to give paths. A check that did not run says so in the Suite output. `runs` says how many times a red Suite runs before the loop believes it. It starts at 1, and a team with tests that flake raises it. Until it names a check, the loop stops with the Suite not ready.
 - The allowlist: each tool the Suite runs, such as a build or a test runner, so the loop can run it without a prompt.
 - The rules' settings, as the team settles them.
 
