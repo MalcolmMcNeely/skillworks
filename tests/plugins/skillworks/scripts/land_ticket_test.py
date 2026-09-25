@@ -489,6 +489,30 @@ def test_a_conflict_is_handed_back_to_the_ticket_s_own_session(repo, runner):
     assert runner.built("dotnet test Skillworks.slnx")
 
 
+def test_the_resolving_session_gets_the_environment_every_driver_session_gets(
+        repo, runner, monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
+    monkeypatch.setenv("OTEL_RESOURCE_ATTRIBUTES", "team=studio")
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    stub_session(repo, runner, staging(repo, "start\ntheir line\nmy line\n"))
+    given_a_project(repo)
+    given_a_conflict(repo, 166, 164)
+
+    ran = run_land(runner, repo.work, 166, "session-abc")
+
+    assert ran.status == 0
+    resolving = [call for call in runner.made if call.args[0] == "claude"]
+    assert len(resolving) == 1
+    changes = resolving[0].env
+    assert "CLAUDECODE" in changes and changes["CLAUDECODE"] is None
+    assert changes.get("BASH_DEFAULT_TIMEOUT_MS") == "2700000"
+    assert changes.get("BASH_MAX_TIMEOUT_MS") == "2700000"
+    assert "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS" not in changes
+    assert changes.get("OTEL_RESOURCE_ATTRIBUTES") == (
+        "team=studio,skillworks.parent.session.id=parent-session")
+
+
 def test_a_refusal_stops_the_run_and_names_the_rule_that_fired(repo, runner):
     given_the_suite_passes(runner)
     given_the_tracker_answers(runner)

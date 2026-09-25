@@ -29,7 +29,7 @@ from typing import NamedTuple
 
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
-from runner import Subprocess
+from runner import Subprocess, session_changes
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
 
@@ -230,8 +230,7 @@ class Landing:
             ["claude", "-p", prompt, "--resume", self.session,
              "--permission-mode", self.permission_mode],
             self.worktree,
-            # Claude Code sets this, and the resumed session must not read as nested in this one.
-            {"CLAUDECODE": None})
+            session_changes())
 
     def resolve_conflict(self, base, refused):
         conflicted = self.unmerged()

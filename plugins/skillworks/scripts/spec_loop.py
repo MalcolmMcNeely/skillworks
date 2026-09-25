@@ -37,7 +37,7 @@ from typing import NamedTuple
 import land_ticket
 import ticket_worktree
 from fetch_origin import fetch_origin
-from runner import Subprocess
+from runner import Subprocess, session_changes
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 
@@ -48,11 +48,6 @@ GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
 
 # Long enough for another loop's write to be visible, and injected so a test need not pay it.
 CLAIM_WAIT = 3
-
-PARENT_KEY = "skillworks.parent.session.id"
-
-# Under `claude -p` a background command dies with the Session, so the slowest check must fit in the foreground.
-BASH_LIMIT_MS = str(45 * 60 * 1000)
 
 
 class Step(NamedTuple):
@@ -252,24 +247,6 @@ def suite_verdict(outcome, at):
     if not outcome.passed:
         return "went red"
     return "passed, so the red before it was a flake" if at > 1 else "passed"
-
-
-# Only a Session sets this ID and a Child inherits the attribute, so all below name the first Parent.
-def session_changes():
-    # Claude Code sets this, and the session must not read as nested in this one.
-    changes = {
-        "CLAUDECODE": None,
-        "BASH_DEFAULT_TIMEOUT_MS": BASH_LIMIT_MS,
-        "BASH_MAX_TIMEOUT_MS": BASH_LIMIT_MS,
-    }
-    parent = os.environ.get("CLAUDE_CODE_SESSION_ID")
-    if not parent:
-        return changes
-    # Appended, because the attributes a developer set still have to arrive.
-    held = os.environ.get("OTEL_RESOURCE_ATTRIBUTES", "")
-    named = "{}={}".format(PARENT_KEY, parent)
-    changes["OTEL_RESOURCE_ATTRIBUTES"] = held + "," + named if held else named
-    return changes
 
 
 def plan_line(name, what, checks=""):
