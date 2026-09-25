@@ -11,7 +11,7 @@ The table is an index from a breach back to a rule, and the rules themselves sta
 
 ## The checks that prove placement
 
-The Suite file, [`suite.json`](suite.json), names every check the repo runs. A review runs the whole Suite, and reads the checks listed here for placement. List each one that proves placement, as it is written in the Suite file:
+The Suite file, [`suite.json`](suite.json), names every check the repo runs. A review runs only the checks listed here, and no other check in the Suite. List each one that proves placement, as it is written in the Suite file:
 
 | Suite check | What it runs |
 |---|---|

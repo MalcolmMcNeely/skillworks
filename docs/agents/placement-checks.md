@@ -17,7 +17,7 @@ Rules 7 and 8 have no check behind them, and nor does the exemption that lets a 
 
 ## The checks that prove placement
 
-Two checks in the Suite file, [`suite.json`](suite.json), prove placement here. A review runs the whole Suite, and reads these two for placement:
+Two checks in the Suite file, [`suite.json`](suite.json), prove placement here. A review runs these two and no other check in the Suite:
 
 | Suite check | What it runs |
 |---|---|

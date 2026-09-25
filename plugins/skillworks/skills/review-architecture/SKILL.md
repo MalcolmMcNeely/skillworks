@@ -40,9 +40,9 @@ Three kinds, and each outranks the one before it.
 
 **Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
 
-Run the Suite. The Suite file, `docs/agents/suite.json`, lists its checks in order. Run each check's command in its folder, and run a check's readiness command first, unless its `unless` path exists. The placement-checks file names the checks in the Suite that prove placement, so read their output for this axis.
+Run the placement checks, and only those. The placement-checks file names the checks in the Suite file, `docs/agents/suite.json`, that prove placement. Find each one in the Suite file and run its command in its folder. Run a check's readiness command first, and the readiness command of any check before it in the same folder, unless its `unless` path exists. Do not run the rest of the Suite. The driver runs the whole Suite as a step of its own, and this axis would never read the rest.
 
-Each names the rule, the path and what to do. Quote a breach as it came. Say which checks you ran. Where no check exists for the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
+Each names the rule, the path and what to do. Quote a breach as it came. Say which checks you ran. Where the placement-checks file names no check, or no check exists for the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
 
 ### The baseline
 
@@ -56,7 +56,7 @@ On top of what the repo has, this axis always carries the arrangement baseline i
 
 ## What to look for
 
-Run the Suite first, and report what each check that proves placement said. Then, for every module the change touches:
+Run the placement checks first, and report what each one said. Then, for every module the change touches:
 
 1. Does anything added point the wrong way, cross a seam it should not, or reach past a module's public entry point?
 2. Is every added or moved file in the module its dependencies say it belongs to, and in the Slice whose job it serves?
@@ -75,7 +75,7 @@ This axis edits the worktree, and it should. A finding you can fix, you fix here
 
 Fix only what this axis owns. A finding that belongs to Standards or Spec is dropped rather than reported here, so it is not yours to fix either.
 
-Run the Suite again after a fix, and report what it said about the code as it now stands.
+Run the placement checks again after a fix, and report what they said about the code as it now stands.
 
 A finding you judge not worth fixing is named in the report and left, with the reason. A move that would spread into modules this change never touched is of that kind.
 
