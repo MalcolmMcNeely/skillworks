@@ -104,6 +104,14 @@ def test_the_issue_tracker_seed_holds_the_two_conventions():
     assert "gh issue close <n> --comment" in tracker
 
 
+def test_the_issue_tracker_seed_says_how_to_read_a_commits_sessions_back():
+    tracker = seeded("issue-tracker.md")
+
+    assert "`Skillworks-Session: <id>`" in tracker
+    assert "git log -1 <commit> --format='%(trailers:key=Skillworks-Session,valueonly)'" in tracker
+    assert "claude --resume" in tracker
+
+
 def test_the_starting_suite_is_valid_and_left_empty_is_not_ready(repo, runner):
     run_seed(runner, repo.work)
 

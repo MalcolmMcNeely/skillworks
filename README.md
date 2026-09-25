@@ -134,8 +134,9 @@ recorded.
 
 ### What each Session was given
 
-The Plugin's two hooks, in `plugins/skillworks/hooks/hooks.json`, run
-`plugins/skillworks/scripts/session-watch.mjs`, so every repo with the Plugin records its Loads.
+The Plugin's `SessionStart` and `InstructionsLoaded` hooks, in
+`plugins/skillworks/hooks/hooks.json`, run `plugins/skillworks/scripts/session-watch.mjs`, so every
+repo with the Plugin records its Loads.
 `SessionStart` posts one record for each Session, with how it began. `InstructionsLoaded` posts one
 Load for each instruction file that reaches it. Both go to `OTEL_EXPORTER_OTLP_ENDPOINT`, and both
 carry the Session's `session.id`, so one Loki query reads them beside Claude Code's own events.
@@ -147,6 +148,20 @@ not arrive. No records at all says the Collector was not there.
 
 A hook that fails is silent. Its exit code and its errors reach no one, so the watcher can stop
 watching and nothing says so. To see a hook fail, run `claude --debug hooks`.
+
+### Which Session made a commit
+
+Every commit a Session makes names that Session. The Plugin's `PreToolUse` hook adds a
+`Skillworks-Session: <id>` trailer to each `git commit` Claude runs, whether telemetry is on or off,
+and the spec loop adds one to the commit it makes when it keeps a stopped run's work. The id is the
+Session's `session.id`. Read a commit's Sessions back with:
+
+```
+git log -1 <commit> --format='%(trailers:key=Skillworks-Session,valueonly)'
+```
+
+Take the id to the Stores, or to `claude --resume <id>` on the machine that made the commit.
+A commit you make by hand, outside Claude, carries no trailer.
 
 ### Studio on a seeded month
 

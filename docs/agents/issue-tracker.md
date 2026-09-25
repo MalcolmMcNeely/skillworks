@@ -49,6 +49,11 @@ These are load-bearing, and [ADR 0021](../adr/0021-the-loop-lands-each-ticket-as
   - Never use `Closes #<n>`, `Fixes #<n>` or `Resolves #<n>`. Those close the issue the moment the commit lands on `main`, and an auto-closed issue carries no closing comment.
 - **A ticket is closed with a comment.** `gh issue close <n> --comment "..." --reason completed`. The comment names the commit, what was done and which tests prove it. It is the richest source of intention in this repository, and skills read it back.
 
+A commit also names the Session that made it, though the loop leans on none of it. The Plugin's `PreToolUse` hook adds `Skillworks-Session: <id>` to every `git commit` Claude runs, in the same trailer block as `Ticket:`. The id is the Session's `session.id`. A commit that more than one Session wrote, such as an amend by a second Session or a Keep of a stopped run, carries one line for each of them. A commit a person makes outside Claude carries none, and Land never asks for one.
+
+- **Read it back**: `git log -1 <commit> --format='%(trailers:key=Skillworks-Session,valueonly)'`. Each line is one Session.
+- **Take the id** to the Stores, where it is the `session.id` on every event that Session sent, or to `claude --resume <id>` on the machine that made the commit. The resume works only there, because the Session's history lives on that machine.
+
 ## Wayfinding operations
 
 Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
