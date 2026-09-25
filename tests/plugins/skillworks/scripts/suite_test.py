@@ -2,8 +2,9 @@
 # The programs are made up, so a case proves the Suite runs what the file names and nothing else.
 
 import json
+import threading
 
-from conftest import ROOT, check, write_suite
+from conftest import ROOT, Ran, check, write_suite
 from suite import SUITE_FILE, Suite
 
 
@@ -22,7 +23,11 @@ def given_a_suite_file_reading(tree, text):
     (tree / SUITE_FILE).write_text(text, encoding="utf-8")
 
 
-def test_the_checks_run_in_the_order_the_file_names_them(tmp_path, runner):
+def by_words(calls):
+    return sorted(calls, key=" ".join)
+
+
+def test_every_check_the_file_names_runs_once(tmp_path, runner):
     write_suite(tmp_path, check("compile", "all"), check("prove", "all"), check("lint"))
     given_every_program_passes(runner)
 
@@ -30,7 +35,56 @@ def test_the_checks_run_in_the_order_the_file_names_them(tmp_path, runner):
 
     assert outcome.passed
     assert outcome.ready
-    assert runner.calls == [["compile", "all"], ["prove", "all"], ["lint"]]
+    assert by_words(runner.calls) == [["compile", "all"], ["lint"], ["prove", "all"]]
+
+
+# The bound only turns a hang into a failure, so a slow machine can never fail the case.
+NEVER_SEEN = 600
+
+
+def when_started(event, then=None):
+    def does():
+        event.set()
+        return then() if then else None
+    return does
+
+
+def test_the_checks_run_together(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("prove"))
+    given_every_program_passes(runner)
+    prove_started = threading.Event()
+    saw = []
+    runner.stub("compile", does=lambda: saw.append(prove_started.wait(NEVER_SEEN)))
+    runner.stub("prove", does=when_started(prove_started))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert saw == [True]
+    assert outcome.passed
+
+
+def finishing_after(before, done, says):
+    def does():
+        if before is not None:
+            assert before.wait(NEVER_SEEN)
+        done.set()
+        return Ran(0, says, "")
+    return does
+
+
+def test_the_output_keeps_the_order_of_the_file_whatever_finished_first(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("prove"), check("lint"))
+    compiled, proved, linted = threading.Event(), threading.Event(), threading.Event()
+    runner.stub("compile", does=finishing_after(proved, compiled, "compile one\ncompile two\n"))
+    runner.stub("prove", does=finishing_after(linted, proved, "prove one\nprove two\n"))
+    runner.stub("lint", does=finishing_after(None, linted, "lint one\nlint two\n"))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.passed
+    assert outcome.said == ("compile one\ncompile two\n"
+                            "prove one\nprove two\n"
+                            "lint one\nlint two\n")
 
 
 def test_each_check_runs_in_its_own_folder_under_the_repo_root(tmp_path, runner):
@@ -53,7 +107,23 @@ def test_every_readiness_command_runs_before_the_first_check(tmp_path, runner):
     outcome = Suite(runner, tmp_path).run()
 
     assert outcome.passed
-    assert runner.calls == [["ping"], ["install"], ["compile"], ["lint"]]
+    assert runner.calls[:2] == [["ping"], ["install"]]
+    assert by_words(runner.calls[2:]) == [["compile"], ["lint"]]
+
+
+def test_the_readiness_commands_run_one_by_one(tmp_path, runner):
+    write_suite(tmp_path,
+                check("compile", ready=["ping"], message="ping failed"),
+                check("lint", ready=["install"], message="install failed"))
+    given_every_program_passes(runner)
+    pinged = threading.Event()
+    saw = []
+    runner.stub("ping", does=when_started(pinged))
+    runner.stub("install", does=lambda: saw.append(pinged.is_set()))
+
+    Suite(runner, tmp_path).run()
+
+    assert saw == [True]
 
 
 def test_a_readiness_command_runs_in_the_folder_of_its_check(tmp_path, runner):
@@ -77,6 +147,8 @@ def test_a_failing_readiness_command_is_not_ready_with_its_message(tmp_path, run
     assert not outcome.ready
     assert not outcome.passed
     assert "The store does not answer." in outcome.said
+    assert not runner.started("compile")
+    assert not runner.started("lint")
     assert "nobody home" in outcome.said
     assert not runner.started("compile")
     assert not runner.started("lint")
@@ -104,17 +176,18 @@ def test_a_readiness_command_runs_when_what_it_would_make_is_missing(tmp_path, r
     assert runner.calls == [["install"], ["lint"]]
 
 
-def test_a_failing_check_is_red_and_stops_the_run(tmp_path, runner):
+def test_a_failing_check_is_red_and_lets_every_other_check_finish(tmp_path, runner):
     write_suite(tmp_path, check("compile"), check("prove"), check("lint"))
-    given_every_program_passes(runner)
-    runner.stub("prove", says="a test failed", status=1)
+    runner.stub("compile", says="the build passed\n")
+    runner.stub("prove", says="a test failed\n", status=1)
+    runner.stub("lint", says="the lint passed\n")
 
     outcome = Suite(runner, tmp_path).run()
 
     assert outcome.ready
     assert not outcome.passed
-    assert "a test failed" in outcome.said
-    assert not runner.started("lint")
+    assert by_words(runner.calls) == [["compile"], ["lint"], ["prove"]]
+    assert outcome.said == "the build passed\na test failed\nthe lint passed\n"
 
 
 # Reading the output would make a passing machine look broken on the day a runner reworded itself.
@@ -217,13 +290,14 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
     web = (ROOT / "src" / "Skillworks.Studio.Web").as_posix()
     assert outcome.passed
     assert runner.calls[0] == ["docker", "info"]
-    assert [(call.args, call.where) for call in runner.made if call.args[:2] != ["npm", "ci"]][1:] == [
-        (["dotnet", "test", "Skillworks.slnx"], ROOT.as_posix()),
-        (["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts"], ROOT.as_posix()),
-        (["node", "--test", "tests/plugins/skillworks/scripts/**/*.test.mjs"], ROOT.as_posix()),
-        (["npm", "run", "typecheck"], web),
-        (["npm", "run", "lint"], web),
-        (["npm", "test"], web),
+    assert sorted((" ".join(call.args), call.where) for call in runner.made[1:]
+                  if call.args[:2] != ["npm", "ci"]) == [
+        ("dotnet test Skillworks.slnx", ROOT.as_posix()),
+        ("node --test tests/plugins/skillworks/scripts/**/*.test.mjs", ROOT.as_posix()),
+        ("npm run lint", web),
+        ("npm run typecheck", web),
+        ("npm test", web),
+        ("uv run --with pytest pytest tests/plugins/skillworks/scripts", ROOT.as_posix()),
     ]
 
 
@@ -288,6 +362,17 @@ def test_a_second_run_asked_for_leaves_a_suite_red_twice_red(tmp_path, runner):
     assert runner.calls == [["prove"], ["prove"]]
 
 
+def test_each_run_of_a_red_suite_runs_every_check_again(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("prove"), runs=2)
+    given_every_program_passes(runner)
+    runner.stub("prove", says="a test failed", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.passed
+    assert by_words(runner.calls) == [["compile"], ["compile"], ["prove"], ["prove"]]
+
+
 def test_a_green_run_is_never_run_again(tmp_path, runner):
     write_suite(tmp_path, check("prove"), runs=3)
     given_every_program_passes(runner)
@@ -344,6 +429,12 @@ def test_a_setting_that_is_not_a_count_is_not_ready(tmp_path, runner):
 
 def test_this_repo_s_suite_file_asks_for_a_second_run():
     assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 2
+
+
+def test_the_loop_docs_say_the_checks_run_together():
+    for doc in ("docs/agentic-development/agentic-loop.md", "docs/agentic-development/checks.md"):
+        text = " ".join((ROOT / doc).read_text(encoding="utf-8").split())
+        assert "the checks run together" in text, doc
 
 
 def test_the_seeded_suite_file_shows_the_setting_at_its_default():

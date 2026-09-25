@@ -5,11 +5,14 @@
 #
 # The repo owns the list, so nothing here names a command, a folder or a tool of any one repo.
 # A machine short of what the checks need is not a red suite, so readiness is proved first.
+# Readiness runs one command at a time, because two checks can share one install.
+# The checks then run together, so the Suite takes as long as its slowest check.
 # A command is an argument list and never a shell line, so it reads the same on every machine.
 # An `unless` path that exists skips its readiness command, so an install is not done twice.
 # Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import NamedTuple
 
@@ -117,11 +120,11 @@ class Suite:
                 break
         return outcome
 
+    # A red check lets the others finish, so the one fix circuit reads every failure, not the first.
     def run_checks(self, wanted):
-        said = ""
-        for check in wanted:
-            ran = self.runner.run(check.command, check.folder.as_posix())
-            said += ran.out + ran.err
-            if ran.status != 0:
-                return Outcome(False, said)
-        return Outcome(True, said)
+        with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
+            running = [pool.submit(self.runner.run, check.command, check.folder.as_posix())
+                       for check in wanted]
+            ran = [each.result() for each in running]
+        said = "".join(each.out + each.err for each in ran)
+        return Outcome(all(each.status == 0 for each in ran), said)

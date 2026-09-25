@@ -141,6 +141,12 @@ the tests can run at all: Docker answering, `uv` on `PATH`, the front end instal
 there stops the loop naming what is missing, and no Session is ever asked about it, because no Session
 can start Docker.
 
+Those readiness commands run one by one, because two checks can share one install. Then the checks
+run together, so the Suite takes as long as its slowest check and not the sum of them. A red check
+lets the others finish, so `fix` reads every failure in its one circuit. The Suite is red when any
+check is red. Its output keeps the order of the Suite file, each check's output whole, so two runs of
+one Suite read the same whatever finished first.
+
 A flake is not a red suite either. A Session handed a failure it cannot reproduce may weaken a test
 or edit code that was never broken, so a repo whose tests flake sets `runs` in its Suite file, and
 `suite` runs a red Suite that many times before anything acts on it. With no `runs`, a red Suite is
