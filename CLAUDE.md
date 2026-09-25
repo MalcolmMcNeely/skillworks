@@ -24,7 +24,7 @@ because the script tests are Python and carry no project file. The front-end che
 ```
 dotnet test Skillworks.slnx
 uv run --with pytest pytest tests/plugins/skillworks/scripts
-node --test "tests/plugins/skillworks/scripts/*.test.mjs"
+node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 cd src/Skillworks.Studio.Web && npm run typecheck && npm run lint && npm test
 ```
 

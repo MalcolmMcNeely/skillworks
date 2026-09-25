@@ -189,7 +189,7 @@ dotnet test Skillworks.slnx
 
 uv run --with pytest pytest tests/plugins/skillworks/scripts
 
-node --test "tests/plugins/skillworks/scripts/*.test.mjs"
+node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
 cd src/Skillworks.Studio.Web
 npm run typecheck
@@ -204,8 +204,10 @@ and starts no model session. It is the set a landing runs, so landing is never g
 The other set starts the real `gh` and the real `claude`, far enough to prove each one accepts the
 argument lines the driver builds for it and no further. It also starts `claude` with the Plugin, to
 prove the Plugin forces its output style and resolves a `skillworks:` skill. That session asks for a
-model the API does not offer, so no model answers. It needs both programs on PATH. It changes no
-issue and starts no model session, and it takes a few seconds:
+model the API does not offer, so no model answers. One more session, on Haiku, makes a commit in a
+throwaway repository, to prove the Plugin's hook names the Session in it. That is the one model
+session the set starts. It needs both programs on PATH. It changes no issue, and it takes under a
+minute:
 
 ```
 uv run --with pytest pytest tests/plugins/skillworks/scripts --real-binaries

@@ -14,7 +14,7 @@
       "folder": "."
     },
     {
-      "command": ["node", "--test", "tests/plugins/skillworks/scripts/*.test.mjs"],
+      "command": ["node", "--test", "tests/plugins/skillworks/scripts/**/*.test.mjs"],
       "folder": "."
     },
     {

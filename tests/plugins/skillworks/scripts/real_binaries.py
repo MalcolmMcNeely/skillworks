@@ -173,3 +173,26 @@ def init_event(out):
             if event.get("subtype") == "init":
                 return event
     raise AssertionError("claude printed no init event:\n" + out)
+
+
+# A cheap model is enough to run one command it is handed word for word.
+COMMIT_MODEL = "haiku"
+COMMIT_SESSION = "5e0f2a7d-1c93-4b8c-9a6e-7c4e2b9a1d3f"
+SESSION_TRAILER = "%(trailers:key=Skillworks-Session,valueonly)"
+
+
+def committed_by_claude(folder):
+    for args in (["init", "--quiet", "--initial-branch=main"],
+                 ["config", "user.name", "Test"],
+                 ["config", "user.email", "test@example.invalid"],
+                 ["config", "commit.gpgsign", "false"]):
+        REAL.run(["git"] + args, folder.as_posix())
+    ran = REAL.run(
+        ["claude", "-p", "Run this exact command with the Bash tool, and nothing else: "
+         "git commit --allow-empty -m \"Made by claude\"",
+         "--plugin-dir", PLUGIN.as_posix(), "--model", COMMIT_MODEL,
+         "--session-id", COMMIT_SESSION, "--allowedTools", "Bash",
+         "--no-session-persistence"],
+        folder.as_posix())
+    log = REAL.run(["git", "log", "-1", "--format=" + SESSION_TRAILER], folder.as_posix())
+    return ran, log

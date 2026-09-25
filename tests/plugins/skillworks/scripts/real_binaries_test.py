@@ -3,8 +3,9 @@
 
 import pytest
 
-from real_binaries import (CLAUDE, FORCED, GH, GH_FIELDS, NOWHERE, PROJECT_STYLE, SKILL, Line,
-                           init_event, listed, report, started_with_the_plugin, usage_of)
+from real_binaries import (CLAUDE, COMMIT_SESSION, FORCED, GH, GH_FIELDS, NOWHERE, PROJECT_STYLE, SKILL,
+                           Line, committed_by_claude, init_event, listed, report,
+                           started_with_the_plugin, usage_of)
 
 # A line the driver stops building is the drift this set catches, so a count moves only on purpose.
 GH_LINES = 13
@@ -79,3 +80,13 @@ def test_the_real_claude_forces_the_plugin_style_and_resolves_a_plugin_skill(tmp
     assert "Using forced plugin output style: " + FORCED in debug, (
         "claude did not force the Plugin's style:\n" + debug)
     assert SKILL in init["skills"], "claude did not resolve " + SKILL + ":\n" + ran.out
+
+
+def test_a_commit_the_real_claude_makes_with_the_plugin_names_its_session(tmp_path):
+    # Act
+    ran, log = committed_by_claude(tmp_path)
+
+    # Assert
+    assert log.status == 0, "claude made no commit:\n" + ran.out + ran.err
+    assert log.out.split() == [COMMIT_SESSION], (
+        "the commit names no Session, or the wrong one:\n" + log.out + "\n" + ran.out + ran.err)
