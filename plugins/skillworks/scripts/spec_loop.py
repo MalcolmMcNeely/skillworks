@@ -87,7 +87,7 @@ STEPS = (
 )
 
 # A check that proves the work was done. One that proves the Session could run never earns a Nudge.
-NUDGED_BY = ("axis-reported",)
+NUDGED_BY = ("axis-reported", "tree-changed", "new-commit", "tree-clean", "ticket-closed")
 
 # Enough for a Session that stopped short, and few enough that a stuck one stops where it can be read.
 NUDGES = 2
@@ -109,10 +109,22 @@ def heading_of(axis):
     return "## " + axis[0].upper() + axis[1:]
 
 
-def owed(step, check):
+def owed(ticket, step, check):
     if check == "axis-reported":
         return ("You have not written your report under the heading {}. Write it, with your "
                 "findings or a statement that you found none.\n".format(heading_of(step.name)))
+    if check == "tree-changed":
+        return ("You have changed nothing in the worktree. Build what ticket #{} asks, and leave "
+                "the change uncommitted.\n".format(ticket))
+    if check == "new-commit":
+        return ("You have not committed the work. Commit it, with ticket #{} named in the "
+                "message.\n".format(ticket))
+    if check == "tree-clean":
+        return ("The worktree still holds uncommitted changes. Commit them or remove them, so "
+                "the tree is clean.\n")
+    if check == "ticket-closed":
+        return ("Ticket #{} is still open. Close it with a comment saying what was done and "
+                "which tests prove it.\n".format(ticket))
     return "The check {} has not passed.\n".format(check)
 
 
@@ -517,11 +529,9 @@ class Loop:
             if before is not None:
                 self.record_edit(ticket, step.name, before)
 
-    # A Nudge resumes the step's own Session, so it keeps what that Session already did.
+    # A Nudge resumes the Session the step's result names, so a finish is not sent to the build's.
     def run_sessions(self, ticket, step, prompt, rest, held, reasons):
-        opening = [str(a) for a in rest] or self.new_session()
-        session = opening[-1]
-        ran = self.claude_p(prompt, *opening)
+        ran = self.claude_p(prompt, *rest)
         written(reasons, ran.err)
         nudge = 0
         while True:
@@ -539,8 +549,8 @@ class Loop:
             nudge += 1
             self.say("NUDGE #{} {:<13}{} of {}, failed {}".format(
                 ticket, step.name, nudge, NUDGES, " ".join(failed)))
-            ran = self.claude_p("".join(owed(step, check) for check in failed) + NUDGE_TAIL,
-                                "--resume", session)
+            ran = self.claude_p("".join(owed(ticket, step, check) for check in failed) + NUDGE_TAIL,
+                                "--resume", field(held, "session_id"))
             appended(reasons, ran.err)
 
     # Every check runs every time, since a Nudge that mends one thing can break another.
