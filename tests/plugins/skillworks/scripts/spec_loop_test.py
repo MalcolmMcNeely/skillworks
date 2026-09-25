@@ -118,6 +118,8 @@ class Sessions:
         self.writes = {}
         self.stages = set()
         self.bare = set()
+        self.denials = {}
+        self.garbles = set()
         self.record_at_start = []
         self.folder = repo.root / "claude" / "projects" / "one"
         self.folder.mkdir(parents=True, exist_ok=True)
@@ -158,11 +160,17 @@ class Sessions:
             (Path(self.runner.where) / "built.txt").write_text(
                 "built\n", encoding="utf-8", newline="\n")
 
-        return Ran(0, json.dumps({
+        if step in self.garbles:
+            return Ran(0, "the session ended before it wrote a result\n", "")
+
+        answered = {
             "is_error": False,
             "session_id": session,
             "result": self.says.get(step, AXIS_REPORTS.get(step, "did the " + step)),
-        }) + "\n", "")
+        }
+        if step in self.denials:
+            answered["permission_denials"] = self.denials[step]
+        return Ran(0, json.dumps(answered) + "\n", "")
 
     def record(self, session, command, args):
         entry = {"type": "user", "message": {"content":
@@ -1315,28 +1323,112 @@ def test_the_finishing_step_is_handed_the_run_that_passed_and_not_the_one_that_f
     assert "a Span test failed" not in finish_prompt(runner)
 
 
-# --- the way past a refused write -------------------------------------------
+# --- the Denials a stop names -----------------------------------------------
 
-# A session that met the wall leaves the ticket open, so any stop the loop makes may be that wall.
-def test_a_ticket_left_open_is_told_the_way_past_the_wall(loop):
+BYPASS = "SPEC_LOOP_PERMISSION_MODE=bypassPermissions"
+
+A_DENIED_WRITE = {"tool_name": "Write", "tool_use_id": "toolu_1",
+                   "tool_input": {"file_path": ".claude/rules/words.md", "content": "x" * 500}}
+A_DENIED_COMMAND = {"tool_name": "Bash", "tool_use_id": "toolu_2",
+                     "tool_input": {"command": "rm -rf .claude/worktrees"}}
+
+
+# The finishing Session never commits here, so every case stops at the finishing step.
+def given_a_finish_that_was_denied(sessions, *denials):
+    sessions.denials["implement"] = list(denials)
+
+
+def test_a_stop_after_denials_gives_the_way_past_them(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
+    given_a_finish_that_was_denied(given_sessions_that_report(loop), A_DENIED_WRITE)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert "SPEC_LOOP_PERMISSION_MODE=bypassPermissions" in said(ran)
+    assert "step finish failed check new-commit" in said(ran)
+    assert "Denial" in said(ran)
+    assert BYPASS in said(ran)
     assert ticket_worktree_of(loop).as_posix() in said(ran)
 
 
-def test_the_way_past_the_wall_reaches_the_log_as_well(loop):
+def test_a_stop_names_each_denial_by_its_tool_and_the_start_of_its_input(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_finish_that_was_denied(given_sessions_that_report(loop),
+                                   A_DENIED_WRITE, A_DENIED_COMMAND)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert 'Write {"file_path": ".claude/rules/words.md"' in said(ran)
+    assert 'Bash {"command": "rm -rf .claude/worktrees"}' in said(ran)
+    assert "x" * 500 not in said(ran)
+
+
+def test_the_denials_and_the_way_past_them_reach_the_log_as_well(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_finish_that_was_denied(given_sessions_that_report(loop), A_DENIED_WRITE)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert 'Write {"file_path": ".claude/rules/words.md"' in loop.log()
+    assert BYPASS in loop.log()
+
+
+def test_a_stop_with_no_denials_gives_no_way_past_them(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert "SPEC_LOOP_PERMISSION_MODE=bypassPermissions" in loop.log()
+    assert "step finish failed check new-commit" in said(ran)
+    assert BYPASS not in said(ran) + loop.log()
+    assert "Denial" not in said(ran) + loop.log()
+
+
+def test_a_stop_with_an_empty_list_of_denials_gives_no_way_past_them(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_finish_that_was_denied(given_sessions_that_report(loop))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert BYPASS not in said(ran) + loop.log()
+
+
+def test_a_stop_with_an_empty_result_gives_no_way_past_denials(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).refuses.add("review-spec")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step spec exited non-zero" in said(ran)
+    assert BYPASS not in said(ran) + loop.log()
+
+
+def test_a_stop_with_a_result_that_is_not_json_gives_no_way_past_denials(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).garbles.add("review-standards")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step standards failed check no-error" in said(ran)
+    assert BYPASS not in said(ran) + loop.log()
+
+
+def test_a_stop_of_the_step_the_driver_runs_itself_gives_no_way_past_denials(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_finish_that_was_denied(given_sessions_that_report(loop), A_DENIED_WRITE)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step suite failed check suite-green" in said(ran)
+    assert BYPASS not in said(ran) + loop.log()
 
 
 # --- the Parent each Session names -------------------------------------------

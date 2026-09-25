@@ -114,6 +114,25 @@ def field(path, name):
     return "" if value is None else value
 
 
+# Cut short, because a write's input holds the whole file and one Denial is read on one line.
+DENIAL_INPUT_CHARS = 80
+
+
+def denials(path):
+    held = field(path, "permission_denials")
+    if not isinstance(held, list):
+        return []
+    named = []
+    for denial in held:
+        if not isinstance(denial, dict):
+            continue
+        given = json.dumps(denial.get("tool_input", {}))
+        if len(given) > DENIAL_INPUT_CHARS:
+            given = given[:DENIAL_INPUT_CHARS] + "..."
+        named.append("{} {}".format(denial.get("tool_name", "an unnamed tool"), given))
+    return named
+
+
 def written(path, text):
     Path(path).write_text(text, encoding="utf-8", newline="\n")
 
@@ -441,13 +460,17 @@ class Loop:
             self.say("WARN  #{} did not reopen. Reopen it by hand, or a rerun will skip it."
                      .format(ticket))
 
-    # A session blocked by the sensitive-file wall leaves the ticket open, so any stop may be it.
-    def stop_step(self, ticket, step, reason, held):
+    # The hint only where a Denial was listed, since a stop with another cause needs another fix.
+    def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
-        self.say("FAIL  #{} step {} {}. Its worktree is at {}. See {}".format(
-            ticket, step, reason, self.job_worktree, held))
-        return stop("      A write under .claude/ is refused as a sensitive file, whatever the "
-                    "allow list says. If that was the wall, rerun with "
+        said = "FAIL  #{} step {} {}. Its worktree is at {}. See {}".format(
+            ticket, step, reason, self.job_worktree, see)
+        named = denials(result) if result is not None else []
+        if not named:
+            return stop(said)
+        for denial in named:
+            said += "\n      Denial: " + denial
+        return stop(said + "\n      If one of these Denials stopped the step, rerun with "
                     "SPEC_LOOP_PERMISSION_MODE=bypassPermissions")
 
     def run_step(self, ticket, step, *rest):
@@ -473,7 +496,7 @@ class Loop:
             self.record_edit(ticket, step.name, before)
         if ran.status != 0:
             raise self.stop_step(ticket, step.name, "exited non-zero",
-                                 "{} and {}".format(reasons, held))
+                                 "{} and {}".format(reasons, held), held)
 
         for check in step.checks.split():
             passed, reason = self.check_passes(ticket, step, check, held)
@@ -481,7 +504,7 @@ class Loop:
                 appended(reasons, reason)
             if not passed:
                 raise self.stop_step(ticket, step.name, "failed check " + check,
-                                     "{} and {}".format(held, reasons))
+                                     "{} and {}".format(held, reasons), held)
 
     # --- the step the driver runs itself -------------------------------------
 
