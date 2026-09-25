@@ -3,6 +3,7 @@
 
 import io
 import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -117,6 +118,7 @@ class Sessions:
         self.writes = {}
         self.stages = set()
         self.bare = set()
+        self.record_at_start = []
         self.folder = repo.root / "claude" / "projects" / "one"
         self.folder.mkdir(parents=True, exist_ok=True)
         runner.stub("claude", does=self.answer)
@@ -138,8 +140,17 @@ class Sessions:
         if step in self.stages:
             git(self.runner.where, "add", "-N", ".")
 
+        self.record_at_start.append(sessions_recorded(self.runner.where))
+
+        # A real claude answers with the id it was handed, and makes one up only when handed none.
         self.count += 1
-        session = "session-{}".format(self.count)
+        called = self.runner.calls[-1]
+        if "--session-id" in called:
+            session = called[called.index("--session-id") + 1]
+        elif "--resume" in called:
+            session = called[called.index("--resume") + 1]
+        else:
+            session = "session-{}".format(self.count)
         self.record(session, "/" + step if step in self.bare else command, args)
 
         # The step that builds leaves the worktree changed, which is what its check reads.
@@ -198,6 +209,16 @@ def given_a_report_lost_after_the_last_axis(loop, sessions, axis):
 
 
 # --- reading what the loop did ----------------------------------------------
+
+def sessions_record(tree):
+    folder = git(tree, "rev-parse", "--absolute-git-dir").strip()
+    return Path(folder) / ticket_worktree.SESSIONS_RECORD
+
+
+def sessions_recorded(tree):
+    held = sessions_record(tree)
+    return held.read_text(encoding="utf-8").split() if held.is_file() else []
+
 
 def session_calls(runner):
     return [call for call in runner.calls if call[0] == "claude"]
@@ -395,6 +416,18 @@ def test_the_dry_run_resumes_the_build_session_for_the_fix_and_the_finish_alone(
         assert "--resume" not in planned
     for step in ("fix", "finish"):
         assert "--resume <build session>" in planned_call(ran, step)
+
+
+def test_the_dry_run_gives_a_new_id_to_every_session_it_does_not_resume(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0
+    for step in ("build", "standards", "spec", "architecture", "sweep"):
+        assert "--session-id <new id>" in planned_call(ran, step)
+    for step in ("fix", "finish"):
+        assert "--session-id" not in planned_call(ran, step)
 
 
 def test_a_closed_ticket_is_listed_and_given_no_plan(loop):
@@ -685,9 +718,76 @@ def test_the_fix_step_and_the_finishing_step_both_resume_the_build_session(loop,
     ran = loop.run(SPEC)
 
     assert ran.status == 1
+    built = call_asking(runner, "/skillworks:implement 168 --stop-after-tests")
+    build_session = built[built.index("--session-id") + 1]
     for mark in ("/skillworks:implement 168 --fix", "/skillworks:implement 168 --finish"):
         call = call_asking(runner, mark)
-        assert call[call.index("--resume") + 1] == "session-1"
+        assert call[call.index("--resume") + 1] == build_session
+
+
+# --- the id each Session is given -------------------------------------------
+
+def new_session_calls(runner):
+    return [call for call in session_calls(runner) if "--resume" not in call]
+
+
+def id_given(call):
+    return call[call.index("--session-id") + 1]
+
+
+def test_every_new_session_is_given_an_id_of_its_own(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    ids = [id_given(call) for call in new_session_calls(runner)]
+    assert len(ids) == 5
+    assert len(set(ids)) == len(ids)
+    for given in ids:
+        assert str(uuid.UUID(given)) == given
+
+
+def test_each_id_is_in_the_record_before_its_session_starts(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    calls = session_calls(runner)
+    assert len(calls) == len(sessions.record_at_start) == 7
+    for call, held in zip(calls, sessions.record_at_start):
+        if "--resume" not in call:
+            assert held[-1] == id_given(call)
+
+
+def test_a_resumed_step_is_given_no_new_id_and_adds_nothing_to_the_record(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    for mark in ("/skillworks:implement 168 --fix", "/skillworks:implement 168 --finish"):
+        assert "--session-id" not in call_asking(runner, mark)
+    assert sessions_recorded(ticket_worktree_of(loop)) == [
+        id_given(call) for call in new_session_calls(runner)]
+
+
+def test_the_record_sits_in_the_worktree_git_folder_and_git_never_sees_it(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    tree = ticket_worktree_of(loop)
+    assert sessions_record(tree).is_file()
+    seen = git(tree, "status", "--porcelain", "--ignored", "--untracked-files=all")
+    assert "built.txt" in seen
+    assert ticket_worktree.SESSIONS_RECORD not in seen
 
 
 def test_a_missing_axis_report_stops_the_loop_before_the_fix_step(loop, runner):

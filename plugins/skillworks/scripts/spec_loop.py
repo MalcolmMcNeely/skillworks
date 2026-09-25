@@ -29,6 +29,7 @@ import json
 import os
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
@@ -262,9 +263,22 @@ class Loop:
     def git(self, repo, *args):
         return self.runner.run(["git", "-C", as_git_path(repo)] + [str(a) for a in args])
 
+    # Recorded before the Session starts, so a run that stops mid-Session still knows who was working.
+    def new_session(self):
+        found = self.git(self.job_worktree, "rev-parse", "--absolute-git-dir")
+        if found.status != 0:
+            raise stop("FAIL  the git folder of {} would not be read, so no Session could be "
+                       "recorded. {}".format(self.job_worktree, found.err.strip()))
+        session = str(uuid.uuid4())
+        appended(Path(found.out.strip()) / ticket_worktree.SESSIONS_RECORD, session + "\n")
+        return ["--session-id", session]
+
     def claude_p(self, prompt, *rest):
+        rest = [str(a) for a in rest]
+        if "--resume" not in rest:
+            rest += self.new_session()
         return self.runner.run(
-            ["claude", "-p", prompt] + [str(a) for a in rest]
+            ["claude", "-p", prompt] + rest
             + ["--permission-mode", self.permission_mode, "--output-format", "json"],
             self.job_worktree,
             self.session_changes)
@@ -559,6 +573,8 @@ class Loop:
                 call = 'claude -p "{}"'.format(step.asks.format(number))
                 if step.resumes:
                     call += " --resume <build session>"
+                else:
+                    call += " --session-id <new id>"
                 plan += plan_line(step.name, call, step.checks)
 
             for step in landing:

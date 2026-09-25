@@ -63,6 +63,9 @@ COMMANDS = {
 # A job names a folder and a branch, so anything else escapes the group or breaks the ref.
 JOB_LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
 
+# In the worktree's git folder, so it is never committed and goes when the worktree goes.
+SESSIONS_RECORD = "skillworks-sessions"
+
 # Named in full, because the way out it offers is read after a cd somewhere else.
 SELF = Path(__file__).resolve().as_posix()
 
