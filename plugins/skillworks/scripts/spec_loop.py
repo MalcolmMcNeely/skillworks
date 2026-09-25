@@ -86,8 +86,34 @@ STEPS = (
             "no-error command-loaded new-commit tree-clean ticket-closed", True))
 )
 
+# A check that proves the work was done. One that proves the Session could run never earns a Nudge.
+NUDGED_BY = ("axis-reported",)
+
+# Enough for a Session that stopped short, and few enough that a stuck one stops where it can be read.
+NUDGES = 2
+
+NUDGE_TAIL = (
+    "Any command you left in the background was stopped when your last turn ended, so its output "
+    "is not complete. Run it again in the foreground.\n"
+    "If something blocks you, say what it is.\n")
+
 # The sweep follows the fix, because the fix writes and a sweep has to follow whatever wrote last.
 CIRCUIT = ("fix", "sweep", "suite")
+
+
+def nudged_on(step):
+    return [check for check in step.checks.split() if check in NUDGED_BY]
+
+
+def heading_of(axis):
+    return "## " + axis[0].upper() + axis[1:]
+
+
+def owed(step, check):
+    if check == "axis-reported":
+        return ("You have not written your report under the heading {}. Write it, with your "
+                "findings or a statement that you found none.\n".format(heading_of(step.name)))
+    return "The check {} has not passed.\n".format(check)
 
 
 def step_named(name):
@@ -300,9 +326,7 @@ class Loop:
         return ["--session-id", session]
 
     def claude_p(self, prompt, *rest):
-        rest = [str(a) for a in rest]
-        if "--resume" not in rest:
-            rest += self.new_session()
+        rest = [str(a) for a in rest] or self.new_session()
         return self.runner.run(
             ["claude", "-p", prompt] + rest
             + ["--permission-mode", self.permission_mode, "--output-format", "json"],
@@ -396,8 +420,7 @@ class Loop:
 
     # A session can end its turn having said nothing, so the heading is what proves it did not.
     def axis_reported(self, axis, held):
-        heading = "## " + axis[0].upper() + axis[1:]
-        if heading in str(field(held, "result")):
+        if heading_of(axis) in str(field(held, "result")):
             return True, ""
         return False, ("the {} axis reported neither a finding nor a statement that it found "
                        "none\n".format(axis))
@@ -486,25 +509,54 @@ class Loop:
             written(reasons, reason)
             raise self.stop_step(ticket, step.name, "was short of a review axis report", reasons)
 
-        # Nothing but the session runs between the two readings, so the Edit is that axis alone.
+        # Only the session and its Nudges write between the readings, so the Edit is that axis alone.
         before = self.reading_of_job() if step.name in REVIEW_STEPS else None
+        try:
+            self.run_sessions(ticket, step, prompt, rest, held, reasons)
+        finally:
+            if before is not None:
+                self.record_edit(ticket, step.name, before)
 
-        ran = self.claude_p(prompt, *rest)
-        written(held, ran.out)
+    # A Nudge resumes the step's own Session, so it keeps what that Session already did.
+    def run_sessions(self, ticket, step, prompt, rest, held, reasons):
+        opening = [str(a) for a in rest] or self.new_session()
+        session = opening[-1]
+        ran = self.claude_p(prompt, *opening)
         written(reasons, ran.err)
-        if before is not None:
-            self.record_edit(ticket, step.name, before)
-        if ran.status != 0:
-            raise self.stop_step(ticket, step.name, "exited non-zero",
-                                 "{} and {}".format(reasons, held), held)
+        nudge = 0
+        while True:
+            written(held, ran.out)
+            if ran.status != 0:
+                raise self.stop_step(ticket, step.name, "exited non-zero",
+                                     "{} and {}".format(reasons, held), held)
+            failed = self.failed_checks(ticket, step, held, reasons)
+            if not failed:
+                return
+            if nudge == NUDGES:
+                raise self.stop_step(
+                    ticket, step.name, "failed check {} after {} Nudges".format(failed[0], NUDGES),
+                    "{} and {}".format(held, reasons), held)
+            nudge += 1
+            self.say("NUDGE #{} {:<13}{} of {}, failed {}".format(
+                ticket, step.name, nudge, NUDGES, " ".join(failed)))
+            ran = self.claude_p("".join(owed(step, check) for check in failed) + NUDGE_TAIL,
+                                "--resume", session)
+            appended(reasons, ran.err)
 
+    # Every check runs every time, since a Nudge that mends one thing can break another.
+    def failed_checks(self, ticket, step, held, reasons):
+        failed = []
         for check in step.checks.split():
             passed, reason = self.check_passes(ticket, step, check, held)
             if reason:
                 appended(reasons, reason)
-            if not passed:
+            if passed:
+                continue
+            if check not in NUDGED_BY:
                 raise self.stop_step(ticket, step.name, "failed check " + check,
                                      "{} and {}".format(held, reasons), held)
+            failed.append(check)
+        return failed
 
     # --- the step the driver runs itself -------------------------------------
 
@@ -606,6 +658,10 @@ class Loop:
                 else:
                     call += " --session-id <new id>"
                 plan += plan_line(step.name, call, step.checks)
+                nudged = nudged_on(step)
+                if nudged:
+                    plan += "                   nudges: up to {}, on {}\n".format(
+                        NUDGES, " ".join(nudged))
 
             for step in landing:
                 named, what, checks = columns(step)

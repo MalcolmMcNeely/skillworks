@@ -67,6 +67,7 @@ class Tracker:
     def __init__(self, runner, tickets):
         self.runner = runner
         self.tickets = tickets
+        self.closed = set()
         runner.stub("gh", does=self.answer)
 
     def numbers(self, only_open=False):
@@ -94,7 +95,8 @@ class Tracker:
                 return Ran(0, self.numbers(only_open=True), "")
             return Ran(0, "".join("\t".join(row) + "\n" for row in self.tickets), "")
         if asked.endswith("--jq .state"):
-            return Ran(0, "open\n", "")
+            number = asked.split(" ")[1].rsplit("/", 1)[-1]
+            return Ran(0, "closed\n" if number in self.closed else "open\n", "")
         if asked.endswith("--jq .title"):
             return Ran(0, "SPEC: A spec to plan\n", "")
         return Ran(1, "", "the tracker has no answer for: " + asked + "\n")
@@ -120,13 +122,21 @@ class Sessions:
         self.bare = set()
         self.denials = {}
         self.garbles = set()
+        self.errors = set()
+        self.then = {}
+        self.nudged = {}
+        self.writes_when_nudged = {}
         self.record_at_start = []
+        self.steps = {}
         self.folder = repo.root / "claude" / "projects" / "one"
         self.folder.mkdir(parents=True, exist_ok=True)
         runner.stub("claude", does=self.answer)
 
     def answer(self):
-        asked = next(arg for arg in self.runner.calls[-1] if arg.startswith("/"))
+        called = self.runner.calls[-1]
+        if not called[2].startswith("/"):
+            return self.answer_nudge(called)
+        asked = called[2]
         command = asked.split(" ")[0]
         args = asked[len(command):]
         args = args[1:] if args.startswith(" ") else args
@@ -153,6 +163,7 @@ class Sessions:
             session = called[called.index("--resume") + 1]
         else:
             session = "session-{}".format(self.count)
+        self.steps[session] = step
         self.record(session, "/" + step if step in self.bare else command, args)
 
         # The step that builds leaves the worktree changed, which is what its check reads.
@@ -160,14 +171,32 @@ class Sessions:
             (Path(self.runner.where) / "built.txt").write_text(
                 "built\n", encoding="utf-8", newline="\n")
 
+        if step in self.then:
+            self.then[step]()
+
         if step in self.garbles:
             return Ran(0, "the session ended before it wrote a result\n", "")
 
-        answered = {
-            "is_error": False,
-            "session_id": session,
-            "result": self.says.get(step, AXIS_REPORTS.get(step, "did the " + step)),
-        }
+        return self.answered(step, session, self.said_by(step))
+
+    # A resume keeps the Session's history, so the command it first loaded is still in its file.
+    def answer_nudge(self, called):
+        session = called[called.index("--resume") + 1]
+        step = self.steps[session]
+        with (self.folder / (session + ".jsonl")).open("a", encoding="utf-8", newline="\n") as file:
+            file.write(json.dumps({"type": "user", "message": {"content": called[2]}}) + "\n")
+        if step in self.writes_when_nudged:
+            name, text = self.writes_when_nudged[step]
+            (Path(self.runner.where) / name).write_text(text, encoding="utf-8", newline="\n")
+        waiting = self.nudged.get(step, [])
+        said = waiting.pop(0) if waiting else self.said_by(step)
+        return self.answered(step, session, said)
+
+    def said_by(self, step):
+        return self.says.get(step, AXIS_REPORTS.get(step, "did the " + step))
+
+    def answered(self, step, session, said):
+        answered = {"is_error": step in self.errors, "session_id": session, "result": said}
         if step in self.denials:
             answered["permission_denials"] = self.denials[step]
         return Ran(0, json.dumps(answered) + "\n", "")
@@ -286,8 +315,18 @@ def indented(ran):
 # The driver's steps print before the landing's, so a name both lists hold reads as the driver's.
 def plan_calls(ran):
     return [line.strip() for line in indented(ran)
-            if not line.strip().startswith("checks: ")
+            if not line.strip().startswith(("checks: ", "nudges: "))
             and line.split()[0] not in WHERE_IT_IS_BUILT]
+
+
+# The Nudges sit on the line under a step's checks, and only a step that can be Nudged has one.
+def planned_nudges(ran, step):
+    lines = indented(ran)
+    for at, line in enumerate(lines[:-2]):
+        if line.split()[0] == step:
+            under = lines[at + 2].strip()
+            return under[len("nudges: "):] if under.startswith("nudges: ") else ""
+    return ""
 
 
 # The step names in the order the plan prints them, so a case reads the order and not just the set.
@@ -436,6 +475,18 @@ def test_the_dry_run_gives_a_new_id_to_every_session_it_does_not_resume(loop):
         assert "--session-id <new id>" in planned_call(ran, step)
     for step in ("fix", "finish"):
         assert "--session-id" not in planned_call(ran, step)
+
+
+def test_the_dry_run_names_the_steps_that_can_be_nudged_and_no_others(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0
+    for axis in ("standards", "spec", "architecture"):
+        assert planned_nudges(ran, axis) == "up to 2, on axis-reported"
+    for step in ("build", "fix", "sweep", "suite", "finish"):
+        assert planned_nudges(ran, step) == ""
 
 
 def test_a_closed_ticket_is_listed_and_given_no_plan(loop):
@@ -917,6 +968,203 @@ def test_an_axis_that_edits_does_not_stop_the_loop(loop, runner):
     assert "step standards failed" not in said(ran)
     assert call_asking(runner, "/skillworks:review-spec 168") is not None
     assert call_asking(runner, "/skillworks:implement 168 --fix") is not None
+
+
+# --- the Nudge a review that stopped short is given --------------------------
+
+STOPPED_SHORT = "I will wait for the tests to finish."
+BACKGROUND_LINE = ("Any command you left in the background was stopped when your last turn "
+                   "ended, so its output is not complete. Run it again in the foreground.")
+BLOCKER_LINE = "If something blocks you, say what it is."
+
+
+def given_an_axis_that_stops_short(sessions, axis, *nudged):
+    sessions.says["review-" + axis] = STOPPED_SHORT
+    sessions.nudged["review-" + axis] = list(nudged)
+
+
+def nudge_calls(runner):
+    return [call for call in session_calls(runner) if not call[2].startswith("/")]
+
+
+def nudge_lines(loop):
+    return [line for line in loop.log().split("\n") if line.split()[1:2] == ["NUDGE"]]
+
+
+def test_a_review_that_reports_on_its_first_nudge_passes_and_the_loop_goes_on(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(
+        given_sessions_that_report(loop), "standards", "## Standards. Nothing found.")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step standards failed" not in said(ran)
+    assert len(nudge_calls(runner)) == 1
+    assert call_asking(runner, "/skillworks:review-spec 168") is not None
+    assert call_asking(runner, "/skillworks:implement 168 --fix") is not None
+
+
+def test_a_review_still_short_after_two_nudges_stops_the_loop_and_keeps_the_worktree(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step standards failed check axis-reported after 2 Nudges" in said(ran)
+    assert len(nudge_calls(runner)) == 2
+    assert ticket_worktree_of(loop).as_posix() in said(ran)
+    assert ticket_worktree_of(loop).is_dir()
+    assert call_asking(runner, "/skillworks:review-spec 168") is None
+
+
+def test_a_review_that_errored_is_never_nudged(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_an_axis_that_stops_short(sessions, "standards")
+    sessions.errors.add("review-standards")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step standards failed check no-error" in said(ran)
+    assert nudge_calls(runner) == []
+
+
+def test_a_review_that_loaded_no_command_is_never_nudged(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_an_axis_that_stops_short(sessions, "spec")
+    sessions.bare.add("review-spec")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step spec failed check command-loaded" in said(ran)
+    assert nudge_calls(runner) == []
+
+
+def test_a_review_that_found_its_ticket_closed_is_never_nudged(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_an_axis_that_stops_short(sessions, "standards")
+    sessions.then["review-standards"] = lambda: tracker.closed.add("168")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step standards failed check ticket-open" in said(ran)
+    assert nudge_calls(runner) == []
+
+
+def test_a_review_that_exited_non_zero_is_never_nudged(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.refuses.add("review-standards")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step standards exited non-zero" in said(ran)
+    assert nudge_calls(runner) == []
+
+
+def test_a_nudge_resumes_the_reviews_own_session_and_not_the_build_session(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "spec")
+
+    loop.run(SPEC)
+
+    reviewed = id_given(call_asking(runner, "/skillworks:review-spec 168"))
+    built = id_given(call_asking(runner, "/skillworks:implement 168 --stop-after-tests"))
+    nudges = nudge_calls(runner)
+    assert len(nudges) == 2
+    for call in nudges:
+        assert call[call.index("--resume") + 1] == reviewed
+        assert "--session-id" not in call
+    assert reviewed != built
+
+
+def test_a_nudge_runs_as_the_session_it_resumes_ran(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "spec")
+
+    loop.run(SPEC)
+
+    made = [call for call in runner.made if call.args[0] == "claude"]
+    first = next(call for call in made if call.args[2].startswith("/skillworks:review-spec"))
+    for nudge in (call for call in made if not call.args[2].startswith("/")):
+        assert nudge.args[-4:] == first.args[-4:]
+        assert nudge.env == first.env
+        assert nudge.where == first.where
+
+
+def test_a_nudge_names_what_is_owed_then_the_background_then_the_blocker(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "architecture")
+
+    loop.run(SPEC)
+
+    asked = nudge_calls(runner)[0][2].split("\n")
+    assert "## Architecture" in asked[0]
+    assert asked[1:] == [BACKGROUND_LINE, BLOCKER_LINE, ""]
+
+
+def test_the_log_has_one_nudge_line_for_each_nudge(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards")
+
+    loop.run(SPEC)
+
+    lines = nudge_lines(loop)
+    assert len(lines) == 2
+    for at, line in enumerate(lines, start=1):
+        assert "#168 standards" in line
+        assert "{} of 2".format(at) in line
+        assert "axis-reported" in line
+
+
+def test_the_fix_step_reads_the_report_the_nudged_review_wrote(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards",
+                                   "I read the output.", "## Standards. The name box says nothing.")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(nudge_calls(runner)) == 2
+    asked = prompt_asking(runner, "/skillworks:implement 168 --fix")
+    assert "The name box says nothing." in asked
+    assert STOPPED_SHORT not in asked
+    assert "The name box says nothing." in (
+        loop.records() / "ticket-168-standards.json").read_text(encoding="utf-8")
+
+
+def test_a_review_edit_spans_its_session_and_every_nudge_of_it(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_an_axis_that_stops_short(sessions, "standards", "## Standards. Nothing found.")
+    given_an_axis_that_writes(sessions, "standards", "named.txt", "the name box\n")
+    sessions.writes_when_nudged["review-standards"] = ("nudged.txt", "after the Nudge\n")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert edit_of(loop, "standards") == "changed named.txt, nudged.txt"
+    assert len([line for line in loop.log().split("\n") if " EDIT " in line
+                and " standards " in line]) == 1
+
+
+def test_a_nudged_session_adds_nothing_to_the_record_of_sessions(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "spec", "## Spec. Nothing.")
+
+    loop.run(SPEC)
+
+    assert len(nudge_calls(runner)) == 1
+    assert sessions_recorded(ticket_worktree_of(loop)) == [
+        id_given(call) for call in new_session_calls(runner)]
 
 
 # --- the suite the driver runs itself ---------------------------------------
