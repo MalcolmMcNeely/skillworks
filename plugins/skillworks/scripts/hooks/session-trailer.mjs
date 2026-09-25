@@ -1,6 +1,8 @@
 // Git places a --trailer in the message's own trailer block, and its default for an existing trailer adds no line equal to its neighbour.
 
 import { text } from "node:stream/consumers";
+import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE } from "./git-grammar.mjs";
+import { powerShellCommits } from "./powershell-commits.mjs";
 
 const KEY = "Skillworks-Session";
 
@@ -8,8 +10,9 @@ const PLAIN =
   "Run `git commit` as a plain command of its own, not inside a shell string, eval, backticks or another program, " +
   `so the ${KEY} trailer can be added to it.`;
 
-// A commit hidden in a string is only ever read as text, so this spots one without parsing it.
-const COMMIT_IN_TEXT = /\bgit(?:\.exe)?(?:\s+-{1,2}[^\s'"]+(?:\s+[^\s'"-][^\s'"]*)?)*\s+commit\b/;
+const PLAIN_POWERSHELL =
+  "Run `git commit` as a plain command of its own, not inside a script block, Invoke-Expression, a string handed " +
+  `to pwsh -Command, powershell -Command or another program, so the ${KEY} trailer can be added to it.`;
 
 // Each of these runs a command it is handed as words or as a string, which the hook cannot rewrite in place.
 const RUNS_ANOTHER = new Set([
@@ -20,9 +23,6 @@ const RUNS_ANOTHER = new Set([
 // Bash reads these before the command's name, so the name is the word after them.
 const LEADING_KEYWORDS = new Set(["{", "!", "if", "then", "else", "elif", "do", "while", "until", "time"]);
 
-// These git options take their value as the next word, so that word is not the subcommand.
-const GIT_OPTIONS_WITH_VALUE = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env"]);
-
 const OPERATORS = ["&&", "||", ";;", ";", "|&", "|", "&"];
 
 const REDIRECT = /^\d*(?:<<<|<<-|<<|&>>|&>|>>|>&|<&|<>|>\||>|<)/;
@@ -31,23 +31,30 @@ function answer(output) {
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", ...output } }));
 }
 
-function judge(source, sessionId) {
-  const commands = allCommands(new Scanner(source).list(false));
-  const commits = [];
-  for (const words of commands) {
-    const at = commitWord(words);
-    if (at) commits.push(at.end);
-    else if (hidesCommit(words)) return { deny: PLAIN };
-  }
-  if (commits.length === 0) return {};
+function judge(source, tool, sessionId) {
+  const powerShell = tool === "PowerShell";
+  const { ends, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
+  if (hidden) return { deny: powerShell ? PLAIN_POWERSHELL : PLAIN };
+  if (ends.length === 0) return {};
   if (typeof sessionId !== "string" || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
     return { deny: `The hook was handed no Session id it can write, so it cannot add the ${KEY} trailer.` };
   }
+  const trailer = powerShell ? `'${KEY}: ${sessionId}'` : `"${KEY}: ${sessionId}"`;
   let rewritten = source;
-  for (const end of commits.sort((a, b) => b - a)) {
-    rewritten = `${rewritten.slice(0, end)} --trailer "${KEY}: ${sessionId}"${rewritten.slice(end)}`;
+  for (const end of ends.sort((a, b) => b - a)) {
+    rewritten = `${rewritten.slice(0, end)} --trailer ${trailer}${rewritten.slice(end)}`;
   }
   return { command: rewritten };
+}
+
+function bashCommits(source) {
+  const ends = [];
+  for (const words of allCommands(new Scanner(source).list(false))) {
+    const at = commitWord(words);
+    if (at) ends.push(at.end);
+    else if (hidesCommit(words)) return { ends, hidden: true };
+  }
+  return { ends, hidden: false };
 }
 
 function allCommands(commands) {
@@ -88,10 +95,6 @@ function nameIndex(words) {
 
 function isGit(word) {
   return !word.dynamic && baseName(word.value) === "git";
-}
-
-function baseName(value) {
-  return value.split(/[\\/]/).pop().replace(/\.exe$/i, "").toLowerCase();
 }
 
 // Only enough of bash's grammar to bound each simple command's words, heredocs and substitutions included.
@@ -268,7 +271,7 @@ if (typeof command !== "string") process.exit(0);
 
 let verdict;
 try {
-  verdict = judge(command, payload.session_id);
+  verdict = judge(command, payload.tool_name, payload.session_id);
 } catch {
   // An unreadable command may still hold a commit, and a commit without the trailer is the miss this hook prevents.
   verdict = COMMIT_IN_TEXT.test(command) ? { deny: PLAIN } : {};

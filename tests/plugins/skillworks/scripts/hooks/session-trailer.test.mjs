@@ -17,6 +17,8 @@ const SECOND_SESSION = "7c4e2b9a-1d3f-4a6e-9b8c-5e0f2a7d1c93";
 
 const TRAILER = `--trailer "Skillworks-Session: ${SESSION}"`;
 
+const PS_TRAILER = `--trailer 'Skillworks-Session: ${SESSION}'`;
+
 const READ_BACK = "--format=%(trailers:key=Skillworks-Session,valueonly)";
 
 let temp;
@@ -29,14 +31,14 @@ afterEach(async () => {
   await rm(temp, { recursive: true, force: true });
 });
 
-function input(command, session = SESSION) {
+function input(command, session = SESSION, tool = "Bash") {
   return {
     session_id: session,
     transcript_path: "/home/dev/.claude/projects/work/3f2a9c1e.jsonl",
     cwd: "/home/dev/work",
     permission_mode: "default",
     hook_event_name: "PreToolUse",
-    tool_name: "Bash",
+    tool_name: tool,
     tool_input: { command, description: "Commit the work", timeout: 120000 },
     tool_use_id: "toolu_01ABC123",
   };
@@ -56,15 +58,15 @@ function hook(payload, extra = {}) {
   });
 }
 
-async function answerTo(command, session) {
-  const ran = await hook(input(command, session));
+async function answerTo(command, session, tool) {
+  const ran = await hook(input(command, session, tool));
   assert.equal(ran.status, 0, ran.err);
   assert.equal(ran.err, "");
   return ran.out === "" ? undefined : JSON.parse(ran.out).hookSpecificOutput;
 }
 
-async function rewritten(command, session) {
-  const answer = await answerTo(command, session);
+async function rewritten(command, session, tool) {
+  const answer = await answerTo(command, session, tool);
   assert.ok(answer?.updatedInput, `the hook handed back no command for: ${command}`);
   assert.equal(answer.hookEventName, "PreToolUse");
   assert.equal(answer.permissionDecision, undefined, "a rewrite leaves the decision to the user's permissions");
@@ -80,6 +82,19 @@ function bash() {
 
 const BASH = bash();
 
+function powerShell() {
+  try {
+    execFileSync("pwsh", ["-NoProfile", "-NonInteractive", "-Command", "exit 0"]);
+    return "pwsh";
+  } catch {
+    return undefined;
+  }
+}
+
+const PWSH = powerShell();
+
+const NO_PWSH = PWSH ? false : "pwsh is not installed, so no PowerShell can run the rewritten command";
+
 async function repository() {
   const dir = await mkdtemp(join(temp, "repository-"));
   const config = join(temp, "gitconfig");
@@ -92,21 +107,27 @@ async function repository() {
   await writeFile(join(dir, "work.txt"), "work\n");
   const run = (command) => execFileSync(BASH, ["-c", command], { cwd: dir, env, encoding: "utf8" });
   const git = (...args) => execFileSync("git", ["-C", dir, ...args], { env, encoding: "utf8" });
-  return { dir: dir.replaceAll("\\", "/"), run, git };
+  // The script sits outside the repository, so git add -A never takes it into the commit.
+  const runPowerShell = async (command) => {
+    const script = join(temp, "command.ps1");
+    await writeFile(script, `$ErrorActionPreference = 'Stop'\n$PSNativeCommandUseErrorActionPreference = $true\n${command}\n`);
+    return execFileSync(PWSH, ["-NoProfile", "-NonInteractive", "-File", script], { cwd: dir, env, encoding: "utf8" });
+  };
+  return { dir: dir.replaceAll("\\", "/"), run, runPowerShell, git };
 }
 
 function sessions(repo) {
   return repo.git("log", "-1", READ_BACK).trim().split("\n").filter(Boolean);
 }
 
-test("the Plugin runs this script before the Bash tool, from the Plugin root", async () => {
+test("the Plugin runs this script before the Bash and PowerShell tools, from the Plugin root", async () => {
   // Act
   const hooks = JSON.parse(await readFile(join(PLUGIN, "hooks", "hooks.json"), "utf8")).hooks;
 
   // Assert
   assert.equal(hooks.PreToolUse.length, 1);
   const [group] = hooks.PreToolUse;
-  assert.equal(group.matcher, "Bash");
+  assert.equal(group.matcher, "Bash|PowerShell");
   const [entry] = group.hooks;
   assert.equal(entry.type, "command");
   assert.equal(entry.command, "node");
@@ -280,3 +301,126 @@ test("an amend by the same Session adds no second line, and one by a second Sess
   assert.deepEqual(afterSame, [SESSION]);
   assert.deepEqual(afterSecond, [SESSION, SECOND_SESSION]);
 });
+
+for (const command of [
+  "Get-ChildItem",
+  "git status",
+  "git log --grep commit",
+  'Write-Output "commit"',
+  "git log --oneline | Select-String commit",
+  'Write-Output "git commit"',
+  "git commit-tree HEAD^{tree} -m x",
+  "npm test # then git commit",
+  "<# git commit #> git status",
+  "gh issue comment 254 --body 'run git commit'",
+  "@'\ngit commit -m x\n'@ | Set-Content notes.txt",
+  "pwsh -Command 'git log --grep commit'",
+]) {
+  test(`a PowerShell command with no git commit passes unchanged: ${command}`, async () => {
+    // Act
+    const answer = await answerTo(command, SESSION, "PowerShell");
+
+    // Assert
+    assert.equal(answer, undefined);
+  });
+}
+
+for (const [form, command, expected] of [
+  ["-m", 'git commit -m "Fix the thing"', `git commit ${PS_TRAILER} -m "Fix the thing"`],
+  ["-F", "git commit -F message.txt", `git commit ${PS_TRAILER} -F message.txt`],
+  [
+    "a here-string message",
+    "git commit -m @'\nFix (the) thing; and git commit again\n\nTicket: #254\n'@",
+    `git commit ${PS_TRAILER} -m @'\nFix (the) thing; and git commit again\n\nTicket: #254\n'@`,
+  ],
+  ["a here-string piped in", '@"\nFix it\n"@ | git commit -F -', `@"\nFix it\n"@ | git commit ${PS_TRAILER} -F -`],
+  ["an && chain", 'git add -A && git commit -m "x"', `git add -A && git commit ${PS_TRAILER} -m "x"`],
+  ["an || chain", "git diff --quiet || git commit -am 'x'", `git diff --quiet || git commit ${PS_TRAILER} -am 'x'`],
+  ["a ; chain", 'git add -A; git commit -m "x"; git log -1', `git add -A; git commit ${PS_TRAILER} -m "x"; git log -1`],
+  ["-C", 'git -C "C:/work tree" commit -m x', `git -C "C:/work tree" commit ${PS_TRAILER} -m x`],
+  ["-c", "git -c user.name=Bot commit -m x", `git -c user.name=Bot commit ${PS_TRAILER} -m x`],
+  ["--amend", "git commit --amend --no-edit", `git commit ${PS_TRAILER} --amend --no-edit`],
+  ["the call operator", "& git commit -m x", `& git commit ${PS_TRAILER} -m x`],
+  [
+    "a quoted path to git.exe",
+    "& 'C:\\Program Files\\Git\\cmd\\git.exe' commit -m x",
+    `& 'C:\\Program Files\\Git\\cmd\\git.exe' commit ${PS_TRAILER} -m x`,
+  ],
+  ["an assignment", "$out = git commit -m x", `$out = git commit ${PS_TRAILER} -m x`],
+  [
+    "an if block",
+    "if ($LASTEXITCODE -eq 0) { git commit -m x } else { Write-Output no }",
+    `if ($LASTEXITCODE -eq 0) { git commit ${PS_TRAILER} -m x } else { Write-Output no }`,
+  ],
+  ["a line continued", "git `\n  commit -m x", `git \`\n  commit ${PS_TRAILER} -m x`],
+  [
+    "two commits",
+    "git commit -m a; git commit --allow-empty -m b",
+    `git commit ${PS_TRAILER} -m a; git commit ${PS_TRAILER} --allow-empty -m b`,
+  ],
+]) {
+  test(`a PowerShell commit given ${form} gets the trailer right after commit`, async () => {
+    // Act
+    const got = await rewritten(command, SESSION, "PowerShell");
+
+    // Assert
+    assert.equal(got, expected);
+  });
+}
+
+for (const [form, command] of [
+  ["pwsh -Command", 'pwsh -Command "git commit -m x"'],
+  ["powershell -Command", "powershell -NoProfile -Command 'git add -A; git commit -m x'"],
+  ["Invoke-Expression", "Invoke-Expression 'git commit -m x'"],
+  ["iex", 'iex "git commit -m x"'],
+  ["a here-string passed to Invoke-Expression", "Invoke-Expression @'\ngit commit -m x\n'@"],
+  ["a string piped to Invoke-Expression", "'git commit -m x' | Invoke-Expression"],
+  ["a variable handed to Invoke-Expression", "$c = 'git commit -m x'; Invoke-Expression $c"],
+  ["a script block run by the call operator", "& { git commit -m x }"],
+  ["a script block handed to Invoke-Command", "Invoke-Command -ScriptBlock { git commit -m x }"],
+  ["a script block handed to ForEach-Object", "1 | ForEach-Object { git commit -m x }"],
+  ["Start-Process", "Start-Process git -ArgumentList 'commit', '-m', 'x'"],
+  ["cmd /c", 'cmd /c "git commit -m x"'],
+  ["the stop-parsing token", "git --% commit -m x"],
+  ["a chain beside a plain commit", "git commit -m a; pwsh -Command 'git commit -m b'"],
+]) {
+  test(`a PowerShell commit inside ${form} is denied with the plain-command reason`, async () => {
+    // Act
+    const answer = await answerTo(command, SESSION, "PowerShell");
+
+    // Assert
+    assert.equal(answer.permissionDecision, "deny");
+    assert.match(answer.permissionDecisionReason, /Run `git commit` as a plain command of its own/);
+    assert.equal(answer.updatedInput, undefined);
+  });
+}
+
+test("a PowerShell commit with no Session id to write is denied", async () => {
+  // Act
+  const answer = await answerTo("git commit -m x", null, "PowerShell");
+
+  // Assert
+  assert.equal(answer.permissionDecision, "deny");
+});
+
+for (const [form, commandIn] of [
+  ["-m", () => "git add -A; git commit -m 'Fix the thing'"],
+  ["a here-string message", () => "git add -A\ngit commit -m @'\nFix (the) thing\n\nTicket: #254\n'@"],
+  ["-C", (repo) => `git add -A && git -C "${repo.dir}" commit -m "Fix the thing"`],
+]) {
+  test(
+    `git reads the Session back from a commit PowerShell made by the rewritten command, given ${form}`,
+    { skip: NO_PWSH },
+    async () => {
+      // Arrange
+      const repo = await repository();
+      const command = await rewritten(commandIn(repo), SESSION, "PowerShell");
+
+      // Act
+      await repo.runPowerShell(command);
+
+      // Assert
+      assert.deepEqual(sessions(repo), [SESSION]);
+    },
+  );
+}
