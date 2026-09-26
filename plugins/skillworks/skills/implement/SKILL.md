@@ -88,7 +88,7 @@ It runs after the findings are fixed, because anything that writes after a sweep
 
 ## Running the suite
 
-Run the whole suite, as `README.md` names it under Checks, and read its passing result. A partial pass or a skipped suite leaves the ticket open.
+Run the whole suite, as the Suite file `docs/agents/suite.json` names it, and read its passing result. A partial pass or a skipped suite leaves the ticket open.
 
 Under the spec loop this section never runs. The driver runs the suite as a step of its own, reads the result itself, and hands the passing output to Finishing, so the gate that says a ticket is done rests on nothing a session said about itself.
 
@@ -99,7 +99,7 @@ Run no review of your own, and fix no finding here. Under the spec loop the thre
 Run no tests here either. One step owns that gate: under the spec loop the driver ran the whole suite and put the passing output in this prompt, and under a hand run the section above has just run it. A result reported here would be one nobody else saw.
 
 1. **Read the passing suite output you were handed.** The checks that ran are what proved the work, and the closing comment names them. A check that did not run has a line of its own in that output, saying it did not run, because the change touches none of the paths it names. The closing comment names each such check beside the ones that passed, so a reader sees what proved nothing. Where no line says a check did not run, every check ran, and the closing comment says nothing about checks that did not run.
-2. **Commit to `main`.** Do NOT push. A spec loop pushes the ticket itself, by a step of its own that runs after this one, so the push is checked rather than taken on trust. This repo has no branches and no pull requests. Do not include "co-authored by" in the commit message.
+2. **Commit to `main`.** Do NOT push. A spec loop pushes the ticket itself, by a step of its own that runs after this one, so the push is checked rather than taken on trust.
    - **Name the ticket in the message.** See "Two conventions the loop leans on" in `docs/agents/issue-tracker.md` for the form, and for why it is not a closing word.
 3. **Leave the working tree clean.** A caller may be driving you in a loop and will stop if it is not.
 4. **Close the ticket** with a comment saying what was done, which tests prove it, which checks did not run, and any finding left unfixed with the reason.

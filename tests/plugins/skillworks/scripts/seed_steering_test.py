@@ -373,3 +373,30 @@ def test_the_report_names_the_folder_each_steering_file_lives_in():
     assert "`docs/agents/`" in report
     for seed in WHERE:
         assert "`{}`".format(seed) in report, seed
+
+
+# Each holds only for this repository, so a skill that says one tells a team about a repo it is not in.
+SKILL_HABITS = ["slice rules", "slice whose job it serves", "no branches and no pull requests", "co-authored by",
+                "co-author line", "under checks"]
+
+
+def test_no_plugin_skill_says_a_habit_of_this_repo():
+    pages = sorted(path for path in SKILLS.rglob("*.md") if (SETUP / "seeds") not in path.parents)
+    assert pages
+
+    for page in pages:
+        text = page.read_text(encoding="utf-8").lower()
+        for habit in SKILL_HABITS:
+            assert habit not in text, "{} says {}".format(page, habit)
+
+
+def test_no_seed_promises_a_check_the_team_has_not_added():
+    for name in sorted(WHERE):
+        assert "the check reads" not in seeded(name).lower(), name
+
+
+def test_implement_reads_the_suite_from_the_suite_file():
+    text = (SKILLS / "implement" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "README.md" not in text
+    assert "`{}`".format(WHERE["suite.json"]) in text

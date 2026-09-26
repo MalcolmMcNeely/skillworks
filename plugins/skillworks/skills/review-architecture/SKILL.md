@@ -36,7 +36,7 @@ Three kinds, and each outranks the one before it.
 
 **Documented.** Anything that says how the code is *arranged* rather than how it is written: `CONTEXT-MAP.md`, each context's `CONTEXT.md`, and `docs/adr/`. `docs/agents/domain.md` says where this repo's decisions live. Read that first and follow it.
 
-**Written as rules.** `docs/agents/rules/file-placement.md` holds the eight Slice rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
+**Written as rules.** `docs/agents/rules/file-placement.md` holds the placement rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
 
 **Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
 
@@ -59,7 +59,7 @@ On top of what the repo has, this axis always carries the arrangement baseline i
 Run the placement checks first, and report what each one said. Then, for every module the change touches:
 
 1. Does anything added point the wrong way, cross a seam it should not, or reach past a module's public entry point?
-2. Is every added or moved file in the module its dependencies say it belongs to, and in the Slice whose job it serves?
+2. Is every added or moved file in the module its dependencies say it belongs to, and in the place the placement rules give it?
 3. Does the change introduce a cycle?
 4. Does any folder the change creates breach a written placement rule?
 

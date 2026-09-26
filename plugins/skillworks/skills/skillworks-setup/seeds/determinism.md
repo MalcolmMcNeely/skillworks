@@ -4,7 +4,7 @@ An agent is non-deterministic by construction. Each section here names one thing
 the same on a busy machine as on a quiet one, so that a test failing means the code is wrong. Time is
 the first section. Ordering, identifiers and culture get sections here when they are settled.
 
-The YAML block at the end holds the settings the check reads.
+The YAML block at the end holds the settings a check reads, once the team adds one.
 
 ## Time
 
@@ -57,15 +57,17 @@ A fake is used where the real thing cannot be made to misbehave, or where it for
 otherwise. A real dependency in a container proves the queries and the parsing, and that is the code
 most likely to be wrong.
 
-## What the check reads
+## What a check reads
+
+Nothing checks this rule until the team adds a check that reads these settings.
 
 `contexts` names the contexts, from `CONTEXT-MAP.md`, whose code this rule judges. A context joins the
 list the day its code can pass, because a rule switched on before the code can meet it leaves the
 suite red on purpose. A name no context in the map carries is a breach, so the list cannot go stale
 and quietly judge nothing.
 
-The check reads code as code and never as text, so a file named for a reach, and a reach written inside
-a string, are both left alone.
+A check should read code as code and never as text, so that a file named for a reach, and a reach
+written inside a string, are both left alone.
 
 ```yaml
 clock: TimeProvider

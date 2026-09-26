@@ -15,7 +15,7 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` label. The spec title should begin with "SPEC:"
 
-4. Commit and push whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there. Do not include "co-authored by" in the commit message.
+4. Commit and push whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
 
 5. Report the spec's issue number and URL. That number is the argument to `/skillworks:spec-loop`.
 
