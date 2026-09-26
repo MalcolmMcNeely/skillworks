@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "Skillworks.slnx",
+    "projects": [
+      "src/Skillworks.Core/Skillworks.Core.csproj",
+      "src/Skillworks.ServiceDefaults/Skillworks.ServiceDefaults.csproj",
+      "src/Skillworks.Studio.Api/Skillworks.Studio.Api.csproj",
+      "tests/Skillworks.Core.Tests/Skillworks.Core.Tests.csproj",
+      "tests/Skillworks.Studio.Api.Tests/Skillworks.Studio.Api.Tests.csproj"
+    ]
+  }
+}

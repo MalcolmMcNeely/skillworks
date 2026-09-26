@@ -292,6 +292,10 @@ SCRIPT_TESTS_IMAGE = "docs/agents/script-tests.Dockerfile"
 SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist",
                         "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS]
 
+ARCHITECTURE_TESTS = "tests/Skillworks.Architecture.Tests"
+
+DOCKER_TESTS = "Skillworks.Studio.slnf"
+
 
 # Whether the front end is installed differs between checkouts, so the install is left out.
 # A copy of this whole repo would prove nothing the image cases do not, so git lists no file.
@@ -306,7 +310,8 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
     assert runner.calls[0] == ["docker", "info"]
     assert sorted((" ".join(call.args), call.where) for call in runner.made[1:]
                   if call.args[0] not in ("docker", "git") and call.args[:2] != ["npm", "ci"]) == [
-        ("dotnet test Skillworks.slnx", ROOT.as_posix()),
+        (f"dotnet test {DOCKER_TESTS}", ROOT.as_posix()),
+        (f"dotnet test {ARCHITECTURE_TESTS}", ROOT.as_posix()),
         ("node --test tests/plugins/skillworks/scripts/**/*.test.mjs", ROOT.as_posix()),
         ("npm run lint", web),
         ("npm run typecheck", web),
@@ -949,8 +954,48 @@ def test_this_repo_s_script_tests_wake_for_the_plugin_their_tests_and_the_docs_t
     assert all((ROOT / path).exists() for path in scripts[0]["when"])
 
 
+def dotnet_checks():
+    return {entry["command"][-1]: entry for entry in this_repo_s_checks() if entry["command"][0] == "dotnet"}
+
+
+# The Architecture tests take seconds, so they run alone and never wait on Docker.
+def test_this_repo_s_dotnet_tests_are_the_architecture_tests_alone_and_the_docker_tests_over_one_filter():
+    checks = dotnet_checks()
+
+    assert sorted(checks) == sorted([ARCHITECTURE_TESTS, DOCKER_TESTS])
+    assert checks[ARCHITECTURE_TESTS]["command"] == ["dotnet", "test", ARCHITECTURE_TESTS]
+    assert "ready" not in checks[ARCHITECTURE_TESTS]
+    assert checks[DOCKER_TESTS]["command"] == ["dotnet", "test", DOCKER_TESTS]
+    assert checks[DOCKER_TESTS]["ready"]["command"] == ["docker", "info"]
+
+
+# One filter builds each project once, so the Core and API tests never fight over build output.
+def test_this_repo_s_docker_filter_holds_the_core_and_api_tests_and_what_they_build():
+    solution = json.loads((ROOT / DOCKER_TESTS).read_text(encoding="utf-8"))["solution"]
+
+    assert solution["path"] == "Skillworks.slnx"
+    assert sorted(solution["projects"]) == [
+        "src/Skillworks.Core/Skillworks.Core.csproj",
+        "src/Skillworks.ServiceDefaults/Skillworks.ServiceDefaults.csproj",
+        "src/Skillworks.Studio.Api/Skillworks.Studio.Api.csproj",
+        "tests/Skillworks.Core.Tests/Skillworks.Core.Tests.csproj",
+        "tests/Skillworks.Studio.Api.Tests/Skillworks.Studio.Api.Tests.csproj",
+    ]
+    assert all((ROOT / project).is_file() for project in solution["projects"])
+
+
+# A skill edit must not change what the Docker check reads.
+def test_no_api_test_reads_the_plugin_s_skill_folders():
+    codes = list((ROOT / "tests/Skillworks.Studio.Api.Tests").rglob("*.cs"))
+
+    assert codes
+    for code in codes:
+        text = code.read_text(encoding="utf-8")
+        assert not ("RepositoryRoot()" in text and '"skills"' in text), code
+
+
 def test_the_readme_and_claude_md_list_every_check_of_this_repo_s_suite():
-    assert len(this_repo_s_checks()) == 6
+    assert len(this_repo_s_checks()) == 7
     for doc in ("README.md", "CLAUDE.md"):
         text = (ROOT / doc).read_text(encoding="utf-8")
         checks = text[text.index("### Checks"):].split("```")[1].replace('"', "")
@@ -968,7 +1013,7 @@ def test_the_review_skills_run_the_placement_checks_and_not_the_suite_file():
 
 def test_the_review_skills_name_no_fact_of_this_repo_s_suite():
     facts = this_repo_s_facts()
-    assert {"dotnet", "Skillworks.slnx", "src/Skillworks.Studio.Web"} <= facts
+    assert {"dotnet", DOCKER_TESTS, "src/Skillworks.Studio.Web"} <= facts
 
     for skill in REVIEW_SKILLS:
         text = (ROOT / skill).read_text(encoding="utf-8")

@@ -1,0 +1,13 @@
+{
+  "name": "skillworks",
+  "owner": {
+    "name": "Skillworks"
+  },
+  "plugins": [
+    {
+      "name": "skillworks",
+      "source": "./skillworks",
+      "description": "A two-skill stand-in for the Plugin, so a skill edit never changes what the API tests read."
+    }
+  ]
+}

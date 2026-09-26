@@ -2,7 +2,11 @@
   "runs": 1,
   "checks": [
     {
-      "command": ["dotnet", "test", "Skillworks.slnx"],
+      "command": ["dotnet", "test", "tests/Skillworks.Architecture.Tests"],
+      "folder": "."
+    },
+    {
+      "command": ["dotnet", "test", "Skillworks.Studio.slnf"],
       "folder": ".",
       "ready": {
         "command": ["docker", "info"],

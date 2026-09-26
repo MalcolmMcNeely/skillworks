@@ -48,6 +48,7 @@
 
   <ItemGroup>
     <Content Include="Shared\Harness\Marketplace\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Dashboard\Skills\PluginMarketplace\**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Shared\Harness\loki.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

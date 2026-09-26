@@ -31,7 +31,8 @@ because the script tests are Python and carry no project file. The front-end che
 `src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally.
 
 ```
-dotnet test Skillworks.slnx
+dotnet test tests/Skillworks.Architecture.Tests
+dotnet test Skillworks.Studio.slnf
 uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 cd src/Skillworks.Studio.Web && npm run typecheck && npm run lint && npm test
