@@ -252,6 +252,27 @@ def suite_verdict(outcome, at):
     return "passed, so the red before it was a flake" if at > 1 else "passed"
 
 
+# A landing can wait on the Turn through another loop's suite, so each line passes on as it ends.
+class Lines:
+    def __init__(self, heard):
+        self.heard = heard
+        self.held = ""
+
+    def write(self, said):
+        *ended, self.held = (self.held + said).split("\n")
+        for line in ended:
+            self.heard(line)
+        return len(said)
+
+    def flush(self):
+        pass
+
+    def end(self):
+        if self.held:
+            self.heard(self.held)
+            self.held = ""
+
+
 def plan_line(name, what, checks=""):
     said = "      {:<12} {}\n".format(name, what)
     if checks:
@@ -292,9 +313,10 @@ class Loop:
         self.timed_seconds = 0
         self.mean_seconds = None
 
+    # The log first, so a line already seen on the terminal is always in the log too.
     def wrote(self, said):
-        self.out.write(said)
         appended(self.log, said)
+        self.out.write(said)
 
     def say(self, said):
         self.wrote("{} {}\n".format(datetime.now(timezone.utc).strftime("%H:%M:%S"), said))
@@ -760,12 +782,16 @@ class Loop:
     # The session that wrote the ticket goes too, to resolve what its work conflicts with.
     def land(self, ticket, session):
         held = self.step_file(ticket, "land", "out")
-        said = io.StringIO()
+        written(held, "")
+
+        def heard(line):
+            appended(held, line + "\n")
+            self.say(line)
+        said = Lines(heard)
         landed = land_ticket.main(
             [self.job_worktree, ticket, session], self.runner, said, said, self.wait,
             self.permission_mode)
-        written(held, said.getvalue())
-        self.say(said.getvalue().rstrip("\n"))
+        said.end()
         if landed != 0:
             # The finishing step closed it, and the work it closed on never reached the remote.
             self.reopen(ticket)

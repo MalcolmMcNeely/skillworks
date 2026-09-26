@@ -3,14 +3,18 @@
 
 import io
 import json
+import re
+import threading
 import uuid
 from pathlib import Path
 
 import pytest
 
+import land_ticket
 import spec_loop
 import ticket_worktree
 from conftest import ROOT, Ran, check, git, launch, no_wait, project_suite, write_suite
+from runner import Subprocess
 
 SPEC = "158"
 
@@ -74,7 +78,7 @@ class Tracker:
 
     def numbers(self, only_open=False):
         return "".join(row[0] + "\n" for row in self.tickets
-                       if not only_open or row[1] == "open")
+                       if not only_open or (row[1] == "open" and row[0] not in self.closed))
 
     def answer(self):
         asked = " ".join(self.runner.calls[-1][1:])
@@ -2069,6 +2073,135 @@ def test_the_agentic_loop_document_names_the_bypass_flag():
     text = (ROOT / "docs/agentic-development/agentic-loop.md").read_text(encoding="utf-8")
 
     assert "--bypass" in text
+
+
+# --- what the landing says, and when ----------------------------------------
+
+WAITS = "waits for the Turn"
+
+STAMP = r"[0-9]{2}:[0-9]{2}:[0-9]{2} "
+
+
+def given_a_run_that_lands(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+
+
+# Held in this process, since the OS turns away a second handle on the Turn's file even from here.
+def holding_the_turn(loop):
+    turn = land_ticket.Turn.of(Subprocess(), loop.repo.work.as_posix(), "spec #200 ticket #199")
+    turn.take(lambda holder: None)
+    return turn
+
+
+# Each write is read as it lands, so a case can act the moment the loop says something.
+class Heard(io.StringIO):
+    def __init__(self, mark):
+        super().__init__()
+        self.mark = mark
+        self.seen = threading.Event()
+
+    def write(self, said):
+        written = super().write(said)
+        if self.mark in said:
+            self.seen.set()
+        return written
+
+
+# The landing blocks on the Turn, so the loop runs beside the case that holds it.
+class Beside:
+    def __init__(self, loop, *args):
+        self.out = Heard(WAITS)
+        self.err = io.StringIO()
+        self.status = None
+        self.thread = threading.Thread(target=self.run, args=(loop, args), daemon=True)
+        self.thread.start()
+
+    def run(self, loop, args):
+        try:
+            self.status = spec_loop.main(
+                [str(a) for a in args], loop.runner, self.out, self.err, loop.waits.append)
+        finally:
+            # A loop that ended without the line must fail the case, not hang it.
+            self.out.seen.set()
+
+    def heard(self):
+        self.out.seen.wait()
+
+    def ended(self):
+        self.thread.join()
+        return Ran(self.status, self.out.getvalue(), self.err.getvalue())
+
+
+def landing_output(loop):
+    return (loop.records() / "ticket-168-land.out").read_text(encoding="utf-8")
+
+
+def stamped_in_log(loop, line):
+    return re.search("^" + STAMP + re.escape(line) + "$", loop.log(), re.MULTILINE) is not None
+
+
+def test_a_loop_waiting_for_the_turn_says_so_in_its_log_while_it_waits(loop):
+    given_a_run_that_lands(loop)
+    base = git(loop.repo.origin, "rev-parse", "main").strip()
+    turn = holding_the_turn(loop)
+    try:
+        run = Beside(loop, SPEC)
+        run.heard()
+
+        assert stamped_in_log(loop, "note  #168 waits for the Turn, which spec #200 ticket #199 holds")
+        assert git(loop.repo.origin, "rev-parse", "main").strip() == base
+    finally:
+        turn.let_go()
+    ran = run.ended()
+
+    assert ran.status == 0, said(ran)
+    assert "DONE  #168" in loop.log()
+    assert git(loop.repo.origin, "log", "-1", "--format=%s", "main").strip() == "Built"
+
+
+def test_every_line_of_a_landing_that_waited_carries_the_time_in_the_log(loop):
+    given_a_run_that_lands(loop)
+    turn = holding_the_turn(loop)
+    try:
+        run = Beside(loop, SPEC)
+        run.heard()
+    finally:
+        turn.let_go()
+    run.ended()
+
+    lines = landing_output(loop).splitlines()
+    assert len(lines) == 2
+    for line in lines:
+        assert stamped_in_log(loop, line), line
+
+
+def test_the_landing_output_of_a_ticket_that_lands_holds_what_the_landing_said(loop):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert re.fullmatch(
+        "ok    #168 landed on main as [0-9a-f]+ in 1 try, holding the Turn for its push\n",
+        landing_output(loop))
+
+
+def test_the_landing_output_of_a_ticket_that_stops_holds_what_the_landing_said(loop):
+    given_a_run_that_lands(loop)
+    loop.repo.refuse_pushes()
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    held = landing_output(loop)
+    assert held.startswith("FAIL  #168 could not be pushed. Nothing was pushed. git said:\n")
+    assert "pre-receive hook declined" in held
+    assert held.endswith("\n")
+    assert not re.search("^" + STAMP, held, re.MULTILINE)
+    for line in held.splitlines():
+        assert stamped_in_log(loop, line), line
 
 
 # --- the claim --------------------------------------------------------------
