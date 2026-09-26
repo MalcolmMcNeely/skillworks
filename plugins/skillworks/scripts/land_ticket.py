@@ -15,6 +15,8 @@
 # The session that built the ticket wrote one side of any conflict, so it is the
 # one asked to resolve it.
 #
+# A landing that lost a race keeps the Turn, so no loop beats it while its suite runs.
+#
 # Env:
 #   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits)
 #
@@ -33,6 +35,11 @@ from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 USAGE = (
     "usage: land-ticket <worktree> <ticket-number> [session-id]\n"
@@ -83,6 +90,69 @@ class Conflict(NamedTuple):
 
 def listed(said):
     return [line for line in said.split("\n") if line != ""]
+
+
+# The shared git folder, so every worktree of one clone meets the same Turn.
+class Turn:
+    def __init__(self, folder, holder):
+        self.path = Path(folder) / "skillworks-turn"
+        self.holder_path = Path(folder) / "skillworks-turn-holder"
+        self.holder = holder
+        self.file = None
+
+    @staticmethod
+    def of(runner, worktree, holder):
+        said = runner.run(["git", "-C", worktree, "rev-parse", "--path-format=absolute",
+                           "--git-common-dir"])
+        return Turn(said.out.strip(), holder)
+
+    def take(self, waiting):
+        self.file = self.path.open("a+b")
+        if not self.try_take():
+            waiting(self.held_by())
+            self.wait_to_take()
+        self.holder_path.write_text(self.holder, encoding="utf-8")
+
+    def held_by(self):
+        try:
+            return self.holder_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""
+
+    def let_go(self):
+        if self.file is None:
+            return
+        if sys.platform == "win32":
+            self.file.seek(0)
+            msvcrt.locking(self.file.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            fcntl.flock(self.file.fileno(), fcntl.LOCK_UN)
+        self.file.close()
+        self.file = None
+
+    def try_take(self):
+        try:
+            if sys.platform == "win32":
+                self.file.seek(0)
+                msvcrt.locking(self.file.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                fcntl.flock(self.file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except OSError:
+            return False
+
+    def wait_to_take(self):
+        if sys.platform != "win32":
+            fcntl.flock(self.file.fileno(), fcntl.LOCK_EX)
+            return
+        # Windows gives up after ten seconds, and a suite runs for half an hour.
+        while True:
+            try:
+                self.file.seek(0)
+                msvcrt.locking(self.file.fileno(), msvcrt.LK_LOCK, 1)
+                return
+            except OSError:
+                continue
 
 
 class Landing:
@@ -385,11 +455,33 @@ class Landing:
                 raise self.die("commit {} names ticket #{}, and this is #{}. Nothing was pushed."
                                .format(sha, named, self.ticket))
 
+    # A waiter names the holder, so a hung suite can be found and its loop killed.
+    def holder(self):
+        branch = self.git("rev-parse", "--abbrev-ref", "HEAD").out.strip()
+        spec = re.match(r"spec-loop/([0-9]+)/", branch)
+        mine = "ticket #" + self.ticket
+        return "spec #{} {}".format(spec.group(1), mine) if spec else mine
+
+    def take(self, turn):
+        def waiting(holder):
+            self.out.write("note  #{} waits for the Turn, which {} holds\n".format(
+                self.ticket, holder or "another landing"))
+            self.out.flush()
+        turn.take(waiting)
+
     def land(self):
         self.verify()
+        turn = Turn.of(self.runner, self.worktree, self.holder())
+        try:
+            self.land_on(turn)
+        finally:
+            turn.let_go()
+
+    def land_on(self, turn):
         commit = self.git("rev-parse", "--short", "HEAD").out.strip()
 
         tries = 1
+        kept = False
         while True:
             if not fetch_origin(self.runner, self.worktree, self.err, self.wait):
                 raise self.die("#{} could not fetch from origin. Nothing was pushed."
@@ -407,10 +499,13 @@ class Landing:
             if base != self.git("rev-parse", "origin/main").out.strip():
                 commit = self.rebase_onto_main(base)
 
+            if not kept:
+                self.take(turn)
             pushed = self.git("push", "--quiet", "origin", "HEAD:main")
             if pushed.status == 0:
-                self.say("#{} landed on main as {} in {} {}".format(
-                    self.ticket, commit, tries, "try" if tries == 1 else "tries"))
+                self.say("#{} landed on main as {} in {} {}, holding the Turn {}".format(
+                    self.ticket, commit, tries, "try" if tries == 1 else "tries",
+                    "from fetch to push" if kept else "for its push"))
                 return
 
             said = (pushed.out + pushed.err).rstrip("\n")
@@ -418,6 +513,13 @@ class Landing:
                 raise self.die("#{} could not be pushed. Nothing was pushed. git said:\n{}".format(
                     self.ticket, said))
             tries += 1
+            if not kept:
+                turn.let_go()
+                self.out.write("note  #{} lost a race to main, so it takes the Turn and keeps it "
+                               "until the landing ends\n".format(self.ticket))
+                self.out.flush()
+                self.take(turn)
+                kept = True
 
 
 def main(argv, runner, out, err, wait):

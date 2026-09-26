@@ -2,10 +2,15 @@
 # The landing script, run against a throwaway repository.
 
 import io
+import subprocess
+import sys
+import threading
 from pathlib import Path
 
+import pytest
+
 import land_ticket
-from conftest import Ran, check, git, launch, no_wait, project_suite, write_suite
+from conftest import SCRIPTS, Ran, check, git, launch, no_wait, project_suite, write_suite
 from suite import SUITE_FILE
 
 
@@ -28,6 +33,105 @@ def run_land(runner, *args):
     out, err = io.StringIO(), io.StringIO()
     status = land_ticket.main(given, runner, out, err, no_wait)
     return Ran(status, out.getvalue(), err.getvalue())
+
+
+WAITS = "waits for the Turn"
+LOST = "lost a race to main"
+
+# Another loop is another process, and the OS hands the Turn to one process at a time.
+OTHER_LOOP = """
+import sys
+sys.path.insert(0, sys.argv[1])
+from land_ticket import Turn
+from runner import Subprocess
+
+def busy(holder):
+    print("busy", flush=True)
+    sys.exit(0)
+
+turn = Turn.of(Subprocess(), sys.argv[2], sys.argv[3])
+turn.take(busy if sys.argv[4] == "try" else lambda holder: None)
+print("held", flush=True)
+if sys.argv[4] == "hold":
+    sys.stdin.read()
+turn.let_go()
+"""
+
+
+class OtherLoop:
+    def __init__(self, repo, holder, how):
+        self.process = subprocess.Popen(
+            [sys.executable, "-c", OTHER_LOOP, str(SCRIPTS), repo.work.as_posix(), holder, how],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, encoding="utf-8")
+        self.said = self.process.stdout.readline().strip()
+
+    def let_go(self):
+        self.process.stdin.close()
+        self.process.wait()
+
+
+@pytest.fixture
+def other_loops():
+    started = []
+
+    def start(repo, holder="spec #200 ticket #199", how="hold"):
+        loop = OtherLoop(repo, holder, how)
+        started.append(loop)
+        return loop
+
+    yield start
+    for loop in started:
+        if loop.process.poll() is None:
+            loop.process.kill()
+            loop.process.wait()
+
+
+def the_turn_is_free(repo, other_loops):
+    return other_loops(repo, how="try").said == "held"
+
+
+# Each line is handed on as it is written, so a case can act at the moment a landing speaks.
+class Heard(io.StringIO):
+    def __init__(self, mark, cues=None):
+        super().__init__()
+        self.mark = mark
+        self.cues = cues or {}
+        self.seen = threading.Event()
+
+    def write(self, said):
+        written = super().write(said)
+        for cue, then in self.cues.items():
+            if cue in said:
+                then()
+        if self.mark in said:
+            self.seen.set()
+        return written
+
+
+# The landing blocks on the Turn, so it runs beside the case that holds it.
+class Beside:
+    def __init__(self, runner, out, *args):
+        given = [a.as_posix() if isinstance(a, Path) else str(a) for a in args]
+        self.out = out
+        self.err = io.StringIO()
+        self.status = None
+        self.thread = threading.Thread(target=self.land, args=(runner, given), daemon=True)
+        self.thread.start()
+
+    def land(self, runner, given):
+        try:
+            self.status = land_ticket.main(given, runner, self.out, self.err, no_wait)
+        finally:
+            # A landing that ended without the line must fail the case, not hang it.
+            self.out.seen.set()
+
+    def heard(self):
+        self.out.seen.wait()
+        return self.out.getvalue()
+
+    def ended(self):
+        self.thread.join()
+        return Ran(self.status, self.out.getvalue(), self.err.getvalue())
 
 
 # A reason on stderr and a note on stdout are one report, and a case reads it whole.
@@ -474,6 +578,96 @@ def test_a_push_the_remote_turns_down_stops_on_the_first_try(repo, runner):
     assert repo.push_tries() == 1
     assert "pre-receive hook declined" in report(ran)
     assert main_of(repo) == base
+
+
+def test_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_once_it_is_let_go(
+        repo, runner, other_loops):
+    commit_for_ticket(repo, 163)
+    head = head_of(repo)
+    base = main_of(repo)
+    runner.refuse("push --quiet origin HEAD:main", LOST_RACE, times=1)
+    held = []
+    # The landing lets the Turn go as it says it lost, so the other loop takes it then.
+    out = Heard(WAITS, {LOST: lambda: held.append(other_loops(repo))})
+
+    landing = Beside(runner, out, repo.work, 163)
+    heard = landing.heard()
+
+    assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
+    assert main_of(repo) == base
+
+    held[0].let_go()
+    ran = landing.ended()
+
+    assert ran.status == 0, report(ran)
+    assert "landed on main as {} in 2 tries, holding the Turn from fetch to push".format(
+        head[:7]) in report(ran)
+    assert main_of(repo) == head
+
+
+def test_a_landing_that_has_not_lost_runs_its_suite_and_then_waits_at_the_push(
+        repo, runner, other_loops):
+    given_the_suite_passes(runner)
+    given_a_project(repo)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    base = main_of(repo)
+    other = other_loops(repo)
+
+    landing = Beside(runner, Heard(WAITS), repo.work, 165)
+    heard = landing.heard()
+
+    assert "#165 waits for the Turn, which spec #200 ticket #199 holds" in heard
+    assert runner.built("dotnet test Skillworks.slnx")
+    assert heard.index("passed the suite on the new base") < heard.index(WAITS)
+    assert main_of(repo) == base
+
+    other.let_go()
+    ran = landing.ended()
+
+    assert ran.status == 0, report(ran)
+    assert "in 1 try, holding the Turn for its push" in report(ran)
+    assert main_of(repo) == head_of(repo)
+
+
+def test_the_turn_is_let_go_when_a_landing_that_lost_a_race_lands(repo, runner, other_loops):
+    commit_for_ticket(repo, 163)
+    runner.refuse("push --quiet origin HEAD:main", LOST_RACE, times=2)
+
+    ran = run_land(runner, repo.work, 163)
+
+    assert ran.status == 0, report(ran)
+    assert the_turn_is_free(repo, other_loops)
+
+
+def test_the_turn_is_let_go_when_a_landing_that_lost_a_race_stops_on_a_red_suite(
+        repo, runner, other_loops):
+    given_the_suite_passes(runner)
+    runner.stub("dotnet", status=1)
+    given_a_project(repo)
+    commit_for_ticket(repo, 165)
+    base = main_of(repo)
+    runner.refuse("push --quiet origin HEAD:main", LOST_RACE, times=1)
+    # The race is lost for real, so the next try has a moved base to run the suite on.
+    out = Heard(WAITS, {LOST: lambda: repo.advance_origin("later")})
+
+    ran = Beside(runner, out, repo.work, 165).ended()
+
+    assert ran.status == 1
+    assert "failed the suite" in report(ran)
+    assert "#165 lost a race to main, so it takes the Turn" in report(ran)
+    assert git(repo.origin, "rev-parse", "main~1").strip() == base
+    assert the_turn_is_free(repo, other_loops)
+
+
+def test_the_turn_is_let_go_when_a_push_the_remote_turns_down_stops(repo, runner, other_loops):
+    commit_for_ticket(repo, 163)
+    repo.refuse_pushes()
+
+    ran = run_land(runner, repo.work, 163)
+
+    assert ran.status == 1
+    assert the_turn_is_free(repo, other_loops)
 
 
 def test_uncommitted_work_is_refused(repo, runner):

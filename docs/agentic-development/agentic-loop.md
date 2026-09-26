@@ -303,7 +303,7 @@ The log is `.spec-loop/<spec>/loop.log`, and every step's result and error outpu
 16:00:31 STEP  #202 architecture 2/6
 16:02:18 STEP  #202 fix          2/6
 16:29:54 STEP  #202 finish       2/6
-16:56:48 ok    #202 landed on main as bfa44a6 in 1 try
+16:56:48 ok    #202 landed on main as bfa44a6 in 1 try, holding the Turn for its push
 16:56:52 DONE  #202  bfa44a6
 16:57:06 STEP  #203 build        3/6  ~245m left
 ```
