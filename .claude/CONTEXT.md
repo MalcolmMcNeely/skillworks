@@ -108,6 +108,12 @@ The branch a ticket Lands on. It is `main` for a team that pushes straight to it
 reviews each spec as one pull request, it is that spec's own branch.
 _Avoid_: Runway, trunk, base branch
 
+**Tracker**:
+Where a repo keeps its specs and tickets, and their state: GitHub Issues, or files committed under
+`.specs/`. The loop reads what is open, blocked and claimed from it, so a ticket's state has to be
+something every loop and every teammate sees.
+_Avoid_: Backlog, board, issue store
+
 **Turn**:
 The right to push to the Target branch, held by one loop at a time in one clone. A loop that lost a
 push race waits for its Turn and holds it until it Lands, so the loops beside it cannot beat it again. A loop
