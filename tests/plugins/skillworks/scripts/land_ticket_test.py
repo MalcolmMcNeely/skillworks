@@ -1,10 +1,13 @@
 #
 # The landing script, run against a throwaway repository.
 
+import ast
 import io
+import re
 import subprocess
 import sys
 import threading
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -980,3 +983,39 @@ def test_the_land_ticket_command_starts_the_landing_script_in_the_plugin(repo):
 
     assert ran.status == 64
     assert ran.err.startswith("usage: land-ticket <worktree> <ticket-number> [session-id]\n")
+
+
+# uv reads a script's dependencies from this block, so each script that reaches the Turn names the lock.
+INLINE_METADATA = re.compile(
+    r"^# /// script$\s(?P<content>(^#(| .*)$\s)+)^# ///$", re.MULTILINE)
+
+
+def inline_dependencies(script):
+    block = INLINE_METADATA.search((SCRIPTS / script).read_text(encoding="utf-8"))
+    assert block is not None, script + " declares nothing for uv"
+    toml = "".join(line[2:] for line in block.group("content").splitlines(keepends=True))
+    return tomllib.loads(toml)["dependencies"]
+
+
+@pytest.mark.parametrize("script", ["land_ticket.py", "spec_loop.py"])
+def test_a_script_that_takes_the_turn_declares_the_lock_for_uv(script):
+    assert [d for d in inline_dependencies(script) if d.startswith("filelock")]
+
+
+def imported(source):
+    names = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            names.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            names.add(node.module.split(".")[0])
+    return names
+
+
+# A lock with a branch per OS is proved only on the OS the tests run on.
+def test_no_plugin_script_locks_through_one_os_alone():
+    reached = {path.name: imported(path.read_text(encoding="utf-8")) & {"msvcrt", "fcntl"}
+               for path in SCRIPTS.rglob("*.py")}
+
+    assert "land_ticket.py" in reached
+    assert {name: names for name, names in reached.items() if names} == {}

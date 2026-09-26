@@ -9,6 +9,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Fetched once at build, so a run does not download pytest into every fresh container.
-RUN uv run --no-project --with pytest --with pytest-xdist python -c ""
+RUN uv run --no-project --with pytest --with pytest-xdist --with filelock python -c ""
 
 WORKDIR /repo

@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["filelock>=3.16"]
+# ///
 #
 # Land one finished ticket on main.
 #
@@ -30,16 +33,13 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
+from filelock import FileLock, Timeout
+
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
-
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import fcntl
 
 USAGE = (
     "usage: land-ticket <worktree> <ticket-number> [session-id]\n"
@@ -95,10 +95,9 @@ def listed(said):
 # The shared git folder, so every worktree of one clone meets the same Turn.
 class Turn:
     def __init__(self, folder, holder):
-        self.path = Path(folder) / "skillworks-turn"
+        self.lock = FileLock(Path(folder) / "skillworks-turn")
         self.holder_path = Path(folder) / "skillworks-turn-holder"
         self.holder = holder
-        self.file = None
 
     @staticmethod
     def of(runner, worktree, holder):
@@ -107,10 +106,11 @@ class Turn:
         return Turn(said.out.strip(), holder)
 
     def take(self, waiting):
-        self.file = self.path.open("a+b")
-        if not self.try_take():
+        try:
+            self.lock.acquire(blocking=False)
+        except Timeout:
             waiting(self.held_by())
-            self.wait_to_take()
+            self.lock.acquire()
         self.holder_path.write_text(self.holder, encoding="utf-8")
 
     def held_by(self):
@@ -120,39 +120,7 @@ class Turn:
             return ""
 
     def let_go(self):
-        if self.file is None:
-            return
-        if sys.platform == "win32":
-            self.file.seek(0)
-            msvcrt.locking(self.file.fileno(), msvcrt.LK_UNLCK, 1)
-        else:
-            fcntl.flock(self.file.fileno(), fcntl.LOCK_UN)
-        self.file.close()
-        self.file = None
-
-    def try_take(self):
-        try:
-            if sys.platform == "win32":
-                self.file.seek(0)
-                msvcrt.locking(self.file.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                fcntl.flock(self.file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return True
-        except OSError:
-            return False
-
-    def wait_to_take(self):
-        if sys.platform != "win32":
-            fcntl.flock(self.file.fileno(), fcntl.LOCK_EX)
-            return
-        # Windows gives up after ten seconds, and a suite runs for half an hour.
-        while True:
-            try:
-                self.file.seek(0)
-                msvcrt.locking(self.file.fileno(), msvcrt.LK_LOCK, 1)
-                return
-            except OSError:
-                continue
+        self.lock.release()
 
 
 class Landing:

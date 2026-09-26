@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["filelock>=3.16"]
+# ///
 #
 # Drive one spec's tickets to done, sequentially, one fresh Claude session each.
 # Each ticket is built in a throwaway worktree of its own, cut from the newest

@@ -119,7 +119,7 @@ they use the local tools and not anything installed globally.
 ```
 dotnet test Skillworks.slnx
 
-uv run --with pytest --with pytest-xdist pytest -n auto tests/plugins/skillworks/scripts
+uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts
 
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
@@ -139,10 +139,10 @@ process they start is slow to start. Run by hand, the command above runs them on
 
 The loop's scripts live in the Plugin, at `plugins/skillworks/scripts/`, and their tests sit at the
 same path under `tests/`. The script tests build a throwaway repository in a temporary directory and
-touch nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest
-is asked for on the command line, because the scripts carry no project file. The hook scripts are
-node, and their tests sit beside the script tests and use the test runner built into node, so they
-add no dependency. node expands the quoted pattern itself.
+touch nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest,
+and `filelock` for the landing lock, are asked for on the command line, because the scripts carry no
+project file. The hook scripts are node, and their tests sit beside the script tests and use the
+test runner built into node, so they add no dependency. node expands the quoted pattern itself.
 
 The script tests come in two sets, told apart by one flag on the same path. The commands above run
 the fast set, which answers for `gh` and `claude` through the Runner, so it needs neither installed
@@ -157,7 +157,7 @@ session the set starts. It needs both programs on PATH. It changes no issue, and
 minute:
 
 ```
-uv run --with pytest pytest tests/plugins/skillworks/scripts --real-binaries
+uv run --with pytest --with filelock pytest tests/plugins/skillworks/scripts --real-binaries
 ```
 
 #### The ten-minute wait

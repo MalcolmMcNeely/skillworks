@@ -289,8 +289,8 @@ SCRIPT_TESTS = "tests/plugins/skillworks/scripts"
 
 SCRIPT_TESTS_IMAGE = "docs/agents/script-tests.Dockerfile"
 
-SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "pytest",
-                        "-n", "auto", SCRIPT_TESTS]
+SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist",
+                        "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS]
 
 
 # Whether the front end is installed differs between checkouts, so the install is left out.

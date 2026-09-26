@@ -10,8 +10,8 @@
       }
     },
     {
-      "command": ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "pytest", "-n", "auto",
-                  "tests/plugins/skillworks/scripts"],
+      "command": ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "--with", "filelock",
+                  "pytest", "-n", "auto", "tests/plugins/skillworks/scripts"],
       "folder": ".",
       "image": "docs/agents/script-tests.Dockerfile",
       "when": [
