@@ -40,9 +40,9 @@ Three kinds, and each outranks the one before it.
 
 **Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
 
-Run the placement checks, and only those. The placement-checks file names the checks in the Suite file, `docs/agents/suite.json`, that prove placement. Find each one in the Suite file and run its command in its folder. Run a check's readiness command first, and the readiness command of any check before it in the same folder, unless its `unless` path exists. Do not run the rest of the Suite. The driver runs the whole Suite as a step of its own, and this axis would never read the rest.
+Run the placement checks, and only those. `docs/agents/placement-checks.md` names each command that proves placement, with its folder. Run each command in its folder, from the repo root. Where a row names a command to run first, run that first in the same folder, unless the path it names is there in that folder. Run nothing else. The driver runs the whole Suite as a step of its own, and this axis would never read the rest.
 
-Each names the rule, the path and what to do. Quote a breach as it came. Say which checks you ran. Where the placement-checks file names no check, or no check exists for the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
+Each names the rule, the path and what to do. Quote a breach as it came. Say which commands you ran and what each said. Where the placement-checks file names no command, or no command checks the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
 
 ### The baseline
 

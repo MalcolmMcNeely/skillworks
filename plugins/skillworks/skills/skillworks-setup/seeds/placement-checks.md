@@ -11,12 +11,14 @@ The table is an index from a breach back to a rule, and the rules themselves sta
 
 ## The checks that prove placement
 
-The Suite file, [`suite.json`](suite.json), names every check the repo runs. A review runs only the checks listed here, and no other check in the Suite. List each one that proves placement, as it is written in the Suite file:
+A review runs the commands listed here, each in its folder from the repo root, and nothing else. Where a row names a command to run first, run it first in the same folder, unless the path it names is there in that folder.
 
-| Suite check | What it runs |
-|---|---|
+List the narrowest commands that prove placement, and leave out the slow ones that prove something else. Write one row per command, and put the command and the folder in backticks. A front end's boundary lint, for example, is the command `make lint`, the folder `web`, and run first `make install`, unless `deps` is there.
 
-While this table is empty, no check proves placement, and a review judges placement by reading the rules alone.
+| Command | Folder | Run first |
+|---|---|---|
+
+While this table is empty, no command proves placement, and a review judges placement by reading the rules alone.
 
 ## The two bends
 

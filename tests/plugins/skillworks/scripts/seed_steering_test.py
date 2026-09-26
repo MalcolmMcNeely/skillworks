@@ -221,9 +221,8 @@ def test_a_link_that_climbs_out_of_the_plugin_is_caught():
 
 STEERING_NAMED = {
     "review-standards": ["smell-baseline.md"],
-    "review-architecture": ["placement-checks.md", "suite.json", "arrangement-baseline.md"],
-    "code-review": ["smell-baseline.md", "placement-checks.md", "suite.json",
-                    "arrangement-baseline.md"],
+    "review-architecture": ["placement-checks.md", "arrangement-baseline.md"],
+    "code-review": ["smell-baseline.md", "placement-checks.md", "arrangement-baseline.md"],
 }
 
 

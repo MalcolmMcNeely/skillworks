@@ -2,6 +2,7 @@
 # The programs are made up, so a case proves the Suite runs what the file names and nothing else.
 
 import json
+import re
 import threading
 
 from conftest import ROOT, Ran, check, git, write_suite
@@ -618,9 +619,11 @@ def this_repo_s_facts():
     return facts
 
 
-def test_the_review_skills_run_the_suite_file():
+def test_the_review_skills_run_the_placement_checks_and_not_the_suite_file():
     for skill in REVIEW_SKILLS:
-        assert SUITE_FILE in (ROOT / skill).read_text(encoding="utf-8"), skill
+        text = (ROOT / skill).read_text(encoding="utf-8")
+        assert PLACEMENT_CHECKS in text, skill
+        assert SUITE_FILE not in text, skill
 
 
 def test_the_review_skills_name_no_fact_of_this_repo_s_suite():
@@ -632,10 +635,31 @@ def test_the_review_skills_name_no_fact_of_this_repo_s_suite():
         assert [fact for fact in sorted(facts) if fact in text] == [], skill
 
 
-def test_the_placement_checks_name_the_suite_checks_that_prove_placement_here():
+def placement_commands(path):
+    rows = re.findall(r"^\| `([^`]+)` \| `([^`]+)` \|", path.read_text(encoding="utf-8"), re.MULTILINE)
+    return {(command, folder) for command, folder in rows}
+
+
+def test_the_placement_checks_name_the_architecture_tests_and_the_front_end_lint_here():
+    named = placement_commands(ROOT / PLACEMENT_CHECKS)
+
+    assert named == {
+        ("dotnet test tests/Skillworks.Architecture.Tests", "."),
+        ("npm run lint", "src/Skillworks.Studio.Web"),
+    }
+    assert (ROOT / "tests/Skillworks.Architecture.Tests").is_dir()
+    package = json.loads((ROOT / "src/Skillworks.Studio.Web/package.json").read_text(encoding="utf-8"))
+    assert "lint" in package["scripts"]
+
+
+def test_the_placement_checks_install_the_front_end_before_its_lint():
     text = (ROOT / PLACEMENT_CHECKS).read_text(encoding="utf-8")
 
-    named = {" ".join(entry["command"]) for entry in this_repo_s_checks()
-             if "`{}`".format(" ".join(entry["command"])) in text}
+    assert "| `npm run lint` | `src/Skillworks.Studio.Web` | `npm ci`, unless `node_modules` is there |" in text
 
-    assert named == {"dotnet test Skillworks.slnx", "npm run lint"}
+
+def test_the_seeded_placement_checks_show_a_repo_how_to_name_its_commands():
+    seed = ROOT / "plugins/skillworks/skills/skillworks-setup/seeds/placement-checks.md"
+
+    assert "| Command | Folder | Run first |" in seed.read_text(encoding="utf-8")
+    assert placement_commands(seed) == set()

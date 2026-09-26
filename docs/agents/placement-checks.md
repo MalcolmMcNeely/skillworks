@@ -17,12 +17,14 @@ Rules 7 and 8 have no check behind them, and nor does the exemption that lets a 
 
 ## The checks that prove placement
 
-Two checks in the Suite file, [`suite.json`](suite.json), prove placement here. A review runs these two and no other check in the Suite:
+A review runs these commands, each in its folder from the repo root, and nothing else. Where a row names a command to run first, run it first in the same folder, unless the path it names is there in that folder:
 
-| Suite check | What it runs |
-|---|---|
-| `dotnet test Skillworks.slnx` | `Skillworks.Architecture` over the whole tree |
-| `npm run lint` | dependency-cruiser over the front end, in `src/Skillworks.Studio.Web` |
+| Command | Folder | Run first |
+|---|---|---|
+| `dotnet test tests/Skillworks.Architecture.Tests` | `.` | |
+| `npm run lint` | `src/Skillworks.Studio.Web` | `npm ci`, unless `node_modules` is there |
+
+The first runs `Skillworks.Architecture` over the whole tree. The second runs dependency-cruiser over the front end. The rest of the Suite proves nothing about placement, and the API tests alone take six minutes.
 
 ## The two bends
 
