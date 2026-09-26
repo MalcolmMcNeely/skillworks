@@ -146,6 +146,25 @@ def test_the_comment_sweep_reads_its_table_from_the_comments_rule():
     assert "What a sweep keeps and cuts" in sweep
 
 
+def test_the_smell_baseline_seed_holds_the_smells_list():
+    smells = seeded("smell-baseline.md")
+
+    assert "## The twelve" in smells
+    assert "- **Feature Envy** — a method that reaches into another object's data more than its own." in smells
+    assert "## The four" in smells
+    assert "- **Stub Echo** — a stub is handed a value" in smells
+    assert len(re.findall(r"^- \*\*[A-Z][^*]+\*\* — ", smells, re.MULTILINE)) == 16
+
+
+def test_the_review_skills_read_the_smells_list_from_the_smell_baseline():
+    for skill in ["code-review", "review-standards"]:
+        text = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+
+        assert "`docs/agents/smell-baseline.md`" in text, skill
+        assert "Feature Envy" not in text, skill
+        assert "twelve" not in text.lower(), skill
+
+
 def test_the_issue_tracker_seed_says_how_to_read_a_commits_sessions_back():
     tracker = seeded("issue-tracker.md")
 

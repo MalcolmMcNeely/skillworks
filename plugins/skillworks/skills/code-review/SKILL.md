@@ -42,7 +42,7 @@ Anything in the repo that documents how code should be written, such as `CODING_
 
 Always include the Claude rules files: every file in `docs/agents/rules/`. Claude wrote the code under those rules, so the review holds it to the same ones.
 
-On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in `docs/agents/smell-baseline.md` — twelve Fowler code smells (_Refactoring_, ch.3) and four test smells beneath them, which apply even when a repo documents nothing. It carries the two rules that bind it, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
+On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in `docs/agents/smell-baseline.md`. It holds the smells list, which applies even when a repo documents nothing, and the rules that bind it. The team edits that list, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
 
 ### 4. Identify the architecture sources
 

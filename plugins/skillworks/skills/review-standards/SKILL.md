@@ -36,7 +36,7 @@ Then read the glossary that claims the changed files. `CONTEXT-MAP.md` says whic
 
 ## The smell baseline
 
-On top of what the repo writes down, this axis always carries the smell baseline in `docs/agents/smell-baseline.md`. Read it yourself. It holds twelve code smells, four test smells beneath them, and the two rules that bind them all.
+On top of what the repo writes down, this axis always carries the smell baseline in `docs/agents/smell-baseline.md`. Read it yourself. It holds the smells list and the rules that bind it. The team edits that list, so this skill holds none of its own.
 
 ## What to report
 
