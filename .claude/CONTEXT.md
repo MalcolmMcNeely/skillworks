@@ -76,6 +76,12 @@ Session that stopped short, never one that could not run, and a step that still 
 of them stops the loop.
 _Avoid_: Continuation, retry, prod
 
+**Proof**:
+A check that passed on one exact set of its inputs, kept by the Suite. A check whose inputs match a
+Proof is not run again, so work already proved costs nothing a second time. A Proof knows only what
+is in the repository, so it goes stale with age, and the run at the end of a spec trusts none.
+_Avoid_: Cache, memo, result, receipt
+
 **Runner**:
 The one way the driver reaches another program. It is injected, so a test supplies its own rather
 than putting a fake on `PATH`.
