@@ -81,6 +81,11 @@ The one way the driver reaches another program. It is injected, so a test suppli
 than putting a fake on `PATH`.
 _Avoid_: Spawn, shell, executor
 
+**Seed**:
+The Plugin's starting version of one Steering file. Setup copies it into the repo, and keeps a copy of
+the Seed it copied beside it, so a later run can tell the team's edits from a Seed that moved on.
+_Avoid_: Template, default, stub
+
 **Session**:
 One run of Claude Code, from the first prompt to the last. It carries an identity that every Load and
 every telemetry event of that run shares, which is what lets the two be read together.
