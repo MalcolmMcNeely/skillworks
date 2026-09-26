@@ -269,7 +269,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 5
+    assert len(commands) == 6
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -429,3 +429,11 @@ def test_implement_reads_the_suite_from_the_suite_file():
 
     assert "README.md" not in text
     assert "`{}`".format(WHERE["suite.json"]) in text
+
+
+def test_implement_builds_with_skillworks_suite_and_leaves_the_loop_s_suite_to_the_driver():
+    text = (SKILLS / "implement" / "SKILL.md").read_text(encoding="utf-8")
+    building = text.split("## Building", 1)[1].split("\n## ", 1)[0]
+
+    assert "run `skillworks-suite`" in building
+    assert "In a loop the driver runs the Suite" in building

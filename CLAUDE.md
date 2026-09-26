@@ -26,17 +26,18 @@ Commit straight to `main` and push. No branches, no pull requests.
 
 ### Checks
 
-Docker has to be running, because the API tests start Loki in a container. `uv` has to be on PATH,
-because the script tests are Python and carry no project file. The front-end checks run from
-`src/Skillworks.Studio.Web`, so they use the local tools and not anything installed globally.
+Run the checks with the Plugin's command, and not with the test commands one by one:
 
 ```
-dotnet test tests/Skillworks.Architecture.Tests
-dotnet test Skillworks.Studio.slnf
-uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts
-node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
-cd src/Skillworks.Studio.Web && npm run typecheck && npm run lint && npm test
+skillworks-suite
 ```
+
+It runs every check in `docs/agents/suite.json` and keeps a Proof of each one that passes. A check
+whose inputs match a Proof does not run again, so a second run after a small change is cheap.
+In a loop the driver runs the Suite as a step of its own, and it reads the Proofs your run kept.
+
+Docker has to be running, because the API tests start Loki in a container and the script tests run
+in a Linux image. `uv` has to be on PATH, because the command is Python.
 
 `README.md` has the rest, under Checks.
 

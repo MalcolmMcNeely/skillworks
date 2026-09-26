@@ -52,6 +52,8 @@ Use /skillworks:tdd where possible, at pre-agreed seams.
 
 Run typechecking and single test files regularly.
 
+To check the work against the whole Suite, run `skillworks-suite`, never the test commands the Suite file names. It keeps a Proof of each check that passes, so a check whose inputs have not changed does not run again. In a loop the driver runs the Suite as a step of its own, and it reads the Proofs your run kept.
+
 Building is done when the typecheck is clean and every test the change adds or touches passes.
 
 With `--stop-after-tests`, leave the change uncommitted and the ticket open, and report which tests pass.

@@ -149,7 +149,7 @@ class Sessions:
         if not called[2].startswith("/"):
             return self.answer_nudge(called)
         asked = called[2]
-        command = asked.split(" ")[0]
+        command = asked.split()[0]
         args = asked[len(command):]
         args = args[1:] if args.startswith(" ") else args
         step = command[1:].removeprefix("skillworks:")
@@ -180,7 +180,7 @@ class Sessions:
         self.record(session, "/" + step if step in self.bare else command, args)
 
         # The step that builds leaves the worktree changed, which is what its check reads.
-        if asked.endswith("--stop-after-tests") and self.builds:
+        if "--stop-after-tests" in asked and self.builds:
             (Path(self.runner.where) / "built.txt").write_text(
                 "built\n", encoding="utf-8", newline="\n")
 
@@ -1743,6 +1743,38 @@ def test_the_finishing_step_is_handed_the_line_of_each_check_a_proof_held(loop, 
     assert not runner.started("npm")
 
 
+# The build starts the real command, so the Proof is the one an agent's own run leaves behind.
+def test_a_proof_kept_by_skillworks_suite_in_the_build_skips_that_check_in_the_suite_step(
+        loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_suite_on_main(loop, check("git", "--version"))
+    sessions = Sessions(loop.repo, runner)
+    agent_ran = []
+    sessions.then["--stop-after-tests"] = lambda: agent_ran.append(
+        launch("skillworks-suite", where=runner.where))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert agent_ran[0].status == 0, said(agent_ran[0])
+    assert ["git", "--version"] not in runner.calls
+    assert re.search(r"git --version did not run, because Proof [0-9a-f]{12}, made .+, holds its "
+                     r"inputs", suite_output(loop))
+
+
+def test_every_step_session_is_told_to_check_its_work_with_skillworks_suite(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(step_calls(runner)) == 7
+    for call in step_calls(runner):
+        assert "run `skillworks-suite`" in call[2], call[2]
+        assert "In this loop the driver runs the whole Suite" in call[2], call[2]
+
+
 # One step owns the gate, so a Session cannot report a result the driver never saw.
 def test_the_finishing_step_is_told_the_driver_ran_the_suite_and_to_run_none(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
@@ -1904,7 +1936,7 @@ def test_every_step_session_names_the_session_that_started_the_driver(loop, runn
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    asked = [call[2].split(" ")[0] for call in step_calls(runner)]
+    asked = [call[2].split()[0] for call in step_calls(runner)]
     assert asked == ["/skillworks:" + name for name in (
         "implement", "review-standards", "review-spec", "review-architecture",
         "implement", "comment-sweep", "implement")]

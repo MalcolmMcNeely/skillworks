@@ -1,7 +1,7 @@
 #
 # The whole suite, as the repo's Suite file names it.
 #
-# Two callers, the landing and the driver, so one implementation keeps their stop rule the same.
+# Three callers share one stop rule: the landing, the driver and `skillworks-suite`.
 #
 # The repo owns the list, so nothing here names a command, a folder or a tool of any one repo.
 # A machine short of what the checks need is not a red suite, so readiness is proved first.
@@ -20,12 +20,17 @@ import os
 import posixpath
 import re
 import shutil
+import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
+from runner import Subprocess
+from stop import Stop, misuse, refusal
+
+USAGE = "usage: skillworks-suite\n"
 SUITE_FILE = "docs/agents/suite.json"
 REPO_IN_IMAGE = "/repo"
 PROOFS = "skillworks/proofs"
@@ -319,3 +324,37 @@ class Suite:
                 return self.runner.run(["docker", "start", "--attach", container], tree)
             finally:
                 self.runner.run(["docker", "rm", "--force", container], tree)
+
+
+def printed(out):
+    def heard(outcome, at):
+        out.write("--- suite run {}\n{}".format(at, outcome.said))
+        out.flush()
+    return heard
+
+
+# The driver reads the Proofs this keeps, so its Suite step never repeats a Session's own run.
+def main(argv, runner, out, err):
+    try:
+        if argv:
+            raise misuse(USAGE)
+        found = runner.run(["git", "rev-parse", "--show-toplevel"])
+        if found.status != 0:
+            raise refusal("{} is not in a git repository, so it has no Suite file.".format(
+                Path.cwd().as_posix()))
+        outcome = Suite(runner, found.out.strip()).run(printed(out))
+        if not outcome.ready:
+            raise refusal(outcome.said.rstrip("\n"))
+        if not outcome.passed:
+            raise refusal("the Suite went red. What each check said is above.")
+        out.write("ok    the Suite passed\n")
+        return 0
+    except Stop as stop:
+        err.write(stop.said)
+        return stop.status
+
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(newline="\n")
+    sys.stderr.reconfigure(newline="\n")
+    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr))

@@ -98,6 +98,12 @@ NUDGE_TAIL = (
     "is not complete. Run it again in the foreground.\n"
     "If something blocks you, say what it is.\n")
 
+# The command keeps Proofs the driver reads, so the Suite step after runs only what changed.
+SUITE_BY_COMMAND = (
+    "\n\nWhen you check your work against the Suite, run `skillworks-suite`, and never the test "
+    "commands the Suite file names. In this loop the driver runs the whole Suite as a step of its "
+    "own.")
+
 # The sweep follows the fix, because the fix writes and a sweep has to follow whatever wrote last.
 CIRCUIT = ("fix", "sweep", "suite")
 
@@ -410,7 +416,7 @@ class Loop:
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
-        asked = step.asks.format(ticket)
+        asked = step.asks.format(ticket) + SUITE_BY_COMMAND
         if step.name == "finish":
             return asked + self.suite_report(), ""
         if step.name != "fix":

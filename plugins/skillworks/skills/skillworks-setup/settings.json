@@ -24,7 +24,8 @@
       "Bash(seed-steering:*)",
       "Bash(spec-loop:*)",
       "Bash(land-ticket:*)",
-      "Bash(ticket-worktree:*)"
+      "Bash(ticket-worktree:*)",
+      "Bash(skillworks-suite:*)"
     ]
   },
   "extraKnownMarketplaces": {

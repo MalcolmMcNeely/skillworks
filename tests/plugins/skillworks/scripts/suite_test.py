@@ -1,12 +1,14 @@
 #
 # The programs are made up, so a case proves the Suite runs what the file names and nothing else.
 
+import io
 import json
 import re
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+import suite
 from conftest import ROOT, Ran, check, git, write_suite
 from suite import SUITE_FILE, Suite
 
@@ -693,6 +695,92 @@ def test_a_proved_check_needs_nothing_on_the_path(repo, runner):
     assert outcome.passed
 
 
+# --- the skillworks-suite command --------------------------------------------
+
+def suite_command(runner, *args):
+    out, err = io.StringIO(), io.StringIO()
+    status = suite.main(list(args), runner, out, err)
+    return Ran(status, out.getvalue(), err.getvalue())
+
+
+def test_the_command_runs_the_suite_of_the_repo_it_is_started_below(repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove"))
+    runner.stub("prove", says="every case passed\n")
+    below = repo.work / "src" / "deep"
+    below.mkdir(parents=True)
+    monkeypatch.chdir(below)
+
+    ran = suite_command(runner)
+
+    assert ran.status == 0, ran.err
+    assert "every case passed" in ran.out
+    assert "ok    the Suite passed" in ran.out
+    assert [call.where for call in runner.made if call.args[0] == "prove"] == [repo.work.as_posix()]
+
+
+def test_the_command_keeps_a_proof_the_next_suite_reads(repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+
+    suite_command(runner)
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.passed
+    assert runner.started("prove") == [["prove"]]
+    assert PROVED.match(outcome.said), outcome.said
+
+
+def test_a_red_suite_fails_the_command_and_says_what_went_red(repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove"))
+    runner.stub("prove", says="a test failed\n", status=1)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner)
+
+    assert ran.status == 1
+    assert "a test failed" in ran.out
+    assert "FAIL  the Suite went red" in ran.err
+
+
+def test_a_machine_short_of_what_the_suite_needs_fails_the_command_naming_it(
+        repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove", ready=["ping"], message="the store does not answer"))
+    given_every_program_passes(runner)
+    runner.stub("ping", status=1)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner)
+
+    assert ran.status == 1
+    assert "FAIL  the store does not answer" in ran.err
+    assert not runner.started("prove")
+
+
+def test_the_command_takes_no_argument(repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner, "--all")
+
+    assert ran.status == 64
+    assert ran.err == "usage: skillworks-suite\n"
+    assert not runner.started("prove")
+
+
+def test_the_command_outside_a_repository_runs_nothing(tmp_path, runner, monkeypatch):
+    write_suite(tmp_path, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(tmp_path)
+
+    ran = suite_command(runner)
+
+    assert ran.status == 1
+    assert "is not in a git repository" in ran.err
+    assert not runner.started("prove")
+
+
 def test_a_suite_file_carrying_when_is_unreadable_and_says_to_use_ignores(tmp_path, runner):
     given_a_suite_file_reading(tmp_path, json.dumps(
         {"checks": [{"command": ["lint"], "folder": ".", "when": ["web"]}]}))
@@ -1148,14 +1236,27 @@ def test_no_api_test_reads_the_plugin_s_skill_folders():
         assert not ("RepositoryRoot()" in text and '"skills"' in text), code
 
 
-def test_the_readme_and_claude_md_list_every_check_of_this_repo_s_suite():
-    assert len(this_repo_s_checks()) == 7
-    for doc in ("README.md", "CLAUDE.md"):
-        text = (ROOT / doc).read_text(encoding="utf-8")
-        checks = text[text.index("### Checks"):].split("```")[1].replace('"', "")
+def checks_section(doc):
+    text = (ROOT / doc).read_text(encoding="utf-8")
+    return text[text.index("### Checks"):]
 
-        for entry in this_repo_s_checks():
-            assert " ".join(entry["command"]) in checks, (doc, entry["command"])
+
+def test_the_readme_lists_every_check_of_this_repo_s_suite():
+    assert len(this_repo_s_checks()) == 7
+    checks = checks_section("README.md").split("```")[1].replace('"', "")
+
+    for entry in this_repo_s_checks():
+        assert " ".join(entry["command"]) in checks, entry["command"]
+
+
+# An agent reads CLAUDE.md, and a raw command there is one it would run in place of the cheap one.
+def test_claude_md_names_skillworks_suite_in_place_of_the_checks():
+    section = checks_section("CLAUDE.md").split("\n### ")[0]
+
+    assert section.split("```")[1].strip() == "skillworks-suite"
+    assert "In a loop the driver runs the Suite" in section
+    for entry in this_repo_s_checks():
+        assert " ".join(entry["command"]) not in section.replace('"', ""), entry["command"]
 
 
 def test_the_review_skills_run_the_placement_checks_and_not_the_suite_file():
@@ -1195,6 +1296,14 @@ def test_the_placement_checks_install_the_front_end_before_its_lint():
     text = (ROOT / PLACEMENT_CHECKS).read_text(encoding="utf-8")
 
     assert "| `npm run lint` | `src/Skillworks.Studio.Web` | `npm ci`, unless `node_modules` is there |" in text
+
+
+def test_the_readme_names_every_command_the_plugin_puts_on_path():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    row = next(line for line in text.splitlines() if line.startswith("| `plugins/skillworks/bin/` |"))
+
+    for command in (ROOT / "plugins/skillworks/bin").iterdir():
+        assert "`{}`".format(command.name) in row, command.name
 
 
 def test_the_seeded_placement_checks_show_a_repo_how_to_name_its_commands():
