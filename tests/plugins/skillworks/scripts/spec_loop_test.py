@@ -220,11 +220,15 @@ class Sessions:
 
 
 # A worktree is cut from the remote, so the Suite file has to reach it first.
-def given_a_suite_that_passes(loop, runs=None):
-    write_suite(loop.repo.work, project_suite()[0], runs=runs)
+def given_a_suite_on_main(loop, *checks, runs=None):
+    write_suite(loop.repo.work, *checks, runs=runs)
     git(loop.repo.work, "add", "-A")
     git(loop.repo.work, "commit", "--quiet", "-m", "A Suite")
     git(loop.repo.work, "push", "--quiet", "origin", "main")
+
+
+def given_a_suite_that_passes(loop, runs=None):
+    given_a_suite_on_main(loop, project_suite()[0], runs=runs)
     loop.runner.stub("docker")
     loop.runner.stub("dotnet", says="the solution passed")
 
@@ -1420,11 +1424,8 @@ def test_a_red_suite_keeps_what_it_said_and_the_worktree_it_said_it_in(loop):
 # Main moves while the ticket is built, and measured from main its new file would wake a check.
 def test_the_suite_is_woken_by_the_change_since_the_worktree_was_cut(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    write_suite(loop.repo.work, check("dotnet", "test", "Skillworks.slnx", when=["built.txt"]),
-                check("npm", "test", when=["later.txt"]))
-    git(loop.repo.work, "add", "-A")
-    git(loop.repo.work, "commit", "--quiet", "-m", "A Suite")
-    git(loop.repo.work, "push", "--quiet", "origin", "main")
+    given_a_suite_on_main(loop, check("dotnet", "test", "Skillworks.slnx", when=["built.txt"]),
+                          check("npm", "test", when=["later.txt"]))
     runner.stub("dotnet", says="the solution passed\n")
     runner.stub("npm")
     sessions = Sessions(loop.repo, runner)
@@ -1731,6 +1732,22 @@ def test_the_finishing_step_is_handed_the_output_of_the_suite_that_passed(loop, 
 
     assert ran.status == 1
     assert "the solution passed" in finish_prompt(runner)
+
+
+def test_the_finishing_step_is_handed_the_line_of_each_check_that_did_not_run(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_suite_on_main(loop, check("dotnet", "test", "Skillworks.slnx"),
+                          check("npm", "test", when=["untouched.txt"]))
+    runner.stub("dotnet", says="the solution passed\n")
+    runner.stub("npm")
+    Sessions(loop.repo, runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "the solution passed" in finish_prompt(runner)
+    assert ("npm test did not run, because the change touches none of the paths it names"
+            in finish_prompt(runner))
 
 
 # One step owns the gate, so a Session cannot report a result the driver never saw.

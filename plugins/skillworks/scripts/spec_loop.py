@@ -375,8 +375,9 @@ class Loop:
         if self.green_suite is None:
             return ""
         return ("\n\n## The suite passed\n\nThe driver ran the whole suite and read the result, so "
-                "run no tests yourself. Name what follows in the closing comment as what proved "
-                "the work.\n\n{}\n").format(self.green_suite.said.rstrip("\n"))
+                "run no tests yourself. Name what follows in the closing comment: the checks that "
+                "ran as what proved the work, and each check whose line says it did not run as "
+                "one that proved nothing.\n\n{}\n").format(self.green_suite.said.rstrip("\n"))
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
