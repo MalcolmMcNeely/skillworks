@@ -13,6 +13,7 @@
 # An `unless` path that exists skips its readiness command, so an install is not done twice.
 # Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
 # A check can name an image, for tests that start processes an OS is slow to start.
+# Fresh mode trusts no Proof and no image, so a Proof gone stale outside the repo is caught.
 
 import hashlib
 import json
@@ -30,13 +31,14 @@ from typing import NamedTuple
 from runner import Subprocess
 from stop import Stop, misuse, refusal
 
-USAGE = "usage: skillworks-suite\n"
+USAGE = "usage: skillworks-suite [--fresh]\n"
 SUITE_FILE = "docs/agents/suite.json"
 REPO_IN_IMAGE = "/repo"
 PROOFS = "skillworks/proofs"
 # Only these make a check what it is, so an edit to another check leaves this one's Proofs standing.
 KEYED = ("command", "folder", "image", "ignores", "ready")
-RECORD = re.compile(r"([0-9a-f]{64}) (\d{4}-\d\d-\d\d \d\d:\d\d UTC)")
+# The check comes last, and a record made before it was kept still reads as a Proof.
+RECORD = re.compile(r"([0-9a-f]{64}) (\d{4}-\d\d-\d\d \d\d:\d\d UTC)(?: ([0-9a-f]{64}))?")
 NO_WHEN = ("a check carries `when`, which the Suite no longer reads. Replace it with `ignores`: the "
            "paths, as git pathspecs from the repo root, that the check cannot be changed by. A check "
            "reads every file git does not ignore, less its `ignores`, and runs again only when one "
@@ -48,6 +50,7 @@ class Outcome(NamedTuple):
     said: str
     # False when the checks never started, so nothing at all was proved about the work.
     ready: bool = True
+    red: tuple = ()
 
 
 class Ready(NamedTuple):
@@ -69,6 +72,10 @@ class Check(NamedTuple):
         command = ["docker"] if self.image else [self.command[0]]
         return command + ([self.ready.command[0]] if self.ready else [])
 
+    # Every Proof of this entry carries it, so a red fresh run can find them all.
+    def named(self):
+        return hashlib.sha256(self.keyed.encode("utf-8")).hexdigest()
+
 
 class Proof(NamedTuple):
     key: str
@@ -80,25 +87,44 @@ class Proofs:
     def __init__(self, path):
         self.path = path
 
-    def of(self, key):
+    # The last piece has no newline after it, so it is empty or a record torn mid-write.
+    def lines(self):
         if self.path is None or not self.path.is_file():
-            return None
-        # The last piece has no newline after it, so it is empty or a record torn mid-write.
-        for line in self.path.read_text(encoding="utf-8", errors="replace").split("\n")[:-1]:
+            return []
+        return self.path.read_text(encoding="utf-8", errors="replace").split("\n")[:-1]
+
+    def of(self, key):
+        for line in self.lines():
             record = RECORD.fullmatch(line)
             if record and record.group(1) == key:
                 return Proof(key, record.group(2))
         return None
 
-    def keep(self, key, made):
+    def keep(self, key, made, check):
         if self.path is None:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         written = os.open(self.path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
         try:
-            os.write(written, "{} {}\n".format(key, made).encode("utf-8"))
+            os.write(written, "{} {} {}\n".format(key, made, check).encode("utf-8"))
         finally:
             os.close(written)
+
+    # Swapped in whole, so no reader meets a torn store; a racing append lost costs a run, not a pass.
+    def forget(self, checks, keys):
+        lines = self.lines()
+        kept = []
+        for line in lines:
+            record = RECORD.fullmatch(line)
+            if record and (record.group(1) in keys or record.group(3) in checks):
+                continue
+            kept.append(line)
+        if len(kept) == len(lines):
+            return
+        held, swapped = tempfile.mkstemp(dir=self.path.parent)
+        with os.fdopen(held, "w", encoding="utf-8", newline="\n") as file:
+            file.write("".join(line + "\n" for line in kept))
+        os.replace(swapped, self.path)
 
 
 class Unreadable(Exception):
@@ -145,15 +171,24 @@ def did_not_run(check, proof):
         " ".join(check.command), proof.key[:12], proof.made)
 
 
+def said_by(check, held, each):
+    if each is not None:
+        return each.out + each.err
+    if isinstance(held, Proof):
+        return did_not_run(check, held)
+    return held.out + held.err
+
+
 def utc_now():
     return datetime.now(timezone.utc)
 
 
 class Suite:
-    def __init__(self, runner, worktree, now=utc_now):
+    def __init__(self, runner, worktree, now=utc_now, fresh=False):
         self.runner = runner
         self.tree = Path(worktree)
         self.now = now
+        self.fresh = fresh
 
     def read(self):
         path = self.tree / SUITE_FILE
@@ -179,8 +214,11 @@ class Suite:
             if ready is not None:
                 ready = Ready(command_of(ready), str(ready.get("message", "")),
                               ready.get("unless"))
+            # Read in fresh mode too, so a Suite file that names a missing image is never green.
+            image = image_of(entry, self.tree)
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
-                                image_of(entry, self.tree), ignores_of(entry), keyed_entry(entry)))
+                                None if self.fresh else image, ignores_of(entry),
+                                keyed_entry(entry)))
         return wanted, runs
 
     # In the common git directory, so every worktree of the clone shares them and nothing pushes them.
@@ -216,8 +254,11 @@ class Suite:
         digests = {}
         return [self.key_of(check, digests) for check in wanted]
 
+    # Fresh mode still reads the keys, because a red check's Proof on these inputs is the stale one.
     def proved(self, wanted, proofs):
         keys = self.keys_of(wanted, proofs)
+        if self.fresh:
+            return keys, [None] * len(wanted)
         return keys, [proofs.of(key) if key else None for key in keys]
 
     # Read as facts, never out of a runner's output, which is reworded with every version.
@@ -262,9 +303,10 @@ class Suite:
 
         for at in range(1, runs + 1):
             # A check that went green in the run before is proved now, so only red runs again.
-            if at > 1:
+            # Fresh mode keeps no Proof, so it carries the earlier pass itself.
+            if at > 1 and not self.fresh:
                 keys, found = self.proved(wanted, proofs)
-            outcome = self.run_checks(wanted, proofs, keys, found)
+            outcome, found = self.run_checks(wanted, proofs, keys, found)
             if heard is not None:
                 heard(outcome, at)
             if outcome.passed:
@@ -275,16 +317,24 @@ class Suite:
     # A Proof is a real pass on the same inputs, so a Suite whose every check is proved passes.
     def run_checks(self, wanted, proofs, keys, found):
         with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
-            running = [pool.submit(self.run_check, check) if proof is None else None
-                       for check, proof in zip(wanted, found)]
+            running = [pool.submit(self.run_check, check) if held is None else None
+                       for check, held in zip(wanted, found)]
             ran = [each.result() if each else None for each in running]
-        made = self.now().strftime("%Y-%m-%d %H:%M UTC")
-        for key, each in zip(keys, ran):
-            if key and each and each.status == 0:
-                proofs.keep(key, made)
-        said = "".join(did_not_run(check, proof) if each is None else each.out + each.err
-                       for check, proof, each in zip(wanted, found, ran))
-        return Outcome(all(each.status == 0 for each in ran if each), said)
+        went_red = [(check, key) for check, key, each in zip(wanted, keys, ran)
+                    if each and each.status != 0]
+        if self.fresh:
+            proofs.forget({check.named() for check, _ in went_red},
+                          {key for _, key in went_red if key})
+        else:
+            made = self.now().strftime("%Y-%m-%d %H:%M UTC")
+            for check, key, each in zip(wanted, keys, ran):
+                if key and each and each.status == 0:
+                    proofs.keep(key, made, check.named())
+        said = "".join(said_by(check, held, each) for check, held, each in zip(wanted, found, ran))
+        passed = [held if each is None else each if each.status == 0 else None
+                  for held, each in zip(found, ran)]
+        red = tuple(" ".join(check.command) for check, _ in went_red)
+        return Outcome(not red, said, red=red), passed
 
     def run_check(self, check):
         if check.image is None:
@@ -336,13 +386,13 @@ def printed(out):
 # The driver reads the Proofs this keeps, so its Suite step never repeats a Session's own run.
 def main(argv, runner, out, err):
     try:
-        if argv:
+        if argv not in ([], ["--fresh"]):
             raise misuse(USAGE)
         found = runner.run(["git", "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository, so it has no Suite file.".format(
                 Path.cwd().as_posix()))
-        outcome = Suite(runner, found.out.strip()).run(printed(out))
+        outcome = Suite(runner, found.out.strip(), fresh=argv == ["--fresh"]).run(printed(out))
         if not outcome.ready:
             raise refusal(outcome.said.rstrip("\n"))
         if not outcome.passed:

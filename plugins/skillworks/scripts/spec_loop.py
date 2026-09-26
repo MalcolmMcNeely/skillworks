@@ -144,6 +144,13 @@ def stop(said):
     return Stop(REFUSED, said)
 
 
+# The stop that came first is still why the loop ended, so a later one carries it along.
+def after(stopped, first):
+    if first is None:
+        return stopped
+    return stop("{}\n      The loop had already stopped: {}".format(stopped.said, first.said))
+
+
 def as_git_path(repo):
     return Path(repo).as_posix()
 
@@ -316,6 +323,9 @@ class Loop:
 
         # The driver read this one, so the finishing Session names it rather than proving it again.
         self.green_suite = None
+
+        # This run's alone, so a rerun proves main again only when it lands something of its own.
+        self.landed = []
 
         # Nothing is read from an earlier run, so a rerun grows a mean of its own.
         self.timed_tickets = 0
@@ -820,6 +830,7 @@ class Loop:
         started = time.time()
 
         self.land(ticket, self.build_ticket(ticket))
+        self.landed.append(ticket)
         landed_at = self.git(self.job_worktree, "rev-parse", "--short", "HEAD").out.strip()
 
         # A ticket that failed never gets here, so a worktree left behind means a stop.
@@ -832,6 +843,65 @@ class Loop:
         self.timed_tickets += 1
         self.mean_seconds = self.timed_seconds // self.timed_tickets
         self.say("DONE  #{}  {}".format(ticket, landed_at))
+
+    def run_tickets(self):
+        while True:
+            open_tickets = listed(
+                self.sub_issues('.[] | select(.state=="open") | .number').out)
+            ticket = self.next_ticket(open_tickets)
+            if not ticket:
+                if not open_tickets:
+                    return
+                raise stop("STUCK {} ticket(s) still open but none are startable (blocked, or "
+                           "claimed by someone else).".format(len(open_tickets)))
+
+            if not self.claimed(ticket):
+                continue
+
+            # Counts closed tickets, not this run's, so a rerun starts at its real place.
+            self.position = self.ticket_count - len(open_tickets) + 1
+            self.run_ticket(ticket)
+
+    # --- the full run --------------------------------------------------------
+
+    # Tickets leaned on Proofs and images, so this trusts neither; its red is main's, not a fix step's.
+    def run_full(self, stopped=None):
+        if not self.landed:
+            return
+        landed = ", ".join("#" + ticket for ticket in self.landed)
+        self.say("FULL  {} landed in this run, so the whole Suite runs on the newest origin/main "
+                 "with no Proofs and no images".format(landed))
+
+        held = self.log_dir / "full-run.out"
+        written(held, "")
+        tree = self.opened("full-run")
+        if not tree:
+            raise after(stop("FAIL  the full run got no worktree to run in, so main is unproved "
+                             "since {} landed.".format(landed)), stopped)
+        at = self.git(tree, "rev-parse", "--short", "HEAD").out.strip()
+
+        def heard(outcome, run):
+            appended(held, "--- suite run {}\n{}".format(run, outcome.said))
+            self.say("FULL  run {} {}".format(run, suite_verdict(outcome, run)))
+        outcome = Suite(self.runner, tree, fresh=True).run(heard)
+
+        # Main is on the remote, so the worktree holds nothing a stop needs kept.
+        closed = self.worktree("close", "full-run")[0] == 0
+        if not outcome.ready:
+            appended(held, "--- the suite could not start\n{}".format(outcome.said))
+            raise after(stop("ABORT the full run of the Suite could not start, so main at {} is "
+                             "unproved since {} landed: {}\n      See {}".format(
+                                 at, landed, outcome.said.strip(), held)), stopped)
+        if not outcome.passed:
+            raise after(stop("RED   the full run of the Suite went red on main at {}, with no "
+                             "Proofs and no images. The spec stays open, and no Session was "
+                             "asked to fix it.\n      Red: {}\n      Landed in this run: {}\n"
+                             "      See {}".format(
+                                 at, ", ".join(outcome.red), landed, held)), stopped)
+        self.say("FULL  main at {} passed the whole Suite".format(at))
+        if not closed:
+            raise after(stop("FAIL  the full run's worktree at {} would not go.".format(tree)),
+                        stopped)
 
     # --- the drift check -----------------------------------------------------
 
@@ -889,22 +959,13 @@ class Loop:
         self.say("LOOP  spec #{} from {} ({}) in {} mode".format(
             self.spec, base, self.repo, self.permission_mode))
 
-        while True:
-            open_tickets = listed(
-                self.sub_issues('.[] | select(.state=="open") | .number').out)
-            ticket = self.next_ticket(open_tickets)
-            if not ticket:
-                if not open_tickets:
-                    break
-                raise stop("STUCK {} ticket(s) still open but none are startable (blocked, or "
-                           "claimed by someone else).".format(len(open_tickets)))
-
-            if not self.claimed(ticket):
-                continue
-
-            # Counts closed tickets, not this run's, so a rerun starts at its real place.
-            self.position = self.ticket_count - len(open_tickets) + 1
-            self.run_ticket(ticket)
+        # A ticket on main stays there when the loop stops, so a stop is followed by the full run too.
+        try:
+            self.run_tickets()
+        except Stop as stopped:
+            self.run_full(stopped)
+            raise
+        self.run_full()
 
         self.check_drift(base)
         self.say("END   spec #{} complete. Every ticket is on main.".format(self.spec))

@@ -695,6 +695,125 @@ def test_a_proved_check_needs_nothing_on_the_path(repo, runner):
     assert outcome.passed
 
 
+# --- fresh mode --------------------------------------------------------------
+
+def test_fresh_mode_runs_every_check_whatever_proofs_exist(repo, runner):
+    write_suite(repo.work, check("compile"), check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+
+    outcome = Suite(runner, repo.work, fresh=True).run()
+
+    assert outcome.passed
+    assert len(runner.started("compile")) == 2
+    assert len(runner.started("prove")) == 2
+    assert not PROVED.search(outcome.said)
+
+
+def test_fresh_mode_writes_no_proof(repo, runner):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+
+    Suite(runner, repo.work, fresh=True).run()
+    Suite(runner, repo.work).run()
+
+    assert len(runner.started("prove")) == 2
+
+
+def test_a_check_red_in_fresh_mode_loses_its_proof_and_runs_again_next_time(repo, runner):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    fresh = Suite(runner, repo.work, fresh=True).run()
+    after = Suite(runner, repo.work).run()
+
+    assert not fresh.passed
+    assert after.passed
+    assert len(runner.started("prove")) == 3
+
+
+def test_a_check_red_in_fresh_mode_loses_the_proofs_of_other_inputs_too(repo, runner):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+    writing(repo, "base.txt")
+    Suite(runner, repo.work).run()
+    given_a_check_red_on_its_first_run_alone(runner)
+    Suite(runner, repo.work, fresh=True).run()
+
+    git(repo.work, "checkout", "--quiet", "--", "base.txt")
+    Suite(runner, repo.work).run()
+
+    assert len(runner.started("prove")) == 4
+
+
+def test_a_check_green_in_fresh_mode_keeps_its_proofs_beside_a_red_one(repo, runner):
+    write_suite(repo.work, check("compile"), check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+    given_a_check_red_on_its_first_run_alone(runner)
+    Suite(runner, repo.work, fresh=True).run()
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.passed
+    assert len(runner.started("compile")) == 2
+    assert len(runner.started("prove")) == 3
+
+
+def test_fresh_mode_names_the_checks_that_went_red(repo, runner):
+    write_suite(repo.work, check("compile", "all"), check("prove"), check("lint"))
+    given_every_program_passes(runner)
+    runner.stub("compile", status=1)
+    runner.stub("lint", status=1)
+
+    outcome = Suite(runner, repo.work, fresh=True).run()
+
+    assert not outcome.passed
+    assert outcome.red == ("compile all", "lint")
+
+
+def test_fresh_mode_runs_a_check_with_an_image_on_the_host(repo, runner):
+    given_a_suite_in_an_image(repo.work, "lint", "all", folder="web/app")
+    docker = FakeDocker(runner)
+    runner.stub("lint")
+
+    outcome = Suite(runner, repo.work, fresh=True).run()
+
+    assert outcome.passed
+    assert docker.calls() == []
+    assert [(call.args, call.where) for call in made_by(runner)] == [
+        (["lint", "all"], (repo.work / "web/app").as_posix())]
+
+
+def test_fresh_mode_needs_the_program_of_an_image_check_on_the_host(repo, runner):
+    given_a_suite_in_an_image(repo.work, "lint")
+    FakeDocker(runner)
+    runner.hide("lint")
+
+    outcome = Suite(runner, repo.work, fresh=True).run()
+
+    assert not outcome.ready
+    assert "lint is not on PATH" in outcome.said
+
+
+def test_fresh_mode_runs_again_only_the_checks_that_went_red(repo, runner):
+    write_suite(repo.work, check("compile"), check("prove"), runs=2)
+    given_every_program_passes(runner)
+    runner.stub("compile", says="compiled\n")
+    runner.refuse("prove", "a test flaked", times=1)
+    heard = []
+
+    outcome = Suite(runner, repo.work, fresh=True).run(lambda outcome, at: heard.append(outcome))
+
+    assert outcome.passed
+    assert len(runner.started("compile")) == 1
+    assert len(runner.started("prove")) == 2
+    assert "compiled" in heard[1].said
+
+
 # --- the skillworks-suite command --------------------------------------------
 
 def suite_command(runner, *args):
@@ -757,16 +876,31 @@ def test_a_machine_short_of_what_the_suite_needs_fails_the_command_naming_it(
     assert not runner.started("prove")
 
 
-def test_the_command_takes_no_argument(repo, runner, monkeypatch):
+def test_the_command_takes_no_argument_but_fresh(repo, runner, monkeypatch):
     write_suite(repo.work, check("prove"))
     given_every_program_passes(runner)
     monkeypatch.chdir(repo.work)
 
-    ran = suite_command(runner, "--all")
+    for args in (["--all"], ["--fresh", "--fresh"], ["--fresh", "now"]):
+        ran = suite_command(runner, *args)
 
-    assert ran.status == 64
-    assert ran.err == "usage: skillworks-suite\n"
+        assert ran.status == 64, args
+        assert ran.err == "usage: skillworks-suite [--fresh]\n", args
     assert not runner.started("prove")
+
+
+def test_the_command_with_fresh_runs_a_check_a_proof_holds(repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+    suite_command(runner)
+
+    ran = suite_command(runner, "--fresh")
+    Suite(runner, repo.work).run()
+
+    assert ran.status == 0, ran.err
+    assert "ok    the Suite passed" in ran.out
+    assert len(runner.started("prove")) == 2
 
 
 def test_the_command_prints_a_character_its_code_page_lacks():

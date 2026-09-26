@@ -2105,6 +2105,7 @@ def given_a_run_that_lands(loop):
     tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
     sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    return tracker
 
 
 # Held in this process, since the OS turns away a second handle on the Turn's file even from here.
@@ -2221,6 +2222,161 @@ def test_the_landing_output_of_a_ticket_that_stops_holds_what_the_landing_said(l
     assert not re.search("^" + STAMP, held, re.MULTILINE)
     for line in held.splitlines():
         assert stamped_in_log(loop, line), line
+
+
+# --- the full run after a run that landed a ticket ---------------------------
+
+TWO_OPEN_TICKETS = (("168", "open", "TICKET: The dry run prints the plan"),
+                    ("169", "open", "TICKET: Blocked behind somebody else's"))
+
+
+def full_run_tree(loop):
+    return loop.repo.tree(SPEC, "full-run").as_posix()
+
+
+def full_run_calls(loop, name):
+    return [call.args for call in loop.runner.made
+            if call.args[0] == name and call.where == full_run_tree(loop)]
+
+
+# Red in the full run alone, so the ticket's own Suite step still passes.
+def given_a_full_run_that_goes_red(loop):
+    def answer():
+        if loop.runner.where == full_run_tree(loop):
+            return Ran(1, "a test failed on this OS\n", "")
+        return None
+    loop.runner.stub("dotnet", says="the solution passed", does=answer)
+
+
+# Blocked on another spec, so the loop lands 168 and then stops, stuck on 169.
+def given_a_run_that_lands_one_ticket_then_sticks(loop):
+    tracker = given_the_tracker_holds(loop, TWO_OPEN_TICKETS)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    asked = tracker.answer
+
+    def answer():
+        if "issues/169" in " ".join(loop.runner.calls[-1]) and "blocked_by" in " ".join(
+                loop.runner.calls[-1]):
+            return Ran(0, "1\n", "")
+        return asked()
+    loop.runner.stub("gh", does=answer)
+
+
+# The Proof made on main holds every input the ticket leaves, so only a full run starts dotnet.
+def test_a_run_that_landed_a_ticket_runs_the_whole_suite_after_it_trusting_no_proof(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_suite_on_main(loop, check("dotnet", "test", "Skillworks.slnx", ignores=["built.txt"]))
+    earlier = RecordingRunner()
+    earlier.stub("dotnet")
+    assert Suite(earlier, loop.repo.work).run().passed
+    runner.stub("dotnet")
+    sessions = Sessions(loop.repo, runner)
+    sessions.then[FINISH] = all_of(committed(runner), closed(tracker))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert [call.where for call in runner.made if call.args[0] == "dotnet"] == [
+        full_run_tree(loop)]
+
+
+def given_main_moves_once_the_ticket_has_landed(loop, tracker):
+    def answer():
+        asked = " ".join(loop.runner.calls[-1])
+        if 'select(.state=="open")' in asked and "168" in tracker.closed:
+            loop.repo.advance_origin("late")
+        return tracker.answer()
+    loop.runner.stub("gh", does=answer)
+
+
+def test_the_full_run_is_on_a_new_worktree_of_the_newest_origin_main(loop, runner):
+    tracker = given_a_run_that_lands(loop)
+    given_main_moves_once_the_ticket_has_landed(loop, tracker)
+    heads = []
+
+    def head_of_the_full_run():
+        if runner.where == full_run_tree(loop):
+            heads.append(git(runner.where, "rev-parse", "HEAD").strip())
+    runner.stub("dotnet", does=head_of_the_full_run)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert heads == [git(loop.repo.origin, "rev-parse", "main").strip()]
+    assert "late.txt" in git(loop.repo.origin, "ls-tree", "--name-only", heads[0])
+    assert not Path(full_run_tree(loop)).exists()
+
+
+def test_a_run_that_landed_no_ticket_has_no_full_run(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert full_run_calls(loop, "dotnet") == []
+    assert "FULL" not in loop.log()
+
+
+def test_a_run_that_stopped_early_after_landing_a_ticket_still_has_a_full_run(loop):
+    given_a_run_that_lands_one_ticket_then_sticks(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "STUCK" in said(ran)
+    assert full_run_calls(loop, "dotnet") == [["dotnet", "test", "Skillworks.slnx"]]
+
+
+def test_a_red_full_run_stops_the_loop_naming_the_red_checks_and_the_landed_tickets(loop):
+    given_a_run_that_lands(loop)
+    given_a_full_run_that_goes_red(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "the full run of the Suite went red" in said(ran)
+    assert "Red: dotnet test Skillworks.slnx" in said(ran)
+    assert "Landed in this run: #168" in said(ran)
+    assert "a test failed on this OS" in (loop.records() / "full-run.out").read_text(
+        encoding="utf-8")
+
+
+def test_a_red_full_run_tries_no_fix_and_leaves_the_spec_open(loop, runner):
+    given_a_run_that_lands(loop)
+    given_a_full_run_that_goes_red(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(prompts_asking(runner, "/skillworks:implement 168 --fix")) == 1
+    assert call_asking(runner, "/skillworks:spec-drift") is None
+    assert not runner.built("issue close")
+    assert "END" not in loop.log()
+
+
+def test_a_red_full_run_after_an_early_stop_names_why_the_loop_stopped_too(loop):
+    given_a_run_that_lands_one_ticket_then_sticks(loop)
+    given_a_full_run_that_goes_red(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "Red: dotnet test Skillworks.slnx" in said(ran)
+    assert "STUCK" in said(ran)
+
+
+def test_the_log_shows_the_full_run_and_its_result_before_the_end_line(loop):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    started = log.index("FULL  #168 landed in this run")
+    passed = log.index("FULL  run 1 passed")
+    assert started < passed < log.index("END   spec #158 complete")
 
 
 # --- the claim --------------------------------------------------------------
