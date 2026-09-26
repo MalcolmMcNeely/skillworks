@@ -486,8 +486,9 @@ class Loop:
             return stop(said)
         for denial in named:
             said += "\n      Denial: " + denial
+        # The flag and not the env var, because the allow rule `Bash(spec-loop:*)` matches only the flag.
         return stop(said + "\n      If one of these Denials stopped the step, rerun with "
-                    "SPEC_LOOP_PERMISSION_MODE=bypassPermissions")
+                    "spec-loop {} --bypass".format(self.spec))
 
     def run_step(self, ticket, step, *rest):
         held = self.step_file(ticket, step.name, "json")

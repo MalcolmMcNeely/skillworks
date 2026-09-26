@@ -1789,7 +1789,7 @@ def test_the_finishing_step_is_handed_the_run_that_passed_and_not_the_one_that_f
 
 # --- the Denials a stop names -----------------------------------------------
 
-BYPASS = "SPEC_LOOP_PERMISSION_MODE=bypassPermissions"
+BYPASS = "spec-loop 158 --bypass"
 
 A_DENIED_WRITE = {"tool_name": "Write", "tool_use_id": "toolu_1",
                    "tool_input": {"file_path": ".claude/rules/words.md", "content": "x" * 500}}
@@ -1812,6 +1812,7 @@ def test_a_stop_after_denials_gives_the_way_past_them(loop):
     assert "step finish failed check new-commit" in said(ran)
     assert "Denial" in said(ran)
     assert BYPASS in said(ran)
+    assert "SPEC_LOOP_PERMISSION_MODE" not in said(ran)
     assert ticket_worktree_of(loop).as_posix() in said(ran)
 
 
