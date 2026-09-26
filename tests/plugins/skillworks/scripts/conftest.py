@@ -24,6 +24,10 @@ from runner import Ran, Subprocess
 from suite import SUITE_FILE
 
 
+def no_wait(seconds):
+    pass
+
+
 def git(where, *args):
     done = subprocess.run(
         ["git", "-C", Path(where).as_posix()] + [str(a) for a in args],

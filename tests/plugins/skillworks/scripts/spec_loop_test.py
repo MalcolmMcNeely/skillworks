@@ -10,7 +10,7 @@ import pytest
 
 import spec_loop
 import ticket_worktree
-from conftest import ROOT, Ran, check, git, launch, project_suite, write_suite
+from conftest import ROOT, Ran, check, git, launch, no_wait, project_suite, write_suite
 
 SPEC = "158"
 
@@ -556,7 +556,7 @@ def leftover(loop):
 def given_a_leftover_worktree(loop, job):
     out, err = io.StringIO(), io.StringIO()
     assert ticket_worktree.main(
-        ["open", loop.repo.work.as_posix(), SPEC, job], loop.runner, out, err) == 0
+        ["open", loop.repo.work.as_posix(), SPEC, job], loop.runner, out, err, no_wait) == 0
 
 
 # Git refuses a ref where a folder of refs sits, so this job's keep fails after the earlier ones.

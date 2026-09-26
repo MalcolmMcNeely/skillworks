@@ -5,7 +5,7 @@ import io
 from pathlib import Path
 
 import land_ticket
-from conftest import Ran, check, git, launch, project_suite, write_suite
+from conftest import Ran, check, git, launch, no_wait, project_suite, write_suite
 from suite import SUITE_FILE
 
 
@@ -16,7 +16,7 @@ CLOSING_COMMENT = "What that ticket set out to do."
 def run_land(runner, *args):
     given = [a.as_posix() if isinstance(a, Path) else str(a) for a in args]
     out, err = io.StringIO(), io.StringIO()
-    status = land_ticket.main(given, runner, out, err)
+    status = land_ticket.main(given, runner, out, err, no_wait)
     return Ran(status, out.getvalue(), err.getvalue())
 
 

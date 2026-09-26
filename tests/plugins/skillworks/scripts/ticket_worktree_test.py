@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 import ticket_worktree
-from conftest import SCRIPTS, Ran, git, launch
+from conftest import SCRIPTS, Ran, git, launch, no_wait
 
 SCRIPT = (SCRIPTS / "ticket_worktree.py").as_posix()
 
@@ -15,7 +15,7 @@ SCRIPT = (SCRIPTS / "ticket_worktree.py").as_posix()
 def run_worktree(runner, *args):
     given = [a.as_posix() if isinstance(a, Path) else str(a) for a in args]
     out, err = io.StringIO(), io.StringIO()
-    status = ticket_worktree.main(given, runner, out, err)
+    status = ticket_worktree.main(given, runner, out, err, no_wait)
     return Ran(status, out.getvalue(), err.getvalue())
 
 

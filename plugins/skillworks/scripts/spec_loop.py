@@ -326,7 +326,7 @@ class Loop:
     def worktree(self, command, job=""):
         out, err = io.StringIO(), io.StringIO()
         status = ticket_worktree.main(
-            [command, self.root.as_posix(), self.spec, job], self.runner, out, err)
+            [command, self.root.as_posix(), self.spec, job], self.runner, out, err, self.wait)
         if status != 0:
             self.err.write(err.getvalue())
             appended(self.log, err.getvalue())
@@ -607,7 +607,7 @@ class Loop:
 
     def landing_plan(self):
         out, err = io.StringIO(), io.StringIO()
-        land_ticket.main(["--plan"], self.runner, out, err)
+        land_ticket.main(["--plan"], self.runner, out, err, self.wait)
         return listed(out.getvalue())
 
     def dry_run(self):
@@ -757,7 +757,8 @@ class Loop:
     def land(self, ticket, session):
         held = self.step_file(ticket, "land", "out")
         said = io.StringIO()
-        landed = land_ticket.main([self.job_worktree, ticket, session], self.runner, said, said)
+        landed = land_ticket.main(
+            [self.job_worktree, ticket, session], self.runner, said, said, self.wait)
         written(held, said.getvalue())
         self.say(said.getvalue().rstrip("\n"))
         if landed != 0:
@@ -835,7 +836,7 @@ class Loop:
         self.keep_leftovers()
 
         # Every worktree is cut from origin/main, so the ref has to be current first.
-        if not fetch_origin(self.runner, self.root.as_posix(), self.err):
+        if not fetch_origin(self.runner, self.root.as_posix(), self.err, self.wait):
             raise stop("ABORT could not fetch from origin")
 
         # Written once, so a resumed run still measures from where the first run started.

@@ -34,6 +34,7 @@
 # straight back on a command line.
 
 import sys
+import time
 from pathlib import Path
 from typing import NamedTuple
 
@@ -103,11 +104,12 @@ def same_place(said, tree):
 
 
 class Worktrees:
-    def __init__(self, runner, checkout, spec, out, err):
+    def __init__(self, runner, checkout, spec, out, err, wait):
         self.runner = runner
         self.spec = spec
         self.out = out
         self.err = err
+        self.wait = wait
 
         if self.git(checkout, "rev-parse", "--git-dir").status != 0:
             raise refusal(str(checkout) + " is not a git worktree. Nothing was made or removed.")
@@ -156,7 +158,7 @@ class Worktrees:
             raise refusal("branch {} is already there. Remove it with: {}".format(
                 branch, self.removal(job)))
 
-        if not fetch_origin(self.runner, self.checkout.as_posix(), self.err):
+        if not fetch_origin(self.runner, self.checkout.as_posix(), self.err, self.wait):
             raise refusal("could not fetch from origin, so nothing could be cut from it.")
         if self.git(self.checkout, "rev-parse", "--verify", "--quiet", "origin/main").status != 0:
             raise refusal("origin has no main branch to cut a worktree from.")
@@ -288,10 +290,10 @@ class Worktrees:
         self.drop_group()
 
 
-def main(argv, runner, out, err):
+def main(argv, runner, out, err, wait):
     try:
         command, checkout, spec, job = arguments(argv)
-        worktrees = Worktrees(runner, checkout, spec, out, err)
+        worktrees = Worktrees(runner, checkout, spec, out, err, wait)
         COMMANDS[command].do(worktrees, job)
         return 0
     except Stop as stop:
@@ -303,4 +305,4 @@ if __name__ == "__main__":
     # Windows adds a carriage return, which goes with the path a caller reads off stdout.
     sys.stdout.reconfigure(newline="\n")
     sys.stderr.reconfigure(newline="\n")
-    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr))
+    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep))

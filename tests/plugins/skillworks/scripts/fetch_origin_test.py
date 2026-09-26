@@ -15,9 +15,11 @@ UNREACHABLE = "fatal: could not read from remote repository"
 FETCH = "fetch --quiet origin"
 
 
-def run_fetch(repo, runner):
+def run_fetch(repo, runner, waits=None):
     err = io.StringIO()
-    worked = fetch_origin(runner, repo.work.as_posix(), err)
+    # Recorded rather than waited out, so the backoff can be read without spending its seconds.
+    waits = [] if waits is None else waits
+    worked = fetch_origin(runner, repo.work.as_posix(), err, waits.append)
     return worked, err.getvalue()
 
 
@@ -86,3 +88,42 @@ def test_an_origin_that_cannot_be_reached_is_asked_once(repo, runner):
     assert not worked
     assert fetch_tries(runner) == 1
     assert said == UNREACHABLE + "\n"
+
+
+def test_a_fetch_that_works_waits_for_nothing(repo, runner):
+    waits = []
+
+    worked, _ = run_fetch(repo, runner, waits)
+
+    assert worked
+    assert waits == []
+
+
+def test_a_race_met_four_times_waits_longer_each_time(repo, runner):
+    runner.refuse(FETCH, REFUSED, times=4)
+    waits = []
+
+    worked, _ = run_fetch(repo, runner, waits)
+
+    assert worked
+    assert waits == [1, 2, 4, 8]
+
+
+def test_a_race_that_never_clears_stops_after_four_waits(repo, runner):
+    runner.refuse(FETCH, REFUSED)
+    waits = []
+
+    worked, _ = run_fetch(repo, runner, waits)
+
+    assert not worked
+    assert waits == [1, 2, 4, 8]
+
+
+def test_an_origin_that_cannot_be_reached_waits_for_nothing(repo, runner):
+    runner.refuse(FETCH, UNREACHABLE)
+    waits = []
+
+    worked, _ = run_fetch(repo, runner, waits)
+
+    assert not worked
+    assert waits == []

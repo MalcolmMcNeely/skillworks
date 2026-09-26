@@ -24,6 +24,7 @@
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import NamedTuple
 
@@ -85,13 +86,14 @@ def listed(said):
 
 
 class Landing:
-    def __init__(self, runner, worktree, ticket, session, out, err):
+    def __init__(self, runner, worktree, ticket, session, out, err, wait):
         self.runner = runner
         self.worktree = Path(worktree).as_posix()
         self.ticket = ticket
         self.session = session
         self.out = out
         self.err = err
+        self.wait = wait
         self.permission_mode = os.environ.get("SPEC_LOOP_PERMISSION_MODE", "acceptEdits")
         # None when no conflict is in hand, so a stop can tell whether it has one to record.
         self.conflict = None
@@ -389,7 +391,7 @@ class Landing:
 
         attempt = 1
         while True:
-            if not fetch_origin(self.runner, self.worktree, self.err):
+            if not fetch_origin(self.runner, self.worktree, self.err, self.wait):
                 raise self.die("#{} could not fetch from origin. Nothing was pushed."
                                .format(self.ticket))
             if self.git("rev-parse", "--verify", "--quiet", "origin/main").status != 0:
@@ -418,7 +420,7 @@ class Landing:
             attempt += 1
 
 
-def main(argv, runner, out, err):
+def main(argv, runner, out, err, wait):
     try:
         worktree = argv[0] if len(argv) > 0 else ""
         ticket = argv[1] if len(argv) > 1 else ""
@@ -431,7 +433,7 @@ def main(argv, runner, out, err):
         if not worktree or not is_a_number(ticket):
             raise misuse(USAGE)
 
-        Landing(runner, worktree, ticket, session, out, err).land()
+        Landing(runner, worktree, ticket, session, out, err, wait).land()
         return 0
     except Stop as stop:
         err.write(stop.said)
@@ -442,4 +444,4 @@ if __name__ == "__main__":
     # Windows adds a carriage return, which the driver would read as part of the plan.
     sys.stdout.reconfigure(newline="\n")
     sys.stderr.reconfigure(newline="\n")
-    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr))
+    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep))
