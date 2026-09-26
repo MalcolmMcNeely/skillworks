@@ -13,8 +13,10 @@ import pytest
 import land_ticket
 import spec_loop
 import ticket_worktree
-from conftest import ROOT, Ran, check, git, launch, no_wait, project_suite, write_suite
+from conftest import (ROOT, Ran, RecordingRunner, check, git, launch, no_wait, project_suite,
+                      write_suite)
 from runner import Subprocess
+from suite import Suite
 
 SPEC = "158"
 
@@ -1427,27 +1429,6 @@ def test_a_red_suite_keeps_what_it_said_and_the_worktree_it_said_it_in(loop):
     assert ticket_worktree_of(loop).is_dir()
 
 
-# Main moves while the ticket is built, and measured from main its new file would wake a check.
-def test_the_suite_is_woken_by_the_change_since_the_worktree_was_cut(loop, runner):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_a_suite_on_main(loop, check("dotnet", "test", "Skillworks.slnx", when=["built.txt"]),
-                          check("npm", "test", when=["later.txt"]))
-    runner.stub("dotnet", says="the solution passed\n")
-    runner.stub("npm")
-    sessions = Sessions(loop.repo, runner)
-
-    def main_moves():
-        loop.repo.advance_origin("later")
-        git(loop.repo.work, "fetch", "--quiet", "origin")
-    sessions.then["--stop-after-tests"] = main_moves
-
-    loop.run(SPEC)
-
-    assert suite_output(loop).endswith(
-        "the solution passed\n"
-        "npm test did not run, because the change touches none of the paths it names\n")
-
-
 def test_a_machine_short_of_what_the_suite_needs_stops_the_loop_naming_it(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
@@ -1740,10 +1721,15 @@ def test_the_finishing_step_is_handed_the_output_of_the_suite_that_passed(loop, 
     assert "the solution passed" in finish_prompt(runner)
 
 
-def test_the_finishing_step_is_handed_the_line_of_each_check_that_did_not_run(loop, runner):
+# npm passed on main and ignores the one file the build writes, so a Proof holds it in the worktree.
+def test_the_finishing_step_is_handed_the_line_of_each_check_a_proof_held(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_a_suite_on_main(loop, check("dotnet", "test", "Skillworks.slnx"),
-                          check("npm", "test", when=["untouched.txt"]))
+                          check("npm", "test", ignores=["built.txt"]))
+    earlier = RecordingRunner()
+    earlier.stub("dotnet")
+    earlier.stub("npm")
+    assert Suite(earlier, loop.repo.work).run().passed
     runner.stub("dotnet", says="the solution passed\n")
     runner.stub("npm")
     Sessions(loop.repo, runner)
@@ -1752,8 +1738,9 @@ def test_the_finishing_step_is_handed_the_line_of_each_check_that_did_not_run(lo
 
     assert ran.status == 1
     assert "the solution passed" in finish_prompt(runner)
-    assert ("npm test did not run, because the change touches none of the paths it names"
-            in finish_prompt(runner))
+    assert re.search(r"npm test did not run, because Proof [0-9a-f]{12}, made .+, holds its inputs",
+                     finish_prompt(runner))
+    assert not runner.started("npm")
 
 
 # One step owns the gate, so a Session cannot report a result the driver never saw.

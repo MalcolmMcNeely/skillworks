@@ -7,23 +7,35 @@
 # A machine short of what the checks need is not a red suite, so readiness is proved first.
 # Readiness runs one command at a time, because two checks can share one install.
 # The checks then run together, so the Suite takes as long as its slowest check.
-# A slow check of a rarely changed file names its paths, so it runs only when they change.
+# A check that passed keeps a Proof of its inputs, so it never runs again on the same ones.
+# A check names what it ignores, not what it reads, so a path left off costs a run, never a red pass.
 # A command is an argument list and never a shell line, so it reads the same on every machine.
 # An `unless` path that exists skips its readiness command, so an install is not done twice.
 # Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
 # A check can name an image, for tests that start processes an OS is slow to start.
 
+import hashlib
 import json
+import os
 import posixpath
+import re
 import shutil
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
 SUITE_FILE = "docs/agents/suite.json"
 REPO_IN_IMAGE = "/repo"
-EVERY_CHECK_RAN = "every check ran, because the change touches none of the paths any check names\n"
+PROOFS = "skillworks/proofs"
+# Only these make a check what it is, so an edit to another check leaves this one's Proofs standing.
+KEYED = ("command", "folder", "image", "ignores", "ready")
+RECORD = re.compile(r"([0-9a-f]{64}) (\d{4}-\d\d-\d\d \d\d:\d\d UTC)")
+NO_WHEN = ("a check carries `when`, which the Suite no longer reads. Replace it with `ignores`: the "
+           "paths, as git pathspecs from the repo root, that the check cannot be changed by. A check "
+           "reads every file git does not ignore, less its `ignores`, and runs again only when one "
+           "of them changes")
 
 
 class Outcome(NamedTuple):
@@ -43,19 +55,45 @@ class Check(NamedTuple):
     command: list
     folder: Path
     ready: Ready
-    when: list = None
     image: str = None
+    ignores: list = ()
+    keyed: str = ""
 
     # The image holds the check's own program, so the host needs only docker.
     def programs(self):
         command = ["docker"] if self.image else [self.command[0]]
         return command + ([self.ready.command[0]] if self.ready else [])
 
-    def woken_by(self, changed):
-        if self.when is None or changed is None:
-            return True
-        return any(name == path or name.startswith(path + "/")
-                   for path in self.when for name in changed)
+
+class Proof(NamedTuple):
+    key: str
+    made: str
+
+
+class Proofs:
+    # One record is one write to a file opened for append, so two loops at once cannot mix records.
+    def __init__(self, path):
+        self.path = path
+
+    def of(self, key):
+        if self.path is None or not self.path.is_file():
+            return None
+        # The last piece has no newline after it, so it is empty or a record torn mid-write.
+        for line in self.path.read_text(encoding="utf-8", errors="replace").split("\n")[:-1]:
+            record = RECORD.fullmatch(line)
+            if record and record.group(1) == key:
+                return Proof(key, record.group(2))
+        return None
+
+    def keep(self, key, made):
+        if self.path is None:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        written = os.open(self.path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+        try:
+            os.write(written, "{} {}\n".format(key, made).encode("utf-8"))
+        finally:
+            os.close(written)
 
 
 class Unreadable(Exception):
@@ -74,12 +112,18 @@ def command_of(entry):
     return command
 
 
-def paths_of(entry):
-    if "when" not in entry:
-        return None
-    if not is_list_of_words(entry["when"]):
-        raise Unreadable("a when that is not a list of paths")
-    return [path.rstrip("/") for path in entry["when"]]
+def ignores_of(entry):
+    if "when" in entry:
+        raise Unreadable(NO_WHEN)
+    if "ignores" not in entry:
+        return []
+    if not is_list_of_words(entry["ignores"]):
+        raise Unreadable("an ignores that is not a list of paths")
+    return entry["ignores"]
+
+
+def keyed_entry(entry):
+    return json.dumps({field: entry.get(field) for field in KEYED}, sort_keys=True)
 
 
 def image_of(entry, tree):
@@ -91,17 +135,20 @@ def image_of(entry, tree):
     return image
 
 
-def did_not_run(check):
-    return "{} did not run, because the change touches none of the paths it names\n".format(
-        " ".join(check.command))
+def did_not_run(check, proof):
+    return "{} did not run, because Proof {}, made {}, holds its inputs\n".format(
+        " ".join(check.command), proof.key[:12], proof.made)
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 
 class Suite:
-    # An unread change runs every check, because running one not needed is the safe way to be wrong.
-    def __init__(self, runner, worktree, base=None):
+    def __init__(self, runner, worktree, now=utc_now):
         self.runner = runner
         self.tree = Path(worktree)
-        self.base = base
+        self.now = now
 
     def read(self):
         path = self.tree / SUITE_FILE
@@ -128,22 +175,45 @@ class Suite:
                 ready = Ready(command_of(ready), str(ready.get("message", "")),
                               ready.get("unless"))
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
-                                paths_of(entry), image_of(entry, self.tree)))
+                                image_of(entry, self.tree), ignores_of(entry), keyed_entry(entry)))
         return wanted, runs
 
-    # Measured from the base and not from main, so work that landed meanwhile wakes nothing.
-    def changed(self):
-        if not self.base:
-            return None
+    # In the common git directory, so every worktree of the clone shares them and nothing pushes them.
+    def proofs(self):
         tree = self.tree.as_posix()
-        differ = self.runner.run(
-            ["git", "-C", tree, "diff", "--name-only", "--no-renames", "-z", self.base], tree)
-        untracked = self.runner.run(
-            ["git", "-C", tree, "ls-files", "--others", "--exclude-standard", "--full-name", "-z"],
-            tree)
-        if differ.status != 0 or untracked.status != 0:
+        asked = self.runner.run(
+            ["git", "-C", tree, "rev-parse", "--path-format=absolute", "--git-common-dir"], tree)
+        common = asked.out.strip()
+        return Proofs(Path(common) / PROOFS if asked.status == 0 and common else None)
+
+    # Read from the worktree as it is, so uncommitted work is proved as well as committed work.
+    def key_of(self, check, digests):
+        tree = self.tree.as_posix()
+        listed = self.runner.run(
+            ["git", "-C", tree, "ls-files", "--cached", "--others", "--exclude-standard", "-z",
+             "--", ":(top)", *(":(top,exclude)" + path for path in check.ignores)], tree)
+        if listed.status != 0:
             return None
-        return {name for name in (differ.out + untracked.out).split("\0") if name}
+        key = hashlib.sha256(check.keyed.encode("utf-8"))
+        for name in sorted({name for name in listed.out.split("\0") if name}):
+            path = self.tree / name
+            # A tracked file the worktree deleted is still listed, and it is no input.
+            if not path.is_file():
+                continue
+            if name not in digests:
+                digests[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+            key.update("\0{}\0{}".format(name, digests[name]).encode("utf-8"))
+        return key.hexdigest()
+
+    def keys_of(self, wanted, proofs):
+        if proofs.path is None:
+            return [None] * len(wanted)
+        digests = {}
+        return [self.key_of(check, digests) for check in wanted]
+
+    def proved(self, wanted, proofs):
+        keys = self.keys_of(wanted, proofs)
+        return keys, [proofs.of(key) if key else None for key in keys]
 
     # Read as facts, never out of a runner's output, which is reworded with every version.
     def short_of(self, wanted):
@@ -179,13 +249,17 @@ class Suite:
             return Outcome(False, "the Suite file {} cannot be run, because {}\n".format(
                 SUITE_FILE, fault), ready=False)
 
-        short = self.short_of(wanted)
+        proofs = self.proofs()
+        keys, found = self.proved(wanted, proofs)
+        short = self.short_of([check for check, proof in zip(wanted, found) if proof is None])
         if short:
             return Outcome(False, short, ready=False)
 
-        changed = self.changed()
         for at in range(1, runs + 1):
-            outcome = self.run_checks(wanted, changed)
+            # A check that went green in the run before is proved now, so only red runs again.
+            if at > 1:
+                keys, found = self.proved(wanted, proofs)
+            outcome = self.run_checks(wanted, proofs, keys, found)
             if heard is not None:
                 heard(outcome, at)
             if outcome.passed:
@@ -193,20 +267,18 @@ class Suite:
         return outcome
 
     # A red check lets the others finish, so the one fix circuit reads every failure, not the first.
-    def run_checks(self, wanted, changed):
-        woken = [check.woken_by(changed) for check in wanted]
-        # A suite that ran nothing cannot pass, and a red one would stop every ticket off the paths.
-        woke_none = not any(woken)
-        if woke_none:
-            woken = [True] * len(wanted)
+    # A Proof is a real pass on the same inputs, so a Suite whose every check is proved passes.
+    def run_checks(self, wanted, proofs, keys, found):
         with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
-            running = [pool.submit(self.run_check, check) if wakes else None
-                       for check, wakes in zip(wanted, woken)]
+            running = [pool.submit(self.run_check, check) if proof is None else None
+                       for check, proof in zip(wanted, found)]
             ran = [each.result() if each else None for each in running]
-        said = "".join(did_not_run(check) if each is None else each.out + each.err
-                       for check, each in zip(wanted, ran))
-        if woke_none:
-            said = EVERY_CHECK_RAN + said
+        made = self.now().strftime("%Y-%m-%d %H:%M UTC")
+        for key, each in zip(keys, ran):
+            if key and each and each.status == 0:
+                proofs.keep(key, made)
+        said = "".join(did_not_run(check, proof) if each is None else each.out + each.err
+                       for check, proof, each in zip(wanted, found, ran))
         return Outcome(all(each.status == 0 for each in ran if each), said)
 
     def run_check(self, check):

@@ -13,8 +13,9 @@ from pathlib import Path
 import pytest
 
 import land_ticket
-from conftest import SCRIPTS, Ran, check, git, launch, no_wait, project_suite, write_suite
-from suite import SUITE_FILE
+from conftest import (SCRIPTS, Ran, RecordingRunner, check, git, launch, no_wait, project_suite,
+                      write_suite)
+from suite import SUITE_FILE, Suite
 
 
 # A fixed answer, so a case can tell what the script gathered from what it made up.
@@ -326,22 +327,26 @@ def test_a_moved_base_is_rebased_and_the_suite_runs_again(repo, runner):
     assert git(repo.origin, "show", "main:work.txt").strip() == "work"
 
 
-# Measured from the old fork point, the other side's file would be part of the change too.
-def test_the_suite_on_the_new_base_is_woken_by_the_ticket_s_own_commits_alone(repo, runner):
-    given_the_suite_passes(runner)
-    write_suite(repo.work, check("dotnet", "test", "Skillworks.slnx", when=["work.txt"]),
-                check("npm", "test", when=["later.txt"]))
+# The other side changed only a file both checks ignore, so the rebased tree is one they passed on.
+def test_a_landing_whose_checks_are_all_proved_runs_nothing(repo, runner):
+    write_suite(repo.work, check("dotnet", "test", "Skillworks.slnx", ignores=["later.txt"]),
+                check("npm", "test", ignores=["later.txt"]))
     git(repo.work, "add", "-A")
     git(repo.work, "commit", "--quiet", "-m", "A Suite to check")
     git(repo.work, "push", "--quiet", "origin", "main")
-    repo.advance_origin("later")
     commit_for_ticket(repo, 165)
+    earlier = RecordingRunner()
+    given_the_suite_passes(earlier)
+    assert Suite(earlier, repo.work).run().passed
+    repo.advance_origin("later")
+    given_the_suite_passes(runner)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 0, report(ran)
-    assert runner.built("dotnet test Skillworks.slnx")
-    assert not runner.built("npm test")
+    assert git(repo.origin, "show", "main:later.txt").strip() == "later"
+    assert not runner.started("dotnet")
+    assert not runner.started("npm")
 
 
 def test_a_landed_commit_keeps_its_session_trailers_after_the_rebase(repo, runner):

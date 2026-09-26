@@ -4,6 +4,7 @@
 import json
 import re
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 from conftest import ROOT, Ran, check, git, write_suite
@@ -31,6 +32,15 @@ def by_words(calls):
     return sorted(calls, key=" ".join)
 
 
+# git is how the Suite reads its inputs, so a case about the checks reads every other call.
+def made_by(runner):
+    return [call for call in runner.made if call.args[0] != "git"]
+
+
+def run_by(runner):
+    return [call.args for call in made_by(runner)]
+
+
 def test_every_check_the_file_names_runs_once(tmp_path, runner):
     write_suite(tmp_path, check("compile", "all"), check("prove", "all"), check("lint"))
     given_every_program_passes(runner)
@@ -39,7 +49,7 @@ def test_every_check_the_file_names_runs_once(tmp_path, runner):
 
     assert outcome.passed
     assert outcome.ready
-    assert by_words(runner.calls) == [["compile", "all"], ["lint"], ["prove", "all"]]
+    assert by_words(run_by(runner)) == [["compile", "all"], ["lint"], ["prove", "all"]]
 
 
 # The bound only turns a hang into a failure, so a slow machine can never fail the case.
@@ -111,8 +121,8 @@ def test_every_readiness_command_runs_before_the_first_check(tmp_path, runner):
     outcome = Suite(runner, tmp_path).run()
 
     assert outcome.passed
-    assert runner.calls[:2] == [["ping"], ["install"]]
-    assert by_words(runner.calls[2:]) == [["compile"], ["lint"]]
+    assert run_by(runner)[:2] == [["ping"], ["install"]]
+    assert by_words(run_by(runner)[2:]) == [["compile"], ["lint"]]
 
 
 def test_the_readiness_commands_run_one_by_one(tmp_path, runner):
@@ -136,7 +146,7 @@ def test_a_readiness_command_runs_in_the_folder_of_its_check(tmp_path, runner):
 
     Suite(runner, tmp_path).run()
 
-    assert runner.made[0].where == (tmp_path / "web").as_posix()
+    assert made_by(runner)[0].where == (tmp_path / "web").as_posix()
 
 
 def test_a_failing_readiness_command_is_not_ready_with_its_message(tmp_path, runner):
@@ -167,7 +177,7 @@ def test_a_readiness_command_is_skipped_when_what_it_would_make_is_there(tmp_pat
     outcome = Suite(runner, tmp_path).run()
 
     assert outcome.passed
-    assert runner.calls == [["lint"]]
+    assert run_by(runner) == [["lint"]]
 
 
 def test_a_readiness_command_runs_when_what_it_would_make_is_missing(tmp_path, runner):
@@ -177,7 +187,7 @@ def test_a_readiness_command_runs_when_what_it_would_make_is_missing(tmp_path, r
 
     Suite(runner, tmp_path).run()
 
-    assert runner.calls == [["install"], ["lint"]]
+    assert run_by(runner) == [["install"], ["lint"]]
 
 
 def test_a_failing_check_is_red_and_lets_every_other_check_finish(tmp_path, runner):
@@ -190,7 +200,7 @@ def test_a_failing_check_is_red_and_lets_every_other_check_finish(tmp_path, runn
 
     assert outcome.ready
     assert not outcome.passed
-    assert by_words(runner.calls) == [["compile"], ["lint"], ["prove"]]
+    assert by_words(run_by(runner)) == [["compile"], ["lint"], ["prove"]]
     assert outcome.said == "the build passed\na test failed\nthe lint passed\n"
 
 
@@ -229,7 +239,7 @@ def test_a_program_missing_from_the_path_is_not_ready_before_any_check(tmp_path,
     assert not outcome.ready
     assert not outcome.passed
     assert "prove" in outcome.said
-    assert runner.calls == []
+    assert run_by(runner) == []
 
 
 def test_a_readiness_program_missing_from_the_path_is_not_ready(tmp_path, runner):
@@ -241,7 +251,7 @@ def test_a_readiness_program_missing_from_the_path_is_not_ready(tmp_path, runner
 
     assert not outcome.ready
     assert "ping" in outcome.said
-    assert runner.calls == []
+    assert run_by(runner) == []
 
 
 def test_a_checkout_with_no_suite_file_is_not_ready(tmp_path, runner):
@@ -252,7 +262,7 @@ def test_a_checkout_with_no_suite_file_is_not_ready(tmp_path, runner):
     assert not outcome.ready
     assert not outcome.passed
     assert SUITE_FILE in outcome.said
-    assert runner.calls == []
+    assert run_by(runner) == []
 
 
 def test_a_suite_file_naming_no_checks_is_not_ready(tmp_path, runner):
@@ -264,7 +274,7 @@ def test_a_suite_file_naming_no_checks_is_not_ready(tmp_path, runner):
     assert not outcome.ready
     assert not outcome.passed
     assert SUITE_FILE in outcome.said
-    assert runner.calls == []
+    assert run_by(runner) == []
 
 
 def test_an_empty_suite_file_is_not_ready(tmp_path, runner):
@@ -298,7 +308,7 @@ DOCKER_TESTS = "Skillworks.Studio.slnf"
 
 
 # Whether the front end is installed differs between checkouts, so the install is left out.
-# A copy of this whole repo would prove nothing the image cases do not, so git lists no file.
+# git answers nothing, so no file is copied and no Proof of a made-up pass reaches this clone.
 def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
     given_this_repo_s_programs_pass(runner)
     runner.stub("git")
@@ -307,9 +317,9 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
 
     web = (ROOT / "src" / "Skillworks.Studio.Web").as_posix()
     assert outcome.passed
-    assert runner.calls[0] == ["docker", "info"]
-    assert sorted((" ".join(call.args), call.where) for call in runner.made[1:]
-                  if call.args[0] not in ("docker", "git") and call.args[:2] != ["npm", "ci"]) == [
+    assert run_by(runner)[0] == ["docker", "info"]
+    assert sorted((" ".join(call.args), call.where) for call in made_by(runner)[1:]
+                  if call.args[0] != "docker" and call.args[:2] != ["npm", "ci"]) == [
         (f"dotnet test {DOCKER_TESTS}", ROOT.as_posix()),
         (f"dotnet test {ARCHITECTURE_TESTS}", ROOT.as_posix()),
         ("node --test tests/plugins/skillworks/scripts/**/*.test.mjs", ROOT.as_posix()),
@@ -328,8 +338,8 @@ def test_this_repo_s_front_end_is_installed_when_nothing_is(tmp_path, runner):
 
     Suite(runner, tmp_path).run()
 
-    assert runner.calls[:2] == [["docker", "info"], ["npm", "ci"]]
-    assert runner.made[1].where == (tmp_path / "src" / "Skillworks.Studio.Web").as_posix()
+    assert run_by(runner)[:2] == [["docker", "info"], ["npm", "ci"]]
+    assert made_by(runner)[1].where == (tmp_path / "src" / "Skillworks.Studio.Web").as_posix()
 
 
 def test_a_check_with_no_command_is_not_ready(tmp_path, runner):
@@ -357,7 +367,7 @@ def test_with_no_setting_one_red_run_is_red(tmp_path, runner):
 
     assert outcome.ready
     assert not outcome.passed
-    assert runner.calls == [["prove"]]
+    assert run_by(runner) == [["prove"]]
 
 
 def test_a_second_run_asked_for_passes_a_suite_red_then_green(tmp_path, runner):
@@ -368,7 +378,7 @@ def test_a_second_run_asked_for_passes_a_suite_red_then_green(tmp_path, runner):
     outcome = Suite(runner, tmp_path).run()
 
     assert outcome.passed
-    assert runner.calls == [["prove"], ["prove"]]
+    assert run_by(runner) == [["prove"], ["prove"]]
 
 
 def test_a_second_run_asked_for_leaves_a_suite_red_twice_red(tmp_path, runner):
@@ -380,18 +390,19 @@ def test_a_second_run_asked_for_leaves_a_suite_red_twice_red(tmp_path, runner):
 
     assert outcome.ready
     assert not outcome.passed
-    assert runner.calls == [["prove"], ["prove"]]
+    assert run_by(runner) == [["prove"], ["prove"]]
 
 
-def test_each_run_of_a_red_suite_runs_every_check_again(tmp_path, runner):
-    write_suite(tmp_path, check("compile"), check("prove"), runs=2)
+def test_each_run_of_a_red_suite_runs_the_red_check_again_and_not_the_green_one(repo, runner):
+    write_suite(repo.work, check("compile"), check("prove"), runs=2)
     given_every_program_passes(runner)
     runner.stub("prove", says="a test failed", status=1)
 
-    outcome = Suite(runner, tmp_path).run()
+    outcome = Suite(runner, repo.work).run()
 
     assert not outcome.passed
-    assert by_words(runner.calls) == [["compile"], ["compile"], ["prove"], ["prove"]]
+    assert by_words(runner.started("compile") + runner.started("prove")) == [
+        ["compile"], ["prove"], ["prove"]]
 
 
 def test_a_green_run_is_never_run_again(tmp_path, runner):
@@ -400,7 +411,7 @@ def test_a_green_run_is_never_run_again(tmp_path, runner):
 
     Suite(runner, tmp_path).run()
 
-    assert runner.calls == [["prove"]]
+    assert run_by(runner) == [["prove"]]
 
 
 def test_each_run_is_heard_with_its_number(tmp_path, runner):
@@ -423,7 +434,7 @@ def test_a_machine_that_is_not_ready_is_never_run_again(tmp_path, runner):
     outcome = Suite(runner, tmp_path).run()
 
     assert not outcome.ready
-    assert runner.calls == [["ping"]]
+    assert run_by(runner) == [["ping"]]
 
 
 def test_a_readiness_command_runs_once_however_many_runs_there_are(tmp_path, runner):
@@ -433,7 +444,7 @@ def test_a_readiness_command_runs_once_however_many_runs_there_are(tmp_path, run
 
     Suite(runner, tmp_path).run()
 
-    assert runner.calls == [["ping"], ["prove"], ["prove"]]
+    assert run_by(runner) == [["ping"], ["prove"], ["prove"]]
 
 
 def test_a_setting_that_is_not_a_count_is_not_ready(tmp_path, runner):
@@ -445,17 +456,10 @@ def test_a_setting_that_is_not_a_count_is_not_ready(tmp_path, runner):
 
         assert not outcome.ready, runs
         assert "runs" in outcome.said, runs
-    assert runner.calls == []
+    assert run_by(runner) == []
 
 
-# --- the paths that wake a check ----------------------------------------------
-
-def given_a_suite_at_the_base(repo, *checks):
-    write_suite(repo.work, *checks)
-    git(repo.work, "add", "-A")
-    git(repo.work, "commit", "--quiet", "-m", "A Suite")
-    return git(repo.work, "rev-parse", "HEAD").strip()
-
+# --- Proofs ------------------------------------------------------------------
 
 def writing(repo, name, text="changed"):
     path = repo.work / name
@@ -470,168 +474,252 @@ def committing(repo, name):
     git(repo.work, "commit", "--quiet", "-m", "Change " + name)
 
 
-def did_not_run(*command):
-    return "{} did not run, because the change touches none of the paths it names\n".format(
-        " ".join(command))
+def at(hour):
+    return lambda: datetime(2026, 9, 27, hour, 30, tzinfo=timezone.utc)
 
 
-def test_a_committed_change_under_a_named_path_wakes_its_check(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", when=["web"]))
+PROVED = re.compile(r"^prove did not run, because Proof ([0-9a-f]{12}), made (.+), holds its inputs\n$")
+
+
+def test_an_unchanged_tree_skips_a_check_that_passed_on_it(repo, runner):
+    write_suite(repo.work, check("prove"))
     given_every_program_passes(runner)
-    committing(repo, "web/page.ts")
 
-    outcome = Suite(runner, repo.work, base).run()
+    Suite(runner, repo.work).run()
+    outcome = Suite(runner, repo.work).run()
 
     assert outcome.passed
-    assert runner.started("lint")
+    assert outcome.ready
+    assert runner.started("prove") == [["prove"]]
 
 
-def test_a_change_to_an_unrelated_file_skips_the_check_and_says_so(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", "all", when=["web"]),
-                                     check("prove"))
+def test_a_suite_in_which_every_check_is_proved_passes_having_run_nothing(repo, runner):
+    write_suite(repo.work, check("compile"), check("prove"))
     given_every_program_passes(runner)
-    runner.stub("compile", says="compiled\n")
-    runner.stub("prove", says="proved\n")
-    committing(repo, "api/handler.cs")
+    Suite(runner, repo.work).run()
+    runner.made.clear()
 
-    outcome = Suite(runner, repo.work, base).run()
+    outcome = Suite(runner, repo.work).run()
 
     assert outcome.passed
-    assert not runner.started("lint")
-    assert outcome.said == "compiled\n" + did_not_run("lint", "all") + "proved\n"
+    assert outcome.ready
+    assert not runner.started("compile")
+    assert not runner.started("prove")
 
 
-def test_an_uncommitted_change_wakes_its_check(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("lint", when=["base.txt"]))
+def test_a_skipped_line_names_its_proof_and_when_it_was_made(repo, runner):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work, now=at(9)).run()
+
+    first = Suite(runner, repo.work, now=at(11)).run()
+    second = Suite(runner, repo.work, now=at(12)).run()
+
+    named = PROVED.match(first.said)
+    assert named, first.said
+    assert named.group(2) == "2026-09-27 09:30 UTC"
+    assert second.said == first.said
+
+
+def test_a_change_to_a_file_the_check_reads_runs_it_again(repo, runner):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+
+    writing(repo, "base.txt")
+    Suite(runner, repo.work).run()
+
+    assert len(runner.started("prove")) == 2
+
+
+def test_a_committed_change_is_read_the_same_as_the_uncommitted_one(repo, runner):
+    write_suite(repo.work, check("prove"))
     given_every_program_passes(runner)
     writing(repo, "base.txt")
+    Suite(runner, repo.work).run()
 
-    Suite(runner, repo.work, base).run()
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "The same tree, committed")
+    Suite(runner, repo.work).run()
 
-    assert runner.started("lint")
+    assert len(runner.started("prove")) == 1
 
 
-def test_an_untracked_file_wakes_its_check(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("lint", when=["web/new.ts"]))
+def test_a_change_inside_what_a_check_ignores_skips_it(repo, runner):
+    write_suite(repo.work, check("prove", ignores=["docs/notes", "web/*.md"]))
     given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+
+    writing(repo, "docs/notes/today.md")
+    writing(repo, "web/readme.md")
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.passed
+    assert len(runner.started("prove")) == 1
+
+
+def test_a_name_that_only_begins_with_an_ignored_folder_is_still_read(repo, runner):
+    write_suite(repo.work, check("prove", ignores=["web"]))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+
+    writing(repo, "website/page.ts")
+    Suite(runner, repo.work).run()
+
+    assert len(runner.started("prove")) == 2
+
+
+def test_an_untracked_file_is_an_input(repo, runner):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+
     writing(repo, "web/new.ts")
+    Suite(runner, repo.work).run()
 
-    Suite(runner, repo.work, base).run()
-
-    assert runner.started("lint")
+    assert len(runner.started("prove")) == 2
 
 
-def test_a_folder_path_wakes_on_any_file_beneath_it(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("lint", when=["other", "web/"]))
+def test_a_git_ignored_file_is_not_an_input(repo, runner):
+    writing(repo, ".gitignore", "ignored.txt")
+    write_suite(repo.work, check("prove"))
     given_every_program_passes(runner)
-    committing(repo, "web/app/deep/page.ts")
+    Suite(runner, repo.work).run()
 
-    Suite(runner, repo.work, base).run()
+    writing(repo, "ignored.txt")
+    Suite(runner, repo.work).run()
 
-    assert runner.started("lint")
+    assert len(runner.started("prove")) == 1
 
 
-def test_a_folder_path_never_wakes_on_a_name_that_only_begins_with_it(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", when=["web"]))
+def test_a_tracked_file_the_worktree_deleted_is_no_longer_an_input(repo, runner):
+    write_suite(repo.work, check("prove"))
     given_every_program_passes(runner)
-    committing(repo, "website/page.ts")
+    Suite(runner, repo.work).run()
 
-    outcome = Suite(runner, repo.work, base).run()
+    (repo.work / "base.txt").unlink()
+    Suite(runner, repo.work).run()
 
-    assert not runner.started("lint")
-    assert did_not_run("lint") in outcome.said
+    assert len(runner.started("prove")) == 2
 
 
-def test_a_check_without_paths_always_runs(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", when=["web"]))
+# The Suite file is ignored here, so only the entry itself can make the key new.
+def test_an_edit_to_the_check_s_own_entry_is_a_new_key(repo, runner):
+    write_suite(repo.work, check("prove", ignores=[SUITE_FILE]))
     given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
 
-    Suite(runner, repo.work, base).run()
+    write_suite(repo.work, check("prove", ignores=[SUITE_FILE],
+                                 ready=["ping"], message="no store"))
+    Suite(runner, repo.work).run()
 
-    assert runner.started("compile")
-    assert not runner.started("lint")
+    assert len(runner.started("prove")) == 2
 
 
-def test_a_change_that_wakes_no_check_runs_every_check_and_takes_their_outcome(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
+def test_an_edit_to_another_check_s_entry_leaves_this_one_proved(repo, runner):
+    write_suite(repo.work, check("prove", ignores=[SUITE_FILE]), check("lint"))
     given_every_program_passes(runner)
-    runner.stub("lint", says="lint failed\n", status=1)
-    committing(repo, "docs/notes.md")
+    Suite(runner, repo.work).run()
 
-    outcome = Suite(runner, repo.work, base).run()
+    write_suite(repo.work, check("prove", ignores=[SUITE_FILE]), check("lint", "all"))
+    Suite(runner, repo.work).run()
+
+    assert len(runner.started("prove")) == 1
+    assert runner.started("lint") == [["lint"], ["lint", "all"]]
+
+
+def test_a_red_check_writes_no_proof_and_a_green_one_beside_it_does(repo, runner):
+    write_suite(repo.work, check("compile"), check("prove"))
+    given_every_program_passes(runner)
+    runner.stub("prove", says="a test failed\n", status=1)
+    Suite(runner, repo.work).run()
+
+    outcome = Suite(runner, repo.work).run()
 
     assert not outcome.passed
-    assert by_words(runner.started("compile") + runner.started("lint")) == [["compile"], ["lint"]]
-    assert "lint failed\n" in outcome.said
+    assert len(runner.started("compile")) == 1
+    assert len(runner.started("prove")) == 2
 
 
-def test_a_change_that_wakes_no_check_says_every_check_ran_because_none_woke(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
+def test_two_worktrees_of_one_clone_share_proofs(repo, runner):
+    write_suite(repo.work, check("prove"))
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "A Suite")
+    other = repo.root / "other-worktree"
+    git(repo.work, "worktree", "add", "--quiet", "--detach", other.as_posix(), "HEAD")
     given_every_program_passes(runner)
-    runner.stub("compile", says="compiled\n")
-    runner.stub("lint", says="linted\n")
-    committing(repo, "docs/notes.md")
+    Suite(runner, repo.work).run()
 
-    outcome = Suite(runner, repo.work, base).run()
+    outcome = Suite(runner, other).run()
 
     assert outcome.passed
-    assert outcome.said == (
-        "every check ran, because the change touches none of the paths any check names\n"
-        "compiled\nlinted\n")
+    assert len(runner.started("prove")) == 1
+    assert PROVED.match(outcome.said), outcome.said
 
 
-def test_a_change_that_wakes_one_check_still_skips_the_others(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
-    given_every_program_passes(runner)
-    runner.stub("lint", says="linted\n")
-    committing(repo, "web/page.ts")
-
-    outcome = Suite(runner, repo.work, base).run()
-
-    assert not runner.started("compile")
-    assert outcome.said == did_not_run("compile") + "linted\n"
-
-
-def test_a_change_the_suite_cannot_read_runs_every_check(repo, runner):
-    given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
-    given_every_program_passes(runner)
-
-    outcome = Suite(runner, repo.work, "no-such-commit").run()
-
-    assert outcome.passed
-    assert by_words(runner.started("compile") + runner.started("lint")) == [["compile"], ["lint"]]
-
-
-def test_a_change_git_will_not_list_untracked_files_for_runs_every_check(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("lint", when=["web"]))
-    given_every_program_passes(runner)
-    runner.refuse("ls-files", "git broke")
-
-    Suite(runner, repo.work, base).run()
-
-    assert runner.started("lint")
-
-
-def test_a_suite_handed_no_base_runs_every_check(tmp_path, runner):
-    write_suite(tmp_path, check("compile", when=["api"]), check("lint", when=["web"]))
+def test_a_folder_git_does_not_track_keeps_no_proofs(tmp_path, runner):
+    write_suite(tmp_path, check("prove"))
     given_every_program_passes(runner)
 
     Suite(runner, tmp_path).run()
+    Suite(runner, tmp_path).run()
 
-    assert by_words(runner.calls) == [["compile"], ["lint"]]
+    assert len(runner.started("prove")) == 2
 
 
-def test_a_when_that_is_not_a_list_of_words_makes_the_suite_file_unreadable(tmp_path, runner):
-    for when in ("web", [], [""], [3], {"web": True}, None):
+def test_readiness_runs_only_for_the_checks_that_will_run(repo, runner):
+    write_suite(repo.work,
+                check("compile", ready=["ping"], message="no store"),
+                check("lint", ready=["install"], message="no install", ignores=["api"]))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+    runner.made.clear()
+
+    writing(repo, "api/handler.cs")
+    Suite(runner, repo.work).run()
+
+    assert run_by(runner) == [["ping"], ["compile"]]
+
+
+def test_a_proved_check_needs_nothing_on_the_path(repo, runner):
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+    runner.hide("prove")
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.ready
+    assert outcome.passed
+
+
+def test_a_suite_file_carrying_when_is_unreadable_and_says_to_use_ignores(tmp_path, runner):
+    given_a_suite_file_reading(tmp_path, json.dumps(
+        {"checks": [{"command": ["lint"], "folder": ".", "when": ["web"]}]}))
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert not outcome.passed
+    assert SUITE_FILE in outcome.said
+    assert "`when`" in outcome.said
+    assert "Replace it with `ignores`" in outcome.said
+    assert "every file git does not ignore" in outcome.said
+    assert run_by(runner) == []
+
+
+def test_ignores_that_is_not_a_list_of_paths_makes_the_suite_file_unreadable(tmp_path, runner):
+    for ignores in ("web", [], [""], [3], {"web": True}, None):
         given_a_suite_file_reading(tmp_path, json.dumps(
-            {"checks": [{"command": ["lint"], "folder": ".", "when": when}]}))
+            {"checks": [{"command": ["lint"], "folder": ".", "ignores": ignores}]}))
         given_every_program_passes(runner)
 
         outcome = Suite(runner, tmp_path).run()
 
-        assert not outcome.ready, when
-        assert SUITE_FILE in outcome.said, when
-    assert runner.calls == []
+        assert not outcome.ready, ignores
+        assert SUITE_FILE in outcome.said, ignores
+    assert run_by(runner) == []
 
 
 # --- a check that runs in an image ------------------------------------------
@@ -822,7 +910,7 @@ def test_a_check_with_an_image_is_not_ready_when_docker_is_not_on_the_path(repo,
 
     assert not outcome.ready
     assert "docker" in outcome.said
-    assert runner.calls == []
+    assert run_by(runner) == []
 
 
 def test_a_check_with_an_image_needs_its_program_in_the_image_and_not_on_the_host(repo, runner):
@@ -867,7 +955,7 @@ def test_an_image_that_is_not_a_file_in_the_repo_makes_the_suite_file_unreadable
 
         assert not outcome.ready, image
         assert SUITE_FILE in outcome.said, image
-    assert runner.calls == []
+    assert run_by(runner) == []
 
 
 def test_this_repo_s_suite_file_runs_once():
@@ -938,20 +1026,86 @@ def test_this_repo_s_script_test_image_holds_what_the_script_tests_start():
         assert program in text, program
 
 
-# The script tests read these repo files as well as their own code, so a Studio change sleeps through them.
-def test_this_repo_s_script_tests_wake_for_the_plugin_their_tests_and_the_docs_they_read():
-    scripts = pytest_checks()
+# Each entry is a path the check cannot read. A path left off costs a run, and one wrongly on lets red pass.
+SCRIPT_TESTS_IGNORE = {
+    ".claude": "the tests build every .claude folder they read in a throwaway repo",
+    "tools": "the seeded Studio is a Studio tool",
+    "docs/adr": "no test reads a decision record",
+    "docs/studio": "no test reads Studio's own docs",
+    "src/*.cs": "the tests check that the projects exist, and never read their code",
+    "src/Skillworks.AppHost": "the AppHost is in no solution filter the tests read",
+    "src/Skillworks.Studio.Web/src": "of the front end the tests read only package.json",
+    "tests/Skillworks.Core.Tests/*.cs": "the tests check that the project exists, and never read its code",
+    "tests/Skillworks.Architecture.Tests/*.cs": "the tests check that the folder exists, and never read its code",
+    "tests/plugins/skillworks/scripts/*.mjs": "pytest collects only Python, and node --test runs these",
+    "plugins/skillworks/scripts/*.mjs": "the hooks and the session watch are Node, and no Python test opens them",
+}
 
-    assert len(scripts) == 1
-    assert sorted(scripts[0]["when"]) == sorted([
-        "plugins/skillworks",
-        SCRIPT_TESTS,
-        "docs/agents",
-        "docs/agentic-development",
-        "docs/usage",
-        "README.md",
-    ])
-    assert all((ROOT / path).exists() for path in scripts[0]["when"])
+# The API tests read session-watch.mjs, and the AppHost image tags and the Core harness they link.
+DOCKER_TESTS_IGNORE = {
+    ".claude": "the team settings test reads its own bin folder and never the repo's",
+    "docs": "no C# project or test opens a doc",
+    "tools": "the seeded Studio starts the app and is no part of a test",
+    "README.md": "prose",
+    "CLAUDE.md": "prose",
+    "CONTEXT.md": "prose",
+    "CONTEXT-MAP.md": "prose",
+    "LICENSE": "prose",
+    "NOTICE": "prose",
+    "THIRD-PARTY-NOTICES.md": "prose",
+    "aspire.config.json": "only the Aspire CLI reads it",
+    "src/Skillworks.Architecture": "it is in no project of the filter",
+    "src/Skillworks.Studio.Web": "no API project or test reaches the front end",
+    "src/Skillworks.AppHost/Program.cs": "of the AppHost the tests link only the image tag files",
+    "src/Skillworks.AppHost/Skillworks.AppHost.csproj": "of the AppHost the tests link only the image tag files",
+    "src/Skillworks.AppHost/Properties": "of the AppHost the tests link only the image tag files",
+    "src/Skillworks.AppHost/*.json": "of the AppHost the tests link only the image tag files",
+    "src/Skillworks.AppHost/*.yaml": "the tests start Tempo with the Core tests' own settings",
+    "tests/Skillworks.Architecture.Tests": "it is in no project of the filter",
+    "tests/plugins": "the Python and Node tests are no part of the filter",
+    "plugins/.claude-plugin": "the API tests read a test Marketplace of their own",
+    "plugins/skillworks/.claude-plugin": "the API tests read a test Marketplace of their own",
+    "plugins/skillworks/bin": "of the Plugin the tests read only session-watch.mjs",
+    "plugins/skillworks/hooks": "of the Plugin the tests read only session-watch.mjs",
+    "plugins/skillworks/output-styles": "of the Plugin the tests read only session-watch.mjs",
+    "plugins/skillworks/skills": "the API tests read a test Marketplace of their own",
+    "plugins/skillworks/scripts/hooks": "of the Plugin the tests read only session-watch.mjs",
+    "plugins/skillworks/scripts/*.py": "of the Plugin the tests read only session-watch.mjs",
+    "plugins/skillworks/scripts/*.sh": "of the Plugin the tests read only session-watch.mjs",
+}
+
+
+def ignored_by(checks):
+    assert len(checks) == 1
+    return checks[0].get("ignores", [])
+
+
+def test_this_repo_s_script_tests_ignore_only_what_they_cannot_read():
+    assert sorted(ignored_by(pytest_checks())) == sorted(SCRIPT_TESTS_IGNORE)
+
+
+def test_this_repo_s_docker_tests_ignore_only_what_they_cannot_read():
+    assert sorted(ignored_by([dotnet_checks()[DOCKER_TESTS]])) == sorted(DOCKER_TESTS_IGNORE)
+
+
+def test_what_the_docker_tests_ignore_leaves_the_files_they_read():
+    for read in ("plugins/skillworks/scripts/session-watch.mjs", "src/Skillworks.AppHost/LokiImage.cs",
+                 "src/Skillworks.AppHost/TempoImage.cs", "Skillworks.slnx", DOCKER_TESTS):
+        assert (ROOT / read).is_file(), read
+        assert not any(read == path or read.startswith(path + "/") for path in DOCKER_TESTS_IGNORE), read
+
+
+def test_only_the_docker_and_script_checks_ignore_anything():
+    ignoring = [entry["command"] for entry in this_repo_s_checks() if "ignores" in entry]
+
+    assert sorted(ignoring, key=" ".join) == sorted(
+        [["dotnet", "test", DOCKER_TESTS], SCRIPT_TESTS_COMMAND], key=" ".join)
+
+
+def test_every_path_this_repo_s_suite_ignores_is_there():
+    for path in [*SCRIPT_TESTS_IGNORE, *DOCKER_TESTS_IGNORE]:
+        if "*" not in path:
+            assert (ROOT / path).exists(), path
 
 
 def dotnet_checks():

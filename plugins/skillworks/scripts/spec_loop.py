@@ -404,8 +404,9 @@ class Loop:
             return ""
         return ("\n\n## The suite passed\n\nThe driver ran the whole suite and read the result, so "
                 "run no tests yourself. Name what follows in the closing comment: the checks that "
-                "ran as what proved the work, and each check whose line says it did not run as "
-                "one that proved nothing.\n\n{}\n").format(self.green_suite.said.rstrip("\n"))
+                "ran as what proved the work, and each check whose line says it did not run beside "
+                "the Proof it names, which an earlier pass on the same inputs made.\n\n{}\n").format(
+                    self.green_suite.said.rstrip("\n"))
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
@@ -593,7 +594,7 @@ class Loop:
         # The red that sent the loop round is why it ran again, so a second run adds to the record.
         if self.red_suite is None:
             written(held, "")
-        outcome = Suite(self.runner, self.job_worktree, self.ticket_base).run(
+        outcome = Suite(self.runner, self.job_worktree).run(
             self.suite_heard(ticket, held))
 
         # A machine short of what the checks need is nothing a Session could mend, so none is asked.

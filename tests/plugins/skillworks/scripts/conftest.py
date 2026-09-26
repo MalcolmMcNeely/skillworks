@@ -127,10 +127,10 @@ class Repo:
         return done.stdout.strip()
 
 
-def check(*command, folder=".", ready=None, message="", unless=None, when=None, image=None):
+def check(*command, folder=".", ready=None, message="", unless=None, ignores=None, image=None):
     entry = {"command": list(command), "folder": folder}
-    if when is not None:
-        entry["when"] = when
+    if ignores is not None:
+        entry["ignores"] = ignores
     if image is not None:
         entry["image"] = image
     if ready is not None:

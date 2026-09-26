@@ -11,20 +11,56 @@
       "ready": {
         "command": ["docker", "info"],
         "message": "Docker does not answer, and the API tests start Loki in a container. Start Docker and run this again."
-      }
+      },
+      "ignores": [
+        ".claude",
+        "docs",
+        "tools",
+        "README.md",
+        "CLAUDE.md",
+        "CONTEXT.md",
+        "CONTEXT-MAP.md",
+        "LICENSE",
+        "NOTICE",
+        "THIRD-PARTY-NOTICES.md",
+        "aspire.config.json",
+        "src/Skillworks.Architecture",
+        "src/Skillworks.Studio.Web",
+        "src/Skillworks.AppHost/Program.cs",
+        "src/Skillworks.AppHost/Skillworks.AppHost.csproj",
+        "src/Skillworks.AppHost/Properties",
+        "src/Skillworks.AppHost/*.json",
+        "src/Skillworks.AppHost/*.yaml",
+        "tests/Skillworks.Architecture.Tests",
+        "tests/plugins",
+        "plugins/.claude-plugin",
+        "plugins/skillworks/.claude-plugin",
+        "plugins/skillworks/bin",
+        "plugins/skillworks/hooks",
+        "plugins/skillworks/output-styles",
+        "plugins/skillworks/skills",
+        "plugins/skillworks/scripts/hooks",
+        "plugins/skillworks/scripts/*.py",
+        "plugins/skillworks/scripts/*.sh"
+      ]
     },
     {
       "command": ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "--with", "filelock",
                   "pytest", "-n", "auto", "tests/plugins/skillworks/scripts"],
       "folder": ".",
       "image": "docs/agents/script-tests.Dockerfile",
-      "when": [
-        "plugins/skillworks",
-        "tests/plugins/skillworks/scripts",
-        "docs/agents",
-        "docs/agentic-development",
-        "docs/usage",
-        "README.md"
+      "ignores": [
+        ".claude",
+        "tools",
+        "docs/adr",
+        "docs/studio",
+        "src/*.cs",
+        "src/Skillworks.AppHost",
+        "src/Skillworks.Studio.Web/src",
+        "tests/Skillworks.Core.Tests/*.cs",
+        "tests/Skillworks.Architecture.Tests/*.cs",
+        "tests/plugins/skillworks/scripts/*.mjs",
+        "plugins/skillworks/scripts/*.mjs"
       ]
     },
     {
