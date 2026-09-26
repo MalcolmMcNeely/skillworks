@@ -4,7 +4,7 @@ namespace Skillworks.Architecture.Determinism;
 
 internal sealed record DeterminismRules(string Clock, IReadOnlyList<string> Contexts)
 {
-    public const string RelativePath = ".claude/rules/determinism.md";
+    public const string RelativePath = "docs/agents/rules/determinism.md";
 
     public static DeterminismRules Read(RulesFile file) =>
         new(

@@ -28,7 +28,7 @@ const REQUIRED = {
 const FULL = {
   ...REQUIRED,
   prompt_id: "b8e1d4a7-2c6f-4a9b-8e3d-1f5c7a2b9e60",
-  file_path: "/home/dev/work/.claude/rules/comments.md",
+  file_path: "/home/dev/work/docs/agents/rules/comments.md",
   load_reason: "path_glob_match",
   globs: ["src/**/*.cs", "src/**/*.ts"],
   trigger_file_path: "/home/dev/work/src/Program.cs",

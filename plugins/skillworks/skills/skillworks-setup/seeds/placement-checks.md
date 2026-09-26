@@ -1,6 +1,6 @@
 # The placement checks
 
-`.claude/rules/file-placement.md` holds the rules the code was written under. Read them there, and judge placement and direction against what they say. Read the context map beside it too, where the repo has one, because a rule reaches only the code the map gives it.
+`docs/agents/rules/file-placement.md` holds the rules the code was written under. Read them there, and judge placement and direction against what they say. Read the context map beside it too, where the repo has one, because a rule reaches only the code the map gives it.
 
 Cite a breach by the name of the check that catches it. Where a rule has no check behind it, cite the rule by its number. List each check here as the repo gains one:
 

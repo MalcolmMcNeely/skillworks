@@ -143,7 +143,7 @@ them, and how to run the script tests against the real `gh` and `claude`.
 | `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped. Any rule of its own lives in a `lib` folder, such as `src/dashboard/lib/`, with a test beside it. |
 | `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
 | `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service discovery setup. |
-| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `.claude/rules/` and lists the places the code breaks them. |
+| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `docs/agents/rules/` and lists the places the code breaks them. |
 | `tests/Skillworks.Core.Tests/` | The stores Studio reads, tested against real containers, and the stand-ins for a store that stalls. |
 | `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
@@ -160,7 +160,7 @@ them, and how to run the script tests against the real `gh` and `claude`.
 | `docs/studio/` | How Studio gets its telemetry. |
 
 The top folder under a code root is a Slice, named for a job Studio does, with `Shared` beside the
-Slices for the code no one job owns. `.claude/rules/file-placement.md` holds the rules.
+Slices for the code no one job owns. `docs/agents/rules/file-placement.md` holds the rules.
 
 ## Working on Skillworks
 

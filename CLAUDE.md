@@ -11,6 +11,15 @@ GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are
 Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context.
 See `docs/agents/domain.md`.
 
+### Rules
+
+The rules load into every session through these imports. Each one lives in `docs/agents/rules/`.
+
+@docs/agents/rules/comments.md
+@docs/agents/rules/determinism.md
+@docs/agents/rules/file-placement.md
+@docs/agents/rules/words.md
+
 ## Working in this repo
 
 Commit straight to `main` and push. No branches, no pull requests.

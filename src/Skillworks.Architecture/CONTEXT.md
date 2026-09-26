@@ -56,7 +56,7 @@ One part of a type too large for a single file, named `Subject.Aspect.cs`.
 _Avoid_: Partial, split file
 
 **Rule**:
-One thing the code has to be true of. Its text lives in `.claude/rules/`, and the settings it names
+One thing the code has to be true of. Its text lives in `docs/agents/rules/`, and the settings it names
 live in the YAML block at the end of that file. The `contexts` rule is the one exception: its text
 and its settings live in `CONTEXT-MAP.md` at the repository root, because the map is what a reader
 opens to learn which glossary judges a file.

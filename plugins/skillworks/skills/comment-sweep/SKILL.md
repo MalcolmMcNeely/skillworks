@@ -13,9 +13,9 @@ Default target is the uncommitted diff. Given paths or a commit range, use that.
 
 ## The rules
 
-`.claude/rules/comments.md` at the repo root holds the rules, and nothing else does. Read it before pass 1. It decides what a doc comment is, where doc comments may go, and which comments earn their place. Where an example below and the rules disagree, the rules win.
+`docs/agents/rules/comments.md` at the repo root holds the rules, and nothing else does. Read it before pass 1. It decides what a doc comment is, where doc comments may go, and which comments earn their place. Where an example below and the rules disagree, the rules win.
 
-If the file is missing, stop. Tell the user that `.claude/rules/comments.md` is missing and that nothing was swept.
+If the file is missing, stop. Tell the user that `docs/agents/rules/comments.md` is missing and that nothing was swept.
 
 ## Pass 1: Cut
 

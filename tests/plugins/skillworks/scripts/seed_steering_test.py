@@ -219,6 +219,20 @@ def test_a_link_that_climbs_out_of_the_plugin_is_caught():
     assert links_out_of_the_plugin(page, text) == ["../../../../docs/agents/suite.json"]
 
 
+RULES = ["comments.md", "determinism.md", "file-placement.md", "words.md"]
+
+
+def test_no_plugin_skill_names_a_rule_under_the_old_rules_folder():
+    pages = sorted(path for path in SKILLS.rglob("*") if path.is_file())
+    assert pages
+
+    for page in pages:
+        text = page.read_text(encoding="utf-8")
+        assert ".claude/rules" not in text, page
+        for rule in RULES:
+            assert "docs/agents/{}".format(rule) not in text, "{} names {} outside the rules folder".format(page, rule)
+
+
 STEERING_NAMED = {
     "review-standards": ["smell-baseline.md"],
     "review-architecture": ["placement-checks.md", "arrangement-baseline.md"],

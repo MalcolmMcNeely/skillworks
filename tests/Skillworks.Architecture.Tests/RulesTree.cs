@@ -2,10 +2,10 @@ namespace Skillworks.Architecture.Tests;
 
 public sealed class RulesTree : IDisposable
 {
-    public const string PlacementFile = ".claude/rules/file-placement.md";
-    public const string CommentsFile = ".claude/rules/comments.md";
-    public const string WordsFile = ".claude/rules/words.md";
-    public const string DeterminismFile = ".claude/rules/determinism.md";
+    public const string PlacementFile = "docs/agents/rules/file-placement.md";
+    public const string CommentsFile = "docs/agents/rules/comments.md";
+    public const string WordsFile = "docs/agents/rules/words.md";
+    public const string DeterminismFile = "docs/agents/rules/determinism.md";
     public const string ContextMapFile = "CONTEXT-MAP.md";
 
     private const string SupportProject = "tests/App.Tests";

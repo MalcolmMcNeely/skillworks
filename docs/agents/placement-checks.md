@@ -1,6 +1,6 @@
 # The placement checks
 
-`.claude/rules/file-placement.md` holds the eight Slice rules the code was written under. Read them there, and judge placement and direction against what they say. Read the context map beside it too, because a rule reaches only the code the map gives it, and a path two contexts claim breaches `contexts`.
+`docs/agents/rules/file-placement.md` holds the eight Slice rules the code was written under. Read them there, and judge placement and direction against what they say. Read the context map beside it too, because a rule reaches only the code the map gives it, and a path two contexts claim breaches `contexts`.
 
 Cite a breach by the name of the check that catches it:
 

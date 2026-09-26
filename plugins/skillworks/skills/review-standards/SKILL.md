@@ -30,7 +30,7 @@ If `git diff HEAD` is empty, stop and report that there is nothing to review.
 
 ### The standards
 
-Read every file in `.claude/rules/`. The agent wrote this code under those rules, so the review holds it to the same ones. Read any other file the repo uses to say how code is written, such as a `CODING_STANDARDS.md` or a `CONTRIBUTING.md`.
+Read every file in `docs/agents/rules/`. The agent wrote this code under those rules, so the review holds it to the same ones. Read any other file the repo uses to say how code is written, such as a `CODING_STANDARDS.md` or a `CONTRIBUTING.md`.
 
 Then read the glossary that claims the changed files. `CONTEXT-MAP.md` says which one, and a word the glossary rejects is a finding on this axis.
 

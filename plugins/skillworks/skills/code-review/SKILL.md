@@ -40,7 +40,7 @@ Look for the originating spec, in this order:
 
 Anything in the repo that documents how code should be written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
 
-Always include the Claude rules files: every file in `.claude/rules/`. Claude wrote the code under those rules, so the review holds it to the same ones.
+Always include the Claude rules files: every file in `docs/agents/rules/`. Claude wrote the code under those rules, so the review holds it to the same ones.
 
 On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in `docs/agents/smell-baseline.md` — twelve Fowler code smells (_Refactoring_, ch.3) and four test smells beneath them, which apply even when a repo documents nothing. It carries the two rules that bind it, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
 
@@ -50,9 +50,9 @@ Three kinds, and each outranks the one before it.
 
 **Documented** — anything in the repo that says how the code is *arranged*, as opposed to how it is written: `ARCHITECTURE.md`, `CONTEXT.md`, a `docs/adr/` or `decisions/` folder, a README section on layout. Decisions are often recorded somewhere a template wouldn't predict — if the repo has a doc telling agents where its decisions live, read that first and follow it.
 
-**Written as rules** — the placement rules in `.claude/rules/`, and the context map beside them. Step 3 hands the whole of `.claude/rules/` to Standards, but the half that says *where a file goes, and which folder may read which*, is an arrangement rule rather than a style one, and this axis is the one that judges by it. Read the context map too: a rule reaches only the code the map gives it, and a path two contexts claim breaches `contexts`.
+**Written as rules** — the placement rules in `docs/agents/rules/`, and the context map beside them. Step 3 hands the whole of `docs/agents/rules/` to Standards, but the half that says *where a file goes, and which folder may read which*, is an arrangement rule rather than a style one, and this axis is the one that judges by it. Read the context map too: a rule reaches only the code the map gives it, and a path two contexts claim breaches `contexts`.
 
-In this repo that file is `.claude/rules/file-placement.md`, and its eight Slice rules are the ones the agent wrote the code under. Read them there, and judge placement and direction against what they say. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. That file maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
+In this repo that file is `docs/agents/rules/file-placement.md`, and its eight Slice rules are the ones the agent wrote the code under. Read them there, and judge placement and direction against what they say. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. That file maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
 
 **Executable** — a boundary rule the repo can actually run. This is the highest-trust source, because it is enforced rather than aspired to:
 

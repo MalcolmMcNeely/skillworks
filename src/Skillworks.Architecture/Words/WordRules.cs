@@ -6,7 +6,7 @@ internal sealed record WordRules(
     IReadOnlyDictionary<string, IReadOnlyList<string>> BannedWords,
     IReadOnlyList<string> SkipFolders)
 {
-    public const string RelativePath = ".claude/rules/words.md";
+    public const string RelativePath = "docs/agents/rules/words.md";
 
     public static WordRules Read(RulesFile file) =>
         new(

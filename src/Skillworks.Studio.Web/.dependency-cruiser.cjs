@@ -5,7 +5,7 @@ const { join } = require('node:path');
 const layer = (names) => `^src/(.*/|)(${names})/`;
 
 // The same list the architecture check reads, so adding a job is one line and never half a line.
-const rulesFile = join(__dirname, '..', '..', '.claude', 'rules', 'file-placement.md');
+const rulesFile = join(__dirname, '..', '..', 'docs', 'agents', 'rules', 'file-placement.md');
 const settings = readFileSync(rulesFile, 'utf8').match(/^```ya?ml[ \t]*\r?\n([\s\S]*?)^```/m)?.[1] ?? '';
 const sliceNames = (settings.match(/^slices:[ \t]*\r?\n((?:[ \t]+-.*\r?\n)+)/m)?.[1] ?? '')
   .split('\n')
