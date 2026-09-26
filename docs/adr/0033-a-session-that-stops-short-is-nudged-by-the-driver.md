@@ -47,5 +47,5 @@ and it can stop short the same way.
 A Nudged step takes longer, and the log says so. A command that hangs holds its step for up to 45
 minutes before the Session hears of it.
 
-The architecture review runs only the Suite checks the repo names as proving placement, not the whole
-Suite. The driver runs the whole Suite as its own step, so the review was running tests it never read.
+The architecture review runs only the commands the placement-checks file names, not the Suite. The
+driver runs the whole Suite as its own step, so the review was running tests it never read.

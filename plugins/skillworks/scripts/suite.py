@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 SUITE_FILE = "docs/agents/suite.json"
+EVERY_CHECK_RAN = "every check ran, because the change touches none of the paths any check names\n"
 
 
 class Outcome(NamedTuple):
@@ -165,10 +166,17 @@ class Suite:
 
     # A red check lets the others finish, so the one fix circuit reads every failure, not the first.
     def run_checks(self, wanted, changed):
+        woken = [check.woken_by(changed) for check in wanted]
+        # A suite that ran nothing cannot pass, and a red one would stop every ticket off the paths.
+        woke_none = not any(woken)
+        if woke_none:
+            woken = [True] * len(wanted)
         with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
             running = [pool.submit(self.runner.run, check.command, check.folder.as_posix())
-                       if check.woken_by(changed) else None for check in wanted]
+                       if wakes else None for check, wakes in zip(wanted, woken)]
             ran = [each.result() if each else None for each in running]
         said = "".join(did_not_run(check) if each is None else each.out + each.err
                        for check, each in zip(wanted, ran))
+        if woke_none:
+            said = EVERY_CHECK_RAN + said
         return Outcome(all(each.status == 0 for each in ran if each), said)

@@ -15,9 +15,12 @@ in, so two runs of one Suite read the same.
 
 **A check can name the paths that wake it.** A check with `when` runs only when the ticket's own
 change touches one of those paths: the files that differ from the base its worktree was cut from,
-uncommitted work included. At landing it is the same set. A check without `when` always runs, and a
-change the loop cannot read runs every check, because running a check that was not needed is the
-safe way to be wrong. A check that did not run says so in the Suite output, so the closing comment
+uncommitted work included. Landing measures from the commit the ticket was rebased onto, so the
+change is the ticket's own commits and nothing that came in on `main`. A check without `when` always
+runs, and a change the loop cannot read runs every check, because running a check that was not
+needed is the safe way to be wrong. A change that wakes no check runs every check too, and the Suite
+output says why: a Suite that ran nothing cannot pass, and a red one would stop every ticket that
+touches no watched path. A check that did not run says so in the Suite output, so the closing comment
 names what was not run beside what proved the work.
 
 Here the preflight tests become a check of their own, woken by the script, its short command, its

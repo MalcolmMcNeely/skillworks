@@ -11,8 +11,10 @@ README goes in that file too. Every readiness command runs first, one by one. Th
 together, and a red check lets the others finish. The output keeps the order of the file, each
 check's output whole, whatever finished first. A check with `when` names the paths that wake it, each
 a file or a folder from the repo root, and runs only when the ticket's own change touches one. A check
-that did not run says so in one line of the output. Its `runs` is 2, because the container-backed
-Span tests flake here, so the loop runs a red Suite a second time before it believes it.
+that did not run says so in one line of the output. A change that wakes no check runs every check,
+and the output says why, because a Suite that ran nothing cannot pass. Its `runs` is 2, because the
+container-backed Span tests flake here, so the loop runs a red Suite a second time before it believes
+it.
 
 ## The script tests
 
@@ -47,6 +49,11 @@ otherwise. `.claude/settings.json` sets that. The script suite took 184, 299, 32
 across four runs of the same tests on this machine, and the spread is machine load, so two minutes
 loses the result and a session has to run the suite in the background and poll it instead. The wait
 is a ceiling and never a delay, so a run that takes three minutes still answers in three.
+
+Every Session the loop starts gets a Bash limit of 45 minutes, by default and at most, beside the
+ten minutes the settings file sets for a session at the keyboard. Under `claude -p` a command moved to
+the background dies with the Session's last turn, so a long check has to finish in the foreground.
+[ADR 0033](../adr/0033-a-session-that-stops-short-is-nudged-by-the-driver.md) records why.
 
 This does not reach the loop itself, which runs for hours and still has to be started in the
 background.

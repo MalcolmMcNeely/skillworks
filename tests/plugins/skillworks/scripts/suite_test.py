@@ -517,7 +517,7 @@ def test_a_folder_path_wakes_on_any_file_beneath_it(repo, runner):
 
 
 def test_a_folder_path_never_wakes_on_a_name_that_only_begins_with_it(repo, runner):
-    base = given_a_suite_at_the_base(repo, check("lint", when=["web"]))
+    base = given_a_suite_at_the_base(repo, check("compile"), check("lint", when=["web"]))
     given_every_program_passes(runner)
     committing(repo, "website/page.ts")
 
@@ -535,6 +535,46 @@ def test_a_check_without_paths_always_runs(repo, runner):
 
     assert runner.started("compile")
     assert not runner.started("lint")
+
+
+def test_a_change_that_wakes_no_check_runs_every_check_and_takes_their_outcome(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
+    given_every_program_passes(runner)
+    runner.stub("lint", says="lint failed\n", status=1)
+    committing(repo, "docs/notes.md")
+
+    outcome = Suite(runner, repo.work, base).run()
+
+    assert not outcome.passed
+    assert by_words(runner.started("compile") + runner.started("lint")) == [["compile"], ["lint"]]
+    assert "lint failed\n" in outcome.said
+
+
+def test_a_change_that_wakes_no_check_says_every_check_ran_because_none_woke(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
+    given_every_program_passes(runner)
+    runner.stub("compile", says="compiled\n")
+    runner.stub("lint", says="linted\n")
+    committing(repo, "docs/notes.md")
+
+    outcome = Suite(runner, repo.work, base).run()
+
+    assert outcome.passed
+    assert outcome.said == (
+        "every check ran, because the change touches none of the paths any check names\n"
+        "compiled\nlinted\n")
+
+
+def test_a_change_that_wakes_one_check_still_skips_the_others(repo, runner):
+    base = given_a_suite_at_the_base(repo, check("compile", when=["api"]), check("lint", when=["web"]))
+    given_every_program_passes(runner)
+    runner.stub("lint", says="linted\n")
+    committing(repo, "web/page.ts")
+
+    outcome = Suite(runner, repo.work, base).run()
+
+    assert not runner.started("compile")
+    assert outcome.said == did_not_run("compile") + "linted\n"
 
 
 def test_a_change_the_suite_cannot_read_runs_every_check(repo, runner):
