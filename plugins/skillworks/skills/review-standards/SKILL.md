@@ -38,6 +38,8 @@ Then read the glossary that claims the changed files. `CONTEXT-MAP.md` says whic
 
 On top of what the repo writes down, this axis always carries the smell baseline in `docs/agents/smell-baseline.md`. Read it yourself. It holds the smells list and the rules that bind it. The team edits that list, so this skill holds none of its own.
 
+If `docs/agents/smell-baseline.md` is missing, stop. Tell the user that `docs/agents/smell-baseline.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Standards` heading, so the step fails and the loop stops.
+
 ## What to report
 
 Report per file and hunk where that helps:

@@ -204,6 +204,35 @@ def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
     assert "-template>" not in to_tickets
 
 
+def stops(skill, *names):
+    return says_stop((SKILLS / skill / "SKILL.md").read_text(encoding="utf-8"), *names)
+
+
+def says_stop(text, *names):
+    return any(
+        "stop" in paragraph.lower()
+        and "missing" in paragraph
+        and "`/skillworks:skillworks-setup`" in paragraph
+        and all(name in paragraph for name in names)
+        for paragraph in text.split("\n\n")
+    )
+
+
+def test_the_review_skills_stop_when_the_smell_baseline_is_missing():
+    for skill in ["code-review", "review-standards"]:
+        assert stops(skill, "`docs/agents/smell-baseline.md`"), skill
+
+
+def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing():
+    assert stops("to-tickets", "`docs/agents/issue-tracker.md`", '"The ticket shape"')
+
+
+def test_a_missing_lever_that_only_sends_the_user_to_setup_is_caught():
+    tells = "If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`."
+
+    assert not says_stop(tells, "`docs/agents/issue-tracker.md`")
+
+
 def test_the_issue_tracker_seed_says_how_to_read_a_commits_sessions_back():
     tracker = seeded("issue-tracker.md")
 

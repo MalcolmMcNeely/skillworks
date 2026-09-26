@@ -7,9 +7,9 @@ description: Break a plan, spec, or the current conversation into a set of trace
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-The issue tracker should have been provided to you. If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`.
+The issue tracker should have been provided to you. Its section "The ticket shape" is the team's taste in tickets: their size, their title and the template each one fills. Read it before step 3, and shape every ticket by it.
 
-Its section "The ticket shape" is the team's taste in tickets: their size, their title and the template each one fills. Read it before step 3, and shape every ticket by it.
+If `docs/agents/issue-tracker.md` is missing, or holds no section "The ticket shape", stop. Tell the user which is missing, the file or the section, that `/skillworks:skillworks-setup` writes it, and that no ticket was made.
 
 ## Process
 

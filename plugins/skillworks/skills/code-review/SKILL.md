@@ -44,6 +44,8 @@ Always include the Claude rules files: every file in `docs/agents/rules/`. Claud
 
 On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in `docs/agents/smell-baseline.md`. It holds the smells list, which applies even when a repo documents nothing, and the rules that bind it. The team edits that list, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
 
+If `docs/agents/smell-baseline.md` is missing, stop before any axis runs. Tell the user that `docs/agents/smell-baseline.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed.
+
 ### 4. Identify the architecture sources
 
 Three kinds, and each outranks the one before it.
