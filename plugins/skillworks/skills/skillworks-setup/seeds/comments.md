@@ -13,6 +13,24 @@ itself and carries no issue, ticket or ADR number.
 
 A test body may mark its parts with `// Arrange`, `// Act` and `// Assert`.
 
+## What a sweep keeps and cuts
+
+A comment sweep judges each comment against this table. A comment not in the table is judged by the
+rules above.
+
+| Comment | Verdict |
+|---|---|
+| `// increment the counter` | Cut: restates the line below it |
+| `// constructor` | Cut: the syntax already says so |
+| `// loop through the users` | Cut |
+| `// retry 3 times`, above `retries: 3` | Cut: the value says so |
+| `// returns null on a cache miss, not undefined` | Cut: says what the code does, not why |
+| `// 3 retries: the vendor rate-limits bursts above 4` | Keep: the reason lives nowhere in the code |
+| `// must run before the auth middleware or the session is empty` | Keep: a hidden ordering constraint |
+
+A sweep leaves linter and compiler directives (`eslint-disable`, `@ts-expect-error`, `#pragma`) and
+licence headers alone. They are instructions to tools and legal text, not comments for a reader.
+
 ## Doc comments
 
 In C#, a doc comment is a `///` line or a `/** */` block.

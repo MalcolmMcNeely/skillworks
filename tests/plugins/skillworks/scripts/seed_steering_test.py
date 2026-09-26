@@ -130,6 +130,22 @@ def test_the_issue_tracker_seed_holds_the_two_conventions():
     assert "gh issue close <n> --comment" in tracker
 
 
+def test_the_comments_rule_seed_holds_the_keep_and_cut_table():
+    comments = seeded("comments.md")
+
+    assert "## What a sweep keeps and cuts" in comments
+    assert "| Comment | Verdict |" in comments
+    assert "| `// increment the counter` | Cut: restates the line below it |" in comments
+    assert "| `// must run before the auth middleware or the session is empty` | Keep: a hidden ordering constraint |" in comments
+
+
+def test_the_comment_sweep_reads_its_table_from_the_comments_rule():
+    sweep = (SKILLS / "comment-sweep" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "| Comment | Verdict |" not in sweep
+    assert "What a sweep keeps and cuts" in sweep
+
+
 def test_the_issue_tracker_seed_says_how_to_read_a_commits_sessions_back():
     tracker = seeded("issue-tracker.md")
 

@@ -13,27 +13,15 @@ Default target is the uncommitted diff. Given paths or a commit range, use that.
 
 ## The rules
 
-`docs/agents/rules/comments.md` at the repo root holds the rules, and nothing else does. Read it before pass 1. It decides what a doc comment is, where doc comments may go, and which comments earn their place. Where an example below and the rules disagree, the rules win.
+`docs/agents/rules/comments.md` at the repo root holds the rules, and nothing else does. Read it before pass 1. It decides what a doc comment is, where doc comments may go, and which comments earn their place. Its keep and cut table, under "What a sweep keeps and cuts", is the team's taste: judge by it, and leave alone what it says to leave alone.
 
 If the file is missing, stop. Tell the user that `docs/agents/rules/comments.md` is missing and that nothing was swept.
 
 ## Pass 1: Cut
 
-For every comment in scope, ask what the rules ask. Keep the comments the rules keep. Cut the rest, and leave the survivors' wording alone. Length is pass 2's job.
+For every comment in scope, ask what the rules and their keep and cut table ask. Keep the comments they keep. Cut the rest, and leave the survivors' wording alone. Length is pass 2's job.
 
-| Comment | Verdict |
-|---|---|
-| `// increment the counter` | Cut: restates the line below it |
-| `// constructor` | Cut: the syntax already says so |
-| `// loop through the users` | Cut |
-| `// retry 3 times`, above `retries: 3` | Cut: the value says so |
-| `// returns null on a cache miss, not undefined` | Cut: says what the code does, not why |
-| `// 3 retries: the vendor rate-limits bursts above 4` | Keep: the reason lives nowhere in the code |
-| `// must run before the auth middleware or the session is empty` | Keep: a hidden ordering constraint |
-
-Linter and compiler directives (`eslint-disable`, `@ts-expect-error`, `#pragma`) and licence headers are out of scope. They are instructions to tools and legal text, not comments for a reader.
-
-A doc comment the rules allow is out of scope too. One the rules ban is in scope: judge it like any other comment.
+A doc comment the rules allow is out of scope. One the rules ban is in scope: judge it like any other comment.
 
 **Done when** every comment in scope has been judged.
 
