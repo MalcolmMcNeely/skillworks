@@ -44,8 +44,21 @@ When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which ti
 
 **A clean finish** takes two things together: the log reaches its `END` line, and the drift report `/skillworks:spec-drift` posted as a comment on the spec issue lists nothing Missing, Partial or Contradicts. A drift check that found gaps still exits 0, so the log alone never settles it — read the comment. Then make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.
 
-**Anything else is an early stop.** The script stops on the first failure. Say what failed and give the log path. The close offer belongs to a clean finish alone. The failed ticket stays open, with the reason in the log and the session's stderr beside it. Its worktree stays too, so the broken state can be read; the log names the path. The fix is a human one.
+**Anything else is an early stop.** The script stops on the first failure. Say what failed and give the log path. The close offer belongs to a clean finish alone. The failed ticket stays open, with the reason in the log and the session's stderr beside it. Its worktree stays too, so the broken state can be read; the log names the path. The fix is a human one, unless the stop names Denials, as below.
 
 Re-running the same command is a **real run**, every time. It first Keeps each leftover worktree: it commits what the worktree held, removes the worktree, and renames its branch to `spec-loop/<spec-number>/ticket-<n>-kept-<k>`, naming each branch in a `KEPT` line of the log. Then it starts the first open ticket again from `main`, with a fresh build. A Kept build stays on its branch and the rerun never reads it, so a rerun after a long build pays for that build again.
+
+**A stop that names Denials gets one rerun in bypass mode.** A Denial is a tool call Claude Code turned down because the Session had no permission for it, such as a write under `.claude/`. The `FAIL` line names each one on a `Denial:` line. When it names at least one, run, in the background:
+
+```bash
+spec-loop <spec-number> --bypass
+```
+
+Run it once, and never again for the same stop. Stop and tell the user, naming each Denial from the first stop, when:
+
+- the bypass rerun stops too, or
+- Claude Code will not start in bypass mode, because bypass mode is turned off here.
+
+A stop whose `FAIL` line names no Denial never gets a `--bypass` rerun. Its cause lies somewhere else, and bypass mode does not fix it.
 
 To see what a run would do, read `spec_loop.py` and run `spec-loop <spec-number> --dry-run`, which starts no session and Keeps nothing. Start a real run only to finish the spec, in the background and with no time limit: a limit that ends the driver mid-step leaves a half-built attempt for the next run to Keep.

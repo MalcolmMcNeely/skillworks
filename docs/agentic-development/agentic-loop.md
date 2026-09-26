@@ -267,14 +267,14 @@ The driver reopens the ticket, because the loop only picks open tickets and the 
 closed one whose work never reached the remote. The `FAIL` line names the worktree and the two files
 to read: the step's result and its error output. The worktree and its branch stay where they are.
 
-Running the same command again then refuses, because that worktree is still there, and the refusal
-names the two ways out: carry on in the worktree, or throw it away with the command it prints. Once it
-is gone, a rerun resumes from the first open ticket.
+Running the same command again Keeps that worktree: it commits what the worktree held, removes it, and
+renames its branch out of the way, naming the branch in a `KEPT` line of the log. Then it starts the
+first open ticket again from `main`, with a fresh build.
 
 A write under `.claude/` is refused as a sensitive file whatever the allowlist says, and the step's
 result lists it as a Denial. When that result lists any Denials, the `FAIL` line names each one by its
-tool and the start of its input, and says to rerun with `SPEC_LOOP_PERMISSION_MODE=bypassPermissions`
-if one of them stopped the step. A stop with no Denials gives no such hint, because its cause lies
+tool and the start of its input, and says to rerun with `spec-loop <spec> --bypass` if one of them
+stopped the step. A stop with no Denials gives no such hint, because its cause lies
 elsewhere.
 
 The default mode is `acceptEdits`. `spec-loop <spec> --bypass` runs every Session of the run in
