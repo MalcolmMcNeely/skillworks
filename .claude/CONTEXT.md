@@ -108,6 +108,12 @@ team says what green means for its own code. A Suite ends one of two ways that a
 went red, and the ticket goes round again, or the machine was not ready to run it, and the loop stops.
 _Avoid_: Test run, pipeline, CI
 
+**Surface**:
+One place a change can have to reach besides the code that does the work, such as the docs, a public
+API or a sample app. A team lists its own, and the grill asks about each one a change touches, so no
+Surface is left out of step without anyone deciding it.
+_Avoid_: Axis, touchpoint, artefact
+
 **Target branch**:
 The branch a ticket Lands on. It is `main` for a team that pushes straight to it. For a team that
 reviews each spec as one pull request, it is that spec's own branch.
