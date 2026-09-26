@@ -97,7 +97,7 @@ class Repo:
     def advance_origin(self, name):
         self.push_from_elsewhere(name + ".txt", name, "Somebody else's " + name)
 
-    # Counting the tries is how a bounded retry is measured and not guessed at.
+    # Counting the tries proves a push the remote turns down is not tried again.
     def refuse_pushes(self):
         hook = self.origin / "hooks" / "pre-receive"
         hook.write_text(

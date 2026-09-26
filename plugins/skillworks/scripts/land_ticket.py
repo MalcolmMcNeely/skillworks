@@ -39,8 +39,8 @@ USAGE = (
     "       land-ticket --plan\n"
 )
 
-# Enough for a collision with another loop, few enough that this cannot spin.
-ATTEMPTS = 3
+# Another loop pushing is expected, so a lost race is tried again with no cap.
+LOST_RACE = ("(fetch first)", "(non-fast-forward)")
 
 # These stay in the order the steps happen, or the plan lies about the run.
 PLAN = (
@@ -60,8 +60,8 @@ PLAN = (
      "the whole suite, when the base has moved",
      "suite-can-run suite-green"),
     ("push",
-     "git push origin HEAD:main",
-     "pushed (up to {} attempts)".format(ATTEMPTS)),
+     "git push origin HEAD:main, again after each lost race",
+     "pushed"),
 )
 
 # A refusal is what the session declares, whatever it went on to leave in the index.
@@ -389,7 +389,7 @@ class Landing:
         self.verify()
         commit = self.git("rev-parse", "--short", "HEAD").out.strip()
 
-        attempt = 1
+        tries = 1
         while True:
             if not fetch_origin(self.runner, self.worktree, self.err, self.wait):
                 raise self.die("#{} could not fetch from origin. Nothing was pushed."
@@ -409,15 +409,15 @@ class Landing:
 
             pushed = self.git("push", "--quiet", "origin", "HEAD:main")
             if pushed.status == 0:
-                self.say("#{} landed on main as {}".format(self.ticket, commit))
+                self.say("#{} landed on main as {} in {} {}".format(
+                    self.ticket, commit, tries, "try" if tries == 1 else "tries"))
                 return
 
-            if attempt >= ATTEMPTS:
-                raise self.die(
-                    "#{t} was refused {a} times. Another loop keeps winning the race, or the "
-                    "remote turns the commit down. The last try said:\n{m}".format(
-                        t=self.ticket, a=ATTEMPTS, m=(pushed.out + pushed.err).rstrip("\n")))
-            attempt += 1
+            said = (pushed.out + pushed.err).rstrip("\n")
+            if not any(mark in said for mark in LOST_RACE):
+                raise self.die("#{} could not be pushed. Nothing was pushed. git said:\n{}".format(
+                    self.ticket, said))
+            tries += 1
 
 
 def main(argv, runner, out, err, wait):

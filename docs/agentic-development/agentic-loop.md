@@ -249,7 +249,7 @@ already on the remote. `plugins/skillworks/scripts/land_ticket.py` does it, in s
 | `rebase` | Onto the newest `origin/main`, but only when the base has moved. Then check no commit and no file was lost. |
 | `resolve` | Only when the rebase conflicts. The build Session is resumed to fix it. |
 | `suite` | The whole suite again, on the new base. An unmoved base is one the `suite` step's own run already answers for. A check with `when` wakes for the ticket's own commits, measured from the commit it was rebased onto, so what landed meanwhile wakes nothing. |
-| `push` | `HEAD` onto `main`, retried up to three times when another loop wins the race. |
+| `push` | `HEAD` onto `main`. When another push got there first, the landing goes back to `fetch` and tries again, with no cap. Any other push failure stops it with git's message. The log line says how many tries it took. |
 
 The resumed conflict Session is told its own bias outright: you wrote one side of this and the other
 side is a stranger, so argue for the other side before discarding a line of it. The driver hands it
@@ -303,7 +303,7 @@ The log is `.spec-loop/<spec>/loop.log`, and every step's result and error outpu
 16:00:31 STEP  #202 architecture 2/6
 16:02:18 STEP  #202 fix          2/6
 16:29:54 STEP  #202 finish       2/6
-16:56:48 ok    #202 landed on main as bfa44a6
+16:56:48 ok    #202 landed on main as bfa44a6 in 1 try
 16:56:52 DONE  #202  bfa44a6
 16:57:06 STEP  #203 build        3/6  ~245m left
 ```

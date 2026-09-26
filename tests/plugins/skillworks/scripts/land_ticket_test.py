@@ -12,6 +12,16 @@ from suite import SUITE_FILE
 # A fixed answer, so a case can tell what the script gathered from what it made up.
 CLOSING_COMMENT = "What that ticket set out to do."
 
+# git words a lost race one way when origin/main is stale, and the other when it is not.
+LOST_RACE_STALE = (
+    "To origin\n"
+    " ! [rejected]        HEAD -> main (fetch first)\n"
+    "error: failed to push some refs to 'origin'")
+LOST_RACE = (
+    "To origin\n"
+    " ! [rejected]        HEAD -> main (non-fast-forward)\n"
+    "error: failed to push some refs to 'origin'")
+
 
 def run_land(runner, *args):
     given = [a.as_posix() if isinstance(a, Path) else str(a) for a in args]
@@ -182,6 +192,9 @@ def test_a_plan_names_every_step_with_its_checks_and_lands_nothing(repo, runner)
     for line in ran.out.splitlines():
         assert len(line.split("\t")) == 3
         assert all(field for field in line.split("\t"))
+    # A lost race is tried again without end, so a count would tell the reader a cap that is gone.
+    push = [line for line in ran.out.splitlines() if line.startswith("push\t")]
+    assert push == ["push\tgit push origin HEAD:main, again after each lost race\tpushed"]
     assert main_of(repo) == base
     assert runner.calls == []
 
@@ -436,7 +449,21 @@ def test_a_commit_that_names_another_ticket_is_refused(repo, runner):
     assert main_of(repo) == base
 
 
-def test_a_refused_push_is_tried_three_times_and_no_more(repo, runner):
+def test_a_push_that_loses_the_race_again_and_again_is_tried_until_it_lands(repo, runner):
+    commit_for_ticket(repo, 163)
+    head = head_of(repo)
+    runner.refuse("push --quiet origin HEAD:main", LOST_RACE, times=3)
+    runner.refuse("push --quiet origin HEAD:main", LOST_RACE_STALE, times=2)
+
+    ran = run_land(runner, repo.work, 163)
+
+    assert ran.status == 0
+    assert len(runner.built("push --quiet origin HEAD:main")) == 6
+    assert "landed on main as {} in 6 tries".format(head[:7]) in report(ran)
+    assert main_of(repo) == head
+
+
+def test_a_push_the_remote_turns_down_stops_on_the_first_try(repo, runner):
     commit_for_ticket(repo, 163)
     repo.refuse_pushes()
     base = main_of(repo)
@@ -444,8 +471,8 @@ def test_a_refused_push_is_tried_three_times_and_no_more(repo, runner):
     ran = run_land(runner, repo.work, 163)
 
     assert ran.status == 1
-    assert repo.push_tries() == 3
-    assert "3 times" in report(ran)
+    assert repo.push_tries() == 1
+    assert "pre-receive hook declined" in report(ran)
     assert main_of(repo) == base
 
 
