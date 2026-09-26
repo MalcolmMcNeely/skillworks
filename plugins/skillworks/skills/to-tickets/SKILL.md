@@ -7,7 +7,9 @@ description: Break a plan, spec, or the current conversation into a set of trace
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-The issue tracker should have been provided to you. If not, tell the user to run `/skillworks:skillworks-setup`.
+The issue tracker should have been provided to you. If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`.
+
+Its section "The ticket shape" is the team's taste in tickets: their size, their title and the template each one fills. Read it before step 3, and shape every ticket by it.
 
 ## Process
 
@@ -29,7 +31,7 @@ Break the work into **tracer bullet** tickets.
 
 - Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests) — vertical, NOT a horizontal slice of one layer
 - A completed slice is demoable or verifiable on its own
-- Each slice is sized to fit in a single fresh context window
+- Each slice is sized as the ticket shape says
 - Any prefactoring should be done first
 
 </vertical-slice-rules>
@@ -62,51 +64,13 @@ Iterate until the user approves the breakdown.
 
 Publish the tickets you showed. **How** depends on the tracker `/skillworks:skillworks-setup` configured — the tickets are the same either way, only the shape of the blocking edges changes:
 
-- **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
+- **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. One ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` label unless instructed otherwise — the tickets are agent-grabbable by construction.
 
-Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
+Each ticket takes its title and its body from the ticket shape.
 
-Ticket names should all begin with "TICKET:".
+Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 
 **When the source was an existing issue, make every ticket a child of it on the tracker.** Not a `Parent:` line in the body — the native parent/child relationship, so it is queryable. `/skillworks:spec-loop` reads a spec's children to find its own work and ignores everything else, which is the only thing stopping two people's loops taking each other's tickets. Your tracker doc carries the exact calls.
 
 **Leave the parent issue open.** It is the loop's anchor and the drift check reads it at the end. The human closes it when the work merges. (Without a loop — a plain conversation, no parent issue on the tracker — there is nothing to leave open.)
-
-<local-ticket-template>
-
-# TICKET: <NN> — <Ticket title>
-
-**What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective — not a layer-by-layer implementation list.
-
-**Blocked by:** the numbers/titles of the tickets that gate this one, or "None — can start immediately".
-
-**Status:** ready-for-agent
-
-- [ ] Acceptance criterion 1
-- [ ] Acceptance criterion 2
-
-</local-ticket-template>
-
-<issue-template>
-
-## Parent
-
-A reference to the parent issue on the tracker (if the source was an existing issue, otherwise omit this section).
-
-## What to build
-
-The end-to-end behaviour this ticket makes work, from the user's perspective — not layer-by-layer implementation.
-
-## Acceptance criteria
-
-- [ ] Criterion 1
-- [ ] Criterion 2
-
-## Blocked by
-
-- A reference to each blocking ticket, or "None — can start immediately".
-
-</issue-template>
-
-In either form, avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.

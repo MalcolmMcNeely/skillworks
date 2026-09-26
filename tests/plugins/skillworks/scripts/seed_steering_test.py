@@ -3,7 +3,7 @@ import json
 import re
 
 import seed_steering
-from conftest import PLUGIN, Ran, git, launch
+from conftest import PLUGIN, ROOT, Ran, git, launch
 from suite import Suite
 
 SKILLS = PLUGIN / "skills"
@@ -163,6 +163,45 @@ def test_the_review_skills_read_the_smells_list_from_the_smell_baseline():
         assert "`docs/agents/smell-baseline.md`" in text, skill
         assert "Feature Envy" not in text, skill
         assert "twelve" not in text.lower(), skill
+
+
+def ticket_shape(tracker):
+    lines = tracker.splitlines()
+    assert "## The ticket shape" in lines, "no ticket shape"
+    start = lines.index("## The ticket shape")
+    fenced = False
+    for end in range(start + 1, len(lines)):
+        if lines[end].startswith("```"):
+            fenced = not fenced
+        elif not fenced and lines[end].startswith("## "):
+            return "\n".join(lines[start:end])
+    return "\n".join(lines[start:])
+
+
+def test_the_issue_tracker_seed_holds_the_ticket_shape():
+    shape = ticket_shape(seeded("issue-tracker.md"))
+
+    assert "single fresh context window" in shape
+    assert '"TICKET:"' in shape
+    assert "## Acceptance criteria" in shape
+    assert "## Blocked by" in shape
+    assert "avoid specific file paths" in shape
+
+
+def test_this_repos_tracker_docs_hold_the_seeds_ticket_shape():
+    ours = (ROOT / "docs" / "agents" / "issue-tracker.md").read_text(encoding="utf-8")
+
+    assert ticket_shape(ours) == ticket_shape(seeded("issue-tracker.md"))
+
+
+def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
+    to_tickets = (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "The ticket shape" in to_tickets
+    assert "context window" not in to_tickets
+    assert "TICKET:" not in to_tickets
+    assert "## Acceptance criteria" not in to_tickets
+    assert "-template>" not in to_tickets
 
 
 def test_the_issue_tracker_seed_says_how_to_read_a_commits_sessions_back():
