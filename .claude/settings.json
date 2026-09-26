@@ -25,6 +25,7 @@
       "Bash(spec-loop:*)",
       "Bash(land-ticket:*)",
       "Bash(ticket-worktree:*)",
+      "Bash(skillworks-suite:*)",
       "Bash(uv run --with pytest pytest:*)",
       "Bash(dotnet:*)",
       "Bash(npm:*)",

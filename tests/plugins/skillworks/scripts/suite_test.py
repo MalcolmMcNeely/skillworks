@@ -769,6 +769,16 @@ def test_the_command_takes_no_argument(repo, runner, monkeypatch):
     assert not runner.started("prove")
 
 
+def test_the_command_prints_a_character_its_code_page_lacks():
+    stream = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+
+    suite.speaking_any_character(stream)
+    stream.write("✔ every case passed\n")
+    stream.flush()
+
+    assert stream.buffer.getvalue() == "✔ every case passed\n".encode("utf-8")
+
+
 def test_the_command_outside_a_repository_runs_nothing(tmp_path, runner, monkeypatch):
     write_suite(tmp_path, check("prove"))
     given_every_program_passes(runner)
