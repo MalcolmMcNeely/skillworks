@@ -12,10 +12,10 @@ USAGE = "usage: seed-steering [folder]\n"
 SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "seeds"
 
 PLACES = {
-    "comments.md": ".claude/rules/comments.md",
-    "determinism.md": ".claude/rules/determinism.md",
-    "file-placement.md": ".claude/rules/file-placement.md",
-    "words.md": ".claude/rules/words.md",
+    "comments.md": "docs/agents/rules/comments.md",
+    "determinism.md": "docs/agents/rules/determinism.md",
+    "file-placement.md": "docs/agents/rules/file-placement.md",
+    "words.md": "docs/agents/rules/words.md",
     "issue-tracker.md": "docs/agents/issue-tracker.md",
     "domain.md": "docs/agents/domain.md",
     "placement-checks.md": "docs/agents/placement-checks.md",

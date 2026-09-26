@@ -10,10 +10,10 @@ SKILLS = PLUGIN / "skills"
 SETUP = SKILLS / "skillworks-setup"
 
 WHERE = {
-    "comments.md": ".claude/rules/comments.md",
-    "determinism.md": ".claude/rules/determinism.md",
-    "file-placement.md": ".claude/rules/file-placement.md",
-    "words.md": ".claude/rules/words.md",
+    "comments.md": "docs/agents/rules/comments.md",
+    "determinism.md": "docs/agents/rules/determinism.md",
+    "file-placement.md": "docs/agents/rules/file-placement.md",
+    "words.md": "docs/agents/rules/words.md",
     "issue-tracker.md": "docs/agents/issue-tracker.md",
     "domain.md": "docs/agents/domain.md",
     "placement-checks.md": "docs/agents/placement-checks.md",
@@ -23,6 +23,8 @@ WHERE = {
 }
 
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
+
+RULES = ["comments.md", "determinism.md", "file-placement.md", "words.md"]
 
 
 def run_seed(runner, where):
@@ -51,13 +53,37 @@ def test_an_empty_repo_gets_every_seed(repo, runner):
         assert "wrote {}\n".format(place) in ran.out
 
 
+def test_every_seed_lands_under_docs_agents_and_the_rules_in_its_rules_folder(repo, runner):
+    run_seed(runner, repo.work)
+
+    assert not (repo.work / ".claude" / "rules").exists()
+    assert sorted(seed_steering.PLACES) == sorted(WHERE)
+    for seed, place in seed_steering.PLACES.items():
+        assert place.startswith("docs/agents/"), place
+        assert (place == "docs/agents/rules/" + seed) == (seed in RULES), place
+
+
+def test_a_rule_already_in_the_rules_folder_is_kept_and_its_difference_shown(repo, runner):
+    edited = repo.work / "docs" / "agents" / "rules" / "words.md"
+    edited.parent.mkdir(parents=True)
+    edited.write_text("# Our own words\n", encoding="utf-8", newline="\n")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert edited.read_text(encoding="utf-8") == "# Our own words\n"
+    assert "kept docs/agents/rules/words.md, which differs from the seed:\n" in ran.out
+    assert "-# Our own words\n" in ran.out
+    assert "wrote docs/agents/rules/words.md" not in ran.out
+
+
 def test_the_seeds_folder_holds_the_listed_seeds_and_nothing_else():
     assert sorted(path.name for path in (SETUP / "seeds").iterdir()) == sorted(WHERE)
 
 
 def test_the_rules_arrive_with_their_settings_empty(repo, runner):
     run_seed(runner, repo.work)
-    rules = repo.work / ".claude" / "rules"
+    rules = repo.work / "docs" / "agents" / "rules"
 
     placement = settings_block(rules / "file-placement.md")
     assert "slices: []" in placement
@@ -219,9 +245,6 @@ def test_a_link_that_climbs_out_of_the_plugin_is_caught():
     assert links_out_of_the_plugin(page, text) == ["../../../../docs/agents/suite.json"]
 
 
-RULES = ["comments.md", "determinism.md", "file-placement.md", "words.md"]
-
-
 def test_no_plugin_skill_names_a_rule_under_the_old_rules_folder():
     pages = sorted(path for path in SKILLS.rglob("*") if path.is_file())
     assert pages
@@ -253,3 +276,26 @@ def test_spec_loop_says_why_the_script_picks_the_ticket_and_links_no_research_no
 
     assert "docs/research" not in text
     assert "A script reads the blocking edges and picks the same ticket every time." in text
+
+
+def setup_section(heading):
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+    return re.split(r"\n### \d", text.split(heading, 1)[1], maxsplit=1)[0]
+
+
+def test_the_claude_md_pointer_imports_each_rule():
+    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 3. Point CLAUDE.md at the docs"), re.DOTALL)
+
+    assert len(pointer) == 1
+    lines = pointer[0].splitlines()
+    for rule in RULES:
+        assert "@docs/agents/rules/{}".format(rule) in lines, rule
+
+
+def test_the_report_names_the_folder_each_steering_file_lives_in():
+    report = setup_section("### 5. Report")
+
+    assert "`docs/agents/rules/`" in report
+    assert "`docs/agents/`" in report
+    for seed in WHERE:
+        assert "`{}`".format(seed) in report, seed
