@@ -131,8 +131,49 @@ npm test
 ```
 
 The loop runs the same checks from `docs/agents/suite.json`. A new check goes in both places.
-[docs/agentic-development/checks.md](docs/agentic-development/checks.md) says how the loop runs
-them, and how to run the script tests against the real `gh` and `claude`.
+[docs/usage/suite.md](docs/usage/suite.md) says how the loop runs them. This repo's Suite file sets
+`runs` to 2, because the container-backed Span tests flake here.
+
+#### The script tests
+
+The loop's scripts live in the Plugin, at `plugins/skillworks/scripts/`, and their tests sit at the
+same path under `tests/`. The script tests build a throwaway repository in a temporary directory and
+touch nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest
+is asked for on the command line, because the scripts carry no project file. The hook scripts are
+node, and their tests sit beside the script tests and use the test runner built into node, so they
+add no dependency. node expands the quoted pattern itself.
+
+The script tests come in two sets, told apart by one flag on the same path. The commands above run
+the fast set, which answers for `gh` and `claude` through the Runner, so it needs neither installed
+and starts no model session. It is the set a landing runs, so landing is never gated on a login.
+
+The other set starts the real `gh` and the real `claude`, far enough to prove each one accepts the
+argument lines the driver builds for it and no further. It also starts `claude` with the Plugin, to
+prove the Plugin forces its output style and resolves a `skillworks:` skill. That session asks for a
+model the API does not offer, so no model answers. One more session, on Haiku, makes a commit in a
+throwaway repository, to prove the Plugin's hook names the Session in it. That is the one model
+session the set starts. It needs both programs on PATH. It changes no issue, and it takes under a
+minute:
+
+```
+uv run --with pytest pytest tests/plugins/skillworks/scripts --real-binaries
+```
+
+#### The ten-minute wait
+
+A session waits ten minutes on a command before it gives up, rather than the two minutes it would
+otherwise. `.claude/settings.json` sets that. The script suite took 184, 299, 321 and 413 seconds
+across four runs of the same tests on this machine, and the spread is machine load, so two minutes
+loses the result and a session has to run the suite in the background and poll it instead. The wait
+is a ceiling and never a delay, so a run that takes three minutes still answers in three.
+
+Every Session the loop starts gets a Bash limit of 45 minutes, by default and at most, beside the
+ten minutes the settings file sets for a session at the keyboard. Under `claude -p` a command moved to
+the background dies with the Session's last turn, so a long check has to finish in the foreground.
+[ADR 0033](docs/adr/0033-a-session-that-stops-short-is-nudged-by-the-driver.md) records why.
+
+This does not reach the loop itself, which runs for hours and still has to be started in the
+background.
 
 ## Repo layout
 
@@ -156,6 +197,7 @@ them, and how to run the script tests against the real `gh` and `claude`.
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
 | `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |
 | `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
+| `docs/usage/` | How a team uses Skillworks, for a human reading it rather than a skill. |
 | `docs/agentic-development/` | How the dev loop works, for a human reading it rather than a skill. |
 | `docs/studio/` | How Studio gets its telemetry. |
 

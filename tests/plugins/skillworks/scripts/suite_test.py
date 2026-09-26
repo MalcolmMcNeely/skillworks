@@ -624,13 +624,13 @@ def test_this_repo_s_suite_file_asks_for_a_second_run():
 
 
 def test_the_loop_docs_say_the_checks_run_together():
-    for doc in ("docs/agentic-development/agentic-loop.md", "docs/agentic-development/checks.md"):
+    for doc in ("docs/agentic-development/agentic-loop.md", "docs/usage/suite.md"):
         text = " ".join((ROOT / doc).read_text(encoding="utf-8").split())
         assert "the checks run together" in text, doc
 
 
 def test_the_loop_docs_and_the_setup_docs_say_how_a_check_names_its_paths():
-    for doc in ("docs/agentic-development/agentic-loop.md", "docs/agentic-development/checks.md",
+    for doc in ("docs/agentic-development/agentic-loop.md", "docs/usage/suite.md",
                 "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
         assert "`when`" in (ROOT / doc).read_text(encoding="utf-8"), doc
 
@@ -710,6 +710,7 @@ def test_this_repo_s_script_tests_wake_for_the_plugin_their_tests_and_the_docs_t
         SCRIPT_TESTS,
         "docs/agents",
         "docs/agentic-development",
+        "docs/usage",
         "README.md",
     ])
     assert all((ROOT / path).exists() for path in scripts[0]["when"])

@@ -18,6 +18,7 @@
         "tests/plugins/skillworks/scripts",
         "docs/agents",
         "docs/agentic-development",
+        "docs/usage",
         "README.md"
       ]
     },
