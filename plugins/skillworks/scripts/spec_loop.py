@@ -4,7 +4,7 @@
 # origin/main, and lands on the remote the moment it passes. The main checkout
 # is never worked in, so it stays usable for the whole run.
 #
-#   spec-loop <spec-issue-number> [--dry-run]
+#   spec-loop <spec-issue-number> [--dry-run] [--bypass]
 #
 # The script picks the next ticket. The model never picks. Control flow lives
 # here so a run is inspectable, stoppable and resumable.
@@ -17,8 +17,7 @@
 # single place to answer for everything it reaches.
 #
 # Env:
-#   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits). A spec whose
-#                               tickets write under .claude/ needs bypassPermissions.
+#   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits); writes under .claude/ need `--bypass`
 #
 # Written against gh 2.92.0, which has no dependency flags. Everything goes
 # through `gh api`. See docs/research/harness/ticket-state-guardrails.md.
@@ -41,7 +40,11 @@ from runner import Subprocess, session_changes
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 
-USAGE = "usage: spec-loop <spec-issue-number> [--dry-run]\n"
+USAGE = "usage: spec-loop <spec-issue-number> [--dry-run] [--bypass]\n"
+
+FLAGS = ("--dry-run", "--bypass")
+
+BYPASS_MODE = "bypassPermissions"
 
 # gh asks at a terminal, and a loop run has nobody at one.
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
@@ -257,13 +260,13 @@ def plan_line(name, what, checks=""):
 
 
 class Loop:
-    def __init__(self, runner, spec, out, err, wait):
+    def __init__(self, runner, spec, out, err, wait, permission_mode):
         self.runner = runner
         self.spec = spec
         self.out = out
         self.err = err
         self.wait = wait
-        self.permission_mode = os.environ.get("SPEC_LOOP_PERMISSION_MODE", "acceptEdits")
+        self.permission_mode = permission_mode
         self.session_changes = session_changes()
         self.log_dir = Path(".spec-loop") / spec
         self.log = self.log_dir / "loop.log"
@@ -758,7 +761,8 @@ class Loop:
         held = self.step_file(ticket, "land", "out")
         said = io.StringIO()
         landed = land_ticket.main(
-            [self.job_worktree, ticket, session], self.runner, said, said, self.wait)
+            [self.job_worktree, ticket, session], self.runner, said, said, self.wait,
+            self.permission_mode)
         written(held, said.getvalue())
         self.say(said.getvalue().rstrip("\n"))
         if landed != 0:
@@ -845,7 +849,8 @@ class Loop:
             written(held, self.git(self.root, "rev-parse", "origin/main").out)
         base = held.read_text(encoding="utf-8").strip()
 
-        self.say("LOOP  spec #{} from {} ({})".format(self.spec, base, self.repo))
+        self.say("LOOP  spec #{} from {} ({}) in {} mode".format(
+            self.spec, base, self.repo, self.permission_mode))
 
         while True:
             open_tickets = listed(
@@ -874,16 +879,17 @@ def arguments(argv):
     rest = argv[1:]
     if not is_a_number(spec):
         raise misuse(USAGE)
-    if rest and rest != ["--dry-run"]:
+    if any(flag not in FLAGS for flag in rest):
         raise misuse(USAGE)
-    return spec, bool(rest)
+    mode = BYPASS_MODE if "--bypass" in rest else land_ticket.permission_mode_set()
+    return spec, "--dry-run" in rest, mode
 
 
 def main(argv, runner, out, err, wait):
     loop = None
     try:
-        spec, dry = arguments(argv)
-        loop = Loop(runner, spec, out, err, wait)
+        spec, dry, mode = arguments(argv)
+        loop = Loop(runner, spec, out, err, wait, mode)
         loop.run(dry)
         return 0
     except Stop as stopped:

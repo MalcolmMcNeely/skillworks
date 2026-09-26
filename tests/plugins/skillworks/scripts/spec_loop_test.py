@@ -54,6 +54,8 @@ def loop(repo, runner, monkeypatch):
     # A suite run from inside a Session inherits both, so a case names the Parent it means or none.
     monkeypatch.delenv("CLAUDE_CODE_SESSION_ID", raising=False)
     monkeypatch.delenv("OTEL_RESOURCE_ATTRIBUTES", raising=False)
+    # A loop started from a bypass run inherits its mode, so a case sets the one it means.
+    monkeypatch.delenv("SPEC_LOOP_PERMISSION_MODE", raising=False)
     return Driver(repo, runner)
 
 
@@ -1977,6 +1979,97 @@ def test_every_session_runs_with_a_45_minute_bash_limit_and_background_tasks_on(
         assert "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS" not in changes
 
 
+# --- the permission mode a run is in -----------------------------------------
+
+RESOLVE = "/skillworks:resolve-conflict"
+
+
+# The build and main both add the same file, so the landing asks the build Session to resolve it.
+def given_a_run_that_reaches_a_landing_conflict(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(
+        committed(loop.runner), closed(tracker),
+        lambda: loop.repo.push_from_elsewhere("built.txt", "theirs", "Somebody else's built"))
+
+
+def modes_of_sessions(runner):
+    calls = session_calls(runner)
+    assert call_asking(runner, RESOLVE) is not None, "the landing asked no Session to resolve"
+    return {call[call.index("--permission-mode") + 1] for call in calls}
+
+
+def loop_line(loop):
+    return next(line for line in loop.log().split("\n") if " LOOP " in line)
+
+
+def test_bypass_runs_every_session_and_the_landing_in_bypass_mode(loop, runner):
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    ran = loop.run(SPEC, "--bypass")
+
+    assert ran.status == 1
+    assert modes_of_sessions(runner) == {"bypassPermissions"}
+    assert "bypassPermissions" in loop_line(loop)
+
+
+def test_with_no_flag_and_no_setting_every_session_runs_in_accept_edits(loop, runner):
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert modes_of_sessions(runner) == {"acceptEdits"}
+    assert "acceptEdits" in loop_line(loop)
+
+
+def test_the_setting_still_sets_the_mode_of_every_session(loop, runner, monkeypatch):
+    monkeypatch.setenv("SPEC_LOOP_PERMISSION_MODE", "plan")
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert modes_of_sessions(runner) == {"plan"}
+    assert "plan" in loop_line(loop)
+
+
+def test_the_flag_wins_over_the_setting(loop, runner, monkeypatch):
+    monkeypatch.setenv("SPEC_LOOP_PERMISSION_MODE", "acceptEdits")
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    ran = loop.run(SPEC, "--bypass")
+
+    assert ran.status == 1
+    assert modes_of_sessions(runner) == {"bypassPermissions"}
+    assert "bypassPermissions" in loop_line(loop)
+
+
+@pytest.mark.parametrize("flags", [("--bypass", "--dry-run"), ("--dry-run", "--bypass")])
+def test_bypass_and_the_dry_run_go_together_in_either_order(loop, runner, flags):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, *flags)
+
+    assert ran.status == 0, said(ran)
+    assert "DRY   no session was run" in ran.out
+    assert session_calls(runner) == []
+
+
+@pytest.mark.parametrize("flags", [("--bypas",), ("--bypass", "--dry-run", "--later")])
+def test_an_unknown_argument_still_prints_the_usage(loop, flags):
+    ran = loop.run(SPEC, *flags)
+
+    assert ran.status == 64
+    assert ran.err == spec_loop.USAGE
+
+
+def test_the_agentic_loop_document_names_the_bypass_flag():
+    text = (ROOT / "docs/agentic-development/agentic-loop.md").read_text(encoding="utf-8")
+
+    assert "--bypass" in text
+
+
 # --- the claim --------------------------------------------------------------
 
 def test_a_ticket_is_claimed_and_read_back_after_a_wait(loop, runner):
@@ -2071,7 +2164,7 @@ def test_the_spec_loop_command_starts_the_driver_in_the_plugin(repo):
     ran = launch("spec-loop", where=repo.work)
 
     assert ran.status == 64
-    assert ran.err == "usage: spec-loop <spec-issue-number> [--dry-run]\n"
+    assert ran.err == "usage: spec-loop <spec-issue-number> [--dry-run] [--bypass]\n"
 
 
 # The Plugin reaches repos with no Docker and no flaky tests, so what it tells them holds for any repo.

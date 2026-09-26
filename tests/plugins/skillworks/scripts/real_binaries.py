@@ -105,7 +105,8 @@ def driver_lines():
     runner.stub("claude")
 
     with tempfile.TemporaryDirectory() as folder:
-        loop = spec_loop.Loop(runner, SPEC, io.StringIO(), io.StringIO(), lambda seconds: None)
+        loop = spec_loop.Loop(runner, SPEC, io.StringIO(), io.StringIO(), lambda seconds: None,
+                              "acceptEdits")
         # Where the driver logs what it says is not what this proves.
         loop.log = Path(folder) / "loop.log"
         loop.preflight()
@@ -116,7 +117,8 @@ def driver_lines():
         loop.claude_p("/skillworks:implement {} --fix".format(TICKET), "--resume", SESSION)
 
         landing = land_ticket.Landing(
-            runner, folder, TICKET, SESSION, io.StringIO(), io.StringIO())
+            runner, folder, TICKET, SESSION, io.StringIO(), io.StringIO(), lambda seconds: None,
+            "acceptEdits")
         landing.closing_comment(TICKET)
         landing.resolve_call("/skillworks:resolve-conflict")
     return once(runner.made)

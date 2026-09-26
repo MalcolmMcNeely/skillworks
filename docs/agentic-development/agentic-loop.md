@@ -275,7 +275,13 @@ A write under `.claude/` is refused as a sensitive file whatever the allowlist s
 result lists it as a Denial. When that result lists any Denials, the `FAIL` line names each one by its
 tool and the start of its input, and says to rerun with `SPEC_LOOP_PERMISSION_MODE=bypassPermissions`
 if one of them stopped the step. A stop with no Denials gives no such hint, because its cause lies
-elsewhere. The default is `acceptEdits`.
+elsewhere.
+
+The default mode is `acceptEdits`. `spec-loop <spec> --bypass` runs every Session of the run in
+`bypassPermissions`, and hands the same mode to the landing, so the Session that resolves a conflict
+runs in it too. The flag matches the `Bash(spec-loop:*)` allow rule, where the env var form does not.
+`SPEC_LOOP_PERMISSION_MODE` still sets the mode, and when both are given the flag wins. The `LOOP`
+line at the top of the log names the mode the run is in.
 
 ### The drift check
 
@@ -319,7 +325,7 @@ tickets were larger, so the gap between the two sets says nothing about either d
 
 `--dry-run` prints the whole plan instead of running it: every ticket, the worktree and branch it
 would get, every step's command line and checks, and the landing steps asked of `land_ticket.py`
-itself. It starts no Session and reaches no remote.
+itself. It starts no Session and reaches no remote. It goes with `--bypass` in either order.
 
 ## Where the pieces live
 

@@ -156,7 +156,7 @@ class Turn:
 
 
 class Landing:
-    def __init__(self, runner, worktree, ticket, session, out, err, wait):
+    def __init__(self, runner, worktree, ticket, session, out, err, wait, permission_mode):
         self.runner = runner
         self.worktree = Path(worktree).as_posix()
         self.ticket = ticket
@@ -164,7 +164,7 @@ class Landing:
         self.out = out
         self.err = err
         self.wait = wait
-        self.permission_mode = os.environ.get("SPEC_LOOP_PERMISSION_MODE", "acceptEdits")
+        self.permission_mode = permission_mode
         # None when no conflict is in hand, so a stop can tell whether it has one to record.
         self.conflict = None
 
@@ -522,7 +522,14 @@ class Landing:
                 kept = True
 
 
-def main(argv, runner, out, err, wait):
+def permission_mode_set():
+    return os.environ.get("SPEC_LOOP_PERMISSION_MODE", "acceptEdits")
+
+
+# The driver hands in the mode of its run, so the resolving Session never falls back to the default.
+def main(argv, runner, out, err, wait, permission_mode=None):
+    if permission_mode is None:
+        permission_mode = permission_mode_set()
     try:
         worktree = argv[0] if len(argv) > 0 else ""
         ticket = argv[1] if len(argv) > 1 else ""
@@ -535,7 +542,7 @@ def main(argv, runner, out, err, wait):
         if not worktree or not is_a_number(ticket):
             raise misuse(USAGE)
 
-        Landing(runner, worktree, ticket, session, out, err, wait).land()
+        Landing(runner, worktree, ticket, session, out, err, wait, permission_mode).land()
         return 0
     except Stop as stop:
         err.write(stop.said)
