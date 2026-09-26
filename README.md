@@ -119,7 +119,8 @@ they use the local tools and not anything installed globally.
 ```
 dotnet test Skillworks.slnx
 
-uv run --with pytest pytest tests/plugins/skillworks/scripts
+uv run --with pytest pytest tests/plugins/skillworks/scripts --ignore=tests/plugins/skillworks/scripts/skillworks-preflight_test.py
+uv run --with pytest pytest tests/plugins/skillworks/scripts/skillworks-preflight_test.py
 
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 

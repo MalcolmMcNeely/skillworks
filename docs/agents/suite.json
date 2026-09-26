@@ -10,8 +10,19 @@
       }
     },
     {
-      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts"],
+      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts",
+                  "--ignore=tests/plugins/skillworks/scripts/skillworks-preflight_test.py"],
       "folder": "."
+    },
+    {
+      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts/skillworks-preflight_test.py"],
+      "folder": ".",
+      "when": [
+        "plugins/skillworks/scripts/skillworks-preflight.sh",
+        "plugins/skillworks/bin/skillworks-preflight",
+        "tests/plugins/skillworks/scripts/skillworks-preflight_test.py",
+        "tests/plugins/skillworks/scripts/conftest.py"
+      ]
     },
     {
       "command": ["node", "--test", "tests/plugins/skillworks/scripts/**/*.test.mjs"],

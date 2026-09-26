@@ -3,6 +3,8 @@
 
 import json
 import re
+import subprocess
+import sys
 import threading
 
 from conftest import ROOT, Ran, check, git, write_suite
@@ -298,7 +300,10 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
         ("npm run lint", web),
         ("npm run typecheck", web),
         ("npm test", web),
-        ("uv run --with pytest pytest tests/plugins/skillworks/scripts", ROOT.as_posix()),
+        ("uv run --with pytest pytest tests/plugins/skillworks/scripts"
+         " --ignore=tests/plugins/skillworks/scripts/skillworks-preflight_test.py", ROOT.as_posix()),
+        ("uv run --with pytest pytest tests/plugins/skillworks/scripts/skillworks-preflight_test.py",
+         ROOT.as_posix()),
     ]
 
 
@@ -617,6 +622,50 @@ def this_repo_s_facts():
         if entry["folder"] != ".":
             facts.add(entry["folder"])
     return facts
+
+
+SCRIPT_TESTS = "tests/plugins/skillworks/scripts"
+
+PREFLIGHT_TEST = f"{SCRIPT_TESTS}/skillworks-preflight_test.py"
+
+
+# pytest itself collects, so a conftest hook that overrides --ignore is caught.
+def script_tests_run_by(command):
+    words = command[command.index("pytest", command.index("pytest") + 1) + 1:]
+    collected = subprocess.run([sys.executable, "-m", "pytest", *words, "--collect-only", "-q"],
+                               cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    return {line.split("::")[0].replace("\\", "/") for line in collected.splitlines() if "::" in line}
+
+
+def test_this_repo_s_pytest_checks_run_every_script_test_once():
+    runs = [script_tests_run_by(entry["command"]) for entry in this_repo_s_checks()
+            if "pytest" in entry["command"]]
+    every = script_tests_run_by(["uv", "run", "--with", "pytest", "pytest", SCRIPT_TESTS])
+
+    assert PREFLIGHT_TEST in every
+    assert sorted(test for run in runs for test in run) == sorted(every)
+
+
+def test_this_repo_s_preflight_tests_wake_only_for_the_preflight_and_its_support():
+    preflight = [entry for entry in this_repo_s_checks() if PREFLIGHT_TEST in entry["command"]]
+
+    assert len(preflight) == 1
+    assert sorted(preflight[0]["when"]) == sorted([
+        "plugins/skillworks/scripts/skillworks-preflight.sh",
+        "plugins/skillworks/bin/skillworks-preflight",
+        PREFLIGHT_TEST,
+        f"{SCRIPT_TESTS}/conftest.py",
+    ])
+    assert all((ROOT / path).is_file() for path in preflight[0]["when"])
+
+
+def test_the_readme_lists_every_check_of_this_repo_s_suite():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    checks = text[text.index("### Checks"):].split("```")[1].replace('"', "")
+
+    assert len(this_repo_s_checks()) == 7
+    for entry in this_repo_s_checks():
+        assert " ".join(entry["command"]) in checks, entry["command"]
 
 
 def test_the_review_skills_run_the_placement_checks_and_not_the_suite_file():

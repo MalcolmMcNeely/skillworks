@@ -278,4 +278,5 @@ def pytest_ignore_collect(collection_path, config):
     if not collection_path.name.endswith("_test.py"):
         return None
     real = collection_path.name.startswith(REAL_BINARIES)
-    return real != config.getoption("--real-binaries")
+    # None and never False, because a False answer stops pytest from reading --ignore.
+    return True if real != config.getoption("--real-binaries") else None
