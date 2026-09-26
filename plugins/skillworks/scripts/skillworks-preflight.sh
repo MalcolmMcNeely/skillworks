@@ -36,6 +36,19 @@ ok "gh authenticated as $login"
 
 git rev-parse --git-dir >/dev/null 2>&1 || die "not inside a git repository"
 
+# A rule loads into a session only through its @ import in CLAUDE.md, so a deleted line turns it off in silence.
+top=$(git rev-parse --show-toplevel)
+if [ -d "$top/docs/agents/rules" ]; then
+  imports=$(sed 's/^[[:space:]]*//; s/[[:space:]]*$//' "$top/CLAUDE.md" 2>/dev/null || true)
+  for rule in "$top"/docs/agents/rules/*.md; do
+    [ -f "$rule" ] || continue
+    line="@docs/agents/rules/$(basename "$rule")"
+    grep -qxF -- "$line" <<< "$imports" \
+      || die "docs/agents/rules/$(basename "$rule") has no import in CLAUDE.md, so it does not load into a session. Add this line to CLAUDE.md: $line"
+  done
+  ok "CLAUDE.md imports every rule in docs/agents/rules"
+fi
+
 origin=$(git remote get-url origin 2>/dev/null || true)
 [ -n "$origin" ] || die "no 'origin' remote. Skillworks tracks work on GitHub."
 case "$origin" in

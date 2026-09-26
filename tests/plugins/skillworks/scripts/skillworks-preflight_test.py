@@ -109,7 +109,7 @@ def settings(work, text):
 
 # Node can share /usr/bin with the tools preflight calls, so that folder is mirrored, not dropped.
 # Where node has a folder of its own, as on Windows, the folder is dropped and no mirror is made.
-TOOLS = ("git", "awk", "sort", "head", "grep", "paste")
+TOOLS = ("git", "awk", "sort", "head", "grep", "paste", "sed", "basename")
 
 
 def without_node(path, spare):
@@ -398,3 +398,65 @@ def test_classic_protection_that_cannot_be_read_warns_and_passes(work):
     assert "warn  could not read the classic branch protection on main in owner/repo" in ran.out
     assert "may push to main" not in ran.out
     assert "label ready-for-agent" in ran.out
+
+
+RULES = ("comments.md", "determinism.md", "file-placement.md", "words.md")
+
+
+def rules(work, *names):
+    folder = work.repo / "docs" / "agents" / "rules"
+    folder.mkdir(parents=True)
+    for name in names:
+        (folder / name).write_text("# A rule\n", encoding="utf-8", newline="\n")
+
+
+def claude_md(work, *lines):
+    (work.repo / "CLAUDE.md").write_text("# Repo\n\n" + "\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def test_a_claude_md_that_imports_every_rule_passes(work):
+    rules(work, *RULES)
+    claude_md(work, *(f"@docs/agents/rules/{name}" for name in RULES))
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    CLAUDE.md imports every rule in docs/agents/rules" in ran.out
+
+
+def test_a_rule_with_no_import_fails_naming_the_rule_and_the_line_to_add(work):
+    rules(work, *RULES)
+    claude_md(work, *(f"@docs/agents/rules/{name}" for name in RULES if name != "determinism.md"))
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert ("FAIL  docs/agents/rules/determinism.md has no import in CLAUDE.md, so it does not load into a session. "
+            "Add this line to CLAUDE.md: @docs/agents/rules/determinism.md") in ran.err
+    assert "label ready-for-agent" not in ran.out
+
+
+def test_an_import_inside_other_text_does_not_count(work):
+    rules(work, "words.md")
+    claude_md(work, "See @docs/agents/rules/words.md.old for history.")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "docs/agents/rules/words.md has no import in CLAUDE.md" in ran.err
+
+
+def test_rules_with_no_claude_md_fail(work):
+    rules(work, "words.md")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "Add this line to CLAUDE.md: @docs/agents/rules/words.md" in ran.err
+
+
+def test_a_repo_with_no_rules_folder_passes(work):
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "import" not in said(ran)
