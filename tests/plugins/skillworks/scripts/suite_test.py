@@ -699,6 +699,22 @@ def test_this_repo_s_preflight_tests_wake_only_for_the_preflight_and_its_support
     assert all((ROOT / path).is_file() for path in preflight[0]["when"])
 
 
+# The script tests read these repo files as well as their own code, so a Studio change sleeps through them.
+def test_this_repo_s_script_tests_wake_for_the_plugin_their_tests_and_the_docs_they_read():
+    scripts = [entry for entry in this_repo_s_checks()
+               if "pytest" in entry["command"] and PREFLIGHT_TEST not in entry["command"]]
+
+    assert len(scripts) == 1
+    assert sorted(scripts[0]["when"]) == sorted([
+        "plugins/skillworks",
+        SCRIPT_TESTS,
+        "docs/agents",
+        "docs/agentic-development",
+        "README.md",
+    ])
+    assert all((ROOT / path).exists() for path in scripts[0]["when"])
+
+
 def test_the_readme_lists_every_check_of_this_repo_s_suite():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     checks = text[text.index("### Checks"):].split("```")[1].replace('"', "")

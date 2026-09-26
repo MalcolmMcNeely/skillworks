@@ -12,7 +12,14 @@
     {
       "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts",
                   "--ignore=tests/plugins/skillworks/scripts/skillworks-preflight_test.py"],
-      "folder": "."
+      "folder": ".",
+      "when": [
+        "plugins/skillworks",
+        "tests/plugins/skillworks/scripts",
+        "docs/agents",
+        "docs/agentic-development",
+        "README.md"
+      ]
     },
     {
       "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts/skillworks-preflight_test.py"],
