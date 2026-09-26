@@ -43,6 +43,7 @@ adding its own:
 | `folder` | Where the command runs, from the repo root. |
 | `ready` | Optional. A command that proves the machine can run the check, such as `docker info`, and the `message` the loop prints when it fails. With `unless`, a path from the repo root, the loop skips the command when the path is there, so an install is not done twice. |
 | `when` | Optional. The paths that wake the check. See below. |
+| `image` | Optional. A Dockerfile in the repo, from the repo root. The check runs in that image. See below. |
 
 `runs`, beside `checks`, says how many times the loop runs a red Suite before it believes it. It is 1
 when the file leaves it out.
@@ -64,6 +65,29 @@ tickets pushed to `main` meanwhile.
   way to be wrong.
 
 Name every path a check reads, not only its code. A test that reads a doc wakes for that doc too.
+
+## `image`: a check that runs in a container
+
+Some tests start many processes, and some OSes are slow to start one. A check with `image` names a
+Dockerfile, so the check runs on an OS that is fast for it. Keep the Dockerfile in `docs/agents/`
+with the rest of your Steering.
+
+1. The loop builds the image. Docker keeps what it built before, so a second build is fast.
+2. It copies every file git does not ignore into a new container. Uncommitted and untracked files
+   go in too. A file git ignores does not.
+3. It runs the `command` in the container, from the check's `folder`. The container's output and
+   exit status are the check's.
+4. It removes the container, red or green.
+
+A check with `image` needs Docker on the machine, and not its own program. If `docker info` fails,
+the machine is not ready, and the loop stops as it does for a failed `ready` command.
+
+A copy made on Windows keeps the line endings of your checkout. A shell script with CRLF endings
+fails in Linux, so check out every `.sh` with LF, in `.gitattributes`:
+
+```
+*.sh text eol=lf
+```
 
 ## How the loop runs the Suite
 

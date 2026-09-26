@@ -11,13 +11,18 @@
 # A command is an argument list and never a shell line, so it reads the same on every machine.
 # An `unless` path that exists skips its readiness command, so an install is not done twice.
 # Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
+# A check can name an image, for tests that start processes an OS is slow to start.
 
 import json
+import posixpath
+import shutil
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import NamedTuple
 
 SUITE_FILE = "docs/agents/suite.json"
+REPO_IN_IMAGE = "/repo"
 EVERY_CHECK_RAN = "every check ran, because the change touches none of the paths any check names\n"
 
 
@@ -39,6 +44,12 @@ class Check(NamedTuple):
     folder: Path
     ready: Ready
     when: list = None
+    image: str = None
+
+    # The image holds the check's own program, so the host needs only docker.
+    def programs(self):
+        command = ["docker"] if self.image else [self.command[0]]
+        return command + ([self.ready.command[0]] if self.ready else [])
 
     def woken_by(self, changed):
         if self.when is None or changed is None:
@@ -69,6 +80,15 @@ def paths_of(entry):
     if not is_list_of_words(entry["when"]):
         raise Unreadable("a when that is not a list of paths")
     return [path.rstrip("/") for path in entry["when"]]
+
+
+def image_of(entry, tree):
+    if "image" not in entry:
+        return None
+    image = entry["image"]
+    if not isinstance(image, str) or not image or not (tree / image).is_file():
+        raise Unreadable("an image that is not a Dockerfile in the repo")
+    return image
 
 
 def did_not_run(check):
@@ -108,7 +128,7 @@ class Suite:
                 ready = Ready(command_of(ready), str(ready.get("message", "")),
                               ready.get("unless"))
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
-                                paths_of(entry)))
+                                paths_of(entry), image_of(entry, self.tree)))
         return wanted, runs
 
     # Measured from the base and not from main, so work that landed meanwhile wakes nothing.
@@ -128,10 +148,10 @@ class Suite:
     # Read as facts, never out of a runner's output, which is reworded with every version.
     def short_of(self, wanted):
         for check in wanted:
-            for command in [check.command] + ([check.ready.command] if check.ready else []):
-                if not self.runner.found(command[0]):
+            for program in check.programs():
+                if not self.runner.found(program):
                     return ("{} is not on PATH, and the Suite file names it. Install it and run "
-                            "this again.\n").format(command[0])
+                            "this again.\n").format(program)
 
         for check in wanted:
             ready = check.ready
@@ -141,6 +161,14 @@ class Suite:
             if asked.status != 0:
                 return "{}\n{} said:\n{}".format(
                     ready.message.rstrip("\n"), " ".join(ready.command), asked.out + asked.err)
+
+        imaged = [check for check in wanted if check.image]
+        if imaged:
+            asked = self.runner.run(["docker", "info"], self.tree.as_posix())
+            if asked.status != 0:
+                return ("Docker does not answer, and {} runs in the image {}. Start Docker and run "
+                        "this again.\ndocker info said:\n{}").format(
+                    " ".join(imaged[0].command), imaged[0].image, asked.out + asked.err)
         return ""
 
     def run(self, heard=None):
@@ -172,11 +200,50 @@ class Suite:
         if woke_none:
             woken = [True] * len(wanted)
         with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
-            running = [pool.submit(self.runner.run, check.command, check.folder.as_posix())
-                       if wakes else None for check, wakes in zip(wanted, woken)]
+            running = [pool.submit(self.run_check, check) if wakes else None
+                       for check, wakes in zip(wanted, woken)]
             ran = [each.result() if each else None for each in running]
         said = "".join(did_not_run(check) if each is None else each.out + each.err
                        for check, each in zip(wanted, ran))
         if woke_none:
             said = EVERY_CHECK_RAN + said
         return Outcome(all(each.status == 0 for each in ran if each), said)
+
+    def run_check(self, check):
+        if check.image is None:
+            return self.runner.run(check.command, check.folder.as_posix())
+        return self.run_in_image(check)
+
+    def run_in_image(self, check):
+        tree = self.tree.as_posix()
+        dockerfile = self.tree / check.image
+        built = self.runner.run(["docker", "build", "--quiet", "--file", dockerfile.as_posix(),
+                                 dockerfile.parent.as_posix()], tree)
+        if built.status != 0:
+            return built
+        listed = self.runner.run(["git", "-C", tree, "ls-files", "--cached", "--others",
+                                  "--exclude-standard", "-z"], tree)
+        if listed.status != 0:
+            return listed
+
+        workdir = posixpath.normpath(posixpath.join(
+            REPO_IN_IMAGE, check.folder.relative_to(self.tree).as_posix()))
+        with tempfile.TemporaryDirectory() as stage:
+            # A tracked file the worktree deleted is still listed, and the check must not see it.
+            for name in {name for name in listed.out.split("\0") if name}:
+                if (self.tree / name).is_file():
+                    (Path(stage) / name).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(self.tree / name, Path(stage) / name)
+            created = self.runner.run(["docker", "create", "--workdir", workdir,
+                                       built.out.split()[-1], *check.command], tree)
+            if created.status != 0:
+                return created
+            container = created.out.split()[-1]
+            try:
+                # Run from the copy itself, because docker reads a drive letter's colon as a container.
+                copied = self.runner.run(["docker", "cp", "./.", container + ":" + REPO_IN_IMAGE], stage)
+                if copied.status != 0:
+                    return copied
+                return self.runner.run(["docker", "start", "--attach", container], tree)
+            finally:
+                self.runner.run(["docker", "rm", "--force", container], tree)

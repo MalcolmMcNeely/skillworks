@@ -3,9 +3,8 @@
 
 import json
 import re
-import subprocess
-import sys
 import threading
+from pathlib import Path
 
 from conftest import ROOT, Ran, check, git, write_suite
 from suite import SUITE_FILE, Suite
@@ -17,8 +16,10 @@ def given_every_program_passes(runner):
 
 
 def given_this_repo_s_programs_pass(runner):
-    for name in ("docker", "dotnet", "uv", "node", "npm"):
+    for name in ("dotnet", "uv", "node", "npm"):
         runner.stub(name)
+    # One answer serves every docker verb, because these cases read the commands and not a container.
+    runner.stub("docker", says="an-id\n")
 
 
 def given_a_suite_file_reading(tree, text):
@@ -284,9 +285,19 @@ def test_a_suite_file_that_does_not_parse_is_not_ready(tmp_path, runner):
     assert SUITE_FILE in outcome.said
 
 
+SCRIPT_TESTS = "tests/plugins/skillworks/scripts"
+
+SCRIPT_TESTS_IMAGE = "docs/agents/script-tests.Dockerfile"
+
+SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "pytest",
+                        "-n", "auto", SCRIPT_TESTS]
+
+
 # Whether the front end is installed differs between checkouts, so the install is left out.
+# A copy of this whole repo would prove nothing the image cases do not, so git lists no file.
 def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
     given_this_repo_s_programs_pass(runner)
+    runner.stub("git")
 
     outcome = Suite(runner, ROOT).run()
 
@@ -294,22 +305,21 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
     assert outcome.passed
     assert runner.calls[0] == ["docker", "info"]
     assert sorted((" ".join(call.args), call.where) for call in runner.made[1:]
-                  if call.args[:2] != ["npm", "ci"]) == [
+                  if call.args[0] not in ("docker", "git") and call.args[:2] != ["npm", "ci"]) == [
         ("dotnet test Skillworks.slnx", ROOT.as_posix()),
         ("node --test tests/plugins/skillworks/scripts/**/*.test.mjs", ROOT.as_posix()),
         ("npm run lint", web),
         ("npm run typecheck", web),
         ("npm test", web),
-        ("uv run --with pytest pytest tests/plugins/skillworks/scripts"
-         " --ignore=tests/plugins/skillworks/scripts/skillworks-preflight_test.py", ROOT.as_posix()),
-        ("uv run --with pytest pytest tests/plugins/skillworks/scripts/skillworks-preflight_test.py",
-         ROOT.as_posix()),
     ]
+    assert ["docker", "create", "--workdir", "/repo", "an-id", *SCRIPT_TESTS_COMMAND] in runner.calls
 
 
 def test_this_repo_s_front_end_is_installed_when_nothing_is(tmp_path, runner):
     given_a_suite_file_reading(tmp_path, (ROOT / SUITE_FILE).read_text(encoding="utf-8"))
+    (tmp_path / SCRIPT_TESTS_IMAGE).write_bytes((ROOT / SCRIPT_TESTS_IMAGE).read_bytes())
     given_this_repo_s_programs_pass(runner)
+    runner.stub("git")
 
     Suite(runner, tmp_path).run()
 
@@ -619,8 +629,244 @@ def test_a_when_that_is_not_a_list_of_words_makes_the_suite_file_unreadable(tmp_
     assert runner.calls == []
 
 
-def test_this_repo_s_suite_file_asks_for_a_second_run():
-    assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 2
+# --- a check that runs in an image ------------------------------------------
+
+DOCKERFILE = "docs/agents/tests.Dockerfile"
+
+
+class FakeDocker:
+    def __init__(self, runner, says="", status=0, answers=True, builds=True):
+        self.runner = runner
+        self.says = says
+        self.status = status
+        self.answers = answers
+        self.builds = builds
+        self.contents = None
+        self.copied = None
+        self.stage = None
+        runner.stub("docker", does=self.answer)
+
+    def answer(self):
+        call = self.runner.made[-1]
+        verb = call.args[1]
+        if verb == "info":
+            return Ran(0, "", "") if self.answers else Ran(1, "", "Cannot connect to the daemon\n")
+        if verb == "build":
+            return Ran(0, "the-image\n", "") if self.builds else Ran(1, "", "no such base\n")
+        if verb == "create":
+            return Ran(0, "the-container\n", "")
+        if verb == "cp":
+            self.stage = Path(call.where)
+            self.contents = {path.relative_to(self.stage).as_posix(): path.read_text(encoding="utf-8")
+                             for path in self.stage.rglob("*") if path.is_file()}
+            self.copied = sorted(self.contents)
+            return Ran(0, "", "")
+        if verb == "start":
+            return Ran(self.status, self.says, "")
+        return Ran(0, "", "")
+
+    def calls(self):
+        return [call for call in self.runner.calls if call[0] == "docker"]
+
+    def verbs(self):
+        return [call[1] for call in self.calls()]
+
+
+def given_a_dockerfile(tree):
+    path = Path(tree) / DOCKERFILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("FROM scratch\n", encoding="utf-8", newline="\n")
+
+
+def given_a_suite_in_an_image(tree, *command, folder="."):
+    given_a_dockerfile(tree)
+    write_suite(tree, check(*command, folder=folder, image=DOCKERFILE))
+
+
+def test_a_check_with_an_image_builds_it_from_its_dockerfile(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner)
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.passed
+    dockerfile = repo.work / DOCKERFILE
+    assert ["docker", "build", "--quiet", "--file", dockerfile.as_posix(),
+            dockerfile.parent.as_posix()] in docker.calls()
+
+
+def test_a_check_with_an_image_copies_exactly_the_files_git_does_not_ignore(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    writing(repo, ".gitignore", "ignored.txt")
+    committing(repo, "web/page.ts")
+    writing(repo, "ignored.txt")
+    writing(repo, "untracked.txt")
+    docker = FakeDocker(runner)
+
+    Suite(runner, repo.work).run()
+
+    assert docker.copied == sorted([".gitignore", "base.txt", DOCKERFILE, SUITE_FILE,
+                                    "untracked.txt", "web/page.ts"])
+
+
+def test_a_check_with_an_image_copies_uncommitted_work_as_it_is(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    writing(repo, "base.txt", "uncommitted")
+    docker = FakeDocker(runner)
+
+    Suite(runner, repo.work).run()
+
+    assert docker.contents["base.txt"] == "base\nuncommitted\n"
+
+
+def test_a_check_with_an_image_leaves_out_a_tracked_file_the_worktree_deleted(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    (repo.work / "base.txt").unlink()
+    docker = FakeDocker(runner)
+
+    Suite(runner, repo.work).run()
+
+    assert "base.txt" not in docker.copied
+
+
+def test_a_check_with_an_image_runs_its_command_in_the_container_from_its_folder(repo, runner):
+    given_a_suite_in_an_image(repo.work, "lint", "all", folder="web/app")
+    docker = FakeDocker(runner)
+
+    Suite(runner, repo.work).run()
+
+    assert docker.calls()[-4:] == [
+        ["docker", "create", "--workdir", "/repo/web/app", "the-image", "lint", "all"],
+        ["docker", "cp", "./.", "the-container:/repo"],
+        ["docker", "start", "--attach", "the-container"],
+        ["docker", "rm", "--force", "the-container"],
+    ]
+    assert not runner.started("lint")
+
+
+def test_a_check_with_an_image_at_the_repo_root_runs_from_the_copy_s_root(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner)
+
+    Suite(runner, repo.work).run()
+
+    assert ["docker", "create", "--workdir", "/repo", "the-image", "prove"] in docker.calls()
+
+
+def test_a_check_with_an_image_takes_the_outcome_and_the_output_of_its_container(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    FakeDocker(runner, says="a test failed\n", status=1)
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.ready
+    assert not outcome.passed
+    assert "a test failed\n" in outcome.said
+
+
+def test_a_red_container_is_still_removed(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner, status=1)
+
+    Suite(runner, repo.work).run()
+
+    assert docker.verbs()[-1] == "rm"
+
+
+def test_the_copy_is_gone_once_the_check_has_run(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner)
+
+    Suite(runner, repo.work).run()
+
+    assert docker.stage is not None
+    assert not docker.stage.exists()
+
+
+def test_an_image_that_does_not_build_is_a_red_check_that_starts_nothing(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner, builds=False)
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.ready
+    assert not outcome.passed
+    assert "no such base" in outcome.said
+    assert "create" not in docker.verbs()
+
+
+def test_a_check_with_an_image_is_not_ready_when_docker_does_not_answer(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner, answers=False)
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert not outcome.ready
+    assert not outcome.passed
+    assert "Docker does not answer" in outcome.said
+    assert DOCKERFILE in outcome.said
+    assert docker.verbs() == ["info"]
+
+
+def test_a_check_with_an_image_is_not_ready_when_docker_is_not_on_the_path(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    FakeDocker(runner)
+    runner.hide("docker")
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert not outcome.ready
+    assert "docker" in outcome.said
+    assert runner.calls == []
+
+
+def test_a_check_with_an_image_needs_its_program_in_the_image_and_not_on_the_host(repo, runner):
+    given_a_suite_in_an_image(repo.work, "prove")
+    FakeDocker(runner)
+    runner.hide("prove")
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.passed
+
+
+def test_docker_is_asked_once_however_many_checks_run_in_an_image(repo, runner):
+    given_a_dockerfile(repo.work)
+    write_suite(repo.work, check("prove", image=DOCKERFILE), check("lint", image=DOCKERFILE))
+    # The fake reads the last call, which two checks running together would share.
+    runner.stub("docker", says="an-id\n")
+
+    Suite(runner, repo.work).run()
+
+    assert runner.calls.count(["docker", "info"]) == 1
+
+
+def test_a_suite_with_no_image_never_asks_docker(tmp_path, runner):
+    write_suite(tmp_path, check("prove"))
+    given_every_program_passes(runner)
+    docker = FakeDocker(runner)
+
+    Suite(runner, tmp_path).run()
+
+    assert docker.calls() == []
+
+
+def test_an_image_that_is_not_a_file_in_the_repo_makes_the_suite_file_unreadable(tmp_path, runner):
+    given_a_dockerfile(tmp_path)
+    for image in ("docs/agents/missing.Dockerfile", "docs/agents", "", 3, ["x"]):
+        given_a_suite_file_reading(tmp_path, json.dumps(
+            {"checks": [{"command": ["prove"], "folder": ".", "image": image}]}))
+        FakeDocker(runner)
+
+        outcome = Suite(runner, tmp_path).run()
+
+        assert not outcome.ready, image
+        assert SUITE_FILE in outcome.said, image
+    assert runner.calls == []
+
+
+def test_this_repo_s_suite_file_runs_once():
+    assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 1
 
 
 def test_the_loop_docs_say_the_checks_run_together():
@@ -664,45 +910,32 @@ def this_repo_s_facts():
     return facts
 
 
-SCRIPT_TESTS = "tests/plugins/skillworks/scripts"
-
-PREFLIGHT_TEST = f"{SCRIPT_TESTS}/skillworks-preflight_test.py"
-
-
-# pytest itself collects, so a conftest hook that overrides --ignore is caught.
-def script_tests_run_by(command):
-    words = command[command.index("pytest", command.index("pytest") + 1) + 1:]
-    collected = subprocess.run([sys.executable, "-m", "pytest", *words, "--collect-only", "-q"],
-                               cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    return {line.split("::")[0].replace("\\", "/") for line in collected.splitlines() if "::" in line}
+def pytest_checks():
+    return [entry for entry in this_repo_s_checks() if "pytest" in entry["command"]]
 
 
-def test_this_repo_s_pytest_checks_run_every_script_test_once():
-    runs = [script_tests_run_by(entry["command"]) for entry in this_repo_s_checks()
-            if "pytest" in entry["command"]]
-    every = script_tests_run_by(["uv", "run", "--with", "pytest", "pytest", SCRIPT_TESTS])
+# On Windows every git and bash process the script tests start is slow to start, and in Linux it is not.
+def test_this_repo_s_script_tests_are_one_check_with_parallel_workers_in_the_linux_image():
+    scripts = pytest_checks()
 
-    assert PREFLIGHT_TEST in every
-    assert sorted(test for run in runs for test in run) == sorted(every)
+    assert len(scripts) == 1
+    assert scripts[0]["command"] == SCRIPT_TESTS_COMMAND
+    assert scripts[0]["image"] == SCRIPT_TESTS_IMAGE
+    assert (ROOT / SCRIPT_TESTS_IMAGE).is_file()
 
 
-def test_this_repo_s_preflight_tests_wake_only_for_the_preflight_and_its_support():
-    preflight = [entry for entry in this_repo_s_checks() if PREFLIGHT_TEST in entry["command"]]
+def test_this_repo_s_script_test_image_holds_what_the_script_tests_start():
+    text = (ROOT / SCRIPT_TESTS_IMAGE).read_text(encoding="utf-8")
 
-    assert len(preflight) == 1
-    assert sorted(preflight[0]["when"]) == sorted([
-        "plugins/skillworks/scripts/skillworks-preflight.sh",
-        "plugins/skillworks/bin/skillworks-preflight",
-        PREFLIGHT_TEST,
-        f"{SCRIPT_TESTS}/conftest.py",
-    ])
-    assert all((ROOT / path).is_file() for path in preflight[0]["when"])
+    # bash comes with the Debian base, so only a Debian base is asked for.
+    assert re.search(r"^FROM python:\S+-bookworm$", text, re.MULTILINE)
+    for program in ("/uv", "/usr/local/bin/node", "install --yes --no-install-recommends git"):
+        assert program in text, program
 
 
 # The script tests read these repo files as well as their own code, so a Studio change sleeps through them.
 def test_this_repo_s_script_tests_wake_for_the_plugin_their_tests_and_the_docs_they_read():
-    scripts = [entry for entry in this_repo_s_checks()
-               if "pytest" in entry["command"] and PREFLIGHT_TEST not in entry["command"]]
+    scripts = pytest_checks()
 
     assert len(scripts) == 1
     assert sorted(scripts[0]["when"]) == sorted([
@@ -716,13 +949,14 @@ def test_this_repo_s_script_tests_wake_for_the_plugin_their_tests_and_the_docs_t
     assert all((ROOT / path).exists() for path in scripts[0]["when"])
 
 
-def test_the_readme_lists_every_check_of_this_repo_s_suite():
-    text = (ROOT / "README.md").read_text(encoding="utf-8")
-    checks = text[text.index("### Checks"):].split("```")[1].replace('"', "")
+def test_the_readme_and_claude_md_list_every_check_of_this_repo_s_suite():
+    assert len(this_repo_s_checks()) == 6
+    for doc in ("README.md", "CLAUDE.md"):
+        text = (ROOT / doc).read_text(encoding="utf-8")
+        checks = text[text.index("### Checks"):].split("```")[1].replace('"', "")
 
-    assert len(this_repo_s_checks()) == 7
-    for entry in this_repo_s_checks():
-        assert " ".join(entry["command"]) in checks, entry["command"]
+        for entry in this_repo_s_checks():
+            assert " ".join(entry["command"]) in checks, (doc, entry["command"])
 
 
 def test_the_review_skills_run_the_placement_checks_and_not_the_suite_file():

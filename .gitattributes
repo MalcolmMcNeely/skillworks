@@ -1,2 +1,4 @@
 # A launcher bash reads with a carriage return in it fails on the first line.
 plugins/skillworks/bin/* text eol=lf
+# The same, for a script the Suite copies into a Linux image.
+*.sh text eol=lf

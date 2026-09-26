@@ -159,7 +159,8 @@ was.
 A flake is not a red suite either. A Session handed a failure it cannot reproduce may weaken a test
 or edit code that was never broken, so a repo whose tests flake sets `runs` in its Suite file, and
 `suite` runs a red Suite that many times before anything acts on it. With no `runs`, a red Suite is
-believed on its first run. The container-backed Span tests flake here, so this repo sets `runs` to 2.
+believed on its first run. A second run never turned a red Suite green here, so this repo sets `runs`
+to 1.
 A later run that passes carries the loop on to `finish`. A run that passes is never run again, so the
 cost is paid only when something went red. The log numbers each run, and every run's output is kept
 in the step's record, so a flake is read afterwards rather than inferred.

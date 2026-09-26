@@ -1,5 +1,5 @@
 {
-  "runs": 2,
+  "runs": 1,
   "checks": [
     {
       "command": ["dotnet", "test", "Skillworks.slnx"],
@@ -10,9 +10,10 @@
       }
     },
     {
-      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts",
-                  "--ignore=tests/plugins/skillworks/scripts/skillworks-preflight_test.py"],
+      "command": ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "pytest", "-n", "auto",
+                  "tests/plugins/skillworks/scripts"],
       "folder": ".",
+      "image": "docs/agents/script-tests.Dockerfile",
       "when": [
         "plugins/skillworks",
         "tests/plugins/skillworks/scripts",
@@ -20,16 +21,6 @@
         "docs/agentic-development",
         "docs/usage",
         "README.md"
-      ]
-    },
-    {
-      "command": ["uv", "run", "--with", "pytest", "pytest", "tests/plugins/skillworks/scripts/skillworks-preflight_test.py"],
-      "folder": ".",
-      "when": [
-        "plugins/skillworks/scripts/skillworks-preflight.sh",
-        "plugins/skillworks/bin/skillworks-preflight",
-        "tests/plugins/skillworks/scripts/skillworks-preflight_test.py",
-        "tests/plugins/skillworks/scripts/conftest.py"
       ]
     },
     {

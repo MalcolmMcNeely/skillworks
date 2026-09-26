@@ -119,8 +119,7 @@ they use the local tools and not anything installed globally.
 ```
 dotnet test Skillworks.slnx
 
-uv run --with pytest pytest tests/plugins/skillworks/scripts --ignore=tests/plugins/skillworks/scripts/skillworks-preflight_test.py
-uv run --with pytest pytest tests/plugins/skillworks/scripts/skillworks-preflight_test.py
+uv run --with pytest --with pytest-xdist pytest -n auto tests/plugins/skillworks/scripts
 
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
@@ -132,7 +131,9 @@ npm test
 
 The loop runs the same checks from `docs/agents/suite.json`. A new check goes in both places.
 [docs/usage/suite.md](docs/usage/suite.md) says how the loop runs them. This repo's Suite file sets
-`runs` to 2, because the container-backed Span tests flake here.
+`runs` to 1, because a second run never turned a red Suite green here. The loop runs the script
+tests in the Linux image `docs/agents/script-tests.Dockerfile`, because on Windows each git and bash
+process they start is slow to start. Run by hand, the command above runs them on your own machine.
 
 #### The script tests
 
