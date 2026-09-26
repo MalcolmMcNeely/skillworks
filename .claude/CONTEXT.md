@@ -7,9 +7,9 @@ under, and the scripts that drive it.
 ## Language
 
 **Clean**:
-A worktree git reports nothing uncommitted in. A Kept job is Clean when its branch carries only the
-commits the job had already made, and the driver reads the same fact of a finishing worktree before
-it lets a step pass. One word, because a job that stopped and a job that finished are asked the same
+A worktree git reports nothing uncommitted in. A Kept job is Clean when its Job branch carries only
+the commits the job had already made, and the driver reads the same fact of a finishing worktree
+before it lets a step pass. One word, because a job that stopped and a job that finished are asked the same
 question.
 _Avoid_: Pristine, unmodified
 
@@ -35,21 +35,26 @@ _Avoid_: Record, change, diff
 
 **Held**:
 A worktree that had uncommitted work in it when the run stopped. A Keep commits that work to the
-job's branch before the worktree goes, so Held says the branch carries work that reached no commit of
-the job's own. Held is the case a Keep exists for, and Clean is the other one.
+Job branch before the worktree goes, so Held says the Job branch carries work that reached no
+commit of the job's own. Held is the case a Keep exists for, and Clean is the other one.
 _Avoid_: Dirty, unsaved
 
 **Keep**:
 What the loop does to the worktree group a stopped run left behind. Each job's uncommitted work is
-committed, its branch is renamed out of the way so the job can be opened again, and the worktree
+committed, its Job branch is renamed out of the way so the job can be opened again, and the worktree
 goes. A Keep discards nothing, which is what lets one command restart a stopped run. Closing is its
-opposite: a job that passed has its worktree and its branch both removed.
+opposite: a job that passed has its worktree and its Job branch both removed.
 _Avoid_: Stash, salvage
 
+**Job branch**:
+The branch one job works on in its own worktree, cut from the newest Target branch. It goes with the
+worktree when the job passes. A Keep renames it out of the way, and it is still a Job branch after.
+_Avoid_: Ticket branch, work branch, feature branch
+
 **Land**:
-A finished ticket reaching `main`. The driver rebases the ticket's worktree onto the newest `main`,
-proves the work survived and the suite is green, then pushes. A ticket Lands on its own, the moment
-it passes, so a stopped run leaves every ticket before it already on the remote.
+A finished ticket reaching its Target branch. The driver rebases the Job branch onto the newest
+Target branch, proves the work survived and the suite is green, then pushes. A ticket Lands on its
+own, the moment it passes, so a stopped run leaves every ticket before it already on the remote.
 _Avoid_: Integrate, integration
 
 **Load**:
@@ -98,9 +103,14 @@ team says what green means for its own code. A Suite ends one of two ways that a
 went red, and the ticket goes round again, or the machine was not ready to run it, and the loop stops.
 _Avoid_: Test run, pipeline, CI
 
+**Target branch**:
+The branch a ticket Lands on. It is `main` for a team that pushes straight to it. For a team that
+reviews each spec as one pull request, it is that spec's own branch.
+_Avoid_: Runway, trunk, base branch
+
 **Turn**:
-The right to push to `main`, held by one loop at a time in one clone. A loop that lost a push race
-waits for its Turn and holds it until it Lands, so the loops beside it cannot beat it again. A loop
+The right to push to the Target branch, held by one loop at a time in one clone. A loop that lost a
+push race waits for its Turn and holds it until it Lands, so the loops beside it cannot beat it again. A loop
 that has not lost takes its Turn only for the push. A Turn orders the loops of one clone and no
 others: a push from anywhere else can still beat it, and the loop tries again.
 _Avoid_: Lock, mutex, queue
