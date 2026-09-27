@@ -1268,6 +1268,75 @@ def test_the_setup_page_explains_the_credit_question_and_both_answers():
     assert "Setup never writes `.claude/settings.local.json`." in credit
 
 
+ARCHITECTURE_TESTS = SKILLS / "architecture-tests"
+
+
+def architecture_reference():
+    return (ARCHITECTURE_TESTS / "REFERENCE.md").read_text(encoding="utf-8")
+
+
+def seed_rules(text):
+    numbered = re.findall(r"^\d+\. \*\*(.+?)\*\*", text, re.MULTILINE)
+    settings = re.findall(r"```yaml\n(.*?)```", text, re.DOTALL)[0]
+    keys = re.findall(r"^\"?([a-z][a-z-]*)\"?:", settings, re.MULTILINE)
+    return numbered + ["`{}`".format(key) for key in keys]
+
+
+def reference_rows(reference, seed):
+    section = reference.split("\n## `{}`\n".format(seed), 1)
+    if len(section) < 2:
+        return []
+    table = [line for line in section[1].split("\n## ", 1)[0].splitlines() if line.startswith("|")]
+    return [[cell.strip() for cell in line.strip().strip("|").split("|")] for line in table[2:]]
+
+
+def unmapped(seed, text, reference):
+    firsts = [row[0] for row in reference_rows(reference, seed)]
+    return [rule for rule in seed_rules(text) if not any(rule in first for first in firsts)]
+
+
+def test_the_architecture_tests_reference_maps_every_rule_in_the_seeds():
+    reference = architecture_reference()
+
+    for rule in RULES:
+        assert seed_rules(seeded(rule)), rule
+        assert unmapped(rule, seeded(rule), reference) == [], rule
+
+
+def test_a_rule_added_to_a_seed_without_a_line_in_the_reference_is_caught():
+    reference = architecture_reference()
+    added = seeded("file-placement.md").replace(
+        "8. **A new job", "9. **A Slice holds no cycle.** Nothing loops back.\n8. **A new job").replace(
+        "test-roots: {}\n", "test-roots: {}\nmax-depth: 4\n")
+
+    assert unmapped("file-placement.md", added, reference) == ["A Slice holds no cycle.", "`max-depth`"]
+
+
+def test_every_line_of_the_reference_names_a_tool_or_a_starter_test():
+    reference = architecture_reference()
+
+    for rule in RULES:
+        rows = reference_rows(reference, rule)
+        assert rows, rule
+        for row in rows:
+            assert len(row) == 5, row
+            assert any(cell not in ("", "—") for cell in row[1:]), row
+
+
+def test_the_architecture_tests_skill_can_be_invoked_by_the_model_and_states_the_method():
+    text = skill_text("architecture-tests")
+
+    assert "name: architecture-tests\n" in text
+    assert "disable-model-invocation" not in text
+    assert "(REFERENCE.md)" in text
+    assert "/skillworks:tdd" in text
+    for place in [WHERE["suite.json"], WHERE["placement-checks.md"], ".claude/settings.json", "docs/agents/rules/"]:
+        assert "`{}`".format(place) in text, place
+    assert "`ignores`" in text
+    assert "`when`" not in text
+    assert "never quietly weakened" in text
+
+
 def test_implement_reads_the_suite_from_the_suite_file():
     text = (SKILLS / "implement" / "SKILL.md").read_text(encoding="utf-8")
 
