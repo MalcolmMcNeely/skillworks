@@ -103,7 +103,12 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         var children = window with { Parents = ids };
 
         // To the end of the day, as the trace store files a Span by when it arrived, which can be after the instant read up to.
-        var tracing = traces.OfPeriodAsync(from, DaySpan.Of(DayOf(asOf)).UntilUtc, cancellationToken);
+        // Named, so a busy period costs the trace store no more than the rows loaded.
+        var tracing = traces.OfSessionsAsync(
+            works.SelectMany(work => work.Members),
+            from,
+            DaySpan.Of(DayOf(asOf)).UntilUtc,
+            cancellationToken);
 
         // The gate: issued ahead of the Measures, because Loki runs four queries at a time.
         var placing = events.CountAsync(own, ByWhereabouts, cancellationToken);
@@ -169,7 +174,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
     }
 
     // Full when the Parent or any one Child is, as the row stands for the whole piece of work.
-    // A read that fell short names no run it did not reach, so only withheld words still say Thin without it.
+    // A store that could not be read names no run, so only withheld words still say Thin without it.
     private static Depth? DepthOf(IEnumerable<string> members, TracedSessions traced, IReadOnlySet<string> withheld)
     {
         string[] named = [.. members];
@@ -179,7 +184,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             return Depth.Full;
         }
 
-        return !traced.FellShort || named.All(withheld.Contains) ? Depth.Thin : null;
+        return traced.Unreachable is null || named.All(withheld.Contains) ? Depth.Thin : null;
     }
 
     // Newest first, until fifty pieces of work are held, so a busy week costs no more to read than a quiet one.

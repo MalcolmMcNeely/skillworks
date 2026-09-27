@@ -110,25 +110,13 @@ public sealed record Gap(GapKind Kind, string? Missing)
     }
 
     // A store that holds nothing is a true answer, as a run it says nothing about is Thin.
-    internal static Gap OfDepths(string? unreachable, bool shortened)
-    {
-        var (kind, missing) = (unreachable, shortened) switch
-        {
-            ({ } reason, _) => (
+    internal static Gap OfDepths(string? unreachable) =>
+        unreachable is { } reason
+            ? new Gap(
                 GapKind.Unreachable,
                 $"Studio could not read the trace store: {reason} Which runs can be read in full is not " +
-                "known, so their Depth shows a dash."),
-
-            (_, true) => (
-                GapKind.Shortened,
-                "The trace store held more runs for these days than one read takes, so whether the runs it " +
-                "left out can be read in full is not known, and their Depth shows a dash."),
-
-            _ => (GapKind.Complete, (string?)null),
-        };
-
-        return new Gap(kind, missing);
-    }
+                "known, so their Depth shows a dash.")
+            : new Gap(GapKind.Complete, null);
 
     // A reader hands over a whole sentence, ended, because the Health page stands the same words alone.
     private static string Unread(string reason, string missing) =>

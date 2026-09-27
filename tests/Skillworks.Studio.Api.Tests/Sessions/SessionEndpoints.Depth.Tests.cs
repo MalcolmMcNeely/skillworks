@@ -104,21 +104,47 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_a_dash_only_where_half_an_answer_of_depths_could_not_say()
+    public async Task Reads_every_depth_in_days_that_hold_more_traced_runs_than_one_read_names()
     {
-        // One of the two runs the store holds spans for, so its answer fills up and cuts the rest.
         using var studio = new StudioHost(mostSessions: 1);
 
         await EachHalfOfDepthRan(studio);
 
+        // Traced runs with no row, so a read of every run the days hold would fill up and cut the rows' own.
+        foreach (var unlisted in Enumerable.Range(1, 3))
+        {
+            await studio.PushSpans(
+                Numbered(700 + unlisted),
+                $"7a1c0a9e0000400080000000000007{unlisted:D2}",
+                Traced($"c11c0a9e000007{unlisted:D2}"));
+        }
+
         var answer = await studio.SessionAnswer();
 
-        // A run the store left out of half an answer could still be Full, so it reads as a dash and never as Thin.
         Assert.Equal(3, answer.Sessions.Count);
+        Assert.Equal("full", answer.Depths[Morning]);
         Assert.Equal("thin", answer.Depths[Afternoon]);
-        Assert.False(answer.Depths.ContainsKey(Evening));
-        Assert.Equal("shortened", answer.Gap.Kind);
-        Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
+        Assert.Equal("thin", answer.Depths[Evening]);
+        Assert.Equal("complete", answer.Gap.Kind);
+    }
+
+    [Fact]
+    public async Task Reads_the_depth_of_the_rows_a_later_read_loaded()
+    {
+        using var studio = new StudioHost(mostSessions: 1);
+
+        var traced = Numbered(RowsPerRead);
+        var untraced = Numbered(RowsPerRead + 1);
+
+        await studio.Push(Asked(RowsPerRead + 2));
+        await studio.PushSpans(traced, MorningTrace, Traced(MorningSpan));
+
+        var second = await studio.LaterSessionAnswer(await studio.SessionAnswer());
+
+        Assert.Equal([traced, untraced], second.Sessions.Select(session => session.Id));
+        Assert.Equal("full", second.Depths[traced]);
+        Assert.Equal("thin", second.Depths[untraced]);
+        Assert.DoesNotContain("trace store", second.Gap.Missing ?? "", StringComparison.Ordinal);
     }
 
     [Fact]

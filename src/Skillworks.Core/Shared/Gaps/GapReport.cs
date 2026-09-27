@@ -25,7 +25,7 @@ public sealed class GapReport(TelemetrySwitch telemetry)
     public Gap InSpans(SessionSpans read) =>
         Gap.OfSpans(read.Unreachable, read.Shortened, read.Spans.Count, telemetry.TracesOn());
 
-    public Gap InDepths(TracedSessions read) => Gap.OfDepths(read.Unreachable, read.Shortened);
+    public Gap InDepths(TracedSessions read) => Gap.OfDepths(read.Unreachable);
 
     // The switch calls unreadable settings not emitting: safe for writing, but a lie on a screen.
     private bool? Emitting()

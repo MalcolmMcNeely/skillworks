@@ -2,11 +2,12 @@ using System.Globalization;
 using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 
 namespace Skillworks.Core.Shared.Stores.TraceStore;
 
-public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoOptions> options, TimeProvider clock)
+public sealed partial class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoOptions> options, TimeProvider clock)
 {
     public const string ClientName = "tempo";
 
@@ -76,35 +77,44 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
         return SessionSpans.Of([.. spans.OrderBy(span => span.Started)], shortened);
     }
 
-    // The values of one attribute, not a search: a period holds far more traces than a search hands back.
-    public async Task<TracedSessions> OfPeriodAsync(
+    // Named runs' values, not a period's or a search: a busy period outgrows one answer, and one run is hundreds of traces.
+    public async Task<TracedSessions> OfSessionsAsync(
+        IEnumerable<string> sessions,
         DateTimeOffset from,
         DateTimeOffset until,
         CancellationToken cancellationToken)
     {
-        var sessions = new HashSet<string>(StringComparer.Ordinal);
-        var most = Most(options.Value.MostSessions);
-        var shortened = false;
+        var traced = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var (start, end) in Windows(from, until))
+        foreach (var named in sessions.Where(session => session.Length > 0).Distinct(StringComparer.Ordinal)
+                     .Chunk(Most(options.Value.MostSessions)))
         {
-            var found = await AskAsync<IReadOnlyList<string>>(
-                Values(start, end, most),
-                Sessions,
-                [],
-                Tokens.PerRequest(cancellationToken));
-
-            if (found.Unreachable is not null)
+            foreach (var (start, end) in Windows(from, until))
             {
-                return TracedSessions.Failed(found.Unreachable);
+                string[] unfound = [.. named.Where(session => !traced.Contains(session))];
+
+                if (unfound.Length == 0)
+                {
+                    break;
+                }
+
+                // Asked for no more than it names, so an answer can never be cut short of one it holds.
+                var found = await AskAsync<IReadOnlyList<string>>(
+                    Values(Among(unfound), start, end, unfound.Length),
+                    Sessions,
+                    [],
+                    Tokens.PerRequest(cancellationToken));
+
+                if (found.Unreachable is not null)
+                {
+                    return TracedSessions.Failed(found.Unreachable);
+                }
+
+                traced.UnionWith(found.Value.Intersect(unfound, StringComparer.Ordinal));
             }
-
-            shortened |= Filled(found.Value.Count, most);
-
-            sessions.UnionWith(found.Value);
         }
 
-        return TracedSessions.Of(sessions, shortened);
+        return TracedSessions.Of(traced);
     }
 
     public async Task<TraceStoreAnswer> AnsweringAsync(CancellationToken cancellationToken)
@@ -156,8 +166,17 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
     private static string Search(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
         $"api/search?q={Uri.EscapeDataString(traceQl)}&{Window(from, until)}&limit={limit}";
 
-    private static string Values(DateTimeOffset from, DateTimeOffset until, int limit) =>
-        $"api/v2/search/tag/span.{SessionAttribute}/values?{Window(from, until)}&limit={limit}";
+    private static string Values(string traceQl, DateTimeOffset from, DateTimeOffset until, int limit) =>
+        $"api/v2/search/tag/span.{SessionAttribute}/values?q={Uri.EscapeDataString(traceQl)}&{Window(from, until)}&limit={limit}";
+
+    // Anchored, as a name inside a longer one would otherwise match it.
+    private static string Among(IEnumerable<string> sessions) =>
+        $"{{ span.{SessionAttribute} =~ {Quoted($"^(?:{string.Join('|', sessions.Select(Literal))})$")} }}";
+
+    private static string Literal(string value) => RegexSpecial().Replace(value, @"\$0");
+
+    [GeneratedRegex(@"[\\.+*?()|\[\]{}^$]")]
+    private static partial Regex RegexSpecial();
 
     // The store picks Batches by this window, so it bounds arrival and never the spans' own times.
     private static string Window(DateTimeOffset from, DateTimeOffset until) =>

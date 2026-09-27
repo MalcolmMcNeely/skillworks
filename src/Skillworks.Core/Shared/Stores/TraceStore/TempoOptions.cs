@@ -23,8 +23,8 @@ public sealed class TempoOptions
     // A long interactive Session is a few hundred traces, and the store's own default of 20 would cut it short.
     public int MostTraces { get; set; } = 1000;
 
-    // Well past a busy week, so a read that fills this up is one the reader has to be told about.
-    public int MostSessions { get; set; } = 1000;
+    // The runs one request names, as each name lengthens its address and a long address is refused.
+    public int MostSessions { get; set; } = 100;
 
     // Ends in a slash, or a relative route resolved against it drops the last path segment.
     public Uri ResolvedAddress()

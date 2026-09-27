@@ -25,8 +25,8 @@ public sealed partial class TraceStoreReaderTests
         var reader = Reader(Tenant(), requestPatienceSeconds: PatienceSeconds, store: stalling, clock: clock);
 
         // Act
-        // A period has no Patience over it as a whole, so a request's own is the only wait that can end this read.
-        var reading = reader.OfPeriodAsync(From, Until, CancellationToken.None);
+        // A read of many sessions has no Patience over it as a whole, so a request's own is the only wait that can end it.
+        var reading = reader.OfSessionsAsync([Session()], From, Until, CancellationToken.None);
 
         await stalling.Asked;
 
