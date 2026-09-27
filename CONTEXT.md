@@ -199,9 +199,8 @@ _Avoid_: Loading, pending, partial, streaming
 **Gate**:
 The reads a list waits for before it draws a row. They are the ones that decide which rows exist and
 what each is called, so a row is whole the moment it appears and never changes under the reader's
-hand. A Filter that decides which rows exist puts its read in the gate too, and so does the Measure
-a reader arrived sorted on, because the rows are drawn once and in that order. Every other read
-arrives behind the rows. A gate read that falls short leaves no rows to stand, so the table is empty
+hand. A Filter that decides which rows exist puts its read in the gate too. Every other read arrives
+behind the rows. A gate read that falls short leaves no rows to stand, so the table is empty
 with a Gap; a read behind the gate that falls short costs a Measure and no rows.
 _Avoid_: Barrier, blocker, first pass, critical path
 
@@ -254,7 +253,8 @@ _Avoid_: Reasoning level, thinking budget
 **Filter**:
 The one way every list narrows: a span of days, a Repository, a Skill and a Depth. The span is
 counted in whole UTC days and takes both ends in. With no span, a list covers the **lookback**, the
-last seven days, and says so. A Skill that never fired belongs in the unnarrowed answer, where its
+last seven days, and says so. The Sessions list is the one list no span narrows: it starts at now
+and reaches further back each time the reader asks for more. A Skill that never fired belongs in the unnarrowed answer, where its
 zero says the description may be broken; a filter that asks what happened in a chosen span or one
 Repository leaves it out, because it did not happen there.
 _Avoid_: Query, search, scope
