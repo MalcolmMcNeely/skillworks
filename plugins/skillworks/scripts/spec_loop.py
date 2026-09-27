@@ -414,7 +414,7 @@ class Loop:
         if self.green_suite is None:
             return ""
         return ("\n\n## The suite passed\n\nThe driver ran the whole suite and read the result, so "
-                "run no tests yourself. Name what follows in the closing comment: the checks that "
+                "run no tests yourself. Name what follows in the Closing note: the checks that "
                 "ran as what proved the work, and each check whose line says it did not run beside "
                 "the Proof it names, which an earlier pass on the same inputs made.\n\n{}\n").format(
                     self.green_suite.said.rstrip("\n"))

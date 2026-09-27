@@ -44,6 +44,7 @@ banned-words:
     - Split
   architecture:
     - Feature
-  loop: []
+  loop:
+    - Closing comment
 skip-folders: []
 ```

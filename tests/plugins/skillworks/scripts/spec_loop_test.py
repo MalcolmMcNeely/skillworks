@@ -1856,7 +1856,7 @@ def test_the_suite_runs_before_the_finishing_step(loop, runner):
     assert call_at(runner, SOLUTION) < call_at(runner, "/skillworks:implement 168 --finish")
 
 
-# A flake spends a run, and the run that proved the work is the one the closing comment names.
+# A flake spends a run, and the run that proved the work is the one the Closing note names.
 def test_the_finishing_step_is_handed_the_run_that_passed_and_not_the_one_that_failed(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop, runs=2)

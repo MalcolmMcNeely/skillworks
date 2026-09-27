@@ -26,7 +26,7 @@ The driver gathered the other side already and put it in this prompt:
 
 - the commits between this ticket's base and the newest Target branch on `origin`
 - the ticket number behind each of those commits
-- each of those tickets' closing comments, which name the files touched, the tests run, and the findings
+- each of those tickets' Closing notes, which name the files touched, the tests run, and the findings
   that agent chose not to fix with its reasons
 
 That is your reading, and it is complete. **Make no tracker calls.** Refusal rule 1 below only means

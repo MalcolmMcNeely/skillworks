@@ -21,7 +21,7 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 ## Process
 
 1. Read the spec in full, then every one of its tickets with how each was closed.
-   - **GitHub**: the spec issue, then its sub-issues with their closing comments.
+   - **GitHub**: the spec issue, then its sub-issues with their Closing notes.
    - **Files**: `spec.md` in the spec's folder on `origin/<target>`, then each file in its `tickets/` folder there, with its `## Closing note`. The remote is where the tickets Landed, and this checkout may not hold them.
 
 2. Get the accumulated diff. The tickets Landed on the remote, so read `origin/<target>`, and not the branch this checkout holds:

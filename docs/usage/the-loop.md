@@ -189,7 +189,7 @@ loop reads the files there and not in your checkout.
   branch. If the remote refuses the push, another loop moved first. The loop reads again, and claims
   the next free ticket. A lost push race is what stops two loops from taking one ticket.
 - **Closing a ticket.** `finish` sets `status: closed` and adds a `## Closing note` at the end of the
-  ticket file, in the same commit as the code. The note holds what a closing comment holds on
+  ticket file, in the same commit as the code. The note holds what the Closing note holds on
   GitHub: what was done, which tests prove it, and which checks did not run. The close reaches the
   remote only when the ticket Lands. So a ticket is never closed without its code.
 - **Closing the spec.** After the last ticket and the drift check, the loop sets `status: closed` in

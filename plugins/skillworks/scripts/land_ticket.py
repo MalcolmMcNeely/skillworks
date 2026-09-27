@@ -244,10 +244,10 @@ class Landing:
                                 "log", "--reverse", "--format=%h", base.out.strip() + "..HEAD"))
 
     # A tracker that will not answer says so, so the session is not left guessing.
-    def closing_comment(self, trailer):
+    def closing_note(self, trailer):
         body = self.tracker.closing_note(trailer)
         if body is None:
-            return ("(The tracker would not answer for {}, so its closing comment is "
+            return ("(The tracker would not answer for {}, so its Closing note is "
                     "missing.)".format(trailer))
         return body if body else "({} was closed with no comment.)".format(trailer)
 
@@ -265,7 +265,7 @@ class Landing:
                          "git show {}\n\n").format(sha, subject, sha)
                 continue
             said += "### {} {}, from ticket {}\n\nHow {} was closed:\n\n{}\n\n".format(
-                sha, subject, ticket, ticket, self.closing_comment(ticket))
+                sha, subject, ticket, ticket, self.closing_note(ticket))
         return said
 
     def resolve_prompt(self, base, conflicted):

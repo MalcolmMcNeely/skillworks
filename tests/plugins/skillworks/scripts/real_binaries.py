@@ -124,7 +124,7 @@ def driver_lines():
         landing = land_ticket.Landing(
             runner, folder, TICKET, SESSION, io.StringIO(), io.StringIO(), lambda seconds: None,
             "acceptEdits", tracker=loop.tracker)
-        landing.closing_comment(TICKET)
+        landing.closing_note(TICKET)
         loop.tracker.comment(TICKET, "The commits that reached main.")
         landing.resolve_call("/skillworks:resolve-conflict")
     return once(runner.made)

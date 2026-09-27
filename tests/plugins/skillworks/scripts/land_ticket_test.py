@@ -40,7 +40,7 @@ def master(tmp_path):
 
 
 # A fixed answer, so a case can tell what the script gathered from what it made up.
-CLOSING_COMMENT = "What that ticket set out to do."
+CLOSING_NOTE = "What that ticket set out to do."
 
 # git words a lost race one way when origin/main is stale, and the other when it is not.
 LOST_RACE_STALE = (
@@ -265,7 +265,7 @@ def given_the_suite_passes(runner):
 
 
 def given_the_tracker_answers(runner):
-    runner.stub("gh", says=CLOSING_COMMENT)
+    runner.stub("gh", says=CLOSING_NOTE)
 
 
 # A session reaches each conflicting file, so a case says what it does with one.
@@ -1046,7 +1046,7 @@ def test_a_conflict_is_handed_back_to_the_ticket_s_own_session(repo, runner):
     assert "Somebody else got there first" in handed
     # No answer gh gave holds the number, so only the commit message can have carried it.
     assert "#164" in handed
-    assert CLOSING_COMMENT in handed
+    assert CLOSING_NOTE in handed
     # Both sides of a hunk count, because the size is what has to be read to settle it.
     assert "conflict #166 files=1 hunks=1 lines=2 outcome=resolved" in report(ran)
     assert target_of(repo) == head_of(repo)
@@ -1210,7 +1210,7 @@ def test_a_conflict_with_no_session_named_is_left_standing(repo, runner):
     assert not runner.started("claude")
 
 
-def test_a_ticket_whose_closing_comment_cannot_be_read_is_still_named(repo, runner):
+def test_a_ticket_whose_closing_note_cannot_be_read_is_still_named(repo, runner):
     given_the_suite_passes(runner)
     runner.stub("gh", status=1)
     stub_session(repo, runner, staging(repo, "start\ntheir line\nmy line\n"))
