@@ -7,7 +7,7 @@ function Row({ row, lit, onPick }: { row: ToolRow; lit: boolean; onPick: (picked
     <li>
       <button
         type="button"
-        className={`tool-row${lit ? ' is-open' : ''}`}
+        className={`tool-row${lit ? ' is-lit' : ''}`}
         aria-pressed={lit}
         aria-label={`${row.tool}: ${describeCount(row.calls)} calls, ${describeCount(row.faults)} faults, ${describeCount(row.friction)} friction, ${describeLength(row.lengthMs)}`}
         onClick={() => onPick({ kind: 'tool', name: row.tool })}
