@@ -404,3 +404,9 @@ panel reads the whole run. The figures above the timeline always read the whole 
 are the verdict on the Session and hold still while a reader digs in. A reader meets it as **in view** and never by name, so nobody has to learn a word to read a
 figure.
 _Avoid_: Brush, stretch, range, selection, window
+
+**Highlight**:
+The Steps of one skill or one tool that a reader picked beneath the timeline, lit on it while the rest
+dim. A skill's Steps are the Turns attributed to it and the Tool calls they asked for. A Highlight
+narrows nothing: every figure still reads the View.
+_Avoid_: Filter, focus, selection
