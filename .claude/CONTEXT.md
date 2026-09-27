@@ -82,6 +82,12 @@ What the Plugin runs and no team edits: the skills, the scripts they drive, the 
 style. It runs from the Plugin, so every repo runs the same code and one update reaches them all.
 _Avoid_: Engine, tooling, framework
 
+**Name check**:
+The judge that reads a spec's whole diff against the glossary once the Gaps are built, and lists each
+name whose meaning moved and each concept that two tickets named two ways. The loop makes every
+rename it lists, in a ticket of its own, and never asks whether to.
+_Avoid_: Rename check, naming review, lint
+
 **Nudge**:
 What the driver sends to resume a Session whose step ended with work still owed. It names what is
 owed, so the Session carries on with its context rather than starting again. A Nudge answers a
