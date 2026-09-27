@@ -263,6 +263,18 @@ def test_a_repo_with_no_origin_stops_before_anything_is_written(repo, runner):
     assert not (repo.work / "docs").exists()
 
 
+def test_a_repo_with_no_origin_is_told_how_to_add_a_bare_one(repo, runner):
+    git(repo.work, "remote", "remove", "origin")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 1
+    assert "A bare repo on a shared drive is enough" in ran.err
+    assert "git init --bare <shared-drive>/<repo>.git\n" in ran.err
+    assert "git remote add origin <shared-drive>/<repo>.git\n" in ran.err
+    assert "git push origin main\n" in ran.err
+
+
 def test_every_seed_lands_under_docs_agents_and_the_rules_in_its_rules_folder(repo, runner):
     run_seed(runner, repo.work)
 
@@ -826,9 +838,42 @@ def test_the_allowlist_names_the_pull_request_commands_of_a_spec_target_branch()
         assert "Bash({}:*)".format(command) in allowed
 
 
+def test_setup_asks_for_the_tracker_and_suggests_one_from_the_remote():
+    step = setup_section("### 2. Ask for the Tracker")
+
+    assert "suggest `github`" in step
+    assert "`files`" in step
+    assert "github.com" in step
+    assert "`tracker`" in step
+    assert "`docs/agents/loop.json`" in step
+
+
+def test_setup_says_the_files_tracker_folder_is_committed_and_why():
+    step = setup_section("### 2. Ask for the Tracker")
+
+    assert "`.specs/`" in step
+    assert "cannot be gitignored" in step
+    assert "worktree" in step
+
+
+def test_setup_skips_the_github_steps_with_the_files_tracker():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+    step = setup_section("### 4. Preflight and labels")
+
+    assert "GitHub only" not in text
+    assert "With `files`, it needs no `gh` and creates no label." in step
+
+
+def test_setup_refuses_a_repo_with_no_remote_with_either_tracker():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "refuses a repo with no remote, with either Tracker" in text
+    assert "A bare repo on a shared drive is enough" in text
+
+
 def test_setup_asks_for_the_target_branch_and_never_requires_main():
     text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
-    step = setup_section("### 2. Ask for the Target branch")
+    step = setup_section("### 3. Ask for the Target branch")
 
     assert "suggest the remote's default branch" in step
     assert "Offer one other answer: `spec`." in step
@@ -942,7 +987,7 @@ def setup_section(heading):
 
 
 def test_the_claude_md_pointer_imports_each_rule():
-    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 4. Point CLAUDE.md at the docs"), re.DOTALL)
+    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 5. Point CLAUDE.md at the docs"), re.DOTALL)
 
     assert len(pointer) == 1
     lines = pointer[0].splitlines()
@@ -951,7 +996,7 @@ def test_the_claude_md_pointer_imports_each_rule():
 
 
 def test_the_report_names_the_folder_each_steering_file_lives_in():
-    report = setup_section("### 6. Report")
+    report = setup_section("### 7. Report")
 
     assert "`docs/agents/rules/`" in report
     assert "`docs/agents/`" in report
@@ -1026,7 +1071,7 @@ USAGE_FRONT_PAGE = "https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/
 
 
 def test_the_report_ends_with_a_link_to_the_usage_front_page():
-    last = setup_section("### 6. Report").strip().splitlines()[-1]
+    last = setup_section("### 7. Report").strip().splitlines()[-1]
 
     assert "]({})".format(USAGE_FRONT_PAGE) in last
     assert (ROOT / USAGE_FRONT_PAGE.split("/blob/main/", 1)[1]).is_file()

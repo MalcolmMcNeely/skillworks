@@ -1,6 +1,6 @@
 ---
 name: skillworks-setup
-description: Configure a repo for the Skillworks dev loop — GitHub labels, the Steering the skills read (rules, tracker docs, review baselines, a starting Suite file), the CLAUDE.md pointer, the Plugin and the permission allowlist the loop needs to run unattended, and auto-memory off. Run once per repo.
+description: Configure a repo for the Skillworks dev loop — the Tracker, GitHub labels with the github Tracker, the Steering the skills read (rules, tracker docs, review baselines, a starting Suite file), the CLAUDE.md pointer, the Plugin and the permission allowlist the loop needs to run unattended, and auto-memory off. Run once per repo.
 disable-model-invocation: true
 ---
 
@@ -10,18 +10,20 @@ Write the Steering the Skillworks skills read, and the settings the loop needs. 
 
 The Plugin carries the Machinery: the skills, the scripts, the hooks and the output style. They run from the Plugin, so setup copies none of them. Steering is what the repo tells the loop about itself. Setup copies a starting version of each piece, and the team owns it from then on. A Plugin update never changes it by itself. A second run of setup brings in the newer seed and keeps the team's edits.
 
-Skillworks is **GitHub only**. There is no tracker question, because there is no other answer. If a repo tracks work somewhere else, it cannot run this loop.
+The Tracker is where the team keeps its specs and tickets: `github`, for GitHub Issues, or `files`, for committed files in `.specs/` on any remote. Setup asks which one.
+
+Setup refuses a repo with no remote, with either Tracker. The loop Lands every ticket by pushing to `origin`. A bare repo on a shared drive is enough, and `seed-steering` prints the commands that add one.
 
 The outputs:
 
 | Output | Why it exists |
 |---|---|
-| The `ready-for-agent` label | `/skillworks:to-spec` and `/skillworks:to-tickets` apply it, and `gh issue create` fails on a label that does not exist. Nothing in the loop reads it. |
+| The `ready-for-agent` label, with `github` only | `/skillworks:to-spec` and `/skillworks:to-tickets` apply it, and `gh issue create` fails on a label that does not exist. Nothing in the loop reads it. |
 | `docs/agents/rules/*.md` | The four rules: comments, determinism, file placement and words. The review axes read them. Their settings start empty, so nothing is judged until the team fills them in. |
 | `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. |
 | `docs/agents/placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md` | What the review axes judge against. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
-| `docs/agents/loop.json` | The loop's settings. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. |
+| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. |
 | `.gitignore` lines | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. They are per machine and never shared. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
@@ -78,9 +80,24 @@ Give the `--keep` and `--settled` choices in one run when both are due. A choice
 
 The user reviews every changed file before they commit. Setup commits nothing.
 
-Expect a permission prompt here on a first run. The allowlist that would clear it is written in step 5, which has not happened yet.
+Expect a permission prompt here on a first run. The allowlist that would clear it is written in step 6, which has not happened yet.
 
-### 2. Ask for the Target branch
+If it stops because the repo has no `origin` remote, stop setup and show the user the commands it printed. Setup refuses a repo with no remote, with either Tracker. A bare repo on a shared drive is enough.
+
+### 2. Ask for the Tracker
+
+The Tracker is where the team keeps its specs and tickets. Ask the team which one it uses, and offer two answers:
+
+- `github`: GitHub Issues, driven by `gh`. A spec is a parent issue, and its tickets are its sub-issues.
+- `files`: committed Markdown files in `.specs/`, one folder per spec and one file per ticket. It works on any remote: GitLab, Bitbucket, or a bare repo on a shared drive. It needs no `gh`.
+
+Read `git remote get-url origin`. When it names `github.com`, suggest `github`. Otherwise suggest `files`. So the common answer is one keypress. If `tracker` in `docs/agents/loop.json` already names another value, a team's answer from an earlier run, suggest that one instead.
+
+Write the answer into `tracker` in `docs/agents/loop.json`, and change no other key.
+
+With `files`, tell the team that `.specs/` is committed and cannot be gitignored. Each job builds in a worktree of its own, and a worktree cannot see a gitignored folder. A ticket that its job cannot see cannot be built or closed.
+
+### 3. Ask for the Target branch
 
 The Target branch is the branch the loop Lands each ticket on. Ask the team which one it is, and suggest the remote's default branch, so the common answer is one keypress. `seed-steering` has already written that branch into `docs/agents/loop.json`. If `target-branch` there names another value, a team's answer from an earlier run, suggest that one instead.
 
@@ -88,19 +105,23 @@ Offer one other answer: `spec`. With `spec`, each spec gets a branch of its own,
 
 Write the answer into `target-branch` in `docs/agents/loop.json`, and change no other key.
 
-### 3. Preflight and labels
+### 4. Preflight and labels
 
 ```bash
 skillworks-preflight
 ```
 
-It checks `gh`, the login, that `origin` is GitHub, and the Target branch that `docs/agents/loop.json` names. A branch name must be on the remote and must take a direct push from this login. With `spec`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It warns, and does not fail, when another enabled plugin also forces an output style. It creates only what is missing and never overwrites an existing label. Safe to run again.
+It reads the Tracker and the Target branch from `docs/agents/loop.json`. It warns, and does not fail, when another enabled plugin also forces an output style. Safe to run again.
 
-It runs after the Target branch is written, because it reads `loop.json`. Expect a permission prompt here too on a first run.
+With `github`, it checks `gh`, the login, that `origin` is GitHub, and the Target branch. A branch name must be on the remote and must take a direct push from this login. With `spec`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label.
 
-If it fails, stop and report. Every step below assumes the repo is a GitHub clone with a working `gh`, and the script is what proves that.
+With `files`, it needs no `gh` and creates no label. It checks that `origin` exists and holds the Target branch, or with `spec`, the remote's default branch.
 
-### 4. Point CLAUDE.md at the docs
+It runs after the Tracker and the Target branch are written, because it reads `loop.json`. Expect a permission prompt here too on a first run.
+
+If it fails, stop and report. Every step below assumes the remote works, and with `github` a working `gh`, and the script is what proves that.
+
+### 5. Point CLAUDE.md at the docs
 
 Add this block to `CLAUDE.md`. Create the file if it is missing. If the block is already there, update it in place — never append a second copy. Leave every other section alone.
 
@@ -131,11 +152,13 @@ The rules load into every session through these imports. Each one lives in `docs
 
 The imports are what load the rules, so keep one for each file in `docs/agents/rules/`. An import path is relative to `CLAUDE.md`.
 
+With `files`, write the Issue tracker line as: committed files in `.specs/`, one folder per spec and one file per ticket. See `docs/agents/issue-tracker.md`, under The files Tracker.
+
 If the repo has `CONTEXT-MAP.md`, write the Domain docs line as multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context.
 
 If the repo has `AGENTS.md` and no `CLAUDE.md`, edit `AGENTS.md` instead. Never create the one that is missing when the other exists.
 
-### 5. Write the settings
+### 6. Write the settings
 
 Copy [settings.json](./settings.json) to `.claude/settings.json`. The Marketplace `path` in it is a placeholder. Write the folder that holds this Plugin's `.claude-plugin/marketplace.json`, which is three folders above this skill's base directory. Write it relative to the repo root, starting `./`, when it sits inside the repo, and in full otherwise.
 
@@ -158,7 +181,7 @@ Leave `.claude/settings.local.json` alone. Do not read it and do not change it. 
 
 Write nothing under `~/.claude`.
 
-### 6. Report
+### 7. Report
 
 Say what was written and what was kept. Say where each Steering file lives:
 

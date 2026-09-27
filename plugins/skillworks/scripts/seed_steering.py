@@ -73,6 +73,14 @@ def write(path, text):
 
 
 def default_branch(runner, top):
+    if runner.run(["git", "-C", str(top), "remote", "get-url", "origin"]).status != 0:
+        current = runner.run(["git", "-C", str(top), "branch", "--show-current"]).out.strip() or "<branch>"
+        raise refusal("no 'origin' remote. The loop lands every ticket by pushing to it, with either Tracker. "
+                      "A bare repo on a shared drive is enough:\n"
+                      "  git init --bare <shared-drive>/<repo>.git\n"
+                      "  git remote add origin <shared-drive>/<repo>.git\n"
+                      "  git push origin {}\n"
+                      "Nothing was written.".format(current))
     found = runner.run(["git", "-C", str(top), "ls-remote", "--symref", "origin", "HEAD"])
     for line in found.out.splitlines() if found.status == 0 else []:
         if line.startswith("ref: refs/heads/") and line.endswith("\tHEAD"):
