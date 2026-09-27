@@ -1195,7 +1195,7 @@ def test_this_repo_s_suite_file_runs_once():
 
 
 def test_the_loop_docs_say_the_checks_run_together():
-    for doc in ("docs/agentic-development/agentic-loop.md", "docs/usage/suite.md"):
+    for doc in ("docs/usage/the-loop.md", "docs/usage/suite.md"):
         text = " ".join((ROOT / doc).read_text(encoding="utf-8").split())
         assert "the checks run together" in text, doc
 
@@ -1204,7 +1204,7 @@ SUITE_PAGE = "docs/usage/suite.md"
 
 
 def test_the_loop_docs_and_the_setup_docs_say_a_check_names_what_it_ignores():
-    for doc in ("docs/agentic-development/agentic-loop.md", SUITE_PAGE,
+    for doc in ("docs/usage/the-loop.md", SUITE_PAGE,
                 "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
         text = (ROOT / doc).read_text(encoding="utf-8")
         assert "`ignores`" in text, doc
@@ -1212,7 +1212,7 @@ def test_the_loop_docs_and_the_setup_docs_say_a_check_names_what_it_ignores():
 
 
 def test_only_the_suite_page_names_when_and_only_to_say_it_is_turned_down():
-    for doc in ("docs/agentic-development/agentic-loop.md",
+    for doc in ("docs/usage/the-loop.md",
                 "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
         assert "`when`" not in (ROOT / doc).read_text(encoding="utf-8"), doc
 

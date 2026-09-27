@@ -202,8 +202,7 @@ background.
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
 | `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |
 | `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
-| `docs/usage/` | How a team uses Skillworks, for a human reading it rather than a skill. |
-| `docs/agentic-development/` | How the dev loop works, for a human reading it rather than a skill. |
+| `docs/usage/` | How a team uses Skillworks, and how the loop works, for a human reading it rather than a skill. |
 | `docs/studio/` | How Studio gets its telemetry. |
 
 The top folder under a code root is a Slice, named for a job Studio does, with `Shared` beside the
@@ -241,8 +240,7 @@ Two stages, and two commands. A human drives the first. A script drives the seco
 /skillworks:spec-loop <spec#>      build it, ticket by ticket, unattended
 ```
 
-[docs/agentic-development/agentic-loop.md](docs/agentic-development/agentic-loop.md) explains what
-each one does.
+[docs/usage/](docs/usage/) explains what each one does.
 
 Lost? `/skillworks:what-next` looks at where you are and tells you which skill fits.
 

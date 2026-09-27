@@ -2088,8 +2088,8 @@ def test_an_unknown_argument_still_prints_the_usage(loop, flags):
     assert ran.err == spec_loop.USAGE
 
 
-def test_the_agentic_loop_document_names_the_bypass_flag():
-    text = (ROOT / "docs/agentic-development/agentic-loop.md").read_text(encoding="utf-8")
+def test_the_loop_page_names_the_bypass_flag():
+    text = (ROOT / "docs/usage/the-loop.md").read_text(encoding="utf-8")
 
     assert "--bypass" in text
 
@@ -2396,7 +2396,7 @@ def test_a_ticket_is_claimed_and_read_back_after_a_wait(loop, runner):
 
 # An ADR records what was decided on a day, so it keeps its old list and is not held here.
 LIVE_DOCUMENTS = (
-    "docs/agentic-development/agentic-loop.md",
+    "docs/usage/the-loop.md",
     "plugins/skillworks/skills/what-next/SKILL.md",
 )
 

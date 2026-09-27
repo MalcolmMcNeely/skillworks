@@ -14,4 +14,5 @@ edits them.
 
 | Page | What it covers |
 |---|---|
+| [The loop](the-loop.md) | How a design becomes code: the grill, the spec, the tickets, the steps of one ticket, Landing, what happens when a step fails, the full run and the drift check. |
 | [The Suite](suite.md) | The Suite file: the checks that decide green for your repo, and how the loop runs them. |
