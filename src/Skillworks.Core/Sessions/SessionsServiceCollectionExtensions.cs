@@ -15,7 +15,6 @@ public static class SessionsServiceCollectionExtensions
         services.AddSingleton<SessionQueries>();
         services.AddSingleton<StepQueries>();
         services.AddSingleton<AgentQueries>();
-        services.AddSingleton<DepthQueries>();
 
         services.AddSingleton<SessionReport>();
         services.AddSingleton<StepReport>();

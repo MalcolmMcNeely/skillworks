@@ -117,13 +117,12 @@ public sealed record Gap(GapKind Kind, string? Missing)
             ({ } reason, _) => (
                 GapKind.Unreachable,
                 $"Studio could not read the trace store: {reason} Which runs can be read in full is not " +
-                "known, so the table is not narrowed by it."),
+                "known, so their Depth shows a dash."),
 
             (_, true) => (
                 GapKind.Shortened,
-                "The trace store held more runs for this period than one read takes, so which runs can be " +
-                "read in full is not known and the table is not narrowed by it. Ask for fewer days, so the " +
-                "whole of the answer fits one read."),
+                "The trace store held more runs for these days than one read takes, so whether the runs it " +
+                "left out can be read in full is not known, and their Depth shows a dash."),
 
             _ => (GapKind.Complete, (string?)null),
         };

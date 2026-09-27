@@ -1,11 +1,11 @@
-using Skillworks.Core.Sessions.Measures;
+using Skillworks.Core.Sessions.DepthColumn;
 using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 
-public sealed partial class SessionQueries(EventsStoreReader events, DepthQueries depths)
+public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreReader traces)
 {
     private const string TitleEvent = "assistant_response";
 
@@ -68,14 +68,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
                 return SessionsRead.Failed(unasked, 0);
             }
 
-            return new SessionsRead(
-                null,
-                [],
-                AsyncEnumerable.Empty<MeasureLanding>(),
-                linesRead,
-                null,
-                quietSince,
-                TracedSessions.Unasked);
+            return SessionsRead.Empty(linesRead, quietSince);
         }
 
         var from = heard.Works.Min(work => work.Place) - ParentReach;
@@ -110,7 +103,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         var children = window with { Parents = ids };
 
         // To the end of the day, as the trace store files a Span by when it arrived, which can be after the instant read up to.
-        var tracing = depths.OfPeriodAsync(from, DaySpan.Of(DayOf(asOf)).UntilUtc, filter, cancellationToken);
+        var tracing = traces.OfPeriodAsync(from, DaySpan.Of(DayOf(asOf)).UntilUtc, cancellationToken);
 
         // The gate: issued ahead of the Measures, because Loki runs four queries at a time.
         var placing = events.CountAsync(own, ByWhereabouts, cancellationToken);
@@ -132,23 +125,61 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
             await titling,
             await prompting);
 
-        var traced = await tracing;
-
         if (gate.Unreachable is { } unreachable)
         {
-            return SessionsRead.Failed(unreachable, heard.LinesRead) with { Traced = traced };
+            return SessionsRead.Failed(unreachable, heard.LinesRead);
         }
 
-        var rows = Rows(gate, works, filter, traced, heard.Withheld, asOf);
+        var rows = Rows(gate, works, asOf);
+
+        // Taken from the reads that place and name a run, so the words half of a Depth costs no question of its own.
+        var withheld = new HashSet<string>(heard.Withheld, StringComparer.Ordinal);
+        withheld.UnionWith(gate.Prompted.Lines.Where(Withheld).Select(line => line.Attribute(EventAttributes.Session)!));
 
         return new SessionsRead(
             null,
             rows,
             LandingAsync(measuring.Values, rows, cancellationToken),
+            DepthsAsync(tracing, works, rows, withheld),
             heard.LinesRead,
             quietSince is null ? works[^1].Place : null,
-            quietSince,
-            traced);
+            quietSince);
+    }
+
+    // Behind the rows, so a slow trace store never holds back a table the events store has already answered.
+    private static async Task<DepthLanding?> DepthsAsync(
+        Task<TracedSessions> tracing,
+        IReadOnlyList<Work> works,
+        IReadOnlyList<SessionRow> rows,
+        IReadOnlySet<string> withheld)
+    {
+        var traced = await tracing;
+        var members = works.ToDictionary(work => work.Id, work => work.Members, StringComparer.Ordinal);
+        var depths = new Dictionary<string, Depth>(StringComparer.Ordinal);
+
+        foreach (var row in rows)
+        {
+            if (DepthOf(members[row.Id], traced, withheld) is { } depth)
+            {
+                depths[row.Id] = depth;
+            }
+        }
+
+        return new DepthLanding(depths, traced);
+    }
+
+    // Full when the Parent or any one Child is, as the row stands for the whole piece of work.
+    // A read that fell short names no run it did not reach, so only withheld words still say Thin without it.
+    private static Depth? DepthOf(IEnumerable<string> members, TracedSessions traced, IReadOnlySet<string> withheld)
+    {
+        string[] named = [.. members];
+
+        if (named.Any(member => Depths.Of(traced.Sessions.Contains(member), withheld.Contains(member)) == Depth.Full))
+        {
+            return Depth.Full;
+        }
+
+        return !traced.FellShort || named.All(withheld.Contains) ? Depth.Thin : null;
     }
 
     // Newest first, until fifty pieces of work are held, so a busy week costs no more to read than a quiet one.
@@ -319,23 +350,13 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
             : events.CountAsync(window with { Sessions = named }, BySession, cancellationToken);
     }
 
-    private static IReadOnlyList<SessionRow> Rows(
-        Gate gate,
-        IReadOnlyList<Work> works,
-        Filter filter,
-        TracedSessions traced,
-        IReadOnlySet<string> withheldHeard,
-        DateTimeOffset asOf)
+    private static IReadOnlyList<SessionRow> Rows(Gate gate, IReadOnlyList<Work> works, DateTimeOffset asOf)
     {
         var firstEvent = MomentsOf(gate.Started, EventAttributes.Session);
         var lastEvent = MomentsOf(gate.Ended, EventAttributes.Session);
         var childrenEnded = MomentsOf(gate.ChildrenEnded, EventAttributes.Parent);
         var titles = WordsOf(gate.Titled, EventAttributes.Response);
         var prompts = FirstPrompts(gate.Prompted);
-
-        // Taken from the reads that place and name a run, so the words half of a Depth costs no question of its own.
-        var withheld = new HashSet<string>(withheldHeard, StringComparer.Ordinal);
-        withheld.UnionWith(gate.Prompted.Lines.Where(Withheld).Select(line => line.Attribute(EventAttributes.Session)!));
 
         var placed = Grouped(gate.Placed.Groups, EventAttributes.Session).ToDictionary(run => run.Key);
 
@@ -349,17 +370,6 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
             }
 
             IReadOnlyList<EventTotal> run = placed.TryGetValue(work.Id, out var said) ? [.. said] : [];
-
-            // A Depth is met when the Parent or any one Child meets it, as the row stands for the whole piece of work.
-            var kept =
-                // Narrowing by a read that fell short would hide runs nobody asked to hide.
-                traced.FellShort || work.Members.Any(member =>
-                    filter.Covers(Depths.Of(traced.Sessions.Contains(member), withheld.Contains(member))));
-
-            if (!kept)
-            {
-                continue;
-            }
 
             // A Parent sits idle while its Children work, so its own last event would read the work as finished.
             var workEnded = childrenEnded.TryGetValue(work.Id, out var childEnded) && childEnded > ended ? childEnded : ended;

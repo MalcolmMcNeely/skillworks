@@ -183,10 +183,9 @@ public sealed partial class SessionEndpointsTests
 
         await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
-        var answer = await studio.SessionAnswer("?depth=full");
+        var answer = await studio.SessionAnswer();
 
-        // A table nobody narrowed says nothing about itself, so dropping its sentence for a column of
-        // dashes would leave a reader trusting rows they never asked to see.
+        // Two columns of dashes, and one Gap to explain them, so neither store goes unnamed.
         Assert.Equal("unreachable", answer.Gap.Kind);
         Assert.Contains("trace store", answer.Gap.Missing ?? "", StringComparison.Ordinal);
         Assert.Contains("Cost", answer.Gap.Missing ?? "", StringComparison.Ordinal);

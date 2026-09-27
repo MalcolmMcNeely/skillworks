@@ -9,6 +9,8 @@ public sealed record SessionsAnswer(
     SessionsHeadRow Head,
     IReadOnlyList<SessionRow> Sessions,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, decimal>> Measures,
+    // Empty when no line of Depths came, so a row it names nothing for reads as a dash either way.
+    IReadOnlyDictionary<string, string> Depths,
     GapRow Gap,
     DateTimeOffset? NextBeforeUtc,
     DateTimeOffset? QuietSinceUtc)
@@ -35,6 +37,10 @@ public sealed record SessionsAnswer(
                     line => (string?)line["measure"] ?? "",
                     line => StudioHost.Read<IReadOnlyDictionary<string, decimal>>(line["values"]),
                     StringComparer.Ordinal),
+            lines
+                .Where(line => StudioHost.KindOf(line) == "depths")
+                .Select(line => StudioHost.Read<IReadOnlyDictionary<string, string>>(line["depths"]))
+                .SingleOrDefault() ?? new Dictionary<string, string>(),
             StudioHost.Read<GapRow>(end["gap"]),
             end["nextBeforeUtc"]?.GetValue<DateTimeOffset>(),
             end["quietSinceUtc"]?.GetValue<DateTimeOffset>());

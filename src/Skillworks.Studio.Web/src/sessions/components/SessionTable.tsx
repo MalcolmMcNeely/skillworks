@@ -16,13 +16,14 @@ import {
   rowParams,
   sessionHeadings,
   type DrawnSession,
+  type Landing,
   type ReadOnState,
-  type Measured,
   type SessionsAnswer,
 } from '../lib/sessions';
+import { describeDepth } from '../lib/timeline/agents';
 
 // Blank and busy, as the rail and the Map already say a figure is on its way that way.
-function Cell({ measured, describe }: { measured: Measured; describe: (value: number) => string }) {
+function Cell<T>({ measured, describe }: { measured: Landing<T>; describe: (value: T) => string }) {
   if (measured.state === 'landed') {
     return <td className="session-figure">{describe(measured.value)}</td>;
   }
@@ -35,7 +36,7 @@ function Cell({ measured, describe }: { measured: Measured; describe: (value: nu
 }
 
 function Row({ row, filter }: { row: DrawnSession; filter: Filter }) {
-  const { session, measures } = row;
+  const { session, measures, depth } = row;
 
   return (
     <tr>
@@ -47,6 +48,7 @@ function Row({ row, filter }: { row: DrawnSession; filter: Filter }) {
         {session.running ? <span className="session-running">Running</span> : null}
       </td>
       <td className="session-figure">{describeRunLength(session.lengthMs)}</td>
+      <Cell measured={depth} describe={describeDepth} />
       <Cell measured={measures.toolCalls} describe={describeCount} />
       <Cell measured={measures.cost} describe={describeMoney} />
       <Cell measured={measures.faults} describe={describeCount} />

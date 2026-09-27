@@ -2,11 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { ChosenSkill } from '../../shared/filters/components/ChosenSkill';
 import { RepositoryPicker } from '../../shared/filters/components/RepositoryPicker';
-import { depthKeyOf, depthKeys } from '../../shared/filters/lib/depthKeys';
 import { everything, filterParams, readFilter, type Filter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { describeFetchFailure } from '../../shared/wire/lib/errors';
-import { Keys } from '../../shared/keys/components/Keys';
 import { UpButton } from '../../shared/pages/components/UpButton';
 import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page } from '../../shared/pages/lib/pages';
@@ -109,12 +107,6 @@ export function Sessions() {
           span={everything}
           repository={filter.repository}
           onChange={(repository) => show({ ...filter, repository })}
-        />
-        <Keys
-          label="Depth"
-          pressed={depthKeyOf(filter)}
-          options={depthKeys}
-          onPress={(depth) => show({ ...filter, depth })}
         />
       </section>
 

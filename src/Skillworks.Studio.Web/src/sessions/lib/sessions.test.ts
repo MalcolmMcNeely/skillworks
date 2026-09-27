@@ -59,6 +59,10 @@ function cell(answer: SessionsAnswer, measure: MeasureName, id: string = run.id)
   return answer.rows.find((row) => row.session.id === id)?.measures[measure];
 }
 
+function depthOf(answer: SessionsAnswer, id: string = run.id) {
+  return answer.rows.find((row) => row.session.id === id)?.depth;
+}
+
 function withMeasures(answer: SessionsAnswer, ...measures: MeasureName[]): SessionsAnswer {
   return measures.reduce(
     (folded, measure) => foldSessionsLine(folded, { kind: 'measure', measure, values: {} }),
@@ -194,6 +198,48 @@ describe('the Measures on a folded answer', () => {
 
     expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 0 });
     expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
+  });
+});
+
+describe('the Depth on a folded answer', () => {
+  it('leaves the Depth of a fresh row arriving, so a cell nobody has read yet is blank', () => {
+    expect(depthOf(withRows(run))).toEqual({ state: 'arriving' });
+  });
+
+  it('lands each Depth the line of Depths names on its row', () => {
+    const answer = foldSessionsLine(withRows(run, other), {
+      kind: 'depths',
+      depths: { [run.id]: 'full', [other.id]: 'thin' },
+    });
+
+    expect(depthOf(answer)).toEqual({ state: 'landed', value: 'full' });
+    expect(depthOf(answer, other.id)).toEqual({ state: 'landed', value: 'thin' });
+  });
+
+  it('reads a row the line of Depths does not name as a dash, never as Thin', () => {
+    const answer = foldSessionsLine(withRows(run, other), { kind: 'depths', depths: { [run.id]: 'full' } });
+
+    expect(depthOf(answer, other.id)).toEqual({ state: 'fellShort' });
+  });
+
+  it('reads a Depth that never came as a dash once the answer ends', () => {
+    expect(depthOf(foldSessionsLine(withRows(run), endOn(null)))).toEqual({ state: 'fellShort' });
+  });
+
+  it('lands a later line of Depths on the new rows alone, so a row held from before keeps its own', () => {
+    const first = foldSessionsLine(
+      foldSessionsLine(withRows(run), { kind: 'depths', depths: { [run.id]: 'full' } }),
+      endOn(nextBefore),
+    );
+    const drawn = foldSessionsLine(foldSessionsLine(first, head), { kind: 'sessions', sessions: [other] });
+    const answer = foldSessionsLine(drawn, { kind: 'depths', depths: { [other.id]: 'thin' } });
+
+    expect(depthOf(answer)).toEqual({ state: 'landed', value: 'full' });
+    expect(depthOf(answer, other.id)).toEqual({ state: 'landed', value: 'thin' });
+  });
+
+  it('stays arriving through its line of Depths, as only the end line says the answer is whole', () => {
+    expect(foldSessionsLine(withRows(run), { kind: 'depths', depths: {} }).arriving).toBe(true);
   });
 });
 
@@ -405,6 +451,7 @@ describe('sessionHeadings', () => {
       'Person',
       'Session',
       'Length',
+      'Depth',
       'Tool calls',
       'Cost',
       'Faults',
@@ -453,14 +500,8 @@ describe('describeNoSessions', () => {
     expect(describeNoSessions(everything)).toBe('No runs in the last 30 days.');
   });
 
-  it('says a list narrowed by a Repository, a Skill or a Depth matched nothing, never reading as a blank page', () => {
+  it('says a list narrowed by a Repository or a Skill matched nothing, never reading as a blank page', () => {
     expect(describeNoSessions({ ...everything, repository: 'acme/nu' })).toBe('No runs match this filter.');
     expect(describeNoSessions({ ...everything, skill: 'tdd' })).toBe('No runs match this filter.');
-    expect(describeNoSessions({ ...everything, depth: 'full' })).toBe('No runs match this filter.');
-  });
-
-  it('calls a quiet list quiet when the address bar names a Depth nobody has', () => {
-    // The API lists both depths for a Depth it cannot read, so nothing was narrowed away.
-    expect(describeNoSessions({ ...everything, depth: 'deep' })).toBe('No runs in the last 30 days.');
   });
 });

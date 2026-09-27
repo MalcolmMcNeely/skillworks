@@ -1,7 +1,8 @@
 import type { SymbolTable } from '../../shared/alphabets/lib/alphabets';
-import { narrowsByDepth } from '../../shared/filters/lib/depthKeys';
 import { filterParams, type Filter } from '../../shared/filters/lib/filters';
 import type { Gap, GapEnd } from '../../shared/gaps/lib/gaps';
+
+export type Depth = 'thin' | 'full';
 
 interface SessionOutline {
   id: string;
@@ -34,14 +35,17 @@ export interface Session extends SessionOutline {
 
 export type MeasureName = 'toolCalls' | 'cost' | 'faults' | 'friction';
 
-export type Measured =
-  | { state: 'landed'; value: number }
+export type Landing<T> =
+  | { state: 'landed'; value: T }
   | { state: 'arriving' }
   | { state: 'fellShort' };
+
+export type Measured = Landing<number>;
 
 export interface DrawnSession {
   session: SessionRow;
   measures: Record<MeasureName, Measured>;
+  depth: Landing<Depth>;
 }
 
 export const measureWords = {
@@ -59,6 +63,7 @@ export const sessionHeadings: readonly string[] = [
   'Person',
   'Session',
   'Length',
+  'Depth',
   'Tool calls',
   'Cost',
   'Faults',
@@ -82,6 +87,12 @@ export interface SessionsMeasure {
   values: Record<string, number>;
 }
 
+export interface SessionsDepths {
+  kind: 'depths';
+  // A row this does not name has a Depth nobody could read, which is a dash and never Thin.
+  depths: Record<string, Depth>;
+}
+
 // At most one of the two: a read either stopped at a place or ran out of Prompts at the end of its 30 days.
 export interface SessionsEnd extends GapEnd {
   // The place of the oldest row read, so the next read starts where this one stopped.
@@ -90,7 +101,7 @@ export interface SessionsEnd extends GapEnd {
   quietSinceUtc: string | null;
 }
 
-export type SessionsLine = SessionsHead | SessionsPage | SessionsMeasure | SessionsEnd;
+export type SessionsLine = SessionsHead | SessionsPage | SessionsMeasure | SessionsDepths | SessionsEnd;
 
 export interface SessionsAnswer {
   asOfUtc: string;
@@ -113,9 +124,9 @@ export interface SessionsPlace {
 
 export type ReadOnState = 'hidden' | 'ready' | 'arriving';
 
-const arriving: Measured = { state: 'arriving' };
+const arriving = { state: 'arriving' } as const;
 
-const fellShort: Measured = { state: 'fellShort' };
+const fellShort = { state: 'fellShort' } as const;
 
 const unread: Record<MeasureName, Measured> = {
   toolCalls: arriving,
@@ -147,13 +158,20 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
   if (line.kind === 'sessions') {
     return {
       ...answer,
-      rows: [...answer.rows.slice(0, answer.held), ...line.sessions.map((session) => ({ session, measures: unread }))],
+      rows: [
+        ...answer.rows.slice(0, answer.held),
+        ...line.sessions.map((session) => ({ session, measures: unread, depth: arriving })),
+      ],
       landed: true,
     };
   }
 
   if (line.kind === 'measure') {
     return { ...answer, rows: inRead(answer, (row) => landedIn(row, line)) };
+  }
+
+  if (line.kind === 'depths') {
+    return { ...answer, rows: inRead(answer, (row) => ({ ...row, depth: depthIn(row, line) })) };
   }
 
   // A store that did not answer brought no place, so the one the read started from stays for the next click.
@@ -216,7 +234,13 @@ function landedIn(row: DrawnSession, line: SessionsMeasure): DrawnSession {
   return { ...row, measures: { ...row.measures, [line.measure]: { state: 'landed', value } } };
 }
 
-// Nothing comes after the end line, so a Measure still blank is one the store could not read.
+function depthIn(row: DrawnSession, line: SessionsDepths): Landing<Depth> {
+  const value = line.depths[row.session.id];
+
+  return value === undefined ? fellShort : { state: 'landed', value };
+}
+
+// Nothing comes after the end line, so a Measure or a Depth still blank is one the store could not read.
 function settled(row: DrawnSession): DrawnSession {
   return {
     ...row,
@@ -226,11 +250,12 @@ function settled(row: DrawnSession): DrawnSession {
       faults: read(row.measures.faults),
       friction: read(row.measures.friction),
     },
+    depth: read(row.depth),
   };
 }
 
-function read(measured: Measured): Measured {
-  return measured.state === 'arriving' ? fellShort : measured;
+function read<T>(landing: Landing<T>): Landing<T> {
+  return landing.state === 'arriving' ? fellShort : landing;
 }
 
 // No span narrows the list, so a span an old link still carries is left off the question.
@@ -271,7 +296,7 @@ export function describeStarted(startedUtc: string): string {
 
 // One read looks 30 days back, so an empty list with nothing narrowed says that much and no more.
 export function describeNoSessions(filter: Filter): string {
-  const narrowed = filter.repository !== '' || filter.skill !== '' || narrowsByDepth(filter);
+  const narrowed = filter.repository !== '' || filter.skill !== '';
 
   return narrowed ? 'No runs match this filter.' : 'No runs in the last 30 days.';
 }

@@ -13,17 +13,20 @@ public sealed partial class SessionEndpointsTests
     private const string Evening = "8f1c0a9e-0000-4000-8000-000000000003";
 
     [Fact]
-    public async Task Answers_with_a_head_then_the_sessions_then_the_measures_then_an_end()
+    public async Task Answers_with_a_head_then_the_sessions_then_the_measures_and_the_depths_then_an_end()
     {
         using var studio = new StudioHost();
 
         await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
-        var lines = await studio.SessionLines();
+        var kinds = (await studio.SessionLines()).Select(StudioHost.KindOf).ToList();
 
+        // Each line behind the rows lands when its read does, so only their number is fixed.
+        Assert.Equal(["head", "sessions"], kinds.Take(2));
         Assert.Equal(
-            ["head", "sessions", "measure", "measure", "measure", "measure", "end"],
-            lines.Select(StudioHost.KindOf));
+            ["depths", "measure", "measure", "measure", "measure"],
+            kinds.Skip(2).SkipLast(1).Order(StringComparer.Ordinal));
+        Assert.Equal("end", kinds[^1]);
     }
 
     [Fact]
@@ -46,6 +49,7 @@ public sealed partial class SessionEndpointsTests
         var head = await studio.SessionLine("head");
         var page = await studio.SessionLine("sessions");
         var measure = await studio.SessionLine("measure");
+        var depths = await studio.SessionLine("depths");
 
         var end = await studio.SessionLine("end");
 
@@ -57,6 +61,7 @@ public sealed partial class SessionEndpointsTests
             StudioHost.Fields(page["sessions"]?[0]));
 
         Assert.Equal(["kind", "measure", "values"], StudioHost.Fields(measure));
+        Assert.Equal(["depths", "kind"], StudioHost.Fields(depths));
 
         Assert.Equal(["gap", "kind", "nextBeforeUtc", "quietSinceUtc"], StudioHost.Fields(end));
     }

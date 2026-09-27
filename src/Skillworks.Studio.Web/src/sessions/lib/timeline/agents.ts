@@ -1,7 +1,5 @@
 import type { Gap, GapKind, Signal } from '../../../shared/gaps/lib/gaps';
-import { notKnown } from '../sessions';
-
-export type Depth = 'thin' | 'full';
+import { notKnown, type Depth } from '../sessions';
 
 export interface Subagent {
   id: string;

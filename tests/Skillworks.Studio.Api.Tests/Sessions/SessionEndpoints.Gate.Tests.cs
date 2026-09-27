@@ -42,13 +42,16 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")));
 
-        var lines = await studio.SessionLines(count: 5);
+        var lines = await studio.SessionLines(count: 6);
 
         // Nothing ready waited on Cost, and no line was held back to buy a fixed order.
-        Assert.Equal(["head", "sessions", "measure", "measure", "measure"], lines.Select(StudioHost.KindOf));
+        Assert.Equal(["head", "sessions"], lines.Take(2).Select(StudioHost.KindOf));
+        Assert.Equal(
+            ["depths", "measure", "measure", "measure"],
+            lines.Skip(2).Select(StudioHost.KindOf).Order(StringComparer.Ordinal));
         Assert.Equal(
             ["faults", "friction", "toolCalls"],
-            lines.Skip(2).Select(line => (string?)line["measure"]).Order(StringComparer.Ordinal));
+            lines.Skip(2).Select(line => (string?)line["measure"]).OfType<string>().Order(StringComparer.Ordinal));
 
         await StillOut(events, TurnRead);
     }

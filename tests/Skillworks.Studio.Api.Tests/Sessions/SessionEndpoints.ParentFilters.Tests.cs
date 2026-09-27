@@ -39,7 +39,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Keeps_a_parents_row_for_a_depth_only_a_child_matches()
+    public async Task Reads_a_parents_row_as_full_when_only_a_child_can_be_read_in_full()
     {
         using var studio = new StudioHost();
 
@@ -49,9 +49,10 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Titled(Afternoon, At(Yesterday, "09:05:00.000"), "The build step") with { Parent = Morning });
         await studio.PushSpans(Afternoon, AfternoonTrace, Traced(AfternoonSpan));
 
-        var session = Assert.Single(await studio.SessionsIn("?depth=full"));
+        var answer = await studio.SessionAnswer();
 
-        Assert.Equal(Morning, session.Id);
+        Assert.Equal(Morning, Assert.Single(answer.Sessions).Id);
+        Assert.Equal("full", answer.Depths[Morning]);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Skillworks.Core.Sessions.DepthColumn;
 using Skillworks.Core.Shared.Arriving;
 using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Gaps;
@@ -9,6 +10,8 @@ namespace Skillworks.Core.Sessions;
 
 public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeProvider clock)
 {
+    private static readonly Gap NothingMissing = new(GapKind.Complete, null);
+
     // One page of rows, not a day at a time: a Session cut at midnight would read as two halves.
     // A span on the Filter is left unread, as no span narrows this list and an old link must still open it.
     public async IAsyncEnumerable<ArrivingLine> AnswerAsync(
@@ -26,15 +29,45 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
 
         var read = await sessions.ListAsync(asOf, beforeUtc, filter, cancellationToken);
         var fellShort = new List<MeasureLanding>();
+        DepthLanding? depths = null;
 
-        // Every row is the events store's answer, so a trace store that fell short leaves them standing.
         if (read.Unreachable is null)
         {
             yield return new SessionsPage(read.Rows);
 
             // Behind the rows, so a reader has the table in hand before a single number reaches it.
-            await foreach (var landing in read.Measures.WithCancellation(cancellationToken))
+            // Each is sent the moment it lands, so a Depth ready first never waits on a Measure still out.
+            await using var measures = read.Measures.GetAsyncEnumerator(cancellationToken);
+
+            var measuring = measures.MoveNextAsync().AsTask();
+            var depthing = read.Depths;
+            List<Task> pending = [measuring, depthing];
+
+            while (pending.Count > 0)
             {
+                var landed = await Task.WhenAny(pending);
+
+                pending.Remove(landed);
+
+                if (landed == depthing)
+                {
+                    depths = await depthing;
+
+                    if (depths is not null)
+                    {
+                        yield return new SessionDepths(depths.Depths);
+                    }
+
+                    continue;
+                }
+
+                if (!await measuring)
+                {
+                    continue;
+                }
+
+                var landing = measures.Current;
+
                 if (landing.Unreachable is null)
                 {
                     yield return new SessionMeasure(landing.Measure, landing.Values);
@@ -43,6 +76,9 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
                 {
                     fellShort.Add(landing);
                 }
+
+                measuring = measures.MoveNextAsync().AsTask();
+                pending.Add(measuring);
             }
         }
 
@@ -50,7 +86,8 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
             gaps.InRows(read.Unreachable, read.LinesRead),
             // Only where rows stand, as a Measure with no row to sit on leaves no column of dashes to explain.
             Missed(read.Rows.Count > 0 ? fellShort : []),
-            gaps.InDepths(read.Traced));
+            // Only where a row was left a dash, as a store that fell short but named every row lost nothing.
+            depths is not null && depths.Depths.Count < read.Rows.Count ? gaps.InDepths(depths.Traced) : NothingMissing);
 
         yield return new SessionsEnd(gap, read.NextBeforeUtc, read.QuietSinceUtc);
     }
@@ -65,9 +102,8 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
             [.. named.Select(landing => MeasureHeading.Of(landing.Measure))]);
     }
 
-    // The bigger loss is named first: no rows at all, then a table nobody narrowed, then columns of dashes.
-    // A table nobody narrowed says nothing about itself, so its sentence never gives way to one about
-    // dashes a reader can already see.
+    // No rows at all is the bigger loss, and beside it a column of dashes goes unsaid.
+    // Two columns of dashes are both named, as each comes from a store of its own.
     private static Gap Shown(Gap events, Gap measures, Gap depths)
     {
         if (events.Kind == GapKind.Unreachable)
@@ -75,11 +111,12 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
             return events;
         }
 
-        if (depths.Kind != GapKind.Complete)
+        return (measures.Kind, depths.Kind) switch
         {
-            return measures.Kind == GapKind.Complete ? depths : Gap.Beside(depths, measures);
-        }
-
-        return measures.Kind == GapKind.Complete ? events : measures;
+            (GapKind.Complete, GapKind.Complete) => events,
+            (_, GapKind.Complete) => measures,
+            (GapKind.Complete, _) => depths,
+            _ => Gap.Beside(measures, depths),
+        };
     }
 }
