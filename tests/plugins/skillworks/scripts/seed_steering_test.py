@@ -432,11 +432,11 @@ def unnamed_steering(page, folder):
                   if path.is_file() and "`{}`".format(path.name) not in page)
 
 
-def test_the_steering_page_names_every_file_in_docs_agents():
+# The page is for a team's repo, so it names what setup writes there and not this repo's own files.
+def test_the_steering_page_names_every_file_setup_seeds():
     page = STEERING_PAGE.read_text(encoding="utf-8")
 
-    assert all((ROOT / where).is_file() for where in WHERE.values())
-    assert unnamed_steering(page, ROOT / "docs" / "agents") == []
+    assert unnamed_steering(page, seed_steering.SEEDS) == []
 
 
 def test_a_steering_file_the_page_does_not_name_is_caught(tmp_path):
