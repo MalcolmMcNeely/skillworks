@@ -37,8 +37,10 @@ export function skillRowsOf(
   marks: readonly Mark[],
   spells: readonly ActivationSpell[],
   view: Spell | null,
+  // An open Subagent's Activations cannot be told apart, so the count stays the whole run's, View and all.
+  wholeRun = false,
 ): SkillRow[] {
-  const shownSpells = madeIn(spells, view);
+  const shownSpells = wholeRun ? spells : madeIn(spells, view);
   const shown = inSpell(marks, view);
   const callsKnown = shown.every(({ step }) => !isToolCall(step) || step.skillKnown);
   const rows = new Map<string, SkillRow>();

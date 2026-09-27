@@ -137,6 +137,18 @@ describe('skillRowsOf', () => {
     expect(rows.map((row) => [row.label, row.activations, row.turns, row.cost])).toEqual([['tdd', 2, 1, 0.25]]);
   });
 
+  it("counts the whole run's Activations while a Subagent is open, whatever the View", () => {
+    const marks = marksOf([
+      step('1', '09:00:00', { skill: 'tdd' }),
+      step('2', '09:06:00', { skill: 'tdd' }),
+    ]);
+    const spells = activationSpellsOf([activation('a', 'tdd', '09:00:00'), activation('b', 'tdd', '09:06:00')]);
+
+    const rows = skillRowsOf(ranByOne(marks, { '2': 'agent-1' }, 'agent-1'), spells, [at('09:05:00'), at('09:10:00')], true);
+
+    expect(rows[0].activations).toBe(2);
+  });
+
   it('reads Tool calls as not known in a Session with no Spans, and puts no call under No skill', () => {
     const rows = skillRowsOf(
       marksOf([

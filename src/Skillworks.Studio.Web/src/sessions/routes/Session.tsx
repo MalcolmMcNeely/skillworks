@@ -111,7 +111,11 @@ export function Session() {
     [viewFrom, viewTo],
   );
   const tools = useMemo(() => toolRowsOf(drawn, shownView), [drawn, shownView]);
-  const skills = useMemo(() => skillRowsOf(drawn, activationSpells, shownView), [drawn, activationSpells, shownView]);
+  const subagentOpen = where.agent !== null;
+  const skills = useMemo(
+    () => skillRowsOf(drawn, activationSpells, shownView, subagentOpen),
+    [drawn, activationSpells, shownView, subagentOpen],
+  );
   const viewCost = useMemo(() => costIn(drawn, shownView), [drawn, shownView]);
   const lit = useMemo(() => {
     const shown = highlightOf(litKey);
@@ -227,7 +231,7 @@ export function Session() {
               cost={viewCost}
               tools={tools}
               view={view}
-              subagentOpen={where.agent !== null}
+              subagentOpen={subagentOpen}
               selected={where.step}
               highlight={highlight}
               onOpen={open}
