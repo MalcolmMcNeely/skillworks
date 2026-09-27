@@ -24,6 +24,7 @@
       "Bash(git push:*)",
       "Bash(skillworks-preflight:*)",
       "Bash(seed-steering:*)",
+      "Bash(set-attribution:*)",
       "Bash(spec-loop:*)",
       "Bash(land-ticket:*)",
       "Bash(ticket-worktree:*)",

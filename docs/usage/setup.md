@@ -76,7 +76,8 @@ needs their clone of Skillworks at the same path.
 5. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your Tracker,
    your tracker docs and your domain docs, and imports each rule.
 6. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
-   `"autoMemoryEnabled": false` into `.claude/settings.json`.
+   `"autoMemoryEnabled": false` into `.claude/settings.json`. Then `set-attribution` writes your
+   answer on the credit for Claude, as [Credit for Claude](#credit-for-claude) says.
 7. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
@@ -85,14 +86,16 @@ in step 6.
 
 ## The questions setup asks
 
-Setup asks three things on a clean repo: your Tracker, your Target branch, and the one yes it needs.
-It asks more only where your repo already holds an answer of its own.
+Setup asks four things on a clean repo: your Tracker, your Target branch, whether commits credit
+Claude, and the one yes it needs. It asks more only where your repo already holds an answer of its
+own.
 
 | Question | When setup asks it |
 |---|---|
 | Which Tracker does your team use? | Always. Setup suggests `github` when `origin` names `github.com`, and `files` otherwise, so the common answer is one keypress. If `tracker` in `docs/agents/loop.json` already names another answer, setup suggests that one. |
 | Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `spec` for one pull request per spec. If `docs/agents/loop.json` already names another answer, setup suggests that one. |
-| Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line with them. The allowlist lets the loop run `git push` and `gh issue close` with no prompt. That is the point, and also the risk. |
+| Show the `Co-Authored-By: Claude` line on commits and pull requests? | Always. Setup suggests `hide`, so the common answer is one keypress. [Credit for Claude](#credit-for-claude) says what each answer does. |
+| Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push` and `gh issue close` with no prompt. That is the point, and also the risk. |
 | Which side of this overlap do you keep, yours or the Seed's? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and asks once for each overlap. |
 | Which lines of the newer Seed do you want? | When a Steering file differs from its Seed and has no base copy, because your repo was set up before base copies existed. Setup shows the difference and changes the file only by the lines you pick. |
 | Which Marketplace, or which Plugin setting, do you keep? | When `.claude/settings.json` already names the `skillworks` Marketplace or the Plugin with another value. Setup shows both. |
@@ -118,11 +121,33 @@ Review these before you commit them.
 | `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
-| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist and `"autoMemoryEnabled": false`. |
+| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist and `"autoMemoryEnabled": false`. With `hide`, an `attribution` block too. |
 
 Setup writes nothing under `~/.claude`, and it leaves `.claude/settings.local.json` alone.
 
 [Steering](steering.md) says what each of these files does and what your team can change in it.
+
+## Credit for Claude
+
+Claude Code adds a `Co-Authored-By: Claude` line to each commit it makes, and a line that credits
+Claude to each pull request it opens. Claude Code's `attribution` setting turns them off. Setup asks
+your team one question: show the line, or hide it? The answer goes in `.claude/settings.json`, which
+your team commits, so every developer and every loop Session follows it.
+
+| Answer | What setup writes |
+|---|---|
+| `hide`, the default | An `attribution` block with empty strings for `commit` and `pr`. Commits and pull requests carry no credit. |
+| `show` | No `attribution` block, so Claude Code's own default applies. Commits and pull requests credit Claude. |
+
+- **A block already there is kept.** It is your team's earlier answer, whatever you answer now, and
+  setup says it kept it. Edit the block or remove it by hand to change your mind.
+- **Setup never writes `"attribution": false`.** Claude Code before v2.1.281 rejects it and skips the
+  whole file, which drops the allowlist and the Plugin too. Empty strings hide the line on every
+  version.
+- **Setup never writes `.claude/settings.local.json`.** It is gitignored, so a loop worktree never
+  sees it, and the choice is your team's and not one developer's.
+
+The `Skillworks-Session` trailer stays on every commit, whichever you answer.
 
 ## What your team fills in
 
@@ -189,4 +214,4 @@ Setup commits nothing. Review each changed file before you commit.
 - **`CLAUDE.md`.** Setup updates the `## Agent skills` block in place. It never adds a second copy,
   and it leaves every other section alone.
 - **`.claude/settings.json`.** Setup adds the allowlist entries that are missing and removes none. It
-  leaves every other key as you have it.
+  keeps an `attribution` block that is there. It leaves every other key as you have it.

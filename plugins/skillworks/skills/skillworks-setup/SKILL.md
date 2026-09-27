@@ -28,6 +28,7 @@ The outputs:
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
 | The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of a `spec` Target branch among them. It names no tool the Suite runs: those are the team's to add. |
+| An `attribution` block in `.claude/settings.json`, when the team hides the credit | Claude Code credits Claude on each commit and pull request unless `attribution` says otherwise. The choice is the team's, so it goes in the file the team commits, and every developer and every loop Session follows it. |
 | `"autoMemoryEnabled": false` in `.claude/settings.json` | Every Load comes from the repository. Claude Code keeps memory files under `~/.claude`, on the machine and outside the repository, and loads them into every session. With memory on, one commit steers two machines differently, and a run cannot be read back from what the repository holds. With it off, one commit steers every machine the same way. The memory files stay on disk, so removing the line brings them back. |
 
 ## Process
@@ -175,7 +176,16 @@ If the file exists, merge:
 | `false` | Nothing. |
 | `true` | Show the user the key and what it costs: memory files on each machine steer the loop, so it runs differently from one machine to the next. Ask which to keep. Never change it without asking. |
 
-Read the allowlist out loud to the user before writing, and read the memory line out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to both knowingly, in this one pass, with no second prompt.
+Ask the team one question: should commits and pull requests credit Claude? Offer two answers, and suggest `hide`, so the common answer is one keypress:
+
+- `hide`: `set-attribution hide` writes an `attribution` block with empty strings for `commit` and `pr`, so Claude Code adds no credit.
+- `show`: `set-attribution show` writes no `attribution` block, so Claude Code's own default applies.
+
+An `attribution` block already in the file is the team's earlier answer. `set-attribution` keeps it, whatever the answer, and says so. Tell the user it was kept.
+
+Settle `attribution` with `set-attribution` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
+
+Read the allowlist out loud to the user before writing, and read the memory line and the attribution answer out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all three knowingly, in this one pass, with no second prompt. Then write the file, and run `set-attribution` with the answer.
 
 Leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
 
@@ -188,7 +198,7 @@ Say what was written and what was kept. Say where each Steering file lives:
 - `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
 - `docs/agents/`: `issue-tracker.md`, `domain.md`, `placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md`, `suite.json` and `loop.json`. A skill reads each one when it needs it.
 
-Say that auto-memory is off for this repository, or that the user chose to keep it on. Then tell them what the team fills in before the loop can finish a ticket:
+Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude, or that an earlier `attribution` block was kept. Then tell them what the team fills in before the loop can finish a ticket:
 
 - `docs/agents/suite.json`: the checks that prove their code, each with a command, the folder it runs in, and optionally a readiness command with its message. A check that passes keeps a Proof of its inputs, and does not run again until one of them changes. A check may also name the paths it cannot be changed by, as `"ignores": ["docs", "web"]`: each is a git pathspec from the repo root. A path left off only costs a run, so a slow check is the one to give `ignores`. A check may name an `image`, a Dockerfile in `docs/agents/`, to run in a container. A check that did not run says so in the Suite output, and names its Proof. `runs` says how many times a red Suite runs before the loop believes it. It starts at 1, and a team with tests that flake raises it. Until it names a check, the loop stops with the Suite not ready.
 - The allowlist: each tool the Suite runs, such as a build or a test runner, so the loop can run it without a prompt.

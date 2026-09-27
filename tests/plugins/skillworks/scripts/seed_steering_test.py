@@ -893,7 +893,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 7
+    assert len(commands) == 8
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -1233,6 +1233,39 @@ def test_the_setup_page_names_every_file_setup_writes():
 
     for place in list(WHERE.values()) + WORKING_FOLDERS + [".gitignore", "CLAUDE.md", ".claude/settings.json"]:
         assert "`{}`".format(place) in page, place
+
+
+def test_setup_asks_whether_commits_credit_claude_and_suggests_hide():
+    step = setup_section("### 6. Write the settings")
+
+    assert "should commits and pull requests credit Claude?" in step
+    assert "suggest `hide`" in step
+    assert "`set-attribution hide`" in step
+    assert "`set-attribution show`" in step
+    assert "read the memory line and the attribution answer out with it" in step
+    assert "Never write `\"attribution\": false`" in step
+
+
+def test_setup_writes_no_attribution_false_and_no_local_settings():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+    settings = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))
+
+    assert "attribution" not in settings
+    assert "Leave `.claude/settings.local.json` alone." in text
+    for line in text.splitlines():
+        if "\"attribution\": false" in line:
+            assert "Never write" in line, line
+
+
+def test_the_setup_page_explains_the_credit_question_and_both_answers():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+    credit = page.split("## Credit for Claude", 1)[1].split("\n## ", 1)[0]
+
+    assert "| `hide`, the default | An `attribution` block with empty strings for `commit` and `pr`." in credit
+    assert "| `show` | No `attribution` block, so Claude Code's own default applies." in credit
+    assert "A block already there is kept." in credit
+    assert "Setup never writes `\"attribution\": false`." in credit
+    assert "Setup never writes `.claude/settings.local.json`." in credit
 
 
 def test_implement_reads_the_suite_from_the_suite_file():
