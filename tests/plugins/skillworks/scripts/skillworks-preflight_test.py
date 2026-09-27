@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import BASH, SCRIPTS, Ran, git, launch, run
+from conftest import BASH, SCRIPTS, Ran, Repo, git, launch, run
 
 PREFLIGHT = SCRIPTS / "skillworks-preflight.sh"
 
@@ -77,10 +77,23 @@ class Work:
     def answer(self, name, text):
         (self.stand_ins / name).write_text(text + "\n" if text else "", encoding="utf-8", newline="\n")
 
-    def target(self, branch):
+    def target(self, branch, tracker="github"):
         loop = self.repo / "docs" / "agents" / "loop.json"
         loop.parent.mkdir(parents=True, exist_ok=True)
-        loop.write_text(json.dumps({"target-branch": branch}, indent=2) + "\n", encoding="utf-8", newline="\n")
+        loop.write_text(json.dumps({"tracker": tracker, "target-branch": branch}, indent=2) + "\n",
+                        encoding="utf-8", newline="\n")
+
+    # A bare repo on disk answers for the url, so a remote no test can reach is still really read.
+    def serve(self, url, *branches):
+        bare = self.root / "remote.git"
+        run(["git", "init", "--quiet", "--bare", "--initial-branch=" + branches[0], bare.as_posix()])
+        for name, value in Repo.SETTINGS:
+            git(self.repo, "config", name, value)
+        git(self.repo, "commit", "--quiet", "--allow-empty", "-m", "Base")
+        git(self.repo, "config", f"url.{bare.as_posix()}.insteadOf", url)
+        git(self.repo, "remote", "set-url", "origin", url)
+        for branch in branches:
+            git(self.repo, "push", "--quiet", "origin", f"HEAD:refs/heads/{branch}")
 
     def protect(self, *lines, status=0, branch="main"):
         self.answer(f"{branch}-protection", "\n".join(lines))
@@ -115,37 +128,41 @@ def settings(work, text):
     (work.repo / ".claude" / "settings.json").write_text(text, encoding="utf-8", newline="\n")
 
 
-# Node can share a folder with the tools preflight calls, such as /usr/bin or uv's, so that folder is mirrored, not dropped.
-# Where node has a folder of its own, as on Windows, the folder is dropped and no mirror is made.
+# A folder the program shares with preflight's tools, such as /usr/bin, is mirrored without it, since dropping it loses the tools.
 TOOLS = ("git", "uv", "awk", "sort", "head", "grep", "paste", "sed", "basename")
 
 
-def without_node(path, spare):
+def without(program, path, spare):
     folders = []
     for folder in path.split(os.pathsep):
-        if not shutil.which("node", path=folder):
+        if not shutil.which(program, path=folder):
             folders.append(folder)
         elif any(shutil.which(tool, path=folder) for tool in TOOLS):
-            mirror = spare / f"path-{len(folders)}"
+            mirror = spare / f"{program}-path-{len(folders)}"
             mirror.mkdir()
             for entry in Path(folder).iterdir():
-                if entry.stem != "node":
+                if entry.stem != program:
                     (mirror / entry.name).symlink_to(entry)
             folders.append(str(mirror))
     return os.pathsep.join(folders)
 
 
-def with_stand_ins(work, node=True):
+def with_stand_ins(work, node=True, gh=True):
     env = dict(os.environ)
-    path = env["PATH"] if node else without_node(env["PATH"], work.stand_ins.parent)
+    path = env["PATH"]
+    if not node:
+        path = without("node", path, work.root)
+    if not gh:
+        (work.stand_ins / "gh").unlink(missing_ok=True)
+        path = without("gh", path, work.root)
     env["PATH"] = str(work.stand_ins) + os.pathsep + path
     return env
 
 
-def preflight(work, *args, node=True):
+def preflight(work, *args, node=True, gh=True):
     done = subprocess.run(
         [BASH, PREFLIGHT.as_posix(), *args],
-        cwd=work.repo, env=with_stand_ins(work, node), capture_output=True, encoding="utf-8",
+        cwd=work.repo, env=with_stand_ins(work, node, gh), capture_output=True, encoding="utf-8",
         errors="replace")
     return Ran(done.returncode, done.stdout, done.stderr)
 
@@ -332,9 +349,18 @@ def test_a_loop_file_with_no_target_branch_fails(work):
     assert "FAIL  docs/agents/loop.json names no target-branch." in ran.err
 
 
+def test_a_loop_file_with_no_tracker_fails(work):
+    (work.repo / "docs" / "agents" / "loop.json").write_text('{"target-branch": "main"}\n', encoding="utf-8")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  docs/agents/loop.json names no tracker." in ran.err
+
+
 def test_a_target_branch_split_across_lines_passes(work):
     (work.repo / "docs" / "agents" / "loop.json").write_text(
-        '{\n  "target-branch":\n    "main"\n}\n', encoding="utf-8", newline="\n")
+        '{\n  "tracker": "github",\n  "target-branch":\n    "main"\n}\n', encoding="utf-8", newline="\n")
 
     ran = preflight(work)
 
@@ -345,7 +371,8 @@ def test_a_target_branch_split_across_lines_passes(work):
 # A reader that matched text rather than JSON would take the last key it saw, which is develop.
 def test_a_target_branch_nested_in_another_setting_is_not_the_target_branch(work):
     (work.repo / "docs" / "agents" / "loop.json").write_text(
-        json.dumps({"target-branch": "main", "was": {"target-branch": "develop"}}), encoding="utf-8")
+        json.dumps({"tracker": "github", "target-branch": "main", "was": {"target-branch": "develop"}}),
+        encoding="utf-8")
 
     ran = preflight(work)
 
@@ -564,3 +591,82 @@ def test_a_repo_with_no_rules_folder_passes(work):
 
     assert ran.status == 0, said(ran)
     assert "import" not in said(ran)
+
+
+GITLAB = "https://gitlab.example.com/team/repo.git"
+
+
+def test_with_the_files_tracker_a_gitlab_remote_passes_without_gh(work):
+    work.target("main", tracker="files")
+    work.serve(GITLAB, "main")
+
+    ran = preflight(work, gh=False)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch main" in ran.out
+    assert "label ready-for-agent" not in ran.out
+
+
+def test_with_the_files_tracker_a_bare_remote_on_a_shared_drive_passes(work):
+    work.target("main", tracker="files")
+    work.serve((work.root / "shared" / "repo.git").as_posix(), "main")
+
+    ran = preflight(work, gh=False)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch main" in ran.out
+
+
+def test_with_the_files_tracker_a_target_branch_missing_on_the_remote_fails_naming_it(work):
+    work.target("master", tracker="files")
+    work.serve(GITLAB, "main")
+
+    ran = preflight(work, gh=False)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  the Target branch master in docs/agents/loop.json is not on origin." in ran.err
+
+
+def test_with_the_files_tracker_in_spec_mode_the_default_branch_of_the_remote_passes(work):
+    work.target("spec", tracker="files")
+    work.serve(GITLAB, "main")
+
+    ran = preflight(work, gh=False)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch spec, each reviewed into main" in ran.out
+
+
+def test_with_the_files_tracker_in_spec_mode_a_remote_with_no_default_branch_fails(work):
+    work.target("spec", tracker="files")
+    work.serve(GITLAB, "main")
+    git(work.root / "remote.git", "symbolic-ref", "HEAD", "refs/heads/gone")
+
+    ran = preflight(work, gh=False)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  origin names no default branch" in ran.err
+
+
+def test_with_the_files_tracker_check_only_passes_without_gh(work):
+    work.target("main", tracker="files")
+    work.serve(GITLAB, "main")
+
+    ran = preflight(work, "--check-only", gh=False)
+
+    assert ran.status == 0, said(ran)
+    assert "label" not in ran.out
+
+
+@pytest.mark.parametrize("tracker", ["github", "files"])
+def test_a_repo_with_no_remote_fails_with_the_commands_that_add_a_bare_one(work, tracker):
+    work.target("main", tracker=tracker)
+    git(work.repo, "remote", "remove", "origin")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  no 'origin' remote." in ran.err
+    assert "git init --bare" in ran.err
+    assert "git remote add origin" in ran.err
+    assert "git push origin main" in ran.err

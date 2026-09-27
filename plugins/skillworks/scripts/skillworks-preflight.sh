@@ -26,13 +26,8 @@ die() { printf 'FAIL  %s\n' "$*" >&2; exit 1; }
 # --- checks -----------------------------------------------------------------
 
 command -v git >/dev/null || die "git is not installed"
-command -v gh >/dev/null || die "gh is not installed. https://cli.github.com"
 command -v claude >/dev/null || die "claude is not on PATH. The loop shells out to it."
 command -v uv >/dev/null || die "uv is not on PATH. The loop's scripts are Python and run under it. https://docs.astral.sh/uv"
-
-gh auth status >/dev/null 2>&1 || die "gh is not authenticated. Run: gh auth login"
-login=$(gh api user --jq .login)
-ok "gh authenticated as $login"
 
 git rev-parse --git-dir >/dev/null 2>&1 || die "not inside a git repository"
 
@@ -49,25 +44,10 @@ if [ -d "$top/docs/agents/rules" ]; then
   ok "CLAUDE.md imports every rule in docs/agents/rules"
 fi
 
-origin=$(git remote get-url origin 2>/dev/null || true)
-[ -n "$origin" ] || die "no 'origin' remote. Skillworks tracks work on GitHub."
-case "$origin" in
-  *github.com*) ;;
-  *) die "origin is not GitHub: $origin. Skillworks is GitHub only." ;;
-esac
-
-REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
-ok "repo $REPO"
-
-# Dependency reads work on any gh, because everything goes through `gh api`.
-# The convenience flags landed in 2.94.0; say so, but do not block.
-ghver=$(gh --version | head -1 | awk '{print $3}')
-lowest=$(printf '%s\n2.94.0\n' "$ghver" | sort -V | head -1)
-if [ "$lowest" != "2.94.0" ]; then
-  warn "gh $ghver has no --add-blocked-by / --add-sub-issue flags (2.94.0+). Everything here uses 'gh api', so this is fine."
-else
-  ok "gh $ghver"
-fi
+# python -m finds the module only from the scripts folder, and the reader prints why it stopped.
+setting() { (cd "$(dirname "${BASH_SOURCE[0]}")" && uv run --no-project --quiet python -m steering.target_branch "$top" "$1"); }
+tracker=$(setting tracker)
+target=$(setting target-branch)
 
 claudever=$(claude --version | awk '{print $1}')
 lowest=$(printf '%s\n2.1.242\n' "$claudever" | sort -V | head -1)
@@ -77,29 +57,78 @@ else
   ok "claude $claudever"
 fi
 
-# Native issue dependencies must be readable, or the loop cannot tell what is blocked.
-probe=$(gh api "repos/$REPO" --jq .has_issues)
-[ "$probe" = "true" ] || die "Issues are disabled on $REPO. Enable them in repo settings."
-ok "issues enabled"
-
-# python -m finds the module only from the scripts folder, and the reader prints its own refusal.
-target=$(cd "$(dirname "${BASH_SOURCE[0]}")" && uv run --no-project --quiet python -m steering.target_branch "$top")
-
-on_remote() { gh api "repos/$REPO/branches/$1" --jq .name >/dev/null 2>&1; }
-
-if [ "$target" = "spec" ]; then
-  default=$(gh api "repos/$REPO" --jq .default_branch)
-  on_remote "$default" || die "the default branch $default is not on $REPO, and each spec's pull request merges into it."
-  ok "target-branch spec, each reviewed into $default"
-  landing="a spec's branch"
-else
-  on_remote "$target" || die "the Target branch $target in docs/agents/loop.json is not on $REPO."
-  ok "target-branch $target"
-  landing=$target
+origin=$(git remote get-url origin 2>/dev/null || true)
+if [ -z "$origin" ]; then
+  if [ "$target" = "spec" ]; then first=$(git branch --show-current); else first=$target; fi
+  die "no 'origin' remote. The loop lands every ticket by pushing to it. A bare repo on a shared drive is enough:
+  git init --bare <shared-drive>/<repo>.git
+  git remote add origin <shared-drive>/<repo>.git
+  git push origin $first"
 fi
 
-[ "$(gh api "repos/$REPO" --jq .permissions.push)" = "true" ] \
-  || die "$login may not push to $REPO, so the loop cannot land a ticket on $landing."
+# Git alone reads the remote, so GitLab, Bitbucket and a bare repo on a shared drive all pass.
+check_files_remote() {
+  local heads default
+  heads=$(git ls-remote --symref origin 2>&1) || die "could not read origin ($origin): $heads"
+  on_origin() { awk -v ref="refs/heads/$1" '$1 != "ref:" && $2 == ref { found = 1 } END { exit !found }' <<< "$heads"; }
+  if [ "$target" = "spec" ]; then
+    default=$(awk '$1 == "ref:" && $3 == "HEAD" { sub("^refs/heads/", "", $2); print $2 }' <<< "$heads")
+    [ -n "$default" ] && on_origin "$default" \
+      || die "origin names no default branch, and each spec's pull request merges into it."
+    ok "target-branch spec, each reviewed into $default"
+  else
+    on_origin "$target" || die "the Target branch $target in docs/agents/loop.json is not on origin."
+    ok "target-branch $target"
+  fi
+}
+
+check_github() {
+  command -v gh >/dev/null || die "gh is not installed. https://cli.github.com"
+  gh auth status >/dev/null 2>&1 || die "gh is not authenticated. Run: gh auth login"
+  login=$(gh api user --jq .login)
+  ok "gh authenticated as $login"
+
+  case "$origin" in
+    *github.com*) ;;
+    *) die "origin is not GitHub: $origin. The github Tracker needs a GitHub remote. With any other remote, set \"tracker\": \"files\" in docs/agents/loop.json." ;;
+  esac
+
+  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+  ok "repo $REPO"
+
+  # Everything goes through `gh api`, so a gh without the 2.94.0 flags only earns a warning.
+  ghver=$(gh --version | head -1 | awk '{print $3}')
+  lowest=$(printf '%s\n2.94.0\n' "$ghver" | sort -V | head -1)
+  if [ "$lowest" != "2.94.0" ]; then
+    warn "gh $ghver has no --add-blocked-by / --add-sub-issue flags (2.94.0+). Everything here uses 'gh api', so this is fine."
+  else
+    ok "gh $ghver"
+  fi
+
+  # Native issue dependencies must be readable, or the loop cannot tell what is blocked.
+  probe=$(gh api "repos/$REPO" --jq .has_issues)
+  [ "$probe" = "true" ] || die "Issues are disabled on $REPO. Enable them in repo settings."
+  ok "issues enabled"
+
+  if [ "$target" = "spec" ]; then
+    default=$(gh api "repos/$REPO" --jq .default_branch)
+    on_remote "$default" || die "the default branch $default is not on $REPO, and each spec's pull request merges into it."
+    ok "target-branch spec, each reviewed into $default"
+    landing="a spec's branch"
+  else
+    on_remote "$target" || die "the Target branch $target in docs/agents/loop.json is not on $REPO."
+    ok "target-branch $target"
+    landing=$target
+  fi
+
+  [ "$(gh api "repos/$REPO" --jq .permissions.push)" = "true" ] \
+    || die "$login may not push to $REPO, so the loop cannot land a ticket on $landing."
+
+  # In spec mode a pull request, not a push, reaches the default branch, so its protection stops nothing the loop does.
+  [ "$target" = "spec" ] || takes_direct_push "$target"
+}
+
+on_remote() { gh api "repos/$REPO/branches/$1" --jq .name >/dev/null 2>&1; }
 
 takes_direct_push() {
   local branch=$1 refusing classic teams
@@ -137,9 +166,6 @@ takes_direct_push() {
   fi
 }
 
-# In spec mode a pull request, not a push, reaches the default branch, so its protection stops nothing the loop does.
-[ "$target" = "spec" ] || takes_direct_push "$target"
-
 # --- labels -----------------------------------------------------------------
 #
 # Nothing in the loop READS a label. The driver finds work by sub-issue
@@ -158,10 +184,17 @@ label() {
   fi
 }
 
-if [ "$CHECK_ONLY" = "1" ]; then
-  ok "check-only: no labels were written"
+# The files Tracker is committed files on any remote, so it needs no gh and no label.
+if [ "$tracker" = "files" ]; then
+  ok "tracker files, on $origin"
+  check_files_remote
 else
-  label ready-for-agent 0e8a16 "Fully specified. An agent can take it."
+  check_github
+  if [ "$CHECK_ONLY" = "1" ]; then
+    ok "check-only: no labels were written"
+  else
+    label ready-for-agent 0e8a16 "Fully specified. An agent can take it."
+  fi
 fi
 
 # --- configuration ----------------------------------------------------------

@@ -67,9 +67,13 @@ def target_branch_for(runner, top, spec, tracker=None):
     return tracker.branch_of(spec)
 
 
+READERS = {"target-branch": target_setting, "tracker": tracker_setting}
+
+
 def main(argv, out, err):
     try:
-        out.write(target_setting(argv[0]) + "\n")
+        read = READERS[argv[1]] if len(argv) > 1 else target_setting
+        out.write(read(argv[0]) + "\n")
         return 0
     except Stop as stop:
         err.write(stop.said)
