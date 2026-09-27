@@ -14,7 +14,7 @@ function Card({
   named: Named;
   marks: readonly Mark[];
   whole: Spell;
-  onShow: (named: Named, spell: Spell) => void;
+  onShow: (named: Named) => void;
 }) {
   const moment = useMemo(() => momentOf(named, marks, whole), [named, marks, whole]);
 
@@ -47,7 +47,7 @@ function Card({
               ))}
             </ol>
           )}
-          <button type="button" className="finding-show" onClick={() => onShow(named, moment.spell)}>
+          <button type="button" className="finding-show" onClick={() => onShow(named)}>
             Show in the Timeline
           </button>
         </>
@@ -67,7 +67,7 @@ export function Findings({
   findings: FindingsPage | null;
   marks: readonly Mark[];
   whole: Spell;
-  onShow: (named: Named, spell: Spell) => void;
+  onShow: (named: Named) => void;
 }) {
   const named = namedIn(findings);
 

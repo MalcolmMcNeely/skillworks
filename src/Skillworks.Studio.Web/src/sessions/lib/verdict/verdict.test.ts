@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Finding } from './findings';
+import type { TimeBreakdownPage } from './timeBreakdown';
+import type { Subagent } from '../timeline/agents';
 import type { ContextPoint } from '../timeline/context';
+import type { Exchange } from '../timeline/conversation';
 import type { Session } from '../sessions';
 import { foldSessionLine, type SessionAnswer, type Step } from '../steps';
-import { headlinesOf } from './verdict';
+import { headlinesOf, verdictOf } from './verdict';
 
 const run: Session = {
   id: '8f1c0a9e-0000-4000-8000-000000000001',
@@ -147,5 +150,92 @@ describe('headlinesOf', () => {
 
   it('shows no headline for a run the store does not hold', () => {
     expect(headlinesOf(foldSessionLine(null, { kind: 'head', session: null }))).toEqual([]);
+  });
+});
+
+describe('verdictOf', () => {
+  const exchange: Exchange = {
+    index: 0,
+    atUtc: '2026-09-14T09:00:10.000Z',
+    lengthMs: 60_000,
+    prompt: 'Fix the build',
+    promptLength: 13,
+    answer: 'Fixed',
+    answerLength: 5,
+    turns: 3,
+    toolCalls: 4,
+    cost: 1,
+    subagents: [{ agent: 'a1', cost: 0.4 }],
+  };
+
+  const subagent: Subagent = {
+    id: 'a1',
+    name: 'Explore',
+    type: 'Explore',
+    atUtc: '2026-09-14T09:00:20.000Z',
+    lengthMs: 20_000,
+    toolCalls: 2,
+    cost: 0.4,
+    faults: 0,
+    brief: null,
+    report: null,
+  };
+
+  const breakdown: TimeBreakdownPage = { kind: 'timeBreakdown', traced: true, parts: [], kinds: [] };
+
+  function fullAnswer(): SessionAnswer {
+    const measured = answerOf({
+      steps: [step('1', { fault: true })],
+      points: [point('1', 850_000)],
+      limitTokens: 1_000_000,
+      findings: [finding(4, { step: '1' })],
+    });
+    const exchanged = foldSessionLine(measured, { kind: 'exchanges', exchanges: [exchange], beforeFirstPrompt: 0.25 });
+    const agented = foldSessionLine(exchanged, {
+      kind: 'agents',
+      depth: 'full',
+      traced: true,
+      agents: { '1': 'a1' },
+      subagents: [subagent],
+    });
+
+    return foldSessionLine(agented, breakdown);
+  }
+
+  it('gives every figure of the Verdict from the answer alone, with no View to pass', () => {
+    const answer = fullAnswer();
+
+    const verdict = verdictOf(answer);
+
+    expect(verdict.headlines.map((each) => [each.name, each.figure])).toEqual([
+      ['Length', '41m'],
+      ['Cost', '$1.25'],
+      ['Tool calls', '42'],
+      ['Faults', '1'],
+      ['Peak context', '85%'],
+      ['Findings', '1'],
+    ]);
+    expect(verdict.findings).toEqual(answer.findings);
+    expect(verdict.timeBreakdown).toBe(breakdown);
+    expect(verdict.costs?.bars.map((bar) => [bar.word, bar.cost, bar.ownCost])).toEqual([
+      ['Exchange 1', 1, 0.6],
+      ['Before the first Prompt', 0.25, 0.25],
+    ]);
+    expect(verdict.costs?.bars[0].subagents).toEqual([{ agent: 'a1', name: 'Explore', cost: 0.4 }]);
+  });
+
+  it('reads the whole run, as it takes no View a drag could change', () => {
+    expect(verdictOf).toHaveLength(1);
+  });
+
+  it('has no Cost breakdown for a run with no Exchange', () => {
+    expect(verdictOf(answerOf({})).costs).toBeNull();
+  });
+
+  it('has no Time breakdown and no Findings before the spans land, rather than empty ones', () => {
+    const verdict = verdictOf(answerOf({}));
+
+    expect(verdict.timeBreakdown).toBeNull();
+    expect(verdict.findings).toBeNull();
   });
 });

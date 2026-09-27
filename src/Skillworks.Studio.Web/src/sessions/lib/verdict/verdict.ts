@@ -1,8 +1,27 @@
 import { describeCount, describeMoney } from '../../../shared/figures/lib/figures';
+import { costBreakdownOf, type CostBreakdown } from './costBreakdown';
 import { namedIn, type FindingsPage } from './findings';
+import type { TimeBreakdownPage } from './timeBreakdown';
 import { levelsOf, peakContextOf } from '../timeline/context';
 import { describeRunLength, notKnown } from '../sessions';
 import type { SessionAnswer } from '../steps';
+
+export interface Verdict {
+  headlines: Headline[];
+  findings: FindingsPage | null;
+  timeBreakdown: TimeBreakdownPage | null;
+  costs: CostBreakdown | null;
+}
+
+// Takes no View, so no drag in the Timeline can reach a figure above it.
+export function verdictOf(answer: SessionAnswer): Verdict {
+  return {
+    headlines: headlinesOf(answer),
+    findings: answer.findings,
+    timeBreakdown: answer.timeBreakdown,
+    costs: costBreakdownOf(answer.exchanges, answer.beforeFirstPrompt, answer.subagents),
+  };
+}
 
 export interface Headline {
   name: string;
@@ -12,7 +31,6 @@ export interface Headline {
   alarm: boolean;
 }
 
-// The whole run and never the View, so the verdict holds still while a reader digs in beneath it.
 export function headlinesOf(answer: SessionAnswer): Headline[] {
   const run = answer.session;
 

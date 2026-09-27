@@ -22,12 +22,12 @@ import { activationSpellsOf } from '../lib/timeline/activations';
 import { ranByOne } from '../lib/timeline/agents';
 import { levelsOf, levelsRanByOne } from '../lib/timeline/context';
 import { bandsOf, type Band, type Exchange } from '../lib/timeline/conversation';
-import { costBreakdownOf } from '../lib/verdict/costBreakdown';
 import { costIn, skillRowsOf } from '../lib/timeline/skills';
 import { toolRowsOf } from '../lib/timeline/tools';
 import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpell, type SessionAnswer } from '../lib/steps';
-import { headlinesOf } from '../lib/verdict/verdict';
+import { showInTimeline } from '../lib/verdict/showInTimeline';
+import { verdictOf, type Verdict } from '../lib/verdict/verdict';
 import { readWhere, withWhere, type Where } from '../../shared/session/lib/where';
 
 interface Reading {
@@ -119,12 +119,8 @@ export function Session() {
     return shown === null ? null : litBy(shown, drawn);
   }, [litKey, drawn]);
 
-  const beforeFirstPrompt = answer?.beforeFirstPrompt ?? 0;
+  const verdict = useMemo(() => (answer === null ? null : verdictOf(answer)), [answer]);
   const subagents = answer?.subagents;
-  const costs = useMemo(
-    () => costBreakdownOf(exchanges ?? [], beforeFirstPrompt, subagents ?? []),
-    [exchanges, beforeFirstPrompt, subagents],
-  );
   const openAgent =
     where.agent === null ? null : (subagents?.find((subagent) => subagent.id === where.agent)?.name ?? where.agent);
 
@@ -145,9 +141,13 @@ export function Session() {
 
   const toTimeline = () => timeline.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const onFinding = (named: Named, spell: Spell) => {
-    show(spell, { step: named.finding.step });
-    toTimeline();
+  const onFinding = (named: Named) => {
+    if (whole !== null) {
+      const shown = showInTimeline(named, whole);
+
+      show(shown.view, { step: shown.step });
+      toTimeline();
+    }
   };
 
   const onCostExchange = (exchange: Exchange) => {
@@ -186,14 +186,15 @@ export function Session() {
       <Body
         answer={answer}
         failure={failure}
+        verdict={verdict}
         whole={whole}
-        render={(landed, bounds) => (
+        render={(landed, held, bounds) => (
           <>
-            <Headlines headlines={headlinesOf(landed)} />
-            <Findings findings={landed.findings} marks={marks} whole={bounds} onShow={onFinding} />
+            <Headlines headlines={held.headlines} />
+            <Findings findings={held.findings} marks={marks} whole={bounds} onShow={onFinding} />
             <div className="verdict-breakdowns">
-              <TimeBreakdown breakdown={landed.timeBreakdown} />
-              <CostBreakdown breakdown={costs} onExchange={onCostExchange} onSubagent={onSubagent} />
+              <TimeBreakdown breakdown={held.timeBreakdown} />
+              <CostBreakdown breakdown={held.costs} onExchange={onCostExchange} onSubagent={onSubagent} />
             </div>
             <Timeline
               ref={timeline}
@@ -242,19 +243,21 @@ export function Session() {
 function Body({
   answer,
   failure,
+  verdict,
   whole,
   render,
 }: {
   answer: SessionAnswer | null;
   failure: string | null;
+  verdict: Verdict | null;
   whole: Spell | null;
-  render: (answer: SessionAnswer, whole: Spell) => ReactNode;
+  render: (answer: SessionAnswer, verdict: Verdict, whole: Spell) => ReactNode;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
   }
 
-  if (answer === null || !answer.landed) {
+  if (answer === null || verdict === null || !answer.landed) {
     return <p className="session-word">Reading the run…</p>;
   }
 
@@ -266,5 +269,5 @@ function Body({
     return <p className="session-word">Nothing was recorded for this run.</p>;
   }
 
-  return render(answer, whole);
+  return render(answer, verdict, whole);
 }

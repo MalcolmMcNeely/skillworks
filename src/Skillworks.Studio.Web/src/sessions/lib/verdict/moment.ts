@@ -1,6 +1,7 @@
 import type { Named } from './findings';
+import { showInTimeline } from './showInTimeline';
 import type { Mark } from '../steps';
-import { inSpell, widened, type Spell } from '../timeline/view';
+import { inSpell, type Spell } from '../timeline/view';
 
 // A card with more than a handful reads as a list, and the Timeline is where a reader goes for the rest.
 export const mostFaults = 5;
@@ -13,7 +14,7 @@ export interface Moment {
 }
 
 export function momentOf(named: Named, marks: readonly Mark[], whole: Spell): Moment {
-  const spell = widened([named.startMs, named.endMs], whole);
+  const spell = showInTimeline(named, whole).view;
   const held = inSpell(marks, spell);
 
   return {
