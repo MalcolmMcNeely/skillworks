@@ -713,12 +713,24 @@ def test_the_surfaces_seed_holds_the_readme_and_the_user_docs_each_with_its_thre
             assert section.count(part) == 1, "{} lacks {}".format(name, part)
 
 
+def worked_examples(text):
+    return re.findall(r"^```markdown\n(.*?)^```", text, re.MULTILINE | re.DOTALL)
+
+
 def test_the_surfaces_seed_carries_one_worked_example_that_is_no_surface_of_its_own():
-    fences = re.findall(r"^```markdown\n(.*?)^```", seeded("surfaces.md"), re.MULTILINE | re.DOTALL)
+    fences = worked_examples(seeded("surfaces.md"))
 
     assert len(fences) == 1
+    assert fences[0].startswith("## The sample app\n")
+    assert "`samples/`" in fences[0]
     for part in SURFACE_PARTS:
-        assert part in fences[0], part
+        assert fences[0].count(part) == 1, part
+    assert "The sample app" not in surfaces(seeded("surfaces.md"))
+
+
+@pytest.mark.parametrize("page", ["docs/agents/surfaces.md", "docs/usage/steering.md"])
+def test_this_repos_surfaces_and_the_steering_page_show_the_seeds_worked_example(page):
+    assert worked_examples(seeded("surfaces.md"))[0] in worked_examples((ROOT / page).read_text(encoding="utf-8"))
 
 
 def test_a_surface_written_only_inside_a_fence_is_not_counted():

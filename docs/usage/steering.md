@@ -81,15 +81,16 @@ Each `##` section is one Surface, with three parts:
 - **What to capture:** what the answer has to hold, so the builder can bring the Surface into step.
 
 The Seed holds two Surfaces, the README and the user docs. Delete one your repo does not have. Add a
-section for each other place your team keeps in step. A team that ships a changelog might add:
+section for each other place your team keeps in step. A team that keeps a sample app might add:
 
 ```markdown
-## The changelog
+## The sample app
 
-- **Where it lives:** `CHANGELOG.md`
-- **The question:** Does a user who upgrades see a difference, and which entry tells them?
-- **What to capture:** The version the entry goes under, and the difference it names: a change a
-  user can see, a setting renamed or removed, or a default that moved.
+- **Where it lives:** `samples/`
+- **The question:** Does a visitor who clones the repo need to see this change used in the sample
+  app?
+- **What to capture:** Which sample project changes, and what it shows once the change Lands: a new
+  example, or a change to one already there.
 ```
 
 A file with no Surface in it costs nothing: the grill skips the step.
