@@ -378,6 +378,12 @@ subagents and side requests. Each Part is also reported with its overlaps, so a 
 what a Part took on its own and what it took in all.
 _Avoid_: Split, time analysis, profile
 
+**Cost breakdown**:
+Where a Session's Cost went: one share for each Exchange, with what its Subagents spent set apart
+inside it, and one for the Turns before the first Prompt. The shares add up to the Session's Cost,
+so no Turn is counted twice and none is left out.
+_Avoid_: Cost analysis, spend breakdown
+
 **Part**:
 One of the eight things a moment of a Session can be spent on. A moment belongs to exactly one
 Part, so the busiest Part that was running takes it. Waiting for your OK, hooks and only subagents
