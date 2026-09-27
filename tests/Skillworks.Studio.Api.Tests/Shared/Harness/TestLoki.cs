@@ -83,7 +83,7 @@ public static class TestLoki
         var container = new ContainerBuilder($"{LokiImage.Name}:{LokiImage.Tag}")
             .WithResourceMapping(configuration, "/etc/loki/test.yaml")
             // A flag, not loki.yaml, so Loki's limit and the host's option share one constant.
-            .WithCommand("-config.file=/etc/loki/test.yaml", $"-store.max-query-length={MaxQueryDays * 24}h")
+            .WithCommand(["-config.file=/etc/loki/test.yaml", $"-store.max-query-length={MaxQueryDays * 24}h", .. LokiFlags.Split])
             .WithPortBinding(Port, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(ready => ready.ForPort(Port).ForPath("/ready")))
             .Build();

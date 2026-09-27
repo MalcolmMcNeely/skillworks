@@ -30,8 +30,6 @@ schema_config:
 limits_config:
   # A fixture may be dated a fortnight back, well past the week Loki takes by default.
   reject_old_samples: false
-  # The default hour splits a month's read into 720 queries, and every test reads a month.
-  split_queries_by_interval: 24h
 
 query_range:
   # A cached answer for a past period would hide events a test pushed after an earlier read.

@@ -24,6 +24,7 @@
   <!-- Linked, not referenced, because the AppHost's Program collides with the API's. -->
   <ItemGroup>
     <Compile Include="..\..\src\Skillworks.AppHost\LokiImage.cs" Link="Shared\Harness\LokiImage.cs" />
+    <Compile Include="..\..\src\Skillworks.AppHost\LokiFlags.cs" Link="Shared\Harness\LokiFlags.cs" />
     <Compile Include="..\..\src\Skillworks.AppHost\TempoImage.cs" Link="Shared\Harness\TempoImage.cs" />
   </ItemGroup>
 

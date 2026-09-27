@@ -12,6 +12,8 @@ var collectorAddress = "http://localhost:" + collectorPort;
 var loki = builder.AddContainer("loki", LokiImage.Name, LokiImage.Tag)
     .WithLifetime(ContainerLifetime.Persistent)
     .WithVolume("skillworks-loki", "/loki")
+    // Arguments replace the image's command, so its own configuration file is named again.
+    .WithArgs(["-config.file=/etc/loki/local-config.yaml", .. LokiFlags.Split])
     .WithHttpEndpoint(port: 3100, targetPort: 3100, name: "http", isProxied: false);
 
 // The Collector reaches 4318 over the container network, so only the port Studio reads is pinned here.

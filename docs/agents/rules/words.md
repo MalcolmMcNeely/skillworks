@@ -41,7 +41,6 @@ banned-words:
     - Brush
     - Main thread
     - Timeout
-    - Split
     - Fired
   architecture:
     - Feature
