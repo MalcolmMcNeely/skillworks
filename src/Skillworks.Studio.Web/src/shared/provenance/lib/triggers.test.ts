@@ -43,12 +43,12 @@ describe('triggerMarks', () => {
   });
 
   it('keeps a trigger it does not know under its own name', () => {
-    expect(triggerMarks([{ trigger: 'hook-fired', activations: 2 }])).toEqual([
-      { glyph: '?', word: 'hook-fired', activations: 2 },
+    expect(triggerMarks([{ trigger: 'hook-sent', activations: 2 }])).toEqual([
+      { glyph: '?', word: 'hook-sent', activations: 2 },
     ]);
   });
 
-  it('leaves out a trigger nothing fired under', () => {
+  it('leaves out a trigger nothing activated under', () => {
     expect(triggerMarks([{ trigger: 'user-slash', activations: 0 }])).toEqual([]);
   });
 });

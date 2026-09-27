@@ -23,17 +23,17 @@ public sealed class FilterChoices(EventsStoreReader events, ArrivingDays arrivin
     {
         var whole = DaySpan.Of(day);
 
-        var fired = await events.CountAsync(
+        var activations = await events.CountAsync(
             new EventQuery(EventName, whole.FromUtc, whole.UntilUtc),
             [EventAttributes.Owner, EventAttributes.RepositoryName],
             cancellationToken);
 
-        return (new FilterChoicesDay(day, Repositories(fired)), fired);
+        return (new FilterChoicesDay(day, Repositories(activations)), activations);
     }
 
-    private static IReadOnlyList<string> Repositories(EventTotals fired) =>
+    private static IReadOnlyList<string> Repositories(EventTotals activations) =>
     [
-        .. fired.Groups
+        .. activations.Groups
             .Select(count => count.Repository)
             .OfType<string>()
             .Distinct()

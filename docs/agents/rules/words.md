@@ -42,6 +42,7 @@ banned-words:
     - Main thread
     - Timeout
     - Split
+    - Fired
   architecture:
     - Feature
   loop:

@@ -17,7 +17,7 @@ function skill(name: string, activations: number, spend: TurnTotals | null): Ski
     spend,
     each: null,
     origins: [],
-    lastFired: null,
+    lastActivated: null,
     spark: [],
   };
 }
@@ -41,7 +41,7 @@ describe('totalsOf', () => {
     expect(totalsOf({ skills, unnamedSpend: null }).unnamedSpend).toBeNull();
   });
 
-  it('has no Each when nothing fired, rather than dividing by zero', () => {
+  it('has no Each when nothing activated, rather than dividing by zero', () => {
     expect(totalsOf({ skills: [skill('alpha', 0, spent(1, 1))], unnamedSpend: null }).each).toBeNull();
   });
 

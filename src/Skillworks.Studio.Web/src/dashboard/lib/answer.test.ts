@@ -54,7 +54,7 @@ function spent(cost: number, tokens = 0): TurnTotals {
   return { cost, inputTokens: tokens, outputTokens: tokens, cacheReadTokens: tokens, cacheCreationTokens: tokens };
 }
 
-function fired(name: string, activations: number, spend: TurnTotals | null, more: Partial<SkillOnDay> = {}): SkillOnDay {
+function activated(name: string, activations: number, spend: TurnTotals | null, more: Partial<SkillOnDay> = {}): SkillOnDay {
   const named = spend === null ? null : [];
 
   return {
@@ -90,8 +90,8 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(
       wire(
         head(),
-        day('2026-09-15', [fired('grilling', 2, spent(1, 100))]),
-        day('2026-09-14', [fired('grilling', 2, spent(0.5, 50)), fired('tdd', 4, spent(0.5, 10))]),
+        day('2026-09-15', [activated('grilling', 2, spent(1, 100))]),
+        day('2026-09-14', [activated('grilling', 2, spent(0.5, 50)), activated('tdd', 4, spent(0.5, 10))]),
         end(complete),
       ),
     );
@@ -134,20 +134,20 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(
       wire(
         head(),
-        day('2026-09-15', [fired('grilling', 2, spent(0), { origins: [delivered, typed] })]),
-        day('2026-09-14', [fired('grilling', 1, spent(0), { origins: [proactive] })]),
+        day('2026-09-15', [activated('grilling', 2, spent(0), { origins: [delivered, typed] })]),
+        day('2026-09-14', [activated('grilling', 1, spent(0), { origins: [proactive] })]),
       ),
     );
 
     expect(states.at(-1)?.skills[0]?.origins).toEqual([proactive, typed, delivered]);
   });
 
-  it('adds up a skill across the days it fired', async () => {
+  it('adds up a skill across the days it activated', async () => {
     const states = await statesOf(
       wire(
         head(),
         day('2026-09-15', [
-          fired('grilling', 3, spent(0.3), {
+          activated('grilling', 3, spent(0.3), {
             hours: hours({ 14: 3 }),
             repositories: ['acme/xi'],
             models: ['claude-sonnet-5'],
@@ -156,7 +156,7 @@ describe('foldSkillsLine', () => {
           }),
         ]),
         day('2026-09-14', [
-          fired('grilling', 1, spent(0.5), {
+          activated('grilling', 1, spent(0.5), {
             hours: hours({ 8: 1 }),
             repositories: ['acme/nu', 'acme/xi'],
             models: ['claude-opus-5[1m]'],
@@ -178,7 +178,7 @@ describe('foldSkillsLine', () => {
         spend: spent(0.8),
         each: 0.2,
         origins: [proactive, typed],
-        lastFired: '2026-09-15T14:00:00Z',
+        lastActivated: '2026-09-15T14:00:00Z',
         spark: [0, 1, 0, 0, 0, 0, 3, 0],
       },
     ]);
@@ -188,9 +188,9 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(
       wire(
         head(),
-        day('2026-09-15', [fired('probe', 2, null)]),
-        day('2026-09-14', [fired('probe', 2, spent(1), { models: ['claude-sonnet-5'], efforts: ['low'] })]),
-        day('2026-09-13', [fired('probe', 1, null)]),
+        day('2026-09-15', [activated('probe', 2, null)]),
+        day('2026-09-14', [activated('probe', 2, spent(1), { models: ['claude-sonnet-5'], efforts: ['low'] })]),
+        day('2026-09-13', [activated('probe', 1, null)]),
       ),
     );
 
@@ -201,8 +201,8 @@ describe('foldSkillsLine', () => {
     ]);
   });
 
-  it('gives a skill that spent but never fired no Each, rather than an Each of nothing', async () => {
-    const [, afterDay] = await statesOf(wire(head(), day('2026-09-15', [fired('grilling', 0, spent(0.4))])));
+  it('gives a skill that spent but never activated no Each, rather than an Each of nothing', async () => {
+    const [, afterDay] = await statesOf(wire(head(), day('2026-09-15', [activated('grilling', 0, spent(0.4))])));
 
     expect(afterDay?.skills.map((skill) => skill.each)).toEqual([null]);
   });
@@ -222,7 +222,7 @@ describe('foldSkillsLine', () => {
 
   it('lists the plugin skills at zero from the head, until a day names them', async () => {
     const [atHead, afterDay] = await statesOf(
-      wire(head(['probekit:probe-local', 'probekit:probe-plugin']), day('2026-09-15', [fired('probekit:probe-plugin', 2, null)])),
+      wire(head(['probekit:probe-local', 'probekit:probe-plugin']), day('2026-09-15', [activated('probekit:probe-plugin', 2, null)])),
     );
 
     expect(atHead?.skills.map((skill) => [skill.name, skill.activations, skill.spend, skill.each])).toEqual([
@@ -249,7 +249,7 @@ describe('foldSkillsLine', () => {
   });
 
   it('keeps the landed days and marks the rest missing, not zero, when the store stops part way', async () => {
-    const states = await statesOf(wire(head(), day('2026-09-15', [fired('grilling', 2, spent(1))]), end(stopped)));
+    const states = await statesOf(wire(head(), day('2026-09-15', [activated('grilling', 2, spent(1))]), end(stopped)));
 
     expect(states.map((state) => [state.landedDays, state.missingDays])).toEqual([
       [[], []],
@@ -271,8 +271,8 @@ describe('foldSkillsLine', () => {
       wire(
         head([], ['2026-09-15']),
         day('2026-09-15', [
-          fired('grilling', 3, spent(1), { hours: hours({ 9: 2, 17: 1 }) }),
-          fired('tdd', 1, spent(1), { hours: hours({ 9: 1 }) }),
+          activated('grilling', 3, spent(1), { hours: hours({ 9: 2, 17: 1 }) }),
+          activated('tdd', 1, spent(1), { hours: hours({ 9: 1 }) }),
         ]),
       ),
     );
@@ -288,7 +288,7 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(
       wire(
         head([], daysBack(7)),
-        day('2026-09-15', [fired('grilling', 4, spent(1), { hours: hours({ 0: 1, 5: 1, 6: 1, 23: 1 }) })]),
+        day('2026-09-15', [activated('grilling', 4, spent(1), { hours: hours({ 0: 1, 5: 1, 6: 1, 23: 1 }) })]),
       ),
     );
 
@@ -314,7 +314,7 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(
       wire(
         head([], daysBack(8)),
-        day('2026-09-15', [fired('grilling', 3, spent(1), { hours: hours({ 2: 1, 20: 2 }) })]),
+        day('2026-09-15', [activated('grilling', 3, spent(1), { hours: hours({ 2: 1, 20: 2 }) })]),
         day('2026-09-14', []),
       ),
     );
@@ -330,7 +330,7 @@ describe('foldSkillsLine', () => {
   });
 
   it('marks the slices of days the store never gave missing, with no count, once the answer ends', async () => {
-    const states = await statesOf(wire(head(), day('2026-09-15', [fired('grilling', 2, spent(1), { hours: hours({ 9: 2 }) })]), end(stopped)));
+    const states = await statesOf(wire(head(), day('2026-09-15', [activated('grilling', 2, spent(1), { hours: hours({ 9: 2 }) })]), end(stopped)));
 
     expect(states.map((state) => state.slices.map((slice) => [slice.day, slice.state, slice.activations]))).toEqual([
       [...Array.from({ length: 4 }, () => ['2026-09-14', 'arriving', null]), ...Array.from({ length: 4 }, () => ['2026-09-15', 'arriving', null])],
@@ -351,22 +351,22 @@ describe('foldSkillsLine', () => {
     ]);
   });
 
-  it('keeps the start of the last UTC hour each skill fired in, across the days that landed', async () => {
+  it('keeps the start of the last UTC hour each skill activated in, across the days that landed', async () => {
     const states = await statesOf(
       wire(
         head(['probekit:probe-local']),
         day('2026-09-15', [
-          fired('grilling', 2, spent(1), { hours: hours({ 3: 1, 9: 1 }) }),
-          fired('spender', 0, spent(1)),
+          activated('grilling', 2, spent(1), { hours: hours({ 3: 1, 9: 1 }) }),
+          activated('spender', 0, spent(1)),
         ]),
         day('2026-09-14', [
-          fired('grilling', 1, spent(1), { hours: hours({ 22: 1 }) }),
-          fired('tdd', 1, spent(1), { hours: hours({ 23: 1 }) }),
+          activated('grilling', 1, spent(1), { hours: hours({ 22: 1 }) }),
+          activated('tdd', 1, spent(1), { hours: hours({ 23: 1 }) }),
         ]),
       ),
     );
 
-    expect(states.map((state) => state.skills.map((skill) => [skill.name, skill.lastFired]))).toEqual([
+    expect(states.map((state) => state.skills.map((skill) => [skill.name, skill.lastActivated]))).toEqual([
       [['probekit:probe-local', null]],
       [
         ['grilling', '2026-09-15T09:00:00Z'],
@@ -387,7 +387,7 @@ describe('foldSkillsLine', () => {
       wire(
         head(),
         day('2026-09-15', [
-          fired('grilling', 3, spent(1), {
+          activated('grilling', 3, spent(1), {
             triggers: [
               { trigger: 'claude-proactive', activations: 2 },
               { trigger: 'user-slash', activations: 1 },
@@ -395,7 +395,7 @@ describe('foldSkillsLine', () => {
           }),
         ]),
         day('2026-09-14', [
-          fired('grilling', 3, spent(1), {
+          activated('grilling', 3, spent(1), {
             triggers: [
               { trigger: null, activations: 1 },
               { trigger: 'user-slash', activations: 2 },
@@ -424,8 +424,8 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(
       wire(
         head(),
-        day('2026-09-15', [fired('grilling', 2, spent(1), { triggers: [{ trigger: 'user-slash', activations: 2 }] })]),
-        day('2026-09-14', [fired('grilling', 1, spent(1), { triggers: [{ trigger: 'user-slash', activations: 1 }] })]),
+        day('2026-09-15', [activated('grilling', 2, spent(1), { triggers: [{ trigger: 'user-slash', activations: 2 }] })]),
+        day('2026-09-14', [activated('grilling', 1, spent(1), { triggers: [{ trigger: 'user-slash', activations: 1 }] })]),
       ),
     );
 
@@ -438,8 +438,8 @@ describe('foldSkillsLine', () => {
     const states = await statesOf(
       wire(
         head([], daysBack(7)),
-        day('2026-09-15', [fired('grilling', 3, spent(1), { hours: hours({ 5: 1, 6: 2 }) })]),
-        day('2026-09-14', [fired('grilling', 1, spent(1), { hours: hours({ 20: 1 }) })]),
+        day('2026-09-15', [activated('grilling', 3, spent(1), { hours: hours({ 5: 1, 6: 2 }) })]),
+        day('2026-09-14', [activated('grilling', 1, spent(1), { hours: hours({ 20: 1 }) })]),
       ),
     );
 
@@ -452,14 +452,14 @@ describe('foldSkillsLine', () => {
     expect(states.at(-1)?.skills[0]?.spark).toHaveLength(states.at(-1)?.slices.length ?? 0);
   });
 
-  it('gives a plugin skill that never fired a chart of nothing rather than no chart', async () => {
+  it('gives a plugin skill that never activated a chart of nothing rather than no chart', async () => {
     const [atHead] = await statesOf(wire(head(['probekit:probe-local'], ['2026-09-15'])));
 
     expect(atHead?.skills[0]?.spark).toEqual(Array.from({ length: 24 }, () => 0));
   });
 
   it('lands a day whose line the network broke across chunks', async () => {
-    const text = wire(head(), day('2026-09-15', [fired('grilling', 2, spent(1))]), end(complete)).join('');
+    const text = wire(head(), day('2026-09-15', [activated('grilling', 2, spent(1))]), end(complete)).join('');
     const cut = text.indexOf('grilling');
 
     const states = await statesOf([text.slice(0, cut), text.slice(cut)]);

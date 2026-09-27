@@ -55,7 +55,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Sets_three_siblings_fired_together_side_by_side_so_an_expensive_one_stands_out()
+    public async Task Sets_three_siblings_started_together_side_by_side_so_an_expensive_one_stands_out()
     {
         using var studio = new StudioHost();
 

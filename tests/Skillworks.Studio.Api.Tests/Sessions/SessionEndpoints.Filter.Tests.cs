@@ -81,7 +81,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Narrows_the_table_to_the_sessions_in_which_a_skill_fired()
+    public async Task Narrows_the_table_to_the_sessions_in_which_a_skill_activated()
     {
         using var studio = new StudioHost();
 
@@ -99,7 +99,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_a_session_the_skill_never_fired_in_out_even_when_it_ran_the_same_day()
+    public async Task Leaves_a_session_the_skill_never_activated_in_out_even_when_it_ran_the_same_day()
     {
         using var studio = new StudioHost();
 

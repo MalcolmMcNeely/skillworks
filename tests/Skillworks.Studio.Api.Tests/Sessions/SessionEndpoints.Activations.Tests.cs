@@ -10,7 +10,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000")));
+        await studio.Push(Activated("tdd", At(Yesterday, "09:00:00.000")));
 
         var page = await studio.StepLine("activations", Morning);
 
@@ -24,9 +24,9 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("implement", At(Yesterday, "09:00:00.000")),
-            Fired("tdd", At(Yesterday, "09:05:00.000")),
-            Fired("comment-sweep", At(Yesterday, "09:20:00.000")));
+            Activated("implement", At(Yesterday, "09:00:00.000")),
+            Activated("tdd", At(Yesterday, "09:05:00.000")),
+            Activated("comment-sweep", At(Yesterday, "09:20:00.000")));
 
         var activations = await studio.ActivationsIn(Morning);
 
@@ -35,13 +35,13 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Runs_an_activation_up_to_the_skill_that_fired_next()
+    public async Task Runs_an_activation_up_to_the_skill_that_activated_next()
     {
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("implement", At(Yesterday, "09:00:00.000")),
-            Fired("tdd", At(Yesterday, "09:05:00.000")));
+            Activated("implement", At(Yesterday, "09:00:00.000")),
+            Activated("tdd", At(Yesterday, "09:05:00.000")));
         await studio.Push(SessionEvent.ToolRan(Morning, At(Yesterday, "09:09:00.000")));
 
         Assert.Equal((long)TimeSpan.FromMinutes(5).TotalMilliseconds, (await studio.ActivationsIn(Morning))[0].FollowedMs);
@@ -52,7 +52,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000")));
+        await studio.Push(Activated("tdd", At(Yesterday, "09:00:00.000")));
         await studio.Push(SessionEvent.Answered(Morning, At(Yesterday, "09:30:00.000"), "Done."));
 
         Assert.Equal(
@@ -65,7 +65,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000")) with { Trigger = "user-slash" });
+        await studio.Push(Activated("tdd", At(Yesterday, "09:00:00.000")) with { Trigger = "user-slash" });
 
         Assert.Equal("user-slash", Assert.Single(await studio.ActivationsIn(Morning)).Trigger);
     }
@@ -76,8 +76,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(Yesterday, "09:00:00.000")),
-            Fired("tdd", At(Yesterday, "09:05:00.000")));
+            Activated("tdd", At(Yesterday, "09:00:00.000")),
+            Activated("tdd", At(Yesterday, "09:05:00.000")));
 
         var activations = await studio.ActivationsIn(Morning);
 
@@ -85,7 +85,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Finds_no_activation_in_a_run_no_skill_fired_in()
+    public async Task Finds_no_activation_in_a_run_no_skill_activated_in()
     {
         using var studio = new StudioHost();
 
@@ -100,7 +100,7 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(Yesterday, "09:00:00.000")),
+            Activated("tdd", At(Yesterday, "09:00:00.000")),
             new SkillActivated("comment-sweep", At(Yesterday, "14:00:00.000")) { Session = Afternoon });
 
         Assert.Equal(["tdd"], (await studio.ActivationsIn(Morning)).Select(activation => activation.Skill));
@@ -115,5 +115,5 @@ public sealed partial class SessionEndpointsTests
         Assert.Empty(await studio.ActivationsIn(Morning));
     }
 
-    private static SkillActivated Fired(string skill, string at) => new(skill, at) { Session = Morning };
+    private static SkillActivated Activated(string skill, string at) => new(skill, at) { Session = Morning };
 }

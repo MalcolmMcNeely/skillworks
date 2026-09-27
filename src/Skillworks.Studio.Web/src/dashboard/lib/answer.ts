@@ -25,7 +25,7 @@ const nothingSpent: TurnTotals = { inputTokens: 0, outputTokens: 0, cacheReadTok
 
 type SkillFigures = Omit<SkillOnDay, 'hours'>;
 
-function lastFiredOn(day: string, hours: readonly number[]): string | null {
+function lastActivatedOn(day: string, hours: readonly number[]): string | null {
   const hour = hours.findLastIndex((count) => count > 0);
 
   return hour < 0 ? null : startOfHour(day, hour);
@@ -36,11 +36,11 @@ function later(instant: string | null, other: string | null): string | null {
 }
 
 // No Each with no Activations to share the Cost across, or with a Cost that went unnamed.
-function summaryOf(skill: SkillFigures, lastFired: string | null, spark: number[]): SkillSummary {
+function summaryOf(skill: SkillFigures, lastActivated: string | null, spark: number[]): SkillSummary {
   return {
     ...skill,
     each: skill.spend === null || skill.activations === 0 ? null : skill.spend.cost / skill.activations,
-    lastFired,
+    lastActivated,
     spark,
   };
 }
@@ -101,7 +101,7 @@ function orderedOrigins(origins: readonly Origin[], more: readonly Origin[]): Or
   );
 }
 
-function added(landed: SkillSummary, skill: SkillFigures, lastFired: string | null, spark: number[]): SkillSummary {
+function added(landed: SkillSummary, skill: SkillFigures, lastActivated: string | null, spark: number[]): SkillSummary {
   const spend = plus(landed.spend, skill.spend);
 
   return summaryOf(
@@ -115,7 +115,7 @@ function added(landed: SkillSummary, skill: SkillFigures, lastFired: string | nu
       spend,
       origins: orderedOrigins(landed.origins, skill.origins),
     },
-    later(landed.lastFired, lastFired),
+    later(landed.lastActivated, lastActivated),
     spark,
   );
 }
@@ -175,12 +175,12 @@ export function foldSkillsLine(answer: SkillsAnswer | null, line: SkillsLine): S
   for (const { hours, ...figures } of line.skills) {
     const landed = skills.get(figures.name);
     const earlier = landed === undefined || answer.pluginAtZero.includes(figures.name) ? null : landed;
-    const lastFired = lastFiredOn(line.day, hours);
+    const lastActivated = lastActivatedOn(line.day, hours);
     const spark = withHoursLanded(earlier?.spark ?? nothingYet, answer.slices, line.day, hours);
 
     skills.set(
       figures.name,
-      earlier === null ? summaryOf(figures, lastFired, spark) : added(earlier, figures, lastFired, spark),
+      earlier === null ? summaryOf(figures, lastActivated, spark) : added(earlier, figures, lastActivated, spark),
     );
   }
 

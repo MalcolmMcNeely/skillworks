@@ -17,7 +17,7 @@ export type ActivationsLine = ActivationsPage | GapEnd;
 
 export interface ActivationsAnswer {
   activations: Activation[];
-  // No Activations yet is not the same as a skill that never fired, so the list waits for this.
+  // No Activations yet is not the same as a skill that never activated, so the list waits for this.
   landed: boolean;
   gap: Gap | null;
 }
@@ -33,12 +33,12 @@ export function foldActivationsLine(answer: ActivationsAnswer, line: Activations
   return { ...answer, activations: line.activations, landed: true };
 }
 
-// Only a complete answer may say a Skill fired in no run; every other Gap means the record is missing, not empty.
-export function firedInNoRun(answer: ActivationsAnswer): boolean {
+// Only a complete answer may say a Skill activated in no run; every other Gap means the record is missing, not empty.
+export function activatedInNoRun(answer: ActivationsAnswer): boolean {
   return answer.landed && answer.activations.length === 0 && answer.gap?.kind === 'complete';
 }
 
 // UTC, as a local clock would list a late Activation under the wrong day.
-export function describeFiredAt(atUtc: string): string {
+export function describeActivatedAt(atUtc: string): string {
   return new Date(atUtc).toISOString().replace('T', ' ').slice(0, 16);
 }

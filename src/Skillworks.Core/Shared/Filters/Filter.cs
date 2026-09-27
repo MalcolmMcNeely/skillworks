@@ -12,7 +12,7 @@ public sealed record Filter
 
     public string? Skill { get; init; }
 
-    // Skill is left out: it picks which rows are listed, and a never-fired skill still belongs there.
+    // Skill is left out: it picks which rows are listed, and a never-activated skill still belongs there.
     public bool AsksWhatHappened => From is not null || To is not null || Repository is not null;
 
     public DateTimeOffset? FromUtc => From is { } day ? DaySpan.StartOf(day) : null;

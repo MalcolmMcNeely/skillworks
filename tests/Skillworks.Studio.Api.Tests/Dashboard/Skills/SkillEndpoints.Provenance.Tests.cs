@@ -53,7 +53,7 @@ public sealed partial class SkillEndpointsTests
 
         var swept = await studio.SkillOn(DaysBack(5), "comment-sweep");
 
-        // What fired, from where, and what it cost belong in one row, not on two screens.
+        // What activated, from where, and what it cost belong in one row, not on two screens.
         Assert.Equal("projectSettings", Assert.Single(swept.Origins).Source);
         Assert.Equal(0.12m, swept.Spend?.Cost);
     }
@@ -74,7 +74,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Reports_each_way_a_skill_was_delivered_once_however_often_it_fired()
+    public async Task Reports_each_way_a_skill_was_delivered_once_however_often_it_activated()
     {
         using var studio = new StudioHost();
 
@@ -102,7 +102,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Takes_where_a_skill_came_from_only_from_the_day_it_fired()
+    public async Task Takes_where_a_skill_came_from_only_from_the_day_it_activated()
     {
         using var studio = new StudioHost();
 

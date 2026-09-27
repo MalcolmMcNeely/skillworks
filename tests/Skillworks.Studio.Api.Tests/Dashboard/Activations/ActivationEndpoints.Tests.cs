@@ -15,7 +15,7 @@ public sealed class ActivationEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
+        await studio.Push(Activated("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         Assert.Equal(["activations", "end"], (await studio.ActivationLines("?skill=tdd")).Select(StudioHost.KindOf));
     }
@@ -25,7 +25,7 @@ public sealed class ActivationEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
+        await studio.Push(Activated("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         var page = await studio.ActivationLine("activations", "?skill=tdd");
 
@@ -41,7 +41,7 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning) with { Owner = "acme", RepositoryName = "xi", Trigger = "user-slash" });
+            Activated("tdd", At(Yesterday, "09:00:00.000"), Morning) with { Owner = "acme", RepositoryName = "xi", Trigger = "user-slash" });
 
         var activation = Assert.Single(await studio.ActivationsOf("?skill=tdd"));
 
@@ -58,20 +58,20 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(DaysBack(3), "09:00:00.000"), Morning),
-            Fired("tdd", At(Yesterday, "14:00:00.000"), Afternoon));
+            Activated("tdd", At(DaysBack(3), "09:00:00.000"), Morning),
+            Activated("tdd", At(Yesterday, "14:00:00.000"), Afternoon));
 
         Assert.Equal([Afternoon, Morning], (await studio.ActivationsOf("?skill=tdd")).Select(activation => activation.Session));
     }
 
     [Fact]
-    public async Task Lists_each_activation_of_a_skill_that_fired_twice_in_one_run()
+    public async Task Lists_each_activation_of_a_skill_that_activated_twice_in_one_run()
     {
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning),
-            Fired("tdd", At(Yesterday, "09:30:00.000"), Morning));
+            Activated("tdd", At(Yesterday, "09:00:00.000"), Morning),
+            Activated("tdd", At(Yesterday, "09:30:00.000"), Morning));
 
         Assert.Equal(2, (await studio.ActivationsOf("?skill=tdd")).Count);
     }
@@ -82,8 +82,8 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning),
-            Fired("comment-sweep", At(Yesterday, "09:30:00.000"), Afternoon));
+            Activated("tdd", At(Yesterday, "09:00:00.000"), Morning),
+            Activated("comment-sweep", At(Yesterday, "09:30:00.000"), Afternoon));
 
         Assert.Equal(["tdd"], (await studio.ActivationsOf("?skill=tdd")).Select(activation => activation.Skill));
     }
@@ -94,8 +94,8 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(DaysBack(3), "09:00:00.000"), Morning),
-            Fired("tdd", At(Yesterday, "09:00:00.000"), Afternoon));
+            Activated("tdd", At(DaysBack(3), "09:00:00.000"), Morning),
+            Activated("tdd", At(Yesterday, "09:00:00.000"), Afternoon));
 
         var activations = await studio.ActivationsOf($"?skill=tdd&from={Written(Yesterday)}&to={Written(Yesterday)}");
 
@@ -108,8 +108,8 @@ public sealed class ActivationEndpointsTests
         using var studio = new StudioHost();
 
         await studio.Push(
-            Fired("tdd", At(Yesterday, "09:00:00.000"), Morning) with { Owner = "acme", RepositoryName = "xi" },
-            Fired("tdd", At(Yesterday, "09:30:00.000"), Afternoon) with { Owner = "acme", RepositoryName = "nu" });
+            Activated("tdd", At(Yesterday, "09:00:00.000"), Morning) with { Owner = "acme", RepositoryName = "xi" },
+            Activated("tdd", At(Yesterday, "09:30:00.000"), Afternoon) with { Owner = "acme", RepositoryName = "nu" });
 
         Assert.Equal([Morning], (await studio.ActivationsOf("?skill=tdd&repository=acme/xi")).Select(activation => activation.Session));
     }
@@ -119,21 +119,21 @@ public sealed class ActivationEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
+        await studio.Push(Activated("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         Assert.Null(Assert.Single(await studio.ActivationsOf("?skill=tdd")).Repository);
     }
 
     [Fact]
-    public async Task Answers_no_activations_for_a_skill_that_never_fired()
+    public async Task Answers_no_activations_for_a_skill_that_never_activated()
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Fired("tdd", At(Yesterday, "09:00:00.000"), Morning));
+        await studio.Push(Activated("tdd", At(Yesterday, "09:00:00.000"), Morning));
 
         var answer = await studio.ActivationAnswer("?skill=comment-sweep");
 
-        // A skill that never fired must not read as a store that fell short.
+        // A skill that never activated must not read as a store that fell short.
         Assert.Empty(answer.Activations);
         Assert.Equal("complete", answer.Gap.Kind);
     }
@@ -151,7 +151,7 @@ public sealed class ActivationEndpointsTests
         Assert.Empty(answer.Activations);
     }
 
-    private static SkillActivated Fired(string skill, string at, string session) =>
+    private static SkillActivated Activated(string skill, string at, string session) =>
         new(skill, at) { Session = session };
 
     private static DateTimeOffset Moment(string at) => DateTimeOffset.Parse(at, CultureInfo.InvariantCulture);

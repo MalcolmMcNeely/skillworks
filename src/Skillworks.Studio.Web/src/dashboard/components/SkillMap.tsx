@@ -231,7 +231,7 @@ export function SkillMap({
     return () => observer.disconnect();
   }, []);
 
-  // Ticking, so a readout left pinned does not keep saying the skill last fired an hour ago.
+  // Ticking, so a readout left pinned does not keep saying the skill last activated an hour ago.
   useEffect(() => clock().tick(minute, () => setNow(clock().now())), []);
 
   // On the window, so Escape lets go wherever the focus has moved to since the tile was pinned.

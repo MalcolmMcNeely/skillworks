@@ -9,7 +9,7 @@ using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Dashboard.Skills;
 
-// Lists plugin skills that never fired, so a broken description shows up as a zero rather than a gap.
+// Lists plugin skills that never activated, so a broken description shows up as a zero rather than a gap.
 public sealed class SkillReport(
     ActivationQueries activations,
     SpendQueries spend,
@@ -25,7 +25,7 @@ public sealed class SkillReport(
         var head = new SkillsHead(
             span,
             days,
-            // A never-fired skill's zero belongs to the unfiltered answer; a filter asks what happened, and it did not.
+            // A never-activated skill's zero belongs to the unfiltered answer; a filter asks what happened, and it did not.
             filter.AsksWhatHappened
                 ? []
                 : [.. marketplaceSkills.Names().Where(filter.Covers).Order(StringComparer.OrdinalIgnoreCase)]);
@@ -51,7 +51,7 @@ public sealed class SkillReport(
             new SkillsDay(
                 day,
                 [
-                    // A skill that fired on an earlier day can still spend on this one, and that spend is real.
+                    // A skill that activated on an earlier day can still spend on this one, and that spend is real.
                     .. tally.Counts.Keys
                         .Union(spent.Spend.Keys)
                         .Select(name => Summary(name, tally, spent))

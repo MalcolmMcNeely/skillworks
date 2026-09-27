@@ -71,7 +71,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
             Run(id, read.Lines),
             drawn,
             Said(drawn),
-            Fired(read.Lines),
+            Activated(read.Lines),
             sent.Points,
             sent.Limit,
             Keys(drawn),

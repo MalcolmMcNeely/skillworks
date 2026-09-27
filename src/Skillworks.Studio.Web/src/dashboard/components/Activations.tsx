@@ -9,8 +9,8 @@ import { triggerMark } from '../../shared/provenance/lib/triggers';
 import { nowhere, sessionAddress } from '../../shared/session/lib/where';
 import { fetchActivations } from '../api/activations';
 import {
-  describeFiredAt,
-  firedInNoRun,
+  activatedInNoRun,
+  describeActivatedAt,
   foldActivationsLine,
   noActivations,
   type Activation,
@@ -66,26 +66,26 @@ export function Activations({ skill, filter }: { skill: string; filter: Filter }
   const shown = answer.activations.slice(0, mostRows);
 
   return (
-    <section className="activations" aria-label={`Runs ${skill} fired in`} aria-busy={busy}>
+    <section className="activations" aria-label={`Runs ${skill} activated in`} aria-busy={busy}>
       <span className="activations-label" aria-hidden="true">
         {skill}
       </span>
 
-      {/* Beside the list, so a store that fell short never reads as a skill that fired in no run. */}
+      {/* Beside the list, so a store that fell short never reads as a skill that activated in no run. */}
       <SignalWord gap={answer.gap} failure={failure} />
 
       {busy ? (
         <p className="micro activations-word">Reading the activations…</p>
       ) : shown.length === 0 ? (
         <p className="micro activations-word">
-          {firedInNoRun(answer) ? 'This skill fired in no run over this span.' : missingWords.noAnswer}
+          {activatedInNoRun(answer) ? 'This skill activated in no run over this span.' : missingWords.noAnswer}
         </p>
       ) : (
         <ul>
           {shown.map((activation) => (
             <li key={`${activation.session}:${activation.atUtc}`} className="activation">
               <Link to={addressOf(activation, filter)}>
-                <span className="activation-clock">{describeFiredAt(activation.atUtc)}</span>
+                <span className="activation-clock">{describeActivatedAt(activation.atUtc)}</span>
                 <span className="activation-where">{activation.repository ?? missingWords.none}</span>
                 <span className="activation-trigger" aria-hidden="true">
                   {triggerMark(activation.trigger).glyph}

@@ -33,7 +33,7 @@ export interface SkillOnDay {
 export interface SkillSummary extends Omit<SkillOnDay, 'hours'> {
   each: number | null;
   // Only to the hour, as a day line counts no finer.
-  lastFired: string | null;
+  lastActivated: string | null;
   // One count per slice of the activity strip, for the chart on the skill's tile.
   spark: number[];
 }

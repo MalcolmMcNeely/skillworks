@@ -7,7 +7,7 @@ public sealed partial class SessionEndpointsTests
     private const string Swept = "?skill=comment-sweep";
 
     [Fact]
-    public async Task Lists_the_work_where_the_skill_fired_most_recently_first()
+    public async Task Lists_the_work_where_the_skill_activated_most_recently_first()
     {
         using var studio = new StudioHost();
 
@@ -28,7 +28,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Brings_fifty_rows_of_a_skill_where_newer_work_never_fired_it()
+    public async Task Brings_fifty_rows_of_a_skill_where_newer_work_never_activated_it()
     {
         using var studio = new StudioHost();
 
@@ -47,7 +47,7 @@ public sealed partial class SessionEndpointsTests
 
         await PushSweptAmong(studio, (RowsPerRead * 2) + 5);
 
-        // Each of the newest fifty fired the Skill once more, long before the rest, so a later read hears it again.
+        // Each of the newest fifty activated the Skill once more, long before the rest, so a later read hears it again.
         await studio.Push(
         [
             .. Enumerable.Range(0, RowsPerRead).Select(step =>
@@ -64,7 +64,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Places_a_parents_row_where_a_child_fired_the_skill()
+    public async Task Places_a_parents_row_where_a_child_activated_the_skill()
     {
         using var studio = new StudioHost();
 
@@ -83,7 +83,7 @@ public sealed partial class SessionEndpointsTests
         Assert.Equal(Moment(At(Yesterday, "12:00:00.000")), sessions[0].LastActivityUtc);
     }
 
-    // A run that never fired the Skill sits between each pair, newer than the run that did.
+    // A run that never activated the Skill sits between each pair, newer than the run that did.
     private static async Task PushSweptAmong(StudioHost studio, int many)
     {
         DateTimeOffset Asked(int step) => Moment(At(Yesterday, "22:00:00.000")) - TimeSpan.FromMinutes(2 * step);

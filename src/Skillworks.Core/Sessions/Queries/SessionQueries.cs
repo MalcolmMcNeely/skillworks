@@ -11,7 +11,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
 
     private const string PromptEvent = "user_prompt";
 
-    // The only event a Skill's name reaches, so the runs it fired in are read from these alone.
+    // The only event a Skill's name reaches, so the runs it activated in are read from these alone.
     private const string ActivationEvent = "skill_activated";
 
     // The one Turn whose answer is the Session's name.
@@ -439,7 +439,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
 
     private static EventQuery Titles(EventQuery events) => events with { EventName = TitleEvent, QuerySource = TitleSource };
 
-    // Under a Skill its Activations mark activity in place of Prompts, so the work where it fired most recently comes first.
+    // Under a Skill its Activations mark activity in place of Prompts, so the work where it activated most recently comes first.
     // A Skill says which runs are listed, never how much of a run is counted, so it narrows these lines and nothing else.
     private static EventQuery Activity(DateTimeOffset from, DateTimeOffset until, Filter filter) =>
         new(filter.Skill is null ? PromptEvent : ActivationEvent, from, until)

@@ -13,11 +13,11 @@ public sealed class ActivationReport(ActivationQueries activations, GapReport ga
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var span = lookback.SpanOf(filter);
-        var (fired, period) = await activations.ActivationsAsync(span, filter, cancellationToken);
+        var (activated, period) = await activations.ActivationsAsync(span, filter, cancellationToken);
 
         if (period.Unreachable is null)
         {
-            yield return new ActivationsPage(fired);
+            yield return new ActivationsPage(activated);
         }
 
         yield return new GapEnd(gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()));

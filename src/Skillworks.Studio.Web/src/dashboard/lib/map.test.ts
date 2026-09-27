@@ -13,7 +13,7 @@ function skill(name: string, cost: number, activations: number): SkillSummary {
     spend: { cost, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
     each: activations === 0 ? null : cost / activations,
     origins: [],
-    lastFired: null,
+    lastActivated: null,
     spark: [],
   };
 }
@@ -146,7 +146,7 @@ describe('tilesOf', () => {
     expect(each).toEqual({ lowest: 1, highest: 3 });
   });
 
-  it('gives a skill that spent but never fired no Each, rather than an Each of nothing', () => {
+  it('gives a skill that spent but never activated no Each, rather than an Each of nothing', () => {
     const skills = [skill('alpha', 10, 10), skill('beta', 30, 10), skill('gamma', 5, 0)];
 
     const { tiles, each } = tilesOf({ skills, unnamedSpend: null }, 'cost', 'most');
@@ -232,7 +232,7 @@ describe('describeTile', () => {
     expect(first && describeTile(first)).toBe('1. probe. Cost Not named. Activations 3. Each Not named.');
   });
 
-  it('says None for a skill that spent but never fired, rather than leaving the row out', () => {
+  it('says None for a skill that spent but never activated, rather than leaving the row out', () => {
     const [first] = tilesOf({ skills: [skill('gamma', 5, 0)], unnamedSpend: null }, 'cost', 'most').tiles;
 
     expect(first && describeTile(first)).toBe('1. gamma. Cost $5.00. Activations 0. Each None.');

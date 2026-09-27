@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Gap } from '../../shared/gaps/lib/gaps';
-import { describeFiredAt, firedInNoRun, foldActivationsLine, noActivations, type Activation } from './activations';
+import { activatedInNoRun, describeActivatedAt, foldActivationsLine, noActivations, type Activation } from './activations';
 
 const ended = (gap: Gap) => foldActivationsLine(noActivations, { kind: 'end', gap });
 
@@ -20,7 +20,7 @@ describe('foldActivationsLine', () => {
     expect(answer.landed).toBe(true);
   });
 
-  it('keeps the gap the answer ended with, so a store that fell short never reads as a skill that never fired', () => {
+  it('keeps the gap the answer ended with, so a store that fell short never reads as a skill that never activated', () => {
     const answer = foldActivationsLine(noActivations, {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Studio could not read the events store.' },
@@ -37,40 +37,40 @@ describe('foldActivationsLine', () => {
     expect(whole.activations).toEqual([activation]);
   });
 
-  it('waits before saying a skill never fired, so an answer on its way does not read as none', () => {
+  it('waits before saying a skill never activated, so an answer on its way does not read as none', () => {
     expect(noActivations.landed).toBe(false);
     expect(noActivations.activations).toEqual([]);
   });
 });
 
-describe('firedInNoRun', () => {
-  it('says a skill fired in no run only when the answer is complete', () => {
-    expect(firedInNoRun(ended({ kind: 'complete', missing: null }))).toBe(true);
+describe('activatedInNoRun', () => {
+  it('says a skill activated in no run only when the answer is complete', () => {
+    expect(activatedInNoRun(ended({ kind: 'complete', missing: null }))).toBe(true);
   });
 
-  it('refuses to call a store that could not be read a skill that never fired', () => {
-    expect(firedInNoRun(ended({ kind: 'unreachable', missing: 'The store could not be read.' }))).toBe(false);
-    expect(firedInNoRun(ended({ kind: 'telemetryOff', missing: 'Telemetry is off.' }))).toBe(false);
-    expect(firedInNoRun(ended({ kind: 'quiet', missing: 'The store holds nothing.' }))).toBe(false);
+  it('refuses to call a store that could not be read a skill that never activated', () => {
+    expect(activatedInNoRun(ended({ kind: 'unreachable', missing: 'The store could not be read.' }))).toBe(false);
+    expect(activatedInNoRun(ended({ kind: 'telemetryOff', missing: 'Telemetry is off.' }))).toBe(false);
+    expect(activatedInNoRun(ended({ kind: 'quiet', missing: 'The store holds nothing.' }))).toBe(false);
   });
 
   it('says nothing while the answer is still on its way', () => {
-    expect(firedInNoRun(noActivations)).toBe(false);
+    expect(activatedInNoRun(noActivations)).toBe(false);
   });
 
   it('says nothing when the skill did fire', () => {
     const landed = foldActivationsLine(noActivations, { kind: 'activations', activations: [activation] });
 
-    expect(firedInNoRun(foldActivationsLine(landed, { kind: 'end', gap: { kind: 'complete', missing: null } }))).toBe(false);
+    expect(activatedInNoRun(foldActivationsLine(landed, { kind: 'end', gap: { kind: 'complete', missing: null } }))).toBe(false);
   });
 });
 
-describe('describeFiredAt', () => {
+describe('describeActivatedAt', () => {
   it('reads an activation to the minute', () => {
-    expect(describeFiredAt('2026-09-14T09:00:00+00:00')).toBe('2026-09-14 09:00');
+    expect(describeActivatedAt('2026-09-14T09:00:00+00:00')).toBe('2026-09-14 09:00');
   });
 
   it('turns an instant sent at another offset into UTC, so it lists under the day the filter counts', () => {
-    expect(describeFiredAt('2026-09-15T01:30:00+03:00')).toBe('2026-09-14 22:30');
+    expect(describeActivatedAt('2026-09-15T01:30:00+03:00')).toBe('2026-09-14 22:30');
   });
 });

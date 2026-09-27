@@ -11,7 +11,7 @@ public sealed record OpenedRun(
     Session? Run,
     IReadOnlyList<DrawnStep> Drawn,
     IReadOnlyList<Exchange> Said,
-    IReadOnlyList<Activation> Fired,
+    IReadOnlyList<Activation> Activations,
     IReadOnlyList<ContextPoint> Sent,
     long? LimitTokens,
     IReadOnlyList<StepKey> Keys,

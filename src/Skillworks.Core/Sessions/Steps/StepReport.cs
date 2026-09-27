@@ -26,7 +26,7 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
         {
             // Ahead of the steps, so a screen that draws on the steps landing has every panel already.
             yield return StepQueries.Exchanges(opened);
-            yield return new ActivationsPage(opened.Fired);
+            yield return new ActivationsPage(opened.Activations);
             yield return new ContextPage(opened.Sent, opened.LimitTokens);
 
             // Five of the eight bars are read off the events alone, so a slow trace store leaves no empty list.

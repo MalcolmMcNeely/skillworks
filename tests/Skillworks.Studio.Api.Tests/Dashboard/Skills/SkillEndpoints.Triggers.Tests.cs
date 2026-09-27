@@ -18,9 +18,9 @@ public sealed partial class SkillEndpointsTests
         var skills = await studio.SkillsOn(Yesterday, OnlyYesterday);
 
         Assert.Equal(
-            [Fired("claude-proactive", 2), Fired("user-slash", 1)],
+            [Activated("claude-proactive", 2), Activated("user-slash", 1)],
             skills.Single(skill => skill.Name == "grilling").Triggers);
-        Assert.Equal([Fired("nested-skill", 1)], skills.Single(skill => skill.Name == "tdd").Triggers);
+        Assert.Equal([Activated("nested-skill", 1)], skills.Single(skill => skill.Name == "tdd").Triggers);
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed partial class SkillEndpointsTests
 
         var grilling = await studio.SkillOn(Yesterday, "grilling", OnlyYesterday);
 
-        Assert.Equal([Fired("claude-proactive", 2)], grilling.Triggers);
+        Assert.Equal([Activated("claude-proactive", 2)], grilling.Triggers);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed partial class SkillEndpointsTests
         var grilling = await studio.SkillOn(Yesterday, "grilling", OnlyYesterday);
 
         // An older Claude Code sends no trigger, and folding those Activations into one of the four would invent a reading.
-        Assert.Equal([Fired(null, 1), Fired("user-slash", 1)], grilling.Triggers);
+        Assert.Equal([Activated(null, 1), Activated("user-slash", 1)], grilling.Triggers);
     }
 
     [Fact]
@@ -79,11 +79,11 @@ public sealed partial class SkillEndpointsTests
 
         var grilling = await studio.SkillOn(Yesterday, "grilling", $"?from={Written(Yesterday)}&to={Written(Yesterday)}&repository=acme/nu");
 
-        Assert.Equal([Fired("user-slash", 1)], grilling.Triggers);
+        Assert.Equal([Activated("user-slash", 1)], grilling.Triggers);
     }
 
     [Fact]
-    public async Task Gives_a_skill_that_spent_but_never_fired_no_triggers()
+    public async Task Gives_a_skill_that_spent_but_never_activated_no_triggers()
     {
         using var studio = new StudioHost();
 
@@ -94,6 +94,6 @@ public sealed partial class SkillEndpointsTests
         Assert.Empty(grilling.Triggers);
     }
 
-    private static TriggerRow Fired(string? trigger, int activations) =>
+    private static TriggerRow Activated(string? trigger, int activations) =>
         new() { Trigger = trigger, Activations = activations };
 }

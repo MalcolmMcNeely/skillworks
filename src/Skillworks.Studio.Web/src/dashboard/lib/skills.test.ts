@@ -18,7 +18,7 @@ function skill(more: Partial<SkillSummary> = {}): SkillSummary {
     spend: spent,
     origins: [],
     each: 0.25,
-    lastFired: '2026-09-15T09:00:00Z',
+    lastActivated: '2026-09-15T09:00:00Z',
     spark: [],
     ...more,
   };
@@ -43,11 +43,11 @@ describe('describeSpend', () => {
 });
 
 describe('describeEach', () => {
-  it('says None for a figure that never fired, so the reader looks at its description', () => {
+  it('says None for a figure that never activated, so the reader looks at its description', () => {
     expect(describeEach({ each: null, activations: 0 })).toBe('None');
   });
 
-  it('says Not named for a figure that fired on spend Claude Code will not name', () => {
+  it('says Not named for a figure that activated on spend Claude Code will not name', () => {
     expect(describeEach({ each: null, activations: 3 })).toBe('Not named');
   });
 
@@ -61,8 +61,8 @@ describe('describeEach', () => {
 });
 
 describe('the Each the rail and the readout read', () => {
-  it('agrees for a skill that spent but never fired', () => {
-    const never = skill({ activations: 0, each: null, lastFired: null });
+  it('agrees for a skill that spent but never activated', () => {
+    const never = skill({ activations: 0, each: null, lastActivated: null });
 
     expect([railEach(never), readoutEach(never)]).toEqual(['None', 'None']);
   });
@@ -73,10 +73,10 @@ describe('the Each the rail and the readout read', () => {
     expect([railEach(hidden), readoutEach(hidden)]).toEqual(['Not named', 'Not named']);
   });
 
-  it('agrees for a skill that fired', () => {
-    const fired = skill();
+  it('agrees for a skill that activated', () => {
+    const activated = skill();
 
-    expect([railEach(fired), readoutEach(fired)]).toEqual(['$0.25', '$0.25']);
+    expect([railEach(activated), readoutEach(activated)]).toEqual(['$0.25', '$0.25']);
   });
 });
 

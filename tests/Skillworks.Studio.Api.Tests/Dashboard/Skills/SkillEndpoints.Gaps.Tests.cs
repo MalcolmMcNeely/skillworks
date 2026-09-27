@@ -143,7 +143,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillAnswer();
 
-        // A skill that fired before the period can spend inside it, and a row of spend beside "quiet" contradicts itself.
+        // A skill that activated before the period can spend inside it, and a row of spend beside "quiet" contradicts itself.
         Assert.Equal(0.1m, Assert.Single(answer.Day(Yesterday).Skills).Spend?.Cost);
         Assert.Equal("complete", answer.Gap.Kind);
         Assert.Null(answer.Gap.Missing);

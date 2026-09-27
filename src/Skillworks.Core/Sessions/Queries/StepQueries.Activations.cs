@@ -8,11 +8,11 @@ public sealed partial class StepQueries
 {
     private const string ActivationEvent = "skill_activated";
 
-    private static IReadOnlyList<Activation> Fired(IReadOnlyList<EventLine> lines)
+    private static IReadOnlyList<Activation> Activated(IReadOnlyList<EventLine> lines)
     {
         var lastEvent = lines[^1].At;
 
-        var fired =
+        var activated =
             (from place in Enumerable.Range(0, lines.Count)
                 let line = lines[place]
                 where Named(ActivationEvent)(line)
@@ -23,11 +23,11 @@ public sealed partial class StepQueries
 
         return
         [
-            .. fired.Select((activation, order) => new Activation(
+            .. activated.Select((activation, order) => new Activation(
                 activation.Id,
                 activation.Skill,
                 activation.Line.At,
-                (long)((order + 1 < fired.Count ? fired[order + 1].Line.At : lastEvent) - activation.Line.At).TotalMilliseconds,
+                (long)((order + 1 < activated.Count ? activated[order + 1].Line.At : lastEvent) - activation.Line.At).TotalMilliseconds,
                 SkillOrigin.Of(activation.Line.Attribute).Trigger))
         ];
     }

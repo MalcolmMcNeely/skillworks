@@ -153,13 +153,13 @@ public sealed partial class SkillEndpointsTests
 
         var grilling = await studio.SkillOn(Yesterday, "grilling");
 
-        // An older Claude Code, or a repository with no origin remote, still fired the skill.
+        // An older Claude Code, or a repository with no origin remote, still activated the skill.
         Assert.Equal(3, grilling.Activations);
         Assert.Empty(grilling.Repositories);
     }
 
     [Fact]
-    public async Task Reports_nothing_when_no_skill_fired()
+    public async Task Reports_nothing_when_no_skill_activated()
     {
         using var studio = new StudioHost();
 
@@ -181,7 +181,7 @@ public sealed partial class SkillEndpointsTests
 
         var answer = await studio.SkillAnswer();
 
-        // probe-local last fired before the lookback, and its zero says its description may have stopped working.
+        // probe-local last activated before the lookback, and its zero says its description may have stopped working.
         Assert.Equal(["probekit:probe-local", "probekit:probe-plugin"], answer.Head.PluginSkills);
         Assert.DoesNotContain("probekit:probe-local", answer.Skills.Select(skill => skill.Name));
         Assert.Equal(2, (await studio.SkillOn(Yesterday, "probekit:probe-plugin")).Activations);

@@ -40,7 +40,7 @@ export function mapNoticeOf(state: {
     return null;
   }
 
-  // Ahead of the zero checks: never-fired skills are still listed, and No Cost would read as a quiet week.
+  // Ahead of the zero checks: never-activated skills are still listed, and No Cost would read as a quiet week.
   if (answer.gap?.kind === 'unreachable') {
     return { glyph: noticeGlyphs.failed, word: signalOf(answer.gap.kind).word, tone: 'failed', busy: false };
   }

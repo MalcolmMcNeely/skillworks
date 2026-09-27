@@ -101,5 +101,5 @@ public sealed class StudioHealth(
             "Marketplace",
             PartState.Broken,
             $"There is no Marketplace at {location.Path}.",
-            "Point Marketplace:Path at it. Without it, a skill that has never fired is not listed at all.");
+            "Point Marketplace:Path at it. Without it, a skill that has never activated is not listed at all.");
 }

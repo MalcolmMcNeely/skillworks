@@ -12,7 +12,7 @@ public sealed partial class FilterEndpointsTests
     private static readonly string NothingHappened = $"?from={Written(DaysBack(60))}&to={Written(DaysBack(59))}";
 
     [Fact]
-    public async Task Counts_every_activation_inside_a_span_on_the_day_it_fired()
+    public async Task Counts_every_activation_inside_a_span_on_the_day_it_activated()
     {
         using var studio = new StudioHost();
         await PushNuAndXi(studio);
@@ -149,21 +149,21 @@ public sealed partial class FilterEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_a_plugin_skill_that_never_fired_out_of_a_narrowed_answer()
+    public async Task Leaves_a_plugin_skill_that_never_activated_out_of_a_narrowed_answer()
     {
         using var studio = new StudioHost(StudioHost.Marketplace());
 
         await studio.Push(
             new SkillActivated("grilling", At(Yesterday, "09:00:00.000"), Owner: "acme", RepositoryName: "nu"));
 
-        // A never-fired skill's zero belongs to the unfiltered answer; it did not happen there.
+        // A never-activated skill's zero belongs to the unfiltered answer; it did not happen there.
         Assert.Contains("probekit:probe-local", (await studio.SkillAnswer()).Head.PluginSkills);
         Assert.Empty((await studio.SkillAnswer("?repository=acme/nu")).Head.PluginSkills);
         Assert.Empty((await studio.SkillAnswer($"?from={Written(Yesterday)}&to={Written(Yesterday)}")).Head.PluginSkills);
     }
 
     [Fact]
-    public async Task Keeps_a_plugin_skill_that_never_fired_when_it_is_the_skill_asked_for()
+    public async Task Keeps_a_plugin_skill_that_never_activated_when_it_is_the_skill_asked_for()
     {
         using var studio = new StudioHost(StudioHost.Marketplace());
 

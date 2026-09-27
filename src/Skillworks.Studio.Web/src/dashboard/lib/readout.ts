@@ -53,7 +53,7 @@ export function readoutRows(skill: SkillSummary, now: number): ReadoutRow[] {
     inWords('Tokens', skill.spend === null ? missingWords.notNamed : describeTokens(tokensIn(skill.spend))),
     inWords('Model', listed(skill.models)),
     inWords('Effort', listed(skill.efforts)),
-    inWords('Last', skill.lastFired === null ? missingWords.none : describeAgo(skill.lastFired, now)),
+    inWords('Last', skill.lastActivated === null ? missingWords.none : describeAgo(skill.lastActivated, now)),
     {
       label: 'Via',
       value: marks.map((mark) => `${mark.glyph}${describeCount(mark.activations)}`).join(' ') || missingWords.none,

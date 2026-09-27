@@ -77,7 +77,7 @@ public sealed partial class SkillEndpointsTests
     }
 
     [Fact]
-    public async Task Gives_a_skill_that_spent_but_never_fired_a_zero_for_every_hour()
+    public async Task Gives_a_skill_that_spent_but_never_activated_a_zero_for_every_hour()
     {
         using var studio = new StudioHost();
 
@@ -89,11 +89,11 @@ public sealed partial class SkillEndpointsTests
         Assert.Equal(Hours(), grilling.Hours);
     }
 
-    private static int[] Hours(params (int Hour, int Activations)[] fired)
+    private static int[] Hours(params (int Hour, int Activations)[] activated)
     {
         var hours = new int[24];
 
-        foreach (var (hour, activations) in fired)
+        foreach (var (hour, activations) in activated)
         {
             hours[hour] = activations;
         }

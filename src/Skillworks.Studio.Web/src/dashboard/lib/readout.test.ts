@@ -18,7 +18,7 @@ function skill(more: Partial<SkillSummary> = {}): SkillSummary {
     spend: spent,
     origins: [],
     each: 0.25,
-    lastFired: '2026-09-15T09:00:00Z',
+    lastActivated: '2026-09-15T09:00:00Z',
     spark: [],
     ...more,
   };
@@ -63,8 +63,8 @@ describe('readoutRows', () => {
     ]);
   });
 
-  it('says a skill that spent but never fired has no Each, rather than an unnamed one', () => {
-    const rows = readoutRows(skill({ activations: 0, each: null, lastFired: null }), now);
+  it('says a skill that spent but never activated has no Each, rather than an unnamed one', () => {
+    const rows = readoutRows(skill({ activations: 0, each: null, lastActivated: null }), now);
 
     expect([valueOf(rows, 'Each'), valueOf(rows, 'Last')]).toEqual(['None', 'None']);
   });

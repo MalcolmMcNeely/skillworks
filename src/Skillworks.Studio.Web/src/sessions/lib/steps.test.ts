@@ -51,7 +51,7 @@ const said: Exchange = {
   subagents: null,
 };
 
-const fired: Activation = {
+const activated: Activation = {
   id: '7',
   skill: 'tdd',
   atUtc: '2026-09-14T09:00:00.000Z',
@@ -116,10 +116,10 @@ describe('foldSessionLine', () => {
   it('takes the activations, so the panel reads what the timeline is already drawing', () => {
     const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
       kind: 'activations',
-      activations: [fired],
+      activations: [activated],
     });
 
-    expect(answer.activations).toEqual([fired]);
+    expect(answer.activations).toEqual([activated]);
     expect(answer.steps).toEqual([prompt]);
   });
 
