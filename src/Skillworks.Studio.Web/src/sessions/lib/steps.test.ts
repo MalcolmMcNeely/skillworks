@@ -48,6 +48,7 @@ const said: Exchange = {
   turns: 1,
   toolCalls: 2,
   cost: 0.42,
+  subagents: null,
 };
 
 const fired: Activation = {
@@ -95,10 +96,21 @@ describe('foldSessionLine', () => {
     const answer = foldSessionLine(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }), {
       kind: 'exchanges',
       exchanges: [said],
+      beforeFirstPrompt: 0.08,
     });
 
     expect(answer.exchanges).toEqual([said]);
+    expect(answer.beforeFirstPrompt).toBe(0.08);
     expect(answer.steps).toEqual([prompt]);
+  });
+
+  it('replaces the exchanges when they arrive again with their Subagent parts set apart', () => {
+    const early = foldSessionLine(opened, { kind: 'exchanges', exchanges: [said], beforeFirstPrompt: 0 });
+    const costed = { ...said, subagents: [{ agent: 'agent-a', cost: 0.2 }] };
+
+    const answer = foldSessionLine(early, { kind: 'exchanges', exchanges: [costed], beforeFirstPrompt: 0 });
+
+    expect(answer.exchanges).toEqual([costed]);
   });
 
   it('takes the activations, so the panel reads what the timeline is already drawing', () => {
@@ -133,6 +145,32 @@ describe('foldSessionLine', () => {
     expect(opened.depth).toBe('thin');
     expect(opened.traced).toBe(false);
     expect(opened.agents).toEqual({});
+    expect(opened.subagents).toEqual([]);
+  });
+
+  it('takes the Subagents, so a part of a Cost breakdown bar is named for the Subagent that spent it', () => {
+    const subagent = {
+      id: 'agent-a',
+      name: 'Find the tests',
+      type: null,
+      atUtc: '2026-09-14T09:00:05.000Z',
+      lengthMs: 4_000,
+      toolCalls: 1,
+      cost: 0.2,
+      faults: 0,
+      brief: null,
+      report: null,
+    };
+
+    const answer = foldSessionLine(opened, {
+      kind: 'agents',
+      depth: 'full',
+      traced: true,
+      agents: { '4': 'agent-a' },
+      subagents: [subagent],
+    });
+
+    expect(answer.subagents).toEqual([subagent]);
   });
 
   it('takes which agent ran each step and raises the run to full, as the second part of one read', () => {

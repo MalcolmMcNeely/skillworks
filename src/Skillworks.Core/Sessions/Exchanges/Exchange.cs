@@ -11,4 +11,6 @@ public sealed record Exchange(
     int AnswerLength,
     int Turns,
     int ToolCalls,
-    decimal Cost);
+    decimal Cost,
+    // A part of Cost and never an addition to it. Null until a Span has named the agent behind each Turn.
+    IReadOnlyList<SubagentCost>? Subagents);

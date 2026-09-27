@@ -14,9 +14,12 @@ public sealed partial class SessionEndpointsTests
 
         var page = await studio.StepLine("exchanges", Morning);
 
-        Assert.Equal(["exchanges", "kind"], StudioHost.Fields(page));
+        Assert.Equal(["beforeFirstPrompt", "exchanges", "kind"], StudioHost.Fields(page));
         Assert.Equal(
-            ["answer", "answerLength", "atUtc", "cost", "index", "lengthMs", "prompt", "promptLength", "toolCalls", "turns"],
+            [
+                "answer", "answerLength", "atUtc", "cost", "index", "lengthMs", "prompt", "promptLength", "subagents",
+                "toolCalls", "turns",
+            ],
             StudioHost.Fields(page["exchanges"]?[0]));
     }
 

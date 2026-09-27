@@ -11,6 +11,7 @@ import { DepthWord } from '../components/DepthWord';
 import { OpenedStep } from '../components/OpenedStep';
 import { Timeline } from '../components/Timeline';
 import { TimelineTabs } from '../components/tabs/TimelineTabs';
+import { CostBreakdown } from '../components/verdict/CostBreakdown';
 import { Findings } from '../components/verdict/Findings';
 import { Tiles } from '../components/verdict/Tiles';
 import { TimeBreakdown } from '../components/verdict/TimeBreakdown';
@@ -18,8 +19,9 @@ import { rangeOf, readRange, widened, withRange, type Range } from '../lib/view'
 import { type Named } from '../lib/findings';
 import { activationSpellsOf, type ActivationSpell } from '../lib/panels/activations';
 import { ranByOne } from '../lib/panels/agents';
-import { levelsOf } from '../lib/panels/context';
-import { bandsOf, type Band } from '../lib/panels/conversation';
+import { levelsOf, levelsRanByOne } from '../lib/panels/context';
+import { bandsOf, type Band, type Exchange } from '../lib/panels/conversation';
+import { costBreakdownOf } from '../lib/panels/costBreakdown';
 import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpan, type SessionAnswer } from '../lib/steps';
 import { tilesOf } from '../lib/verdict';
@@ -95,6 +97,16 @@ export function Session() {
   // An open Subagent is read like a small Session, so every lane shows its Steps alone.
   const agents = answer?.agents;
   const drawn = useMemo(() => ranByOne(marks, agents ?? {}, where.agent), [marks, agents, where.agent]);
+  const shownLevels = useMemo(() => levelsRanByOne(levels, agents ?? {}, where.agent), [levels, agents, where.agent]);
+
+  const beforeFirstPrompt = answer?.beforeFirstPrompt ?? 0;
+  const subagents = answer?.subagents;
+  const costs = useMemo(
+    () => costBreakdownOf(exchanges ?? [], beforeFirstPrompt, subagents ?? []),
+    [exchanges, beforeFirstPrompt, subagents],
+  );
+  const openAgent =
+    where.agent === null ? null : (subagents?.find((subagent) => subagent.id === where.agent)?.name ?? where.agent);
 
   // Replaced, not pushed, so setting four Views does not cost four presses of the back button.
   const write = (written: URLSearchParams) => setParams(written, { replace: true });
@@ -113,9 +125,25 @@ export function Session() {
       ? undefined
       : show(rangeOf(spell.atMs, spell.followedToMs, whole), { activation: spell.activation.id });
 
+  const toTimeline = () => timeline.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   const onFinding = (named: Named, extent: Range) => {
     show(extent,{ step: named.finding.step });
-    timeline.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toTimeline();
+  };
+
+  const onCostExchange = (exchange: Exchange) => {
+    const band = bands.find((each) => each.exchange.index === exchange.index);
+
+    if (band !== undefined) {
+      onExchange(band);
+      toTimeline();
+    }
+  };
+
+  const onSubagent = (agent: string) => {
+    write(withWhere(params, { ...where, agent }));
+    toTimeline();
   };
 
   // What the list was asked for, so going up lands on the list the reader left; the span is the row's own.
@@ -145,7 +173,10 @@ export function Session() {
           <>
             <Tiles tiles={tilesOf(landed)} />
             <Findings findings={landed.findings} marks={marks} whole={bounds} onShow={onFinding} />
-            <TimeBreakdown breakdown={landed.timeBreakdown} />
+            <div className="verdict-breakdowns">
+              <TimeBreakdown breakdown={landed.timeBreakdown} />
+              <CostBreakdown breakdown={costs} onExchange={onCostExchange} onSubagent={onSubagent} />
+            </div>
             <Timeline
               ref={timeline}
               marks={marks}
@@ -154,9 +185,11 @@ export function Session() {
               whole={bounds}
               view={view}
               selected={where.step}
+              agent={openAgent}
               onView={(shown) => show(shown, shown === null ? { exchange: null, activation: null, agent: null } : {})}
               onOpen={open}
               onExchange={onExchange}
+              onAllAgents={() => write(withWhere(params, { ...where, agent: null }))}
             />
             <OpenedStep
               marks={drawn}
@@ -166,7 +199,7 @@ export function Session() {
               onClose={() => open(null)}
             />
             <TimelineTabs
-              levels={levels}
+              levels={shownLevels}
               limitTokens={landed.limitTokens}
               spells={activationSpells}
               view={view}

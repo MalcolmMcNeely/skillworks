@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { ceilingOf, describeInForce, levelsOf, limitNotKnown, peakContextOf, tallyOf, type ContextPoint } from './context';
+import {
+  ceilingOf,
+  describeInForce,
+  levelsOf,
+  levelsRanByOne,
+  limitNotKnown,
+  peakContextOf,
+  tallyOf,
+  type ContextPoint,
+} from './context';
 
 function point(id: string, atUtc: string, tokens: number, held: Partial<ContextPoint> = {}): ContextPoint {
   return {
@@ -33,6 +42,24 @@ describe('levelsOf', () => {
 
   it('gives a run with no turn no level', () => {
     expect(levelsOf([])).toEqual([]);
+  });
+});
+
+describe('levelsRanByOne', () => {
+  const levels = levelsOf([
+    point('1', '2026-09-14T09:00:00.000Z', 40_000),
+    point('2', '2026-09-14T09:01:00.000Z', 50_000),
+    point('3', '2026-09-14T09:02:00.000Z', 60_000),
+  ]);
+
+  const agents = { '2': 'agent-a', '3': 'agent-b' };
+
+  it('keeps every level where no Subagent is open', () => {
+    expect(levelsRanByOne(levels, agents, null)).toEqual(levels);
+  });
+
+  it('keeps only the Turns the open Subagent ran, so the tab agrees with the lanes', () => {
+    expect(levelsRanByOne(levels, agents, 'agent-a').map((level) => level.point.id)).toEqual(['2']);
   });
 });
 

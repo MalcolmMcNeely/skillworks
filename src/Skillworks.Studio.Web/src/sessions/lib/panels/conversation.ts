@@ -10,11 +10,20 @@ export interface Exchange {
   turns: number;
   toolCalls: number;
   cost: number;
+  // A part of the cost and never an addition to it. Null until a Span has named the agent behind each Turn.
+  subagents: SubagentCost[] | null;
+}
+
+export interface SubagentCost {
+  agent: string;
+  cost: number;
 }
 
 export interface ExchangesPage {
   kind: 'exchanges';
   exchanges: Exchange[];
+  // The Turns before the first Prompt sit in no Exchange, so without them the Exchanges fall short of the Session's Cost.
+  beforeFirstPrompt: number;
 }
 
 // Worked out once, so the band on the timeline and the View it opens never disagree.

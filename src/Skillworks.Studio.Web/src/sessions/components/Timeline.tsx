@@ -65,9 +65,11 @@ export function Timeline({
   whole,
   view,
   selected,
+  agent,
   onView,
   onOpen,
   onExchange,
+  onAllAgents,
 }: {
   ref?: Ref<HTMLElement>;
   marks: readonly Mark[];
@@ -77,9 +79,11 @@ export function Timeline({
   whole: Range;
   view: Range | null;
   selected: string | null;
+  agent: string | null;
   onView: (view: Range | null) => void;
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
+  onAllAgents: () => void;
 }) {
   const [frame, width] = useWidth<HTMLDivElement>();
   const [pointed, setPointed] = useState<Pointed | null>(null);
@@ -110,6 +114,14 @@ export function Timeline({
           Whole run
         </button>
         <p className="micro timeline-hint">Drag across the strip to change what is in view. Click it for the whole run again.</p>
+        {agent === null ? null : (
+          <>
+            <p className="micro timeline-agent">Only the Steps of {agent}</p>
+            <button type="button" className="timeline-clear" onClick={onAllAgents}>
+              Show all agents
+            </button>
+          </>
+        )}
       </header>
 
       <div className="timeline-frame" ref={frame}>

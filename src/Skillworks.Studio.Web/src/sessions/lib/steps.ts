@@ -2,7 +2,7 @@ import type { Gap, StoresEnd } from '../../shared/gaps/lib/gaps';
 import type { Range } from './view';
 import type { FindingsPage } from './findings';
 import type { Activation, ActivationsPage } from './panels/activations';
-import type { AgentsPage, Depth } from './panels/agents';
+import type { AgentsPage, Depth, Subagent } from './panels/agents';
 import type { ContextPage, ContextPoint } from './panels/context';
 import type { Exchange, ExchangesPage } from './panels/conversation';
 import type { TimeBreakdownPage } from './panels/timeBreakdown';
@@ -54,6 +54,7 @@ export interface SessionAnswer {
   session: Session | null;
   steps: Step[];
   exchanges: Exchange[];
+  beforeFirstPrompt: number;
   activations: Activation[];
   context: ContextPoint[];
   limitTokens: number | null;
@@ -62,6 +63,7 @@ export interface SessionAnswer {
   // A narrower question than the Depth: withheld words leave a run Thin with its spans landed.
   traced: boolean;
   agents: Record<string, string>;
+  subagents: Subagent[];
   // Null until the spans land, as an empty Time breakdown and one nobody has read yet mean different things.
   timeBreakdown: TimeBreakdownPage | null;
   // Null until the spans land, as a run that crossed no bar and one nobody has read yet mean different things.
@@ -79,12 +81,14 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       session: line.session,
       steps: [],
       exchanges: [],
+      beforeFirstPrompt: 0,
       activations: [],
       context: [],
       limitTokens: null,
       depth: 'thin',
       traced: false,
       agents: {},
+      subagents: [],
       timeBreakdown: null,
       findings: null,
       landed: false,
@@ -103,7 +107,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
   }
 
   if (line.kind === 'exchanges') {
-    return { ...answer, exchanges: line.exchanges };
+    return { ...answer, exchanges: line.exchanges, beforeFirstPrompt: line.beforeFirstPrompt };
   }
 
   if (line.kind === 'activations') {
@@ -115,7 +119,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
   }
 
   if (line.kind === 'agents') {
-    return { ...answer, depth: line.depth, traced: line.traced, agents: line.agents };
+    return { ...answer, depth: line.depth, traced: line.traced, agents: line.agents, subagents: line.subagents };
   }
 
   if (line.kind === 'trace') {

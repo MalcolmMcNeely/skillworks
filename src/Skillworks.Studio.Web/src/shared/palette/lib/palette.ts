@@ -90,6 +90,12 @@ export const surfaces: Record<string, Surface> = {
     text: [],
     marks: ['warned', 'unnamed', 'line', 'hud', 'live', 'inkSoft', 'inkFaint'],
   },
+  // A Cost breakdown bar tells the main agent from its Subagents by colour, on a panel ground.
+  costBreakdown: {
+    ground: 'panel',
+    text: [],
+    marks: ['hud', 'live', 'inkSoft'],
+  },
   // A pinned readout lies over the map, so its labels, figures and trigger glyphs are held to the thresholds too.
   tileReadout: {
     ground: 'panel',

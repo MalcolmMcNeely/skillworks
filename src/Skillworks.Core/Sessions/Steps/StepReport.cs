@@ -5,7 +5,6 @@ using Skillworks.Core.Shared.Gaps;
 using Skillworks.Core.Sessions.Activations;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
-using Skillworks.Core.Sessions.Exchanges;
 using Skillworks.Core.Sessions.Queries;
 using Skillworks.Core.Sessions.Trace;
 
@@ -26,7 +25,7 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
         if (opened.Read.Unreachable is null)
         {
             // Ahead of the steps, so a screen that draws on the steps landing has every panel already.
-            yield return new ExchangesPage(opened.Said);
+            yield return StepQueries.Exchanges(opened);
             yield return new ActivationsPage(opened.Fired);
             yield return new ContextPage(opened.Sent, opened.LimitTokens);
 
@@ -48,6 +47,12 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
             traced.Traced,
             traced.Agents,
             ran);
+
+        // Again, now a Span has named the agent behind each Turn and a Subagent's part can be set apart.
+        if (opened.Read.Unreachable is null)
+        {
+            yield return StepQueries.Exchanges(opened, traced);
+        }
 
         var breakdown = StepQueries.TimeBreakdown(opened, traced, ran);
 

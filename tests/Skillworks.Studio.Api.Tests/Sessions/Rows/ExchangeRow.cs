@@ -1,3 +1,5 @@
+using Skillworks.Studio.Api.Tests.Sessions.Rows.Exchanges;
+
 namespace Skillworks.Studio.Api.Tests.Sessions.Rows;
 
 public sealed record ExchangeRow
@@ -21,4 +23,6 @@ public sealed record ExchangeRow
     public required int ToolCalls { get; init; }
 
     public required decimal Cost { get; init; }
+
+    public required IReadOnlyList<SubagentCostRow>? Subagents { get; init; }
 }

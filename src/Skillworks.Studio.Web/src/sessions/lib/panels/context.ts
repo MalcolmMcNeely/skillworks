@@ -34,6 +34,11 @@ export function levelsOf(points: readonly ContextPoint[]): Level[] {
   });
 }
 
+// A point carries the id of the Turn it was sent on, so the agents that name a Step name its point too.
+export function levelsRanByOne(levels: readonly Level[], agents: Record<string, string>, agent: string | null): Level[] {
+  return agent === null ? [...levels] : levels.filter((level) => agents[level.point.id] === agent);
+}
+
 export function describeInForce(point: ContextPoint): string {
   return point.skill ?? (point.unnamed ? missingWords.notNamed : missingWords.none);
 }

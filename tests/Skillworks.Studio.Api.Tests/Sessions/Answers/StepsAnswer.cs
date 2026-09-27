@@ -9,6 +9,7 @@ public sealed record StepsAnswer(
     RunRow? Run,
     IReadOnlyList<StepRow> Steps,
     IReadOnlyList<ExchangeRow> Exchanges,
+    decimal BeforeFirstPrompt,
     IReadOnlyList<ActivationRow> Activations,
     IReadOnlyList<ContextRow> Context,
     long? LimitTokens,
@@ -26,11 +27,13 @@ public sealed record StepsAnswer(
     {
         var spans = Line(lines, "agents");
         var tree = Line(lines, "trace");
+        var said = lines.LastOrDefault(line => StudioHost.KindOf(line) == "exchanges");
 
         return new StepsAnswer(
             Opened(lines.Single(line => StudioHost.KindOf(line) == "head")),
             Held<StepRow>(lines, "steps"),
-            Held<ExchangeRow>(lines, "exchanges"),
+            Latest<ExchangeRow>(lines, "exchanges"),
+            (decimal?)said?["beforeFirstPrompt"] ?? 0m,
             Held<ActivationRow>(lines, "activations"),
             Held<ContextRow>(lines, "context", "points"),
             Limit(lines),
@@ -57,7 +60,7 @@ public sealed record StepsAnswer(
             .Select(StudioHost.Read<T>)
     ];
 
-    // The findings arrive twice and the second answers for the first, so a browser replaces where a page appends.
+    // The findings and the exchanges arrive twice and the second answers for the first, so a browser replaces where a page appends.
     private static IReadOnlyList<T> Latest<T>(IReadOnlyList<JsonObject> lines, string kind) =>
     [
         .. (lines.LastOrDefault(line => StudioHost.KindOf(line) == kind)?[kind]?.AsArray() ?? [])

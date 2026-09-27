@@ -11,6 +11,7 @@ function exchange(fields: Partial<Exchange> & Pick<Exchange, 'index' | 'atUtc'>)
     turns: 0,
     toolCalls: 0,
     cost: 0,
+    subagents: null,
     ...fields,
   };
 }
