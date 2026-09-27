@@ -40,7 +40,7 @@ import land_ticket
 import ticket_worktree
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
-from steering.target_branch import target_branch
+from steering.target_branch import in_spec_mode, target_branch
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 
@@ -311,6 +311,7 @@ class Loop:
 
         self.root = Path.cwd()
         self.target = ""
+        self.spec_mode = False
         self.repo = ""
         self.me = ""
         self.spec_title = ""
@@ -372,7 +373,8 @@ class Loop:
     def worktree(self, command, job=""):
         out, err = io.StringIO(), io.StringIO()
         status = ticket_worktree.main(
-            [command, self.root.as_posix(), self.spec, job], self.runner, out, err, self.wait)
+            [command, self.root.as_posix(), self.spec, job], self.runner, out, err, self.wait,
+            self.target)
         if status != 0:
             self.err.write(err.getvalue())
             appended(self.log, err.getvalue())
@@ -812,7 +814,7 @@ class Loop:
         said = Lines(heard)
         landed = land_ticket.main(
             [self.job_worktree, ticket, session], self.runner, said, said, self.wait,
-            self.permission_mode)
+            self.permission_mode, self.target)
         said.end()
         if landed != 0:
             # The finishing step closed it, and the work it closed on never reached the remote.
@@ -929,7 +931,29 @@ class Loop:
         if self.worktree("close", "drift")[0] != 0:
             raise stop("FAIL  the drift worktree at {} would not go.".format(self.job_worktree))
 
+    # --- the pull request, in spec mode --------------------------------------
+
+    # Ready and never merged, so a person reviews the spec before it reaches the default branch.
+    def mark_ready(self):
+        marked = self.gh("pr", "ready", self.target)
+        if marked.status != 0:
+            raise stop("FAIL  the pull request from {} was not marked ready for review. Mark it "
+                       "with: gh pr ready {}\n      gh said: {}".format(
+                           self.target, self.target, (marked.out + marked.err).strip()))
+        self.say("READY the pull request from {} is ready for review. A person reviews and "
+                 "merges it.".format(self.target))
+
     # --- the whole run -------------------------------------------------------
+
+    def read_target(self):
+        self.spec_mode = in_spec_mode(self.root)
+        if not self.spec_mode:
+            return target_branch(self.root)
+        body = self.issue_field(self.spec, ".body")
+        if body.status != 0:
+            raise stop("ABORT cannot read the body of spec #{}, which names its branch.".format(
+                self.spec))
+        return target_branch(self.root, body.out)
 
     def run(self, dry):
         # No guard on the branch or on the edits: nothing is ever built in this checkout.
@@ -948,8 +972,8 @@ class Loop:
 
         self.keep_leftovers()
 
-        # The worktree and landing scripts read the same checkout's file, so all three agree.
-        self.target = target_branch(self.root)
+        # Read once and handed to the worktree and landing scripts, so all three agree.
+        self.target = self.read_target()
 
         # Every worktree is cut from the Target branch on origin, so the ref has to be current first.
         if not fetch_origin(self.runner, self.root.as_posix(), self.target, self.err, self.wait):
@@ -973,6 +997,8 @@ class Loop:
         self.run_full()
 
         self.check_drift(base)
+        if self.spec_mode:
+            self.mark_ready()
         self.say("END   spec #{} complete. Every ticket is on {}.".format(self.spec, self.target))
         self.say("      Review it with: git log --oneline {}..origin/{}".format(base, self.target))
 

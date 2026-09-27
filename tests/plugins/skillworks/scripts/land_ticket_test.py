@@ -135,17 +135,19 @@ class Heard(io.StringIO):
 
 # The landing blocks on the Turn, so it runs beside the case that holds it.
 class Beside:
-    def __init__(self, runner, out, *args):
+    def __init__(self, runner, out, *args, target=None):
         given = [a.as_posix() if isinstance(a, Path) else str(a) for a in args]
         self.out = out
         self.err = io.StringIO()
         self.status = None
+        self.target = target
         self.thread = threading.Thread(target=self.land, args=(runner, given), daemon=True)
         self.thread.start()
 
     def land(self, runner, given):
         try:
-            self.status = land_ticket.main(given, runner, self.out, self.err, no_wait)
+            self.status = land_ticket.main(given, runner, self.out, self.err, no_wait,
+                                           target=self.target)
         finally:
             # A landing that ended without the line must fail the case, not hang it.
             self.out.seen.set()
@@ -724,6 +726,51 @@ def test_a_landing_on_master_that_lost_a_race_waits_for_the_turn_and_then_lands_
     assert ran.status == 0, report(ran)
     assert "landed on master as {} in 2 tries".format(head[:7]) in report(ran)
     assert target_of(master) == head
+
+
+SPEC_BRANCH = "spec/target-branch"
+
+
+# The checkout says spec, and only the driver has read the spec, so the branch is handed in.
+@pytest.fixture
+def spec_mode(tmp_path):
+    made = landing_repo(tmp_path, "main")
+    write_loop(made.work, "spec")
+    git(made.work, "commit", "--quiet", "-am", "The loop reviews each spec as one pull request")
+    git(made.work, "push", "--quiet", "origin", "main:" + SPEC_BRANCH)
+    git(made.work, "fetch", "--quiet", "origin")
+    git(made.work, "checkout", "--quiet", "-B", SPEC_BRANCH, "origin/" + SPEC_BRANCH)
+    return made
+
+
+def spec_branch_of(repo):
+    return git(repo.origin, "rev-parse", SPEC_BRANCH).strip()
+
+
+def test_in_spec_mode_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_on_the_spec_branch(
+        spec_mode, runner, other_loops):
+    commit_for_ticket(spec_mode, 163)
+    head = head_of(spec_mode)
+    base = spec_branch_of(spec_mode)
+    main = git(spec_mode.origin, "rev-parse", "main").strip()
+    runner.refuse("push --quiet origin HEAD:" + SPEC_BRANCH, LOST_RACE, times=1)
+    held = []
+    out = Heard(WAITS, {"lost a race to " + SPEC_BRANCH: lambda: held.append(
+        other_loops(spec_mode))})
+
+    landing = Beside(runner, out, spec_mode.work, 163, target=SPEC_BRANCH)
+    heard = landing.heard()
+
+    assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
+    assert spec_branch_of(spec_mode) == base
+
+    held[0].let_go()
+    ran = landing.ended()
+
+    assert ran.status == 0, report(ran)
+    assert "landed on {} as {} in 2 tries".format(SPEC_BRANCH, head[:7]) in report(ran)
+    assert spec_branch_of(spec_mode) == head
+    assert git(spec_mode.origin, "rev-parse", "main").strip() == main
 
 
 def test_a_checkout_with_no_loop_file_is_refused_and_told_how_to_write_one(repo, runner):

@@ -10,15 +10,24 @@ SPEC_MODE = "spec"
 BRANCH_HEADING = "## Branch"
 
 
-def target_branch(top, spec=None):
+def target_setting(top):
     path = Path(top) / LOOP_FILE
     if not path.is_file():
         raise refusal("{} is missing. Run seed-steering to write it.".format(LOOP_FILE))
     settings = json.loads(path.read_text(encoding="utf-8"))
     if "target-branch" not in settings:
         raise refusal("{} names no target-branch. Add one, such as \"target-branch\": \"main\".".format(LOOP_FILE))
-    if settings["target-branch"] != SPEC_MODE:
-        return settings["target-branch"]
+    return settings["target-branch"]
+
+
+def in_spec_mode(top):
+    return target_setting(top) == SPEC_MODE
+
+
+def target_branch(top, spec=None):
+    named = target_setting(top)
+    if named != SPEC_MODE:
+        return named
     if spec is None:
         raise refusal("{} says spec, so each spec names its own Target branch, and no spec was given to read it from.".format(LOOP_FILE))
     return spec_branch(spec)

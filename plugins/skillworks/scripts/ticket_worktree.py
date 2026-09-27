@@ -100,12 +100,13 @@ def same_place(said, tree):
 
 
 class Worktrees:
-    def __init__(self, runner, checkout, spec, out, err, wait):
+    def __init__(self, runner, checkout, spec, out, err, wait, target=None):
         self.runner = runner
         self.spec = spec
         self.out = out
         self.err = err
         self.wait = wait
+        self.target = target
 
         if self.git(checkout, "rev-parse", "--git-dir").status != 0:
             raise refusal(str(checkout) + " is not a git worktree. Nothing was made or removed.")
@@ -154,7 +155,7 @@ class Worktrees:
             raise refusal("branch {} is already there. Remove it with: {}".format(
                 branch, self.removal(job)))
 
-        target = target_branch(self.checkout)
+        target = self.target or target_branch(self.checkout)
         if not fetch_origin(self.runner, self.checkout.as_posix(), target, self.err, self.wait):
             raise refusal("could not fetch {} from origin, so nothing could be cut from it.".format(
                 target))
@@ -289,10 +290,11 @@ class Worktrees:
         self.drop_group()
 
 
-def main(argv, runner, out, err, wait):
+# Only the driver reads the spec, so in spec mode it hands in the branch the spec names.
+def main(argv, runner, out, err, wait, target=None):
     try:
         command, checkout, spec, job = arguments(argv)
-        worktrees = Worktrees(runner, checkout, spec, out, err, wait)
+        worktrees = Worktrees(runner, checkout, spec, out, err, wait, target)
         COMMANDS[command].do(worktrees, job)
         return 0
     except Stop as stop:

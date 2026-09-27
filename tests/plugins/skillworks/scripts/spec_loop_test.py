@@ -61,6 +61,23 @@ def master(tmp_path, runner, monkeypatch):
     return driver_in(Repo(tmp_path, target="master"), runner, monkeypatch)
 
 
+SPEC_BRANCH = "spec/target-branch"
+
+NAMES_ITS_BRANCH = "## Problem Statement\n\nWords.\n\n## Branch\n\n`{}`\n".format(SPEC_BRANCH)
+
+
+# The checkout sits on the spec's branch, so what a case commits there reaches it and not main.
+@pytest.fixture
+def spec_mode(tmp_path, runner, monkeypatch):
+    repo = Repo(tmp_path)
+    git(repo.work, "checkout", "--quiet", "-b", SPEC_BRANCH)
+    git(repo.work, "push", "--quiet", "origin", SPEC_BRANCH)
+    repo.target = SPEC_BRANCH
+    driven = driver_in(repo, runner, monkeypatch)
+    write_loop(repo.work, "spec")
+    return driven
+
+
 def driver_in(repo, runner, monkeypatch):
     # The loop puts its log where it is run, so it is run in the throwaway repository.
     monkeypatch.chdir(repo.work)
@@ -86,6 +103,8 @@ class Tracker:
         self.runner = runner
         self.tickets = tickets
         self.closed = set()
+        self.body = NAMES_ITS_BRANCH
+        self.ready = Ran(0, "", "")
         runner.stub("gh", does=self.answer)
 
     def numbers(self, only_open=False):
@@ -117,6 +136,10 @@ class Tracker:
             return Ran(0, "closed\n" if number in self.closed else "open\n", "")
         if asked.endswith("--jq .title"):
             return Ran(0, "SPEC: A spec to plan\n", "")
+        if asked == "api repos/owner/repo/issues/{} --jq .body".format(SPEC):
+            return Ran(0, self.body, "")
+        if asked == "pr ready " + SPEC_BRANCH:
+            return self.ready
         return Ran(1, "", "the tracker has no answer for: " + asked + "\n")
 
 
@@ -2473,6 +2496,83 @@ def test_a_red_full_run_on_master_names_master(master):
     assert ran.status == 1
     assert re.search(r"RED   the full run of the Suite went red on master at [0-9a-f]+", said(ran))
     assert not names_main(said(ran)), said(ran)
+
+
+# --- a spec reviewed as one pull request ------------------------------------
+
+def pull_request_calls(runner):
+    return [call for call in runner.started("gh") if call[1] == "pr"]
+
+
+def test_in_spec_mode_a_ticket_is_cut_from_and_lands_on_the_spec_branch_and_not_main(spec_mode):
+    given_a_run_that_lands(spec_mode)
+    suite_commit = git(spec_mode.repo.origin, "rev-parse", SPEC_BRANCH).strip()
+    main = git(spec_mode.repo.origin, "rev-parse", "main").strip()
+
+    ran = spec_mode.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(spec_mode.repo.origin, "log", "-1", "--format=%s", SPEC_BRANCH).strip() == "Built"
+    assert git(spec_mode.repo.origin, "rev-parse", SPEC_BRANCH + "^").strip() == suite_commit
+    assert git(spec_mode.repo.origin, "rev-parse", "main").strip() == main
+    assert "Every ticket is on {}.".format(SPEC_BRANCH) in spec_mode.log()
+
+
+def test_in_spec_mode_the_pull_request_is_marked_ready_after_the_drift_check(spec_mode, runner):
+    given_a_run_that_lands(spec_mode)
+
+    ran = spec_mode.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert pull_request_calls(runner) == [["gh", "pr", "ready", SPEC_BRANCH]]
+    assert call_at(runner, "/skillworks:spec-drift") < call_at(runner, "pr ready")
+    assert "READY the pull request from {} is ready for review".format(
+        SPEC_BRANCH) in spec_mode.log()
+
+
+def test_in_spec_mode_the_driver_never_merges_the_pull_request(spec_mode, runner):
+    given_a_run_that_lands(spec_mode)
+
+    ran = spec_mode.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert [call for call in runner.started("gh") if "merge" in call] == []
+    assert [call[2] for call in pull_request_calls(runner)] == ["ready"]
+
+
+def test_in_spec_mode_a_pull_request_that_would_not_be_marked_ready_stops_and_names_the_command(
+        spec_mode):
+    tracker = given_a_run_that_lands(spec_mode)
+    tracker.ready = Ran(1, "", "no pull requests found for branch \"{}\"\n".format(SPEC_BRANCH))
+
+    ran = spec_mode.run(SPEC)
+
+    assert ran.status == 1
+    assert "gh pr ready {}".format(SPEC_BRANCH) in said(ran)
+    assert "no pull requests found" in said(ran)
+
+
+def test_in_spec_mode_a_spec_that_names_no_branch_stops_before_a_ticket_is_claimed(
+        spec_mode, runner):
+    tracker = given_the_tracker_holds(spec_mode, ONE_OPEN_TICKET)
+    tracker.body = "## Problem Statement\n\nWords.\n"
+
+    ran = spec_mode.run(SPEC)
+
+    assert ran.status == 1
+    assert "names no branch under ## Branch" in spec_mode.log()
+    assert not runner.built("issue edit")
+
+
+def test_with_a_branch_name_the_driver_touches_no_pull_request(loop, runner):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert call_asking(runner, "/skillworks:spec-drift") is not None
+    assert pull_request_calls(runner) == []
+    assert "READY" not in loop.log()
 
 
 # --- the claim --------------------------------------------------------------

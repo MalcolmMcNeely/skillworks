@@ -87,6 +87,26 @@ def test_a_job_is_branched_from_the_newest_origin_master_when_master_is_the_targ
     assert git(tree, "rev-parse", "--abbrev-ref", "HEAD").strip() == "spec-loop/158/ticket-164"
 
 
+# Only the driver has read the spec, so in spec mode the Target branch is handed in.
+def test_in_spec_mode_a_job_is_branched_from_the_newest_spec_branch_it_is_handed(repo, runner):
+    write_loop(repo.work, "spec")
+    git(repo.work, "push", "--quiet", "origin", "main:spec/target-branch")
+    other = repo.other_checkout()
+    git(other, "checkout", "--quiet", "-b", "spec/target-branch", "origin/spec/target-branch")
+    repo.write_commit(other, "landed.txt", "landed", "An earlier ticket")
+    git(other, "push", "--quiet", "origin", "spec/target-branch")
+    newest = git(repo.origin, "rev-parse", "spec/target-branch").strip()
+    tree = repo.tree(158, "ticket-164")
+    out, err = io.StringIO(), io.StringIO()
+
+    status = ticket_worktree.main(["open", repo.work.as_posix(), "158", "ticket-164"],
+                                  runner, out, err, no_wait, target="spec/target-branch")
+
+    assert status == 0, err.getvalue()
+    assert git(tree, "rev-parse", "HEAD").strip() == newest
+    assert (tree / "landed.txt").is_file()
+
+
 def test_a_remote_without_the_target_branch_is_refused_by_its_name(repo, runner):
     write_loop(repo.work, "master")
 

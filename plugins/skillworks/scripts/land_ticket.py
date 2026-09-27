@@ -125,7 +125,8 @@ class Turn:
 
 
 class Landing:
-    def __init__(self, runner, worktree, ticket, session, out, err, wait, permission_mode):
+    def __init__(self, runner, worktree, ticket, session, out, err, wait, permission_mode,
+                 target=None):
         self.runner = runner
         self.worktree = Path(worktree).as_posix()
         self.ticket = ticket
@@ -136,7 +137,7 @@ class Landing:
         self.permission_mode = permission_mode
         # None when no conflict is in hand, so a stop can tell whether it has one to record.
         self.conflict = None
-        self.target = None
+        self.target = target
 
     @property
     def upstream(self):
@@ -412,8 +413,9 @@ class Landing:
         if self.git("rev-parse", "--git-dir").status != 0:
             raise self.die(self.worktree + " is not a git worktree. Nothing was pushed.")
 
-        # The worktree script read the main checkout's settings, so a landing reads the same ones.
-        self.target = target_branch(self.main_checkout())
+        # The worktree script read the main checkout's settings, so a landing handed none reads the same ones.
+        if not self.target:
+            self.target = target_branch(self.main_checkout())
 
         # A commit does not carry unfinished work, so pushing would leave it behind.
         if self.git("status", "--porcelain").out.strip():
@@ -508,7 +510,8 @@ def permission_mode_set():
 
 
 # The driver hands in the mode of its run, so the resolving Session never falls back to the default.
-def main(argv, runner, out, err, wait, permission_mode=None):
+# It hands in the Target branch too, since in spec mode only the driver has read the spec.
+def main(argv, runner, out, err, wait, permission_mode=None, target=None):
     if permission_mode is None:
         permission_mode = permission_mode_set()
     try:
@@ -523,7 +526,8 @@ def main(argv, runner, out, err, wait, permission_mode=None):
         if not worktree or not is_a_number(ticket):
             raise misuse(USAGE)
 
-        Landing(runner, worktree, ticket, session, out, err, wait, permission_mode).land()
+        Landing(runner, worktree, ticket, session, out, err, wait, permission_mode,
+                target).land()
         return 0
     except Stop as stop:
         err.write(stop.said)

@@ -4,7 +4,7 @@ import pytest
 
 from conftest import ROOT
 from stop import REFUSED, Stop
-from steering.target_branch import LOOP_FILE, target_branch
+from steering.target_branch import LOOP_FILE, in_spec_mode, target_branch
 
 
 def write_loop(top, settings):
@@ -70,6 +70,21 @@ def test_a_branch_name_ignores_the_branch_a_spec_names(tmp_path):
     write_loop(tmp_path, {"target-branch": "master"})
 
     assert target_branch(tmp_path, "## Branch\n\n`spec/other`\n") == "master"
+
+
+def test_spec_mode_is_told_apart_from_a_branch_name(tmp_path):
+    write_loop(tmp_path, {"target-branch": "spec"})
+    assert in_spec_mode(tmp_path)
+
+    write_loop(tmp_path, {"target-branch": "master"})
+    assert not in_spec_mode(tmp_path)
+
+
+def test_a_missing_loop_file_stops_the_question_of_spec_mode_too(tmp_path):
+    with pytest.raises(Stop) as stopped:
+        in_spec_mode(tmp_path)
+
+    assert "seed-steering" in stopped.value.said
 
 
 def test_this_repo_lands_on_main():
