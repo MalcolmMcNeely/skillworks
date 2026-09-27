@@ -5,6 +5,7 @@ import type { SkillRow } from '../../../lib/timeline/skills';
 function Row({ row, lit, onPick }: { row: SkillRow; lit: boolean; onPick: (picked: Highlight) => void }) {
   // Left blank rather than nought, as No skill and Unnamed spend never fire.
   const fired = row.fired === null ? '' : describeCount(row.fired);
+  const toolCalls = row.toolCalls === null ? 'not known' : describeCount(row.toolCalls);
 
   return (
     <li>
@@ -12,13 +13,13 @@ function Row({ row, lit, onPick }: { row: SkillRow; lit: boolean; onPick: (picke
         type="button"
         className={`skill-row${lit ? ' is-open' : ''}`}
         aria-pressed={lit}
-        aria-label={`${row.label}: ${row.fired === null ? '' : `fired ${fired}, `}${describeCount(row.turns)} turns, ${describeCount(row.toolCalls)} tool calls, ${describeMoney(row.cost)}, ${describeLength(row.lengthMs)}`}
+        aria-label={`${row.label}: ${row.fired === null ? '' : `fired ${fired}, `}${describeCount(row.turns)} turns, ${toolCalls} tool calls, ${describeMoney(row.cost)}, ${describeLength(row.lengthMs)}`}
         onClick={() => onPick(row.key)}
       >
         <span className={`call-name${row.key.kind === 'skill' ? '' : ' is-unskilled'}`}>{row.label}</span>
         <span className="tool-figure">{fired}</span>
         <span className="tool-figure">{describeCount(row.turns)}</span>
-        <span className="tool-figure">{describeCount(row.toolCalls)}</span>
+        <span className="tool-figure">{toolCalls}</span>
         <span className="tool-figure">{describeMoney(row.cost)}</span>
         <span className="tool-figure">{describeLength(row.lengthMs)}</span>
       </button>

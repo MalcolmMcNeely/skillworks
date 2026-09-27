@@ -123,6 +123,41 @@ describe('skillRowsOf', () => {
     expect(rows[0].fired).toBe(1);
   });
 
+  it('reads Tool calls as not known in a Session with no Spans, and puts no call under No skill', () => {
+    const rows = skillRowsOf(
+      marksOf([
+        step('1', '09:00:00', { skill: 'tdd', cost: 0.25, lengthMs: 2_000 }),
+        step('2', '09:00:10', { ...bash, skillKnown: false, lengthMs: 500 }),
+        step('3', '09:00:20', { ...bash, kind: 'refused', skillKnown: false }),
+        step('4', '09:00:30', { cost: 0.5, lengthMs: 1_000 }),
+      ]),
+      [],
+      null,
+    );
+
+    expect(rows).toEqual([
+      { key: { kind: 'skill', name: 'tdd' }, label: 'tdd', fired: 0, turns: 1, toolCalls: null, cost: 0.25, lengthMs: 2_000 },
+      { key: { kind: 'noSkill' }, label: 'No skill', fired: null, turns: 1, toolCalls: null, cost: 0.5, lengthMs: 1_000 },
+    ]);
+  });
+
+  it('adds up to the Cost in the View in a Session with no Spans', () => {
+    const marks = marksOf([
+      step('1', '09:00:00', { skill: 'implement', cost: 0.4 }),
+      step('2', '09:00:10', { ...bash, skillKnown: false }),
+      step('3', '09:01:00', { skill: 'tdd', cost: 0.3 }),
+      step('4', '09:02:00', { cost: 0.2 }),
+      step('5', '09:03:00', { unnamed: true, cost: 0.1 }),
+      step('6', '09:10:00', { skill: 'tdd', cost: 9 }),
+    ]);
+    const view: [number, number] = [at('08:59:00'), at('09:05:00')];
+
+    const rows = skillRowsOf(marks, [], view);
+
+    expect(rows.reduce((sum, row) => sum + row.cost, 0)).toBeCloseTo(costIn(marks, view));
+    expect(costIn(marks, view)).toBeCloseTo(1);
+  });
+
   it('gives no row to a skill that fired but has no Step in the View', () => {
     expect(skillRowsOf([], activationSpellsOf([fired('a', 'tdd', '09:00:00')]), null)).toEqual([]);
   });

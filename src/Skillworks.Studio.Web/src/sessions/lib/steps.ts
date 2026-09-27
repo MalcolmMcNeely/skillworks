@@ -222,7 +222,7 @@ export function isToolCall(step: Step): step is Step & { tool: string } {
 
 // A Turn and the Tool calls it asked for are what a skill spent, so only these belong to one.
 export function isAttributed(step: Step): boolean {
-  return step.kind === 'turn' || isToolCall(step);
+  return step.kind === 'turn' || (isToolCall(step) && step.skillKnown);
 }
 
 export type Tone = 'model' | 'tool' | 'refused' | 'fault';

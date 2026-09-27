@@ -157,6 +157,25 @@ describe('litBy', () => {
     expect([...litBy({ kind: 'skill', name: 'implement' }, marks)].toSorted()).toEqual(['1', '4']);
   });
 
+  it('lights only the Turns of a skill in a Session with no Spans, as no Tool call there has a known skill', () => {
+    const marks = marksOf([
+      step('1', { ...turn, skill: 'tdd' }),
+      step('2', { skillKnown: false }),
+      step('3', { kind: 'refused', skillKnown: false }),
+      step('4', { ...turn }),
+    ]);
+
+    expect([...litBy({ kind: 'skill', name: 'tdd' }, marks)]).toEqual(['1']);
+    expect([...litBy({ kind: 'noSkill' }, marks)]).toEqual(['4']);
+    expect([...litBy({ kind: 'unnamed' }, marks)]).toEqual([]);
+  });
+
+  it('still lights every call of a tool in a Session with no Spans', () => {
+    const marks = marksOf([step('1', { skillKnown: false }), step('2', { kind: 'refused', skillKnown: false })]);
+
+    expect([...litBy(bash, marks)].toSorted()).toEqual(['1', '2']);
+  });
+
   it('lights No skill and Unnamed spend apart', () => {
     const marks = marksOf([step('1', turn), step('2'), step('3', { ...turn, unnamed: true }), step('4', { unnamed: true })]);
 
