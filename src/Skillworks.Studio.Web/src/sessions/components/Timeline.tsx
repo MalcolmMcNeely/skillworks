@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
 import type { Range } from '../lib/view';
+import type { Highlight } from '../lib/highlight';
 import type { Band } from '../lib/panels/conversation';
 import { describeLength } from '../../shared/figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../lib/steps';
@@ -66,10 +67,13 @@ export function Timeline({
   view,
   selected,
   agent,
+  highlight,
+  lit,
   onView,
   onOpen,
   onExchange,
   onAllAgents,
+  onClearHighlight,
 }: {
   ref?: Ref<HTMLElement>;
   marks: readonly Mark[];
@@ -80,10 +84,13 @@ export function Timeline({
   view: Range | null;
   selected: string | null;
   agent: string | null;
+  highlight: Highlight | null;
+  lit: ReadonlySet<string> | null;
   onView: (view: Range | null) => void;
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
   onAllAgents: () => void;
+  onClearHighlight: () => void;
 }) {
   const [frame, width] = useWidth<HTMLDivElement>();
   const [pointed, setPointed] = useState<Pointed | null>(null);
@@ -122,6 +129,14 @@ export function Timeline({
             </button>
           </>
         )}
+        {highlight === null ? null : (
+          <>
+            <p className="micro timeline-lit">Lit: every {highlight.name} call</p>
+            <button type="button" className="timeline-clear" onClick={onClearHighlight}>
+              Clear the highlight
+            </button>
+          </>
+        )}
       </header>
 
       <div className="timeline-frame" ref={frame}>
@@ -131,6 +146,7 @@ export function Timeline({
           bands={bands}
           view={inView}
           selected={selected}
+          lit={lit}
           left={left}
           width={width}
           onOpen={onOpen}

@@ -208,6 +208,11 @@ export function lanesOf(step: Step): Lane[] {
   return step.fault ? [lane, 'fault'] : [lane];
 }
 
+// A refused call never ran, and it is still a Tool call somebody asked for.
+export function isToolCall(step: Step): step is Step & { tool: string } {
+  return (step.kind === 'tool' || step.kind === 'refused') && step.tool !== null;
+}
+
 export type Tone = 'model' | 'tool' | 'refused' | 'fault';
 
 // What a mark is drawn as, in its own lane and in Faults alike, so a failed call reads failed where it happened.

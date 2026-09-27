@@ -23,11 +23,20 @@ interface Placed {
   x2: number;
 }
 
+function litClass(lit: ReadonlySet<string> | null, mark: Mark): string {
+  if (lit === null) {
+    return '';
+  }
+
+  return lit.has(mark.step.id) ? ' is-lit' : ' is-dim';
+}
+
 export function Lanes({
   marks,
   bands,
   view,
   selected,
+  lit,
   left,
   width,
   onOpen,
@@ -38,6 +47,8 @@ export function Lanes({
   bands: readonly Band[];
   view: Range;
   selected: string | null;
+  // Null where nothing is lit, which is not the same as a Highlight whose tool made no call in view.
+  lit: ReadonlySet<string> | null;
   left: number;
   width: number;
   onOpen: (step: string) => void;
@@ -131,7 +142,7 @@ export function Lanes({
           width={x2 - x1}
           height={laneHeight - 6}
           rx={1}
-          className={`timeline-mark is-${toneOf(mark.step)}${mark.step.id === selected ? ' is-open' : ''}`}
+          className={`timeline-mark is-${toneOf(mark.step)}${mark.step.id === selected ? ' is-open' : ''}${litClass(lit, mark)}`}
           onPointerEnter={(event) => onHover(mark, event)}
           onPointerLeave={(event) => onHover(null, event)}
           onClick={() => onOpen(mark.step.id)}

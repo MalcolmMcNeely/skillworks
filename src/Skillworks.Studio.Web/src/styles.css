@@ -1768,6 +1768,15 @@ a.home-panel-face:hover::before {
   fill: var(--ink);
 }
 
+.timeline-mark.is-lit {
+  stroke: var(--hud);
+  stroke-width: 1.5;
+}
+
+.timeline-mark.is-dim {
+  opacity: 0.2;
+}
+
 /* The tip must not take the cursor off the mark it stands for, or the two would flicker against each other. */
 .timeline-tip {
   background: var(--panel);
@@ -1876,7 +1885,8 @@ a.home-panel-face:hover::before {
   padding: 0;
 }
 
-.call-row {
+.call-row,
+.tool-row {
   background: none;
   border: 0;
   border-bottom: 1px solid var(--rule);
@@ -1895,11 +1905,41 @@ a.home-panel-face:hover::before {
   grid-template-columns: 5rem minmax(0, 1fr) 1.2rem 5rem;
 }
 
+/* The heads stand over the rows, so both take one set of columns. */
+.tool-row,
+.tool-heads {
+  grid-template-columns: minmax(0, 1fr) 3.5rem 3.5rem 3.5rem 5rem;
+}
+
+.tool-heads {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.25rem 0.4rem;
+}
+
+.tool-figure {
+  font-family: var(--mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tool-figure.is-fault {
+  color: var(--failed);
+}
+
 .call-row:hover,
 .call-row:focus-visible,
-.call-row.is-open {
+.call-row.is-open,
+.tool-row:hover,
+.tool-row:focus-visible,
+.tool-row.is-open {
   background: var(--panel);
   color: var(--ink);
+}
+
+.tool-row.is-open {
+  box-shadow: inset 2px 0 0 var(--hud);
 }
 
 .call-name {
@@ -2282,6 +2322,11 @@ button.cost-fill:focus-visible {
 
 .timeline-agent {
   color: var(--live);
+  margin: 0;
+}
+
+.timeline-lit {
+  color: var(--hud);
   margin: 0;
 }
 

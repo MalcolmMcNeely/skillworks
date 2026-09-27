@@ -17,11 +17,13 @@ import { Tiles } from '../components/verdict/Tiles';
 import { TimeBreakdown } from '../components/verdict/TimeBreakdown';
 import { rangeOf, readRange, widened, withRange, type Range } from '../lib/view';
 import { type Named } from '../lib/findings';
+import { litBy, readHighlight, toggled, withHighlight, type Highlight } from '../lib/highlight';
 import { activationSpellsOf, type ActivationSpell } from '../lib/panels/activations';
 import { ranByOne } from '../lib/panels/agents';
 import { levelsOf, levelsRanByOne } from '../lib/panels/context';
 import { bandsOf, type Band, type Exchange } from '../lib/panels/conversation';
 import { costBreakdownOf } from '../lib/panels/costBreakdown';
+import { toolRowsOf } from '../lib/panels/tools';
 import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpan, type SessionAnswer } from '../lib/steps';
 import { tilesOf } from '../lib/verdict';
@@ -44,6 +46,9 @@ export function Session() {
   const filter = readFilter(params);
   const where = readWhere(params);
   const view = readRange(params);
+  const highlight = readHighlight(params);
+  // Text, as a Highlight read off the address is a new object every render.
+  const litName = highlight?.name ?? null;
 
   // Text, as a span read off the address is a new object every render.
   const span = `${filter.from}..${filter.to}`;
@@ -98,6 +103,13 @@ export function Session() {
   const agents = answer?.agents;
   const drawn = useMemo(() => ranByOne(marks, agents ?? {}, where.agent), [marks, agents, where.agent]);
   const shownLevels = useMemo(() => levelsRanByOne(levels, agents ?? {}, where.agent), [levels, agents, where.agent]);
+  const viewFrom = view?.[0];
+  const viewTo = view?.[1];
+  const tools = useMemo(
+    () => toolRowsOf(drawn, viewFrom === undefined || viewTo === undefined ? null : [viewFrom, viewTo]),
+    [drawn, viewFrom, viewTo],
+  );
+  const lit = useMemo(() => (litName === null ? null : litBy({ kind: 'tool', name: litName }, drawn)), [litName, drawn]);
 
   const beforeFirstPrompt = answer?.beforeFirstPrompt ?? 0;
   const subagents = answer?.subagents;
@@ -124,6 +136,10 @@ export function Session() {
     whole === null
       ? undefined
       : show(rangeOf(spell.atMs, spell.followedToMs, whole), { activation: spell.activation.id });
+
+  // Lights the lanes and nothing more, so the View and every figure stay where the reader left them.
+  const onHighlight = (picked: Highlight | null) =>
+    write(withHighlight(params, picked === null ? null : toggled(highlight, picked)));
 
   const toTimeline = () => timeline.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -186,10 +202,13 @@ export function Session() {
               view={view}
               selected={where.step}
               agent={openAgent}
+              highlight={highlight}
+              lit={lit}
               onView={(shown) => show(shown, shown === null ? { exchange: null, activation: null, agent: null } : {})}
               onOpen={open}
               onExchange={onExchange}
               onAllAgents={() => write(withWhere(params, { ...where, agent: null }))}
+              onClearHighlight={() => onHighlight(null)}
             />
             <OpenedStep
               marks={drawn}
@@ -202,11 +221,14 @@ export function Session() {
               levels={shownLevels}
               limitTokens={landed.limitTokens}
               spells={activationSpells}
+              tools={tools}
               view={view}
               selected={where.step}
               opened={where.activation}
+              highlight={highlight}
               onOpen={open}
               onActivation={onActivation}
+              onHighlight={onHighlight}
             />
           </>
         )}
