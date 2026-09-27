@@ -147,14 +147,18 @@ lets the others finish, so `fix` reads every failure in its one circuit. The Sui
 check is red. Its output keeps the order of the Suite file, each check's output whole, so two runs of
 one Suite read the same whatever finished first.
 
-A check can wait for its paths. A check with `when` lists paths from the repo root, each a file or a
-folder, and it runs only when the ticket's own change touches one of them. The change is every file
-that differs from the commit the ticket's worktree was cut from, uncommitted and untracked files
-included, so a check wakes for what the ticket did and never for what came in on `main`. A check
-without `when` runs on every ticket. A change the driver cannot read runs every check, because running
-a check that was not needed is the safe way to be wrong. A check that did not run says so in one line
-of the Suite output, naming the check, so a ticket's record shows what was not proved as well as what
-was.
+A check that passed keeps a **Proof**: the check, and the exact inputs it passed on. A check whose
+inputs match a Proof does not run, and its line in the Suite output names the Proof and when it was
+made, so a ticket's record shows what an earlier run proved as well as what this one did. A check's
+inputs are every file in the worktree that git does not ignore, uncommitted and untracked files
+included, less the paths it lists under `ignores`. A check names what it ignores and not what it
+reads, because a path left off costs a run and never lets a red change land. Proofs stay in the
+clone, shared by every worktree in it, so the Proofs a Session keeps with `skillworks-suite` count
+for the `suite` step too.
+
+After each loop run that landed a ticket, the driver runs the whole Suite once more on the newest
+`origin/main`, trusting no Proof and using no image. A check red there loses its Proofs, and the loop
+stops and names the red checks and the tickets that landed. [The Suite](../usage/suite.md) says more.
 
 A flake is not a red suite either. A Session handed a failure it cannot reproduce may weaken a test
 or edit code that was never broken, so a repo whose tests flake sets `runs` in its Suite file, and
@@ -249,7 +253,7 @@ already on the remote. `plugins/skillworks/scripts/land_ticket.py` does it, in s
 | `fetch` | Get `origin`, and check there is something left to land. |
 | `rebase` | Onto the newest `origin/main`, but only when the base has moved. Then check no commit and no file was lost. |
 | `resolve` | Only when the rebase conflicts. The build Session is resumed to fix it. |
-| `suite` | The whole suite again, on the new base. An unmoved base is one the `suite` step's own run already answers for. A check with `when` wakes for the ticket's own commits, measured from the commit it was rebased onto, so what landed meanwhile wakes nothing. |
+| `suite` | The whole suite again, on the new base. An unmoved base is one the `suite` step's own run already answers for. A check whose inputs a Proof holds does not run, so most landings run nothing. |
 | `push` | `HEAD` onto `main`. When another push got there first, the landing goes back to `fetch` and tries again, with no cap. Any other push failure stops it with git's message. The log line says how many tries it took. |
 
 The resumed conflict Session is told its own bias outright: you wrote one side of this and the other

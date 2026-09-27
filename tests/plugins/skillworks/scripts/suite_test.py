@@ -1200,10 +1200,35 @@ def test_the_loop_docs_say_the_checks_run_together():
         assert "the checks run together" in text, doc
 
 
-def test_the_loop_docs_and_the_setup_docs_say_how_a_check_names_its_paths():
-    for doc in ("docs/agentic-development/agentic-loop.md", "docs/usage/suite.md",
+SUITE_PAGE = "docs/usage/suite.md"
+
+
+def test_the_loop_docs_and_the_setup_docs_say_a_check_names_what_it_ignores():
+    for doc in ("docs/agentic-development/agentic-loop.md", SUITE_PAGE,
                 "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
-        assert "`when`" in (ROOT / doc).read_text(encoding="utf-8"), doc
+        text = (ROOT / doc).read_text(encoding="utf-8")
+        assert "`ignores`" in text, doc
+        assert '"when"' not in text, doc
+
+
+def test_only_the_suite_page_names_when_and_only_to_say_it_is_turned_down():
+    for doc in ("docs/agentic-development/agentic-loop.md",
+                "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
+        assert "`when`" not in (ROOT / doc).read_text(encoding="utf-8"), doc
+
+    paragraphs = (ROOT / SUITE_PAGE).read_text(encoding="utf-8").split("\n\n")
+    naming = [paragraph for paragraph in paragraphs if "`when`" in paragraph]
+    assert naming
+    for paragraph in naming:
+        assert "turned down" in paragraph and "`ignores`" in paragraph, paragraph
+
+
+def test_the_suite_page_tells_a_team_how_to_run_the_suite_itself():
+    text = " ".join((ROOT / SUITE_PAGE).read_text(encoding="utf-8").split())
+
+    for words in ("`skillworks-suite`", "`skillworks-suite --fresh`", "Proof", "full run",
+                  "`image`", "`runs`"):
+        assert words in text, words
 
 
 def test_the_seeded_suite_file_shows_the_setting_at_its_default():

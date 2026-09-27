@@ -19,17 +19,22 @@ adding its own:
       "ready": {
         "command": ["docker", "info"],
         "message": "Docker does not answer. Start Docker and run this again."
-      }
+      },
+      "ignores": ["docs", "web"]
     },
     {
       "command": ["npm", "run", "lint"],
       "folder": "web",
-      "when": ["web"],
       "ready": {
         "command": ["npm", "ci"],
         "message": "The front end has nothing installed, and npm ci would not install it.",
         "unless": "web/node_modules"
       }
+    },
+    {
+      "command": ["pytest", "scripts"],
+      "folder": ".",
+      "image": "docs/agents/scripts.Dockerfile"
     }
   ]
 }
@@ -42,29 +47,45 @@ adding its own:
 | `command` | The program and its arguments, one word to an entry. The loop starts it with no shell. |
 | `folder` | Where the command runs, from the repo root. |
 | `ready` | Optional. A command that proves the machine can run the check, such as `docker info`, and the `message` the loop prints when it fails. With `unless`, a path from the repo root, the loop skips the command when the path is there, so an install is not done twice. |
-| `when` | Optional. The paths that wake the check. See below. |
+| `ignores` | Optional. The paths the check cannot be changed by. See below. |
 | `image` | Optional. A Dockerfile in the repo, from the repo root. The check runs in that image. See below. |
 
 `runs`, beside `checks`, says how many times the loop runs a red Suite before it believes it. It is 1
 when the file leaves it out.
 
-## `when`: the paths that wake a check
+## Proofs: a check never proves the same thing twice
 
-A check with `when` lists paths from the repo root, each a file or a folder. It runs only when the
-ticket's own change touches one of them. A check without `when` runs on every ticket.
+Each time a check passes, the Suite keeps a **Proof**: the check, and the exact inputs it passed on.
+A check whose inputs match a Proof does not run. Its line in the Suite output says it did not run,
+and names the Proof and when it was made. A Suite in which every check has a Proof passes.
 
-The change is every file that differs from the commit the ticket's worktree was cut from, uncommitted
-and untracked files included. So a check wakes for what the ticket did, and never for what other
-tickets pushed to `main` meanwhile.
+A check's inputs are every file in the worktree that git does not ignore, less the check's
+`ignores`. Uncommitted and untracked files count. The Suite reads each file as it is on disk. The
+check's own entry in the Suite file counts too, so an edit to its `command`, `folder`, `ready`,
+`ignores` or `image` runs it again.
 
-- A check that did not run says so in one line of the Suite output, naming the check. A ticket's
-  record shows what was not proved as well as what was.
-- A change that wakes no check runs every check, and the output says why. A Suite that ran nothing
-  cannot pass.
-- A change the loop cannot read runs every check. Running a check that was not needed is the safe
-  way to be wrong.
+- Only a check that passes keeps a Proof. A red check keeps none, so it runs again next time.
+- Proofs stay in your clone, in its git folder. Every worktree and every loop in the clone shares
+  them. Nothing pushes them, so a pass on another machine never counts here.
+- A ticket pays only for the checks its change can reach. After a red Suite, only the red checks and
+  the checks whose inputs the fix changed run again. A landing after a rebase runs only what is new.
 
-Name every path a check reads, not only its code. A test that reads a doc wakes for that doc too.
+## `ignores`: the paths a check cannot be changed by
+
+A check with `ignores` lists paths from the repo root, as git pathspecs. A folder, a file and a
+pattern such as `src/*.json` all work. A change to one of those paths does not run the check again.
+A check without `ignores` runs again when any file changes.
+
+Name what the check ignores, not what it reads. A path you forget to ignore costs time: the check
+runs when it did not need to. It never lets a red change land. So start with no `ignores`, and add
+them only to a slow check, where they save minutes.
+
+Before you ignore a path, make sure no test reads it. A test that reads a doc is changed by that doc.
+
+A Suite file that still gives a check `when` is turned down, and the loop stops with the Suite not
+ready. `when` listed the paths that woke a check. To rewrite it, delete `when` and list under
+`ignores` the paths the check cannot be changed by. Or delete `when` and add nothing: the check then
+runs again on any change, which is always safe.
 
 ## `image`: a check that runs in a container
 
@@ -78,6 +99,9 @@ with the rest of your Steering.
 3. It runs the `command` in the container, from the check's `folder`. The container's output and
    exit status are the check's.
 4. It removes the container, red or green.
+
+The Dockerfile is one of the check's inputs, unless the check ignores it. So a new image runs the
+check again.
 
 A check with `image` needs Docker on the machine, and not its own program. If `docker info` fails,
 the machine is not ready, and the loop stops as it does for a failed `ready` command.
@@ -93,10 +117,12 @@ fails in Linux, so check out every `.sh` with LF, in `.gitattributes`:
 
 The Suite runs once for each ticket after the build, the reviews, the fix and the comment sweep.
 Before the ticket Lands, it rebases onto the newest `main`, and if `main` moved, the Suite runs again
-on the new base. No Session runs it. The driver runs it, reads the exit status itself, and keeps the output.
+on the new base. A check whose inputs a Proof holds does not run, so that second run is usually
+short. No Session runs it. The driver runs it, reads the exit status itself, and keeps the output.
 
-1. **Ready first.** Every program the file names must be on `PATH`. Then every `ready` command runs,
-   one by one, because two checks can share one install. A machine that is not ready is not a red
+1. **Ready first.** Every program a check that will run needs must be on `PATH`. Then the `ready`
+   command of each check that will run runs, one by one, because two checks can share one install.
+   A check with a Proof needs nothing from the machine. A machine that is not ready is not a red
    Suite. The loop stops and prints the `message`, and no Session is asked to fix it, because no
    Session can start Docker.
 2. **Then the checks run together.** So a Suite takes as long as its slowest check, and not the sum
@@ -123,6 +149,31 @@ gantt
 The readiness commands run one after the other. The three checks start together, and the Suite
 ends when `dotnet test`, the slowest, ends.
 
+## The full run
+
+A Proof knows only the files in the repo. A change outside the repo, such as a new SDK, can leave a
+Proof stale. So after each loop run that landed at least one ticket, the driver runs the whole Suite
+again on the newest `origin/main`, in a new worktree. It does this when the loop stopped early too,
+because the tickets that landed are on `main` all the same.
+
+The full run trusts no Proof and uses no image. Every check runs, on your own machine, so the code is
+proved on the OS your team uses. It keeps no Proof. A check that goes red there loses all its
+Proofs, so a stale Proof cannot skip it again.
+
+A red full run stops the loop. The report names the red checks and the tickets that landed in the
+run. The spec stays open, and no Session is asked to fix it: a red `main` is yours to decide on.
+
+## Running the Suite yourself
+
+`skillworks-suite` is the Plugin's command for the Suite. It runs the Suite in the worktree you are
+in, with Proofs, as the loop does. The Proofs it keeps count for the loop, so an agent that checks
+its own work adds almost nothing to the ticket. Point your agents at it, in your `CLAUDE.md`, in
+place of your raw test commands.
+
+`skillworks-suite --fresh` is the full run, by hand. It trusts no Proof, uses no image, keeps no
+Proof, and takes away the Proofs of a check that goes red. Run it when you want to prove `main`
+yourself.
+
 ## A red Suite
 
 A red Suite on every one of its `runs` belongs to the ticket. The loop goes back to the fix step, then
@@ -130,5 +181,5 @@ the comment sweep, then the Suite, once. Red again stops the loop, and the ticke
 
 Set `runs` above 1 only if your tests flake. A Session handed a failure it cannot reproduce may weaken
 a test, or change code that was never broken. With `runs` at 2, the loop runs a red Suite a second
-time before it acts. A run that passes is never run again, so the cost is paid only when something
-went red. Every run's output is kept in the step's record, so you can read a flake afterwards.
+time before it acts. A check that passed is proved now, so the second run runs only the red checks.
+Every run's output is kept in the step's record, so you can read a flake afterwards.
