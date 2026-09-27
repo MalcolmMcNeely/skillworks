@@ -14,7 +14,7 @@ import land_ticket
 import spec_loop
 import ticket_worktree
 from conftest import (ROOT, Ran, RecordingRunner, check, git, launch, no_wait, project_suite,
-                      write_suite)
+                      write_loop, write_suite)
 from runner import Subprocess
 from suite import Suite
 
@@ -62,6 +62,7 @@ def loop(repo, runner, monkeypatch):
     monkeypatch.delenv("OTEL_RESOURCE_ATTRIBUTES", raising=False)
     # A loop started from a bypass run inherits its mode, so a case sets the one it means.
     monkeypatch.delenv("SPEC_LOOP_PERMISSION_MODE", raising=False)
+    write_loop(repo.work, repo.target)
     return Driver(repo, runner)
 
 

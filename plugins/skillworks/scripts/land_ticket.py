@@ -449,7 +449,7 @@ class Landing:
         tries = 1
         kept = False
         while True:
-            if not fetch_origin(self.runner, self.worktree, self.err, self.wait):
+            if not fetch_origin(self.runner, self.worktree, "main", self.err, self.wait):
                 raise self.die("#{} could not fetch from origin. Nothing was pushed."
                                .format(self.ticket))
             if self.git("rev-parse", "--verify", "--quiet", "origin/main").status != 0:

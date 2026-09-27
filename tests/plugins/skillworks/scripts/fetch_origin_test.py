@@ -3,7 +3,7 @@
 
 import io
 
-from conftest import git
+from conftest import Repo, git
 from fetch_origin import fetch_origin
 
 # What git says to the loop that lost the race for the ref.
@@ -15,11 +15,12 @@ UNREACHABLE = "fatal: could not read from remote repository"
 FETCH = "fetch --quiet origin"
 
 
-def run_fetch(repo, runner, waits=None):
+def run_fetch(repo, runner, waits=None, branch=None):
     err = io.StringIO()
     # Recorded rather than waited out, so the backoff can be read without spending its seconds.
     waits = [] if waits is None else waits
-    worked = fetch_origin(runner, repo.work.as_posix(), err, waits.append)
+    branch = repo.target if branch is None else branch
+    worked = fetch_origin(runner, repo.work.as_posix(), branch, err, waits.append)
     return worked, err.getvalue()
 
 
@@ -67,6 +68,24 @@ def test_a_refused_ref_still_brings_the_commit_down(repo, runner):
 
     assert worked
     assert head(repo.work, "origin/main") == pushed
+
+
+def test_the_newest_commit_of_a_target_branch_named_master_reaches_its_remote_ref(tmp_path, runner):
+    repo = Repo(tmp_path, target="master")
+    repo.advance_origin("later")
+    pushed = head(repo.origin, "master")
+
+    worked, _ = run_fetch(repo, runner)
+
+    assert worked
+    assert head(repo.work, "origin/master") == pushed
+
+
+def test_a_remote_without_the_target_branch_is_refused_by_its_name(repo, runner):
+    worked, said = run_fetch(repo, runner, branch="master")
+
+    assert not worked
+    assert "origin has no master branch." in said
 
 
 def test_a_ref_that_never_frees_up_stops(repo, runner):

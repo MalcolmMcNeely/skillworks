@@ -21,6 +21,7 @@ SCRIPTS = PLUGIN / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from runner import Ran, Subprocess
+from steering.target_branch import LOOP_FILE
 from suite import SUITE_FILE
 
 
@@ -52,21 +53,23 @@ class Repo:
         ("merge.conflictStyle", "merge"),
     )
 
-    def __init__(self, root):
+    def __init__(self, root, target="main"):
         self.root = root
         self.origin = root / "origin.git"
         self.work = root / "work"
         self.tries = root / "push-tries"
+        self.target = target
         self.checkouts = 0
 
-        run(["git", "init", "--quiet", "--bare", "--initial-branch=main", self.origin.as_posix()])
-        run(["git", "init", "--quiet", "--initial-branch=main", self.work.as_posix()])
+        branch = "--initial-branch=" + target
+        run(["git", "init", "--quiet", "--bare", branch, self.origin.as_posix()])
+        run(["git", "init", "--quiet", branch, self.work.as_posix()])
         # Git can spell a temporary folder differently from the way pytest handed it out.
         self.work = Path(git(self.work, "rev-parse", "--show-toplevel").strip())
         self.configure(self.work)
         self.write_commit(self.work, "base.txt", "base", "Base")
         git(self.work, "remote", "add", "origin", self.origin.as_posix())
-        git(self.work, "push", "--quiet", "origin", "main")
+        git(self.work, "push", "--quiet", "origin", target)
 
     def configure(self, where):
         for name, value in self.SETTINGS:
@@ -92,7 +95,7 @@ class Repo:
     def push_from_elsewhere(self, name, text, message):
         other = self.other_checkout()
         self.write_commit(other, name, text, message)
-        git(other, "push", "--quiet", "origin", "main")
+        git(other, "push", "--quiet", "origin", self.target)
 
     def advance_origin(self, name):
         self.push_from_elsewhere(name + ".txt", name, "Somebody else's " + name)
@@ -125,6 +128,13 @@ class Repo:
              "spec-loop/{}/{}".format(spec, leaf)],
             capture_output=True, encoding="utf-8", errors="replace")
         return done.stdout.strip()
+
+
+# Left uncommitted, because a checkout's Target branch is read from its files and not from a commit.
+def write_loop(top, target):
+    path = Path(top) / LOOP_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"target-branch": target}, indent=2), encoding="utf-8", newline="\n")
 
 
 def check(*command, folder=".", ready=None, message="", unless=None, ignores=None, image=None):

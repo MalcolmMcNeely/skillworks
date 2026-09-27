@@ -1,13 +1,12 @@
 #
-# Fetch origin, and look again when another loop got there first.
+# Fetch the Target branch from origin, and look again when another loop got there first.
 #
 #   from fetch_origin import fetch_origin
-#   fetch_origin(runner, checkout, err, wait)
+#   fetch_origin(runner, checkout, branch, err, wait)
 #
-# A fetch is not a read. It writes refs/remotes/origin/main, recording where the
-# remote's main was. Two loops sharing one .git each read that ref, download, then
-# write it back, and the second write finds a value it never read. Git refuses
-# rather than stamping over what the first one landed.
+# A fetch writes refs/remotes/origin/<branch>, so two loops sharing one .git race for it and git refuses the second.
+#
+# The refspec is spelled out so a single-branch clone still writes the ref, and a missing branch fails loudly.
 #
 # The refusal says the ref moved, not that the fetch cannot be done, so the answer
 # is to read it again. On the second try the other loop has finished and the objects
@@ -31,18 +30,23 @@ FIRST_WAIT = 1
 # The whole of what a loser of the race is told. Anything else is its own problem.
 RACE = ("cannot lock ref", "annot create", "nable to create")
 
+MISSING = "couldn't find remote ref"
 
-def fetch_origin(runner, checkout, err, wait):
+
+def fetch_origin(runner, checkout, branch, err, wait):
+    refspec = "+refs/heads/{0}:refs/remotes/origin/{0}".format(branch)
     attempt = 1
     pause = FIRST_WAIT
     while True:
-        ran = runner.run(["git", "-C", str(checkout), "fetch", "--quiet", "origin"])
+        ran = runner.run(["git", "-C", str(checkout), "fetch", "--quiet", "origin", refspec])
         if ran.status == 0:
             return True
 
         said = (ran.out + ran.err).rstrip("\n")
         if not any(mark in said for mark in RACE):
             err.write(said + "\n")
+            if MISSING in said:
+                err.write("origin has no {} branch.\n".format(branch))
             return False
 
         if attempt >= ATTEMPTS:

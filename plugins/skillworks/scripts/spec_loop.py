@@ -947,7 +947,7 @@ class Loop:
         self.keep_leftovers()
 
         # Every worktree is cut from origin/main, so the ref has to be current first.
-        if not fetch_origin(self.runner, self.root.as_posix(), self.err, self.wait):
+        if not fetch_origin(self.runner, self.root.as_posix(), "main", self.err, self.wait):
             raise stop("ABORT could not fetch from origin")
 
         # Written once, so a resumed run still measures from where the first run started.

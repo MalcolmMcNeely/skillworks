@@ -6,10 +6,21 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 import ticket_worktree
-from conftest import SCRIPTS, Ran, git, launch, no_wait
+from conftest import SCRIPTS, Ran, Repo, git, launch, no_wait, write_loop
+from steering.target_branch import LOOP_FILE
 
 SCRIPT = (SCRIPTS / "ticket_worktree.py").as_posix()
+
+
+# A checkout the loop runs in always names its Target branch, so every case here starts with one.
+@pytest.fixture
+def repo(tmp_path):
+    made = Repo(tmp_path)
+    write_loop(made.work, made.target)
+    return made
 
 
 def run_worktree(runner, *args):
@@ -60,6 +71,41 @@ def test_a_job_is_branched_from_the_newest_origin_main(repo, runner):
     assert git(tree, "rev-parse", "--abbrev-ref", "HEAD").strip() == "spec-loop/158/ticket-164"
     # A command recorded here is a command that went through the Runner and not around it.
     assert runner.built("worktree add --quiet -b spec-loop/158/ticket-164")
+
+
+def test_a_job_is_branched_from_the_newest_origin_master_when_master_is_the_target(tmp_path, runner):
+    repo = Repo(tmp_path, target="master")
+    write_loop(repo.work, "master")
+    repo.advance_origin("later")
+    newest = git(repo.origin, "rev-parse", "master").strip()
+    tree = repo.tree(158, "ticket-164")
+
+    ran = run_worktree(runner, "open", repo.work, 158, "ticket-164")
+
+    assert ran.status == 0, ran.err
+    assert git(tree, "rev-parse", "HEAD").strip() == newest
+    assert git(tree, "rev-parse", "--abbrev-ref", "HEAD").strip() == "spec-loop/158/ticket-164"
+
+
+def test_a_remote_without_the_target_branch_is_refused_by_its_name(repo, runner):
+    write_loop(repo.work, "master")
+
+    ran = run_worktree(runner, "open", repo.work, 158, "ticket-164")
+
+    assert ran.status == 1
+    assert "origin has no master branch" in ran.err
+    assert not repo.tree(158, "ticket-164").exists()
+    assert not repo.has_branch(158, "ticket-164")
+
+
+def test_a_checkout_with_no_loop_file_is_refused_and_told_how_to_write_one(repo, runner):
+    (repo.work / LOOP_FILE).unlink()
+
+    ran = run_worktree(runner, "open", repo.work, 158, "ticket-164")
+
+    assert ran.status == 1
+    assert "seed-steering" in ran.err
+    assert not repo.has_branch(158, "ticket-164")
 
 
 def test_a_held_checkout_still_gives_a_job_its_worktree(repo, runner):

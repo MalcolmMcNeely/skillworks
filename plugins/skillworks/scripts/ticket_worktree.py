@@ -6,14 +6,9 @@
 #   ticket-worktree plan  <checkout> <spec> <job>
 #   ticket-worktree keep  <checkout> <spec>
 #
-# A job is one ticket, or the drift check at the end. It gets a worktree and a
-# branch of its own, cut from the newest `origin/main`, and both go when it passes.
-# The checkout is only ever what they are cut from, so the developer keeps it, on
-# any branch, with any edits in it, for the whole run.
+# Each job is cut from origin's Target branch, never the checkout, so the developer keeps the checkout as it is.
 #
-# A branch here is not the branch this repo says it does without. Git will not check
-# `main` out twice, so a worktree needs one, and it never leaves the machine: the
-# job pushes to `main` and the branch goes with the worktree.
+# Git will not check the Target branch out twice, so each worktree needs a Job branch, which never leaves the machine.
 #
 # `open` prints the worktree's path on stdout and nothing else, so the driver can
 # read it. Everything else it says goes to stderr.
@@ -40,6 +35,7 @@ from typing import NamedTuple
 
 from fetch_origin import fetch_origin
 from runner import Subprocess
+from steering.target_branch import target_branch
 from stop import Stop, is_a_number, misuse, refusal
 
 USAGE = (
@@ -158,15 +154,18 @@ class Worktrees:
             raise refusal("branch {} is already there. Remove it with: {}".format(
                 branch, self.removal(job)))
 
-        if not fetch_origin(self.runner, self.checkout.as_posix(), self.err, self.wait):
-            raise refusal("could not fetch from origin, so nothing could be cut from it.")
-        if self.git(self.checkout, "rev-parse", "--verify", "--quiet", "origin/main").status != 0:
-            raise refusal("origin has no main branch to cut a worktree from.")
+        target = target_branch(self.checkout)
+        if not fetch_origin(self.runner, self.checkout.as_posix(), target, self.err, self.wait):
+            raise refusal("could not fetch {} from origin, so nothing could be cut from it.".format(
+                target))
+        cut_from = "origin/" + target
+        if self.git(self.checkout, "rev-parse", "--verify", "--quiet", cut_from).status != 0:
+            raise refusal("origin has no {} branch to cut a worktree from.".format(target))
 
         self.group.mkdir(parents=True, exist_ok=True)
         added = self.git(
             self.checkout, "worktree", "add", "--quiet", "-b", branch,
-            tree.as_posix(), "origin/main", echo=True)
+            tree.as_posix(), cut_from, echo=True)
         if added.status != 0:
             raise refusal("git would not make a worktree at " + tree.as_posix() + ".")
         self.out.write(tree.as_posix() + "\n")
