@@ -1,17 +1,23 @@
-// A throwaway Loki on its own port, so a screen is judged at real volume without touching real telemetry.
+// A throwaway Loki and Trace store on their own ports, so a screen is judged at real volume without touching real telemetry.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { otlpSpan, wholeSessions } from './seeded-studio-sessions.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const container = 'skillworks-seeded-loki';
+const lokiContainer = 'skillworks-seeded-loki';
+const tempoContainer = 'skillworks-seeded-tempo';
 const lokiPort = 3101;
+const tempoPort = 3201;
+const tempoOtlpPort = 4319;
 const apiPort = 5199;
 const webPort = 5173;
-// 127.0.0.1, as the container listens on IPv4 alone and localhost tries IPv6 first.
+// 127.0.0.1, as the containers listen on IPv4 alone and localhost tries IPv6 first.
 const loki = `http://127.0.0.1:${lokiPort}`;
+const tempo = `http://127.0.0.1:${tempoPort}`;
+const tempoOtlp = `http://127.0.0.1:${tempoOtlpPort}`;
 const seedOnly = process.argv.includes('--seed-only');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -26,25 +32,37 @@ function docker(...args) {
   return result.stdout.trim();
 }
 
-async function startLoki() {
-  docker('rm', '-f', container);
-  docker(
-    'run', '-d', '--rm', '--name', container,
-    '-p', `127.0.0.1:${lokiPort}:3100`,
-    '-v', `${join(root, 'tools', 'seeded-studio-loki.yaml')}:/etc/loki/seeded.yaml:ro`,
-    'grafana/loki:3.5.9', '-config.file=/etc/loki/seeded.yaml',
-  );
-
+async function ready(address, name) {
   for (let attempt = 0; attempt < 120; attempt++) {
     try {
-      if ((await fetch(`${loki}/ready`)).ok) {
+      if ((await fetch(`${address}/ready`)).ok) {
         return;
       }
     } catch {}
     await sleep(500);
   }
 
-  throw new Error('The seeded Loki never became ready');
+  throw new Error(`The seeded ${name} never became ready`);
+}
+
+async function startStores() {
+  docker('rm', '-f', lokiContainer, tempoContainer);
+  docker(
+    'run', '-d', '--rm', '--name', lokiContainer,
+    '-p', `127.0.0.1:${lokiPort}:3100`,
+    '-v', `${join(root, 'tools', 'seeded-studio-loki.yaml')}:/etc/loki/seeded.yaml:ro`,
+    'grafana/loki:3.5.9', '-config.file=/etc/loki/seeded.yaml',
+  );
+  docker(
+    'run', '-d', '--rm', '--name', tempoContainer,
+    '-p', `127.0.0.1:${tempoPort}:3200`,
+    '-p', `127.0.0.1:${tempoOtlpPort}:4318`,
+    '-v', `${join(root, 'tools', 'seeded-studio-tempo.yaml')}:/etc/tempo/seeded.yaml:ro`,
+    'grafana/tempo:2.10.8', '-config.file=/etc/tempo/seeded.yaml',
+  );
+
+  await ready(loki, 'Loki');
+  await ready(tempo, 'Trace store');
 }
 
 // Seeded, so every run draws the same month relative to now.
@@ -268,36 +286,101 @@ async function push(records) {
   }
 }
 
+async function pushSpans(spans) {
+  const body = {
+    resourceSpans: [
+      {
+        resource: {
+          attributes: [
+            { key: 'service.name', value: { stringValue: 'claude-code' } },
+            { key: 'service.version', value: { stringValue: '2.1.268' } },
+          ],
+        },
+        scopeSpans: [{ scope: { name: 'com.anthropic.claude_code', version: '2.1.268' }, spans: spans.map(otlpSpan) }],
+      },
+    ],
+  };
+
+  const response = await fetch(`${tempoOtlp}/v1/traces`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`The Trace store refused the spans with ${response.status}: ${await response.text()}`);
+  }
+
+  // The store searches what it has flushed, so the API would otherwise open a Session as Thin for a while.
+  await fetch(`${tempo}/flush`, { method: 'POST' });
+
+  for (const session of new Set(spans.map((span) => span.attributes['session.id']))) {
+    const own = spans.filter((span) => span.attributes['session.id'] === session);
+    const traces = new Set(own.map((span) => span.traceId.replace(/^0+/, '')));
+    const start = Math.floor(Math.min(...own.map((span) => span.from)) / 1000);
+    const end = Math.ceil(Date.now() / 1000) + 60;
+    const query = encodeURIComponent(`{ span.session.id = "${session}" }`);
+
+    for (let attempt = 0; ; attempt++) {
+      const found = await (await fetch(`${tempo}/api/search?q=${query}&start=${start}&end=${end}&limit=1000`)).json();
+      if ((found.traces ?? []).filter((trace) => traces.has(trace.traceID)).length === traces.size) {
+        break;
+      }
+      if (attempt === 120) {
+        throw new Error(`The Trace store never made the spans of ${session} searchable`);
+      }
+      await sleep(500);
+    }
+  }
+}
+
 async function seed() {
-  const { firings, turns } = month(Date.now());
+  const now = Date.now();
+  const { firings, turns } = month(now);
+  const whole = wholeSessions(now, dollarsPerMillionTokens);
   const events = [
     ...firings.map((firing) => ({ at: firing.at, make: () => record('skill_activated', firing.at, firing.session, firing.attributes) })),
     ...turns.map((turn) => ({ at: turn.at, make: () => record('api_request', turn.at, turn.session, turn.attributes) })),
+    ...whole.events.map((event) => ({ at: event.at, make: () => record(event.name, event.at, event.session, event.attributes) })),
   ].sort((a, b) => a.at - b.at);
 
   // Built in time order, so each session's sequence climbs the way Claude Code's does.
   await push(events.map((event) => event.make()));
+  await pushSpans(whole.spans);
 
   const cost = turns.reduce((sum, turn) => sum + Number(turn.attributes.cost_usd), 0);
   console.log(`Seeded ${firings.length} firings and ${turns.length} turns ($${cost.toFixed(2)}) into ${loki}`);
+  console.log(`Seeded ${whole.sessions.length} whole Sessions, with ${whole.spans.length} spans in ${tempo}:`);
+  for (const session of whole.sessions) {
+    console.log(`  http://localhost:${webPort}/sessions/${session}`);
+  }
 }
 
 const children = [];
+
+function removeStores() {
+  docker('rm', '-f', lokiContainer, tempoContainer);
+}
 
 function stop() {
   for (const child of children) {
     child.kill();
   }
-  docker('rm', '-f', container);
+  removeStores();
   process.exit(0);
 }
 
-console.log(`Starting a throwaway Loki on ${loki} ...`);
-await startLoki();
-await seed();
+console.log(`Starting a throwaway Loki on ${loki} and a throwaway Trace store on ${tempo} ...`);
+try {
+  await startStores();
+  await seed();
+} catch (failure) {
+  removeStores();
+  throw failure;
+}
 
 if (seedOnly) {
-  console.log(`Left running. Remove it with: docker rm -f ${container}`);
+  console.log(`Left running. Remove them with: docker rm -f ${lokiContainer} ${tempoContainer}`);
   process.exit(0);
 }
 
@@ -313,6 +396,7 @@ children.push(
       Loki__Address: loki,
       // A month of this volume takes Loki longer than the API's 5 second default to sum.
       Loki__PatienceSeconds: '30',
+      Tempo__Address: tempo,
       Marketplace__Path: join(root, 'plugins'),
     },
   }),
@@ -327,4 +411,4 @@ children.push(
   }),
 );
 
-console.log(`\nOpen http://localhost:${webPort}/  Ctrl+C stops everything and wipes the Loki.\n`);
+console.log(`\nOpen http://localhost:${webPort}/  Ctrl+C stops everything and wipes both stores.\n`);

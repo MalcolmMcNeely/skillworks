@@ -95,20 +95,24 @@ Studio finds the Events store and the Marketplace through these settings:
 
 ### Studio on a seeded month
 
-To judge a screen at real volume without your own telemetry, run Studio against a throwaway Loki.
-Docker must be running. Run `npm install` in `src/Skillworks.Studio.Web` once first. Then, from the
-repo root:
+To judge a screen at real volume without your own telemetry, run Studio against a throwaway Loki and
+Trace store. Docker must be running. Run `npm install` in `src/Skillworks.Studio.Web` once first.
+Then, from the repo root:
 
 ```
 node tools/seeded-studio.mjs
 ```
 
 Open `http://localhost:5173/`. The tool fills a Loki container, `skillworks-seeded-loki`, on port
-3101 with a made-up month of telemetry that ends now, and runs the API on port 5199. Ctrl+C stops
-all three and removes the container. The AppHost's Loki is not touched.
+3101 with a made-up month of telemetry that ends now. It also writes five whole Sessions from the
+last six hours, with Prompts, Tool calls, Faults, Friction, hooks and Subagents, and puts their
+Spans in a Tempo container, `skillworks-seeded-tempo`, on port 3201. Between them the five Sessions
+cross every Bar, and two name a model that states its window. The tool prints a link to each one.
+It runs the API on port 5199. Ctrl+C stops everything and removes both containers. The AppHost's
+stores are not touched.
 
-To seed the Loki and nothing else, add `--seed-only`. The container keeps running after the tool
-exits. Remove it with `docker rm -f skillworks-seeded-loki`.
+To seed the stores and nothing else, add `--seed-only`. The containers keep running after the tool
+exits. Remove them with `docker rm -f skillworks-seeded-loki skillworks-seeded-tempo`.
 
 ### Checks
 
