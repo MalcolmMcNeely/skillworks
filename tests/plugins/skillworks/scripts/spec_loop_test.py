@@ -105,6 +105,8 @@ class Tracker:
         self.closed = set()
         self.body = NAMES_ITS_BRANCH
         self.ready = Ran(0, "", "")
+        # A drift check that ran as it should, so only a case about a missing report reads a WARN.
+        self.last_comment = "## Drift report\n\nNothing drifted.\n"
         runner.stub("gh", does=self.answer)
 
     def numbers(self, only_open=False):
@@ -140,6 +142,8 @@ class Tracker:
             return Ran(0, self.body, "")
         if asked == "pr ready " + SPEC_BRANCH:
             return self.ready
+        if asked == "issue view {} --json comments --jq .comments[-1].body".format(SPEC):
+            return Ran(0, self.last_comment, "")
         return Ran(1, "", "the tracker has no answer for: " + asked + "\n")
 
 
@@ -1988,6 +1992,30 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
 
     assert call_asking(runner, "/skillworks:spec-drift") is not None
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
+
+
+def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_sessions_that_report(loop)
+    tracker.last_comment = "## Drift report\n\n- Story 1: Done\n"
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert (loop.records() / "drift.md").read_text(encoding="utf-8") == "- Story 1: Done\n"
+    assert "DRIFT the report is recorded on spec #{}".format(SPEC) in ran.out
+
+
+def test_a_spec_whose_last_comment_is_no_drift_report_is_said(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_sessions_that_report(loop)
+    tracker.last_comment = "Looks good to me.\n"
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert "WARN  the drift check recorded no report on spec #{}".format(SPEC) in ran.out
+    assert not (loop.records() / "drift.md").exists()
 
 
 def test_attributes_already_set_are_kept_and_the_parent_is_added(loop, runner, monkeypatch):

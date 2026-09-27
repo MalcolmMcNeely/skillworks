@@ -13,6 +13,8 @@ CLAIM_WAIT = 3
 
 BRANCH_HEADING = "## Branch"
 
+DRIFT_REPORT = "## Drift report"
+
 
 def listed(said):
     return [line for line in said.split("\n") if line != ""]
@@ -149,3 +151,10 @@ class GitHub:
     # The last comment is how a ticket was closed.
     def closing_note(self, trailer):
         return self.last_comment(trailer.removeprefix("#"))
+
+    # The heading tells the report from a comment a person left after it, or from none at all.
+    def drift_report(self, spec):
+        lines = (self.last_comment(spec) or "").replace("\r\n", "\n").split("\n")
+        if lines[0].strip() != DRIFT_REPORT:
+            return ""
+        return "\n".join(lines[1:]).strip("\n")

@@ -20,7 +20,7 @@ flowchart TD
     land --> more{"Another open ticket?"}
     more -- yes --> ticket
     more -- no --> full{"Full Suite run<br/>on the newest Target branch"}
-    full -- green --> drift["Drift check<br/>a comment on the spec"]
+    full -- green --> drift["Drift check<br/>a report kept with the spec"]
     full -- red --> stop(["The loop stops"])
     drift -- "spec mode" --> ready["Mark the pull request<br/>ready for review"]
 ```
@@ -361,7 +361,11 @@ are what the spec wanted.
 
 So when no open ticket is left and the full run is green, the script opens one last worktree and runs
 `/skillworks:spec-drift <spec> <base>` in a fresh Session. It judges the work against the spec, not the
-tickets, because a ticket that drifted still passed its own criteria. It posts one comment on the spec.
+tickets, because a ticket that drifted still passed its own criteria. It records one report with the
+spec, under the heading `## Drift report`. With the GitHub Tracker the report is a comment on the spec
+issue. With the files Tracker there is no issue, so the report goes at the end of the spec's `spec.md`.
+The script then reads the report back from the Tracker and keeps a copy at
+`.spec-loop/<spec>/drift.md`. If it finds none, the log says so on a `WARN` line.
 
 The report puts each user story and each decision of the spec in one of four groups:
 
@@ -378,8 +382,9 @@ that brought in two names for one idea, with your glossary as the judge.
 The drift check fixes nothing and closes nothing. A fix is new work, and needs a ticket of its own.
 Closing the spec is where a person says the work is done. With a branch name, a person closes it by
 hand. With `spec`, the loop marks the spec's pull request ready for review, and the spec closes when a
-person merges it. A clean finish needs two facts: the log reaches its `END` line, and the drift
-comment lists nothing Missing, Partial or Contradicts.
+person merges it. With the files Tracker, the loop closes the spec itself after the drift check. A
+clean finish needs two facts: the log reaches its `END` line, and the drift report lists nothing
+Missing, Partial or Contradicts.
 
 ## The stage map
 

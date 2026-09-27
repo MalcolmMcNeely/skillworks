@@ -4,6 +4,8 @@ import pytest
 
 from conftest import SCRIPTS, Ran
 from stop import REFUSED, Stop
+from tracker import files as files_tracker
+from tracker import github as github_tracker
 from tracker.github import CLAIM_WAIT, GitHub
 
 
@@ -120,6 +122,25 @@ def test_a_closing_note_is_the_last_comment_on_the_issue_the_trailer_names(runne
 
     assert github(runner).closing_note("#168") == "Done, and proved."
     assert asked(runner) == ["issue view 168 --json comments --jq .comments[-1].body"]
+
+
+def test_a_drift_report_is_the_last_comment_on_the_spec_below_its_heading(runner):
+    runner.stub("gh", says="## Drift report\n\n- Story 1: Done\n")
+
+    assert github(runner).drift_report("158") == "- Story 1: Done"
+    assert asked(runner) == ["issue view 158 --json comments --jq .comments[-1].body"]
+
+
+# Neither Tracker imports the other, so this is what holds the two headings to one.
+def test_both_trackers_find_a_drift_report_by_one_heading():
+    assert github_tracker.DRIFT_REPORT == files_tracker.DRIFT_REPORT
+
+
+@pytest.mark.parametrize("last", ["Looks good to me.\n", ""])
+def test_a_spec_whose_last_comment_is_no_drift_report_has_none(runner, last):
+    runner.stub("gh", says=last)
+
+    assert github(runner).drift_report("158") == ""
 
 
 def test_a_commit_names_its_issue_by_number_alone(runner):

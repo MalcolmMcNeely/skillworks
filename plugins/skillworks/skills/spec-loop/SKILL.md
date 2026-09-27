@@ -44,7 +44,7 @@ When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which ti
 
 Each ticket Lands on its Target branch. `target-branch` in `docs/agents/loop.json` names it for every spec, or says `spec`, and then each spec names its own branch under `## Branch` and is reviewed as one pull request.
 
-**A clean finish** takes two things together: the log reaches its `END` line, and the drift report `/skillworks:spec-drift` posted as a comment on the spec issue lists nothing Missing, Partial or Contradicts. A drift check that found gaps still exits 0, so the log alone never settles it — read the comment. Then:
+**A clean finish** takes two things together: the log reaches its `END` line, and the drift report `/skillworks:spec-drift` recorded with the spec lists nothing Missing, Partial or Contradicts. A drift check that found gaps still exits 0, so the log alone never settles it — read the report. The driver reads it back from the Tracker, a comment on the spec issue with GitHub or the `## Drift report` section of `spec.md` with files, and keeps it at `.spec-loop/<spec-number>/drift.md`. Its `DRIFT` line in the log names that file. A `WARN` line saying the drift check recorded no report is not a clean finish. Then:
 
 - **With the files Tracker**, make no offer. The driver closed the spec itself after the drift check, by a commit on the Target branch, and its `CLOSE` line in the log says so. Say that, and name any gap the drift report found.
 - **With the GitHub Tracker and a branch name**, make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.

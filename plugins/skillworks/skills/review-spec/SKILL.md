@@ -1,6 +1,6 @@
 ---
 name: review-spec
-description: Review a ticket's change against what its issue asked for, and report the gaps under a Spec heading.
+description: Review a ticket's change against what the ticket asked for, and report the gaps under a Spec heading.
 disable-model-invocation: true
 ---
 
@@ -8,9 +8,10 @@ disable-model-invocation: true
 
 One axis of the three-axis review. This one asks a single question: **is this the change the ticket asked for?**
 
-The argument is the ticket's issue number.
+The argument is the ticket: its issue number with the GitHub Tracker, or `<spec>/<ticket>` with the files Tracker.
 
 `/skillworks:review-spec 168`
+`/skillworks:review-spec 7/2`
 
 Two other axes run beside this one, each in a session of its own. Standards asks whether the code follows the written rules. Architecture asks whether it sits in the right place. Neither is this axis's business, so a finding that belongs to them is dropped rather than reported here.
 
@@ -20,11 +21,12 @@ Code that follows every rule can still build the wrong thing. That is the failur
 
 ### The ticket
 
-Read the ticket in full, its acceptance criteria included. `docs/agents/issue-tracker.md` says how. Read its parent spec too, because a criterion often only makes sense against the job the spec named.
+Read the ticket in full, its acceptance criteria included. Read its parent spec too, because a criterion often only makes sense against the job the spec named.
 
-```bash
-gh issue view <ticket> --json title,body
-```
+`tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to read each one. Read through those docs, and make no call of your own that they do not name.
+
+- **GitHub**: the ticket issue, and the spec issue its parent names.
+- **Files**: the ticket's file and the `spec.md` of the folder it sits in. The loop runs this step inside the ticket's worktree, so read both there.
 
 ### The change
 

@@ -125,6 +125,8 @@ A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<t
 - **Write a spec**: `tracker-publish spec <slug> <file>`, with the spec's branch last in `spec` mode. It numbers the spec one above the highest number on the remote, writes the frontmatter and pushes the folder. `/skillworks:to-spec` says how.
 - **Write a spec's tickets**: `tracker-publish tickets <spec> <file>...`, every file at once. `/skillworks:to-tickets` says how.
 - **Is a ticket startable?** It is open, and every ticket in its `blocked-by` is closed on the remote's Target branch.
+- **List what is open**: each spec folder in `.specs/` on the remote's Target branch whose `spec.md` says `status: open`, and in each one the tickets that are startable. `git ls-tree --name-only origin/<target> .specs/` lists the folders. In `spec` mode each spec sits on a branch of its own, so `git fetch origin`, and look on every branch for a spec folder whose `spec.md` names that branch as its `branch`.
+- **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command puts it at the end of the spec's `spec.md` in place of any earlier one, since there is no issue to comment on. The loop reads it back from there. `/skillworks:spec-drift` says how.
 - **Claim a ticket**: the loop does it, with a commit that sets `claimed-by`, pushed to the Target branch. A push the remote turns down lost a race, so the loop reads again and takes another ticket.
 
 ### The two conventions, with files

@@ -17,6 +17,7 @@ CLAIMED_BY = "claimed-by"
 STATUS = "status"
 CLOSED = "closed"
 CLOSING_NOTE = "## Closing note"
+DRIFT_REPORT = "## Drift report"
 
 # Every remote branch at once, because in spec mode the spec's own folder says which one is its.
 EVERY_BRANCH = "*"
@@ -96,12 +97,28 @@ def with_field(text, key, value):
     return ending.join(lines)
 
 
-def closing_note_in(body):
+def section_in(body, named):
     lines = body.split("\n")
     stripped = [line.strip() for line in lines]
-    if CLOSING_NOTE not in stripped:
+    if named not in stripped:
         return ""
-    return "\n".join(lines[stripped.index(CLOSING_NOTE) + 1:]).strip("\n")
+    return "\n".join(lines[stripped.index(named) + 1:]).strip("\n")
+
+
+def closing_note_in(body):
+    return section_in(body, CLOSING_NOTE)
+
+
+# The section runs to the end of the file, so a report holding headings of its own is replaced whole.
+def with_last_section(text, named, section):
+    ending = "\r\n" if "\r\n" in text else "\n"
+    lines = text.split(ending)
+    stripped = [line.strip() for line in lines]
+    kept = lines[:stripped.index(named)] if named in stripped else lines
+    while kept and kept[-1].strip() == "":
+        kept.pop()
+    added = section.replace("\r\n", "\n").strip("\n").split("\n")
+    return ending.join(kept + [""] + added) + ending
 
 
 def heading(body, otherwise):
@@ -303,6 +320,15 @@ class Files:
             return None
         ref = "origin/" + self.branch_of(spec)
         return closing_note_in(frontmatter(self.shown(ref, found[0].path))[1])
+
+    def drift_report(self, spec):
+        branch = self.branch_of(spec)
+        self.fetched(branch)
+        ref = "origin/" + branch
+        folder = self.folder_on(ref, spec)
+        if not folder:
+            return ""
+        return section_in(frontmatter(self.shown(ref, folder + "/" + SPEC_FILE))[1], DRIFT_REPORT)
 
     # A ticket closes only in the commit that Lands, so one that failed to Land was never closed.
     def reopen(self, ticket):

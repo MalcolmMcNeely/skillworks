@@ -6,7 +6,7 @@ import pytest
 import seed_steering
 from conftest import PLUGIN, ROOT, Ran, git, launch
 from suite import Suite
-from tracker.files import CLOSING_NOTE
+from tracker.files import CLOSING_NOTE, DRIFT_REPORT
 
 SKILLS = PLUGIN / "skills"
 SETUP = SKILLS / "skillworks-setup"
@@ -773,6 +773,47 @@ def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_spec_mode
     assert "tracker-publish spec <slug> <file>" in to_spec
     assert "tracker-publish spec <slug> <file> spec/<slug>" in to_spec
     assert "`.specs/`" in to_spec
+
+
+def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_report():
+    files = files_tracker(seeded("issue-tracker.md"))
+
+    assert "**List what is open**" in files
+    assert "tracker-publish drift <spec> <file>" in files
+    assert "`{}`".format(DRIFT_REPORT) in files
+
+
+@pytest.mark.parametrize("skill", ["what-next", "review-spec", "spec-drift"])
+def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(skill):
+    text = skill_text(skill)
+
+    assert "docs/agents/issue-tracker.md" in text
+    assert "docs/agents/loop.json" in text
+    assert re.search(r"\bgh\b", text) is None
+
+
+def test_what_next_lists_open_specs_and_startable_tickets_from_the_files_tracker():
+    what_next = skill_text("what-next")
+
+    assert "`.specs/`" in what_next
+    assert "startable" in what_next
+    assert "List what is open" in what_next
+
+
+def test_review_spec_reads_a_files_ticket_from_its_folder_in_the_worktree():
+    review_spec = skill_text("review-spec")
+
+    assert "`<spec>/<ticket>`" in review_spec
+    assert "`spec.md`" in review_spec
+    assert "worktree" in review_spec
+
+
+def test_spec_drift_records_its_report_with_the_spec_under_the_heading_the_loop_reads():
+    spec_drift = skill_text("spec-drift")
+
+    assert "tracker-publish drift <spec> <file>" in spec_drift
+    assert "`{}`".format(DRIFT_REPORT) in spec_drift
+    assert "`spec.md`" in spec_drift
 
 
 def stops(skill, *names):

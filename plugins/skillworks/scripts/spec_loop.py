@@ -906,6 +906,17 @@ class Loop:
                 self.job_worktree))
         if self.worktree("close", "drift")[0] != 0:
             raise stop("FAIL  the drift worktree at {} would not go.".format(self.job_worktree))
+        self.read_drift_report()
+
+    # Read back from the Tracker, so a report the Session only said and never recorded is caught.
+    def read_drift_report(self):
+        report = self.tracker.drift_report(self.spec)
+        if not report:
+            self.say("WARN  the drift check recorded no report on spec #{}.".format(self.spec))
+            return
+        held = self.log_dir / "drift.md"
+        written(held, report + "\n")
+        self.say("DRIFT the report is recorded on spec #{}. Read it at {}".format(self.spec, held))
 
     # --- the spec's close ---------------------------------------------------
 

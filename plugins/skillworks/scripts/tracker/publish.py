@@ -9,12 +9,14 @@ from pathlib import Path
 from runner import Subprocess
 from steering.target_branch import SPEC_MODE, target_setting, tracker_setting
 from stop import Stop, is_a_number, misuse, refusal
-from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
-                           TICKETS, Files, as_numbers, frontmatter, heading, listed, number_of)
+from tracker.files import (CLAIMED_BY, DRIFT_REPORT, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE,
+                           SPECS, STATUS, TICKETS, Files, as_numbers, frontmatter, heading, listed,
+                           number_of, with_last_section)
 
 USAGE = (
     "usage: tracker-publish spec <slug> <body-file> [<branch>]\n"
     "       tracker-publish tickets <spec> <ticket-file>...\n"
+    "       tracker-publish drift <spec> <report-file>\n"
 )
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
@@ -153,6 +155,29 @@ def publish_tickets(tracker, spec, tickets, out):
                   "tracker-publish again.".format(spec, PUSH_ATTEMPTS))
 
 
+def publish_drift(tracker, spec, report, out):
+    if report.replace("\r\n", "\n").split("\n", 1)[0].strip() != DRIFT_REPORT:
+        raise refusal("The drift report does not open with {}. Its first line is that heading, "
+                      "as it is on a GitHub comment.".format(DRIFT_REPORT))
+    branch = tracker.branch_of(spec)
+    for _ in range(PUSH_ATTEMPTS):
+        tracker.fetched(branch)
+        parent = tip(tracker, branch)
+        folder = tracker.folder_on(parent, spec)
+        if not folder:
+            raise refusal("Spec {} has no folder on origin/{}, so its drift report has nowhere to "
+                          "go.".format(spec, branch))
+        path = folder + "/" + SPEC_FILE
+        written = with_last_section(tracker.shown(parent, path), DRIFT_REPORT, report)
+        if tracker.pushed(branch, parent, {path: written},
+                          "Record the drift report of spec {}".format(spec),
+                          "The drift report of spec {}".format(spec)):
+            out.write(path + "\n")
+            return
+    raise refusal("The drift report of spec {} lost to another push {} times in a row. Run "
+                  "tracker-publish again.".format(spec, PUSH_ATTEMPTS))
+
+
 def main(argv, runner, out, err, wait, where=None):
     where = where or os.getcwd()
     try:
@@ -166,6 +191,10 @@ def main(argv, runner, out, err, wait, where=None):
             spec = str(int(argv[1]))
             tickets = checked_tickets(where, argv[2:])
             publish_tickets(opened(runner, where, spec, wait), spec, tickets, out)
+            return 0
+        if command == "drift" and len(argv) == 3 and is_a_number(argv[1]):
+            spec = str(int(argv[1]))
+            publish_drift(opened(runner, where, spec, wait), spec, read(where, argv[2]), out)
             return 0
         raise misuse(USAGE)
     except Stop as stop:

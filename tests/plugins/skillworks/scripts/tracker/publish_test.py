@@ -281,6 +281,75 @@ def test_a_ticket_the_tracker_could_not_follow_is_turned_down(writer, tickets, r
     assert writer.tracker("1").tickets("1") == []
 
 
+REPORT = "## Drift report\n\n- Story 1: Done\n- Story 2: Missing\n"
+
+
+def test_a_drift_report_is_pushed_to_the_end_of_the_specs_file(writer):
+    writer.spec()
+
+    ran = writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == ".specs/0001-local-tracker/spec.md\n"
+    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
+    assert text == "---\nstatus: open\n---\n\n" + BODY + "\n" + REPORT
+    assert writer.tracker("1").drift_report("1") == "- Story 1: Done\n- Story 2: Missing"
+
+
+def test_a_second_drift_report_takes_the_place_of_the_first(writer):
+    writer.spec()
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    ran = writer.run("drift", "1", writer.written("again.md", "## Drift report\n\nAll done.\n"))
+
+    assert ran.status == 0, said(ran)
+    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
+    assert text.count("## Drift report") == 1
+    assert "Missing" not in text
+    assert writer.tracker("1").drift_report("1") == "All done."
+
+
+def test_a_drift_report_that_loses_a_race_reads_again_and_keeps_the_rivals_change(writer):
+    writer.spec()
+    rival = "---\nstatus: open\n---\n\n" + BODY + "\nA rival line.\n"
+    writer.runner.before_push = lambda: writer.push({".specs/0001-local-tracker/spec.md": rival})
+
+    ran = writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    assert ran.status == 0, said(ran)
+    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
+    assert "A rival line." in text
+    assert text.endswith(REPORT)
+
+
+def test_a_drift_report_without_its_heading_is_turned_down(writer):
+    writer.spec()
+
+    ran = writer.run("drift", "1", writer.written("drift.md", "- Story 1: Done\n"))
+
+    assert ran.status == 1
+    assert "## Drift report" in ran.err
+    assert writer.tracker("1").drift_report("1") == ""
+
+
+def test_in_spec_mode_a_drift_report_reaches_the_specs_branch(writer):
+    write_loop(writer.repo.work, "spec")
+    writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
+    writer.spec("local-tracker", BODY, SPEC_BRANCH)
+
+    ran = writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    assert ran.status == 0, said(ran)
+    assert writer.on_remote(".specs/0001-local-tracker/spec.md", SPEC_BRANCH).endswith(REPORT)
+
+
+def test_a_drift_report_for_a_spec_with_no_folder_is_turned_down(writer):
+    ran = writer.run("drift", "9", writer.written("drift.md", REPORT))
+
+    assert ran.status == 1
+    assert "Spec 9 has no folder on origin/main" in ran.err
+
+
 def test_the_command_runs_from_the_plugins_bin_folder(writer):
     body = Path(writer.written("spec-body.md", BODY))
 

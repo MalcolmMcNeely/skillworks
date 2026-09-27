@@ -11,6 +11,7 @@ import spec_loop
 from conftest import Ran, RecordingRunner, Repo, git
 from spec_loop_test import Sessions, given_a_suite_that_passes
 from steering.target_branch import LOOP_FILE
+from tracker import publish
 from tracker.files import Files
 
 SPEC = "7"
@@ -436,6 +437,42 @@ def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_on_the_rem
     assert ran.status == 0, said(ran)
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
     assert ran.out.index("DRIFT") < ran.out.index("CLOSE spec #7") < ran.out.index("END   spec #7")
+
+
+REPORT = "## Drift report\n\n- Story 1: Done\n"
+
+
+def drifting(driver):
+    def drift():
+        report = driver.repo.root / "drift-report.md"
+        report.write_text(REPORT, encoding="utf-8", newline="\n")
+        publish.main(["drift", SPEC, report.as_posix()], driver.runner, io.StringIO(),
+                     io.StringIO(), lambda seconds: None, driver.repo.work.as_posix())
+    return drift
+
+
+def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
+    sessions = given_sessions_that_finish(driver)
+    sessions.then["spec-drift"] = drifting(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    text = on_remote(driver.repo, FOLDER + "/spec.md")
+    assert text.endswith(REPORT)
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+    held = driver.repo.work / ".spec-loop" / SPEC / "drift.md"
+    assert held.read_text(encoding="utf-8") == "- Story 1: Done\n"
+    assert "DRIFT the report is recorded on spec #7" in ran.out
+
+
+def test_a_drift_check_that_recorded_no_report_is_said(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert "WARN  the drift check recorded no report on spec #7" in ran.out
 
 
 def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(driver):

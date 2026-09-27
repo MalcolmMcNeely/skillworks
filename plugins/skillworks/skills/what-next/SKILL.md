@@ -10,6 +10,13 @@ You don't remember every skill, so ask.
 
 A **flow** is a path through the skills. Most paths run along one **main flow**, and one **on-ramp** merges onto it. Everything else is standalone, or a vocabulary layer that runs underneath.
 
+## What is open
+
+Asked what is open, or which ticket is next, read the Tracker. `tracker` in `docs/agents/loop.json` names it, and `docs/agents/issue-tracker.md` says how to read it. Read through those docs, and make no call of your own that they do not name.
+
+- **Files**: list the open specs and their startable tickets, from `.specs/` on the remote, as "List what is open" in the tracker docs says. Name a spec by its number and title, and a ticket as `<spec>/<ticket>` with its title. A spec with a startable ticket goes on at `/skillworks:spec-loop <spec>`.
+- **GitHub**: the open work is on GitHub Issues, so point the user there.
+
 ## The main flow: idea → ship
 
 The route most work travels. You have an idea and want it built.
