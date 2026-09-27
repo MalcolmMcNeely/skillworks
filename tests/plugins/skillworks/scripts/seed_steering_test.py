@@ -872,15 +872,38 @@ def test_the_grills_sum_up_lists_each_surfaces_answer():
 
 
 def stage_map_row(stage):
-    page = STAGE_MAP_PAGE.read_text(encoding="utf-8")
-    rows = [line for line in page.splitlines() if line.startswith("| {} |".format(stage))]
+    stage_map = STAGE_MAP_PAGE.read_text(encoding="utf-8").split("<!-- stage map -->", 1)[1]
+    rows = [line for line in stage_map.splitlines() if line.startswith("| {} |".format(stage))]
     assert len(rows) == 1, stage
     return rows[0]
 
 
-@pytest.mark.parametrize("stage", ["The grill", "The spec"])
-def test_the_stage_map_names_the_surfaces_file_for_the_grill_and_the_spec(stage):
+@pytest.mark.parametrize("stage", ["The grill", "The spec", "`spec`", "The drift check"])
+def test_the_stage_map_names_the_surfaces_file_for_each_stage_that_reads_it(stage):
     assert "`surfaces.md`" in stage_map_row(stage)
+
+
+def test_the_tickets_keep_each_surface_inside_the_ticket_that_needs_it():
+    to_tickets = skill_text("to-tickets")
+
+    assert "Surfaces section" in to_tickets
+    assert "inside the ticket whose change needs it" in to_tickets
+    assert "No ticket only updates a Surface" in to_tickets
+
+
+def test_the_spec_review_checks_each_surface_the_spec_names_for_the_ticket():
+    review = skill_text("review-spec")
+
+    assert "Surfaces section" in review
+    assert "Surface the spec names" in review
+
+
+def test_the_drift_check_checks_and_reports_each_surface_the_spec_names():
+    drift = skill_text("spec-drift")
+
+    assert "Surfaces section" in drift
+    assert "every Surface the spec names" in drift
+    assert "In step" in drift
 
 
 def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_report():

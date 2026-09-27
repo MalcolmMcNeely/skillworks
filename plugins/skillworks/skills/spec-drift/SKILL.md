@@ -42,9 +42,16 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
    Judge against the **spec**, not against the tickets. A ticket that drifted still passed its own criteria, which is exactly why this step exists.
 
-4. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. The project glossary is the arbiter.
+4. Check every Surface the spec names. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each one the change touches, with what it has to say once the change Lands. Read each Surface on `origin/<target>`, at the path the spec gives or at its "Where it lives" in `docs/agents/surfaces.md`, and mark it:
 
-5. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back.
+   - **In step** — it says what the spec asked
+   - **Out of step** — it says less, or says something the code no longer does
+
+   The report lists every Surface the spec names under its own `### Surfaces` heading, each with its mark, and says what an Out of step Surface lacks. A spec whose Surfaces section says "None", or that has none, gets a line saying so.
+
+5. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. The project glossary is the arbiter.
+
+6. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back.
    - **GitHub**: post it as a comment on the spec issue.
    - **Files**: there is no issue to comment on, so the report goes at the end of the spec's `spec.md`, under that heading. Write it to a file outside the repo, such as in `$(mktemp -d)`, and record it:
 
@@ -54,4 +61,4 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
      The command pushes it to the spec's branch on the remote and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
 
-6. **Report only. Fix nothing.** A fix is new work and needs its own ticket. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step.
+7. **Report only. Fix nothing.** A fix is new work and needs its own ticket. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step.

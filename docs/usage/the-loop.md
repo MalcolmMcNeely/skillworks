@@ -262,6 +262,9 @@ as a **sub-issue of the spec**. With `files`, each one is a file in the spec's `
 Either way, a ticket belongs to one spec, and that is what stops two people's loops from taking each
 other's work.
 
+Each Surface in the spec's Surfaces section goes into the ticket whose change needs it. No ticket only
+updates a Surface, so every ticket that Lands leaves each Surface in step.
+
 Then the skill starts the `spec-loop` script in the background, and tells you where its log is. The
 script does the rest. The skill never builds a ticket itself.
 
@@ -318,7 +321,7 @@ Every step but `suite` is a Session of its own, run inside the ticket's worktree
 |---|---|
 | `build` | Builds the change test-first, and leaves it uncommitted. |
 | `standards` | Reviews the change against your rules, and fixes what it finds. |
-| `spec` | Reviews the change against the ticket and the spec, and fixes what it finds. |
+| `spec` | Reviews the change against the ticket and the spec, and each Surface the spec names for the ticket, and fixes what it finds. |
 | `architecture` | Reviews where the change sits and which way it points, and fixes what it finds. |
 | `fix` | Reads all three reports at once, settles any disagreement, and fixes what is left. |
 | `sweep` | Cuts the comments back to what your rules keep. |
@@ -525,15 +528,17 @@ The report puts each user story and each decision of the spec in one of four gro
 | Missing | None of it is there. |
 | Contradicts | The code does something the spec ruled out. |
 
-It also lists anything **Unrequested**: work the spec never asked for. And it looks for two tickets
-that brought in two names for one idea, with your glossary as the judge.
+It also lists anything **Unrequested**: work the spec never asked for. It marks each Surface the spec
+names **In step** or **Out of step**, under a `### Surfaces` heading of its own. And it looks for two
+tickets that brought in two names for one idea, with your glossary as the judge.
 
 The drift check fixes nothing and closes nothing. A fix is new work, and needs a ticket of its own.
 Closing the spec is where a person says the work is done. With a branch name, a person closes it by
 hand. With `spec`, the loop marks the spec's pull request ready for review, and the spec closes when a
 person merges it. With the files Tracker, the loop closes the spec itself after the drift check, and
 with `spec` it leaves the pull request to you. A clean finish needs two facts: the log reaches its
-`END` line, and the drift report lists nothing Missing, Partial or Contradicts.
+`END` line, and the drift report lists nothing Missing, Partial or Contradicts, and no Surface Out of
+step.
 
 ## The stage map
 
@@ -559,7 +564,7 @@ use with nobody watching.
 | The tickets | `CLAUDE.md` and the rules | `issue-tracker.md` | "The ticket shape" in `issue-tracker.md`: the size of a ticket, its title and its sections. |
 | `build` | `CLAUDE.md` and the rules | `domain.md`, your glossary, and `suite.json` when it runs `skillworks-suite` | The rules the change must meet, and the checks in `suite.json`. |
 | `standards` | `CLAUDE.md` and the rules | `smell-baseline.md`, your glossary | The rules, and the smells in `smell-baseline.md`. |
-| `spec` | `CLAUDE.md` and the rules | `issue-tracker.md` | "The ticket shape" in `issue-tracker.md`, because the review judges the change by the ticket. |
+| `spec` | `CLAUDE.md` and the rules | `issue-tracker.md`, `surfaces.md` | "The ticket shape" in `issue-tracker.md`, because the review judges the change by the ticket. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
 | `architecture` | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `arrangement-baseline.md`, `placement-checks.md` | `file-placement.md`, the failures in `arrangement-baseline.md`, and the commands in `placement-checks.md`. |
 | `fix` | `CLAUDE.md` and the rules | Nothing more. It acts on the three reports. | The rules the fix must meet. |
 | `sweep` | `CLAUDE.md` and the rules | Nothing more. `comments.md` is already loaded. | The keep and cut table in `comments.md`, and `doc-comments`. |
@@ -567,7 +572,7 @@ use with nobody watching.
 | `finish` | `CLAUDE.md` and the rules | `issue-tracker.md` | Nothing. The loop reads back the two conventions in `issue-tracker.md`, so leave them as they are. |
 | Landing | `CLAUDE.md` and the rules, in the Session that resolves a conflict | `suite.json`, for the Suite again | The checks in `suite.json`. |
 | The full run | Nothing. No Session runs. | `suite.json` | The checks in `suite.json`. |
-| The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary | The glossary, which judges the names two tickets brought in. |
+| The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `surfaces.md` | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
 
 The rules' settings load into every Session, but each one is enforced only once a check exists that
 reads it. Until then, `build` and `fix` follow them as prose, and the reviews judge the change by

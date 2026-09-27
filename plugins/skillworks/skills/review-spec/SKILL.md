@@ -50,6 +50,8 @@ Three kinds of finding, and every one of them quotes the ticket line it turns on
 
 Walk the acceptance criteria one at a time. A criterion with no evidence in the diff is a finding, not a pass.
 
+Then walk the Surfaces. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each Surface the change touches, with what it has to say once the change Lands. Check the change against each Surface the spec names for this ticket: one the ticket names, or one this ticket's change reaches. Open the Surface at the path the spec gives, or at its "Where it lives" in `docs/agents/surfaces.md`, and read whether it says what this change needs. A Surface left out of step is a Missing or partial finding, and quotes the Surfaces section line it turns on. A spec whose Surfaces section says "None", or that has none, adds nothing here.
+
 Two things are out of scope, because reporting them makes the axis noise:
 
 - **Standing debt.** Report what this change did, not what the file already was.
