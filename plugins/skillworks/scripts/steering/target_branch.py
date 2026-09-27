@@ -34,6 +34,20 @@ def target_branch(top, spec=None):
     return spec_branch(spec)
 
 
+# A script knows the spec's number and not its body, so gh is asked, with the repo taken from the checkout.
+def target_branch_for(runner, top, spec, repo="{owner}/{repo}"):
+    if spec is None or not in_spec_mode(top):
+        return target_branch(top)
+    asked = runner.run(["gh", "api", "repos/{}/issues/{}".format(repo, spec), "--jq", ".body"],
+                       Path(top).as_posix(),
+                       # gh asks at a terminal, and a script run by hand may have nobody at one.
+                       {"GH_PROMPT_DISABLED": "1"})
+    if asked.status != 0:
+        raise refusal("The tracker would not give the body of spec #{}, which names its branch. gh said:\n{}".format(
+            spec, (asked.out + asked.err).rstrip("\n")))
+    return target_branch(top, asked.out)
+
+
 def spec_branch(spec):
     lines = [line.strip() for line in spec.splitlines()]
     if BRANCH_HEADING in lines:

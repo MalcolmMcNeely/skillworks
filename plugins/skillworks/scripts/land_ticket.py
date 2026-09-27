@@ -4,8 +4,10 @@
 #
 # Land one finished ticket on its Target branch.
 #
-#   land-ticket <worktree> <ticket-number> [session-id]
+#   land-ticket <worktree> <ticket-number> [session-id] [--spec <spec-number>]
 #   land-ticket --plan
+#
+# In spec mode a landing run by hand names its spec, which names the Target branch.
 #
 # Exits 0 once the ticket's commit is on the remote's Target branch. Exits non-zero with
 # the reason on stderr, having pushed nothing.
@@ -38,14 +40,16 @@ from filelock import FileLock, Timeout
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
-from steering.target_branch import target_branch
+from steering.target_branch import in_spec_mode, target_branch_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
 
 USAGE = (
-    "usage: land-ticket <worktree> <ticket-number> [session-id]\n"
+    "usage: land-ticket <worktree> <ticket-number> [session-id] [--spec <spec-number>]\n"
     "       land-ticket --plan\n"
 )
+
+SPEC_FLAG = "--spec"
 
 # Another loop pushing is expected, so a lost race is tried again with no cap.
 LOST_RACE = ("(fetch first)", "(non-fast-forward)")
@@ -129,8 +133,9 @@ class Turn:
 
 class Landing:
     def __init__(self, runner, worktree, ticket, session, out, err, wait, permission_mode,
-                 target=None):
+                 target=None, spec=None):
         self.runner = runner
+        self.spec = spec
         self.worktree = Path(worktree).as_posix()
         self.ticket = ticket
         self.session = session
@@ -418,7 +423,14 @@ class Landing:
 
         # The worktree script read the main checkout's settings, so a landing handed none reads the same ones.
         if not self.target:
-            self.target = target_branch(self.main_checkout())
+            top = self.main_checkout()
+            if self.spec is None and in_spec_mode(top):
+                raise self.die(
+                    "#{t} cannot be landed, because in spec mode each spec names its own Target "
+                    "branch and no spec was given. Nothing was pushed. Name the spec with: "
+                    "land-ticket {w} {t} [session-id] --spec <spec-number>".format(
+                        t=self.ticket, w=self.worktree))
+            self.target = target_branch_for(self.runner, top, self.spec)
 
         # A commit does not carry unfinished work, so pushing would leave it behind.
         if self.git("status", "--porcelain").out.strip():
@@ -530,6 +542,16 @@ class Landing:
                 kept = True
 
 
+def spec_named(argv):
+    if SPEC_FLAG not in argv:
+        return argv, None
+    at = argv.index(SPEC_FLAG)
+    spec = argv[at + 1] if len(argv) > at + 1 else ""
+    if not is_a_number(spec):
+        raise misuse(USAGE)
+    return argv[:at] + argv[at + 2:], spec
+
+
 def permission_mode_set():
     return os.environ.get("SPEC_LOOP_PERMISSION_MODE", "acceptEdits")
 
@@ -540,6 +562,7 @@ def main(argv, runner, out, err, wait, permission_mode=None, target=None):
     if permission_mode is None:
         permission_mode = permission_mode_set()
     try:
+        argv, spec = spec_named(argv)
         worktree = argv[0] if len(argv) > 0 else ""
         ticket = argv[1] if len(argv) > 1 else ""
         session = argv[2] if len(argv) > 2 else ""
@@ -548,11 +571,11 @@ def main(argv, runner, out, err, wait, permission_mode=None, target=None):
             for step in PLAN:
                 out.write("\t".join(step) + "\n")
             return 0
-        if not worktree or not is_a_number(ticket):
+        if not worktree or not is_a_number(ticket) or len(argv) > 3:
             raise misuse(USAGE)
 
         Landing(runner, worktree, ticket, session, out, err, wait, permission_mode,
-                target).land()
+                target, spec).land()
         return 0
     except Stop as stop:
         err.write(stop.said)

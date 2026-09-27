@@ -857,6 +857,67 @@ def test_in_spec_mode_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_on
     assert git(spec_mode.origin, "rev-parse", "main").strip() == main
 
 
+SPEC_BODY = "## Problem Statement\n\nWords.\n\n## Branch\n\n`{}`\n".format(SPEC_BRANCH)
+
+
+# A person landing after an early stop has only the spec's number, so the tracker is asked.
+def test_by_hand_in_spec_mode_a_ticket_given_its_spec_lands_on_the_branch_the_spec_names(
+        spec_mode, runner):
+    runner.stub("gh", says=SPEC_BODY)
+    commit_for_ticket(spec_mode, 163)
+    head = head_of(spec_mode)
+    main = git(spec_mode.origin, "rev-parse", "main").strip()
+
+    ran = run_land(runner, spec_mode.work, 163, "--spec", 282)
+
+    assert ran.status == 0, report(ran)
+    assert "landed on " + SPEC_BRANCH in report(ran)
+    assert spec_branch_of(spec_mode) == head
+    assert git(spec_mode.origin, "rev-parse", "main").strip() == main
+
+
+def test_by_hand_in_spec_mode_a_ticket_given_its_spec_and_a_session_lands(spec_mode, runner):
+    runner.stub("gh", says=SPEC_BODY)
+    commit_for_ticket(spec_mode, 163)
+    head = head_of(spec_mode)
+
+    ran = run_land(runner, spec_mode.work, 163, "session-abc", "--spec", 282)
+
+    assert ran.status == 0, report(ran)
+    assert spec_branch_of(spec_mode) == head
+
+
+def test_by_hand_in_spec_mode_a_ticket_with_no_spec_stops_and_says_how_to_name_it(
+        spec_mode, runner):
+    commit_for_ticket(spec_mode, 163)
+    base = spec_branch_of(spec_mode)
+
+    ran = run_land(runner, spec_mode.work, 163)
+
+    assert ran.status == 1
+    assert "--spec <spec-number>" in report(ran)
+    assert spec_branch_of(spec_mode) == base
+    assert not runner.started("gh")
+
+
+def test_by_hand_a_branch_name_lands_with_no_spec_and_asks_the_tracker_nothing(master, runner):
+    commit_for_ticket(master, 163)
+    head = head_of(master)
+
+    ran = run_land(runner, master.work, 163)
+
+    assert ran.status == 0, report(ran)
+    assert target_of(master) == head
+    assert not runner.started("gh")
+
+
+def test_a_spec_that_is_not_a_number_prints_the_usage(repo, runner):
+    ran = run_land(runner, repo.work, 163, "--spec", "next")
+
+    assert ran.status == 64
+    assert "--spec <spec-number>" in report(ran)
+
+
 def test_a_checkout_with_no_loop_file_is_refused_and_told_how_to_write_one(repo, runner):
     git(repo.work, "rm", "--quiet", LOOP_FILE)
     git(repo.work, "commit", "--quiet", "-m", "No settings\n\nTicket: #163")
@@ -1244,7 +1305,8 @@ def test_the_land_ticket_command_starts_the_landing_script_in_the_plugin(repo):
     ran = launch("land-ticket", where=repo.work)
 
     assert ran.status == 64
-    assert ran.err.startswith("usage: land-ticket <worktree> <ticket-number> [session-id]\n")
+    assert ran.err.startswith(
+        "usage: land-ticket <worktree> <ticket-number> [session-id] [--spec <spec-number>]\n")
 
 
 # uv reads a script's dependencies from this block, so each script that reaches the Turn names the lock.

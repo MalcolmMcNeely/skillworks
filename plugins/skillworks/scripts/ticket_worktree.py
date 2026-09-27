@@ -35,7 +35,7 @@ from typing import NamedTuple
 
 from fetch_origin import fetch_origin
 from runner import Subprocess
-from steering.target_branch import target_branch
+from steering.target_branch import target_branch_for
 from stop import Stop, is_a_number, misuse, refusal
 
 USAGE = (
@@ -155,7 +155,7 @@ class Worktrees:
             raise refusal("branch {} is already there. Remove it with: {}".format(
                 branch, self.removal(job)))
 
-        target = self.target or target_branch(self.checkout)
+        target = self.target or target_branch_for(self.runner, self.checkout, self.spec)
         if not fetch_origin(self.runner, self.checkout.as_posix(), target, self.err, self.wait):
             raise refusal("could not fetch {} from origin, so nothing could be cut from it.".format(
                 target))
@@ -290,7 +290,7 @@ class Worktrees:
         self.drop_group()
 
 
-# Only the driver reads the spec, so in spec mode it hands in the branch the spec names.
+# The driver has already read the spec, so it hands in the branch and the tracker is not asked twice.
 def main(argv, runner, out, err, wait, target=None):
     try:
         command, checkout, spec, job = arguments(argv)

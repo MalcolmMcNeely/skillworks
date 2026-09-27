@@ -4,7 +4,7 @@ import pytest
 
 from conftest import ROOT
 from stop import REFUSED, Stop
-from steering.target_branch import LOOP_FILE, in_spec_mode, target_branch
+from steering.target_branch import LOOP_FILE, in_spec_mode, target_branch, target_branch_for
 
 
 def write_loop(top, settings):
@@ -85,6 +85,45 @@ def test_a_missing_loop_file_stops_the_question_of_spec_mode_too(tmp_path):
         in_spec_mode(tmp_path)
 
     assert "seed-steering" in stopped.value.said
+
+
+SPEC_BODY = "## Problem Statement\n\nWords.\n\n## Branch\n\n`spec/target-branch`\n"
+
+
+def test_by_hand_in_spec_mode_the_spec_is_asked_of_the_tracker_for_its_branch(tmp_path, runner):
+    write_loop(tmp_path, {"target-branch": "spec"})
+    runner.stub("gh", says=SPEC_BODY)
+
+    assert target_branch_for(runner, tmp_path, "282") == "spec/target-branch"
+
+
+def test_by_hand_a_branch_name_asks_the_tracker_nothing(tmp_path, runner):
+    write_loop(tmp_path, {"target-branch": "master"})
+
+    assert target_branch_for(runner, tmp_path, "282") == "master"
+    assert target_branch_for(runner, tmp_path, None) == "master"
+    assert not runner.started("gh")
+
+
+def test_by_hand_a_tracker_that_will_not_answer_stops_and_names_the_spec(tmp_path, runner):
+    write_loop(tmp_path, {"target-branch": "spec"})
+    runner.stub("gh", status=1)
+
+    with pytest.raises(Stop) as stopped:
+        target_branch_for(runner, tmp_path, "282")
+
+    assert stopped.value.status == REFUSED
+    assert "#282" in stopped.value.said
+
+
+def test_by_hand_in_spec_mode_no_spec_stops_before_the_tracker_is_asked(tmp_path, runner):
+    write_loop(tmp_path, {"target-branch": "spec"})
+
+    with pytest.raises(Stop) as stopped:
+        target_branch_for(runner, tmp_path, None)
+
+    assert "no spec was given" in stopped.value.said
+    assert not runner.started("gh")
 
 
 def test_this_repo_lands_on_main():

@@ -107,6 +107,35 @@ def test_in_spec_mode_a_job_is_branched_from_the_newest_spec_branch_it_is_handed
     assert (tree / "landed.txt").is_file()
 
 
+# A person cutting a job after an early stop has only the spec's number, so the tracker is asked.
+def test_by_hand_in_spec_mode_a_job_is_branched_from_the_newest_branch_the_spec_names(repo, runner):
+    write_loop(repo.work, "spec")
+    git(repo.work, "push", "--quiet", "origin", "main:spec/target-branch")
+    other = repo.other_checkout()
+    git(other, "checkout", "--quiet", "-b", "spec/target-branch", "origin/spec/target-branch")
+    repo.write_commit(other, "landed.txt", "landed", "An earlier ticket")
+    git(other, "push", "--quiet", "origin", "spec/target-branch")
+    newest = git(repo.origin, "rev-parse", "spec/target-branch").strip()
+    runner.stub("gh", says="## Problem Statement\n\nWords.\n\n## Branch\n\n`spec/target-branch`\n")
+    tree = repo.tree(158, "ticket-164")
+
+    ran = run_worktree(runner, "open", repo.work, 158, "ticket-164")
+
+    assert ran.status == 0, ran.err
+    assert git(tree, "rev-parse", "HEAD").strip() == newest
+    assert (tree / "landed.txt").is_file()
+
+
+def test_by_hand_in_spec_mode_no_spec_prints_the_usage_that_names_it(repo, runner):
+    write_loop(repo.work, "spec")
+
+    ran = run_worktree(runner, "open", repo.work, "", "ticket-164")
+
+    assert ran.status == 64
+    assert "<spec>" in ran.err
+    assert not runner.started("gh")
+
+
 def test_a_remote_without_the_target_branch_is_refused_by_its_name(repo, runner):
     write_loop(repo.work, "master")
 

@@ -40,7 +40,7 @@ import land_ticket
 import ticket_worktree
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
-from steering.target_branch import in_spec_mode, target_branch
+from steering.target_branch import in_spec_mode, target_branch_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 
@@ -947,13 +947,7 @@ class Loop:
 
     def read_target(self):
         self.spec_mode = in_spec_mode(self.root)
-        if not self.spec_mode:
-            return target_branch(self.root)
-        body = self.issue_field(self.spec, ".body")
-        if body.status != 0:
-            raise stop("ABORT cannot read the body of spec #{}, which names its branch.".format(
-                self.spec))
-        return target_branch(self.root, body.out)
+        return target_branch_for(self.runner, self.root, self.spec, self.repo)
 
     def run(self, dry):
         # No guard on the branch or on the edits: nothing is ever built in this checkout.
