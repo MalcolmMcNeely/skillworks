@@ -1,4 +1,4 @@
-# Git and node stay real, so the settings file is really read. One case takes node off PATH.
+# Git, node and uv stay real, so the settings file and loop.json are really read. One case takes node off PATH.
 
 import json
 import os
@@ -47,11 +47,6 @@ case "$*" in
 esac
 """
 
-UV = """#!/usr/bin/env bash
-echo "unplanned uv call: $*" >&2
-exit 97
-"""
-
 FORCED = "---\nname: {name}\nforce-for-plugin: true\n---\n\nTalk like a pirate.\n"
 PLAIN = "---\nname: {name}\n---\n\nPlain.\n"
 
@@ -66,7 +61,7 @@ class Work:
         # Git can spell a temporary folder differently from the way pytest handed it out.
         self.top = git(self.repo, "rev-parse", "--show-toplevel").strip()
         self.stand_ins.mkdir()
-        for name, text in (("gh", GH), ("claude", CLAUDE), ("uv", UV)):
+        for name, text in (("gh", GH), ("claude", CLAUDE)):
             stand_in = self.stand_ins / name
             stand_in.write_text(text, encoding="utf-8", newline="\n")
             stand_in.chmod(0o755)
@@ -120,9 +115,9 @@ def settings(work, text):
     (work.repo / ".claude" / "settings.json").write_text(text, encoding="utf-8", newline="\n")
 
 
-# Node can share /usr/bin with the tools preflight calls, so that folder is mirrored, not dropped.
+# Node can share a folder with the tools preflight calls, such as /usr/bin or uv's, so that folder is mirrored, not dropped.
 # Where node has a folder of its own, as on Windows, the folder is dropped and no mirror is made.
-TOOLS = ("git", "awk", "sort", "head", "grep", "paste", "sed", "basename")
+TOOLS = ("git", "uv", "awk", "sort", "head", "grep", "paste", "sed", "basename")
 
 
 def without_node(path, spare):
@@ -335,6 +330,27 @@ def test_a_loop_file_with_no_target_branch_fails(work):
 
     assert ran.status == 1, said(ran)
     assert "FAIL  docs/agents/loop.json names no target-branch." in ran.err
+
+
+def test_a_target_branch_split_across_lines_passes(work):
+    (work.repo / "docs" / "agents" / "loop.json").write_text(
+        '{\n  "target-branch":\n    "main"\n}\n', encoding="utf-8", newline="\n")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch main" in ran.out
+
+
+# A reader that matched text rather than JSON would take the last key it saw, which is develop.
+def test_a_target_branch_nested_in_another_setting_is_not_the_target_branch(work):
+    (work.repo / "docs" / "agents" / "loop.json").write_text(
+        json.dumps({"target-branch": "main", "was": {"target-branch": "develop"}}), encoding="utf-8")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch main" in ran.out
 
 
 def test_a_target_branch_named_master_that_is_on_the_remote_passes(work):

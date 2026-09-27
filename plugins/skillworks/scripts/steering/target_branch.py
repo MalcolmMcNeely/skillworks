@@ -1,9 +1,10 @@
 # One reader, so no script keeps its own idea of the Target branch.
 
 import json
+import sys
 from pathlib import Path
 
-from stop import refusal
+from stop import Stop, refusal
 
 LOOP_FILE = "docs/agents/loop.json"
 SPEC_MODE = "spec"
@@ -41,3 +42,19 @@ def spec_branch(spec):
         if named and not named.startswith("#"):
             return named
     raise refusal("The spec names no branch under {}. Run to-spec, which writes it, or add it by hand.".format(BRANCH_HEADING))
+
+
+def main(argv, out, err):
+    try:
+        out.write(target_setting(argv[0]) + "\n")
+        return 0
+    except Stop as stop:
+        err.write(stop.said)
+        return stop.status
+
+
+if __name__ == "__main__":
+    # Windows adds a carriage return, which the preflight would read as part of the branch name.
+    sys.stdout.reconfigure(newline="\n")
+    sys.stderr.reconfigure(newline="\n")
+    sys.exit(main(sys.argv[1:], sys.stdout, sys.stderr))

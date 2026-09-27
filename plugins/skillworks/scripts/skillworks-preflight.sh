@@ -82,11 +82,8 @@ probe=$(gh api "repos/$REPO" --jq .has_issues)
 [ "$probe" = "true" ] || die "Issues are disabled on $REPO. Enable them in repo settings."
 ok "issues enabled"
 
-loop="$top/docs/agents/loop.json"
-[ -f "$loop" ] || die "docs/agents/loop.json is missing. Run seed-steering to write it."
-# Read in bash, so the preflight runs none of the Python it checks the machine for.
-target=$(tr -d '\r\n' < "$loop" | sed -n 's/.*"target-branch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-[ -n "$target" ] || die "docs/agents/loop.json names no target-branch. Add one, such as \"target-branch\": \"main\"."
+# python -m finds the module only from the scripts folder, and the reader prints its own refusal.
+target=$(cd "$(dirname "${BASH_SOURCE[0]}")" && uv run --no-project --quiet python -m steering.target_branch "$top")
 
 on_remote() { gh api "repos/$REPO/branches/$1" --jq .name >/dev/null 2>&1; }
 
