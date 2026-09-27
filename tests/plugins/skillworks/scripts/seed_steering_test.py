@@ -1079,8 +1079,7 @@ def test_the_report_names_the_folder_each_steering_file_lives_in():
 
 
 # Each holds only for this repository, so a skill that says one tells a team about a repo it is not in.
-SKILL_HABITS = ["slice rules", "slice whose job it serves", "no branches and no pull requests", "co-authored by",
-                "co-author line", "under checks"]
+SKILL_HABITS = ["slice rules", "slice whose job it serves", "no branches and no pull requests", "under checks"]
 
 
 def test_no_plugin_skill_says_a_habit_of_this_repo():
@@ -1091,6 +1090,25 @@ def test_no_plugin_skill_says_a_habit_of_this_repo():
         text = page.read_text(encoding="utf-8").lower()
         for habit in SKILL_HABITS:
             assert habit not in text, "{} says {}".format(page, habit)
+
+
+# The team's attribution setting decides the line, so a skill or a seed that names it would overrule the team.
+CO_AUTHOR = re.compile(r"co[-_ ]?author", re.IGNORECASE)
+
+
+def test_no_plugin_skill_or_seed_names_a_co_author_line():
+    pages = sorted(path for path in SKILLS.rglob("*") if path.is_file() and "__pycache__" not in path.parts)
+    assert pages
+
+    named = [page.relative_to(SKILLS).as_posix() for page in pages
+             if CO_AUTHOR.search(page.read_text(encoding="utf-8", errors="replace"))]
+
+    assert named == []
+
+
+@pytest.mark.parametrize("line", ["Co-Authored-By: Claude", "a co-author line", "the coauthor", "Co_Authored_By"])
+def test_a_co_author_line_is_caught(line):
+    assert CO_AUTHOR.search(line)
 
 
 def test_no_seed_promises_a_check_the_team_has_not_added():

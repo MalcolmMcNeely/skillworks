@@ -266,24 +266,25 @@ for (const [form, commandIn] of [
   });
 }
 
-test("the trailer joins the block that holds Ticket and Co-Authored-By", async () => {
-  // Arrange
-  const repo = await repository();
-  const message = "Fix the thing\n\nThe body.\n\nTicket: #254\nCo-Authored-By: Claude <noreply@anthropic.com>\n";
-  await writeFile(join(repo.dir, "message.txt"), message);
-  const command = await rewritten("git add work.txt && git commit -F message.txt");
+// The team's attribution setting decides whether Claude Code writes a co-author line.
+for (const [form, trailers] of [
+  ["Ticket alone", ["Ticket: #254"]],
+  ["Ticket and Co-Authored-By", ["Ticket: #254", "Co-Authored-By: Claude <noreply@anthropic.com>"]],
+]) {
+  test(`the trailer joins the block that holds ${form}`, async () => {
+    // Arrange
+    const repo = await repository();
+    await writeFile(join(repo.dir, "message.txt"), `Fix the thing\n\nThe body.\n\n${trailers.join("\n")}\n`);
+    const command = await rewritten("git add work.txt && git commit -F message.txt");
 
-  // Act
-  repo.run(command);
+    // Act
+    repo.run(command);
 
-  // Assert
-  const block = repo.git("log", "-1", "--format=%(trailers:only,unfold)").trim();
-  assert.deepEqual(block.split("\n"), [
-    "Ticket: #254",
-    "Co-Authored-By: Claude <noreply@anthropic.com>",
-    `Skillworks-Session: ${SESSION}`,
-  ]);
-});
+    // Assert
+    const block = repo.git("log", "-1", "--format=%(trailers:only,unfold)").trim();
+    assert.deepEqual(block.split("\n"), [...trailers, `Skillworks-Session: ${SESSION}`]);
+  });
+}
 
 test("an amend by the same Session adds no second line, and one by a second Session adds one", async () => {
   // Arrange
