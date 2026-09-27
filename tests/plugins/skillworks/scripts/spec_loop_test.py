@@ -402,15 +402,15 @@ def test_the_dry_run_prints_every_landing_step_with_its_checks(loop):
         "the worktree, its tree and the trailer on its commit",
         "checks: is-a-worktree tree-clean ticket-named",
         "git fetch origin (up to 5 attempts)",
-        "checks: origin-has-main something-to-land",
-        "git rebase origin/main, when the base has moved",
+        "checks: origin-has-target something-to-land",
+        "git rebase origin/<target>, when the base has moved",
         "checks: commits-kept files-kept",
         "the build session, when the rebase conflicts",
         "checks: session-named no-refusal none-left-conflicting no-marker-staged "
         "rebase-carried-on",
         "the whole suite, when the base has moved",
         "checks: suite-can-run suite-green",
-        "git push origin HEAD:main, again after each lost race",
+        "git push origin HEAD:<target>, again after each lost race",
         "checks: pushed\n",
     ):
         assert line in said(ran)

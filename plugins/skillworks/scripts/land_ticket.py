@@ -2,12 +2,12 @@
 # dependencies = ["filelock>=3.16"]
 # ///
 #
-# Land one finished ticket on main.
+# Land one finished ticket on its Target branch.
 #
 #   land-ticket <worktree> <ticket-number> [session-id]
 #   land-ticket --plan
 #
-# Exits 0 once the ticket's commit is on the remote's main. Exits non-zero with
+# Exits 0 once the ticket's commit is on the remote's Target branch. Exits non-zero with
 # the reason on stderr, having pushed nothing.
 #
 # `--plan` prints the steps and their checks, tab separated, and does none of them.
@@ -38,6 +38,7 @@ from filelock import FileLock, Timeout
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
+from steering.target_branch import target_branch
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
 
@@ -56,9 +57,9 @@ PLAN = (
      "is-a-worktree tree-clean ticket-named"),
     ("fetch",
      "git fetch origin (up to {} attempts)".format(FETCH_ATTEMPTS),
-     "origin-has-main something-to-land"),
+     "origin-has-target something-to-land"),
     ("rebase",
-     "git rebase origin/main, when the base has moved",
+     "git rebase origin/<target>, when the base has moved",
      "commits-kept files-kept"),
     ("resolve",
      "the build session, when the rebase conflicts",
@@ -67,7 +68,7 @@ PLAN = (
      "the whole suite, when the base has moved",
      "suite-can-run suite-green"),
     ("push",
-     "git push origin HEAD:main, again after each lost race",
+     "git push origin HEAD:<target>, again after each lost race",
      "pushed"),
 )
 
@@ -135,6 +136,11 @@ class Landing:
         self.permission_mode = permission_mode
         # None when no conflict is in hand, so a stop can tell whether it has one to record.
         self.conflict = None
+        self.target = None
+
+    @property
+    def upstream(self):
+        return "origin/" + self.target
 
     def say(self, said):
         self.out.write("ok    " + said + "\n")
@@ -214,10 +220,10 @@ class Landing:
         named = "".join(c for c in said.split("\n")[0] if not c.isspace())
         return named[1:] if named.startswith("#") else named
 
-    # A worktree is cut from origin/main, so the fork point is where its own commits begin.
+    # A worktree is cut from its Target branch, so the fork point is where its own commits begin.
     def ticket_commits(self):
         # A checkout with no such ref is one the fetch step turns down by name a moment later.
-        base = self.git("merge-base", "HEAD", "origin/main")
+        base = self.git("merge-base", "HEAD", self.upstream)
         if base.status != 0:
             return listed(self.git("rev-parse", "--short", "HEAD").out)
         return listed(self.read("has commits git would not list against its base",
@@ -238,7 +244,7 @@ class Landing:
 
     # The session may only refuse for want of a ticket once it has had them all.
     def other_side(self, base):
-        commits = self.git("log", "--reverse", "--format=%h %s", base + "..origin/main")
+        commits = self.git("log", "--reverse", "--format=%h %s", base + ".." + self.upstream)
         if commits.status != 0:
             return None
         said = ""
@@ -259,11 +265,12 @@ class Landing:
             return None
         return (
             "/skillworks:resolve-conflict\n\n"
-            "Ticket #{t} was rebased onto the newest origin/main and stopped on a conflict.\n"
+            "Ticket #{t} was rebased onto the newest {u} and stopped on a conflict.\n"
             "Its worktree is {w}, and the rebase is open in it.\n\n"
             "## The conflicting files\n\n{f}\n\n"
-            "## The other side\n\nThese landed on main while #{t} was being built.\n\n{r}"
-        ).format(t=self.ticket, w=self.worktree, f="\n".join(conflicted), r=rest)
+            "## The other side\n\nThese landed on {b} while #{t} was being built.\n\n{r}"
+        ).format(t=self.ticket, u=self.upstream, b=self.target, w=self.worktree,
+                 f="\n".join(conflicted), r=rest)
 
     def resolve_call(self, prompt):
         return self.runner.run(
@@ -285,10 +292,10 @@ class Landing:
 
         if not self.session:
             raise self.die(
-                "#{t} conflicts with what landed on main while it was being built, and no session "
+                "#{t} conflicts with what landed on {b} while it was being built, and no session "
                 "was named to resolve it. The rebase is still open in {w}, and nothing was pushed. "
                 "Put it back with: git -C {w} rebase --abort\ngit said:\n{g}".format(
-                    t=self.ticket, w=self.worktree, g=refused))
+                    t=self.ticket, b=self.target, w=self.worktree, g=refused))
 
         self.say("#{} conflicts with the other side. Session {} wrote its side, so it resolves it."
                  .format(self.ticket, self.session))
@@ -358,7 +365,7 @@ class Landing:
     # A rebase that quietly dropped the work would otherwise push an empty success.
     def survived(self, mine, before):
         landed = self.read("has commits git would not count against the new base",
-                           "rev-list", "--count", "origin/main..HEAD").strip()
+                           "rev-list", "--count", self.upstream + "..HEAD").strip()
         if landed != mine:
             raise self.die(
                 "#{t} had {m} commit(s) before the rebase and has {l} on the new base. The rebase "
@@ -367,7 +374,7 @@ class Landing:
 
         # A resolution that takes the other side wholesale keeps the commit and loses the file.
         here = listed(self.read("has files git would not list against the new base",
-                                "diff", "--name-only", "origin/main", "HEAD"))
+                                "diff", "--name-only", self.upstream, "HEAD"))
         missing = "".join("\n  " + name for name in before if name not in here)
         if missing:
             raise self.die(
@@ -376,13 +383,13 @@ class Landing:
                 "git -C {w} reset --hard ORIG_HEAD".format(
                     t=self.ticket, f=missing, w=self.worktree))
 
-    def rebase_onto_main(self, base):
+    def rebase_onto_target(self, base):
         mine = self.read("has commits git would not count against its base",
                          "rev-list", "--count", base + "..HEAD").strip()
         mine_files = listed(self.read("has files git would not list against its base",
                                       "diff", "--name-only", base, "HEAD"))
 
-        said = self.git("rebase", "origin/main")
+        said = self.git("rebase", self.upstream)
         if said.status != 0:
             self.resolve_conflict(base, (said.out + said.err).rstrip("\n"))
 
@@ -390,7 +397,7 @@ class Landing:
 
         commit = self.git("rev-parse", "--short", "HEAD").out.strip()
         self.say("#{} rebased onto {} as {}".format(
-            self.ticket, self.git("rev-parse", "--short", "origin/main").out.strip(), commit))
+            self.ticket, self.git("rev-parse", "--short", self.upstream).out.strip(), commit))
 
         # A merge that resolves with no conflict can still break the program.
         self.run_suite()
@@ -404,6 +411,9 @@ class Landing:
     def verify(self):
         if self.git("rev-parse", "--git-dir").status != 0:
             raise self.die(self.worktree + " is not a git worktree. Nothing was pushed.")
+
+        # The worktree script read the main checkout's settings, so a landing reads the same ones.
+        self.target = target_branch(self.main_checkout())
 
         # A commit does not carry unfinished work, so pushing would leave it behind.
         if self.git("status", "--porcelain").out.strip():
@@ -420,6 +430,11 @@ class Landing:
             if named != self.ticket:
                 raise self.die("commit {} names ticket #{}, and this is #{}. Nothing was pushed."
                                .format(sha, named, self.ticket))
+
+    # Git lists the main checkout first, whichever worktree asks.
+    def main_checkout(self):
+        said = self.read("would not list its worktrees", "worktree", "list", "--porcelain")
+        return said.split("\n")[0][len("worktree "):]
 
     # A waiter names the holder, so a hung suite can be found and its loop killed.
     def holder(self):
@@ -449,28 +464,28 @@ class Landing:
         tries = 1
         kept = False
         while True:
-            if not fetch_origin(self.runner, self.worktree, "main", self.err, self.wait):
-                raise self.die("#{} could not fetch from origin. Nothing was pushed."
-                               .format(self.ticket))
-            if self.git("rev-parse", "--verify", "--quiet", "origin/main").status != 0:
-                raise self.die("origin has no main branch. Nothing was pushed.")
+            if not fetch_origin(self.runner, self.worktree, self.target, self.err, self.wait):
+                raise self.die("#{} could not fetch {} from origin. Nothing was pushed."
+                               .format(self.ticket, self.target))
+            if self.git("rev-parse", "--verify", "--quiet", self.upstream).status != 0:
+                raise self.die("origin has no {} branch. Nothing was pushed.".format(self.target))
 
-            # A ticket already on main has nothing to land, and a push would call that a success.
-            if not self.git("rev-list", "-1", "origin/main..HEAD").out.strip():
-                raise self.die("#{} is already on main and has nothing left to land. Nothing was "
-                               "pushed.".format(self.ticket))
+            # A ticket already on its Target branch would push nothing and call that a success.
+            if not self.git("rev-list", "-1", self.upstream + "..HEAD").out.strip():
+                raise self.die("#{} is already on {} and has nothing left to land. Nothing was "
+                               "pushed.".format(self.ticket, self.target))
 
             # An unmoved base is one the finishing step's own test run still answers for.
-            base = self.git("merge-base", "HEAD", "origin/main").out.strip()
-            if base != self.git("rev-parse", "origin/main").out.strip():
-                commit = self.rebase_onto_main(base)
+            base = self.git("merge-base", "HEAD", self.upstream).out.strip()
+            if base != self.git("rev-parse", self.upstream).out.strip():
+                commit = self.rebase_onto_target(base)
 
             if not kept:
                 self.take(turn)
-            pushed = self.git("push", "--quiet", "origin", "HEAD:main")
+            pushed = self.git("push", "--quiet", "origin", "HEAD:" + self.target)
             if pushed.status == 0:
-                self.say("#{} landed on main as {} in {} {}, holding the Turn {}".format(
-                    self.ticket, commit, tries, "try" if tries == 1 else "tries",
+                self.say("#{} landed on {} as {} in {} {}, holding the Turn {}".format(
+                    self.ticket, self.target, commit, tries, "try" if tries == 1 else "tries",
                     "from fetch to push" if kept else "for its push"))
                 return
 
@@ -481,8 +496,8 @@ class Landing:
             tries += 1
             if not kept:
                 turn.let_go()
-                self.out.write("note  #{} lost a race to main, so it takes the Turn and keeps it "
-                               "until the landing ends\n".format(self.ticket))
+                self.out.write("note  #{} lost a race to {}, so it takes the Turn and keeps it "
+                               "until the landing ends\n".format(self.ticket, self.target))
                 self.out.flush()
                 self.take(turn)
                 kept = True

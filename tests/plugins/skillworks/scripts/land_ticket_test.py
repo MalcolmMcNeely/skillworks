@@ -13,9 +13,30 @@ from pathlib import Path
 import pytest
 
 import land_ticket
-from conftest import (SCRIPTS, Ran, RecordingRunner, check, git, launch, no_wait, project_suite,
-                      write_suite)
+from conftest import (SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
+                      project_suite, write_loop, write_suite)
+from steering.target_branch import LOOP_FILE
 from suite import SUITE_FILE, Suite
+
+
+# Committed, because a landing turns down a checkout with anything left uncommitted in it.
+def landing_repo(tmp_path, target):
+    made = Repo(tmp_path, target=target)
+    write_loop(made.work, target)
+    git(made.work, "add", "-A")
+    git(made.work, "commit", "--quiet", "-m", "The loop's settings")
+    git(made.work, "push", "--quiet", "origin", target)
+    return made
+
+
+@pytest.fixture
+def repo(tmp_path):
+    return landing_repo(tmp_path, "main")
+
+
+@pytest.fixture
+def master(tmp_path):
+    return landing_repo(tmp_path, "master")
 
 
 # A fixed answer, so a case can tell what the script gathered from what it made up.
@@ -148,8 +169,8 @@ def append(path, text):
         file.write(text + "\n")
 
 
-def main_of(repo):
-    return git(repo.origin, "rev-parse", "main").strip()
+def target_of(repo):
+    return git(repo.origin, "rev-parse", repo.target).strip()
 
 
 def head_of(repo):
@@ -166,7 +187,7 @@ def given_a_project(repo, runs=None):
     write_suite(repo.work, *project_suite(), runs=runs)
     git(repo.work, "add", "-A")
     git(repo.work, "commit", "--quiet", "-m", "A Suite to check")
-    git(repo.work, "push", "--quiet", "origin", "main")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
 
 
 def commit_for_ticket(repo, ticket):
@@ -179,7 +200,7 @@ def commit_naming_nothing(repo):
 
 def given_the_other_side_changed(repo, theirs):
     repo.write_commit(repo.work, "shared.txt", "start", "A file both sides will change")
-    git(repo.work, "push", "--quiet", "origin", "main")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
     repo.push_from_elsewhere(
         "shared.txt", "their line",
         "Somebody else got there first\n\nTicket: #{}".format(theirs))
@@ -204,7 +225,7 @@ def given_a_conflict_beside_other_work(repo, mine, theirs):
 def given_two_conflicting_files(repo, mine, theirs):
     repo.write_commit(repo.work, "shared.txt", "start", "A file both sides will change")
     repo.write_commit(repo.work, "also.txt", "start", "Another file both sides will change")
-    git(repo.work, "push", "--quiet", "origin", "main")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
 
     other = repo.other_checkout()
     append(other / "shared.txt", "their line")
@@ -212,7 +233,7 @@ def given_two_conflicting_files(repo, mine, theirs):
     git(other, "add", "-A")
     git(other, "commit", "--quiet", "-m",
         "Somebody else got there first\n\nTicket: #{}".format(theirs))
-    git(other, "push", "--quiet", "origin", "main")
+    git(other, "push", "--quiet", "origin", repo.target)
 
     append(repo.work / "shared.txt", "my line")
     append(repo.work / "also.txt", "my line")
@@ -223,13 +244,13 @@ def given_two_conflicting_files(repo, mine, theirs):
 # Deleted on one side and changed on the other, so the file is unmerged with no marker in it.
 def given_a_conflict_with_no_marker(repo, mine, theirs):
     repo.write_commit(repo.work, "shared.txt", "start", "A file one side will delete")
-    git(repo.work, "push", "--quiet", "origin", "main")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
 
     other = repo.other_checkout()
     git(other, "rm", "--quiet", "shared.txt")
     git(other, "commit", "--quiet", "-m",
         "Somebody else deleted it\n\nTicket: #{}".format(theirs))
-    git(other, "push", "--quiet", "origin", "main")
+    git(other, "push", "--quiet", "origin", repo.target)
 
     repo.write_commit(
         repo.work, "shared.txt", "my line", "Do the work\n\nTicket: #{}".format(mine))
@@ -281,7 +302,7 @@ def test_a_finished_ticket_reaches_the_remote(repo, runner):
 
     assert ran.status == 0
     assert "#163" in report(ran)
-    assert main_of(repo) == head
+    assert target_of(repo) == head
     assert head_of(repo) == head
     assert not runner.started("claude")
     assert not runner.started("dotnet")
@@ -289,7 +310,7 @@ def test_a_finished_ticket_reaches_the_remote(repo, runner):
 
 
 def test_a_plan_names_every_step_with_its_checks_and_lands_nothing(repo, runner):
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, "--plan")
 
@@ -302,8 +323,8 @@ def test_a_plan_names_every_step_with_its_checks_and_lands_nothing(repo, runner)
         assert all(field for field in line.split("\t"))
     # A lost race is tried again without end, so a count would tell the reader a cap that is gone.
     push = [line for line in ran.out.splitlines() if line.startswith("push\t")]
-    assert push == ["push\tgit push origin HEAD:main, again after each lost race\tpushed"]
-    assert main_of(repo) == base
+    assert push == ["push\tgit push origin HEAD:<target>, again after each lost race\tpushed"]
+    assert target_of(repo) == base
     assert runner.calls == []
 
 
@@ -312,14 +333,14 @@ def test_a_moved_base_is_rebased_and_the_suite_runs_again(repo, runner):
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
-    other_side = main_of(repo)
+    other_side = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 0
     assert runner.built("dotnet test Skillworks.slnx")
     assert runner.built("npm test")
-    assert main_of(repo) == head_of(repo)
+    assert target_of(repo) == head_of(repo)
     assert git(repo.work, "rev-parse", "HEAD^").strip() == other_side
     # One parent, so the other side was rebased onto rather than merged in.
     assert len(git(repo.work, "log", "-1", "--format=%P").split()) == 1
@@ -333,7 +354,7 @@ def test_a_landing_whose_checks_are_all_proved_runs_nothing(repo, runner):
                 check("npm", "test", ignores=["later.txt"]))
     git(repo.work, "add", "-A")
     git(repo.work, "commit", "--quiet", "-m", "A Suite to check")
-    git(repo.work, "push", "--quiet", "origin", "main")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
     commit_for_ticket(repo, 165)
     earlier = RecordingRunner()
     given_the_suite_passes(earlier)
@@ -362,7 +383,7 @@ def test_a_landed_commit_keeps_its_session_trailers_after_the_rebase(repo, runne
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 0
-    assert main_of(repo) != before
+    assert target_of(repo) != before
     assert git(repo.origin, "log", "-1", "--format=%(trailers:key=Skillworks-Session,valueonly)",
                "main").split() == ["first-session", "second-session"]
 
@@ -373,13 +394,13 @@ def test_a_suite_that_fails_on_the_new_base_is_not_pushed(repo, runner):
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
     assert "failed the suite" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_with_no_setting_a_suite_red_once_on_the_new_base_is_not_pushed(repo, runner):
@@ -388,13 +409,13 @@ def test_with_no_setting_a_suite_red_once_on_the_new_base_is_not_pushed(repo, ru
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
     assert len(runner.started("dotnet")) == 1
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_suite_red_then_green_on_the_new_base_lands_when_a_second_run_is_asked_for(
@@ -409,7 +430,7 @@ def test_a_suite_red_then_green_on_the_new_base_lands_when_a_second_run_is_asked
 
     assert ran.status == 0, report(ran)
     assert len(runner.started("dotnet")) == 2
-    assert main_of(repo) == head_of(repo)
+    assert target_of(repo) == head_of(repo)
 
 
 def test_a_suite_red_twice_on_the_new_base_is_not_pushed_when_a_second_run_is_asked_for(
@@ -419,13 +440,13 @@ def test_a_suite_red_twice_on_the_new_base_is_not_pushed_when_a_second_run_is_as
     given_a_project(repo, runs=2)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
     assert len(runner.started("dotnet")) == 2
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_suite_that_could_not_start_on_the_new_base_is_not_the_ticket_s_fault(repo, runner):
@@ -434,7 +455,7 @@ def test_a_suite_that_could_not_start_on_the_new_base_is_not_the_ticket_s_fault(
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
@@ -442,36 +463,36 @@ def test_a_suite_that_could_not_start_on_the_new_base_is_not_the_ticket_s_fault(
     assert "Docker" in report(ran)
     assert "failed the suite" not in report(ran)
     assert not runner.started("dotnet")
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_checkout_with_no_suite_file_is_refused(repo, runner):
     given_the_suite_passes(runner)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
     assert "could not start" in report(ran)
     assert SUITE_FILE in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_ticket_already_on_main_is_refused(repo, runner):
     given_the_suite_passes(runner)
     given_a_project(repo)
     commit_for_ticket(repo, 165)
-    git(repo.work, "push", "--quiet", "origin", "main")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
     repo.advance_origin("later")
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
     assert "already on main" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
     assert not runner.started("dotnet")
 
 
@@ -481,32 +502,32 @@ def test_a_rebase_that_drops_the_ticket_is_refused(repo, runner):
     # The other side made the very change this ticket makes, so nothing is left to replay.
     repo.advance_origin("work")
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
     assert "dropped" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
     assert not runner.started("dotnet")
 
 
 def test_a_commit_that_names_no_ticket_is_refused(repo, runner):
     commit_naming_nothing(repo)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 163)
 
     assert ran.status == 1
     assert "Ticket: #163" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_first_commit_that_names_no_ticket_is_refused(repo, runner):
     commit_naming_nothing(repo)
     first = git(repo.work, "rev-parse", "--short", "HEAD").strip()
     commit_for_ticket(repo, 163)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 163)
 
@@ -514,21 +535,21 @@ def test_a_first_commit_that_names_no_ticket_is_refused(repo, runner):
     assert "Ticket: #163" in report(ran)
     # The developer fixes the commit the message names, so the wrong one sends them nowhere.
     assert first in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_second_commit_that_names_no_ticket_is_refused(repo, runner):
     commit_for_ticket(repo, 163)
     commit_naming_nothing(repo)
     second = git(repo.work, "rev-parse", "--short", "HEAD").strip()
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 163)
 
     assert ran.status == 1
     assert "Ticket: #163" in report(ran)
     assert second in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_every_commit_naming_the_ticket_reaches_the_remote(repo, runner):
@@ -542,7 +563,7 @@ def test_every_commit_naming_the_ticket_reaches_the_remote(repo, runner):
     ran = run_land(runner, repo.work, 163)
 
     assert ran.status == 0
-    assert main_of(repo) == head
+    assert target_of(repo) == head
     # Two lines of work, so a range that landed only its last commit cannot pass.
     assert git(repo.origin, "show", "main:work.txt").strip() == "work\nwork"
     assert not runner.started("claude")
@@ -552,13 +573,13 @@ def test_every_commit_naming_the_ticket_reaches_the_remote(repo, runner):
 
 def test_a_commit_that_names_another_ticket_is_refused(repo, runner):
     commit_for_ticket(repo, 999)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 163)
 
     assert ran.status == 1
     assert "#999" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_push_that_loses_the_race_again_and_again_is_tried_until_it_lands(repo, runner):
@@ -572,27 +593,27 @@ def test_a_push_that_loses_the_race_again_and_again_is_tried_until_it_lands(repo
     assert ran.status == 0
     assert len(runner.built("push --quiet origin HEAD:main")) == 6
     assert "landed on main as {} in 6 tries".format(head[:7]) in report(ran)
-    assert main_of(repo) == head
+    assert target_of(repo) == head
 
 
 def test_a_push_the_remote_turns_down_stops_on_the_first_try(repo, runner):
     commit_for_ticket(repo, 163)
     repo.refuse_pushes()
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 163)
 
     assert ran.status == 1
     assert repo.push_tries() == 1
     assert "pre-receive hook declined" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_once_it_is_let_go(
         repo, runner, other_loops):
     commit_for_ticket(repo, 163)
     head = head_of(repo)
-    base = main_of(repo)
+    base = target_of(repo)
     runner.refuse("push --quiet origin HEAD:main", LOST_RACE, times=1)
     held = []
     # The landing lets the Turn go as it says it lost, so the other loop takes it then.
@@ -602,7 +623,7 @@ def test_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_once_it_is_let_
     heard = landing.heard()
 
     assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
     held[0].let_go()
     ran = landing.ended()
@@ -610,7 +631,111 @@ def test_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_once_it_is_let_
     assert ran.status == 0, report(ran)
     assert "landed on main as {} in 2 tries, holding the Turn from fetch to push".format(
         head[:7]) in report(ran)
-    assert main_of(repo) == head
+    assert target_of(repo) == head
+
+
+def test_a_finished_ticket_lands_on_a_target_branch_named_master_and_on_no_other(master, runner):
+    commit_for_ticket(master, 163)
+    head = head_of(master)
+
+    ran = run_land(runner, master.work, 163)
+
+    assert ran.status == 0, report(ran)
+    assert "landed on master as {}".format(head[:7]) in report(ran)
+    assert target_of(master) == head
+    assert git(master.origin, "for-each-ref", "--format=%(refname)").split() == [
+        "refs/heads/master"]
+
+
+def test_a_ticket_already_on_master_is_refused_by_its_name(master, runner):
+    commit_for_ticket(master, 165)
+    git(master.work, "push", "--quiet", "origin", "master")
+    base = target_of(master)
+
+    ran = run_land(runner, master.work, 165)
+
+    assert ran.status == 1
+    assert "already on master" in report(ran)
+    assert target_of(master) == base
+
+
+def test_a_moved_master_is_rebased_onto_and_the_ticket_lands_on_top_of_it(master, runner):
+    given_the_suite_passes(runner)
+    given_a_project(master)
+    master.advance_origin("later")
+    commit_for_ticket(master, 165)
+    other_side = target_of(master)
+
+    ran = run_land(runner, master.work, 165)
+
+    assert ran.status == 0, report(ran)
+    assert target_of(master) == head_of(master)
+    assert git(master.work, "rev-parse", "HEAD^").strip() == other_side
+    assert git(master.origin, "show", "master:work.txt").strip() == "work"
+
+
+def test_a_conflict_on_master_is_handed_over_naming_master(master, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    stub_session(master, runner, staging(master, "start\ntheir line\nmy line\n"))
+    given_a_project(master)
+    given_a_conflict(master, 166, 164)
+
+    ran = run_land(runner, master.work, 166, "session-abc")
+
+    assert ran.status == 0, report(ran)
+    handed = "\n".join(" ".join(call) for call in runner.started("claude"))
+    assert "rebased onto the newest origin/master" in handed
+    assert "These landed on master" in handed
+    assert git(master.origin, "show", "master:shared.txt").strip() == "start\ntheir line\nmy line"
+
+
+def test_a_conflict_on_master_with_no_session_named_is_reported_naming_master(master, runner):
+    given_the_suite_passes(runner)
+    given_a_project(master)
+    given_a_conflict(master, 166, 164)
+    base = target_of(master)
+
+    ran = run_land(runner, master.work, 166)
+
+    assert ran.status == 1
+    assert "what landed on master" in report(ran)
+    assert target_of(master) == base
+
+
+def test_a_landing_on_master_that_lost_a_race_waits_for_the_turn_and_then_lands_on_master(
+        master, runner, other_loops):
+    commit_for_ticket(master, 163)
+    head = head_of(master)
+    base = target_of(master)
+    runner.refuse("push --quiet origin HEAD:master", LOST_RACE, times=1)
+    held = []
+    out = Heard(WAITS, {"lost a race to master": lambda: held.append(other_loops(master))})
+
+    landing = Beside(runner, out, master.work, 163)
+    heard = landing.heard()
+
+    assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
+    assert target_of(master) == base
+
+    held[0].let_go()
+    ran = landing.ended()
+
+    assert ran.status == 0, report(ran)
+    assert "landed on master as {} in 2 tries".format(head[:7]) in report(ran)
+    assert target_of(master) == head
+
+
+def test_a_checkout_with_no_loop_file_is_refused_and_told_how_to_write_one(repo, runner):
+    git(repo.work, "rm", "--quiet", LOOP_FILE)
+    git(repo.work, "commit", "--quiet", "-m", "No settings\n\nTicket: #163")
+    base = target_of(repo)
+
+    ran = run_land(runner, repo.work, 163)
+
+    assert ran.status == 1
+    assert "seed-steering" in report(ran)
+    assert target_of(repo) == base
 
 
 def test_a_landing_that_has_not_lost_runs_its_suite_and_then_waits_at_the_push(
@@ -619,7 +744,7 @@ def test_a_landing_that_has_not_lost_runs_its_suite_and_then_waits_at_the_push(
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
     other = other_loops(repo)
 
     landing = Beside(runner, Heard(WAITS), repo.work, 165)
@@ -628,14 +753,14 @@ def test_a_landing_that_has_not_lost_runs_its_suite_and_then_waits_at_the_push(
     assert "#165 waits for the Turn, which spec #200 ticket #199 holds" in heard
     assert runner.built("dotnet test Skillworks.slnx")
     assert heard.index("passed the suite on the new base") < heard.index(WAITS)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
     other.let_go()
     ran = landing.ended()
 
     assert ran.status == 0, report(ran)
     assert "in 1 try, holding the Turn for its push" in report(ran)
-    assert main_of(repo) == head_of(repo)
+    assert target_of(repo) == head_of(repo)
 
 
 def test_the_turn_is_let_go_when_a_landing_that_lost_a_race_lands(repo, runner, other_loops):
@@ -654,7 +779,7 @@ def test_the_turn_is_let_go_when_a_landing_that_lost_a_race_stops_on_a_red_suite
     runner.stub("dotnet", status=1)
     given_a_project(repo)
     commit_for_ticket(repo, 165)
-    base = main_of(repo)
+    base = target_of(repo)
     runner.refuse("push --quiet origin HEAD:main", LOST_RACE, times=1)
     # The race is lost for real, so the next try has a moved base to run the suite on.
     out = Heard(WAITS, {LOST: lambda: repo.advance_origin("later")})
@@ -681,33 +806,33 @@ def test_the_turn_is_let_go_when_a_push_the_remote_turns_down_stops(repo, runner
 def test_uncommitted_work_is_refused(repo, runner):
     commit_for_ticket(repo, 163)
     (repo.work / "loose.txt").write_text("loose\n", encoding="utf-8", newline="\n")
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 163)
 
     assert ran.status == 1
     assert "uncommitted" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_path_that_holds_no_repository_is_refused(repo, runner):
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.root / "nowhere", 163)
 
     assert ran.status == 1
     assert "not a git worktree" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_arguments_of_the_wrong_shape_print_the_usage(repo, runner):
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work)
 
     assert ran.status == 64
     assert "usage:" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_conflict_is_handed_back_to_the_ticket_s_own_session(repo, runner):
@@ -731,7 +856,7 @@ def test_a_conflict_is_handed_back_to_the_ticket_s_own_session(repo, runner):
     assert CLOSING_COMMENT in handed
     # Both sides of a hunk count, because the size is what has to be read to settle it.
     assert "conflict #166 files=1 hunks=1 lines=2 outcome=resolved" in report(ran)
-    assert main_of(repo) == head_of(repo)
+    assert target_of(repo) == head_of(repo)
     assert git(repo.origin, "show", "main:shared.txt").strip() == "start\ntheir line\nmy line"
     assert runner.built("dotnet test Skillworks.slnx")
 
@@ -768,7 +893,7 @@ def test_a_refusal_stops_the_run_and_names_the_rule_that_fired(repo, runner):
                                "Mine wanted a count per skill. Theirs wanted a count per session.")
     given_a_project(repo)
     given_two_conflicting_files(repo, 167, 164)
-    base = main_of(repo)
+    base = target_of(repo)
     mine = git(repo.work, "rev-parse", "main").strip()
 
     ran = run_land(runner, repo.work, 167, "session-abc")
@@ -779,7 +904,7 @@ def test_a_refusal_stops_the_run_and_names_the_rule_that_fired(repo, runner):
     assert "Mine wanted a count per skill." in report(ran)
     assert "Theirs wanted a count per session." in report(ran)
     assert "conflict #167 files=2 hunks=2 lines=4 outcome=refused" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
     assert repo.work.is_dir()
     assert git(repo.work, "rev-parse", "main").strip() == mine
     assert unmerged(repo)
@@ -793,14 +918,14 @@ def test_a_refusal_that_staged_everything_still_stops_the_run(repo, runner):
                  says="REFUSED 2: the typecheck still fails and I cannot see why.")
     given_a_project(repo)
     given_a_conflict(repo, 167, 164)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 167, "session-abc")
 
     assert ran.status == 1
     assert "refused under rule 2" in report(ran)
     assert "outcome=refused" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
     assert not runner.started("dotnet")
 
 
@@ -825,7 +950,7 @@ def test_a_leftover_conflict_marker_is_caught(repo, runner):
                  staging(repo, "<<<<<<< HEAD\nmine\n=======\ntheirs\n>>>>>>> them\n"))
     given_a_project(repo)
     given_a_conflict(repo, 166, 164)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 166, "session-abc")
 
@@ -833,7 +958,7 @@ def test_a_leftover_conflict_marker_is_caught(repo, runner):
     assert "conflict marker" in report(ran)
     assert "shared.txt" in report(ran)
     assert "conflict #166 files=1 hunks=1 lines=2 outcome=caught" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
     assert not runner.started("dotnet")
 
 
@@ -843,7 +968,7 @@ def test_a_session_that_resolves_nothing_leaves_the_conflict_standing(repo, runn
     stub_session(repo, runner, leaving_alone)
     given_a_project(repo)
     given_a_conflict(repo, 166, 164)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 166, "session-abc")
 
@@ -851,7 +976,7 @@ def test_a_session_that_resolves_nothing_leaves_the_conflict_standing(repo, runn
     assert "still conflicting" in report(ran)
     assert "named no rule" in report(ran)
     assert "outcome=refused" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
     assert unmerged(repo)
 
 
@@ -867,14 +992,14 @@ def test_a_resolution_that_drops_the_ticket_s_change_is_caught(repo, runner):
     stub_session(repo, runner, settle)
     given_a_project(repo)
     given_a_conflict_beside_other_work(repo, 166, 164)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 166, "session-abc")
 
     assert ran.status == 1
     assert "dropped" in report(ran)
     assert "shared.txt" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_conflict_with_no_session_named_is_left_standing(repo, runner):
@@ -882,13 +1007,13 @@ def test_a_conflict_with_no_session_named_is_left_standing(repo, runner):
     runner.stub("claude")
     given_a_project(repo)
     given_a_conflict(repo, 166, 164)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 166)
 
     assert ran.status == 1
     assert "rebase --abort" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
     assert not runner.started("claude")
 
 
@@ -937,13 +1062,13 @@ def test_a_marker_staged_behind_a_clean_working_file_is_caught(repo, runner):
     stub_session(repo, runner, settle)
     given_a_project(repo)
     given_a_conflict(repo, 166, 164)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 166, "session-abc")
 
     assert ran.status == 1
     assert "conflict marker" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_later_commit_that_conflicts_too_stops_with_its_own_reason(repo, runner):
@@ -956,7 +1081,7 @@ def test_a_later_commit_that_conflicts_too_stops_with_its_own_reason(repo, runne
     repo.write_commit(repo.work, "shared.txt", "my line", "Do the first half\n\nTicket: #166")
     repo.write_commit(
         repo.work, "shared.txt", "my second line", "Do the second half\n\nTicket: #166")
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 166, "session-abc")
 
@@ -964,7 +1089,7 @@ def test_a_later_commit_that_conflicts_too_stops_with_its_own_reason(repo, runne
     assert "a later commit of its own conflicted" in report(ran)
     # Two conflicts were met, so two are recorded, and neither was proved good.
     assert report(ran).count("conflict #166") == 2
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_a_conflict_marker_in_a_crlf_file_is_caught(repo, runner):
@@ -974,13 +1099,13 @@ def test_a_conflict_marker_in_a_crlf_file_is_caught(repo, runner):
     stub_session(repo, runner, staging(repo, "mine\r\n=======\r\ntheirs\r\n"))
     given_a_project(repo)
     given_a_conflict(repo, 166, 164)
-    base = main_of(repo)
+    base = target_of(repo)
 
     ran = run_land(runner, repo.work, 166, "session-abc")
 
     assert ran.status == 1
     assert "conflict marker" in report(ran)
-    assert main_of(repo) == base
+    assert target_of(repo) == base
 
 
 def test_the_land_ticket_command_starts_the_landing_script_in_the_plugin(repo):
