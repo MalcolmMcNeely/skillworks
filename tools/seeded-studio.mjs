@@ -10,7 +10,8 @@ const container = 'skillworks-seeded-loki';
 const lokiPort = 3101;
 const apiPort = 5199;
 const webPort = 5173;
-const loki = `http://localhost:${lokiPort}`;
+// 127.0.0.1, as the container listens on IPv4 alone and localhost tries IPv6 first.
+const loki = `http://127.0.0.1:${lokiPort}`;
 const seedOnly = process.argv.includes('--seed-only');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -311,7 +312,7 @@ children.push(
       ASPNETCORE_ENVIRONMENT: 'Development',
       Loki__Address: loki,
       // A month of this volume takes Loki longer than the API's 5 second default to sum.
-      Loki__TimeoutSeconds: '30',
+      Loki__PatienceSeconds: '30',
       Marketplace__Path: join(root, 'plugins'),
     },
   }),
