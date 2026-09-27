@@ -47,8 +47,9 @@ Report per file and hunk where that helps:
 
 1. Every place the change breaches a documented standard. Cite the standard by file and rule, and quote the line it turns on.
 2. Every baseline smell. Name the item and quote the hunk.
+3. Every existing name whose meaning the change moved. A name that no longer says what its code does misleads the next reader, so rename it in the same ticket. The sign to look for is a comment edited above a declaration whose name did not change: the comment moved with the code, and the name was left behind.
 
-Mark each finding as a hard breach or a judgement call. A documented standard can be a hard breach. A baseline smell never is.
+Mark each finding as a hard breach or a judgement call. A documented standard can be a hard breach. A baseline smell never is. A moved name is always owed: it is fixed like a hard breach, and never left as a nice-to-have.
 
 Keep the whole report under 400 words.
 
@@ -58,7 +59,7 @@ This axis edits the worktree, and it should. A finding you can fix, you fix here
 
 Fix only what this axis owns. A finding that belongs to Spec or Architecture is dropped rather than reported here, so it is not yours to fix either.
 
-A finding you judge not worth fixing is named in the report and left, with the reason. A baseline smell is a judgement call, so leaving one is an ordinary answer and not a failure.
+A finding you judge not worth fixing is named in the report and left, with the reason. A moved name is never one of these. A baseline smell is a judgement call, so leaving one is an ordinary answer and not a failure.
 
 The report names every finding either way, and says which ones you fixed.
 

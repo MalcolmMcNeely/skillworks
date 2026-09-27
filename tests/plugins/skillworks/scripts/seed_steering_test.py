@@ -754,6 +754,14 @@ def test_the_review_skills_read_the_smells_list_from_the_smell_baseline():
         assert "twelve" not in text.lower(), skill
 
 
+def test_review_standards_renames_a_name_whose_meaning_the_change_moved_in_the_same_ticket():
+    text = skill_text("review-standards")
+
+    assert "rename it in the same ticket" in text
+    assert "a comment edited above a declaration whose name did not change" in text
+    assert "optional" not in text.lower()
+
+
 def ticket_shape(tracker):
     lines = tracker.splitlines()
     assert "## The ticket shape" in lines, "no ticket shape"
