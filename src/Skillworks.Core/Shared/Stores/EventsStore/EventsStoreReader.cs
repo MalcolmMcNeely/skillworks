@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -142,6 +143,50 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         return EventLines.Of([.. lines.OrderBy(line => line.At)]);
     }
 
+    // A page at a time, newest first, so a caller that holds enough stops before the store reads further back.
+    public async IAsyncEnumerable<EventLines> NewestFirstAsync(
+        EventQuery query,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var (from, end) in Windows(query))
+        {
+            var until = end;
+
+            while (from < until)
+            {
+                var read = await AskAsync(
+                    $"loki/api/v1/query_range?query={Uri.EscapeDataString(Selected(query))}" +
+                    $"&start={Nanoseconds(from)}&end={Nanoseconds(until)}&limit={Page}&direction=backward",
+                    root => EventLines.Of(Entries(root)),
+                    EventLines.Failed,
+                    cancellationToken);
+
+                if (read.Unreachable is not null)
+                {
+                    yield return read;
+                    yield break;
+                }
+
+                var fresh = read.Lines.Where(line => seen.Add(line.Key)).OrderByDescending(line => line.At).ToList();
+
+                if (fresh.Count > 0)
+                {
+                    yield return EventLines.Of(fresh);
+                }
+
+                if (read.Lines.Count < Page || fresh.Count == 0)
+                {
+                    break;
+                }
+
+                // An instant later, so the lines that share the oldest instant and missed the page are read next.
+                until = read.Lines.Min(line => line.At) + Cut;
+            }
+        }
+    }
+
     public Task<string?> UnreachableAsync(CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
@@ -206,6 +251,11 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         if (query.Sessions is { } sessions)
         {
             logql += $" | {EventAttributes.LabelOf(EventAttributes.Session)}=~{Quoted(string.Join("|", sessions.Select(Regex.Escape)))}";
+        }
+
+        if (query.Parents is { } parents)
+        {
+            logql += $" | {EventAttributes.LabelOf(EventAttributes.Parent)}=~{Quoted(string.Join("|", parents.Select(Regex.Escape)))}";
         }
 
         if (query.Skill is { } skill)

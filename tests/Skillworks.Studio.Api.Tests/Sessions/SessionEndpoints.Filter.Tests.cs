@@ -20,43 +20,20 @@ public sealed partial class SessionEndpointsTests
     private const string EveningSpan = "c11c0a9e00000003";
 
     [Fact]
-    public async Task Narrows_the_table_to_a_span_of_days_and_takes_both_ends_in()
+    public async Task Opens_as_usual_on_an_address_that_still_carries_a_span_or_a_sort()
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(DaysBack(3), "09:00:00.000"), "The run before"),
-            SessionEvent.Titled(Afternoon, At(DaysBack(2), "09:00:00.000"), "The first day"),
-            SessionEvent.Titled(Evening, At(Yesterday, "09:00:00.000"), "The last day"));
+        await PushWithPrompts(
+            studio,
+            SessionEvent.Titled(Morning, At(DaysBack(3), "09:00:00.000"), "The early run"),
+            SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"));
 
-        var names = (await studio.SessionsIn($"?from={Written(DaysBack(2))}&to={Written(Yesterday)}")).Select(session => session.Name);
+        // An old link names days and a column the list no longer takes, and must still open the list.
+        var names = (await studio.SessionsIn($"?from={Written(Yesterday)}&to={Written(Yesterday)}&sort=name&descending=false"))
+            .Select(session => session.Name);
 
-        Assert.Equal(["The last day", "The first day"], names);
-    }
-
-    [Fact]
-    public async Task Counts_a_span_of_days_in_whole_utc_days()
-    {
-        using var studio = new StudioHost();
-
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(DaysBack(2), "00:00:00.000"), "The first instant"),
-            SessionEvent.Titled(Afternoon, At(DaysBack(2), "23:59:59.000"), "The last instant"));
-
-        // A local day would put a late run on another day and drop it from the answer.
-        Assert.Equal(2, (await studio.SessionsIn($"?from={Written(DaysBack(2))}&to={Written(DaysBack(2))}")).Count);
-    }
-
-    [Fact]
-    public async Task Says_which_days_a_narrowed_table_covers_and_that_they_are_not_the_lookback()
-    {
-        using var studio = new StudioHost();
-
-        var span = (await studio.SessionAnswer($"?from={Written(DaysBack(2))}&to={Written(Yesterday)}")).Head.Span;
-
-        Assert.False(span.Lookback);
-        Assert.Equal(DaysBack(2), span.From);
-        Assert.Equal(Yesterday, span.To);
+        Assert.Equal(["The later run", "The early run"], names);
     }
 
     [Fact]
@@ -64,7 +41,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The chosen run", "acme/xi"),
             Ran(Afternoon, At(Yesterday, "14:00:00.000"), "The other run", "acme/nu"));
 
@@ -76,7 +54,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Ran(Morning, At(Yesterday, "09:00:00.000"), "The chosen run", "acme/xi"));
+        await PushWithPrompts(studio, Ran(Morning, At(Yesterday, "09:00:00.000"), "The chosen run", "acme/xi"));
 
         Assert.Empty(await studio.SessionsIn("?repository=acme/x"));
     }
@@ -86,7 +64,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The placed run", "acme/xi"),
             SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The run from nowhere"));
 
@@ -100,7 +79,8 @@ public sealed partial class SessionEndpointsTests
 
         SessionEvent Placed(SessionEvent recorded) => recorded with { Owner = "acme", RepositoryName = "xi" };
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The placed run", "acme/xi"),
             Placed(SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000"))),
             Placed(SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000"))));
@@ -118,7 +98,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run that swept"),
             SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The run that did not"));
         await studio.Push(
@@ -135,7 +116,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The quiet run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The quiet run"));
 
         Assert.Empty(await studio.SessionsIn("?skill=comment-sweep"));
     }
@@ -145,7 +126,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run that swept"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")));
@@ -159,21 +141,21 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Narrows_the_table_by_the_span_the_repository_and_the_skill_together()
+    public async Task Narrows_the_table_by_the_repository_and_the_skill_together()
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The run that matches", "acme/xi"),
-            Ran(Afternoon, At(DaysBack(3), "09:00:00.000"), "The run outside the span", "acme/xi"),
+            Ran(Afternoon, At(DaysBack(3), "09:00:00.000"), "The run that never swept", "acme/xi"),
             Ran(Evening, At(Yesterday, "14:00:00.000"), "The run in another repository", "acme/nu"));
         await studio.Push(
             new SkillActivated("tdd", At(Yesterday, "09:05:00.000")) { Session = Morning },
-            new SkillActivated("tdd", At(DaysBack(3), "09:05:00.000")) { Session = Afternoon },
+            new SkillActivated("comment-sweep", At(DaysBack(3), "09:05:00.000")) { Session = Afternoon },
             new SkillActivated("tdd", At(Yesterday, "14:05:00.000")) { Session = Evening });
 
-        var names = (await studio.SessionsIn($"?from={Written(Yesterday)}&to={Written(Yesterday)}&repository=acme/xi&skill=tdd"))
-            .Select(session => session.Name);
+        var names = (await studio.SessionsIn("?repository=acme/xi&skill=tdd")).Select(session => session.Name);
 
         Assert.Equal(["The run that matches"], names);
     }
@@ -183,7 +165,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(Ran(Morning, At(Yesterday, "09:00:00.000"), "The only run", "acme/xi"));
+        await PushWithPrompts(studio, Ran(Morning, At(Yesterday, "09:00:00.000"), "The only run", "acme/xi"));
         await studio.Push(new SkillActivated("tdd", At(Yesterday, "09:05:00.000")) { Session = Morning });
 
         var answer = await studio.SessionAnswer("?repository=acme/nu&skill=tdd");
@@ -237,14 +219,15 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Narrows_the_table_by_the_span_the_repository_the_skill_and_the_depth_together()
+    public async Task Narrows_the_table_by_the_repository_the_skill_and_the_depth_together()
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The run that matches", "acme/xi"),
             Ran(Afternoon, At(Yesterday, "10:00:00.000"), "The run that was never traced", "acme/xi"),
-            Ran(Evening, At(DaysBack(3), "09:00:00.000"), "The run outside the span", "acme/xi"));
+            Ran(Evening, At(DaysBack(3), "09:00:00.000"), "The run in another repository", "acme/nu"));
         await studio.Push(
             new SkillActivated("tdd", At(Yesterday, "09:05:00.000")) { Session = Morning },
             new SkillActivated("tdd", At(Yesterday, "10:05:00.000")) { Session = Afternoon },
@@ -252,11 +235,7 @@ public sealed partial class SessionEndpointsTests
         await studio.PushSpans(Morning, MorningTrace, Traced(MorningSpan));
         await studio.PushSpans(Evening, EveningTrace, Traced(EveningSpan));
 
-        // The store reads the Batch a Span arrived in, and these arrived now, so the days asked for reach today.
-        var span = $"?from={Written(Yesterday)}&to={Written(Today)}";
-
-        var names = (await studio.SessionsIn($"{span}&repository=acme/xi&skill=tdd&depth=full"))
-            .Select(session => session.Name);
+        var names = (await studio.SessionsIn("?repository=acme/xi&skill=tdd&depth=full")).Select(session => session.Name);
 
         Assert.Equal(["The run that matches"], names);
     }
@@ -267,7 +246,7 @@ public sealed partial class SessionEndpointsTests
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(traces: traces);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         await studio.SessionAnswer();
 
@@ -281,7 +260,7 @@ public sealed partial class SessionEndpointsTests
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(traces: traces);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer();
 
@@ -296,7 +275,7 @@ public sealed partial class SessionEndpointsTests
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(traces: traces);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer("?depth=full");
 
@@ -312,7 +291,7 @@ public sealed partial class SessionEndpointsTests
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(traces: traces, emitting: false);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer("?depth=full");
 
@@ -409,9 +388,9 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Asks_the_events_store_no_more_when_the_table_is_narrowed_by_depth()
     {
-        // Down only before the two days the lookback covers, so nothing here breaks and every route is recorded.
-        using var events = BrokenEventsStore.DownBefore(Yesterday);
-        using var studio = new StudioHost(events: events, lookbackDays: 2);
+        // Breaks no read, so every route is recorded.
+        using var events = BrokenEventsStore.DownOn(_ => false);
+        using var studio = new StudioHost(events: events);
 
         await EachHalfOfDepthRan(studio);
 
@@ -425,7 +404,8 @@ public sealed partial class SessionEndpointsTests
 
     private static async Task EachHalfOfDepthRan(StudioHost studio)
     {
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The full run"),
             SessionEvent.Prompted(Morning, At(Yesterday, "09:00:10.000"), "Fix the build"),
             SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The withheld run"),
@@ -439,7 +419,8 @@ public sealed partial class SessionEndpointsTests
 
     private static async Task BothDepthsRan(StudioHost studio)
     {
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The full run"),
             SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The thin run"));
 

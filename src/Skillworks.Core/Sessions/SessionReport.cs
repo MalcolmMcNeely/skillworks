@@ -7,19 +7,19 @@ using Skillworks.Core.Sessions.Queries;
 
 namespace Skillworks.Core.Sessions;
 
-public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookback lookback)
+public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeProvider clock)
 {
     // One page of rows, not a day at a time: a Session cut at midnight would read as two halves.
+    // A span on the Filter is left unread, as no span narrows this list and an old link must still open it.
     public async IAsyncEnumerable<ArrivingLine> AnswerAsync(
         Filter filter,
-        SessionOrder order,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var span = lookback.SpanOf(filter);
+        var asOf = clock.GetUtcNow();
 
-        yield return new SessionsHead(span, order.SortedOn, order.HighestFirst);
+        yield return new SessionsHead(asOf);
 
-        var read = await sessions.ListAsync(span, filter, order, cancellationToken);
+        var read = await sessions.ListAsync(asOf, filter, cancellationToken);
         var fellShort = new List<MeasureLanding>();
 
         // Every row is the events store's answer, so a trace store that fell short leaves them standing.
@@ -41,13 +41,13 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, Lookb
             }
         }
 
-        var period = read.Period;
-
-        yield return new GapEnd(Shown(
-            gaps.InTotals(period, period.Unreachable is null ? [] : span.NewestFirst()),
+        var gap = Shown(
+            gaps.InRows(read.Unreachable, read.Prompts),
             // Only where rows stand, as a Measure with no row to sit on leaves no column of dashes to explain.
             Missed(read.Rows.Count > 0 ? fellShort : []),
-            gaps.InDepths(read.Traced)));
+            gaps.InDepths(read.Traced));
+
+        yield return new SessionsEnd(gap, read.NextBeforeUtc);
     }
 
     // They land in no order of their own, so the sentence would name them differently run to run.

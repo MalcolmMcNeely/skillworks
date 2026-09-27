@@ -13,7 +13,8 @@ public sealed partial class SessionEndpointsTests
 
         var lastEvent = Now - RunningWindow.Length + TimeSpan.FromMinutes(1);
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, Stamped(lastEvent - TimeSpan.FromMinutes(10)), "The run in hand"),
             new SessionEvent(Morning, "tool_result", Stamped(lastEvent)));
 
@@ -28,7 +29,8 @@ public sealed partial class SessionEndpointsTests
 
         var lastEvent = Now - RunningWindow.Length - TimeSpan.FromMinutes(1);
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, Stamped(lastEvent - TimeSpan.FromMinutes(10)), "The finished run"),
             new SessionEvent(Morning, "tool_result", Stamped(lastEvent)));
 

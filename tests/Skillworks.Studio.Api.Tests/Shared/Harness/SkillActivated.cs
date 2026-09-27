@@ -20,6 +20,8 @@ public sealed record SkillActivated(
 
     public string? Person { get; init; } = TestLoki.Person;
 
+    public string? Parent { get; init; }
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>
@@ -31,6 +33,7 @@ public sealed record SkillActivated(
         ("marketplace.name", Marketplace),
         ("vcs.owner.name", Owner),
         ("vcs.repository.name", RepositoryName),
+        ("skillworks.parent.session.id", Parent),
     ];
 
     internal static SkillActivated[] AtEveryMidnight(string skill, DateOnly firstDay, DateOnly lastDay) =>

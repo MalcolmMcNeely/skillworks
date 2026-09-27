@@ -1,5 +1,4 @@
 using Skillworks.Core.Sessions.Measures;
-using Skillworks.Core.Shared.Stores.EventsStore;
 using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
@@ -9,5 +8,11 @@ public sealed record SessionsRead(
     string? Unreachable,
     IReadOnlyList<SessionRow> Rows,
     IAsyncEnumerable<MeasureLanding> Measures,
-    EventTotals Period,
-    TracedSessions Traced);
+    // Every Prompt line read, before any Filter, so an empty list tells a quiet month from a narrowed one.
+    long Prompts,
+    DateTimeOffset? NextBeforeUtc,
+    TracedSessions Traced)
+{
+    public static SessionsRead Failed(string unreachable, long prompts) =>
+        new(unreachable, [], AsyncEnumerable.Empty<MeasureLanding>(), prompts, null, TracedSessions.Unasked);
+}

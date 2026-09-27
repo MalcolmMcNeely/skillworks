@@ -15,4 +15,10 @@ public sealed record SessionRow
     public required long LengthMs { get; init; }
 
     public required bool Running { get; init; }
+
+    public required DateTimeOffset LastActivityUtc { get; init; }
+
+    public required DateOnly FirstDay { get; init; }
+
+    public required DateOnly LastDay { get; init; }
 }

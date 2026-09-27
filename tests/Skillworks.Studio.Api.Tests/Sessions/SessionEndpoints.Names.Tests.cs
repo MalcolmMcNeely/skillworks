@@ -30,28 +30,13 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Names_a_session_with_neither_by_its_repository_and_the_time_it_started()
-    {
-        using var studio = new StudioHost();
-
-        await studio.Push(
-            new SessionEvent(Morning, "tool_result", At(Yesterday, "09:00:00.000"))
-            {
-                Owner = "malcolmania",
-                RepositoryName = "skillworks",
-            });
-
-        // Never empty, or a row would be unreadable in the one column that says which run it is.
-        Assert.Equal($"malcolmania/skillworks {Written(Yesterday)} 09:00", Assert.Single(await studio.SessionsIn()).Name);
-    }
-
-    [Fact]
     public async Task Names_a_session_with_neither_and_no_repository_by_the_time_it_started()
     {
         using var studio = new StudioHost();
 
-        await studio.Push(new SessionEvent(Morning, "tool_result", At(Yesterday, "09:00:00.000")));
+        await studio.Push(SessionEvent.PromptWithheld(Morning, At(Yesterday, "09:00:00.000"), 40));
 
+        // Never empty, or a row would be unreadable in the one column that says which run it is.
         Assert.Equal($"{Written(Yesterday)} 09:00", Assert.Single(await studio.SessionsIn()).Name);
     }
 

@@ -1,21 +1,20 @@
 using Skillworks.Studio.Api.Tests.Shared.Harness;
+using Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
 
 public sealed partial class SessionEndpointsTests
 {
-    // Only the read of Parents before the span asks for several runs by name at once.
-    private const string ParentBeforeSpanRead = "session_id=~";
-
     [Fact]
     public async Task Keeps_a_parents_row_for_a_skill_only_a_child_activated()
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The spec run"),
             SessionEvent.Titled(Afternoon, At(Yesterday, "09:05:00.000"), "The build step") with { Parent = Morning });
-        await studio.Push(new SkillActivated("implement", At(Yesterday, "09:06:00.000")) { Session = Afternoon });
+        await studio.Push(new SkillActivated("implement", At(Yesterday, "09:06:00.000")) { Session = Afternoon, Parent = Morning });
 
         var session = Assert.Single(await studio.SessionsIn("?skill=implement"));
 
@@ -28,7 +27,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The spec run", "acme/nu"),
             Ran(Afternoon, At(Yesterday, "09:05:00.000"), "The build step", "acme/xi") with { Parent = Morning });
 
@@ -43,44 +43,32 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The spec run"),
             SessionEvent.Titled(Afternoon, At(Yesterday, "09:05:00.000"), "The build step") with { Parent = Morning });
         await studio.PushSpans(Afternoon, AfternoonTrace, Traced(AfternoonSpan));
 
-        // The store reads the Batch a Span arrived in, and these arrived now, so the days asked for reach today.
-        var session = Assert.Single(await studio.SessionsIn($"?from={Written(Yesterday)}&to={Written(Today)}&depth=full"));
+        var session = Assert.Single(await studio.SessionsIn("?depth=full"));
 
         Assert.Equal(Morning, session.Id);
     }
 
     [Fact]
-    public async Task Shows_a_parent_that_started_before_the_span_through_a_child_inside_it()
+    public async Task Empties_the_table_when_the_read_of_whether_a_parent_left_events_fell_short()
     {
-        using var studio = new StudioHost();
-
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(DaysBack(2), "22:00:00.000"), "The spec run"),
-            SessionEvent.Titled(Afternoon, At(Yesterday, "09:00:00.000"), "The build step") with { Parent = Morning });
-
-        var session = Assert.Single(await studio.SessionsIn($"?from={Written(Yesterday)}&to={Written(Yesterday)}"));
-
-        Assert.Equal(Morning, session.Id);
-        Assert.Equal("The spec run", session.Name);
-        Assert.Equal(Moment(At(DaysBack(2), "22:00:00.000")), session.StartedUtc);
-    }
-
-    [Fact]
-    public async Task Empties_the_table_when_the_read_of_a_parent_before_the_span_fell_short()
-    {
-        using var events = Breaking(ParentBeforeSpanRead);
+        // Only that read counts every event of a run by its Session alone.
+        using var events = BrokenEventsStore.DownOn(asked =>
+            asked.StartsWith("sum by (session_id) (count_over_time(", StringComparison.Ordinal) &&
+            asked.Contains("|= \"claude_code.\" |", StringComparison.Ordinal));
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(DaysBack(2), "22:00:00.000"), "The spec run"),
+        await PushWithPrompts(
+            studio,
+            new SessionEvent(Morning, "tool_result", At(DaysBack(2), "22:00:00.000")),
             SessionEvent.Titled(Afternoon, At(Yesterday, "09:00:00.000"), "The build step") with { Parent = Morning });
 
-        var answer = await studio.SessionAnswer($"?from={Written(Yesterday)}&to={Written(Yesterday)}");
+        var answer = await studio.SessionAnswer();
 
         // Without it the Child would stand as a row of its own, which is a half-folded table.
         Assert.Empty(answer.Sessions);
@@ -92,7 +80,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The spec run", "acme/nu"),
             Ran(Afternoon, At(Yesterday, "09:05:00.000"), "The build step", "acme/nu") with { Parent = Morning },
             Ran(Evening, At(Yesterday, "14:00:00.000"), "The chat", "acme/xi"));

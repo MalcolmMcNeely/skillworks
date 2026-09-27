@@ -20,7 +20,7 @@ import { activationSpellsOf, type ActivationSpell } from '../lib/panels/activati
 import { ranByOne } from '../lib/panels/agents';
 import { levelsOf } from '../lib/panels/context';
 import { bandsOf, type Band } from '../lib/panels/conversation';
-import { describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
+import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpan, type SessionAnswer } from '../lib/steps';
 import { tilesOf } from '../lib/verdict';
 import { readWhere, withWhere, type Where } from '../../shared/session/lib/where';
@@ -118,8 +118,8 @@ export function Session() {
     timeline.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // What the table was asked for, so going up lands on the list the reader left rather than a fresh one.
-  const table = withOrder(filterParams(filter), readOrder(params)).toString();
+  // What the list was asked for, so going up lands on the list the reader left; the span is the row's own.
+  const table = filterParams(listFilter(filter)).toString();
 
   return (
     <main className="page session">

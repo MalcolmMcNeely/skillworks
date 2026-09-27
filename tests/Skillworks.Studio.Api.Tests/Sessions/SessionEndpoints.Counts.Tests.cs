@@ -10,7 +10,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The thrashing run"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:02:00.000")),
@@ -25,7 +26,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The expensive run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The expensive run"));
         await studio.Push(
             new ApiRequest(At(Yesterday, "09:01:00.000"), CostUsd: 0.25m) { Session = Morning },
             new ApiRequest(At(Yesterday, "09:02:00.000"), CostUsd: 0.75m) { Session = Morning });
@@ -38,7 +39,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The broken run"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")),
@@ -52,7 +54,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run the model failed"),
             SessionEvent.ModelFailed(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:02:00.000")));
@@ -66,7 +69,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run I said no to"),
             SessionEvent.Refused(Morning, At(Yesterday, "09:01:00.000")));
 
@@ -78,7 +82,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run the hook stopped"),
             SessionEvent.HookBlocked(Morning, At(Yesterday, "09:01:00.000")));
 
@@ -90,7 +95,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The careful run"),
             SessionEvent.Refused(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.HookBlocked(Morning, At(Yesterday, "09:02:00.000")),
@@ -105,7 +111,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The smooth run"),
             SessionEvent.Allowed(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:02:00.000")));
@@ -118,7 +125,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The early run"),
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"),
@@ -136,7 +144,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
+        await PushWithPrompts(studio, SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"));
 
         var answer = await studio.SessionAnswer();
 

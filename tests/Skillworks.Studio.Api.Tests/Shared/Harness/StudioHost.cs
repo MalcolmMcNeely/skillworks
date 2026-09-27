@@ -97,6 +97,9 @@ public sealed class StudioHost : IDisposable
 
     public HttpClient Client => _client;
 
+    // Held still, so a test moves it on purpose and never races the machine's.
+    public FakeTimeProvider Clock => _clock;
+
     public Task Push(params SkillActivated[] events) => TestLoki.PushAsync(_tenant, events);
 
     public Task Push(params ApiRequest[] turns) => TestLoki.PushAsync(_tenant, turns);

@@ -10,7 +10,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var kinds = (await studio.SessionLines()).Select(StudioHost.KindOf).ToList();
 
@@ -23,7 +23,7 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         // Each lands on its own, so the order they come in is no part of the answer.
         Assert.Equal(
@@ -36,7 +36,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The early run"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"),
@@ -55,7 +56,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             Ran(Morning, At(Yesterday, "09:00:00.000"), "The chosen run", "acme/xi"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")) with { Owner = "acme", RepositoryName = "xi" },
             Ran(Afternoon, At(Yesterday, "14:00:00.000"), "The other run", "acme/nu"),
@@ -72,7 +74,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The broken run"),
             SessionEvent.ToolFailed(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.ModelFailed(Morning, At(Yesterday, "09:02:00.000")));
@@ -99,7 +102,7 @@ public sealed partial class SessionEndpointsTests
         using var events = Breaking(TurnRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer();
 
@@ -113,7 +116,7 @@ public sealed partial class SessionEndpointsTests
         using var events = Breaking(TurnRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer();
 
@@ -129,7 +132,7 @@ public sealed partial class SessionEndpointsTests
         using var events = Breaking(ToolResultRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer();
 
@@ -153,7 +156,7 @@ public sealed partial class SessionEndpointsTests
         using var events = Breaking(TurnRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         await studio.SessionAnswer();
 
@@ -178,7 +181,7 @@ public sealed partial class SessionEndpointsTests
         using var traces = BrokenTraceStore.Down();
         using var studio = new StudioHost(events: events, traces: traces);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer("?depth=full");
 

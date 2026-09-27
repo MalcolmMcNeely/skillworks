@@ -12,6 +12,9 @@ public sealed record EventQuery(string EventName, DateTimeOffset From, DateTimeO
 
     public IReadOnlyCollection<string>? Sessions { get; init; }
 
+    // Only a Child's events pass, so a Parent's own events are asked for by Sessions.
+    public IReadOnlyCollection<string>? Parents { get; init; }
+
     public string? Skill { get; init; }
 
     public string? QuerySource { get; init; }

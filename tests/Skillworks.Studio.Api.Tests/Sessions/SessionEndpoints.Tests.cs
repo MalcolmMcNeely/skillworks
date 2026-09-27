@@ -47,28 +47,27 @@ public sealed partial class SessionEndpointsTests
         var page = await studio.SessionLine("sessions");
         var measure = await studio.SessionLine("measure");
 
-        Assert.Equal(["descending", "kind", "sort", "span"], StudioHost.Fields(head));
-        Assert.Equal(["from", "fromUtc", "lookback", "to", "untilUtc"], StudioHost.Fields(head["span"]));
+        var end = await studio.SessionLine("end");
+
+        Assert.Equal(["asOfUtc", "kind"], StudioHost.Fields(head));
 
         Assert.Equal(["kind", "sessions"], StudioHost.Fields(page));
         Assert.Equal(
-            ["id", "lengthMs", "name", "person", "repository", "running", "startedUtc"],
+            ["firstDay", "id", "lastActivityUtc", "lastDay", "lengthMs", "name", "person", "repository", "running", "startedUtc"],
             StudioHost.Fields(page["sessions"]?[0]));
 
         Assert.Equal(["kind", "measure", "values"], StudioHost.Fields(measure));
+
+        Assert.Equal(["gap", "kind", "nextBeforeUtc"], StudioHost.Fields(end));
     }
 
     [Fact]
-    public async Task Covers_the_lookback_when_no_span_is_asked_for_and_says_so()
+    public async Task Says_in_its_head_the_instant_it_read_up_to()
     {
         using var studio = new StudioHost();
 
-        var span = (await studio.SessionAnswer()).Head.Span;
-
-        // The page says which days it covers, so a reader never takes a quiet week for the whole record.
-        Assert.True(span.Lookback);
-        Assert.Equal(DaysBack(6), span.From);
-        Assert.Equal(Today, span.To);
+        // A later read passes it back, so the rows already drawn never move under a reader.
+        Assert.Equal(studio.Clock.GetUtcNow(), (await studio.SessionAnswer()).Head.AsOfUtc);
     }
 
     [Fact]
@@ -82,19 +81,6 @@ public sealed partial class SessionEndpointsTests
 
         // Nothing is asked for, so a reader sees the whole organisation the moment the page opens.
         Assert.Equal(["acme/nu", "acme/xi"], (await studio.SessionsIn()).Select(session => session.Repository).Order());
-    }
-
-    [Fact]
-    public async Task Lists_the_sessions_newest_first()
-    {
-        using var studio = new StudioHost();
-
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(DaysBack(3), "09:00:00.000"), "The early run"),
-            SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"));
-
-        // Newest first, so the run a developer just finished is the first row on the page.
-        Assert.Equal(["The later run", "The early run"], (await studio.SessionsIn()).Select(session => session.Name));
     }
 
     [Fact]
@@ -150,23 +136,11 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_out_a_session_that_ran_outside_the_span()
-    {
-        using var studio = new StudioHost();
-
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(DaysBack(3), "09:00:00.000"), "The early run"),
-            SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"));
-
-        Assert.Equal(["The later run"], (await studio.SessionsIn($"?from={Written(Yesterday)}&to={Written(Yesterday)}")).Select(s => s.Name));
-    }
-
-    [Fact]
     public async Task Names_a_session_that_names_no_repository_without_naming_one_for_it()
     {
         using var studio = new StudioHost();
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         // An older Claude Code, or a repository with no origin remote, still ran the Session.
         Assert.Null(Assert.Single(await studio.SessionsIn()).Repository);
@@ -195,4 +169,23 @@ public sealed partial class SessionEndpointsTests
     }
 
     private static DateTimeOffset Moment(string at) => DateTimeOffset.Parse(at, CultureInfo.InvariantCulture);
+
+    // A Prompt marks a run's activity, so each run named by a title is also asked something in the same instant.
+    private static Task PushWithPrompts(StudioHost studio, params SessionEvent[] events) =>
+        studio.Push([.. events.SelectMany(WithPrompt)]);
+
+    private static SessionEvent[] WithPrompt(SessionEvent recorded) =>
+        recorded.QuerySource == SessionEvent.TitleSource
+            ?
+            [
+                recorded,
+                SessionEvent.Prompted(recorded.Session, recorded.At, recorded.Response ?? "") with
+                {
+                    Person = recorded.Person,
+                    Owner = recorded.Owner,
+                    RepositoryName = recorded.RepositoryName,
+                    Parent = recorded.Parent,
+                },
+            ]
+            : [recorded];
 }

@@ -1,7 +1,6 @@
 using Skillworks.Core.Shared.Arriving;
-using Skillworks.Core.Shared.Filters;
 
 namespace Skillworks.Core.Sessions;
 
-// Carries the resolved order, not the one asked for, so a heading marks the column the answer really used.
-public sealed record SessionsHead(DaySpan Span, string Sort, bool Descending) : ArrivingLine("head");
+// Nothing after this instant is read, so a later read that passes it back never moves a row already drawn.
+public sealed record SessionsHead(DateTimeOffset AsOfUtc) : ArrivingLine("head");

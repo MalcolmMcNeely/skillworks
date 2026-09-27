@@ -11,7 +11,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The spec run"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
             SessionEvent.Refused(Morning, At(Yesterday, "09:02:00.000")),
@@ -35,7 +36,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The spec run"),
             SessionEvent.ToolFailed(Afternoon, At(Yesterday, "09:10:00.000")) with { Parent = Morning },
             SessionEvent.Refused(Afternoon, At(Yesterday, "09:11:00.000")) with { Parent = Morning },
@@ -54,7 +56,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The spec run"),
             SessionEvent.ToolFailed(Afternoon, At(Yesterday, "09:10:00.000")) with { Parent = Morning },
             SessionEvent.Titled(Evening, At(Yesterday, "14:00:00.000"), "The chat"),
@@ -73,7 +76,8 @@ public sealed partial class SessionEndpointsTests
     {
         using var studio = new StudioHost();
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Afternoon, At(Yesterday, "09:05:00.000"), "The build step") with { Parent = AbsentParent },
             SessionEvent.ToolFailed(Afternoon, At(Yesterday, "09:06:00.000")) with { Parent = AbsentParent },
             SessionEvent.Refused(Afternoon, At(Yesterday, "09:07:00.000")) with { Parent = AbsentParent },
@@ -83,24 +87,5 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal((1m, 1m, 1m), Counts(answer, Afternoon));
         Assert.Equal(0.5m, answer.Measured("cost", Afternoon));
-    }
-
-    [Fact]
-    public async Task Sorts_a_parent_by_its_combined_measure()
-    {
-        using var studio = new StudioHost();
-
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The spec run"),
-            SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")),
-            SessionEvent.ToolRan(Afternoon, At(Yesterday, "09:10:00.000")) with { Parent = Morning },
-            SessionEvent.ToolRan(Afternoon, At(Yesterday, "09:11:00.000")) with { Parent = Morning },
-            SessionEvent.Titled(Evening, At(Yesterday, "14:00:00.000"), "The chat"),
-            SessionEvent.ToolRan(Evening, At(Yesterday, "14:01:00.000")),
-            SessionEvent.ToolRan(Evening, At(Yesterday, "14:02:00.000")));
-
-        // On its own calls the spec run would sit below the chat, which is not what its row shows.
-        Assert.Equal(["The spec run", "The chat"], await Names(studio, "?sort=toolCalls&descending=true"));
-        Assert.Equal(["The chat", "The spec run"], await Names(studio, "?sort=toolCalls&descending=false"));
     }
 }

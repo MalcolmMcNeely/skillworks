@@ -9,6 +9,9 @@ public sealed class GapReport(TelemetrySwitch telemetry)
     public Gap InTotals(EventTotals period, IReadOnlyList<DateOnly> unread) =>
         Gap.Of(period.Unreachable, unread, (long)period.Total, Emitting());
 
+    // Read newest first and not day by day, so what went unread is the runs themselves.
+    public Gap InRows(string? unreachable, long read) => Gap.Of(unreachable, "these runs", read, Emitting());
+
     // Withheld words beat a switch that is off here: the events did arrive, and the two ask for different fixes.
     public Gap InLines(EventLines read, IReadOnlyList<DateOnly> unread, bool withheld) =>
         read.Unreachable is null && withheld

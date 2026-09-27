@@ -5,12 +5,15 @@ namespace Skillworks.Core.Shared.Gaps;
 
 public sealed record Gap(GapKind Kind, string? Missing)
 {
-    internal static Gap Of(string? unreachable, IReadOnlyList<DateOnly> unread, long events, bool? emitting)
+    // Only the unread days are short, as every day that landed is whole.
+    internal static Gap Of(string? unreachable, IReadOnlyList<DateOnly> unread, long events, bool? emitting) =>
+        Of(unreachable, Listed(unread), events, emitting);
+
+    internal static Gap Of(string? unreachable, string unread, long events, bool? emitting)
     {
         var (kind, missing) = (unreachable, events, emitting) switch
         {
-            // Only the unread days are short, as every day that landed is whole.
-            ({ } reason, _, _) => (GapKind.Unreachable, Unread(reason, Listed(unread))),
+            ({ } reason, _, _) => (GapKind.Unreachable, Unread(reason, unread)),
 
             // Asked of the switch, not guessed: "nobody turned it on" is a fix for the developer, "nothing happened" is not.
             (_, 0, false) => (

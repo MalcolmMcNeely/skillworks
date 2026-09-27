@@ -12,7 +12,7 @@ public sealed partial class SessionEndpointsTests
     // Tool calls and the tool half of Faults, and no part of Cost or Friction.
     private const string ToolResultRead = "claude_code.tool_result";
 
-    // One of the five that name a run, and no Measure's.
+    // The read that finds the rows and the read that names them, and no Measure's.
     private const string PromptRead = "claude_code.user_prompt";
 
     [Fact]
@@ -21,7 +21,7 @@ public sealed partial class SessionEndpointsTests
         using var events = Holding(TurnRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var lines = await studio.SessionLines(count: 2);
 
@@ -37,7 +37,8 @@ public sealed partial class SessionEndpointsTests
         using var events = Holding(TurnRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")));
 
@@ -53,79 +54,23 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Draws_the_rows_sorted_on_a_column_that_is_no_measure_while_a_measure_read_is_still_out()
-    {
-        using var events = Holding(TurnRead);
-        using var studio = new StudioHost(events: events);
-
-        await studio.Push(
-            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The early run"),
-            new SessionEvent(Morning, "assistant_response", At(Yesterday, "09:10:00.000")),
-            SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The later run"),
-            new SessionEvent(Afternoon, "assistant_response", At(Yesterday, "14:30:00.000")));
-
-        // Length is read from the first and last event, which the gate already holds.
-        var lines = await studio.SessionLines("?sort=length", count: 2);
-
-        Assert.Equal(["The later run", "The early run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
-
-        await StillOut(events, TurnRead);
-    }
-
-    [Theory]
-    [InlineData("cost", ToolResultRead)]
-    [InlineData("toolCalls", TurnRead)]
-    [InlineData("faults", TurnRead)]
-    public async Task Draws_the_rows_sorted_on_a_measure_while_another_measures_read_is_still_out(
-        string sort,
-        string held)
-    {
-        using var events = Holding(held);
-        using var studio = new StudioHost(events: events);
-
-        await ThreeRuns(studio);
-
-        // Only a gate that waited for this Measure can put the rows in order while another read is out.
-        var lines = await studio.SessionLines($"?sort={sort}", count: 2);
-
-        Assert.Equal(["Beta run", "Gamma run", "Alpha run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
-
-        await StillOut(events, held);
-    }
-
-    [Fact]
     public async Task Draws_the_rows_narrowed_by_a_skill_while_a_measure_read_is_still_out()
     {
         using var events = Holding(TurnRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(
+        await PushWithPrompts(
+            studio,
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run that swept"),
             SessionEvent.Titled(Afternoon, At(Yesterday, "14:00:00.000"), "The run that did not"));
         await studio.Push(new SkillActivated("comment-sweep", At(Yesterday, "09:05:00.000")) { Session = Morning });
 
-        // The activation read decides which rows exist, so it lands with the five that name them.
+        // The activation read decides which rows exist, so it lands with the reads that name them.
         var lines = await studio.SessionLines("?skill=comment-sweep", count: 2);
 
         Assert.Equal(["The run that swept"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
         await StillOut(events, TurnRead);
-    }
-
-    [Fact]
-    public async Task Draws_the_rows_once_in_the_order_of_the_measure_a_reader_sorted_on()
-    {
-        using var studio = new StudioHost();
-
-        await ThreeRuns(studio);
-
-        var lines = await studio.SessionLines("?sort=cost");
-        var kinds = lines.Select(StudioHost.KindOf).ToList();
-
-        // Drawn once and ahead of every Measure, so the table never settles into a second order.
-        Assert.Single(kinds, kind => kind == "sessions");
-        Assert.True(kinds.IndexOf("sessions") < kinds.IndexOf("measure"));
-        Assert.Equal(["Beta run", "Gamma run", "Alpha run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
     }
 
     [Fact]
@@ -141,13 +86,25 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
+    public async Task Says_telemetry_is_off_for_an_empty_list_while_the_switch_is_off()
+    {
+        using var studio = new StudioHost(emitting: false);
+
+        // An empty list with the switch off is explained by the switch, not by a quiet month.
+        Assert.Equal("telemetryOff", (await studio.SessionAnswer()).Gap.Kind);
+    }
+
+    [Fact]
     public async Task Asks_the_events_store_for_nothing_twice()
     {
-        // Down only before the two days the lookback covers, so nothing here breaks and every route is recorded.
-        using var events = BrokenEventsStore.DownBefore(Yesterday);
-        using var studio = new StudioHost(events: events, lookbackDays: 2);
+        // Breaks no read, so every route is recorded.
+        using var events = BrokenEventsStore.DownOn(_ => false);
+        using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(
+            studio,
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"),
+            SessionEvent.Titled(Afternoon, At(Yesterday, "09:05:00.000"), "The build step") with { Parent = Morning });
 
         await studio.SessionAnswer();
 
@@ -161,7 +118,7 @@ public sealed partial class SessionEndpointsTests
         using var events = Breaking(PromptRead);
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
         var answer = await studio.SessionAnswer();
 
@@ -170,20 +127,18 @@ public sealed partial class SessionEndpointsTests
         Assert.Equal("unreachable", answer.Gap.Kind);
     }
 
-    [Theory]
-    [InlineData("cost", TurnRead)]
-    [InlineData("toolCalls", ToolResultRead)]
-    [InlineData("faults", ToolResultRead)]
-    public async Task Empties_the_table_when_the_measure_a_reader_sorted_on_fell_short(string sort, string broken)
+    [Fact]
+    public async Task Empties_the_table_when_the_read_that_names_the_rows_fell_short()
     {
-        using var events = Breaking(broken);
+        // Only the read that names the loaded rows asks for their Prompts by Session.
+        using var events = BrokenEventsStore.DownOn(asked =>
+            asked.Contains(PromptRead, StringComparison.Ordinal) && asked.Contains("session_id=~", StringComparison.Ordinal));
         using var studio = new StudioHost(events: events);
 
-        await studio.Push(SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
-        var answer = await studio.SessionAnswer($"?sort={sort}");
+        var answer = await studio.SessionAnswer();
 
-        // Rows drawn in an order this read never gave would settle again the moment it landed.
         Assert.Empty(answer.Sessions);
         Assert.Equal("unreachable", answer.Gap.Kind);
     }
