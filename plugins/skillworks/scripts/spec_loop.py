@@ -19,11 +19,10 @@
 # started as programs, so one Runner carries the whole driver and a test has a
 # single place to answer for everything it reaches.
 #
+# Every question about a spec or a ticket goes to the Tracker that loop.json names.
+#
 # Env:
 #   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits); writes under .claude/ need `--bypass`
-#
-# Written against gh 2.92.0, which has no dependency flags. Everything goes
-# through `gh api`. See docs/research/harness/ticket-state-guardrails.md.
 
 import hashlib
 import io
@@ -40,7 +39,7 @@ import land_ticket
 import ticket_worktree
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
-from steering.target_branch import in_spec_mode, target_branch_for
+from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 
@@ -52,9 +51,6 @@ BYPASS_MODE = "bypassPermissions"
 
 # gh asks at a terminal, and a loop run has nobody at one.
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
-
-# Long enough for another loop's write to be visible, and injected so a test need not pay it.
-CLAIM_WAIT = 3
 
 
 class Step(NamedTuple):
@@ -312,8 +308,7 @@ class Loop:
         self.root = Path.cwd()
         self.target = ""
         self.spec_mode = False
-        self.repo = ""
-        self.me = ""
+        self.tracker = None
         self.spec_title = ""
         self.ticket_count = 0
 
@@ -345,6 +340,7 @@ class Loop:
 
     # --- the programs this reaches -------------------------------------------
 
+    # A pull request is GitHub's own and no Tracker's, so it is the one thing asked of gh here.
     def gh(self, *args):
         return self.runner.run(["gh"] + [str(a) for a in args], self.root.as_posix(), GH_QUIET)
 
@@ -385,16 +381,6 @@ class Loop:
         if status != 0 or not said.strip():
             return ""
         return said.strip()
-
-    def issue_field(self, issue, jq):
-        return self.gh("api", "repos/{}/issues/{}".format(self.repo, issue), "--jq", jq)
-
-    def issue_state(self, ticket):
-        return self.issue_field(ticket, ".state")
-
-    def sub_issues(self, query):
-        return self.gh("api", "--paginate", "repos/{}/issues/{}/sub_issues".format(
-            self.repo, self.spec), "--jq", query)
 
     # --- what a step asks for ------------------------------------------------
 
@@ -476,9 +462,9 @@ class Loop:
         if check == "axis-reported":
             return self.axis_reported(step.name, held)
         if check == "ticket-open":
-            return self.issue_state(ticket).out.strip() == "open", ""
+            return self.tracker.state(ticket) == "open", ""
         if check == "ticket-closed":
-            return self.issue_state(ticket).out.strip() == "closed", ""
+            return self.tracker.state(ticket) == "closed", ""
         if check == "tree-changed":
             return self.tree_of_job() != "", ""
         if check == "tree-clean":
@@ -509,14 +495,14 @@ class Loop:
     # The loop picks only open tickets, so a rerun would skip a closed one.
     def reopen(self, ticket):
         # A read that failed is not a ticket that is open, and guessing it is loses the ticket.
-        state = self.issue_state(ticket)
-        if state.status != 0:
+        state = self.tracker.state(ticket)
+        if state is None:
             self.say("WARN  #{} would not be read, so it may still be closed and a rerun skip "
                      "it.".format(ticket))
             return
-        if state.out.strip() != "closed":
+        if state != "closed":
             return
-        if self.gh("issue", "reopen", ticket).status == 0:
+        if self.tracker.reopen(ticket):
             self.say("      #{} is open again, so a rerun starts from it".format(ticket))
         else:
             self.say("WARN  #{} did not reopen. Reopen it by hand, or a rerun will skip it."
@@ -629,27 +615,21 @@ class Loop:
     # --- getting started -----------------------------------------------------
 
     def preflight(self):
-        if not self.runner.found("gh"):
-            raise stop("ABORT gh is not installed")
+        self.tracker = tracker_for(self.runner, self.root)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")
-        if self.gh("auth", "status").status != 0:
-            raise stop("ABORT gh is not authenticated. Run: gh auth login")
+        reason = self.tracker.connect()
+        if reason:
+            raise stop("ABORT " + reason)
 
-        self.repo = self.gh("repo", "view", "--json", "nameWithOwner",
-                            "--jq", ".nameWithOwner").out.strip()
-        self.me = self.gh("api", "user", "--jq", ".login").out.strip()
+        state = self.tracker.state(self.spec)
+        if state is None:
+            raise stop("ABORT cannot read {}#{}".format(self.tracker.repo, self.spec))
+        self.spec_title = self.tracker.title(self.spec)
+        if state != "open":
+            raise stop("ABORT spec #{} is {}. The loop needs it open.".format(self.spec, state))
 
-        state = self.issue_state(self.spec)
-        if state.status != 0:
-            raise stop("ABORT cannot read {}#{}".format(self.repo, self.spec))
-        self.spec_title = self.issue_field(self.spec, ".title").out.strip()
-        if state.out.strip() != "open":
-            raise stop("ABORT spec #{} is {}. The loop needs it open.".format(
-                self.spec, state.out.strip()))
-
-        # --paginate runs --jq once per page, so a length would count only the first hundred.
-        self.ticket_count = len(listed(self.sub_issues(".[].number").out))
+        self.ticket_count = len(self.tracker.tickets(self.spec))
         if self.ticket_count == 0:
             raise stop("ABORT spec #{} has no sub-issues. Run /skillworks:to-tickets first.".format(self.spec))
 
@@ -661,7 +641,7 @@ class Loop:
         return listed(out.getvalue())
 
     def dry_run(self):
-        self.say("DRY   repo={}  me={}".format(self.repo, self.me))
+        self.say("DRY   repo={}  me={}".format(self.tracker.repo, self.tracker.me))
         self.say("DRY   spec #{}: {}".format(self.spec, self.spec_title))
 
         # Asked of the scripts that do the work, so the plan cannot drift from the run.
@@ -670,12 +650,9 @@ class Loop:
             raise stop("ABORT the landing steps would not be read, so the plan would be short of "
                        "them.")
 
-        tickets = self.sub_issues('.[] | "\\(.number)\\t\\(.state)\\t\\(.title)"')
-
         # Gathered whole and printed once, so a step that cannot be planned can still stop the run.
         plan = ""
-        for line in listed(tickets.out):
-            number, state, title = columns(line)
+        for number, state, title in self.tracker.ticket_rows(self.spec):
             plan += "  #{} [{}] {}\n".format(number, state, title)
             if state != "open":
                 continue
@@ -733,33 +710,23 @@ class Loop:
 
     # --- picking the next ticket ---------------------------------------------
 
-    def assignees_besides_me(self, ticket):
-        return self.issue_field(ticket, '[.assignees[].login] | map(select(. != "{}")) | '
-                                        'join(",")'.format(self.me)).out.strip()
-
     def next_ticket(self, open_tickets):
         for number in open_tickets:
-            # blocked_by counts OPEN blockers only. See ticket-state-guardrails.md.
-            blocked = self.issue_field(
-                number, '.issue_dependencies_summary.blocked_by // "missing"').out.strip()
-            if blocked in ("", "missing"):
+            blocked = self.tracker.open_blockers(number)
+            if blocked is None:
                 raise stop("ABORT #{} reports no issue_dependencies_summary. Refusing to "
                            "guess.".format(number))
-            if blocked != "0":
+            if blocked != 0:
                 continue
-            if self.assignees_besides_me(number):
+            if self.tracker.claimed_by_others(number):
                 continue
             return number
         return ""
 
-    # There is no compare-and-swap here, so this detects a race rather than preventing one.
     def claimed(self, ticket):
-        self.gh("issue", "edit", ticket, "--add-assignee", "@me")
-        self.wait(CLAIM_WAIT)
-        others = self.assignees_besides_me(ticket)
+        others = self.tracker.claim(ticket, self.wait)
         if not others:
             return True
-        self.gh("issue", "edit", ticket, "--remove-assignee", "@me")
         self.say("SKIP  #{} claimed by {}".format(ticket, others))
         return False
 
@@ -814,7 +781,7 @@ class Loop:
         said = Lines(heard)
         landed = land_ticket.main(
             [self.job_worktree, ticket, session], self.runner, said, said, self.wait,
-            self.permission_mode, self.target)
+            self.permission_mode, self.target, self.tracker)
         said.end()
         if landed != 0:
             # The finishing step closed it, and the work it closed on never reached the remote.
@@ -823,7 +790,7 @@ class Loop:
                 ticket, self.target, self.job_worktree, held))
 
     def run_ticket(self, ticket):
-        self.say("START #{} {}".format(ticket, self.issue_field(ticket, ".title").out.strip()))
+        self.say("START #{} {}".format(ticket, self.tracker.title(ticket)))
 
         self.red_suite = None
         self.green_suite = None
@@ -850,8 +817,7 @@ class Loop:
 
     def run_tickets(self):
         while True:
-            open_tickets = listed(
-                self.sub_issues('.[] | select(.state=="open") | .number').out)
+            open_tickets = self.tracker.open_tickets(self.spec)
             ticket = self.next_ticket(open_tickets)
             if not ticket:
                 if not open_tickets:
@@ -947,7 +913,7 @@ class Loop:
 
     def read_target(self):
         self.spec_mode = in_spec_mode(self.root)
-        return target_branch_for(self.runner, self.root, self.spec, self.repo)
+        return target_branch_for(self.runner, self.root, self.spec, self.tracker)
 
     def run(self, dry):
         # No guard on the branch or on the edits: nothing is ever built in this checkout.
@@ -980,7 +946,7 @@ class Loop:
         base = held.read_text(encoding="utf-8").strip()
 
         self.say("LOOP  spec #{} from {} ({}) in {} mode".format(
-            self.spec, base, self.repo, self.permission_mode))
+            self.spec, base, self.tracker.repo, self.permission_mode))
 
         # A landed ticket stays when the loop stops, so a stop is followed by the full run too.
         try:

@@ -134,7 +134,8 @@ class Repo:
 def write_loop(top, target):
     path = Path(top) / LOOP_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"target-branch": target}, indent=2), encoding="utf-8", newline="\n")
+    path.write_text(json.dumps({"tracker": "github", "target-branch": target}, indent=2),
+                    encoding="utf-8", newline="\n")
 
 
 def check(*command, folder=".", ready=None, message="", unless=None, ignores=None, image=None):

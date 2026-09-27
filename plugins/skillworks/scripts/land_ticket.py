@@ -40,7 +40,7 @@ from filelock import FileLock, Timeout
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
-from steering.target_branch import in_spec_mode, target_branch_for
+from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
 
@@ -133,8 +133,9 @@ class Turn:
 
 class Landing:
     def __init__(self, runner, worktree, ticket, session, out, err, wait, permission_mode,
-                 target=None, spec=None):
+                 target=None, spec=None, tracker=None):
         self.runner = runner
+        self.tracker = tracker
         self.spec = spec
         self.worktree = Path(worktree).as_posix()
         self.ticket = ticket
@@ -240,15 +241,10 @@ class Landing:
 
     # The last comment is how a ticket was closed, and a tracker that will not answer says so.
     def closing_comment(self, ticket):
-        ran = self.runner.run(
-            ["gh", "issue", "view", ticket, "--json", "comments", "--jq",
-             ".comments[-1].body"], self.worktree,
-            # gh asks at a terminal, and a landing has nobody at one.
-            {"GH_PROMPT_DISABLED": "1"})
-        if ran.status != 0:
+        body = self.tracker.last_comment(ticket)
+        if body is None:
             return ("(The tracker would not answer for #{}, so its closing comment is "
                     "missing.)".format(ticket))
-        body = ran.out.rstrip("\n")
         return body if body else "(#{} was closed with no comment.)".format(ticket)
 
     # The session may only refuse for want of a ticket once it has had them all.
@@ -422,15 +418,18 @@ class Landing:
             raise self.die(self.worktree + " is not a git worktree. Nothing was pushed.")
 
         # The worktree script read the main checkout's settings, so a landing handed none reads the same ones.
-        if not self.target:
+        # The Tracker is read before the push, so a landing never pushes and then finds it has none.
+        if not self.target or self.tracker is None:
             top = self.main_checkout()
+            self.tracker = self.tracker or tracker_for(self.runner, top)
+        if not self.target:
             if self.spec is None and in_spec_mode(top):
                 raise self.die(
                     "#{t} cannot be landed, because in spec mode each spec names its own Target "
                     "branch and no spec was given. Nothing was pushed. Name the spec with: "
                     "land-ticket {w} {t} [session-id] --spec <spec-number>".format(
                         t=self.ticket, w=self.worktree))
-            self.target = target_branch_for(self.runner, top, self.spec)
+            self.target = target_branch_for(self.runner, top, self.spec, self.tracker)
 
         # A commit does not carry unfinished work, so pushing would leave it behind.
         if self.git("status", "--porcelain").out.strip():
@@ -483,9 +482,7 @@ class Landing:
         body = ("#{t} was rebased onto the newest {b} before it landed, so the commits named when "
                 "it was closed are on no branch. The commits that reached {b}:\n{p}").format(
                     t=self.ticket, b=self.target, p=pairs)
-        ran = self.runner.run(["gh", "issue", "comment", self.ticket, "--body", body],
-                              self.worktree, {"GH_PROMPT_DISABLED": "1"})
-        if ran.status != 0:
+        if not self.tracker.comment(self.ticket, body):
             # The push is done and cannot be taken back, so a lost comment is reported, not fatal.
             self.out.write("note  #{} landed, and the tracker would not take the comment that "
                            "names its new commits:{}\n".format(self.ticket, pairs))
@@ -558,7 +555,7 @@ def permission_mode_set():
 
 # The driver hands in the mode of its run, so the resolving Session never falls back to the default.
 # It hands in the Target branch too, since in spec mode only the driver has read the spec.
-def main(argv, runner, out, err, wait, permission_mode=None, target=None):
+def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracker=None):
     if permission_mode is None:
         permission_mode = permission_mode_set()
     try:
@@ -575,7 +572,7 @@ def main(argv, runner, out, err, wait, permission_mode=None, target=None):
             raise misuse(USAGE)
 
         Landing(runner, worktree, ticket, session, out, err, wait, permission_mode,
-                target, spec).land()
+                target, spec, tracker).land()
         return 0
     except Stop as stop:
         err.write(stop.said)

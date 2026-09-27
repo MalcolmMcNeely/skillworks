@@ -109,6 +109,8 @@ def driver_lines():
                               "acceptEdits")
         # Where the driver logs what it says is not what this proves.
         loop.log = Path(folder) / "loop.log"
+        # This checkout's loop.json names the Tracker whose lines are proved.
+        loop.root = ROOT
         loop.preflight()
         loop.reopen(TICKET)
         loop.next_ticket([TICKET])
@@ -116,10 +118,14 @@ def driver_lines():
         loop.claude_p("/skillworks:implement {} --stop-after-tests".format(TICKET))
         loop.claude_p("/skillworks:implement {} --fix".format(TICKET), "--resume", SESSION)
 
+        # A Session closes a ticket today, so the Tracker's close is built here and by nothing else.
+        loop.tracker.close(TICKET, "Closed.")
+
         landing = land_ticket.Landing(
             runner, folder, TICKET, SESSION, io.StringIO(), io.StringIO(), lambda seconds: None,
-            "acceptEdits")
+            "acceptEdits", tracker=loop.tracker)
         landing.closing_comment(TICKET)
+        loop.tracker.comment(TICKET, "The commits that reached main.")
         landing.resolve_call("/skillworks:resolve-conflict")
     return once(runner.made)
 

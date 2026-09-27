@@ -5,20 +5,43 @@ import sys
 from pathlib import Path
 
 from stop import Stop, refusal
+from tracker.github import GitHub
 
 LOOP_FILE = "docs/agents/loop.json"
 SPEC_MODE = "spec"
 BRANCH_HEADING = "## Branch"
 
+TRACKERS = {"github": GitHub}
 
-def target_setting(top):
+
+def settings(top):
     path = Path(top) / LOOP_FILE
     if not path.is_file():
         raise refusal("{} is missing. Run seed-steering to write it.".format(LOOP_FILE))
-    settings = json.loads(path.read_text(encoding="utf-8"))
-    if "target-branch" not in settings:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def target_setting(top):
+    held = settings(top)
+    if "target-branch" not in held:
         raise refusal("{} names no target-branch. Add one, such as \"target-branch\": \"main\".".format(LOOP_FILE))
-    return settings["target-branch"]
+    return held["target-branch"]
+
+
+def tracker_setting(top):
+    held = settings(top)
+    named = ", ".join(TRACKERS)
+    if "tracker" not in held:
+        raise refusal("{} names no tracker. Add one, such as \"tracker\": \"github\". It can be: {}.".format(
+            LOOP_FILE, named))
+    if held["tracker"] not in TRACKERS:
+        raise refusal("{} names the tracker {}, which the loop does not know. It can be: {}.".format(
+            LOOP_FILE, json.dumps(held["tracker"]), named))
+    return held["tracker"]
+
+
+def tracker_for(runner, top):
+    return TRACKERS[tracker_setting(top)](runner, Path(top).as_posix())
 
 
 def in_spec_mode(top):
@@ -34,18 +57,12 @@ def target_branch(top, spec=None):
     return spec_branch(spec)
 
 
-# A script knows the spec's number and not its body, so gh is asked, with the repo taken from the checkout.
-def target_branch_for(runner, top, spec, repo="{owner}/{repo}"):
+# A script knows the spec's number and not its body, so the Tracker is asked, and only in spec mode.
+def target_branch_for(runner, top, spec, tracker=None):
     if spec is None or not in_spec_mode(top):
         return target_branch(top)
-    asked = runner.run(["gh", "api", "repos/{}/issues/{}".format(repo, spec), "--jq", ".body"],
-                       Path(top).as_posix(),
-                       # gh asks at a terminal, and a script run by hand may have nobody at one.
-                       {"GH_PROMPT_DISABLED": "1"})
-    if asked.status != 0:
-        raise refusal("The tracker would not give the body of spec #{}, which names its branch. gh said:\n{}".format(
-            spec, (asked.out + asked.err).rstrip("\n")))
-    return target_branch(top, asked.out)
+    tracker = tracker or tracker_for(runner, top)
+    return target_branch(top, tracker.spec_body(spec))
 
 
 def spec_branch(spec):
