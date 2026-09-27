@@ -2454,6 +2454,68 @@ def test_the_prose_around_the_marked_line_is_never_read():
     assert marked_line(reworded) == the_step_list()
 
 
+# --- the stage map held to the step list ---------------------------------------
+
+STAGE_MAP_PAGE = "docs/usage/the-loop.md"
+
+MAP_MARK = "<!-- stage map -->"
+
+SEEDS = ROOT / "plugins" / "skillworks" / "skills" / "skillworks-setup" / "seeds"
+
+
+# A step is named in backticks in the first cell of its row, so a word in the prose never counts.
+def stages_in_the_map(text):
+    lines = [line.strip() for line in text.splitlines()]
+    marked = [at for at, line in enumerate(lines) if line == MAP_MARK]
+    assert len(marked) == 1, "expected one stage map, found {}".format(len(marked))
+    rows = []
+    for line in lines[marked[0] + 1:]:
+        if not line.startswith("|"):
+            break
+        rows.append(line)
+    first_cells = [row.split("|")[1] for row in rows[2:]]
+    return {name for cell in first_cells for name in re.findall(r"`([^`]+)`", cell)}
+
+
+def steps_missing_from(text):
+    named = stages_in_the_map(text)
+    return [step.name for step in spec_loop.STEPS if step.name not in named]
+
+
+def given_a_map_naming(names):
+    rows = "".join("| `{}` | a | b | c |\n".format(name) for name in names)
+    return "Prose.\n\n{}\n| Stage | Always | On demand | Change |\n|---|---|---|---|\n{}\nMore.\n".format(
+        MAP_MARK, rows)
+
+
+def test_the_stage_map_names_every_step_the_loop_runs():
+    held = (ROOT / STAGE_MAP_PAGE).read_text(encoding="utf-8")
+
+    assert steps_missing_from(held) == []
+
+
+def test_a_map_that_missed_a_step_added_to_the_driver_is_caught():
+    short = given_a_map_naming(step.name for step in spec_loop.STEPS[:-1])
+
+    assert steps_missing_from(short) == [spec_loop.STEPS[-1].name]
+
+
+def test_a_step_named_only_outside_the_first_cell_is_not_counted():
+    elsewhere = given_a_map_naming(step.name for step in spec_loop.STEPS[:-1]).replace(
+        "| c |", "| `{}` |".format(spec_loop.STEPS[-1].name), 1)
+
+    assert steps_missing_from(elsewhere) == [spec_loop.STEPS[-1].name]
+
+
+# The map describes Machinery, so a copy seeded into a team's repo would go stale there.
+def test_no_seed_holds_a_stage_map():
+    seeds = list(SEEDS.iterdir())
+    holding = [seed.name for seed in seeds if MAP_MARK in seed.read_text(encoding="utf-8")]
+
+    assert seeds != []
+    assert holding == []
+
+
 # --- the command the Plugin puts on PATH ------------------------------------
 
 def test_a_loop_started_below_the_top_of_the_repository_logs_at_the_top(loop, monkeypatch):
