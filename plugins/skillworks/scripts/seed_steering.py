@@ -1,4 +1,4 @@
-# A seed already there is kept and only diffed, so a team sees a newer Plugin's wording without losing its own.
+# Each file is weighed against the base copy setup last wrote, so a newer Plugin's Seed replaces only what a team never edited.
 
 import difflib
 import sys
@@ -53,15 +53,28 @@ def seed(top, out):
     for name, place in PLACES.items():
         wanted = (SEEDS / name).read_text(encoding="utf-8")
         target = top / place
+        base = top / BASES / name
+        was = base.read_text(encoding="utf-8") if base.exists() else None
         if not target.exists():
+            if was is not None:
+                out.write("left out {}, which you deleted\n".format(place))
+                continue
             write(target, wanted)
-            write(top / BASES / name, wanted)
+            write(base, wanted)
             out.write("wrote {}\n".format(place))
             continue
 
         held = target.read_text(encoding="utf-8")
         if held == wanted:
             out.write("kept {}, the same as the seed\n".format(place))
+            continue
+        if held == was:
+            write(target, wanted)
+            write(base, wanted)
+            out.write("updated {}\n".format(place))
+            continue
+        if was == wanted:
+            out.write("kept {}, which you edited\n".format(place))
             continue
         out.write("kept {}, which differs from the seed:\n".format(place))
         out.writelines(difflib.unified_diff(

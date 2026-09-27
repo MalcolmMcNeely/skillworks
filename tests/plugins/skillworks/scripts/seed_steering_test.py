@@ -2,6 +2,7 @@ import io
 import json
 import re
 
+import pytest
 import seed_steering
 from conftest import PLUGIN, ROOT, Ran, git, launch
 from suite import Suite
@@ -175,6 +176,105 @@ def test_a_seed_already_there_unchanged_says_so_and_shows_nothing(repo, runner):
     assert ran.status == 0, ran.err
     assert "kept docs/agents/suite.json, the same as the seed\n" in ran.out
     assert "differs" not in ran.out
+
+
+OLDER = {
+    "domain.md": "# Domain docs\n\nAn older seed.\n",
+    "suite.json": '{\n  "runs": 2,\n  "checks": []\n}\n',
+}
+
+
+def seeded_by_an_older_plugin(repo, runner, seed):
+    run_seed(runner, repo.work)
+    seed_steering.write(repo.work / WHERE[seed], OLDER[seed])
+    seed_steering.write(repo.work / BASES / seed, OLDER[seed])
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_never_edited_whose_seed_moved_on_is_updated_with_its_base_copy(repo, runner, seed):
+    seeded_by_an_older_plugin(repo, runner, seed)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    place = WHERE[seed]
+    assert (repo.work / place).read_text(encoding="utf-8") == seeded(seed)
+    assert (repo.work / BASES / seed).read_bytes() == (repo.work / place).read_bytes()
+    assert "updated {}\n".format(place) in ran.out
+    assert "differs" not in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_edited_whose_seed_did_not_move_is_kept_as_it_is(repo, runner, seed):
+    run_seed(runner, repo.work)
+    place = WHERE[seed]
+    seed_steering.write(repo.work / place, OLDER[seed])
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / place).read_text(encoding="utf-8") == OLDER[seed]
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
+    assert "kept {}, which you edited\n".format(place) in ran.out
+    assert "differs" not in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_unchanged_on_either_side_is_kept_the_same_as_the_seed(repo, runner, seed):
+    run_seed(runner, repo.work)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    place = WHERE[seed]
+    assert (repo.work / place).read_text(encoding="utf-8") == seeded(seed)
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
+    assert "kept {}, the same as the seed\n".format(place) in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_the_team_deleted_stays_deleted_and_is_said_to_be_left_out(repo, runner, seed):
+    seeded_by_an_older_plugin(repo, runner, seed)
+    place = WHERE[seed]
+    (repo.work / place).unlink()
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert not (repo.work / place).exists()
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == OLDER[seed]
+    assert "left out {}, which you deleted\n".format(place) in ran.out
+    assert "wrote {}\n".format(place) not in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_seed_new_in_the_plugin_is_written_with_its_base_copy(repo, runner, seed):
+    run_seed(runner, repo.work)
+    place = WHERE[seed]
+    (repo.work / place).unlink()
+    (repo.work / BASES / seed).unlink()
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / place).read_text(encoding="utf-8") == seeded(seed)
+    assert (repo.work / BASES / seed).read_bytes() == (repo.work / place).read_bytes()
+    assert "wrote {}\n".format(place) in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_edited_whose_seed_also_moved_still_shows_its_difference(repo, runner, seed):
+    seeded_by_an_older_plugin(repo, runner, seed)
+    place = WHERE[seed]
+    seed_steering.write(repo.work / place, OLDER[seed] + "\nOur own line.\n")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / place).read_text(encoding="utf-8") == OLDER[seed] + "\nOur own line.\n"
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == OLDER[seed]
+    assert "kept {}, which differs from the seed:\n".format(place) in ran.out
+    assert "-Our own line.\n" in ran.out
 
 
 def test_the_issue_tracker_seed_holds_the_two_conventions():
