@@ -77,8 +77,29 @@ If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](
 
 More than one person runs agent work against a repo at once, and a conversation can sit open for an hour while the user thinks. A word settled in that hour lives only in this session's context, so a teammate working beside you can reserve the same word for something else, and one of the two designs then has to be reworked.
 
-So commit and push every change to `CONTEXT.md` or an ADR as soon as it settles. Never hold them to the end of the session.
+So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push it to the Target branch. Never hold them to the end of the session.
 
+- **Find the Target branch.** Read `target-branch` in `docs/agents/loop.json`. A branch name is the Target branch. The word `spec` means the design gets a branch of its own; see [The spec's branch](#the-specs-branch).
 - **Stage by path.** Stage only the file you settled. Work in progress elsewhere in the tree is never swept into a glossary commit.
 - **Prefix the subject line.** `Glossary:` for a `CONTEXT.md` change, `ADR:` for an ADR, so the log says which kind of change it was without anyone opening it.
 - **Pull, then push.** A push onto a branch a teammate has moved is rejected, so pull first and push the rebased commit. Read what the pull brings down: when a teammate's change touches ground this session already settled, say so. What to re-ask is then a question for this session.
+
+### The spec's branch
+
+In `spec` mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. A protected default branch refuses a direct push, so no word or ADR goes there.
+
+**The first word or ADR settled** creates the branch. The slug is short, in kebab case, and comes from the design's subject. Cut it from the newest default branch, commit the settled file on it, push it, and open a draft pull request to the default branch:
+
+```bash
+default=$(gh api "repos/{owner}/{repo}" --jq .default_branch)
+git fetch origin "$default"
+git switch -c "spec/<slug>" "origin/$default"
+git add <the settled file>
+git commit -m "Glossary: <word>"
+git push -u origin "spec/<slug>"
+gh pr create --draft --base "$default" --head "spec/<slug>" --title "<the design's subject>" --body "The design of <the design's subject>, as the grill settles it."
+```
+
+No spec exists yet, so the body names none. `to-spec` adds the closing keyword when it publishes the spec.
+
+**Every later word or ADR** goes to the same branch. Stay on `spec/<slug>`, pull, and push there.
