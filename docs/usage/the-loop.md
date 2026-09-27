@@ -67,6 +67,8 @@ protection. With `spec`:
   the Turn work the same. A closed ticket still means its code is on its Target branch.
 - After the drift check, the loop marks the pull request ready for review, and stops. It never merges.
   A person reviews it and merges it.
+- With the files Tracker, the loop never calls `gh`. It closes the spec, and its last lines tell you
+  to open the pull request from the spec's branch on your host, or mark it ready for review.
 - The pull request's body closes the spec, so the spec closes when the pull request merges.
 
 Every other part of this page is the same for both kinds. Where it says the Target branch, read the
@@ -522,9 +524,9 @@ that brought in two names for one idea, with your glossary as the judge.
 The drift check fixes nothing and closes nothing. A fix is new work, and needs a ticket of its own.
 Closing the spec is where a person says the work is done. With a branch name, a person closes it by
 hand. With `spec`, the loop marks the spec's pull request ready for review, and the spec closes when a
-person merges it. With the files Tracker, the loop closes the spec itself after the drift check. A
-clean finish needs two facts: the log reaches its `END` line, and the drift report lists nothing
-Missing, Partial or Contradicts.
+person merges it. With the files Tracker, the loop closes the spec itself after the drift check, and
+with `spec` it leaves the pull request to you. A clean finish needs two facts: the log reaches its
+`END` line, and the drift report lists nothing Missing, Partial or Contradicts.
 
 ## The stage map
 

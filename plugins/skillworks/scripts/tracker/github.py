@@ -33,6 +33,7 @@ def spec_branch(spec):
 class GitHub:
     # A Session closes the issue naming its commits, and a rebase at Land replaces them.
     close_names_commits = True
+    marks_pull_requests = True
 
     def __init__(self, runner, where, repo=THIS_REPO):
         self.runner = runner

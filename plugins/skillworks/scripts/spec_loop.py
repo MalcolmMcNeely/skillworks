@@ -939,6 +939,13 @@ class Loop:
         self.say("READY the pull request from {} is ready for review. A person reviews and "
                  "merges it.".format(self.target))
 
+    def hand_over(self):
+        if self.tracker.marks_pull_requests:
+            self.mark_ready()
+            return
+        self.say("PR    open the pull request from {} on your host, or mark it ready for review "
+                 "if it is open. A person reviews and merges it.".format(self.target))
+
     # --- the whole run -------------------------------------------------------
 
     def read_target(self):
@@ -989,7 +996,7 @@ class Loop:
         self.check_drift(base)
         self.close_spec()
         if self.spec_mode:
-            self.mark_ready()
+            self.hand_over()
         self.say("END   spec #{} complete. Every ticket is on {}.".format(self.spec, self.target))
         self.say("      Review it with: git log --oneline {}..origin/{}".format(base, self.target))
 

@@ -346,9 +346,13 @@ def on_remote(repo, path, branch="main"):
     return git(repo.origin, "show", "{}:{}".format(branch, path))
 
 
-def status_on_remote(repo, path):
-    return next(line[len("status:"):].strip() for line in on_remote(repo, path).split("\n")
+def status_on_remote_branch(repo, path, branch):
+    return next(line[len("status:"):].strip() for line in on_remote(repo, path, branch).split("\n")
                 if line.startswith("status:"))
+
+
+def status_on_remote(repo, path):
+    return status_on_remote_branch(repo, path, "main")
 
 
 def asked_of_claude(driver):
@@ -437,6 +441,42 @@ def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_on_the_rem
     assert ran.status == 0, said(ran)
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
     assert ran.out.index("DRIFT") < ran.out.index("CLOSE spec #7") < ran.out.index("END   spec #7")
+
+
+def given_sessions_that_finish_on_the_spec_branch(driver):
+    git(driver.repo.work, "checkout", "--quiet", "-b", SPEC_BRANCH)
+    driver.repo.target = SPEC_BRANCH
+    write_loop(driver.repo.work, "spec")
+    write_files(driver.repo.work, {
+        FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
+        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
+    })
+    given_a_suite_that_passes(driver)
+    sessions = Sessions(driver.repo, driver.runner)
+    sessions.then[FINISH] = finishing(driver.runner)
+    return sessions
+
+
+def test_in_spec_mode_the_run_ends_at_the_close_and_never_calls_gh(driver):
+    given_sessions_that_finish_on_the_spec_branch(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert driver.runner.started("gh") == []
+    assert status_on_remote_branch(driver.repo, FOLDER + "/spec.md", SPEC_BRANCH) == "closed"
+    assert "CLOSE spec #7" in ran.out
+
+
+def test_in_spec_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_branch(driver):
+    given_sessions_that_finish_on_the_spec_branch(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    last = "\n".join(ran.out.rstrip("\n").split("\n")[-3:])
+    assert "open the pull request from {}".format(SPEC_BRANCH) in last
+    assert "mark it ready for review" in last
 
 
 REPORT = "## Drift report\n\n- Story 1: Done\n"
