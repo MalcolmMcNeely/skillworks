@@ -6,7 +6,7 @@ namespace Skillworks.Studio.Api.Tests.Sessions;
 
 public sealed partial class SessionEndpointsTests
 {
-    private const string SplitTrace = "7a1c0a9e0000400080000000000000d4";
+    private const string BreakdownTrace = "7a1c0a9e0000400080000000000000d4";
 
     private const string WaitedSpan = "e11c0a9e00000001";
 
@@ -17,7 +17,7 @@ public sealed partial class SessionEndpointsTests
     private const string GrepSpan = "e11c0a9e00000004";
 
     [Fact]
-    public async Task Answers_with_the_split_once_the_spans_have_landed()
+    public async Task Answers_with_the_time_breakdown_once_the_spans_have_landed()
     {
         using var studio = new StudioHost();
 
@@ -26,7 +26,7 @@ public sealed partial class SessionEndpointsTests
         var lines = await studio.StepLines(Morning);
 
         Assert.Equal(
-            ["head", "exchanges", "activations", "context", "findings", "steps", "trace", "agents", "split", "findings", "end"],
+            ["head", "exchanges", "activations", "context", "findings", "steps", "trace", "agents", "timeBreakdown", "findings", "end"],
             lines.Select(StudioHost.KindOf));
     }
 
@@ -37,14 +37,14 @@ public sealed partial class SessionEndpointsTests
 
         await Turned(studio);
 
-        var line = await studio.StepLine("split", Morning);
+        var line = await studio.StepLine("timeBreakdown", Morning);
 
         Assert.Equal(["kind", "kinds", "parts", "traced"], StudioHost.Fields(line));
         Assert.Equal(["atUtc", "lengthMs", "part"], StudioHost.Fields(line["parts"]?[0]));
     }
 
     [Fact]
-    public async Task Splits_the_run_into_parts_that_add_up_to_its_length()
+    public async Task Breaks_the_run_into_parts_that_add_up_to_its_length()
     {
         using var studio = new StudioHost();
 
@@ -70,19 +70,19 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Splits_a_run_into_the_model_thinking_the_tools_running_and_the_quiet_between_them()
+    public async Task Breaks_a_run_into_the_model_thinking_the_tools_running_and_the_quiet_between_them()
     {
         using var studio = new StudioHost();
 
         await Turned(studio);
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
-        Assert.Equal(5_000, split["model"]);
-        Assert.Equal(5_000, split["tools"]);
+        Assert.Equal(5_000, breakdown["model"]);
+        Assert.Equal(5_000, breakdown["tools"]);
 
         // Between the Turn ending and the Tool call starting, and again from the call up to the answer.
-        Assert.Equal(5_000, split["quiet"]);
+        Assert.Equal(5_000, breakdown["quiet"]);
     }
 
     [Fact]
@@ -94,15 +94,15 @@ public sealed partial class SessionEndpointsTests
 
         await studio.PushSpans(
             Morning,
-            SplitTrace,
+            BreakdownTrace,
             Waits(WaitedSpan, "toolu_01", At(Yesterday, "09:00:07"), At(Yesterday, "09:00:10")));
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
-        Assert.Equal(3_000, split["waiting"]);
+        Assert.Equal(3_000, breakdown["waiting"]);
 
         // What is left of the call once the person has answered, so their delay never reads as the tool's work.
-        Assert.Equal(2_000, split["tools"]);
+        Assert.Equal(2_000, breakdown["tools"]);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed partial class SessionEndpointsTests
 
         await studio.PushSpans(
             Morning,
-            SplitTrace,
+            BreakdownTrace,
             Waits(WaitedSpan, "toolu_gone", At(Yesterday, "09:00:01"), At(Yesterday, "09:00:05")));
 
         // The call never ran, so the whole of its Spell is the time a person took to say no.
@@ -133,13 +133,13 @@ public sealed partial class SessionEndpointsTests
         // A hook guarding a Tool call runs inside the length Claude Code records for it.
         await studio.PushSpans(
             Morning,
-            SplitTrace,
+            BreakdownTrace,
             Hooks(HookedSpan, null, At(Yesterday, "09:00:07"), At(Yesterday, "09:00:09")));
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
-        Assert.Equal(2_000, split["hooks"]);
-        Assert.Equal(3_000, split["tools"]);
+        Assert.Equal(2_000, breakdown["hooks"]);
+        Assert.Equal(3_000, breakdown["tools"]);
     }
 
     [Fact]
@@ -153,11 +153,11 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Answered(Morning, At(Yesterday, "09:00:41.000"), "Found."));
 
         var answer = await studio.StepAnswer(Morning);
-        var split = Totals(answer.Parts);
+        var breakdown = Totals(answer.Parts);
 
         // With no Span there is no spell to stand for the work, and nothing running would be a lie.
         Assert.Equal("thin", answer.Depth);
-        Assert.Equal(30_000, split["tools"]);
+        Assert.Equal(30_000, breakdown["tools"]);
     }
 
     [Fact]
@@ -169,13 +169,13 @@ public sealed partial class SessionEndpointsTests
 
         await studio.PushSpans(
             Morning,
-            SplitTrace,
+            BreakdownTrace,
             Hooks(HookedSpan, null, At(Yesterday, "09:00:05"), At(Yesterday, "09:00:07")));
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
-        Assert.Equal(2_000, split["hooks"]);
-        Assert.Equal(3_000, split["quiet"]);
+        Assert.Equal(2_000, breakdown["hooks"]);
+        Assert.Equal(3_000, breakdown["quiet"]);
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public sealed partial class SessionEndpointsTests
 
         await studio.PushSpans(
             Morning,
-            SplitTrace,
+            BreakdownTrace,
             Hooks(HookedSpan, "agent-a", At(Yesterday, "09:00:05"), At(Yesterday, "09:00:07")));
 
         Assert.False(Totals(await studio.PartsIn(Morning)).ContainsKey("hooks"));
@@ -200,11 +200,11 @@ public sealed partial class SessionEndpointsTests
 
         await Worked(studio);
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
         // The Agent Tool call only starts the Subagent, so the Spell is its work and never the main agent's.
-        Assert.Equal(30_000, split["subagents"]);
-        Assert.False(split.ContainsKey("tools"));
+        Assert.Equal(30_000, breakdown["subagents"]);
+        Assert.False(breakdown.ContainsKey("tools"));
     }
 
     [Fact]
@@ -220,14 +220,14 @@ public sealed partial class SessionEndpointsTests
 
         await studio.PushSpans(
             Morning,
-            SplitTrace,
+            BreakdownTrace,
             Wraps(WrapSpan, "toolu_a", "agent-a"),
             Under(GrepSpan, WrapSpan, "toolu_grep", "agent-a"));
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
-        Assert.Equal(30_000, split["subagents"]);
-        Assert.False(split.ContainsKey("tools"));
+        Assert.Equal(30_000, breakdown["subagents"]);
+        Assert.False(breakdown.ContainsKey("tools"));
     }
 
     [Fact]
@@ -240,10 +240,10 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, source: "compact"),
             SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."));
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
-        Assert.Equal(5_000, split["side"]);
-        Assert.False(split.ContainsKey("model"));
+        Assert.Equal(5_000, breakdown["side"]);
+        Assert.False(breakdown.ContainsKey("model"));
     }
 
     [Fact]
@@ -257,10 +257,10 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Prompted(Morning, At(Yesterday, "09:01:00.000"), "Now ship it"),
             SessionEvent.Answered(Morning, At(Yesterday, "09:01:10.000"), "Shipped."));
 
-        var split = Totals(await studio.PartsIn(Morning));
+        var breakdown = Totals(await studio.PartsIn(Morning));
 
-        Assert.Equal(50_000, split["yourTurn"]);
-        Assert.Equal(20_000, split["quiet"]);
+        Assert.Equal(50_000, breakdown["yourTurn"]);
+        Assert.Equal(20_000, breakdown["quiet"]);
     }
 
     [Fact]
@@ -290,14 +290,14 @@ public sealed partial class SessionEndpointsTests
         await studio.Push(SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", lengthMs: 30_000));
 
         var answer = await studio.StepAnswer(Morning);
-        var split = Totals(answer.Parts);
+        var breakdown = Totals(answer.Parts);
 
         // No Span, so none of the three can be known, and each is left out rather than read as none.
         Assert.Equal("thin", answer.Depth);
-        Assert.False(split.ContainsKey("waiting"));
-        Assert.False(split.ContainsKey("hooks"));
-        Assert.False(split.ContainsKey("subagents"));
-        Assert.True(split.ContainsKey("tools"));
+        Assert.False(breakdown.ContainsKey("waiting"));
+        Assert.False(breakdown.ContainsKey("hooks"));
+        Assert.False(breakdown.ContainsKey("subagents"));
+        Assert.True(breakdown.ContainsKey("tools"));
     }
 
     private static Task Turned(StudioHost studio) =>
@@ -315,7 +315,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.AgentRan(Morning, At(Yesterday, "09:00:40.000"), "toolu_a", "Find it", "Explore", lengthMs: 30_000),
             SessionEvent.Answered(Morning, At(Yesterday, "09:00:41.000"), "Found."));
 
-        await studio.PushSpans(Morning, SplitTrace, Wraps(WrapSpan, "toolu_a", "agent-a"));
+        await studio.PushSpans(Morning, BreakdownTrace, Wraps(WrapSpan, "toolu_a", "agent-a"));
     }
 
     private static RecordedSpan Waits(string id, string toolUse, string at, string until) =>

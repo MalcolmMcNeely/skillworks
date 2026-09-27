@@ -72,7 +72,7 @@ describe('foldFilterChoicesLine', () => {
     expect(states.at(-1)).toEqual(['acme/xi']);
   });
 
-  it('lands a day whose line the network split across chunks', async () => {
+  it('lands a day whose line the network broke across chunks', async () => {
     const text = wire(head, day('2026-09-15', ['acme/xi']), end).join('');
     const cut = text.indexOf('acme/xi');
 

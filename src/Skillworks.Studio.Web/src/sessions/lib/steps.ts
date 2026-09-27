@@ -5,7 +5,7 @@ import type { Activation, ActivationsPage } from './panels/activations';
 import type { AgentsPage, Depth, Subagent } from './panels/agents';
 import type { ContextPage, ContextPoint } from './panels/context';
 import type { Exchange, ExchangesPage } from './panels/conversation';
-import type { SplitPage } from './panels/split';
+import type { TimeBreakdownPage } from './panels/timeBreakdown';
 import type { TracePage } from './panels/trace';
 import type { Session } from './sessions';
 
@@ -41,7 +41,7 @@ export type SessionLine =
   | ContextPage
   | AgentsPage
   | TracePage
-  | SplitPage
+  | TimeBreakdownPage
   | FindingsPage
   | StoresEnd;
 
@@ -60,8 +60,8 @@ export interface SessionAnswer {
   subagents: Subagent[];
   // Only the Spans say what ran inside what, so a Thin run nests nothing.
   inside: Record<string, string>;
-  // Null until the spans land, as an empty split and a split nobody has read yet mean different things.
-  split: SplitPage | null;
+  // Null until the spans land, as an empty Time breakdown and one nobody has read yet mean different things.
+  timeBreakdown: TimeBreakdownPage | null;
   // Null until the spans land, as a run that crossed no bar and one nobody has read yet mean different things.
   findings: FindingsPage | null;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
@@ -85,7 +85,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       agents: {},
       subagents: [],
       inside: {},
-      split: null,
+      timeBreakdown: null,
       findings: null,
       landed: false,
       arriving: true,
@@ -122,8 +122,8 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
     return { ...answer, inside: line.inside };
   }
 
-  if (line.kind === 'split') {
-    return { ...answer, split: line };
+  if (line.kind === 'timeBreakdown') {
+    return { ...answer, timeBreakdown: line };
   }
 
   if (line.kind === 'findings') {

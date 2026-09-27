@@ -2111,13 +2111,13 @@ a.home-panel-face:hover::before {
   white-space: nowrap;
 }
 
-.split-list {
+.breakdown-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.split-row {
+.breakdown-row {
   align-items: center;
   color: var(--ink-soft);
   display: grid;
@@ -2127,32 +2127,32 @@ a.home-panel-face:hover::before {
   padding: 0.15rem 0.4rem;
 }
 
-.split-word {
+.breakdown-word {
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.split-bar {
+.breakdown-bar {
   background: var(--panel);
   display: block;
   height: 0.55rem;
 }
 
-.split-fill {
+.breakdown-fill {
   background: var(--line);
   display: block;
   height: 100%;
   min-width: 1px;
 }
 
-.split-figure {
+.breakdown-figure {
   font-family: var(--mono);
   text-align: right;
 }
 
-.split-share {
+.breakdown-share {
   font-family: var(--mono);
 }
 

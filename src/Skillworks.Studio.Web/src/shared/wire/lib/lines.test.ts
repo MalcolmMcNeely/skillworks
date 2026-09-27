@@ -19,13 +19,13 @@ describe('readLines', () => {
     expect(await linesOf(body)).toEqual([{ kind: 'head' }, { kind: 'day' }, { kind: 'end' }]);
   });
 
-  it('puts a line split across chunks back together', async () => {
+  it('puts a line broken across chunks back together', async () => {
     const body = chunkedBody(['{"kind":"he', 'ad"}\n{"ki', 'nd":"end"}\n']);
 
     expect(await linesOf(body)).toEqual([{ kind: 'head' }, { kind: 'end' }]);
   });
 
-  it('puts a character split across chunks back together', async () => {
+  it('puts a character broken across chunks back together', async () => {
     const bytes = new TextEncoder().encode('{"name":"✦"}\n');
 
     const body = chunkedBody([bytes.slice(0, 10), bytes.slice(10)]);

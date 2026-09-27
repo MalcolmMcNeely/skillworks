@@ -1,30 +1,30 @@
 import type { Range } from '../view';
 
-export type SplitPart = 'waiting' | 'tools' | 'hooks' | 'model' | 'subagents' | 'side' | 'quiet' | 'yourTurn';
+export type Part = 'waiting' | 'tools' | 'hooks' | 'model' | 'subagents' | 'side' | 'quiet' | 'yourTurn';
 
 export interface PartSpell {
-  part: SplitPart;
+  part: Part;
   atUtc: string;
   lengthMs: number;
 }
 
-export interface SplitPage {
-  kind: 'split';
+export interface TimeBreakdownPage {
+  kind: 'timeBreakdown';
   // Three of the parts can only be measured from a Span, so this says whether they were measured at all.
   traced: boolean;
-  // Never overlapping, so a View is split by clipping each Spell to it and nothing else.
+  // Never overlapping, so a View is broken down by clipping each Spell to it and nothing else.
   parts: PartSpell[];
   // The whole of each part, overlaps and all, which is what the exclusive figure beside it leaves out.
   kinds: PartSpell[];
 }
 
-interface Part {
-  part: SplitPart;
+interface PartWords {
+  part: Part;
   word: string;
   note: string;
 }
 
-const parts: readonly Part[] = [
+const parts: readonly PartWords[] = [
   {
     part: 'waiting',
     word: 'Waiting for your OK',
@@ -48,9 +48,9 @@ const parts: readonly Part[] = [
 ];
 
 // A run with no Span cannot tell a person's delay, a hook run or a subagent's work from the rest of the time.
-const fromSpans = new Set<SplitPart>(['waiting', 'hooks', 'subagents']);
+const fromSpans = new Set<Part>(['waiting', 'hooks', 'subagents']);
 
-export interface Share extends Part {
+export interface Share extends PartWords {
   ms: number;
   // The whole of the part, which is the exclusive figure plus every moment another part took from it.
   overlapMs: number;
@@ -59,7 +59,7 @@ export interface Share extends Part {
 }
 
 // Always all eight, as a part that took none of a run is an answer and a row that comes and goes is not.
-export function sharesOf(page: SplitPage | null, view: Range | null): Share[] {
+export function sharesOf(page: TimeBreakdownPage | null, view: Range | null): Share[] {
   const exclusive = summed(page?.parts ?? [], view);
   const whole = summed(page?.kinds ?? [], view);
 
@@ -72,8 +72,8 @@ export function sharesOf(page: SplitPage | null, view: Range | null): Share[] {
 }
 
 // Clipped rather than filtered, as a Spell can run in and out of the View and only its middle counts.
-function summed(spells: readonly PartSpell[], view: Range | null): Map<SplitPart, number> {
-  const totals = new Map<SplitPart, number>();
+function summed(spells: readonly PartSpell[], view: Range | null): Map<Part, number> {
+  const totals = new Map<Part, number>();
 
   for (const spell of spells) {
     const startMs = Date.parse(spell.atUtc);
@@ -89,7 +89,7 @@ function summed(spells: readonly PartSpell[], view: Range | null): Map<SplitPart
   return totals;
 }
 
-export function splitLength(shares: readonly Share[]): number {
+export function breakdownLength(shares: readonly Share[]): number {
   return shares.reduce((total, share) => total + share.ms, 0);
 }
 
@@ -97,7 +97,7 @@ export function shareOf(share: Share, lengthMs: number): number {
   return lengthMs > 0 ? share.ms / lengthMs : 0;
 }
 
-// The split comes with the spans, so a run whose second part is still on its way has read nothing yet.
-export function noSplitWord(split: SplitPage | null): string {
-  return split === null ? 'Still reading the run.' : 'Nothing ran in view.';
+// The Time breakdown comes with the spans, so a run whose second part is still on its way has read nothing yet.
+export function noBreakdownWord(breakdown: TimeBreakdownPage | null): string {
+  return breakdown === null ? 'Still reading the run.' : 'Nothing ran in view.';
 }

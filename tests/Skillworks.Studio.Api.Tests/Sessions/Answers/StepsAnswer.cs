@@ -42,8 +42,8 @@ public sealed record StepsAnswer(
             tree is null
                 ? new Dictionary<string, string>()
                 : StudioHost.Read<Dictionary<string, string>>(tree["inside"]),
-            Held<PartSpellRow>(lines, "split", "parts"),
-            Held<PartSpellRow>(lines, "split", "kinds"),
+            Held<PartSpellRow>(lines, "timeBreakdown", "parts"),
+            Held<PartSpellRow>(lines, "timeBreakdown", "kinds"),
             Latest<FindingRow>(lines, "findings"),
             Store(lines, "events"),
             Store(lines, "traces"));

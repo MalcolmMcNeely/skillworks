@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Skillworks.Core.Shared.Stores;
 
 public static class Refusal
@@ -9,7 +11,7 @@ public static class Refusal
     public static async Task<string> OfAsync(Uri address, HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var said = await response.Content.ReadAsStringAsync(cancellationToken);
-        var reason = string.Join(' ', said.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+        var reason = Regex.Replace(said, @"\s+", " ").Trim().TrimEnd('.');
 
         if (reason.Length > LongestReason)
         {

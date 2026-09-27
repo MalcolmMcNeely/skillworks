@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Sessions;
@@ -20,7 +21,7 @@ public static class SessionName
         }
 
         // A row shows one line, and a prompt runs over many.
-        var line = string.Join(' ', said.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var line = Regex.Replace(said, @"\s+", " ").Trim();
 
         return line.Length switch
         {

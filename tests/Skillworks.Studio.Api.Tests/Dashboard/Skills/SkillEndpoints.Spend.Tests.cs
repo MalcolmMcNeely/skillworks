@@ -110,7 +110,7 @@ public sealed partial class SkillEndpointsTests
 
         var spend = (await studio.SkillLine("day", OnlyYesterday))["skills"]?[0]?["spend"];
 
-        // Telemetry sends no thinking tokens and no split of cache writes, so a field for either would stay empty for good.
+        // Telemetry sends no thinking tokens and no breakdown of cache writes, so a field for either would stay empty for good.
         Assert.Equal(
             ["cacheCreationTokens", "cacheReadTokens", "cost", "inputTokens", "outputTokens"],
             StudioHost.Fields(spend));

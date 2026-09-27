@@ -4,14 +4,14 @@ import type { Span } from '../../shared/filters/lib/filters';
 import { missingWords, type GapEnd } from '../../shared/gaps/lib/gaps';
 import type { Origin, TriggerCount } from '../../shared/provenance/lib/provenance';
 
-export interface TokenSplit {
+export interface TokenCounts {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
 }
 
-export interface TurnTotals extends TokenSplit {
+export interface TurnTotals extends TokenCounts {
   // US dollars, as Claude Code estimated them.
   cost: number;
 }

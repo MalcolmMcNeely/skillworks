@@ -1,34 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { noSplitWord, shareOf, sharesOf, splitLength, type PartSpell, type SplitPage, type SplitPart } from './split';
+import {
+  breakdownLength,
+  noBreakdownWord,
+  shareOf,
+  sharesOf,
+  type Part,
+  type PartSpell,
+  type TimeBreakdownPage,
+} from './timeBreakdown';
 
 const at = (seconds: number) => new Date(seconds * 1_000).toISOString();
 
-const spell = (part: SplitPart, fromSeconds: number, toSeconds: number): PartSpell => ({
+const spell = (part: Part, fromSeconds: number, toSeconds: number): PartSpell => ({
   part,
   atUtc: at(fromSeconds),
   lengthMs: (toSeconds - fromSeconds) * 1_000,
 });
 
-const page = (parts: PartSpell[], kinds: PartSpell[] = [], traced = true): SplitPage => ({
-  kind: 'split',
+const page = (parts: PartSpell[], kinds: PartSpell[] = [], traced = true): TimeBreakdownPage => ({
+  kind: 'timeBreakdown',
   traced,
   parts,
   kinds,
 });
 
-const msOf = (split: SplitPage, view: [number, number] | null = null) =>
+const msOf = (breakdown: TimeBreakdownPage, view: [number, number] | null = null) =>
   Object.fromEntries(
-    sharesOf(split, view)
+    sharesOf(breakdown, view)
       .filter((share) => share.ms > 0)
       .map((share) => [share.part, share.ms]),
   );
 
 describe('sharesOf', () => {
   it('sums every part of a run and names all eight', () => {
-    const split = page([spell('model', 0, 5), spell('quiet', 5, 7), spell('tools', 7, 12)]);
+    const breakdown = page([spell('model', 0, 5), spell('quiet', 5, 7), spell('tools', 7, 12)]);
 
-    expect(sharesOf(split, null)).toHaveLength(8);
-    expect(msOf(split)).toEqual({ model: 5_000, quiet: 2_000, tools: 5_000 });
+    expect(sharesOf(breakdown, null)).toHaveLength(8);
+    expect(msOf(breakdown)).toEqual({ model: 5_000, quiet: 2_000, tools: 5_000 });
   });
 
   // A row that comes and goes as a reader drags cannot be read across two Views of one run.
@@ -47,21 +55,21 @@ describe('sharesOf', () => {
     ]);
   });
 
-  it('splits only the View, clipping a spell that runs in and out of it', () => {
-    const split = page([spell('model', 0, 10), spell('tools', 10, 20)]);
+  it('breaks down only the View, clipping a spell that runs in and out of it', () => {
+    const breakdown = page([spell('model', 0, 10), spell('tools', 10, 20)]);
 
-    expect(msOf(split, [5_000, 15_000])).toEqual({ model: 5_000, tools: 5_000 });
+    expect(msOf(breakdown, [5_000, 15_000])).toEqual({ model: 5_000, tools: 5_000 });
   });
 
   it('leaves out a spell the View does not reach', () => {
-    const split = page([spell('model', 0, 10), spell('tools', 20, 30)]);
+    const breakdown = page([spell('model', 0, 10), spell('tools', 20, 30)]);
 
-    expect(msOf(split, [0, 10_000])).toEqual({ model: 10_000 });
+    expect(msOf(breakdown, [0, 10_000])).toEqual({ model: 10_000 });
   });
 
   it('reads the overlapping sum of a kind beside the exclusive part', () => {
-    const split = page([spell('subagents', 0, 10)], [spell('subagents', 0, 30)]);
-    const subagents = sharesOf(split, null).find((share) => share.part === 'subagents');
+    const breakdown = page([spell('subagents', 0, 10)], [spell('subagents', 0, 30)]);
+    const subagents = sharesOf(breakdown, null).find((share) => share.part === 'subagents');
 
     expect(subagents?.ms).toBe(10_000);
     expect(subagents?.overlapMs).toBe(30_000);
@@ -78,32 +86,32 @@ describe('sharesOf', () => {
     expect(sharesOf(page([spell('model', 0, 10)]), null).every((share) => share.known)).toBe(true);
   });
 
-  it('knows no part at all before the split has landed', () => {
+  it('knows no part at all before the Time breakdown has landed', () => {
     expect(sharesOf(null, null).every((share) => share.ms === 0 && !share.known)).toBe(true);
   });
 });
 
-describe('splitLength', () => {
-  it('adds the parts up to the length of the run they split', () => {
-    const split = page([spell('model', 0, 5), spell('quiet', 5, 7), spell('tools', 7, 12)]);
+describe('breakdownLength', () => {
+  it('adds the parts up to the length of the run they break down', () => {
+    const breakdown = page([spell('model', 0, 5), spell('quiet', 5, 7), spell('tools', 7, 12)]);
 
-    expect(splitLength(sharesOf(split, null))).toBe(12_000);
+    expect(breakdownLength(sharesOf(breakdown, null))).toBe(12_000);
   });
 
   it('adds up to the View alone', () => {
-    const split = page([spell('model', 0, 10), spell('tools', 10, 20)]);
+    const breakdown = page([spell('model', 0, 10), spell('tools', 10, 20)]);
 
-    expect(splitLength(sharesOf(split, [2_000, 18_000]))).toBe(16_000);
+    expect(breakdownLength(sharesOf(breakdown, [2_000, 18_000]))).toBe(16_000);
   });
 });
 
-describe('noSplitWord', () => {
+describe('noBreakdownWord', () => {
   it('says a run whose spans have not landed is still being read', () => {
-    expect(noSplitWord(null)).toBe('Still reading the run.');
+    expect(noBreakdownWord(null)).toBe('Still reading the run.');
   });
 
   it('says a View nothing ran in held nothing', () => {
-    expect(noSplitWord(page([]))).toBe('Nothing ran in view.');
+    expect(noBreakdownWord(page([]))).toBe('Nothing ran in view.');
   });
 });
 
@@ -112,12 +120,12 @@ describe('shareOf', () => {
     const shares = sharesOf(page([spell('model', 0, 5), spell('tools', 5, 20)]), null);
     const model = shares.find((share) => share.part === 'model')!;
 
-    expect(shareOf(model, splitLength(shares))).toBe(0.25);
+    expect(shareOf(model, breakdownLength(shares))).toBe(0.25);
   });
 
   it('takes no share where nothing ran', () => {
     const shares = sharesOf(page([]), null);
 
-    expect(shareOf(shares[0], splitLength(shares))).toBe(0);
+    expect(shareOf(shares[0], breakdownLength(shares))).toBe(0);
   });
 });

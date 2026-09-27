@@ -42,7 +42,7 @@ public static class EventAttributes
     internal static string? RepositoryOf(string? owner, string? name) =>
         owner is { Length: > 0 } && name is { Length: > 0 } ? $"{owner}/{name}" : null;
 
-    // Split at the last slash, as an owner can be a group path and a repository name holds no slash.
+    // Cut at the last slash, as an owner can be a group path and a repository name holds no slash.
     internal static (string Owner, string Name) OwnerAndName(string repository)
     {
         var cut = repository.LastIndexOf('/');

@@ -452,8 +452,8 @@ public sealed partial class SessionEndpointsTests
 
     private static SessionEvent Ran(string session, string at, string title, string repository)
     {
-        var placed = repository.Split('/');
+        var cut = repository.IndexOf('/');
 
-        return SessionEvent.Titled(session, at, title) with { Owner = placed[0], RepositoryName = placed[1] };
+        return SessionEvent.Titled(session, at, title) with { Owner = repository[..cut], RepositoryName = repository[(cut + 1)..] };
     }
 }

@@ -41,6 +41,7 @@ banned-words:
     - Brush
     - Main thread
     - Timeout
+    - Split
   architecture:
     - Feature
   loop: []

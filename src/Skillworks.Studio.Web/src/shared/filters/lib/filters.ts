@@ -49,7 +49,8 @@ export function filterQuery(filter: Filter): string {
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function describeDay(day: string): string {
-  const [, month, date] = day.split('-');
+  const month = day.slice(5, 7);
+  const date = day.slice(8, 10);
 
   return `${date} ${months[Number(month) - 1] ?? month}`;
 }

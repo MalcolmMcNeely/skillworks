@@ -17,13 +17,14 @@ export async function* readLines<T>(body: ReadableStream<Uint8Array>, signal: Ab
       const { done, value } = await reader.read();
       signal.throwIfAborted();
 
-      // Decoded in parts, so a character whose bytes a chunk splits comes out whole.
+      // Decoded in parts, so a character whose bytes two chunks share comes out whole.
       unfinished += done ? decoder.decode() : decoder.decode(value, { stream: true });
 
-      const lines = unfinished.split('\n');
-      unfinished = done ? '' : (lines.pop() ?? '');
+      const cut = done ? unfinished.length : unfinished.lastIndexOf('\n') + 1;
+      const whole = unfinished.slice(0, cut);
+      unfinished = unfinished.slice(cut);
 
-      for (const line of lines) {
+      for (const [line] of whole.matchAll(/[^\n]+/g)) {
         if (line.trim() !== '') {
           yield JSON.parse(line) as T;
         }

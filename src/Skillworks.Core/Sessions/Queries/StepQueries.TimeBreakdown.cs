@@ -1,5 +1,5 @@
 using Skillworks.Core.Sessions.Agents;
-using Skillworks.Core.Sessions.Split;
+using Skillworks.Core.Sessions.TimeBreakdown;
 using Skillworks.Core.Sessions.Steps;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
@@ -10,16 +10,16 @@ public sealed partial class StepQueries
     // An older Claude Code names no source on a Turn, and a Turn that names none is the main agent's.
     private const string MainAgent = "main";
 
-    public static SplitPage Split(OpenedRun opened, OpenedSpans traced, IReadOnlyList<Subagent> ran)
+    public static TimeBreakdownPage TimeBreakdown(OpenedRun opened, OpenedSpans traced, IReadOnlyList<Subagent> ran)
     {
         if (opened.Run is null)
         {
-            return new SplitPage(traced.Traced, [], []);
+            return new TimeBreakdownPage(traced.Traced, [], []);
         }
 
         var worked = Worked(opened, traced, ran);
 
-        return new SplitPage(traced.Traced, Apart([.. worked, .. Idle(opened, worked)]), worked);
+        return new TimeBreakdownPage(traced.Traced, Apart([.. worked, .. Idle(opened, worked)]), worked);
     }
 
     private static IReadOnlyList<PartSpell> Worked(
@@ -42,7 +42,7 @@ public sealed partial class StepQueries
             switch (step.Kind)
             {
                 case StepKind.Turn when ownWork:
-                    worked.Add(new PartSpell(Aside(line) ? SplitPart.Side : SplitPart.Model, step.AtUtc, step.LengthMs));
+                    worked.Add(new PartSpell(Aside(line) ? Part.Side : Part.Model, step.AtUtc, step.LengthMs));
 
                     break;
 
@@ -53,15 +53,15 @@ public sealed partial class StepQueries
 
                 // Claude Code puts no length on a refusal, so this counts only where one was recorded.
                 case StepKind.Refused:
-                    worked.Add(new PartSpell(SplitPart.Waiting, step.AtUtc, step.LengthMs));
+                    worked.Add(new PartSpell(Part.Waiting, step.AtUtc, step.LengthMs));
 
                     break;
             }
         }
 
-        worked.AddRange(traced.Waited.Values.Select(wait => Spelled(SplitPart.Waiting, wait)));
-        worked.AddRange(traced.Hooked.Select(hook => Spelled(SplitPart.Hooks, hook)));
-        worked.AddRange(ran.Select(agent => new PartSpell(SplitPart.Subagents, agent.AtUtc, agent.LengthMs)));
+        worked.AddRange(traced.Waited.Values.Select(wait => Spelled(Part.Waiting, wait)));
+        worked.AddRange(traced.Hooked.Select(hook => Spelled(Part.Hooks, hook)));
+        worked.AddRange(ran.Select(agent => new PartSpell(Part.Subagents, agent.AtUtc, agent.LengthMs)));
 
         return worked;
     }
@@ -73,16 +73,16 @@ public sealed partial class StepQueries
 
         if (waited is null)
         {
-            return new PartSpell(SplitPart.Tools, step.AtUtc, step.LengthMs);
+            return new PartSpell(Part.Tools, step.AtUtc, step.LengthMs);
         }
 
         var allowed = Ends(waited.AtUtc, waited.LengthMs);
         var ran = allowed < step.AtUtc ? step.AtUtc : allowed > ended ? ended : allowed;
 
-        return new PartSpell(SplitPart.Tools, ran, (long)(ended - ran).TotalMilliseconds);
+        return new PartSpell(Part.Tools, ran, (long)(ended - ran).TotalMilliseconds);
     }
 
-    private static PartSpell Spelled(SplitPart part, Spell spell) => new(part, spell.AtUtc, spell.LengthMs);
+    private static PartSpell Spelled(Part part, Spell spell) => new(part, spell.AtUtc, spell.LengthMs);
 
     private static bool Aside(EventLine line) =>
         line.Attribute(EventAttributes.QuerySource) is { Length: > 0 } source && source != MainAgent;
@@ -90,7 +90,7 @@ public sealed partial class StepQueries
     private static IReadOnlyList<PartSpell> Idle(OpenedRun opened, IReadOnlyList<PartSpell> worked)
     {
         var run = opened.Run!;
-        var quiet = opened.Said.Select(said => new PartSpell(SplitPart.Quiet, said.AtUtc, said.LengthMs)).ToList();
+        var quiet = opened.Said.Select(said => new PartSpell(Part.Quiet, said.AtUtc, said.LengthMs)).ToList();
 
         // A Turn's start is worked back from its length, so a Step can begin before the run's first event.
         var from = worked.Concat(quiet).Select(spell => spell.AtUtc).Append(run.StartedUtc).Min();
@@ -98,7 +98,7 @@ public sealed partial class StepQueries
             .Append(Ends(run.StartedUtc, run.LengthMs))
             .Max();
 
-        return [.. quiet, new PartSpell(SplitPart.YourTurn, from, (long)(to - from).TotalMilliseconds)];
+        return [.. quiet, new PartSpell(Part.YourTurn, from, (long)(to - from).TotalMilliseconds)];
     }
 
     private static IReadOnlyList<PartSpell> Apart(IReadOnlyList<PartSpell> spells)
@@ -136,7 +136,7 @@ public sealed partial class StepQueries
     }
 
     // Slices of one part that touch are one spell, or a run would come back with a spell for every edge in it.
-    private static void Took(List<PartSpell> apart, SplitPart part, DateTimeOffset from, DateTimeOffset to)
+    private static void Took(List<PartSpell> apart, Part part, DateTimeOffset from, DateTimeOffset to)
     {
         if (apart.Count > 0 &&
             apart[^1].Part == part &&

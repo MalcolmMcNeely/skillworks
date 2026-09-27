@@ -13,7 +13,7 @@ import { Findings } from '../components/Findings';
 import { ActivationPanel } from '../components/panels/ActivationPanel';
 import { ContextPanel } from '../components/panels/ContextPanel';
 import { ConversationPanel } from '../components/panels/ConversationPanel';
-import { SplitPanel } from '../components/panels/SplitPanel';
+import { TimeBreakdownPanel } from '../components/panels/TimeBreakdownPanel';
 import { StepPanel } from '../components/panels/StepPanel';
 import { SubagentPanel } from '../components/panels/SubagentPanel';
 import { TracePanel } from '../components/panels/TracePanel';
@@ -52,7 +52,9 @@ export function Session() {
   useEffect(() => {
     const abort = new AbortController();
     // Read back out of the text, so the effect depends only on what it is keyed on.
-    const [from, to] = span.split('..');
+    const cut = span.indexOf('..');
+    const from = span.slice(0, cut);
+    const to = span.slice(cut + 2);
     const forThis = `${id}?${span}`;
 
     const read = async () => {
@@ -252,7 +254,7 @@ function Body({
         onOpen={onAgent}
         onClose={onCloseAgent}
       />
-      <SplitPanel split={answer.split} view={view} />
+      <TimeBreakdownPanel breakdown={answer.timeBreakdown} view={view} />
       <ContextPanel
         levels={levels}
         limitTokens={answer.limitTokens}

@@ -49,12 +49,12 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
             traced.Agents,
             ran);
 
-        var split = StepQueries.Split(opened, traced, ran);
+        var breakdown = StepQueries.TimeBreakdown(opened, traced, ran);
 
-        yield return split;
+        yield return breakdown;
 
         // Again, now the three bars only a Span can measure have something to measure against.
-        yield return StepQueries.Found(opened, split, ran);
+        yield return StepQueries.Found(opened, breakdown, ran);
 
         yield return new StoresEnd(
             gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst(), opened.PromptsWithheld),

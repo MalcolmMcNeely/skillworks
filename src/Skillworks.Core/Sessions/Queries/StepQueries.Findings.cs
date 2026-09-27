@@ -1,8 +1,8 @@
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
 using Skillworks.Core.Sessions.Findings;
-using Skillworks.Core.Sessions.Split;
 using Skillworks.Core.Sessions.Steps;
+using Skillworks.Core.Sessions.TimeBreakdown;
 using Skillworks.Core.Shared.Stores.EventsStore;
 
 namespace Skillworks.Core.Sessions.Queries;
@@ -14,16 +14,15 @@ public sealed partial class StepQueries
     // Only these write a file, so a run that reads one file twenty times crosses nothing.
     private static readonly string[] WritingTools = ["Edit", "Write", "NotebookEdit"];
 
-    // Answered once off the events and again once the split has landed, so a slow Trace store never
-    // leaves the list empty. Until the split is there, the three bars only a Span can measure read Not known.
-    public static FindingsPage Found(OpenedRun opened, SplitPage? split = null, IReadOnlyList<Subagent>? ran = null)
+    // Answered off the events, then again once the Time breakdown lands, so a slow Trace store never leaves the list empty.
+    public static FindingsPage Found(OpenedRun opened, TimeBreakdownPage? breakdown = null, IReadOnlyList<Subagent>? ran = null)
     {
         if (opened.Run is not { } run)
         {
             return new FindingsPage([]);
         }
 
-        var traces = split?.Traced == true;
+        var traces = breakdown?.Traced == true;
 
         return new FindingsPage(
         [
@@ -34,8 +33,8 @@ public sealed partial class StepQueries
                 RateLimited(opened.Drawn),
                 CacheRebuilt(opened.Sent),
                 NearTheLimit(opened.Sent, opened.LimitTokens),
-                Hooked(split, traces, run),
-                Waiting(split, traces, run),
+                Hooked(breakdown, traces, run),
+                Waiting(breakdown, traces, run),
                 Costly(ran ?? [], traces, run, opened.Called.Count),
             }.OfType<Finding>()
         ]);
@@ -121,32 +120,32 @@ public sealed partial class StepQueries
         return Crossed(FindingKind.NearTheLimit, (decimal)fullest.Tokens / limit, Bars.NearTheLimit, null, fullest);
     }
 
-    private static Finding? Hooked(SplitPage? split, bool traces, Session run)
+    private static Finding? Hooked(TimeBreakdownPage? breakdown, bool traces, Session run)
     {
-        if (split is null || !traces)
+        if (breakdown is null || !traces)
         {
             return NotKnown(FindingKind.Hooks, Bars.Hooks, run);
         }
 
-        var busy = Busy(split);
+        var busy = Busy(breakdown);
 
-        return busy <= 0 || Longest(split, SplitPart.Hooks) is not { } longest
+        return busy <= 0 || Longest(breakdown, Part.Hooks) is not { } longest
             ? null
-            : Crossed(FindingKind.Hooks, Spent(split, SplitPart.Hooks) / (decimal)busy, Bars.Hooks, null, longest);
+            : Crossed(FindingKind.Hooks, Spent(breakdown, Part.Hooks) / (decimal)busy, Bars.Hooks, null, longest);
     }
 
     // Only a Span records the asking, so a run without them cannot tell a person's delay from the tool's own work.
-    private static Finding? Waiting(SplitPage? split, bool traces, Session run)
+    private static Finding? Waiting(TimeBreakdownPage? breakdown, bool traces, Session run)
     {
-        if (split is null || !traces)
+        if (breakdown is null || !traces)
         {
             return NotKnown(FindingKind.Waiting, Bars.WaitingMs, run);
         }
 
         // The whole of the waiting is the figure, and the worst single wait is where a reader starts looking.
-        return Longest(split, SplitPart.Waiting) is not { } longest
+        return Longest(breakdown, Part.Waiting) is not { } longest
             ? null
-            : Crossed(FindingKind.Waiting, Spent(split, SplitPart.Waiting), Bars.WaitingMs, null, longest);
+            : Crossed(FindingKind.Waiting, Spent(breakdown, Part.Waiting), Bars.WaitingMs, null, longest);
     }
 
     private static Finding? Costly(IReadOnlyList<Subagent> ran, bool traces, Session run, int agentCalls)
@@ -183,17 +182,17 @@ public sealed partial class StepQueries
             : (sorted[sorted.Count / 2 - 1] + sorted[sorted.Count / 2]) / 2;
 
     // Only the Parts something was running in, or an afternoon of waiting makes any hook look small.
-    private static long Busy(SplitPage split) =>
-        split.Parts
-            .Where(spell => spell.Part is not (SplitPart.YourTurn or SplitPart.Quiet or SplitPart.Waiting))
+    private static long Busy(TimeBreakdownPage breakdown) =>
+        breakdown.Parts
+            .Where(spell => spell.Part is not (Part.YourTurn or Part.Quiet or Part.Waiting))
             .Sum(spell => spell.LengthMs);
 
-    private static long Spent(SplitPage split, SplitPart part) =>
-        split.Parts.Where(spell => spell.Part == part).Sum(spell => spell.LengthMs);
+    private static long Spent(TimeBreakdownPage breakdown, Part part) =>
+        breakdown.Parts.Where(spell => spell.Part == part).Sum(spell => spell.LengthMs);
 
     // A Finding made of many moments still points at one a reader can look at.
-    private static Spell? Longest(SplitPage split, SplitPart part) =>
-        split.Parts.Where(spell => spell.Part == part).MaxBy(spell => spell.LengthMs) is { } spell
+    private static Spell? Longest(TimeBreakdownPage breakdown, Part part) =>
+        breakdown.Parts.Where(spell => spell.Part == part).MaxBy(spell => spell.LengthMs) is { } spell
             ? new Spell(spell.AtUtc, spell.LengthMs)
             : null;
 

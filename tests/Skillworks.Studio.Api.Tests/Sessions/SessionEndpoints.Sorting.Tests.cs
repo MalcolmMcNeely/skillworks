@@ -185,10 +185,10 @@ public sealed partial class SessionEndpointsTests
         int faults)
     {
         var started = DateTimeOffset.Parse(startedAt, CultureInfo.InvariantCulture);
-        var placed = repository.Split('/');
+        var cut = repository.IndexOf('/');
 
         SessionEvent Placed(SessionEvent recorded) =>
-            recorded with { Owner = placed[0], RepositoryName = placed[1], Person = person };
+            recorded with { Owner = repository[..cut], RepositoryName = repository[(cut + 1)..], Person = person };
 
         string Minute(int minute) => Stamped(started.AddMinutes(minute));
 

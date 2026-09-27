@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
@@ -201,7 +202,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
             return null;
         }
 
-        var phrase = string.Join(' ', said.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var phrase = Regex.Replace(said, @"\s+", " ").Trim();
 
         return phrase.Length > Opening ? phrase[..Opening] + '…' : phrase;
     }

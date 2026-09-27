@@ -458,7 +458,7 @@ describe('foldSkillsLine', () => {
     expect(atHead?.skills[0]?.spark).toEqual(Array.from({ length: 24 }, () => 0));
   });
 
-  it('lands a day whose line the network split across chunks', async () => {
+  it('lands a day whose line the network broke across chunks', async () => {
     const text = wire(head(), day('2026-09-15', [fired('grilling', 2, spent(1))]), end(complete)).join('');
     const cut = text.indexOf('grilling');
 
