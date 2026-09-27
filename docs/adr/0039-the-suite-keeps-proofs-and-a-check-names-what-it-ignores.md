@@ -18,8 +18,8 @@ as it is, so it no longer reads a diff or a base commit.
   `main` trusts no Proof and uses no image. A check that goes red there loses its Proofs, and the
   loop stops and reports.
 - A check may name an `image`, a Dockerfile in the repo's Steering. The Suite builds it and runs the
-  check inside it, on a copy of every file git does not ignore, so the check sees every file its
-  Proof reads.
+  check inside it, on a copy of exactly the files its Proof reads, so what was proved and what was
+  tested are the same set.
 
 ## Considered options
 

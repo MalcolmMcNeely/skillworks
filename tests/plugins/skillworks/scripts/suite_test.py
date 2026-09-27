@@ -8,6 +8,8 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 import suite
 from conftest import ROOT, Ran, check, git, write_suite
 from suite import SUITE_FILE, Suite
@@ -301,8 +303,14 @@ SCRIPT_TESTS = "tests/plugins/skillworks/scripts"
 
 SCRIPT_TESTS_IMAGE = "docs/agents/script-tests.Dockerfile"
 
+# Tests marked this_repo read the paths the image check ignores, which its copy leaves out.
+THIS_REPO = "this_repo"
+
 SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist",
-                        "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS]
+                        "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS, "-m", "not " + THIS_REPO]
+
+THIS_REPO_S_SUITE_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "pytest",
+                                   SCRIPT_TESTS + "/suite_test.py", "-m", THIS_REPO]
 
 ARCHITECTURE_TESTS = "tests/Skillworks.Architecture.Tests"
 
@@ -328,6 +336,7 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
         ("npm run lint", web),
         ("npm run typecheck", web),
         ("npm test", web),
+        (" ".join(THIS_REPO_S_SUITE_TESTS_COMMAND), ROOT.as_posix()),
     ]
     assert ["docker", "create", "--workdir", "/repo", "an-id", *SCRIPT_TESTS_COMMAND] in runner.calls
 
@@ -1034,6 +1043,17 @@ def test_a_check_with_an_image_copies_exactly_the_files_git_does_not_ignore(repo
                                     "untracked.txt", "web/page.ts"])
 
 
+def test_a_check_with_an_image_copies_none_of_the_paths_it_ignores(repo, runner):
+    given_a_dockerfile(repo.work)
+    write_suite(repo.work, check("prove", image=DOCKERFILE, ignores=["web"]))
+    committing(repo, "web/page.ts")
+    docker = FakeDocker(runner)
+
+    Suite(runner, repo.work).run()
+
+    assert docker.copied == sorted(["base.txt", DOCKERFILE, SUITE_FILE])
+
+
 def test_a_check_with_an_image_copies_uncommitted_work_as_it_is(repo, runner):
     given_a_suite_in_an_image(repo.work, "prove")
     writing(repo, "base.txt", "uncommitted")
@@ -1261,7 +1281,8 @@ def this_repo_s_facts():
 
 
 def pytest_checks():
-    return [entry for entry in this_repo_s_checks() if "pytest" in entry["command"]]
+    return [entry for entry in this_repo_s_checks()
+            if "pytest" in entry["command"] and entry["command"] != THIS_REPO_S_SUITE_TESTS_COMMAND]
 
 
 # On Windows every git and bash process the script tests start is slow to start, and in Linux it is not.
@@ -1345,6 +1366,7 @@ def test_this_repo_s_docker_tests_ignore_only_what_they_cannot_read():
     assert sorted(ignored_by([dotnet_checks()[DOCKER_TESTS]])) == sorted(DOCKER_TESTS_IGNORE)
 
 
+@pytest.mark.this_repo
 def test_what_the_docker_tests_ignore_leaves_the_files_they_read():
     for read in ("plugins/skillworks/scripts/session-watch.mjs", "src/Skillworks.AppHost/LokiImage.cs",
                  "src/Skillworks.AppHost/TempoImage.cs", "Skillworks.slnx", DOCKER_TESTS):
@@ -1359,10 +1381,19 @@ def test_only_the_docker_and_script_checks_ignore_anything():
         [["dotnet", "test", DOCKER_TESTS], SCRIPT_TESTS_COMMAND], key=" ".join)
 
 
+@pytest.mark.this_repo
 def test_every_path_this_repo_s_suite_ignores_is_there():
     for path in [*SCRIPT_TESTS_IGNORE, *DOCKER_TESTS_IGNORE]:
         if "*" not in path:
             assert (ROOT / path).exists(), path
+
+
+def test_the_this_repo_tests_run_on_the_host_in_a_check_that_ignores_nothing():
+    checks = [entry for entry in this_repo_s_checks() if entry["command"] == THIS_REPO_S_SUITE_TESTS_COMMAND]
+
+    assert len(checks) == 1
+    assert "image" not in checks[0]
+    assert "ignores" not in checks[0]
 
 
 def dotnet_checks():
@@ -1411,7 +1442,7 @@ def checks_section(doc):
 
 
 def test_the_readme_lists_every_check_of_this_repo_s_suite():
-    assert len(this_repo_s_checks()) == 7
+    assert len(this_repo_s_checks()) == 8
     checks = checks_section("README.md").split("```")[1].replace('"', "")
 
     for entry in this_repo_s_checks():

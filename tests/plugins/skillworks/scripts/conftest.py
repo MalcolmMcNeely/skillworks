@@ -275,6 +275,10 @@ def runner():
 REAL_BINARIES = "real_binaries"
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "this_repo: reads the paths the image check of the script tests ignores")
+
+
 def pytest_addoption(parser):
     parser.addoption("--real-binaries", action="store_true",
                      help="run only the tests that start the real gh and the real claude")

@@ -94,8 +94,9 @@ Dockerfile, so the check runs on an OS that is fast for it. Keep the Dockerfile 
 with the rest of your Steering.
 
 1. The loop builds the image. Docker keeps what it built before, so a second build is fast.
-2. It copies every file git does not ignore into a new container. Uncommitted and untracked files
-   go in too. A file git ignores does not.
+2. It copies the check's inputs into a new container: every file git does not ignore, less the
+   check's `ignores`. Uncommitted and untracked files go in too. A file git ignores, or the check
+   ignores, does not.
 3. It runs the `command` in the container, from the check's `folder`. The container's output and
    exit status are the check's.
 4. It removes the container, red or green.

@@ -230,11 +230,14 @@ class Suite:
         return Proofs(Path(common) / PROOFS if asked.status == 0 and common else None)
 
     # Read from the worktree as it is, so uncommitted work is proved as well as committed work.
-    def key_of(self, check, digests):
+    def listed_inputs(self, check):
         tree = self.tree.as_posix()
-        listed = self.runner.run(
+        return self.runner.run(
             ["git", "-C", tree, "ls-files", "--cached", "--others", "--exclude-standard", "-z",
              "--", ":(top)", *(":(top,exclude)" + path for path in check.ignores)], tree)
+
+    def key_of(self, check, digests):
+        listed = self.listed_inputs(check)
         if listed.status != 0:
             return None
         key = hashlib.sha256(check.keyed.encode("utf-8"))
@@ -348,8 +351,8 @@ class Suite:
                                  dockerfile.parent.as_posix()], tree)
         if built.status != 0:
             return built
-        listed = self.runner.run(["git", "-C", tree, "ls-files", "--cached", "--others",
-                                  "--exclude-standard", "-z"], tree)
+        # The copy is the Proof's inputs and no more, so what was proved is what was tested.
+        listed = self.listed_inputs(check)
         if listed.status != 0:
             return listed
 

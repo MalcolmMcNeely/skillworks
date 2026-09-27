@@ -46,7 +46,7 @@
     },
     {
       "command": ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "--with", "filelock",
-                  "pytest", "-n", "auto", "tests/plugins/skillworks/scripts"],
+                  "pytest", "-n", "auto", "tests/plugins/skillworks/scripts", "-m", "not this_repo"],
       "folder": ".",
       "image": "docs/agents/script-tests.Dockerfile",
       "ignores": [
@@ -62,6 +62,11 @@
         "tests/plugins/skillworks/scripts/*.mjs",
         "plugins/skillworks/scripts/*.mjs"
       ]
+    },
+    {
+      "command": ["uv", "run", "--with", "pytest", "pytest",
+                  "tests/plugins/skillworks/scripts/suite_test.py", "-m", "this_repo"],
+      "folder": "."
     },
     {
       "command": ["node", "--test", "tests/plugins/skillworks/scripts/**/*.test.mjs"],
