@@ -278,8 +278,10 @@ The part of a skill's output that can be asserted without a model judging it.
 
 **Session**:
 One run of Claude Code, in one Repository, by one person. No event says a Session ended, so a
-Session is **Running** while its last event is recent and never again after that. Its name is the
-title Claude Code wrote for it, and the first Prompt where it wrote none.
+Session is **Running** while its last event is recent and never again after that. A Running Session
+shows every figure as it stands now, and each can still grow. Nothing reads not known because a
+Session has not ended. Its name is the title Claude Code wrote for it, and the first Prompt where it
+wrote none.
 _Avoid_: Conversation, thread, transcript
 
 **Parent**:
