@@ -317,7 +317,7 @@ def test_a_plan_names_every_step_with_its_checks_and_lands_nothing(repo, runner)
     ran = run_land(runner, "--plan")
 
     assert ran.status == 0
-    for step in ("verify", "fetch", "rebase", "resolve", "suite", "push"):
+    for step in ("verify", "fetch", "rebase", "resolve", "suite", "push", "tell"):
         assert step in ran.out
     # The driver reads a name, what runs and the checks, so a line short of one says nothing.
     for line in ran.out.splitlines():
@@ -332,6 +332,7 @@ def test_a_plan_names_every_step_with_its_checks_and_lands_nothing(repo, runner)
 
 def test_a_moved_base_is_rebased_and_the_suite_runs_again(repo, runner):
     given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)
@@ -350,6 +351,85 @@ def test_a_moved_base_is_rebased_and_the_suite_runs_again(repo, runner):
     assert git(repo.origin, "show", "main:work.txt").strip() == "work"
 
 
+def comments_on(runner, ticket):
+    return [call for call in runner.started("gh")
+            if call[1:4] == ["issue", "comment", str(ticket)]]
+
+
+def comment_body(call):
+    return call[call.index("--body") + 1]
+
+
+def short(repo, commit):
+    return git(repo.work, "rev-parse", "--short", commit).strip()
+
+
+def test_a_ticket_rebased_at_land_is_told_the_commit_that_reached_main(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    given_a_project(repo)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    before = short(repo, "HEAD")
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 0, report(ran)
+    landed = short(repo, target_of(repo))
+    assert landed != before
+    [comment] = comments_on(runner, 165)
+    assert "{} replaces {}".format(landed, before) in comment_body(comment)
+
+
+def test_a_ticket_that_lands_with_no_rebase_gets_no_extra_comment(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    given_a_project(repo)
+    commit_for_ticket(repo, 163)
+    closed_on = short(repo, "HEAD")
+
+    ran = run_land(runner, repo.work, 163)
+
+    assert ran.status == 0, report(ran)
+    assert comments_on(runner, 163) == []
+    # The finishing step named HEAD when it closed the ticket, and HEAD is what reached main.
+    assert short(repo, target_of(repo)) == closed_on
+
+
+def test_a_ticket_of_several_commits_rebased_at_land_names_each_new_one(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    given_a_project(repo)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    repo.write_commit(repo.work, "more.txt", "more", "Do more\n\nTicket: #165")
+    first, second = short(repo, "HEAD~1"), short(repo, "HEAD")
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 0, report(ran)
+    [comment] = comments_on(runner, 165)
+    body = comment_body(comment)
+    assert "{} replaces {}".format(short(repo, target_of(repo) + "~1"), first) in body
+    assert "{} replaces {}".format(short(repo, target_of(repo)), second) in body
+
+
+def test_a_tracker_that_will_not_take_the_comment_does_not_undo_the_landing(repo, runner):
+    given_the_suite_passes(runner)
+    runner.stub("gh", status=1)
+    given_a_project(repo)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    before = short(repo, "HEAD")
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 0, report(ran)
+    landed = short(repo, target_of(repo))
+    assert "note  #165 landed, and the tracker would not take the comment" in ran.out
+    assert "{} replaces {}".format(landed, before) in ran.out
+
+
 # The other side changed only a file both checks ignore, so the rebased tree is one they passed on.
 def test_a_landing_whose_checks_are_all_proved_runs_nothing(repo, runner):
     write_suite(repo.work, check("dotnet", "test", "Skillworks.slnx", ignores=["later.txt"]),
@@ -363,6 +443,7 @@ def test_a_landing_whose_checks_are_all_proved_runs_nothing(repo, runner):
     assert Suite(earlier, repo.work).run().passed
     repo.advance_origin("later")
     given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
 
     ran = run_land(runner, repo.work, 165)
 
@@ -374,6 +455,7 @@ def test_a_landing_whose_checks_are_all_proved_runs_nothing(repo, runner):
 
 def test_a_landed_commit_keeps_its_session_trailers_after_the_rebase(repo, runner):
     given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
     given_a_project(repo)
     repo.advance_origin("later")
     repo.write_commit(
@@ -423,6 +505,7 @@ def test_with_no_setting_a_suite_red_once_on_the_new_base_is_not_pushed(repo, ru
 def test_a_suite_red_then_green_on_the_new_base_lands_when_a_second_run_is_asked_for(
         repo, runner):
     given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
     runner.refuse("dotnet test", "a test failed", times=1)
     given_a_project(repo, runs=2)
     repo.advance_origin("later")
@@ -663,6 +746,7 @@ def test_a_ticket_already_on_master_is_refused_by_its_name(master, runner):
 
 def test_a_moved_master_is_rebased_onto_and_the_ticket_lands_on_top_of_it(master, runner):
     given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
     given_a_project(master)
     master.advance_origin("later")
     commit_for_ticket(master, 165)
@@ -788,6 +872,7 @@ def test_a_checkout_with_no_loop_file_is_refused_and_told_how_to_write_one(repo,
 def test_a_landing_that_has_not_lost_runs_its_suite_and_then_waits_at_the_push(
         repo, runner, other_loops):
     given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
     given_a_project(repo)
     repo.advance_origin("later")
     commit_for_ticket(repo, 165)

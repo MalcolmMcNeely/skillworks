@@ -444,6 +444,8 @@ def test_the_dry_run_prints_every_landing_step_with_its_checks(loop):
         "checks: suite-can-run suite-green",
         "git push origin HEAD:<target>, again after each lost race",
         "checks: pushed\n",
+        "gh issue comment naming the commits that reached <target>, when the rebase replaced them",
+        "checks: commented\n",
     ):
         assert line in said(ran)
 

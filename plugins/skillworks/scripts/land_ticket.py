@@ -70,6 +70,9 @@ PLAN = (
     ("push",
      "git push origin HEAD:<target>, again after each lost race",
      "pushed"),
+    ("tell",
+     "gh issue comment naming the commits that reached <target>, when the rebase replaced them",
+     "commented"),
 )
 
 # A refusal is what the session declares, whatever it went on to leave in the index.
@@ -460,8 +463,27 @@ class Landing:
         finally:
             turn.let_go()
 
+    # The finishing step closed the ticket naming the commits it made, which a rebase replaces.
+    def name_the_rebased(self, built):
+        landed = listed(self.git("log", "--reverse", "--format=%h",
+                                 "-{}".format(len(built)), "HEAD").out)
+        pairs = "".join("\n- {} replaces {}".format(new, old) for old, new in zip(built, landed))
+        body = ("#{t} was rebased onto the newest {b} before it landed, so the commits named when "
+                "it was closed are on no branch. The commits that reached {b}:\n{p}").format(
+                    t=self.ticket, b=self.target, p=pairs)
+        ran = self.runner.run(["gh", "issue", "comment", self.ticket, "--body", body],
+                              self.worktree, {"GH_PROMPT_DISABLED": "1"})
+        if ran.status != 0:
+            # The push is done and cannot be taken back, so a lost comment is reported, not fatal.
+            self.out.write("note  #{} landed, and the tracker would not take the comment that "
+                           "names its new commits:{}\n".format(self.ticket, pairs))
+            return
+        self.say("#{} was told the commits that reached {}".format(self.ticket, self.target))
+
     def land_on(self, turn):
         commit = self.git("rev-parse", "--short", "HEAD").out.strip()
+        built = self.ticket_commits()
+        rebased = False
 
         tries = 1
         kept = False
@@ -481,6 +503,7 @@ class Landing:
             base = self.git("merge-base", "HEAD", self.upstream).out.strip()
             if base != self.git("rev-parse", self.upstream).out.strip():
                 commit = self.rebase_onto_target(base)
+                rebased = True
 
             if not kept:
                 self.take(turn)
@@ -489,6 +512,8 @@ class Landing:
                 self.say("#{} landed on {} as {} in {} {}, holding the Turn {}".format(
                     self.ticket, self.target, commit, tries, "try" if tries == 1 else "tries",
                     "from fetch to push" if kept else "for its push"))
+                if rebased:
+                    self.name_the_rebased(built)
                 return
 
             said = (pushed.out + pushed.err).rstrip("\n")
