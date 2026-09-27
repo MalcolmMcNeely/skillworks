@@ -13,6 +13,13 @@ before it lets a step pass. One word, because a job that stopped and a job that 
 question.
 _Avoid_: Pristine, unmodified
 
+**Closing note**:
+What a ticket carries when it closes: what was done, the checks that proved it, and the findings left
+as they were and why. It is the richest record of intention the loop keeps, and a Session resolving a
+conflict reads it back. On GitHub it is the comment the ticket closes with, and with files it is a
+section of the ticket's own file, so one word serves both Trackers.
+_Avoid_: Closing comment, close comment, resolution
+
 **Denial**:
 A tool call Claude Code turned down because the session had no permission for it: a write to a
 protected path, or a command no allow rule names. A session with no human cannot be asked, so a
