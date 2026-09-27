@@ -392,8 +392,9 @@ again.
 _Avoid_: Stint, stretch, interval, segment, block
 
 **View**:
-The part of a run a reader dragged over on the timeline. Every panel reads the View alone, so its
-figures answer the question the reader asked and no other. With no View, every panel reads the whole
-run. A reader meets it as **in view** and never by name, so nobody has to learn a word to read a
+The part of a run a reader dragged over on the timeline. Every panel beneath the timeline reads the
+View alone, so its figures answer the question the reader asked and no other. With no View, every
+panel reads the whole run. The figures above the timeline always read the whole run, because they
+are the verdict on the Session and hold still while a reader digs in. A reader meets it as **in view** and never by name, so nobody has to learn a word to read a
 figure.
 _Avoid_: Brush, stretch, range, selection, window
