@@ -40,6 +40,12 @@ Edit. It is a record and never a judgement: an axis that edits is doing its job,
 loop. What an Edit cannot be is silent.
 _Avoid_: Record, change, diff
 
+**Gap**:
+An item of a spec the finished work does not yet deliver: a story or a decision the drift check found
+Missing or Partial, or did not judge exactly once, or a Surface it found Out of step. The loop builds
+its Gaps itself, in one ticket, once. A Gap still open after that stops the loop.
+_Avoid_: Shortfall, hole, miss
+
 **Held**:
 A worktree that had uncommitted work in it when the run stopped. A Keep commits that work to the
 Job branch before the worktree goes, so Held says the Job branch carries work that reached no
