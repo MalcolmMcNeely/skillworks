@@ -1185,6 +1185,18 @@ def test_spec_loop_says_why_the_script_picks_the_ticket_and_links_no_research_no
     assert "A script reads the blocking edges and picks the same ticket every time." in text
 
 
+CLEAN_FINISH = "the drift report lists nothing Missing, Partial or Contradicts, and no Surface Out of step"
+
+
+def test_spec_loop_and_the_loop_page_give_one_clean_finish_that_waits_on_every_surface():
+    skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
+    page = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
+
+    line = skill.split("**A clean finish**", 1)[1].split("\n", 1)[0]
+    assert CLEAN_FINISH in line
+    assert CLEAN_FINISH in " ".join(page.split())
+
+
 def setup_section(heading):
     text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
     return re.split(r"\n### \d", text.split(heading, 1)[1], maxsplit=1)[0]
