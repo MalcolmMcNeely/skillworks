@@ -48,10 +48,13 @@ conversations with `/resume` waits for them in full. Its exit code stops nothing
 shows the developer what the hook wrote to standard error. A Collector that takes the connection and never answers would therefore hold the first
 answer of every Session until the hook limit of 5 s ran out.
 
-The hook has a time limit of its own, 1 s, well under the hook limit. One limit covers both the `git`
+The hook has a time limit of its own, 2 s, well under the hook limit. One limit covers both the `git`
 call that finds the Repository and the post, so a slow `git` and a hung Collector share the same
-second. When it runs out, the hook stops `git`, sends nothing, and exits zero. A slow `git` or a
-Collector that is down or hung delays a Session's first answer by at most that second. With
+2 s. When it runs out, the hook stops `git`, sends nothing, and exits zero. A slow `git` or a
+Collector that is down or hung delays a Session's first answer by at most those 2 s. The limit was
+1 s at first. On a busy machine, such as one running the whole Suite, `git` alone could take longer,
+and the record was lost. `SKILLWORKS_WATCH_LIMIT_MS` sets another limit. The tests set a long one,
+except the tests of the limit itself, so how busy the machine is cannot decide whether a test passes. With
 `OTEL_METRICS_INCLUDE_REPOSITORY` on and a Collector that answers, the whole hook took a median of
 95 ms over 30 runs on a developer machine, against 70 ms with the switch off. `InstructionsLoaded`
 never waits, so the limit there only stops a hung hook from running on in the background.

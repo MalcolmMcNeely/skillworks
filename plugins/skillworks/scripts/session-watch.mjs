@@ -7,7 +7,8 @@ import { promisify } from "node:util";
 const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
 // A Session's first answer waits on this hook, so a slow git or a silent Collector must not hold it to the hook limit.
-const HOOK_LIMIT_MS = 1000;
+// A test sets a longer one, so a busy machine cannot run it out.
+const HOOK_LIMIT_MS = Number(process.env.SKILLWORKS_WATCH_LIMIT_MS) || 2000;
 
 // Claude Code's own events carry this key from OTEL_RESOURCE_ATTRIBUTES, so the hook's records must too, or a Child reaches the Sessions list alone.
 const PARENT_KEY = "skillworks.parent.session.id";

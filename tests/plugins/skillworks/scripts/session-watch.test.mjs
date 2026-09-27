@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, open, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createServer as createSocketServer } from "node:net";
 import { platform, tmpdir } from "node:os";
@@ -54,6 +54,13 @@ const SOURCES = ["startup", "resume", "clear", "compact", "fork"];
 
 const OTLP_VALUES = ["stringValue", "boolValue", "intValue", "doubleValue", "arrayValue", "kvlistValue"];
 
+// A test that is not about the hook's own limit sets a long one, so a busy machine cannot run it out.
+const LIMIT_KEY = "SKILLWORKS_WATCH_LIMIT_MS";
+
+const PATIENT = { [LIMIT_KEY]: "60000" };
+
+const SHIPPED_LIMIT = { [LIMIT_KEY]: undefined };
+
 let temp;
 
 beforeEach(async () => {
@@ -107,18 +114,21 @@ async function silentEndpoint() {
   return { endpoint, accepted: () => accepted, close };
 }
 
-// Git reads its global config before anything else, so a config that never finishes arriving holds every git call.
-async function endlessGitConfig() {
+// Git reads its global config before anything else, so a config that is slow to arrive holds every git call.
+// With no delay it never arrives.
+async function slowGitConfig(delay) {
   if (platform() !== "win32") {
-    const fifo = join(temp, "endless-config");
+    const fifo = join(temp, "slow-config");
     execFileSync("mkfifo", [fifo]);
-    return { path: fifo, close: async () => {} };
+    const timer = delay === undefined ? undefined : setTimeout(async () => (await open(fifo, "w")).close(), delay);
+    return { path: fifo, close: async () => clearTimeout(timer) };
   }
   const pipe = `\\\\.\\pipe\\session-watch-${process.pid}-${Math.random().toString(36).slice(2)}`;
   const sockets = new Set();
   const server = createSocketServer((socket) => {
     sockets.add(socket);
     socket.on("error", () => {});
+    if (delay !== undefined) setTimeout(() => socket.end(), delay);
   });
   await new Promise((resolve) => server.listen(pipe, resolve));
   const close = () => {
@@ -151,7 +161,10 @@ function watch(payload, endpoint, extra = {}, signal) {
   delete env.OTEL_METRICS_INCLUDE_REPOSITORY;
   delete env.OTEL_RESOURCE_ATTRIBUTES;
   if (endpoint !== undefined) env.OTEL_EXPORTER_OTLP_ENDPOINT = endpoint;
-  Object.assign(env, extra);
+  for (const [key, value] of Object.entries({ ...PATIENT, ...extra })) {
+    if (value === undefined) delete env[key];
+    else env[key] = value;
+  }
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [SCRIPT], { cwd: temp, env, signal });
     let err = "";
@@ -340,21 +353,21 @@ const LIMITS = await hookLimits();
 for (const [name, payload] of EVENTS) {
   const limit = LIMITS[payload.hook_event_name];
 
-  test(`${name} whose Collector never answers exits zero well inside the hook limit`, { timeout: limit }, async (t) => {
+  test(`${name} whose Collector never answers exits zero inside the hook limit`, { timeout: limit * 2 }, async (t) => {
     // Arrange
     const store = await silentEndpoint();
 
     try {
       // Act
       const started = performance.now();
-      const ran = await watch(payload, store.endpoint, {}, t.signal);
+      const ran = await watch(payload, store.endpoint, SHIPPED_LIMIT, t.signal);
       const spent = performance.now() - started;
 
       // Assert
       assert.ok(store.accepted() > 0, "the Collector took the connection");
       assert.equal(ran.status, 0);
       assert.equal(ran.err, "");
-      assert.ok(spent < limit / 2, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
+      assert.ok(spent < limit, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
     } finally {
       await store.close();
     }
@@ -364,7 +377,7 @@ for (const [name, payload] of EVENTS) {
 for (const [name, payload] of EVENTS) {
   const limit = LIMITS[payload.hook_event_name];
 
-  test(`${name} with the Repository switch on whose Collector never answers exits zero well inside the hook limit`, { timeout: limit }, async (t) => {
+  test(`${name} with the Repository switch on whose Collector never answers exits zero inside the hook limit`, { timeout: limit * 2 }, async (t) => {
     // Arrange
     const store = await silentEndpoint();
     const cwd = await repository(ORIGINS[0]);
@@ -372,35 +385,35 @@ for (const [name, payload] of EVENTS) {
     try {
       // Act
       const started = performance.now();
-      const ran = await watch({ ...payload, cwd }, store.endpoint, REPOSITORY_ON, t.signal);
+      const ran = await watch({ ...payload, cwd }, store.endpoint, { ...REPOSITORY_ON, ...SHIPPED_LIMIT }, t.signal);
       const spent = performance.now() - started;
 
       // Assert
       assert.ok(store.accepted() > 0, "the Collector took the connection");
       assert.equal(ran.status, 0);
       assert.equal(ran.err, "");
-      assert.ok(spent < limit / 2, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
+      assert.ok(spent < limit, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
     } finally {
       await store.close();
     }
   });
 
-  test(`${name} whose Repository lookup never ends exits zero well inside the hook limit`, { timeout: limit }, async (t) => {
+  test(`${name} whose Repository lookup never ends exits zero inside the hook limit`, { timeout: limit * 2 }, async (t) => {
     // Arrange
     const store = await collector();
-    const config = await endlessGitConfig();
+    const config = await slowGitConfig();
     const cwd = await repository(ORIGINS[0]);
 
     try {
       // Act
       const started = performance.now();
-      const ran = await watch({ ...payload, cwd }, store.endpoint, { ...REPOSITORY_ON, GIT_CONFIG_GLOBAL: config.path }, t.signal);
+      const ran = await watch({ ...payload, cwd }, store.endpoint, { ...REPOSITORY_ON, ...SHIPPED_LIMIT, GIT_CONFIG_GLOBAL: config.path }, t.signal);
       const spent = performance.now() - started;
 
       // Assert
       assert.equal(ran.status, 0);
       assert.equal(ran.err, "");
-      assert.ok(spent < limit / 2, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
+      assert.ok(spent < limit, `ended after ${Math.round(spent)} ms, against a hook limit of ${limit} ms`);
       assert.equal(store.received.length, 0);
     } finally {
       await config.close();
@@ -551,6 +564,24 @@ for (const [name, payload] of [["a Load", REQUIRED], ["a Session", SESSION]]) {
       assert.equal(got["vcs.repository.name"], "widgets");
     });
   }
+
+  test(`${name} whose Repository lookup outlasts the shipped limit carries its owner and name under a longer one`, async () => {
+    // Arrange
+    const config = await slowGitConfig(3000);
+    const cwd = await repository(ORIGINS[0]);
+
+    try {
+      // Act
+      const record = onlyRecord(await recordFor({ ...payload, cwd }, { ...REPOSITORY_ON, GIT_CONFIG_GLOBAL: config.path }));
+
+      // Assert
+      const got = attributes(record);
+      assert.equal(got["vcs.owner.name"], "octo-org");
+      assert.equal(got["vcs.repository.name"], "widgets");
+    } finally {
+      await config.close();
+    }
+  });
 
   for (const [state, extra] of [["off", { OTEL_METRICS_INCLUDE_REPOSITORY: "false" }], ["unset", {}]]) {
     test(`${name} from a repository carries no Repository with the switch ${state}`, async () => {
