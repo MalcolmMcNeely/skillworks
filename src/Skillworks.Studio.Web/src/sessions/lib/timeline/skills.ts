@@ -8,7 +8,8 @@ export type SkillKey = Exclude<Highlight, { kind: 'tool' }>;
 export interface SkillRow {
   key: SkillKey;
   label: string;
-  fired: number | null;
+  // Every agent's, even with a Subagent open, as an Activation names no agent.
+  activations: number | null;
   turns: number;
   // Null in a Session with no Spans, where a count would pass off the calls whose skill is not known.
   toolCalls: number | null;
@@ -37,7 +38,7 @@ export function skillRowsOf(
   spells: readonly ActivationSpell[],
   view: Spell | null,
 ): SkillRow[] {
-  const fired = madeIn(spells, view);
+  const shownSpells = madeIn(spells, view);
   const shown = inSpell(marks, view);
   const callsKnown = shown.every(({ step }) => !isToolCall(step) || step.skillKnown);
   const rows = new Map<string, SkillRow>();
@@ -52,7 +53,7 @@ export function skillRowsOf(
     const row = rows.get(heldAs) ?? {
       key,
       label: skillLabelOf(key),
-      fired: key.kind === 'skill' ? fired.filter((spell) => spell.activation.skill === key.name).length : null,
+      activations: key.kind === 'skill' ? shownSpells.filter((spell) => spell.activation.skill === key.name).length : null,
       turns: 0,
       toolCalls: callsKnown ? 0 : null,
       cost: 0,

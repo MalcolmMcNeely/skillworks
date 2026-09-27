@@ -226,6 +226,7 @@ export function Session() {
               cost={viewCost}
               tools={tools}
               view={view}
+              subagentOpen={where.agent !== null}
               selected={where.step}
               highlight={highlight}
               onOpen={open}

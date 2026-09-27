@@ -23,6 +23,7 @@ export function TimelineTabs({
   cost,
   tools,
   view,
+  subagentOpen,
   selected,
   highlight,
   onOpen,
@@ -34,6 +35,7 @@ export function TimelineTabs({
   cost: number;
   tools: readonly ToolRow[];
   view: Spell | null;
+  subagentOpen: boolean;
   selected: string | null;
   highlight: Highlight | null;
   onOpen: (step: string) => void;
@@ -66,7 +68,14 @@ export function TimelineTabs({
         {shown === 'context' ? (
           <ContextTab levels={levels} limitTokens={limitTokens} view={view} selected={selected} onOpen={onOpen} />
         ) : shown === 'skills' ? (
-          <SkillsTab rows={skills} cost={cost} inView={view !== null} highlight={highlight} onPick={onHighlight} />
+          <SkillsTab
+            rows={skills}
+            cost={cost}
+            inView={view !== null}
+            wholeRun={subagentOpen}
+            highlight={highlight}
+            onPick={onHighlight}
+          />
         ) : (
           <ToolsTab rows={tools} inView={view !== null} highlight={highlight} onPick={onHighlight} />
         )}
