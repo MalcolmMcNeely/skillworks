@@ -24,6 +24,7 @@ WHERE = {
     "arrangement-baseline.md": "docs/agents/arrangement-baseline.md",
     "suite.json": "docs/agents/suite.json",
     "loop.json": "docs/agents/loop.json",
+    "surfaces.md": "docs/agents/surfaces.md",
 }
 
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
@@ -686,6 +687,52 @@ def test_the_smell_baseline_seed_holds_the_smells_list():
     assert len(re.findall(r"^- \*\*[A-Z][^*]+\*\* — ", smells, re.MULTILINE)) == 16
 
 
+WHERE_IT_LIVES = "**Where it lives:**"
+
+SURFACE_PARTS = [WHERE_IT_LIVES, "**The question:**", "**What to capture:**"]
+
+
+def surfaces(text):
+    outside_fences = re.sub(r"^```.*?^```", "", text, flags=re.MULTILINE | re.DOTALL)
+    sections = re.split(r"^## ", outside_fences, flags=re.MULTILINE)[1:]
+    return {section.split("\n", 1)[0]: section for section in sections}
+
+
+def where_it_lives(section):
+    return section.split(WHERE_IT_LIVES, 1)[1].split("\n", 1)[0]
+
+
+def test_the_surfaces_seed_holds_the_readme_and_the_user_docs_each_with_its_three_parts(repo, runner):
+    run_seed(runner, repo.work)
+
+    held = surfaces((repo.work / WHERE["surfaces.md"]).read_text(encoding="utf-8"))
+
+    assert list(held) == ["The README", "The user docs"]
+    for name, section in held.items():
+        for part in SURFACE_PARTS:
+            assert section.count(part) == 1, "{} lacks {}".format(name, part)
+
+
+def test_the_surfaces_seed_carries_one_worked_example_that_is_no_surface_of_its_own():
+    fences = re.findall(r"^```markdown\n(.*?)^```", seeded("surfaces.md"), re.MULTILINE | re.DOTALL)
+
+    assert len(fences) == 1
+    for part in SURFACE_PARTS:
+        assert part in fences[0], part
+
+
+def test_a_surface_written_only_inside_a_fence_is_not_counted():
+    text = "# Surfaces\n\n```markdown\n## The changelog\n```\n\n## The README\n"
+
+    assert list(surfaces(text)) == ["The README"]
+
+
+def test_this_repos_surfaces_list_the_usage_docs():
+    held = surfaces((ROOT / "docs" / "agents" / "surfaces.md").read_text(encoding="utf-8"))
+
+    assert "`docs/usage/`" in [where_it_lives(section).strip() for section in held.values()]
+
+
 def test_the_review_skills_read_the_smells_list_from_the_smell_baseline():
     for skill in ["code-review", "review-standards"]:
         text = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
@@ -973,7 +1020,7 @@ THIS_REPO = ["Skillworks.", "slnx", "Studio", "Dashboard", "Loki", "Aspire", "do
 
 def test_the_seeds_carry_no_fact_about_this_repo():
     names = sorted(WHERE)
-    assert len(names) == 11
+    assert len(names) == 12
     for name in names:
         text = seeded(name)
         for fact in THIS_REPO:

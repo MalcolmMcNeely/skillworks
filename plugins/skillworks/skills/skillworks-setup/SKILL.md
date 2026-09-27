@@ -24,6 +24,7 @@ The outputs:
 | `docs/agents/placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md` | What the review axes judge against. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
 | `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. |
+| `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
 | `.gitignore` lines | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. They are per machine and never shared. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
@@ -196,7 +197,7 @@ Write nothing under `~/.claude`.
 Say what was written and what was kept. Say where each Steering file lives:
 
 - `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
-- `docs/agents/`: `issue-tracker.md`, `domain.md`, `placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md`, `suite.json` and `loop.json`. A skill reads each one when it needs it.
+- `docs/agents/`: `issue-tracker.md`, `domain.md`, `placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
 
 Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude, or that an earlier `attribution` block was kept. Then tell them what the team fills in before the loop can finish a ticket:
 

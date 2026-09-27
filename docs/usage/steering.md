@@ -63,6 +63,33 @@ It is yours to add, as a check in your Suite.
 | `placement-checks.md` | Names the commands that prove placement, each with its folder and anything to run first. It also maps each check back to the rule it runs. | The `architecture` review. It runs these commands and nothing else. | The commands. The Seed names none, so the review can only judge placement by reading until you add them. |
 | `suite.json` | The Suite: the checks that decide green for your repo. | The `suite` step, the Suite again after a rebase, the full run, and `skillworks-suite`. | Every check, its `ready` command, its `ignores`, its `image`, and `runs`. [The Suite](suite.md) has the whole file. The Seed names no check, so the loop stops until you add one. A check can name a Dockerfile you keep in `docs/agents/` as its `image`. |
 | `loop.json` | The loop's settings. `tracker` names where your specs and tickets live: `github` for GitHub Issues, or `files` for committed files in `.specs/`. `target-branch` names the branch the loop Lands on, or says `spec` to review each spec as one pull request. | Setup, which asks for both and writes them. The preflight and the loop's scripts, through one reader. The skills that read or write a spec or a ticket, to find the Tracker. The grill, `/skillworks:to-spec`, `implement` and the drift check, to find the branch they push to or judge. | `tracker`: `github` or `files`. The Seed sets it to `github`, and setup asks. `target-branch`: a branch name, such as `main` or `master`, or `spec`. The Seed sets it to your remote's default branch. [The loop](the-loop.md#the-tracker) says how to choose each one. |
+| `surfaces.md` | Lists your Surfaces: the places a change can have to reach besides the code that does the work, such as the README or the user docs. [The Surfaces file](#the-surfaces-file) has an example. | The grill, which asks about each Surface a change touches. | Every Surface. Add your own, and delete one your repo does not have. |
+
+## The Surfaces file
+
+A change often has to reach more than its code. A new setting needs a line in the user docs. A new
+command needs a line in the README. The grill asks about these places, so nobody leaves one behind
+without deciding it. `docs/agents/surfaces.md` names them.
+
+Each `##` section is one Surface, with three parts:
+
+- **Where it lives:** the file or folder that holds it.
+- **The question:** the one question the grill asks about it.
+- **What to capture:** what the answer has to hold, so the builder can bring the Surface into step.
+
+The Seed holds two Surfaces, the README and the user docs. Delete one your repo does not have. Add a
+section for each other place your team keeps in step. A team that ships a changelog might add:
+
+```markdown
+## The changelog
+
+- **Where it lives:** `CHANGELOG.md`
+- **The question:** Does a user who upgrades see a difference, and which entry tells them?
+- **What to capture:** The version the entry goes under, and the difference it names: a change a
+  user can see, a setting renamed or removed, or a default that moved.
+```
+
+A file with no Surface in it costs nothing: the grill skips the step.
 
 ## The Steering outside `docs/agents/`
 

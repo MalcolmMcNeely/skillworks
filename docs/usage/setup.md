@@ -118,6 +118,7 @@ Review these before you commit them.
 | `docs/agents/arrangement-baseline.md` | The failures of placement the `architecture` review looks for. |
 | `docs/agents/suite.json` | Your Suite. It starts with no checks, and the loop stops until you add one. |
 | `docs/agents/loop.json` | The loop's settings. `tracker` holds your answer, `github` or `files`. `target-branch` starts as your remote's default branch. |
+| `docs/agents/surfaces.md` | The places a change can have to reach besides its code. It starts with the README and the user docs. |
 | `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |

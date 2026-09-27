@@ -24,6 +24,7 @@ PLACES = {
     "arrangement-baseline.md": "docs/agents/arrangement-baseline.md",
     "suite.json": "docs/agents/suite.json",
     "loop.json": "docs/agents/loop.json",
+    "surfaces.md": "docs/agents/surfaces.md",
 }
 
 BASES = "docs/agents/.seeds"
