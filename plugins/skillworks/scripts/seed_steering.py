@@ -24,16 +24,38 @@ PLACES = {
     "suite.json": "docs/agents/suite.json",
 }
 
+BASES = "docs/agents/.seeds"
+
+# A copy must match its Seed byte for byte, so it cannot carry a header, and this README speaks for it.
+BASES_README = """# Base copies
+
+Setup keeps these files. Each one is the Seed exactly as setup last copied it into this repo,
+under the Seed's own name. A later run of setup compares it with your file and with the Plugin's
+current Seed, to tell your edits from the Plugin's.
+
+These copies are not to be edited. Edit the Steering file in `docs/agents/` instead.
+"""
+
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
 
 
+def write(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def seed(top, out):
+    readme = top / BASES / "README.md"
+    if not readme.exists():
+        write(readme, BASES_README)
+        out.write("wrote {}/README.md\n".format(BASES))
+
     for name, place in PLACES.items():
         wanted = (SEEDS / name).read_text(encoding="utf-8")
         target = top / place
         if not target.exists():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(wanted, encoding="utf-8", newline="\n")
+            write(target, wanted)
+            write(top / BASES / name, wanted)
             out.write("wrote {}\n".format(place))
             continue
 

@@ -53,6 +53,61 @@ def test_an_empty_repo_gets_every_seed(repo, runner):
         assert "wrote {}\n".format(place) in ran.out
 
 
+BASES = "docs/agents/.seeds"
+
+
+def test_an_empty_repo_gets_an_exact_base_copy_of_every_seed_it_was_written(repo, runner):
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    for seed, place in WHERE.items():
+        base = repo.work / BASES / seed
+        assert base.read_bytes() == (repo.work / place).read_bytes(), seed
+        assert base.read_text(encoding="utf-8") == seeded(seed), seed
+
+
+def test_the_base_folder_holds_a_readme_that_says_the_copies_are_setups():
+    readme = seed_steering.BASES_README
+
+    assert "setup" in readme
+    assert "not to be edited" in readme
+
+
+def test_the_base_folder_holds_the_base_copies_and_one_readme(repo, runner):
+    ran = run_seed(runner, repo.work)
+
+    held = sorted(path.name for path in (repo.work / BASES).iterdir())
+    assert held == sorted(list(WHERE) + ["README.md"])
+    assert (repo.work / BASES / "README.md").read_text(encoding="utf-8") == seed_steering.BASES_README
+    assert "wrote {}/README.md\n".format(BASES) in ran.out
+
+
+def test_a_second_run_leaves_the_base_folder_readme_as_it_is(repo, runner):
+    run_seed(runner, repo.work)
+    readme = repo.work / BASES / "README.md"
+    readme.write_text("# Our note on the copies\n", encoding="utf-8", newline="\n")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert readme.read_text(encoding="utf-8") == "# Our note on the copies\n"
+    assert "README.md" not in ran.out
+
+
+def test_a_seed_already_there_with_no_base_copy_gets_none(repo, runner):
+    edited = repo.work / "docs" / "agents" / "domain.md"
+    edited.parent.mkdir(parents=True)
+    edited.write_text("# Our own domain notes\n", encoding="utf-8", newline="\n")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert edited.read_text(encoding="utf-8") == "# Our own domain notes\n"
+    assert "kept docs/agents/domain.md, which differs from the seed:\n" in ran.out
+    assert not (repo.work / BASES / "domain.md").exists()
+    assert (repo.work / BASES / "suite.json").is_file()
+
+
 def test_every_seed_lands_under_docs_agents_and_the_rules_in_its_rules_folder(repo, runner):
     run_seed(runner, repo.work)
 
