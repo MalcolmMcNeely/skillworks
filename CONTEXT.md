@@ -371,12 +371,12 @@ the Sessions list shows it, so a reader sees what they can read instead of openi
 out. It is not part of the Filter, because no store can narrow by it before the rows are read.
 _Avoid_: Fidelity, completeness, quality
 
-**Split**:
+**Time breakdown**:
 Where a Session's time went, as eight Parts that hold no moment twice and add up to its length:
 your turn, nothing running, model thinking, tools running, waiting for your OK, hooks, only
 subagents and side requests. Each Part is also reported with its overlaps, so a reader sees both
 what a Part took on its own and what it took in all.
-_Avoid_: Breakdown, time analysis, profile
+_Avoid_: Split, time analysis, profile
 
 **Part**:
 One of the eight things a moment of a Session can be spent on. A moment belongs to exactly one
