@@ -117,6 +117,10 @@ Do NOT include specific file paths or code snippets. They may end up being outda
 
 Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it within the relevant decision and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
 
+## Surfaces
+
+For each Surface in `docs/agents/surfaces.md` the change touches, its name and the requirement the grill captured: what the Surface has to say once the change Lands. Point at the Surface by its path, and do not copy its content. Leave out a Surface the change does not touch. With no Surface touched, or no Surfaces file, write "None".
+
 ## Testing Decisions
 
 A list of testing decisions that were made. Include:

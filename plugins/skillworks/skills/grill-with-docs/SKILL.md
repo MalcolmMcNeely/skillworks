@@ -15,12 +15,30 @@ Drive a design from the first question to a published spec.
 Call the Skill tool with "skillworks:grilling", then with "skillworks:domain-modeling". The first owns the questions, the
 second owns the words. Both run on every round.
 
-### 2. Sum up when the frontier is empty
+### 2. Walk the Surfaces when the frontier is empty
+
+A Surface is a place a change can have to reach besides the code that does the work, such as the
+README or the user docs. `docs/agents/surfaces.md` lists the team's Surfaces, one `##` section each,
+with where it lives, the question to ask and what to capture. A `##` inside a code fence is an
+example, not a Surface. A file with no Surface in it, or no file, means skip this step.
+
+The design is settled now, so each question can fit it. Walk the Surfaces by four rules:
+
+- Ask about one Surface at a time, with the Surface's own question, and never present the list.
+- Skip a Surface the change does not touch, without asking about it.
+- Capture each answer as a requirement that travels with the spec: what the Surface has to say once
+  the change Lands, shaped by the Surface's "What to capture".
+- Point at a Surface's content by its path, and never copy it into the answer.
+
+An answer that reopens the design goes back to step 1 as the next round.
+
+### 3. Sum up
 
 Sum up the shape that was settled:
 
 - The problem, as the developer stated it.
 - The design that answers it, and the decisions that shaped it.
+- Each Surface the change touches, with the requirement its answer captured.
 - The words and the ADRs written along the way, each one already pushed.
 - What the session ruled out, and why.
 
@@ -30,7 +48,7 @@ This is the one gate. Every question before it is about the design, and everythi
 unattended, so the summary is what the developer consents to. It carries every decision the spec
 will be built from.
 
-### 3. On yes, write the spec
+### 4. On yes, write the spec
 
 Call the Skill tool with "skillworks:to-spec", and report the spec number it publishes.
 

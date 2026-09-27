@@ -823,6 +823,66 @@ def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_spec_mode
     assert "`.specs/`" in to_spec
 
 
+def spec_template(to_spec):
+    return to_spec.split("<spec-template>", 1)[1].split("</spec-template>", 1)[0]
+
+
+def test_the_spec_template_has_a_surfaces_section_for_what_the_grill_captured():
+    template = spec_template(skill_text("to-spec"))
+    headings = re.findall(r"^## (.+)$", template, re.MULTILINE)
+    surfaces_section = template.split("\n## Surfaces\n", 1)[1].split("\n## ", 1)[0]
+
+    assert "Surfaces" in headings
+    assert headings.index("Surfaces") > headings.index("Implementation Decisions")
+    assert "`{}`".format(WHERE["surfaces.md"]) in surfaces_section
+    assert "the grill captured" in surfaces_section
+
+
+def grill_steps(grill):
+    return re.findall(r"^### \d+\. (.+)$", grill, re.MULTILINE)
+
+
+def test_the_grill_walks_the_surfaces_after_the_design_questions_and_before_the_sum_up():
+    grill = skill_text("grill-with-docs")
+    steps = grill_steps(grill)
+    walk = [step for step in steps if "Surfaces" in step]
+
+    assert len(walk) == 1
+    assert steps.index(walk[0]) == 1
+    assert "sum up" in steps[2].lower()
+
+
+def test_the_grill_names_the_surfaces_file_and_the_four_rules_for_asking():
+    grill = skill_text("grill-with-docs")
+    walk = grill.split("Surfaces", 1)[1].split("\n### ", 1)[0]
+
+    assert "`{}`".format(WHERE["surfaces.md"]) in walk
+    for rule in ("one Surface at a time", "never present the list", "does not touch", "requirement",
+                 "never copy"):
+        assert rule in walk, rule
+    assert "no Surface" in walk
+    assert "skip" in walk
+
+
+def test_the_grills_sum_up_lists_each_surfaces_answer():
+    grill = skill_text("grill-with-docs")
+    sum_up = grill.split("Sum up", 1)[1].split("\n### ", 1)[0]
+
+    assert "Surface" in sum_up
+
+
+def stage_map_row(stage):
+    page = STAGE_MAP_PAGE.read_text(encoding="utf-8")
+    rows = [line for line in page.splitlines() if line.startswith("| {} |".format(stage))]
+    assert len(rows) == 1, stage
+    return rows[0]
+
+
+@pytest.mark.parametrize("stage", ["The grill", "The spec"])
+def test_the_stage_map_names_the_surfaces_file_for_the_grill_and_the_spec(stage):
+    assert "`surfaces.md`" in stage_map_row(stage)
+
+
 def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_report():
     files = files_tracker(seeded("issue-tracker.md"))
 

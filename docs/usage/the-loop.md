@@ -222,10 +222,16 @@ Your glossary, `CONTEXT.md`, and your ADRs in `docs/adr/` are edited the moment 
 settles, not at the end. Every Session after this one starts with an empty context, and can only find
 those decisions in the repo.
 
+When no design question is left, the grill walks your Surfaces: the places in
+`docs/agents/surfaces.md` a change can have to reach besides its code. It asks about one Surface at a
+time, and skips a Surface the change does not touch. Each answer becomes a requirement the spec
+carries. A file with no Surface in it skips this step. [Steering](steering.md#the-surfaces-file) says
+how to write the file.
+
 ### The gate
 
-When no question is left, the Session sums up the problem, the design, the words and ADRs written on
-the way, and what was ruled out. Then it asks you to confirm.
+When no question is left, the Session sums up the problem, the design, each Surface's answer, the
+words and ADRs written on the way, and what was ruled out. Then it asks you to confirm.
 
 - On **no**, what you said becomes the next round of questions.
 - On **yes**, everything after runs with nobody watching. So the summary is the thing you consent to.
@@ -237,7 +243,8 @@ On your yes, `/skillworks:to-spec` runs. With `github`, it publishes a `SPEC:` i
 `ready-for-agent` label. With `files`, it writes the spec's folder in `.specs/` and pushes it. It
 commits and pushes what the interview changed on disk to the Target branch, and it reports the spec's
 number. With `spec`, the spec names its own branch: under `## Branch` in the issue, or as `branch` in
-`spec.md`.
+`spec.md`. Its Surfaces section holds the requirement the grill captured for each Surface the change
+touches.
 
 The push matters as much as the spec. The spec points at decisions that must already be in the repo,
 because no later Session can see this one.
@@ -546,9 +553,9 @@ use with nobody watching.
 <!-- stage map -->
 | Stage | Always loads | Loads on demand | What your team can change |
 |---|---|---|---|
-| The grill | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/` | The glossary and the ADRs. The grill writes them as words and decisions settle. |
+| The grill | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `surfaces.md` | The glossary and the ADRs. The grill writes them as words and decisions settle. The Surfaces in `surfaces.md`, which decide what the grill asks once the design is settled. |
 | The gate | The same Session as the grill | Nothing more | Nothing in a file. Your yes or no is the lever. |
-| The spec | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `docs/adr/` | The glossary and the ADRs, which give the spec its words and its decisions. |
+| The spec | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `docs/adr/`, `surfaces.md` | The glossary and the ADRs, which give the spec its words and its decisions. The Surfaces in `surfaces.md`, which name the Surfaces section of the spec. |
 | The tickets | `CLAUDE.md` and the rules | `issue-tracker.md` | "The ticket shape" in `issue-tracker.md`: the size of a ticket, its title and its sections. |
 | `build` | `CLAUDE.md` and the rules | `domain.md`, your glossary, and `suite.json` when it runs `skillworks-suite` | The rules the change must meet, and the checks in `suite.json`. |
 | `standards` | `CLAUDE.md` and the rules | `smell-baseline.md`, your glossary | The rules, and the smells in `smell-baseline.md`. |
