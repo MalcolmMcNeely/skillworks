@@ -1,6 +1,7 @@
 # Reads only the remote's Target branch, so unpushed work cannot change what the loop starts.
 
 import io
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -120,6 +121,15 @@ def with_last_section(text, named, section):
 
 def heading(body, otherwise):
     return next((line[2:].strip() for line in body.split("\n") if line.startswith("# ")), otherwise)
+
+
+def slug_of(title):
+    return "-".join(re.findall(r"[a-z0-9]+", title.lower())) or "ticket"
+
+
+def new_ticket_text(title, body):
+    return "\n".join([FENCE, STATUS + ": open", "blocked-by: []", CLAIMED_BY + ": ", FENCE, "",
+                      "# " + title, "", body.replace("\r\n", "\n").strip("\n"), ""])
 
 
 def as_numbers(value):
@@ -376,6 +386,27 @@ class Files:
                 return self.git("rev-parse", "--short", commit).out.strip()
         raise refusal("The close of spec {} lost to another push {} times in a row. Set status: "
                       "closed in its spec.md by hand.".format(spec, PUSH_ATTEMPTS))
+
+    # The number is read and pushed on one parent, so of two rival filings the remote refuses one.
+    def file_ticket(self, spec, title, body):
+        for _ in range(PUSH_ATTEMPTS):
+            branch = self.branch_of(spec)
+            self.fetched(branch)
+            parent = self.git("rev-parse", "origin/" + branch).out.strip()
+            folder = self.folder_on(parent, spec)
+            if not folder:
+                raise refusal("Spec {} has no folder on origin/{}, so no ticket can be filed under "
+                              "it.".format(spec, branch))
+            held = listed(self.git("ls-tree", "--name-only", parent, folder + "/" + TICKETS + "/").out)
+            number = max([int(number_of(path.rsplit("/", 1)[-1]) or 0) for path in held],
+                         default=0) + 1
+            path = "{}/{}/{:02d}-{}.md".format(folder, TICKETS, number, slug_of(title))
+            if self.pushed(branch, parent, {path: new_ticket_text(title, body)},
+                           "File ticket {} of spec {}: {}".format(number, spec, title),
+                           "Ticket {} of spec {}".format(number, spec)):
+                return str(number)
+        raise refusal("Filing a ticket under spec {} lost to another push {} times in a row. Run "
+                      "the loop again.".format(spec, PUSH_ATTEMPTS))
 
     def pushed_change(self, spec, path, change, message, what):
         branch = self.branch_of(spec)

@@ -12,6 +12,7 @@ import spec_loop
 from conftest import Ran, RecordingRunner, Repo, git
 from spec_loop_test import Sessions, given_a_suite_that_passes
 from steering.target_branch import LOOP_FILE
+from stop import REFUSED, Stop
 from tracker import publish
 from tracker.files import Files
 
@@ -528,6 +529,73 @@ def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(d
 
     assert ran.status == 0, said(ran)
     assert read == NOTE
+
+
+# --- filing a ticket under a spec --------------------------------------------
+
+GAPS = "## What to build\n\nS2: Missing.\n"
+
+
+def files_tracker(driver, target="main"):
+    return Files(RecordingRunner(), driver.repo.work, target, SPEC, lambda seconds: None)
+
+
+def test_a_filed_ticket_is_pushed_next_in_number_open_and_unclaimed(driver):
+    driver.push(two_free_tickets())
+
+    number = files_tracker(driver).file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
+
+    assert number == "3"
+    assert on_remote(driver.repo, ticket_path("03-ticket-build-the-gaps")) == (
+        "---\nstatus: open\nblocked-by: []\nclaimed-by: \n---\n\n"
+        "# TICKET: Build the Gaps\n\n" + GAPS)
+
+
+def test_a_filed_ticket_is_listed_among_the_specs_open_tickets(driver):
+    driver.push(two_free_tickets())
+    tracker = files_tracker(driver)
+
+    number = tracker.file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
+
+    assert tracker.open_tickets(SPEC) == ["1", "2", number]
+    assert tracker.title(number) == "TICKET: Build the Gaps"
+    assert tracker.open_blockers(number) == 0
+
+
+def test_a_filed_ticket_that_loses_a_race_for_its_number_reads_again(driver):
+    driver.push(two_free_tickets())
+    tracker = Files(Racing(), driver.repo.work, "main", SPEC, lambda seconds: None)
+    tracker.runner.before_push = lambda: driver.push(
+        {ticket_path("03-rival"): ticket_file("TICKET: Rival")})
+
+    number = tracker.file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
+
+    assert number == "4"
+    assert tracker.title("3") == "TICKET: Rival"
+    assert tracker.title("4") == "TICKET: Build the Gaps"
+
+
+def test_in_spec_mode_a_filed_ticket_reaches_the_branch_the_spec_names(driver):
+    driver.push({
+        FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
+        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
+    }, branch=SPEC_BRANCH)
+
+    number = files_tracker(driver, target=None).file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
+
+    assert number == "2"
+    assert "# TICKET: Build the Gaps" in on_remote(
+        driver.repo, ticket_path("02-ticket-build-the-gaps"), SPEC_BRANCH)
+
+
+def test_a_ticket_filed_under_a_spec_with_no_folder_stops_and_says_so(driver):
+    driver.push({"elsewhere.txt": "nothing about the spec\n"})
+
+    with pytest.raises(Stop) as stopped:
+        files_tracker(driver).file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
+
+    assert stopped.value.status == REFUSED
+    assert "Spec 7 has no folder on origin/main" in stopped.value.said
 
 
 def test_a_spec_whose_run_stopped_is_left_open_on_the_remote(driver):

@@ -14,6 +14,8 @@ CLAIM_WAIT = 3
 
 BRANCH_HEADING = "## Branch"
 
+READY = "ready-for-agent"
+
 
 def spec_branch(spec):
     lines = [line.strip() for line in spec.splitlines()]
@@ -145,6 +147,22 @@ class GitHub:
 
     def comment(self, ticket, body):
         return self.gh("issue", "comment", ticket, "--body", body).status == 0
+
+    # A sub-issue is attached by the issue's id and not its number, so the id is read between.
+    def file_ticket(self, spec, title, body):
+        made = self.gh("issue", "create", "--title", title, "--body", body, "--label", READY)
+        number = made.out.strip().rsplit("/", 1)[-1]
+        if made.status != 0 or not is_a_number(number):
+            raise refusal("GitHub would not file the ticket {} under spec #{}. gh said:\n{}".format(
+                title, spec, (made.out + made.err).rstrip("\n")))
+        issue_id = self.field(number, ".id").out.strip()
+        attached = self.gh("api", "--method", "POST", "repos/{}/issues/{}/sub_issues".format(
+            self.repo, spec), "-F", "sub_issue_id=" + issue_id)
+        if attached.status != 0:
+            raise refusal("Ticket #{} was filed, and is not a sub-issue of spec #{}. Add it by hand. "
+                          "gh said:\n{}".format(number, spec,
+                                                (attached.out + attached.err).rstrip("\n")))
+        return number
 
     def last_comment(self, ticket):
         ran = self.gh("issue", "view", ticket, "--json", "comments", "--jq", ".comments[-1].body")

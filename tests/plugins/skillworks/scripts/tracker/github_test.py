@@ -172,6 +172,72 @@ def test_a_spec_that_names_no_branch_stops_and_says_so(runner):
     assert "to-spec" in stopped.value.said
 
 
+# --- filing a ticket under a spec ---------------------------------------------
+
+class Issues:
+    # Holds what was filed, so a filed ticket is read back the way the loop reads every ticket.
+    def __init__(self, runner, fails=""):
+        self.runner = runner
+        self.fails = fails
+        self.filed = {}
+        self.children = []
+        runner.stub("gh", does=self.answer)
+
+    def answer(self):
+        called = self.runner.calls[-1][1:]
+        asked = " ".join(called)
+        if self.fails and asked.startswith(self.fails):
+            return Ran(1, "", "HTTP 422: refused\n")
+        if called[:2] == ["issue", "create"]:
+            number = str(400 + len(self.filed))
+            self.filed[number] = dict(zip(called[2::2], called[3::2]))
+            return Ran(0, "https://github.com/owner/repo/issues/{}\n".format(number), "")
+        if asked.startswith("api repos/owner/repo/issues/") and asked.endswith("--jq .id"):
+            return Ran(0, "9" + asked.split(" ")[1].rsplit("/", 1)[-1] + "\n", "")
+        if asked == "api --method POST repos/owner/repo/issues/158/sub_issues -F sub_issue_id=9400":
+            self.children.append("400")
+            return Ran(0, "{}\n", "")
+        if 'select(.state=="open")' in asked:
+            return Ran(0, "".join(number + "\n" for number in self.children), "")
+        return Ran(1, "", "no answer for: " + asked + "\n")
+
+
+def test_a_filed_ticket_is_a_sub_issue_of_the_spec_with_its_title_body_and_label(runner):
+    issues = Issues(runner)
+
+    number = github(runner).file_ticket("158", "TICKET: Build the Gaps", "## What to build\n\nS2.\n")
+
+    assert number == "400"
+    assert issues.filed["400"] == {"--title": "TICKET: Build the Gaps",
+                                   "--body": "## What to build\n\nS2.\n",
+                                   "--label": "ready-for-agent"}
+    assert issues.children == ["400"]
+
+
+def test_a_filed_ticket_is_listed_among_the_specs_open_tickets(runner):
+    Issues(runner)
+    tracker = github(runner)
+
+    number = tracker.file_ticket("158", "TICKET: Build the Gaps", "S2.\n")
+
+    assert tracker.open_tickets("158") == [number]
+
+
+@pytest.mark.parametrize("fails, reason", [
+    ("issue create", "would not file"),
+    ("api --method POST", "is not a sub-issue of spec #158"),
+])
+def test_a_ticket_github_would_not_file_under_the_spec_stops_and_says_so(runner, fails, reason):
+    Issues(runner, fails=fails)
+
+    with pytest.raises(Stop) as stopped:
+        github(runner).file_ticket("158", "TICKET: Build the Gaps", "S2.\n")
+
+    assert stopped.value.status == REFUSED
+    assert reason in stopped.value.said
+    assert "HTTP 422: refused" in stopped.value.said
+
+
 # --- only the Tracker asks gh about an issue ---------------------------------
 
 # Every issue, sub-issue and dependency read goes through `gh api`, and every write through `gh issue`.
