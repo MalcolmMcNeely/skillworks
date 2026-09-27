@@ -14,6 +14,7 @@ edits them.
 
 | Page | What it covers |
 |---|---|
+| [Setup](setup.md) | How to install the Plugin, the questions setup asks, the files it writes, and what a second run does. |
 | [The loop](the-loop.md) | How a design becomes code: the grill, the spec, the tickets, the steps of one ticket, Landing, what happens when a step fails, the full run and the drift check. |
 | [Steering](steering.md) | Each Steering file: what it does, which part of the loop reads it, whether it always loads, and what your team can change. Then what is fixed. |
 | [The Suite](suite.md) | The Suite file: the checks that decide green for your repo, and how the loop runs them. |

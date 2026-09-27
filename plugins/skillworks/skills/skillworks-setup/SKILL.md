@@ -132,3 +132,5 @@ The grill runs `/skillworks:to-spec` itself once the user confirms the shape it 
 spec number rather than a command to type.
 
 Mention they can edit the Steering by hand at any time. Re-running this skill is only for repair.
+
+End the report with a link to the usage docs, so the team finds them at the moment it needs them: [Using Skillworks](https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/README.md)

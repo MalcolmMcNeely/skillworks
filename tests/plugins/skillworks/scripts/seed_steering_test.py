@@ -467,6 +467,30 @@ def test_the_usage_front_page_lists_the_steering_page():
     assert "(steering.md)" in (ROOT / "docs" / "usage" / "README.md").read_text(encoding="utf-8")
 
 
+USAGE_FRONT_PAGE = "https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/README.md"
+
+
+def test_the_report_ends_with_a_link_to_the_usage_front_page():
+    last = setup_section("### 5. Report").strip().splitlines()[-1]
+
+    assert "]({})".format(USAGE_FRONT_PAGE) in last
+    assert (ROOT / USAGE_FRONT_PAGE.split("/blob/main/", 1)[1]).is_file()
+
+
+SETUP_PAGE = ROOT / "docs" / "usage" / "setup.md"
+
+
+def test_the_usage_front_page_lists_the_setup_page():
+    assert "(setup.md)" in (ROOT / "docs" / "usage" / "README.md").read_text(encoding="utf-8")
+
+
+def test_the_setup_page_names_every_file_setup_writes():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+
+    for place in list(WHERE.values()) + WORKING_FOLDERS + [".gitignore", "CLAUDE.md", ".claude/settings.json"]:
+        assert "`{}`".format(place) in page, place
+
+
 def test_implement_reads_the_suite_from_the_suite_file():
     text = (SKILLS / "implement" / "SKILL.md").read_text(encoding="utf-8")
 
