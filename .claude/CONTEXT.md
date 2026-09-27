@@ -79,8 +79,9 @@ _Avoid_: Continuation, retry, prod
 **Proof**:
 A check that passed on one exact set of its inputs, kept by the Suite. A check whose inputs match a
 Proof is not run again, so work already proved costs nothing a second time. A Proof knows only what
-is in the repository, so a change outside it, such as a new SDK, can leave one stale. The run at the
-end of a spec trusts none. A Proof belongs to one clone and never leaves it.
+is in the repository, so a change outside it, such as a new SDK, can leave one stale. The full run
+after each loop run that landed a ticket trusts none, and a check red there loses its Proofs. A Proof
+belongs to one clone and never leaves it.
 _Avoid_: Cache, memo, result, receipt
 
 **Runner**:
