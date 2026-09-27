@@ -1205,16 +1205,28 @@ def test_spec_loop_says_why_the_script_picks_the_ticket_and_links_no_research_no
     assert "A script reads the blocking edges and picks the same ticket every time." in text
 
 
-CLEAN_FINISH = "the drift report lists nothing Missing, Partial or Contradicts, and no Surface Out of step"
-
-
-def test_spec_loop_and_the_loop_page_give_one_clean_finish_that_waits_on_every_surface():
+def test_spec_loop_reads_a_clean_finish_off_the_end_line_and_judges_no_report():
     skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
-    page = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
 
     line = skill.split("**A clean finish**", 1)[1].split("\n", 1)[0]
-    assert CLEAN_FINISH in line
-    assert CLEAN_FINISH in " ".join(page.split())
+    assert "is the log's `END` line" in line
+    assert "Do not judge the drift report yourself" in line
+    assert "lists nothing Missing, Partial or Contradicts" not in skill
+
+
+def test_spec_loop_names_each_unrequested_item_before_the_close_offer():
+    skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
+
+    named = skill.index("Name each of those items to the user, one by one, before any close offer")
+    assert skill.index("`NOTE  Unrequested:`") < named < skill.index("make one offer")
+
+
+def test_the_loop_page_says_the_driver_decides_a_clean_finish_after_the_full_run():
+    page = " ".join((ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8").split())
+
+    assert "The script decides a clean finish, and nothing else does." in page
+    assert "every Verdict Done or In step, and [the full run](#the-full-run) green" in page
+    assert "It runs once, at the end, after the drift check and its count." in page
 
 
 def setup_section(heading):

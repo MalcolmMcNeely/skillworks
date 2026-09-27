@@ -2676,9 +2676,52 @@ def test_a_red_full_run_tries_no_fix_and_leaves_the_spec_open(loop, runner):
 
     assert ran.status == 1
     assert len(prompts_asking(runner, "/skillworks:implement 168 --fix")) == 1
-    assert call_asking(runner, "/skillworks:spec-drift") is None
     assert not runner.built("issue close")
     assert "END" not in loop.log()
+
+
+def test_the_full_run_runs_once_and_last_after_the_drift_check_and_its_count(loop, runner):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert len(full_run_calls(loop, "dotnet")) == 1
+    log = loop.log()
+    assert log.count("FULL  #168 landed in this run") == 1
+    assert log.index("DRIFT") < log.index("COUNT") < log.index("FULL  #168 landed in this run")
+    drift = next(at for at, call in enumerate(runner.made)
+                 if call.args[0] == "claude" and call.args[2].startswith("/skillworks:spec-drift"))
+    full = next(at for at, call in enumerate(runner.made)
+                if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
+    assert drift < full
+
+
+def test_a_gap_in_the_drift_report_still_gets_the_full_run_and_writes_no_end(loop, runner):
+    tracker = given_a_run_that_lands(loop)
+    tracker.last_comment = drift_report(S1="Missing. Not there.")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert full_run_calls(loop, "dotnet") == [["dotnet", "test", "Skillworks.slnx"]]
+    log = loop.log()
+    assert "      Gap: S1 is Missing: Not there.\n" in log
+    assert "FULL  main at" in log
+    assert "END" not in log
+
+
+def test_a_red_full_run_after_every_verdict_done_writes_no_end(loop):
+    given_a_run_that_lands(loop)
+    given_a_full_run_that_goes_red(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    log = loop.log()
+    assert "COUNT the spec holds 4 items, and the drift report gives 4 Verdicts" in log
+    assert "RED   the full run of the Suite went red" in log
+    assert "END" not in log
 
 
 def test_a_red_full_run_after_an_early_stop_names_why_the_loop_stopped_too(loop):

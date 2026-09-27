@@ -19,10 +19,13 @@ flowchart TD
     ticket --> land["Land it on the Target branch"]
     land --> more{"Another open ticket?"}
     more -- yes --> ticket
-    more -- no --> full{"Full Suite run<br/>on the newest Target branch"}
-    full -- green --> drift["Drift check<br/>a report kept with the spec"]
-    full -- red --> stop(["The loop stops"])
-    drift -- "spec mode" --> ready["Mark the pull request<br/>ready for review"]
+    more -- no --> drift["Drift check<br/>a report kept with the spec"]
+    drift --> count{"Every Verdict<br/>Done or In step?"}
+    count -- yes --> full{"Full Suite run, once<br/>on the newest Target branch"}
+    count -- no --> last["Full Suite run, once"] --> stop(["The loop stops"])
+    full -- red --> stop
+    full -- green --> clean["A clean finish<br/>END, and the spec closes with files"]
+    clean -- "spec mode" --> ready["Mark the pull request<br/>ready for review"]
 ```
 
 Your `yes` at the gate is the whole of your consent. Nothing between it and the drift report at the
@@ -468,7 +471,7 @@ command, gets no Nudge. It stops the loop at once.
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, above. The script reopens the ticket, because `finish` may have closed it before its work
 reached the Target branch, and the loop only picks open tickets. If this run landed a ticket before
-the stop, the full run below runs next. The `FAIL` line in the log names the worktree and the files to read:
+the stop, [the full run](#the-full-run) runs next. The `FAIL` line in the log names the worktree and the files to read:
 
 ```
 FAIL  #203 step fix failed check ticket-open. Its worktree is at .claude/worktrees/spec-200/ticket-203. See ...
@@ -489,7 +492,8 @@ ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
 check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, a Contradicts or a Gap
 stops the loop with a `STOP` line, and the spec stays open. Every ticket has landed by then, so there
-is nothing to Keep. The line names each Contradicts and each Gap:
+is nothing to Keep, and the full run still runs before the loop ends. The line names each
+Contradicts and each Gap:
 
 ```
 STOP  the drift report leaves 2 Gaps on spec #200, so the spec stays open.
@@ -541,13 +545,16 @@ names the mode the run is in.
 
 A Proof knows only the files in your repo. A change outside it, such as a new SDK, can leave a Proof
 stale. So after each loop run that landed at least one ticket, the script runs the whole Suite once
-more, on the newest Target branch on `origin`, in a worktree of its own. It does this when the loop
-stopped early too, because the tickets that landed are on the Target branch all the same.
+more, on the newest Target branch on `origin`, in a worktree of its own.
+
+It runs once, at the end, after the drift check and its count. It is the slowest step, so it runs
+only on the finished spec. It runs when the loop stopped early too, whether at a ticket or at the
+count, because the tickets that landed are on the Target branch all the same.
 
 The full run trusts no Proof and uses no image, so every check runs on your own machine. A check that
 goes red there loses all its Proofs, so a stale Proof cannot skip it again.
 
-A red full run stops the loop, and the drift check does not run. The `RED` line names the red checks
+A red full run stops the loop, and there is no clean finish. The `RED` line names the red checks
 and the tickets that landed in the run. The spec stays open, and no Session is asked to fix it: a red
 Target branch is yours to decide on. [The Suite](suite.md) says more.
 
@@ -556,7 +563,7 @@ Target branch is yours to decide on. [The Suite](suite.md) says more.
 Every ticket passed its own acceptance criteria. Nothing so far has asked whether all of them together
 are what the spec wanted.
 
-So when no open ticket is left and the full run is green, the script opens one last worktree and runs
+So when no open ticket is left, the script opens one more worktree and runs
 `/skillworks:spec-drift <spec> <base>` in a fresh Session. It judges the work against the spec, not the
 tickets, because a ticket that drifted still passed its own criteria. It records one report with the
 spec, under the heading `## Drift report`. With the GitHub Tracker the report is a comment on the spec
@@ -606,13 +613,20 @@ The loop stops, and the spec stays open, when:
 - any Gap is left. The stop line names each one.
 
 The drift check fixes nothing and closes nothing. A fix is new work, and needs a ticket of its own.
+
+### A clean finish
+
+The script decides a clean finish, and nothing else does. A clean finish is every Verdict Done or In
+step, and [the full run](#the-full-run) green. Only then does the script write its `END` line, and
+with the files Tracker only then does it close the spec. A Gap, a Contradicts or a red full run stops
+the loop before either. `/skillworks:spec-loop` reads the `END` line and does not judge the report
+itself, so the skill and the script never disagree. Before it offers to close the spec, it names each
+Unrequested item from the `NOTE` lines.
+
 Closing the spec is where a person says the work is done. With a branch name, a person closes it by
-hand. With `spec`, the loop marks the spec's pull request ready for review, and the spec closes when a
-person merges it. With the files Tracker, the loop closes the spec itself after a count that finds no
-Gap and no Contradicts, and with `spec` it leaves the pull request to you. A clean finish needs two
-facts: the log reaches its `END` line, and the drift report lists nothing Missing, Partial or
-Contradicts, and no Surface Out of step. The count runs before `END`, so a log that reaches `END` has
-both.
+hand after a clean finish. With `spec`, the loop marks the spec's pull request ready for review, and
+the spec closes when a person merges it. With the files Tracker, the loop closes the spec itself on a
+clean finish, and with `spec` it leaves the pull request to you.
 
 ## The stage map
 
@@ -645,8 +659,8 @@ use with nobody watching.
 | `suite` | Nothing. No Session runs. | `suite.json`, and each Dockerfile a check names as its `image` | Every check, its `ready`, its `ignores`, its `image`, and `runs`. |
 | `finish` | `CLAUDE.md` and the rules | `issue-tracker.md` | Nothing. The loop reads back the two conventions in `issue-tracker.md`, so leave them as they are. |
 | Landing | `CLAUDE.md` and the rules, in the Session that resolves a conflict | `suite.json`, for the Suite again | The checks in `suite.json`. |
-| The full run | Nothing. No Session runs. | `suite.json` | The checks in `suite.json`. |
 | The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `surfaces.md` | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
+| The full run | Nothing. No Session runs. | `suite.json` | The checks in `suite.json`. |
 
 The rules' settings load into every Session, but each one is enforced only once a check exists that
 reads it. Until then, `build` and `fix` follow them as prose, and the reviews judge the change by
@@ -684,19 +698,23 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
 
-After the last ticket and the full run, the drift check adds its own lines:
+After the last ticket, the drift check adds its own lines, then the full run adds its own:
 
 ```
 18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift.md
 18:40:12 COUNT the spec holds 21 items, and the drift report gives 21 Verdicts
 18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
-18:40:12 END   spec #200 complete. Every ticket is on master.
+18:40:12 FULL  #202, #203 landed in this run, so the whole Suite runs on the newest origin/master with no Proofs and no images
+18:52:30 FULL  run 1 passed
+18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
+18:52:31 END   spec #200 complete. Every ticket is on master.
 ```
 
 The `COUNT` line says how many items the spec holds and how many Verdicts the report gave. A `NOTE`
 line names each Unrequested item. A `WARN` line names a Verdict for an item the spec does not hold. A
-`STOP` line in place of `END` names each Gap and each Contradicts, as [When a step
-fails](#when-a-step-fails) shows.
+`STOP` line names each Gap and each Contradicts, as [When a step fails](#when-a-step-fails) shows.
+It comes last, after the full run's lines, in place of `END`. `END` comes only on [a clean
+finish](#a-clean-finish).
 
 The position counts closed tickets, so a restarted run starts at its real place. The time left is the
 mean of the tickets this run has finished, with the one now running counted as still to do.

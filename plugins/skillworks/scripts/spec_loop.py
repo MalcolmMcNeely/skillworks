@@ -1057,14 +1057,16 @@ class Loop:
             self.spec_named(), base, self.tracker.repo, self.permission_mode))
 
         # A landed ticket stays when the loop stops, so a stop is followed by the full run too.
+        # It runs last and once, so the slowest step proves the finished spec and nothing before it.
         try:
             self.run_tickets()
+            self.check_drift(base)
         except Stop as stopped:
             self.run_full(stopped)
             raise
         self.run_full()
 
-        self.check_drift(base)
+        # Reached only with every Verdict Done or In step and the full run green: a clean finish.
         self.close_spec()
         if self.spec_mode:
             self.hand_over()

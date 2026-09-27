@@ -447,7 +447,27 @@ def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_on_the_rem
 
     assert ran.status == 0, said(ran)
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
-    assert ran.out.index("DRIFT") < ran.out.index("CLOSE spec 7") < ran.out.index("END   spec 7")
+    assert (ran.out.index("DRIFT") < ran.out.index("FULL  main at")
+            < ran.out.index("CLOSE spec 7") < ran.out.index("END   spec 7"))
+
+
+def test_a_red_full_run_after_every_verdict_done_leaves_the_spec_open(driver):
+    given_sessions_that_finish(driver)
+    full_run = driver.repo.tree(SPEC, "full-run").as_posix()
+
+    def red_in_the_full_run():
+        if driver.runner.where == full_run:
+            return Ran(1, "a test failed on this OS\n", "")
+        return None
+    driver.runner.stub("dotnet", says="the solution passed", does=red_in_the_full_run)
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "RED   the full run of the Suite went red" in ran.out
+    assert "CLOSE" not in ran.out
+    assert "END" not in ran.out
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
 
 
 def given_sessions_that_finish_on_the_spec_branch(driver):

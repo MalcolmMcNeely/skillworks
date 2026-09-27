@@ -155,8 +155,9 @@ ends when `dotnet test`, the slowest, ends.
 
 A Proof knows only the files in the repo. A change outside the repo, such as a new SDK, can leave a
 Proof stale. So after each loop run that landed at least one ticket, the driver runs the whole Suite
-again on the newest Target branch from `origin`, in a new worktree. It does this when the loop
-stopped early too, because the tickets that landed are on the Target branch all the same.
+again on the newest Target branch from `origin`, in a new worktree. It runs once, at the end, after
+the drift check. It does this when the loop stopped early too, because the tickets that landed are on
+the Target branch all the same.
 
 The full run trusts no Proof and uses no image. Every check runs, on your own machine, so the code is
 proved on the OS your team uses. It keeps no Proof. A check that goes red there loses all its
