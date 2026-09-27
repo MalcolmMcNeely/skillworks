@@ -8,7 +8,7 @@ public sealed record SessionsRead(
     string? Unreachable,
     IReadOnlyList<SessionRow> Rows,
     IAsyncEnumerable<MeasureLanding> Measures,
-    // Every Prompt line read, before any Filter, so an empty list tells a quiet month from a narrowed one.
+    // Every Prompt line read, before any Filter but the Repository, so an empty list tells a quiet month from a narrowed one.
     long Prompts,
     // At most one of the two, as a read either stopped at a place or ran out of Prompts at the end of its 30 days.
     DateTimeOffset? NextBeforeUtc,

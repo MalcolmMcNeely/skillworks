@@ -21,16 +21,21 @@ public static class SessionRequests
     public static async Task<IReadOnlyList<SessionRow>> SessionsIn(this StudioHost studio, string filter = "") =>
         (await studio.SessionAnswer(filter)).Sessions;
 
-    public static Task<SessionsAnswer> LaterSessionAnswer(this StudioHost studio, SessionsAnswer earlier) =>
-        studio.SessionAnswerBefore(earlier, earlier.NextBeforeUtc!.Value);
+    public static Task<SessionsAnswer> LaterSessionAnswer(this StudioHost studio, SessionsAnswer earlier, string filter = "") =>
+        studio.SessionAnswerBefore(earlier, earlier.NextBeforeUtc!.Value, filter);
 
     public static Task<SessionsAnswer> FurtherBackSessionAnswer(this StudioHost studio, SessionsAnswer earlier) =>
-        studio.SessionAnswerBefore(earlier, earlier.QuietSinceUtc!.Value);
+        studio.SessionAnswerBefore(earlier, earlier.QuietSinceUtc!.Value, "");
 
-    private static Task<SessionsAnswer> SessionAnswerBefore(this StudioHost studio, SessionsAnswer earlier, DateTimeOffset before) =>
+    private static Task<SessionsAnswer> SessionAnswerBefore(
+        this StudioHost studio,
+        SessionsAnswer earlier,
+        DateTimeOffset before,
+        string filter) =>
         studio.SessionAnswer(
             $"?asOf={Uri.EscapeDataString(earlier.Head.AsOfUtc.ToString("O", CultureInfo.InvariantCulture))}" +
-            $"&before={Uri.EscapeDataString(before.ToString("O", CultureInfo.InvariantCulture))}");
+            $"&before={Uri.EscapeDataString(before.ToString("O", CultureInfo.InvariantCulture))}" +
+            (filter.Length == 0 ? "" : $"&{filter.TrimStart('?')}"));
 
     public static Task<HttpResponseMessage> AskForSessions(this StudioHost studio, string filter) =>
         studio.Client.GetAsync($"/api/sessions{filter}");

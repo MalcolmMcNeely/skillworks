@@ -37,17 +37,10 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         EventAttributes.Person,
     ];
 
-    private static readonly string[] ByParentWhereabouts =
-    [
-        EventAttributes.Parent,
-        EventAttributes.Owner,
-        EventAttributes.RepositoryName,
-    ];
-
     private static readonly string[] ByTitle = [EventAttributes.Session, EventAttributes.Response];
 
     // Every read after the Prompts names the loaded rows, as grouping over every Session ran Loki past its series limit.
-    // A Repository and a Skill are judged here and not in the store, as a Parent row stands for Children elsewhere.
+    // A Skill is judged here and not in the store, as a Parent row stands for Children elsewhere.
     public async Task<SessionsRead> ListAsync(
         DateTimeOffset asOf,
         DateTimeOffset? before,
@@ -55,7 +48,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         CancellationToken cancellationToken)
     {
         var start = before ?? asOf;
-        var heard = await HeardAsync(start, asOf, before, cancellationToken);
+        var heard = await HeardAsync(start, asOf, before, filter.Repository, cancellationToken);
 
         // Only a read that ran out of Prompts saw the rest of its 30 days quiet, as one that stopped at fifty never looked.
         var quietSince = heard.ReadToItsEnd ? start - Reach : (DateTimeOffset?)null;
@@ -67,11 +60,20 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
 
         if (heard.Works.Count == 0)
         {
+            var (unasked, prompts) = heard.Prompts == 0 && filter.Repository is not null
+                ? await UnnarrowedPromptsAsync(start, cancellationToken)
+                : (null, heard.Prompts);
+
+            if (unasked is not null)
+            {
+                return SessionsRead.Failed(unasked, 0);
+            }
+
             return new SessionsRead(
                 null,
                 [],
                 AsyncEnumerable.Empty<MeasureLanding>(),
-                heard.Prompts,
+                prompts,
                 null,
                 quietSince,
                 TracedSessions.Unasked);
@@ -121,9 +123,6 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         // Lines, not a total by the words, as every different Prompt would be a series of its own.
         var prompting = events.LinesAsync(own with { EventName = PromptEvent }, cancellationToken);
 
-        var childrenPlacing = filter.Repository is null
-            ? Task.FromResult(EventTotals.Of([]))
-            : events.CountAsync(children, ByParentWhereabouts, cancellationToken);
         var activating = filter.Skill is null
             ? Task.FromResult(EventTotals.Of([]))
             : events.CountAsync(Activations(own, filter), BySession, cancellationToken);
@@ -140,7 +139,6 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
             await childrenEnding,
             await titling,
             await prompting,
-            await childrenPlacing,
             await activating,
             await childrenActivating);
 
@@ -164,10 +162,13 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
     }
 
     // Newest first, until fifty pieces of work are held, so a busy week costs no more to read than a quiet one.
+    // A Repository narrows the Prompts in the store, so a read under it brings fifty rows where fifty exist.
+    // A Child's Prompt in the Repository still places its Parent, so the row stands for the whole piece of work.
     private async Task<Heard> HeardAsync(
         DateTimeOffset start,
         DateTimeOffset asOf,
         DateTimeOffset? before,
+        string? repository,
         CancellationToken cancellationToken)
     {
         var works = new Dictionary<string, Work>(StringComparer.Ordinal);
@@ -177,7 +178,9 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         var withheld = new HashSet<string>(StringComparer.Ordinal);
         long prompts = 0;
 
-        var newest = events.NewestFirstAsync(new EventQuery(PromptEvent, start - Reach, start), cancellationToken);
+        var newest = events.NewestFirstAsync(
+            new EventQuery(PromptEvent, start - Reach, start) { Repository = repository },
+            cancellationToken);
 
         // Asked of the work heard since the last time, so a later read costs no more however far down the list it is.
         async Task<string?> SetAsideDrawnAsync()
@@ -187,7 +190,12 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
                 return null;
             }
 
-            var since = await DrawnSinceAsync(place, asOf, [.. unasked.Select(work => work.Id)], cancellationToken);
+            var since = await DrawnSinceAsync(
+                place,
+                asOf,
+                [.. unasked.Select(work => work.Id)],
+                repository,
+                cancellationToken);
 
             unasked.Clear();
 
@@ -270,14 +278,29 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         return new Heard(null, prompts, placed, withheld, ReadToItsEnd: true);
     }
 
+    // Only a page read without the Repository tells a quiet store from a narrowed list.
+    private async Task<(string? Unreachable, long Prompts)> UnnarrowedPromptsAsync(
+        DateTimeOffset start,
+        CancellationToken cancellationToken)
+    {
+        await foreach (var page in events.NewestFirstAsync(new EventQuery(PromptEvent, start - Reach, start), cancellationToken))
+        {
+            return (page.Unreachable, page.Lines.Count);
+        }
+
+        return (null, 0);
+    }
+
     // Work with a Prompt from the place up to the as-of instant sat higher in an earlier read, so it was drawn there.
+    // Only a Prompt in the Repository counts, as the earlier read under it never heard one elsewhere.
     private async Task<(string? Unreachable, IReadOnlySet<string> Drawn)> DrawnSinceAsync(
         DateTimeOffset place,
         DateTimeOffset asOf,
         string[] ids,
+        string? repository,
         CancellationToken cancellationToken)
     {
-        var since = new EventQuery(PromptEvent, place, asOf);
+        var since = new EventQuery(PromptEvent, place, asOf) { Repository = repository };
 
         var own = events.CountAsync(since with { Sessions = ids }, BySession, cancellationToken);
         var children = events.CountAsync(since with { Parents = ids }, ByParent, cancellationToken);
@@ -327,7 +350,6 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         withheld.UnionWith(gate.Prompted.Lines.Where(Withheld).Select(line => line.Attribute(EventAttributes.Session)!));
 
         var placed = Grouped(gate.Placed.Groups, EventAttributes.Session).ToDictionary(run => run.Key);
-        var childrenPlaced = Grouped(gate.ChildrenPlaced.Groups, EventAttributes.Parent).ToDictionary(work => work.Key);
 
         // A Skill says which runs are listed, never how much of a run is counted.
         var fired = Keyed(gate.Fired.Groups, EventAttributes.Session);
@@ -343,11 +365,9 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
             }
 
             IReadOnlyList<EventTotal> run = placed.TryGetValue(work.Id, out var said) ? [.. said] : [];
-            IReadOnlyList<EventTotal> elsewhere = childrenPlaced.TryGetValue(work.Id, out var told) ? [.. told] : [];
 
             // Each Filter is met when the Parent or any one Child meets it, as the row stands for the whole piece of work.
             var kept =
-                (filter.Repository is null || run.Concat(elsewhere).Any(total => total.Repository == filter.Repository)) &&
                 (filter.Skill is null || fired.Contains(work.Id)) &&
                 // Narrowing by a read that fell short would hide runs nobody asked to hide.
                 (traced.FellShort || work.Members.Any(member =>
@@ -439,14 +459,12 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         EventTotals ChildrenEnded,
         EventTotals Titled,
         EventLines Prompted,
-        EventTotals ChildrenPlaced,
         EventTotals Fired,
         EventTotals ChildrenFired)
     {
         public string? Unreachable =>
             Placed.Unreachable ?? Started.Unreachable ?? Ended.Unreachable ?? ChildrenEnded.Unreachable ??
-            Titled.Unreachable ?? Prompted.Unreachable ?? ChildrenPlaced.Unreachable ?? Fired.Unreachable ??
-            ChildrenFired.Unreachable;
+            Titled.Unreachable ?? Prompted.Unreachable ?? Fired.Unreachable ?? ChildrenFired.Unreachable;
     }
 
     // A piece of work as the Prompts found it: its place is the first Prompt heard, which is the newest.
