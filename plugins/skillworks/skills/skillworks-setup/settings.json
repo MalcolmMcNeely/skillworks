@@ -25,6 +25,7 @@
       "Bash(skillworks-preflight:*)",
       "Bash(seed-steering:*)",
       "Bash(set-attribution:*)",
+      "Bash(allow-commands:*)",
       "Bash(spec-loop:*)",
       "Bash(land-ticket:*)",
       "Bash(ticket-worktree:*)",

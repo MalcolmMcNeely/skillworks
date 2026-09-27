@@ -186,7 +186,11 @@ Setup leaves the rules as prose. An agent reads their settings, but no check enf
   - `docs/agents/suite.json`: each test's command, with the `ignores` that keep it asleep.
   - `docs/agents/placement-checks.md`: both tables, which check proves which rule, and the exact
     command that runs each check.
-  - `.claude/settings.json`: the command of any new tool, in the allowlist.
+  - `.claude/settings.json`: the command of any new tool, in the allowlist. It writes the entries with
+    `allow-commands`, which adds each missing entry and removes none. Claude Code can turn down a
+    write to this file, even one you approve. If it does, the skill shows you the exact entries and
+    the file, and asks you to add them. It reads the file back before it calls the step done, and its
+    report names any entry still missing, because the loop can hit a Denial on that command.
 
 Run it again when your team adds a language or a rule. A second run tests only what is new, and keeps
 every test you already have.

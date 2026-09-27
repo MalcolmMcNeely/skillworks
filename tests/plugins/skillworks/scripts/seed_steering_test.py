@@ -893,7 +893,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 8
+    assert len(commands) == 9
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -1370,6 +1370,32 @@ def test_the_architecture_tests_skill_can_be_invoked_by_the_model_and_states_the
     assert "never quietly weakened" in text
 
 
+def allowlist_fallback_gaps(text):
+    step = text.split("3. **The allowlist.**", 1)[1].split("\n## ", 1)[0]
+    report = text.split("\n## Report\n", 1)[1]
+    wanted = {
+        "the write goes through the Plugin's command": "`allow-commands`" in step,
+        "a turned-down write does not stop the skill": "**If the write is turned down.**" in step,
+        "the developer is shown the file and the exact entries": "Show the developer the file, `.claude/settings.json`, and the exact entries" in step,
+        "the developer is asked to add them": "Ask the developer to add them." in step,
+        "the file is read back": "Then read the file back" in step,
+        "the step is never done with an entry missing": "Never report it done while an entry is missing." in step,
+        "the report names each missing entry": "Name each allowlist entry still missing" in report,
+    }
+    return [need for need, met in wanted.items() if not met]
+
+
+def test_architecture_tests_falls_back_to_the_developer_when_the_allowlist_write_is_turned_down():
+    assert allowlist_fallback_gaps(skill_text("architecture-tests")) == []
+
+
+def test_a_skill_that_drops_the_allowlist_fallback_is_caught():
+    text = skill_text("architecture-tests")
+    step = text.split("   **If the write is turned down.**", 1)[1].split("\n\n", 1)[0]
+
+    assert allowlist_fallback_gaps(text.replace(step, "")) != []
+
+
 ENFORCED = "enforced only once a check exists"
 
 
@@ -1437,6 +1463,16 @@ def test_the_usage_docs_explain_what_architecture_tests_reads_chooses_and_writes
     assert "both tables" in section
     assert "allowlist" in section
     assert "adds a language or a rule" in section
+
+
+def test_the_usage_docs_say_what_happens_when_the_allowlist_write_is_turned_down():
+    section = usage_section("## Turn the rules into tests")
+
+    assert "`allow-commands`" in section
+    assert "Claude Code can turn down a" in section
+    assert "asks you to add them" in section
+    assert "reads the file back" in section
+    assert "names any entry still missing" in section
 
 
 def test_implement_reads_the_suite_from_the_suite_file():
