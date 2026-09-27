@@ -204,6 +204,8 @@ Say that auto-memory is off for this repository, or that the user chose to keep 
 - The allowlist: each tool the Suite runs, such as a build or a test runner, so the loop can run it without a prompt.
 - The rules' settings, as the team settles them.
 
+Name `/skillworks:architecture-tests` as the next step after setup. It turns the rules into tests the team owns: it writes each test red first, proves it green, then fills `docs/agents/suite.json`, both tables of `docs/agents/placement-checks.md` and the allowlist. A team runs it again when it adds a language or a rule.
+
 Then tell them the loop is ready:
 
 ```

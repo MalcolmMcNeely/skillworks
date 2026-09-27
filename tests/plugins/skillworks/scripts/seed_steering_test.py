@@ -1078,6 +1078,16 @@ def test_the_report_names_the_folder_each_steering_file_lives_in():
         assert "`{}`".format(seed) in report, seed
 
 
+def test_the_report_names_architecture_tests_as_the_next_step_and_what_it_fills():
+    report = setup_section("### 7. Report")
+    paragraphs = [paragraph for paragraph in report.split("\n\n") if "`/skillworks:architecture-tests`" in paragraph]
+
+    assert len(paragraphs) == 1
+    assert "next step" in paragraphs[0]
+    for filled in ("`{}`".format(WHERE["suite.json"]), "`{}`".format(WHERE["placement-checks.md"]), "allowlist"):
+        assert filled in paragraphs[0], filled
+
+
 # Each holds only for this repository, so a skill that says one tells a team about a repo it is not in.
 SKILL_HABITS = ["slice rules", "slice whose job it serves", "no branches and no pull requests", "under checks"]
 
