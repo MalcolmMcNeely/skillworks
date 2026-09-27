@@ -2160,8 +2160,17 @@ def test_the_loop_page_names_the_bypass_flag():
     assert "--bypass" in text
 
 
+# A heading inside a fence belongs to an example file, so it never ends the section.
 def page_section(text, heading):
-    return text.split("\n" + heading + "\n", 1)[1].split("\n## ", 1)[0]
+    held = []
+    fenced = False
+    for line in text.split("\n" + heading + "\n", 1)[1].split("\n"):
+        if line.startswith("## ") and not fenced:
+            break
+        if line.startswith("```"):
+            fenced = not fenced
+        held.append(line)
+    return "\n".join(held)
 
 
 def test_the_loop_page_explains_both_kinds_of_target_branch():
@@ -2171,6 +2180,32 @@ def test_the_loop_page_explains_both_kinds_of_target_branch():
         assert named in section, named
     assert "Pick a branch name when" in section
     assert "Pick `spec` when" in section
+
+
+def test_the_loop_page_explains_the_files_tracker_beside_github():
+    section = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The Tracker")
+
+    for named in ["`docs/agents/loop.json`", "`tracker`", "`github`", "`files`", "`.specs/`",
+                  "status: open", "blocked-by:", "claimed-by:", "gitignored", "## Closing note"]:
+        assert named in section, named
+    assert "Pick `github` when" in section
+    assert "Pick `files` when" in section
+
+
+def test_the_loop_page_shows_a_spec_file_and_a_ticket_file():
+    section = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The Tracker")
+    shown = re.findall(r"```markdown\n(.*?)```", section, re.DOTALL)
+
+    assert any(block.startswith("---\n") and "# SPEC:" in block for block in shown)
+    assert any(block.startswith("---\n") and "# TICKET:" in block for block in shown)
+
+
+@pytest.mark.parametrize("page", ["docs/usage/setup.md", "docs/usage/steering.md"])
+def test_the_setup_and_steering_pages_describe_the_tracker_setting(page):
+    text = (ROOT / page).read_text(encoding="utf-8")
+
+    for named in ["`tracker`", "`github`", "`files`", "`.specs/`"]:
+        assert named in text, named
 
 
 def test_the_landing_chart_names_the_target_branch_and_never_main():

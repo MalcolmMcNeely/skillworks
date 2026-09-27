@@ -1,6 +1,6 @@
 # Setup
 
-Setup gets your repo ready for the loop. It checks your machine and your GitHub repo, copies a Seed of
+Setup gets your repo ready for the loop. It checks your machine and your remote, copies a Seed of
 each Steering file into your repo, points `CLAUDE.md` at them, and writes the settings the loop needs
 to run with nobody watching. Run it once per repo. Run it again whenever you like: it brings in a
 newer Seed and keeps your team's edits.
@@ -9,8 +9,8 @@ newer Seed and keeps your team's edits.
 
 You need these on your machine:
 
-- `git`.
-- `gh`, logged in. Check with `gh auth status`.
+- `git`, with a `user.email`. The files Tracker claims each ticket in that name.
+- `gh`, logged in, with the GitHub Tracker only. Check with `gh auth status`.
 - `claude` on your `PATH`. The loop starts a Session with it for each step.
 - `uv` on your `PATH`. The loop's scripts are Python and run under it.
 - `node`, if you want the preflight to check your settings. Without it the preflight warns and goes
@@ -18,14 +18,19 @@ You need these on your machine:
 
 Your repo needs these:
 
-- An `origin` remote on GitHub, with Issues turned on. GitHub Issues is the Tracker.
+- An `origin` remote. Setup stops in a repo with no remote, and prints the commands that add one. A
+  bare repo on a shared drive is enough.
+- A Tracker: where your team keeps its specs and tickets. `github` keeps them as GitHub issues, and
+  needs `origin` on GitHub with Issues turned on. `files` keeps them as committed Markdown files in
+  `.specs/`, and works on any remote, such as GitLab, Bitbucket or a bare repo.
 - A Target branch: the branch the loop Lands every ticket on. It can be any branch, such as `master`
-  or `develop`, and your GitHub login must be able to push to it straight away. A rule that asks for
-  a pull request or a status check on it stops the loop.
+  or `develop`, and you must be able to push to it straight away. A rule that asks for a pull request
+  or a status check on it stops the loop.
 - Or, if your default branch is protected, the Target branch `spec`. Each spec then gets a branch of
   its own, and your team reviews it as one pull request to the default branch.
 
-[The loop](the-loop.md#the-target-branch) says how to choose.
+[The loop](the-loop.md#the-tracker) says how to choose a Tracker, and
+[the Target branch](the-loop.md#the-target-branch) how to choose a Target branch.
 
 ## Install the Plugin
 
@@ -57,29 +62,35 @@ needs their clone of Skillworks at the same path.
 ## What setup does
 
 1. **Seed the Steering.** `seed-steering` copies each Seed to its place, keeps a base copy of it in
-   `docs/agents/.seeds/`, and adds the loop's working folders to `.gitignore`.
-2. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `spec`. It
-   writes your answer into `docs/agents/loop.json`.
-3. **Preflight.** `skillworks-preflight` checks the tools, the login, the remote, and the Target
-   branch `docs/agents/loop.json` names. Then it creates the `ready-for-agent` label on GitHub. If a
-   check fails, setup stops there.
-4. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your tracker
-   docs and domain docs, and imports each rule.
-5. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
+   `docs/agents/.seeds/`, and adds the loop's working folders to `.gitignore`. It stops in a repo with
+   no remote.
+2. **Ask for the Tracker.** Setup suggests `github` when `origin` names `github.com`, and `files`
+   otherwise. It writes your answer into `tracker` in `docs/agents/loop.json`. With `files`, it tells
+   you that `.specs/` is committed and must never be gitignored.
+3. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `spec`. It
+   writes your answer into `target-branch` in `docs/agents/loop.json`.
+4. **Preflight.** `skillworks-preflight` checks the tools, the remote, and the Target branch
+   `docs/agents/loop.json` names. With `github`, it checks the `gh` login too, and then creates the
+   `ready-for-agent` label on GitHub. With `files`, it needs no `gh` and creates no label. If a check
+   fails, setup stops there.
+5. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your Tracker,
+   your tracker docs and your domain docs, and imports each rule.
+6. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
    `"autoMemoryEnabled": false` into `.claude/settings.json`.
-6. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
+7. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
 Expect a permission prompt on a first run, at the seeding and at the preflight. The allowlist that clears it is written
-in step 5.
+in step 6.
 
 ## The questions setup asks
 
-Setup asks two things on a clean repo: your Target branch, and the one yes it needs. It asks more
-only where your repo already holds an answer of its own.
+Setup asks three things on a clean repo: your Tracker, your Target branch, and the one yes it needs.
+It asks more only where your repo already holds an answer of its own.
 
 | Question | When setup asks it |
 |---|---|
+| Which Tracker does your team use? | Always. Setup suggests `github` when `origin` names `github.com`, and `files` otherwise, so the common answer is one keypress. If `tracker` in `docs/agents/loop.json` already names another answer, setup suggests that one. |
 | Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `spec` for one pull request per spec. If `docs/agents/loop.json` already names another answer, setup suggests that one. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line with them. The allowlist lets the loop run `git push` and `gh issue close` with no prompt. That is the point, and also the risk. |
 | Which side of this overlap do you keep, yours or the Seed's? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and asks once for each overlap. |
@@ -97,13 +108,13 @@ Review these before you commit them.
 | `docs/agents/rules/determinism.md` | The determinism rule. Its settings start empty. |
 | `docs/agents/rules/file-placement.md` | The file placement rule. Its settings start empty. |
 | `docs/agents/rules/words.md` | The words rule. Its lists start empty. |
-| `docs/agents/issue-tracker.md` | The `gh` calls the loop makes, the ticket shape, and the two conventions the loop leans on. |
+| `docs/agents/issue-tracker.md` | How the skills read and write each Tracker: the `gh` calls for `github`, and the `.specs/` files for `files`. The ticket shape, and the two conventions the loop leans on. |
 | `docs/agents/domain.md` | Where your glossary and your ADRs live. |
 | `docs/agents/placement-checks.md` | The commands that prove placement. It starts with none. |
 | `docs/agents/smell-baseline.md` | The code smells the `standards` review looks for. |
 | `docs/agents/arrangement-baseline.md` | The failures of placement the `architecture` review looks for. |
 | `docs/agents/suite.json` | Your Suite. It starts with no checks, and the loop stops until you add one. |
-| `docs/agents/loop.json` | The loop's settings. `target-branch` starts as your remote's default branch. |
+| `docs/agents/loop.json` | The loop's settings. `tracker` holds your answer, `github` or `files`. `target-branch` starts as your remote's default branch. |
 | `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
@@ -173,7 +184,7 @@ Setup commits nothing. Review each changed file before you commit.
 
 ### The other outputs
 
-- **The label.** A label that is there is left alone.
+- **The label.** With `github`, a label that is there is left alone.
 - **`.gitignore`.** Setup adds only the working folders it does not name yet. It never adds one twice.
 - **`CLAUDE.md`.** Setup updates the `## Agent skills` block in place. It never adds a second copy,
   and it leaves every other section alone.

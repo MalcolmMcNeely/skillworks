@@ -72,6 +72,139 @@ protection. With `spec`:
 Every other part of this page is the same for both kinds. Where it says the Target branch, read the
 branch name you set, or `spec/<slug>`.
 
+## The Tracker
+
+The **Tracker** is where your team keeps its specs and tickets. `tracker` in `docs/agents/loop.json`
+says which one it is. Setup asks you, and writes your answer there. It takes one of two answers.
+
+**`github`**. A spec is a GitHub issue, and each ticket is a sub-issue of it. The loop reads and
+writes them with `gh`.
+
+```json
+{ "tracker": "github" }
+```
+
+Pick `github` when your remote is on GitHub and has Issues turned on. Setup suggests it when `origin`
+names `github.com`.
+
+**`files`**. A spec is a folder in `.specs/`, and each ticket is a Markdown file in that folder. They
+are committed to your repo, beside your code. The loop reads them with `git` alone, so it needs no
+`gh`.
+
+```json
+{ "tracker": "files" }
+```
+
+Pick `files` when your remote is not on GitHub: GitLab, Bitbucket, or a bare repo on a shared drive.
+Setup suggests it when `origin` does not name `github.com`. Any remote works. A repo with no remote
+does not: setup stops, and prints the commands that add one.
+
+The rest of this section is about `files`. With `github`, the rest of this page says how the loop
+uses the issues.
+
+### The `.specs/` folder
+
+```
+.specs/
+  0007-local-tracker/
+    spec.md
+    tickets/
+      01-read-loop-json.md
+      02-close-in-worktree.md
+```
+
+Each spec is a folder, `<number>-<slug>`. `/skillworks:to-spec` writes it and pushes it. Its number
+is one more than the highest number on the remote. When two specs are written at the same time, the
+remote refuses the second push, and that spec takes the next number.
+
+`/skillworks:to-tickets` writes one file for each ticket in `tickets/`. One file for each ticket
+means two jobs never edit the same file.
+
+A ticket's number is local to its spec. So a ticket is named by both numbers, `<spec>/<ticket>`:
+`7/2` is ticket `02` of spec `0007`. You give the loop the spec's number, as you give it an issue
+number: `/skillworks:spec-loop 7`.
+
+### A spec file and a ticket file
+
+Each file is plain Markdown, so you read and edit it in any editor. The frontmatter at the top holds
+the state the loop reads. The text below it is what a Session reads.
+
+A spec, `.specs/0007-local-tracker/spec.md`:
+
+```markdown
+---
+status: open
+---
+
+# SPEC: A team without GitHub tracks its specs in committed files
+
+## Problem Statement
+
+A team whose remote is not GitHub cannot use the loop at all.
+```
+
+A ticket, `.specs/0007-local-tracker/tickets/02-close-in-worktree.md`:
+
+```markdown
+---
+status: open
+blocked-by: [1]
+claimed-by:
+---
+
+# TICKET: Close the ticket in the worktree
+
+## What to build
+
+The ticket's Session closes its own ticket, in the same commit as its code.
+
+## Acceptance criteria
+
+- [ ] The close and the code are in one commit.
+
+## Blocked by
+
+- 1
+```
+
+| Field | Where | What it holds | Who writes it |
+|---|---|---|---|
+| `status` | `spec.md` and each ticket | `open` or `closed`. | `to-spec` and `to-tickets` write `open`. The loop closes it. |
+| `blocked-by` | Each ticket | The numbers of the tickets in the same spec that must close first. | `to-tickets`. |
+| `claimed-by` | Each ticket | The `user.email` of the loop that took the ticket. | The loop. Leave it empty. |
+| `branch` | `spec.md`, when `target-branch` says `spec` | The spec's own branch, `spec/<slug>`. | `to-spec`. |
+
+You can edit a file by hand, like any other file. Push the edit to the Target branch, because the
+loop reads the files there and not in your checkout.
+
+### A claim and a close
+
+- **Reading.** The loop fetches the Target branch from `origin`, and reads `.specs/` there. So it sees
+  what every other loop and every teammate has pushed.
+- **Picking.** A ticket can start when it is open, nobody has claimed it, and each ticket in its
+  `blocked-by` is closed.
+- **Claiming.** The loop sets `claimed-by: <your user.email>` in a commit, and pushes it to the Target
+  branch. If the remote refuses the push, another loop moved first. The loop reads again, and claims
+  the next free ticket. A lost push race is what stops two loops from taking one ticket.
+- **Closing a ticket.** `finish` sets `status: closed` and adds a `## Closing note` at the end of the
+  ticket file, in the same commit as the code. The note holds what a closing comment holds on
+  GitHub: what was done, which tests prove it, and which checks did not run. The close reaches the
+  remote only when the ticket Lands. So a ticket is never closed without its code.
+- **Closing the spec.** After the last ticket and the drift check, the loop sets `status: closed` in
+  `spec.md` and pushes it. Do not close a spec by hand while a loop runs on it.
+
+With `spec` as your Target branch, the spec's folder sits on `spec/<slug>`. So its pull request
+carries the spec and its code together.
+
+### Why `.specs/` is committed
+
+Do not add `.specs/` to `.gitignore`. Each job builds in a worktree of its own, and a worktree cannot
+see a gitignored folder of your checkout. A job that cannot see its ticket cannot build it or close
+it.
+
+Committed, the files give three things. Every teammate and every loop reads the same state. A claim is
+a pushed commit, so it holds. And a close goes in the same commit as its code.
+
 ## Stage one: settle the design
 
 ### The grill
@@ -98,11 +231,13 @@ the way, and what was ruled out. Then it asks you to confirm.
 
 ### The spec
 
-On your yes, `/skillworks:to-spec` runs. It publishes a `SPEC:` issue on GitHub with the
-`ready-for-agent` label. It commits and pushes what the interview changed on disk to the Target branch,
-and it reports the spec's number. With `spec`, the spec names its own branch under `## Branch`.
+On your yes, `/skillworks:to-spec` runs. With `github`, it publishes a `SPEC:` issue with the
+`ready-for-agent` label. With `files`, it writes the spec's folder in `.specs/` and pushes it. It
+commits and pushes what the interview changed on disk to the Target branch, and it reports the spec's
+number. With `spec`, the spec names its own branch: under `## Branch` in the issue, or as `branch` in
+`spec.md`.
 
-The push matters as much as the issue. The spec points at decisions that must already be in the repo,
+The push matters as much as the spec. The spec points at decisions that must already be in the repo,
 because no later Session can see this one.
 
 That number is what you give to `/skillworks:spec-loop`.
@@ -113,22 +248,26 @@ That number is what you give to `/skillworks:spec-loop`.
 
 `/skillworks:spec-loop <spec>` checks that the spec is open, then runs `/skillworks:to-tickets`. That
 cuts the spec into tickets. Each ticket is a thin slice through every layer, small enough for one
-fresh Session, and it names the tickets that must land before it. Each one is published as a
-**sub-issue of the spec**. That link is what stops two people's loops from taking each other's work.
+fresh Session, and it names the tickets that must land before it. With `github`, each one is published
+as a **sub-issue of the spec**. With `files`, each one is a file in the spec's `tickets/` folder.
+Either way, a ticket belongs to one spec, and that is what stops two people's loops from taking each
+other's work.
 
 Then the skill starts the `spec-loop` script in the background, and tells you where its log is. The
 script does the rest. The skill never builds a ticket itself.
 
-Before the script starts work, it checks that `gh` is logged in, that `claude` is on `PATH`, and that
-the spec is open and has tickets. It records where the Target branch stood on `origin` in
+Before the script starts work, it checks that `claude` is on `PATH`, and that the spec is open and has
+tickets. With `github`, it checks that `gh` is logged in. With `files`, it checks that git has a
+`user.email`, because it claims each ticket in that name. It records where the Target branch stood on `origin` in
 `.spec-loop/<spec>/base.sha`.
 That file is written once, so a restarted run still measures from where the first run began.
 
-**Picking a ticket** is a query, not a judgement. The script takes the spec's first open sub-issue
-that has no open blocker and that nobody has claimed.
+**Picking a ticket** is a query, not a judgement. The script takes the spec's first open ticket that
+has no open blocker and that nobody has claimed.
 
-**Claiming** it assigns itself, waits three seconds, and reads the assignees back. Another name there
-means it lets the ticket go and moves on.
+**Claiming** it, with `github`, assigns itself, waits three seconds, and reads the assignees back.
+Another name there means it lets the ticket go and moves on. With `files`, a claim is a pushed commit,
+as [the Tracker](#a-claim-and-a-close) says.
 
 Open tickets that are all blocked or claimed by someone else stop the run with a `STUCK` line.
 
@@ -237,8 +376,9 @@ flowchart TD
     push -- "lost the race" --> hold["keep the Turn"] --> fetch
 ```
 
-1. **Verify.** The worktree is Clean, and every commit carries a `Ticket: #<n>` trailer, so it can be
-   traced back.
+1. **Verify.** The worktree is Clean, and every commit carries a `Ticket:` trailer, so it can be
+   traced back. With `github` it says `Ticket: #<n>`. With `files` it names the spec and the ticket,
+   such as `Ticket: 7/2`.
 2. **Fetch** `origin`.
 3. **Rebase** onto the newest Target branch, only when it moved. Then the script checks that no commit
    and no file was lost.
