@@ -45,7 +45,9 @@ It keeps a base copy of each seed in `docs/agents/.seeds/`, exactly as it copied
 | `wrote` | The seed is new, or the file was never there. The file and its base copy are written. |
 | `updated` | The team never edited the file, and the seed moved on. The file and its base copy take the new seed, and the diff under the line shows the change. |
 | `kept ..., which you edited` | The team edited the file, and the seed did not move. Nothing changes. |
-| `kept ..., the same as the seed` | The team's file is the same as the seed. The base copy takes the seed if it differs. |
+| `kept ..., the same as the seed` | The team's file and its base copy are the same as the seed. Nothing changes. |
+| `kept ..., the same as the seed, and brought its base copy up to the seed` | The team's file is the same as the seed, and its base copy is an older seed. The base copy takes the seed. |
+| `kept ..., the same as the seed, and wrote its base copy` | The team's file is the same as the seed, and has no base copy. The base copy is written. |
 | `merged` | The team edited the file, and the seed moved on in other lines. The seed's change is applied, and the diff under the line shows it. |
 | `asks` | The team's edit and the seed's change touch the same lines. Both sides of each overlap are printed, numbered. |
 | `left out` | The team deleted the file. It stays deleted. |

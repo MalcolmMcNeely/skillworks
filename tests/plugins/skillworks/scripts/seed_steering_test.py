@@ -186,7 +186,7 @@ def test_a_file_with_no_base_copy_the_same_as_the_seed_gets_one(repo, runner):
 
     assert ran.status == 0, ran.err
     assert (repo.work / BASES / "domain.md").read_text(encoding="utf-8") == seeded("domain.md")
-    assert "kept docs/agents/domain.md, the same as the seed\n" in ran.out
+    assert "kept docs/agents/domain.md, the same as the seed, and wrote its base copy\n" in ran.out
 
 
 def test_a_file_with_no_base_copy_settled_by_taking_the_whole_seed_gets_one(repo, runner):
@@ -419,7 +419,18 @@ def test_a_file_already_the_same_as_a_seed_that_moved_on_brings_its_base_copy_up
     place = WHERE[seed]
     assert (repo.work / place).read_text(encoding="utf-8") == seeded(seed)
     assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
-    assert "kept {}, the same as the seed\n".format(place) in ran.out
+    assert "kept {}, the same as the seed, and brought its base copy up to the seed\n".format(place) in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_its_base_copy_and_its_seed_all_the_same_say_no_base_copy_changed(repo, runner, seed):
+    run_seed(runner, repo.work)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert "kept {}, the same as the seed\n".format(WHERE[seed]) in ran.out
+    assert "base copy" not in ran.out
 
 
 def moved_again(tmp_path, monkeypatch, seed):
@@ -985,8 +996,10 @@ def test_the_report_ends_with_a_link_to_the_usage_front_page():
 SETUP_PAGE = ROOT / "docs" / "usage" / "setup.md"
 
 
-OUTCOMES = ["`wrote`", "`updated`", "`kept ..., which you edited`", "`kept ..., the same as the seed`", "`merged`",
-            "`asks`", "`left out`", "`kept ..., which differs from the seed`", "`kept ..., as you settled it`"]
+OUTCOMES = ["`wrote`", "`updated`", "`kept ..., which you edited`", "`kept ..., the same as the seed`",
+            "`kept ..., the same as the seed, and brought its base copy up to the seed`",
+            "`kept ..., the same as the seed, and wrote its base copy`", "`merged`", "`asks`", "`left out`",
+            "`kept ..., which differs from the seed`", "`kept ..., as you settled it`"]
 
 
 def test_the_seed_step_names_each_outcome_the_questions_and_the_review_before_commit():
