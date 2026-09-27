@@ -13,8 +13,8 @@ import pytest
 import land_ticket
 import spec_loop
 import ticket_worktree
-from conftest import (ROOT, Ran, RecordingRunner, check, git, launch, no_wait, project_suite,
-                      write_loop, write_suite)
+from conftest import (ROOT, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
+                      project_suite, write_loop, write_suite)
 from runner import Subprocess
 from suite import Suite
 
@@ -53,6 +53,15 @@ class Driver:
 
 @pytest.fixture
 def loop(repo, runner, monkeypatch):
+    return driver_in(repo, runner, monkeypatch)
+
+
+@pytest.fixture
+def master(tmp_path, runner, monkeypatch):
+    return driver_in(Repo(tmp_path, target="master"), runner, monkeypatch)
+
+
+def driver_in(repo, runner, monkeypatch):
     # The loop puts its log where it is run, so it is run in the throwaway repository.
     monkeypatch.chdir(repo.work)
     # A session is looked for under this case's own folder, so no real one can answer a check here.
@@ -229,15 +238,15 @@ class Sessions:
 
 
 # A worktree is cut from the remote, so the Suite file has to reach it first.
-def given_a_suite_on_main(loop, *checks, runs=None):
+def given_a_suite_on_the_target(loop, *checks, runs=None):
     write_suite(loop.repo.work, *checks, runs=runs)
     git(loop.repo.work, "add", "-A")
     git(loop.repo.work, "commit", "--quiet", "-m", "A Suite")
-    git(loop.repo.work, "push", "--quiet", "origin", "main")
+    git(loop.repo.work, "push", "--quiet", "origin", loop.repo.target)
 
 
 def given_a_suite_that_passes(loop, runs=None):
-    given_a_suite_on_main(loop, project_suite()[0], runs=runs)
+    given_a_suite_on_the_target(loop, project_suite()[0], runs=runs)
     loop.runner.stub("docker")
     loop.runner.stub("dotnet", says="the solution passed")
 
@@ -1725,8 +1734,8 @@ def test_the_finishing_step_is_handed_the_output_of_the_suite_that_passed(loop, 
 # npm passed on main and ignores the one file the build writes, so a Proof holds it in the worktree.
 def test_the_finishing_step_is_handed_the_line_of_each_check_a_proof_held(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_a_suite_on_main(loop, check("dotnet", "test", "Skillworks.slnx"),
-                          check("npm", "test", ignores=["built.txt"]))
+    given_a_suite_on_the_target(loop, check("dotnet", "test", "Skillworks.slnx"),
+                                check("npm", "test", ignores=["built.txt"]))
     earlier = RecordingRunner()
     earlier.stub("dotnet")
     earlier.stub("npm")
@@ -1748,7 +1757,7 @@ def test_the_finishing_step_is_handed_the_line_of_each_check_a_proof_held(loop, 
 def test_a_proof_kept_by_skillworks_suite_in_the_build_skips_that_check_in_the_suite_step(
         loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_a_suite_on_main(loop, check("git", "--version"))
+    given_a_suite_on_the_target(loop, check("git", "--version"))
     sessions = Sessions(loop.repo, runner)
     agent_ran = []
     sessions.then["--stop-after-tests"] = lambda: agent_ran.append(
@@ -2267,7 +2276,8 @@ def given_a_run_that_lands_one_ticket_then_sticks(loop):
 # The Proof made on main holds every input the ticket leaves, so only a full run starts dotnet.
 def test_a_run_that_landed_a_ticket_runs_the_whole_suite_after_it_trusting_no_proof(loop, runner):
     tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_a_suite_on_main(loop, check("dotnet", "test", "Skillworks.slnx", ignores=["built.txt"]))
+    given_a_suite_on_the_target(
+        loop, check("dotnet", "test", "Skillworks.slnx", ignores=["built.txt"]))
     earlier = RecordingRunner()
     earlier.stub("dotnet")
     assert Suite(earlier, loop.repo.work).run().passed
@@ -2282,7 +2292,7 @@ def test_a_run_that_landed_a_ticket_runs_the_whole_suite_after_it_trusting_no_pr
         full_run_tree(loop)]
 
 
-def given_main_moves_once_the_ticket_has_landed(loop, tracker):
+def given_the_target_moves_once_the_ticket_has_landed(loop, tracker):
     def answer():
         asked = " ".join(loop.runner.calls[-1])
         if 'select(.state=="open")' in asked and "168" in tracker.closed:
@@ -2293,7 +2303,7 @@ def given_main_moves_once_the_ticket_has_landed(loop, tracker):
 
 def test_the_full_run_is_on_a_new_worktree_of_the_newest_origin_main(loop, runner):
     tracker = given_a_run_that_lands(loop)
-    given_main_moves_once_the_ticket_has_landed(loop, tracker)
+    given_the_target_moves_once_the_ticket_has_landed(loop, tracker)
     heads = []
 
     def head_of_the_full_run():
@@ -2378,6 +2388,91 @@ def test_the_log_shows_the_full_run_and_its_result_before_the_end_line(loop):
     started = log.index("FULL  #168 landed in this run")
     passed = log.index("FULL  run 1 passed")
     assert started < passed < log.index("END   spec #158 complete")
+
+
+# --- the Target branch ------------------------------------------------------
+
+def test_a_run_with_no_loop_file_stops_before_it_starts_a_ticket_and_names_the_fix(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    (loop.repo.work / "docs" / "agents" / "loop.json").unlink()
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "FAIL  docs/agents/loop.json is missing. Run seed-steering to write it.\n" in loop.log()
+    assert "\n\n" not in loop.log()
+    assert not runner.built("issue edit")
+
+
+# --- a Target branch named master --------------------------------------------
+
+# A whole word, since a temporary folder named for a case can hold "main" inside a longer one.
+def names_main(said):
+    return re.search(r"\bmain\b", said) is not None
+
+
+def test_a_run_on_master_lands_its_ticket_on_master_and_makes_no_main(master):
+    given_a_run_that_lands(master)
+
+    ran = master.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(master.repo.origin, "log", "-1", "--format=%s", "master").strip() == "Built"
+    assert git(master.repo.origin, "for-each-ref", "--format=%(refname)",
+               "refs/heads").split() == ["refs/heads/master"]
+
+
+def test_a_run_on_master_runs_the_full_suite_on_the_newest_origin_master(master, runner):
+    tracker = given_a_run_that_lands(master)
+    given_the_target_moves_once_the_ticket_has_landed(master, tracker)
+    heads = []
+
+    def head_of_the_full_run():
+        if runner.where == full_run_tree(master):
+            heads.append(git(runner.where, "rev-parse", "HEAD").strip())
+    runner.stub("dotnet", does=head_of_the_full_run)
+
+    ran = master.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert heads == [git(master.repo.origin, "rev-parse", "master").strip()]
+    assert "late.txt" in git(master.repo.origin, "ls-tree", "--name-only", heads[0])
+
+
+def test_a_run_on_master_names_master_and_never_main(master):
+    given_a_run_that_lands(master)
+    base = git(master.repo.origin, "rev-parse", "master").strip()
+
+    ran = master.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert "the whole Suite runs on the newest origin/master" in master.log()
+    assert re.search(r"FULL  master at [0-9a-f]+ passed the whole Suite", master.log())
+    assert "Every ticket is on master." in master.log()
+    assert "git log --oneline {}..origin/master".format(base) in master.log()
+    assert not names_main(said(ran)), said(ran)
+
+
+def test_a_landing_on_master_that_fails_says_it_did_not_reach_master(master):
+    given_a_run_that_lands(master)
+    master.repo.refuse_pushes()
+
+    ran = master.run(SPEC)
+
+    assert ran.status == 1
+    assert "FAIL  #168 did not reach master." in said(ran)
+    assert not names_main(said(ran)), said(ran)
+
+
+def test_a_red_full_run_on_master_names_master(master):
+    given_a_run_that_lands(master)
+    given_a_full_run_that_goes_red(master)
+
+    ran = master.run(SPEC)
+
+    assert ran.status == 1
+    assert re.search(r"RED   the full run of the Suite went red on master at [0-9a-f]+", said(ran))
+    assert not names_main(said(ran)), said(ran)
 
 
 # --- the claim --------------------------------------------------------------

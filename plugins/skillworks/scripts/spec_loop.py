@@ -4,7 +4,7 @@
 #
 # Drive one spec's tickets to done, sequentially, one fresh Claude session each.
 # Each ticket is built in a throwaway worktree of its own, cut from the newest
-# origin/main, and lands on the remote the moment it passes. The main checkout
+# Target branch, and lands on the remote the moment it passes. The main checkout
 # is never worked in, so it stays usable for the whole run.
 #
 #   spec-loop <spec-issue-number> [--dry-run] [--bypass]
@@ -40,6 +40,7 @@ import land_ticket
 import ticket_worktree
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
+from steering.target_branch import target_branch
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 
@@ -309,6 +310,7 @@ class Loop:
         self.log = self.log_dir / "loop.log"
 
         self.root = Path.cwd()
+        self.target = ""
         self.repo = ""
         self.me = ""
         self.spec_title = ""
@@ -324,7 +326,7 @@ class Loop:
         # The driver read this one, so the finishing Session names it rather than proving it again.
         self.green_suite = None
 
-        # This run's alone, so a rerun proves main again only when it lands something of its own.
+        # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
 
         # Nothing is read from an earlier run, so a rerun grows a mean of its own.
@@ -815,8 +817,8 @@ class Loop:
         if landed != 0:
             # The finishing step closed it, and the work it closed on never reached the remote.
             self.reopen(ticket)
-            raise stop("FAIL  #{} did not reach main. Its worktree is at {}. See {}".format(
-                ticket, self.job_worktree, held))
+            raise stop("FAIL  #{} did not reach {}. Its worktree is at {}. See {}".format(
+                ticket, self.target, self.job_worktree, held))
 
     def run_ticket(self, ticket):
         self.say("START #{} {}".format(ticket, self.issue_field(ticket, ".title").out.strip()))
@@ -864,20 +866,20 @@ class Loop:
 
     # --- the full run --------------------------------------------------------
 
-    # Tickets leaned on Proofs and images, so this trusts neither; its red is main's, not a fix step's.
+    # Tickets leaned on Proofs and images, so this trusts neither; its red is the Target branch's.
     def run_full(self, stopped=None):
         if not self.landed:
             return
         landed = ", ".join("#" + ticket for ticket in self.landed)
-        self.say("FULL  {} landed in this run, so the whole Suite runs on the newest origin/main "
-                 "with no Proofs and no images".format(landed))
+        self.say("FULL  {} landed in this run, so the whole Suite runs on the newest origin/{} "
+                 "with no Proofs and no images".format(landed, self.target))
 
         held = self.log_dir / "full-run.out"
         written(held, "")
         tree = self.opened("full-run")
         if not tree:
-            raise after(stop("FAIL  the full run got no worktree to run in, so main is unproved "
-                             "since {} landed.".format(landed)), stopped)
+            raise after(stop("FAIL  the full run got no worktree to run in, so {} is unproved "
+                             "since {} landed.".format(self.target, landed)), stopped)
         at = self.git(tree, "rev-parse", "--short", "HEAD").out.strip()
 
         def heard(outcome, run):
@@ -885,20 +887,20 @@ class Loop:
             self.say("FULL  run {} {}".format(run, suite_verdict(outcome, run)))
         outcome = Suite(self.runner, tree, fresh=True).run(heard)
 
-        # Main is on the remote, so the worktree holds nothing a stop needs kept.
+        # The Target branch is on the remote, so the worktree holds nothing a stop needs kept.
         closed = self.worktree("close", "full-run")[0] == 0
         if not outcome.ready:
             appended(held, "--- the suite could not start\n{}".format(outcome.said))
-            raise after(stop("ABORT the full run of the Suite could not start, so main at {} is "
+            raise after(stop("ABORT the full run of the Suite could not start, so {} at {} is "
                              "unproved since {} landed: {}\n      See {}".format(
-                                 at, landed, outcome.said.strip(), held)), stopped)
+                                 self.target, at, landed, outcome.said.strip(), held)), stopped)
         if not outcome.passed:
-            raise after(stop("RED   the full run of the Suite went red on main at {}, with no "
+            raise after(stop("RED   the full run of the Suite went red on {} at {}, with no "
                              "Proofs and no images. The spec stays open, and no Session was "
                              "asked to fix it.\n      Red: {}\n      Landed in this run: {}\n"
                              "      See {}".format(
-                                 at, ", ".join(outcome.red), landed, held)), stopped)
-        self.say("FULL  main at {} passed the whole Suite".format(at))
+                                 self.target, at, ", ".join(outcome.red), landed, held)), stopped)
+        self.say("FULL  {} at {} passed the whole Suite".format(self.target, at))
         if not closed:
             raise after(stop("FAIL  the full run's worktree at {} would not go.".format(tree)),
                         stopped)
@@ -946,20 +948,23 @@ class Loop:
 
         self.keep_leftovers()
 
-        # Every worktree is cut from origin/main, so the ref has to be current first.
-        if not fetch_origin(self.runner, self.root.as_posix(), "main", self.err, self.wait):
-            raise stop("ABORT could not fetch from origin")
+        # The worktree and landing scripts read the same checkout's file, so all three agree.
+        self.target = target_branch(self.root)
+
+        # Every worktree is cut from the Target branch on origin, so the ref has to be current first.
+        if not fetch_origin(self.runner, self.root.as_posix(), self.target, self.err, self.wait):
+            raise stop("ABORT could not fetch {} from origin".format(self.target))
 
         # Written once, so a resumed run still measures from where the first run started.
         held = self.log_dir / "base.sha"
         if not held.is_file():
-            written(held, self.git(self.root, "rev-parse", "origin/main").out)
+            written(held, self.git(self.root, "rev-parse", "origin/" + self.target).out)
         base = held.read_text(encoding="utf-8").strip()
 
         self.say("LOOP  spec #{} from {} ({}) in {} mode".format(
             self.spec, base, self.repo, self.permission_mode))
 
-        # A ticket on main stays there when the loop stops, so a stop is followed by the full run too.
+        # A landed ticket stays when the loop stops, so a stop is followed by the full run too.
         try:
             self.run_tickets()
         except Stop as stopped:
@@ -968,8 +973,8 @@ class Loop:
         self.run_full()
 
         self.check_drift(base)
-        self.say("END   spec #{} complete. Every ticket is on main.".format(self.spec))
-        self.say("      Review it with: git log --oneline {}..origin/main".format(base))
+        self.say("END   spec #{} complete. Every ticket is on {}.".format(self.spec, self.target))
+        self.say("      Review it with: git log --oneline {}..origin/{}".format(base, self.target))
 
 
 def arguments(argv):
@@ -994,7 +999,8 @@ def main(argv, runner, out, err, wait):
         if stopped.status == MISUSED or loop is None:
             err.write(stopped.said)
         else:
-            loop.say(stopped.said)
+            # A refusal from a script the loop reads ends its line itself, and say ends it again.
+            loop.say(stopped.said.rstrip("\n"))
         return stopped.status
 
 
