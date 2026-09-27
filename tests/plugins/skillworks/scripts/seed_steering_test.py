@@ -351,6 +351,53 @@ def test_a_file_unchanged_on_either_side_is_kept_the_same_as_the_seed(repo, runn
     assert "kept {}, the same as the seed\n".format(place) in ran.out
 
 
+def already_on_the_new_seed(repo, runner, seed):
+    run_seed(runner, repo.work)
+    seed_steering.write(repo.work / BASES / seed, OLDER[seed])
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_already_the_same_as_a_seed_that_moved_on_brings_its_base_copy_up_to_the_seed(repo, runner, seed):
+    already_on_the_new_seed(repo, runner, seed)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    place = WHERE[seed]
+    assert (repo.work / place).read_text(encoding="utf-8") == seeded(seed)
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
+    assert "kept {}, the same as the seed\n".format(place) in ran.out
+
+
+def moved_again(tmp_path, monkeypatch, seed):
+    seeds = tmp_path / "seeds"
+    seeds.mkdir()
+    for name in WHERE:
+        (seeds / name).write_bytes((SETUP / "seeds" / name).read_bytes())
+    later = seeded(seed).replace("\n", "\n\n", 1)
+    seed_steering.write(seeds / seed, later)
+    monkeypatch.setattr(seed_steering, "SEEDS", seeds)
+    return later
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
+def test_a_file_whose_base_copy_was_brought_up_is_updated_when_the_seed_moves_again(
+        repo, runner, tmp_path, monkeypatch, seed):
+    already_on_the_new_seed(repo, runner, seed)
+    run_seed(runner, repo.work)
+    later = moved_again(tmp_path, monkeypatch, seed)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    place = WHERE[seed]
+    assert (repo.work / place).read_text(encoding="utf-8") == later
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == later
+    assert "updated {}\n".format(place) in ran.out
+    assert "merged" not in ran.out
+    assert "asks" not in ran.out
+
+
 @pytest.mark.parametrize("seed", sorted(OLDER))
 def test_a_file_the_team_deleted_stays_deleted_and_is_said_to_be_left_out(repo, runner, seed):
     seeded_by_an_older_plugin(repo, runner, seed)

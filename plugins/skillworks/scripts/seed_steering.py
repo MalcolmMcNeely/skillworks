@@ -152,9 +152,9 @@ def weigh(top, default, name, place, choices, settled):
     held = target.read_text(encoding="utf-8")
     if held == wanted:
         same = "kept {}, the same as the seed\n".format(place)
-        if was is None:
-            return Outcome(same, writes=[(base, wanted)], used=[place])
-        return Outcome(same)
+        if was == wanted:
+            return Outcome(same)
+        return Outcome(same, writes=[(base, wanted)], used=[place] if was is None else [])
     if held == was:
         return Outcome("updated {}\n".format(place), "would update {}\n".format(place),
                        writes=[(target, wanted), (base, wanted)])

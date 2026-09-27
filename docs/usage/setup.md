@@ -138,7 +138,7 @@ tell your edits from the Plugin's. It says what it did to each file in one line:
 | `wrote` | The Seed is new to your repo. | Writes the file and its base copy. |
 | `updated` | You never edited the file, and the Seed moved on. | Replaces the file and its base copy with the new Seed. |
 | `kept ..., which you edited` | You edited the file, and the Seed did not move. | Nothing. |
-| `kept ..., the same as the seed` | Nothing changed on either side. | Nothing. |
+| `kept ..., the same as the seed` | Your file is the same as the Seed. | Writes the base copy if it is not the Seed. |
 | `merged` | You edited the file, and the Seed moved on in other lines. | Applies the Seed's change, keeps your edit, and shows the change. |
 | `asks` | Your edit and the Seed's change touch the same lines. | Shows both sides and asks which to keep. |
 | `left out` | You deleted the file. | Nothing. It stays deleted. |
