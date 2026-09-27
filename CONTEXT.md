@@ -233,7 +233,9 @@ _Avoid_: Per activation, per firing
 **Attribution**:
 The link from a unit of spend back to the skill that caused it. A Turn is attributed to the skill
 Claude Code says was in force when the request was made, so the turn that chose a skill belongs to
-no skill. Studio never infers a skill Claude Code did not name.
+no skill. A Tool call is attributed to the skill of the last Turn its own agent sent before it. Only a
+Span says which agent that was, so in a Session with no Spans a Tool call's skill is **not known**.
+Studio never infers a skill Claude Code did not name.
 
 **Unnamed spend**:
 The Turns whose skill was in force but that Claude Code will not name, because the skill came from
