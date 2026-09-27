@@ -246,6 +246,25 @@ number. With `spec`, the spec names its own branch: under `## Branch` in the iss
 `spec.md`. Its Surfaces section holds the requirement the grill captured for each Surface the change
 touches.
 
+The loop counts the drift check's Verdicts against the spec, so three sections come in a fixed shape,
+the **counted shape**:
+
+- **User Stories** is a numbered list that starts at 1, and skips and repeats no number. Each story
+  is an item, called `S1`, `S2` and on.
+- **Implementation Decisions** is a numbered list in the same way. Each decision is an item, called
+  `D1`, `D2` and on.
+- **Surfaces** holds one list item per Surface, and each item opens with the Surface's name in bold,
+  such as `- **The user docs** (docs/usage/): ...`. The bold name is the item. A spec that touches no
+  Surface says "None" there, and has no Surface items.
+
+A line indented under an item is part of it, so a nested list or a snippet stays with its item.
+Testing Decisions are not counted, because the Suite already proves them. `to-spec` writes every spec
+in this shape.
+
+The loop reads the shape before it claims any ticket. A spec in another shape is turned down then, in
+seconds, and no ticket runs. The stop names each fault: a missing heading, a section with no numbered
+list, a skipped or repeated number, or a Surface item with no bold name.
+
 The push matters as much as the spec. The spec points at decisions that must already be in the repo,
 because no later Session can see this one.
 
@@ -455,6 +474,18 @@ the stop, the full run below runs next. The `FAIL` line in the log names the wor
 FAIL  #203 step fix failed check ticket-open. Its worktree is at .claude/worktrees/spec-200/ticket-203. See ...
 ```
 
+**A spec in another shape.** Before any ticket, the script reads the spec's [counted
+shape](#the-spec). A spec it cannot count stops the loop there, before a ticket is claimed or a
+Session started. The `ABORT` line names each fault. Fix the spec on the Tracker and run the loop
+again:
+
+```
+ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
+      Fault: ## User Stories skips 3: it goes from 2 to 4
+      Fault: a Surface item under ## Surfaces opens with no bold name: - The README: says so.
+      Write it in the shape /skillworks:to-spec writes, and run the loop again.
+```
+
 ### Restarting a stopped run: the Keep
 
 To restart, run the same command again: `spec-loop <spec>`.
@@ -595,6 +626,7 @@ file changes them. So this map lives here only, and setup copies no map into you
 The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output sits beside it.
 
 ```
+15:55:20 SHAPE spec #200 holds 14 stories, 6 decisions and 1 Surface, so the drift check's Verdicts can be counted
 15:55:22 START #202 TICKET: Preflight checks for uv
 15:55:32 STEP  #202 build        2/6
 15:57:41 STEP  #202 standards    2/6
@@ -606,11 +638,15 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 16:57:06 STEP  #203 build        3/6  ~245m left
 ```
 
+The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
+A spec in another shape gets an `ABORT` line in its place, and nothing after it.
+
 The position counts closed tickets, so a restarted run starts at its real place. The time left is the
 mean of the tickets this run has finished, with the one now running counted as still to do.
 
 Expect a long run. A ticket can take from half an hour to a few hours.
 
-`spec-loop <spec> --dry-run` prints the whole plan instead of running it: every ticket, its worktree
-and Job branch, every step's command and facts, and the landing steps. It starts no Session and
+`spec-loop <spec> --dry-run` prints the whole plan instead of running it: the `SHAPE` line, every
+ticket, its worktree and Job branch, every step's command and facts, and the landing steps. A spec in
+another shape stops the dry run at its `ABORT` line, as it would stop a run. It starts no Session and
 reaches no remote.

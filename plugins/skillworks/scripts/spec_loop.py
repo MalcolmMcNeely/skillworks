@@ -37,6 +37,7 @@ from typing import NamedTuple
 
 import land_ticket
 import ticket_worktree
+from count.items import read_items
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
@@ -280,6 +281,10 @@ class Lines:
         if self.held:
             self.heard(self.held)
             self.held = ""
+
+
+def how_many(count, word, words):
+    return "{} {}".format(count, word if count == 1 else words)
 
 
 def plan_line(name, what, checks=""):
@@ -642,6 +647,21 @@ class Loop:
             raise stop("ABORT spec {} has no tickets. Run /skillworks:to-tickets first.".format(
                 self.spec_named()))
 
+    # Before the first ticket, so a spec whose Verdicts could never be counted costs no build.
+    def read_shape(self):
+        items = read_items(self.tracker.spec_body(self.spec))
+        if items.faults:
+            raise stop("ABORT spec {} is not in the shape the loop counts, so no ticket was "
+                       "started.\n{}      Write it in the shape /skillworks:to-spec writes, and run "
+                       "the loop again.".format(
+                           self.spec_named(),
+                           "".join("      Fault: {}\n".format(fault) for fault in items.faults)))
+        self.say("SHAPE spec {} holds {}, {} and {}, so the drift check's Verdicts can be "
+                 "counted".format(self.spec_named(),
+                                  how_many(len(items.stories), "story", "stories"),
+                                  how_many(len(items.decisions), "decision", "decisions"),
+                                  how_many(len(items.surfaces), "Surface", "Surfaces")))
+
     # --- the dry run ---------------------------------------------------------
 
     def landing_plan(self):
@@ -652,6 +672,7 @@ class Loop:
     def dry_run(self):
         self.say("DRY   repo={}  me={}".format(self.tracker.repo, self.tracker.me))
         self.say("DRY   spec {}: {}".format(self.spec_named(), self.spec_title))
+        self.read_shape()
 
         # Asked of the scripts that do the work, so the plan cannot drift from the run.
         landing = self.landing_plan()
@@ -976,6 +997,7 @@ class Loop:
         if dry:
             return self.dry_run()
 
+        self.read_shape()
         self.keep_leftovers()
 
         # Read once and handed to the worktree and landing scripts, so all three agree.

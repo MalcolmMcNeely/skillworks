@@ -63,7 +63,12 @@ def master(tmp_path, runner, monkeypatch):
 
 SPEC_BRANCH = "spec/target-branch"
 
-NAMES_ITS_BRANCH = "## Problem Statement\n\nWords.\n\n## Branch\n\n`{}`\n".format(SPEC_BRANCH)
+COUNTED = ("## Problem Statement\n\nWords.\n\n"
+           "## User Stories\n\n1. As a team member, I want a plan.\n2. As a team member, I want a run.\n\n"
+           "## Implementation Decisions\n\n1. The driver plans.\n\n"
+           "## Surfaces\n\n- **The user docs** (`docs/usage/`): the plan is described.\n")
+
+NAMES_ITS_BRANCH = COUNTED + "\n## Branch\n\n`{}`\n".format(SPEC_BRANCH)
 
 
 # The checkout sits on the spec's branch, so what a case commits there reaches it and not main.
@@ -611,6 +616,60 @@ def test_the_plan_is_written_to_the_log_as_well(loop):
 
     assert ran.status == 0
     assert "spec-loop/158/ticket-168" in loop.log()
+
+
+# --- the spec's shape ---------------------------------------------------------
+
+SKIPS_A_STORY = COUNTED.replace("2. As a team member, I want a run.", "3. As a team member, I want a run.")
+
+
+def test_the_dry_run_says_what_the_spec_holds_to_be_counted(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert ("SHAPE spec #158 holds 2 stories, 1 decision and 1 Surface, so the drift check's "
+            "Verdicts can be counted") in ran.out
+    assert "SHAPE" in loop.log()
+
+
+def test_the_dry_run_turns_down_a_spec_in_another_shape_and_names_the_fault(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    tracker.body = SKIPS_A_STORY
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert "ABORT spec #158 is not in the shape the loop counts" in said(ran)
+    assert "## User Stories skips 2: it goes from 1 to 3" in said(ran)
+    assert "spec-loop/158/ticket-168" not in said(ran)
+
+
+def test_a_spec_in_another_shape_stops_the_run_before_any_ticket_is_claimed(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    tracker.body = COUNTED.replace("- **The user docs**", "- The user docs")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert ("a Surface item under ## Surfaces opens with no bold name: - The user docs "
+            "(`docs/usage/`): the plan is described.") in loop.log()
+    assert not runner.built("issue edit")
+    assert not runner.started("claude")
+    assert "START" not in loop.log()
+
+
+def test_every_shape_fault_reaches_the_stop_line(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    tracker.body = SKIPS_A_STORY.replace("## Implementation Decisions", "## Decisions")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "## User Stories skips 2: it goes from 1 to 3" in loop.log()
+    assert "the spec has no ## Implementation Decisions heading" in loop.log()
 
 
 # --- a restart over what a stopped run left behind ---------------------------
@@ -2212,6 +2271,21 @@ def test_the_loop_page_explains_the_files_tracker_beside_github():
     assert "Pick `files` when" in section
 
 
+def test_the_loop_page_gives_the_counted_shape_and_the_stop_for_a_spec_in_another_shape():
+    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    the_spec = " ".join(page_section(text, "### The spec").split())
+
+    for named in ["**User Stories**", "**Implementation Decisions**", "**Surfaces**", "`S1`", "`D1`",
+                  "starts at 1", "in bold", '"None"', "Testing Decisions are not counted",
+                  "turned down"]:
+        assert named in the_spec, named
+    assert "ABORT spec #200 is not in the shape the loop counts" in page_section(
+        text, "## When a step fails")
+    reading = page_section(text, "## Reading a run")
+    assert "SHAPE spec #200 holds" in reading
+    assert "`ABORT` line" in reading
+
+
 def test_the_loop_page_shows_a_spec_file_and_a_ticket_file():
     section = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The Tracker")
     shown = re.findall(r"```markdown\n(.*?)```", section, re.DOTALL)
@@ -2671,7 +2745,7 @@ def test_in_spec_mode_a_pull_request_that_would_not_be_marked_ready_stops_and_na
 def test_in_spec_mode_a_spec_that_names_no_branch_stops_before_a_ticket_is_claimed(
         spec_mode, runner):
     tracker = given_the_tracker_holds(spec_mode, ONE_OPEN_TICKET)
-    tracker.body = "## Problem Statement\n\nWords.\n"
+    tracker.body = COUNTED
 
     ran = spec_mode.run(SPEC)
 

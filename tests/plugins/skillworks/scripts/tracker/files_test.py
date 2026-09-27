@@ -29,11 +29,15 @@ def next_is(ticket):
     return "DRY   the next ticket is {}/{}\n".format(SPEC, ticket)
 
 
-def spec_file(status="open", branch=None):
+COUNTED = ("## User Stories\n\n1. As a team member, I want a local tracker.\n\n"
+           "## Implementation Decisions\n\n1. The tracker is files.\n\n## Surfaces\n\nNone\n")
+
+
+def spec_file(status="open", branch=None, body=COUNTED):
     lines = ["---", "status: " + status]
     if branch is not None:
         lines.append("branch: " + branch)
-    return "\n".join(lines + ["---", "", "# SPEC: A local tracker", ""])
+    return "\n".join(lines + ["---", "", "# SPEC: A local tracker", "", body])
 
 
 def ticket_file(title, status="open", blocked_by=(), claimed_by=""):
@@ -579,6 +583,20 @@ def test_a_spec_with_no_tickets_is_refused_in_the_files_trackers_words(driver):
     assert ran.status == 1
     assert "ABORT spec 7 has no tickets" in said(ran)
     assert not speaks_github(said(ran)), said(ran)
+
+
+def test_a_spec_in_another_shape_is_turned_down_before_its_first_ticket_is_claimed(driver):
+    driver.push({
+        FOLDER + "/spec.md": spec_file(body="## User Stories\n\n1. One.\n3. Three.\n"),
+        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
+    })
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "## User Stories skips 2: it goes from 1 to 3" in said(ran)
+    assert "the spec has no ## Implementation Decisions heading" in said(ran)
+    assert "claimed-by: \n" in on_remote(driver.repo, ticket_path("01-read-loop-json"))
 
 
 def test_a_spec_that_cannot_be_read_is_refused_naming_no_github_repo(driver):

@@ -17,13 +17,23 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 4. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
 
-5. Write the spec using the template below. The spec title should begin with "SPEC:". Then publish it:
+5. Write the spec using the template below. The spec title should begin with "SPEC:". Keep the three counted sections in the shape [The counted shape](#the-counted-shape) gives. Then publish it:
    - With `github`, publish it to the project issue tracker and apply the `ready-for-agent` label. In `spec` mode, the spec carries the `## Branch` section; with a branch name, leave that section out.
    - With `files`, follow [The files Tracker](#the-files-tracker). The spec never carries the `## Branch` section, because its frontmatter names the branch.
 
 6. In `spec` mode, do the second part of [The spec's branch](#the-specs-branch).
 
 7. Report the spec's number: with `github` its issue number and URL, with `files` its number and folder. That number is the argument to `/skillworks:spec-loop`. In `spec` mode, report the pull request's URL too.
+
+## The counted shape
+
+The spec loop counts the drift check's Verdicts against the spec, so it reads three sections in a fixed shape:
+
+- **User Stories** is a numbered list that starts at 1 and skips and repeats no number. Each story is `S<n>`.
+- **Implementation Decisions** is a numbered list in the same way. Each decision is `D<n>`.
+- **Surfaces** holds one list item per Surface, and each item opens with the Surface's name in bold. The name is the item. A spec that touches no Surface says "None" under the heading and nothing else.
+
+An item runs over several lines when its later lines are indented, so a nested list stays part of its item. Testing Decisions are not counted. The loop reads the shape before its first ticket, and turns down a spec in another shape.
 
 ## The files Tracker
 
@@ -91,19 +101,18 @@ The solution to the problem, from the user's perspective.
 
 ## User Stories
 
-A LONG, numbered list of user stories. Each user story should be in the format of:
-
-1. As an <actor>, I want a <feature>, so that <benefit>
+A LONG, numbered list of user stories, from 1 with no number skipped or repeated. Each user story should be in the format `As an <actor>, I want a <feature>, so that <benefit>`.
 
 <user-story-example>
 1. As a mobile bank customer, I want to see balance on my accounts, so that I can make better informed decisions about my spending
+2. As a mobile bank customer, I want to see which account a payment left, so that I can match it to my statement
 </user-story-example>
 
 This list of user stories should be extremely extensive and cover all aspects of the feature.
 
 ## Implementation Decisions
 
-A list of implementation decisions that were made. This can include:
+A numbered list of the implementation decisions that were made, from 1 with no number skipped or repeated. A decision can cover:
 
 - The modules that will be built/modified
 - The interfaces of those modules that will be modified
@@ -115,11 +124,20 @@ A list of implementation decisions that were made. This can include:
 
 Do NOT include specific file paths or code snippets. They may end up being outdated very quickly.
 
-Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it within the relevant decision and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it within the relevant decision and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits. Indent the snippet under its decision, so it stays part of that item.
+
+<decision-example>
+1. The balance is read through the accounts module, and never straight from its tables.
+2. A balance older than a minute is shown with the time it was read.
+</decision-example>
 
 ## Surfaces
 
-For each Surface in `docs/agents/surfaces.md` the change touches, its name and the requirement the grill captured: what the Surface has to say once the change Lands. Point at the Surface by its path, and do not copy its content. Leave out a Surface the change does not touch. With no Surface touched, or no Surfaces file, write "None".
+For each Surface in `docs/agents/surfaces.md` the change touches, one list item that opens with the Surface's name in bold, then its path, then the requirement the grill captured: what the Surface has to say once the change Lands. Point at the Surface by its path, and do not copy its content. Leave out a Surface the change does not touch. With no Surface touched, or no Surfaces file, write "None" and nothing else.
+
+<surface-example>
+- **The user docs** (`docs/usage/`): the accounts page says how old a balance can be before it is marked.
+</surface-example>
 
 ## Testing Decisions
 

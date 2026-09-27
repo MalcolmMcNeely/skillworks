@@ -41,6 +41,7 @@ class Spec(NamedTuple):
     status: str
     title: str
     tickets: list
+    body: str
 
 
 def number_of(name):
@@ -231,7 +232,7 @@ class Files:
                                   as_numbers(ticket.get("blocked-by", [])),
                                   ticket.get(CLAIMED_BY, ""), heading(text, name[:-3]), path))
         tickets.sort(key=lambda ticket: int(ticket.number))
-        return Spec(held.get("status", ""), heading(body, folder.rsplit("/", 1)[-1]), tickets)
+        return Spec(held.get("status", ""), heading(body, folder.rsplit("/", 1)[-1]), tickets, body)
 
     def ticket(self, number):
         held = self.read(self.spec)
@@ -245,6 +246,10 @@ class Files:
     def spec_title(self, spec):
         held = self.read(spec)
         return held.title if held else ""
+
+    def spec_body(self, spec):
+        held = self.read(spec)
+        return held.body if held else ""
 
     def state(self, ticket):
         held = self.ticket(ticket)
