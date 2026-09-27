@@ -1,10 +1,13 @@
 import { Link } from 'react-router';
 import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
 import type { Filter } from '../../shared/filters/lib/filters';
+import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { nowhere, sessionAddress } from '../../shared/session/lib/where';
 import {
   describeRunLength,
   describeStarted,
+  laterShortfall,
+  loadMore,
   measureWords,
   noRepository,
   notKnown,
@@ -48,17 +51,39 @@ function Row({ row, filter }: { row: DrawnSession; filter: Filter }) {
   );
 }
 
+function More({ answer, onLoadMore }: { answer: SessionsAnswer; onLoadMore: () => void }) {
+  const state = loadMore(answer);
+  const shortfall = laterShortfall(answer);
+
+  if (state === 'hidden' && shortfall === null) {
+    return null;
+  }
+
+  return (
+    <footer className="sessions-more">
+      {shortfall === null ? null : <SignalWord gap={shortfall} failure={null} />}
+      {state === 'hidden' ? null : (
+        <button type="button" aria-busy={state === 'arriving'} disabled={state === 'arriving'} onClick={onLoadMore}>
+          {state === 'arriving' ? 'Reading…' : 'Load more'}
+        </button>
+      )}
+    </footer>
+  );
+}
+
 // The rows draw as soon as they land, and the head above says whether the answer has ended.
 export function SessionTable({
   answer,
   failure,
   noRuns,
   filter,
+  onLoadMore,
 }: {
   answer: SessionsAnswer | null;
   failure: string | null;
   noRuns: string;
   filter: Filter;
+  onLoadMore: () => void;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
@@ -73,22 +98,25 @@ export function SessionTable({
   }
 
   return (
-    <table className="sessions-table">
-      <caption className="visually-hidden">Sessions, the newest work first</caption>
-      <thead>
-        <tr>
-          {sessionHeadings.map((heading) => (
-            <th key={heading} scope="col">
-              {heading}
-            </th>
+    <>
+      <table className="sessions-table">
+        <caption className="visually-hidden">Sessions, the newest work first</caption>
+        <thead>
+          <tr>
+            {sessionHeadings.map((heading) => (
+              <th key={heading} scope="col">
+                {heading}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {answer.rows.map((row) => (
+            <Row key={row.session.id} row={row} filter={filter} />
           ))}
-        </tr>
-      </thead>
-      <tbody>
-        {answer.rows.map((row) => (
-          <Row key={row.session.id} row={row} filter={filter} />
-        ))}
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+      <More answer={answer} onLoadMore={onLoadMore} />
+    </>
   );
 }

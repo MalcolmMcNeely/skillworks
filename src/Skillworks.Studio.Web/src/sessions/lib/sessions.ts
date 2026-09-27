@@ -97,8 +97,17 @@ export interface SessionsAnswer {
   arriving: boolean;
   // Null while arriving, as whether the answer fell short is known only once it ends.
   gap: Gap | null;
+  // While a later read is in flight, the place it started from, so a read that fails can be asked again.
   nextBeforeUtc: string | null;
+  held: number;
 }
+
+export interface SessionsPlace {
+  asOfUtc: string;
+  beforeUtc: string;
+}
+
+export type LoadMore = 'hidden' | 'ready' | 'arriving';
 
 const arriving: Measured = { state: 'arriving' };
 
@@ -113,14 +122,17 @@ const unread: Record<MeasureName, Measured> = {
 
 export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLine): SessionsAnswer {
   if (line.kind === 'head') {
-    return {
-      asOfUtc: line.asOfUtc,
-      rows: [],
-      landed: false,
-      arriving: true,
-      gap: null,
-      nextBeforeUtc: null,
-    };
+    return answer === null
+      ? {
+          asOfUtc: line.asOfUtc,
+          rows: [],
+          landed: false,
+          arriving: true,
+          gap: null,
+          nextBeforeUtc: null,
+          held: 0,
+        }
+      : { ...answer, asOfUtc: line.asOfUtc, arriving: true, gap: null, held: answer.rows.length };
   }
 
   if (answer === null) {
@@ -128,20 +140,43 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
   }
 
   if (line.kind === 'sessions') {
-    return { ...answer, rows: line.sessions.map((session) => ({ session, measures: unread })), landed: true };
+    return {
+      ...answer,
+      rows: [...answer.rows.slice(0, answer.held), ...line.sessions.map((session) => ({ session, measures: unread }))],
+      landed: true,
+    };
   }
 
   if (line.kind === 'measure') {
-    return { ...answer, rows: answer.rows.map((row) => landedIn(row, line)) };
+    return { ...answer, rows: inRead(answer, (row) => landedIn(row, line)) };
   }
 
-  return {
-    ...answer,
-    arriving: false,
-    gap: line.gap,
-    nextBeforeUtc: line.nextBeforeUtc,
-    rows: answer.rows.map(settled),
-  };
+  // A store that did not answer brought no place, so the one the read started from stays for the next click.
+  const nextBeforeUtc = line.nextBeforeUtc ?? (line.gap.kind === 'unreachable' ? answer.nextBeforeUtc : null);
+
+  return { ...answer, arriving: false, gap: line.gap, nextBeforeUtc, rows: inRead(answer, settled) };
+}
+
+export function failSessionsRead(answer: SessionsAnswer, reason: string): SessionsAnswer {
+  return { ...answer, arriving: false, gap: { kind: 'unreachable', missing: reason }, rows: inRead(answer, settled) };
+}
+
+// Only a finished read names where the next one starts, so the button waits for it.
+export function loadMore(answer: SessionsAnswer): LoadMore {
+  if (answer.nextBeforeUtc === null) {
+    return 'hidden';
+  }
+
+  return answer.arriving ? 'arriving' : 'ready';
+}
+
+// Only a later read's shortfall goes under the rows, as the first read's already stands in the head.
+export function laterShortfall(answer: SessionsAnswer): Gap | null {
+  return answer.held > 0 && answer.gap !== null && answer.gap.kind === 'unreachable' ? answer.gap : null;
+}
+
+function inRead(answer: SessionsAnswer, change: (row: DrawnSession) => DrawnSession): DrawnSession[] {
+  return answer.rows.map((row, index) => (index < answer.held ? row : change(row)));
 }
 
 function landedIn(row: DrawnSession, line: SessionsMeasure): DrawnSession {

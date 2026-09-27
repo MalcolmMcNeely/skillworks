@@ -48,9 +48,13 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
 
     // Every read after the Prompts names the loaded rows, as grouping over every Session ran Loki past its series limit.
     // A Repository and a Skill are judged here and not in the store, as a Parent row stands for Children elsewhere.
-    public async Task<SessionsRead> ListAsync(DateTimeOffset asOf, Filter filter, CancellationToken cancellationToken)
+    public async Task<SessionsRead> ListAsync(
+        DateTimeOffset asOf,
+        DateTimeOffset? before,
+        Filter filter,
+        CancellationToken cancellationToken)
     {
-        var heard = await HeardAsync(asOf, cancellationToken);
+        var heard = await HeardAsync(asOf, before, cancellationToken);
 
         if (heard.Unreachable is { } unheard)
         {
@@ -148,14 +152,45 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
     }
 
     // Newest first, until fifty pieces of work are held, so a busy week costs no more to read than a quiet one.
-    private async Task<Heard> HeardAsync(DateTimeOffset asOf, CancellationToken cancellationToken)
+    private async Task<Heard> HeardAsync(DateTimeOffset asOf, DateTimeOffset? before, CancellationToken cancellationToken)
     {
         var works = new Dictionary<string, Work>(StringComparer.Ordinal);
         var placed = new List<Work>();
+        var unasked = new List<Work>();
+        var drawn = new HashSet<string>(StringComparer.Ordinal);
         var withheld = new HashSet<string>(StringComparer.Ordinal);
         long prompts = 0;
 
-        var newest = events.NewestFirstAsync(new EventQuery(PromptEvent, asOf - Reach, asOf), cancellationToken);
+        var start = before ?? asOf;
+        var newest = events.NewestFirstAsync(new EventQuery(PromptEvent, start - Reach, start), cancellationToken);
+
+        // Asked of the work heard since the last time, so a later read costs no more however far down the list it is.
+        async Task<string?> SetAsideDrawnAsync()
+        {
+            if (before is not { } place || unasked.Count == 0)
+            {
+                return null;
+            }
+
+            var since = await DrawnSinceAsync(place, asOf, [.. unasked.Select(work => work.Id)], cancellationToken);
+
+            unasked.Clear();
+
+            if (since.Unreachable is not null)
+            {
+                return since.Unreachable;
+            }
+
+            drawn.UnionWith(since.Drawn);
+            placed.RemoveAll(work => since.Drawn.Contains(work.Id));
+
+            foreach (var id in since.Drawn)
+            {
+                works.Remove(id);
+            }
+
+            return null;
+        }
 
         await foreach (var page in newest)
         {
@@ -177,15 +212,29 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
                     : null;
                 var id = parent ?? session;
 
+                if (drawn.Contains(id))
+                {
+                    continue;
+                }
+
                 if (!works.TryGetValue(id, out var work))
                 {
                     if (works.Count == RowsPerRead)
                     {
-                        return new Heard(null, prompts, placed, withheld);
+                        if (await SetAsideDrawnAsync() is { } unchecking)
+                        {
+                            return new Heard(unchecking, prompts, [], withheld);
+                        }
+
+                        if (works.Count == RowsPerRead)
+                        {
+                            return new Heard(null, prompts, placed, withheld);
+                        }
                     }
 
                     works[id] = work = new Work(id, line.At);
                     placed.Add(work);
+                    unasked.Add(work);
                 }
 
                 prompts++;
@@ -198,7 +247,37 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
             }
         }
 
+        if (await SetAsideDrawnAsync() is { } unsure)
+        {
+            return new Heard(unsure, prompts, [], withheld);
+        }
+
         return new Heard(null, prompts, placed, withheld);
+    }
+
+    // Work with a Prompt from the place up to the as-of instant sat higher in an earlier read, so it was drawn there.
+    private async Task<(string? Unreachable, IReadOnlySet<string> Drawn)> DrawnSinceAsync(
+        DateTimeOffset place,
+        DateTimeOffset asOf,
+        string[] ids,
+        CancellationToken cancellationToken)
+    {
+        var since = new EventQuery(PromptEvent, place, asOf);
+
+        var own = events.CountAsync(since with { Sessions = ids }, BySession, cancellationToken);
+        var children = events.CountAsync(since with { Parents = ids }, ByParent, cancellationToken);
+
+        var (spoke, asked) = (await own, await children);
+
+        if ((spoke.Unreachable ?? asked.Unreachable) is { } unreachable)
+        {
+            return (unreachable, new HashSet<string>());
+        }
+
+        var drawn = Keyed(spoke.Groups, EventAttributes.Session);
+        drawn.UnionWith(Keyed(asked.Groups, EventAttributes.Parent));
+
+        return (null, drawn);
     }
 
     // A Parent with no events in the store has no row to take its Children in, so they keep rows of their own.

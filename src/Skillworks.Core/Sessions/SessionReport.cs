@@ -13,13 +13,18 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
     // A span on the Filter is left unread, as no span narrows this list and an old link must still open it.
     public async IAsyncEnumerable<ArrivingLine> AnswerAsync(
         Filter filter,
+        DateTimeOffset? asOfUtc,
+        DateTimeOffset? beforeUtc,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var asOf = clock.GetUtcNow();
+        var now = clock.GetUtcNow();
+
+        // Never later than now, as an instant still to come would read events the list has not yet reached.
+        var asOf = asOfUtc is { } handed && handed < now ? handed : now;
 
         yield return new SessionsHead(asOf);
 
-        var read = await sessions.ListAsync(asOf, filter, cancellationToken);
+        var read = await sessions.ListAsync(asOf, beforeUtc, filter, cancellationToken);
         var fellShort = new List<MeasureLanding>();
 
         // Every row is the events store's answer, so a trace store that fell short leaves them standing.

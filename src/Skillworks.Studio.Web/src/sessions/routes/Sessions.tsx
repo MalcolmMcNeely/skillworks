@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { ChosenSkill } from '../../shared/filters/components/ChosenSkill';
 import { RepositoryPicker } from '../../shared/filters/components/RepositoryPicker';
@@ -12,7 +12,14 @@ import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page } from '../../shared/pages/lib/pages';
 import { fetchSessions } from '../api/sessions';
 import { SessionTable } from '../components/SessionTable';
-import { describeNoSessions, foldSessionsLine, listFilter, type SessionsAnswer } from '../lib/sessions';
+import {
+  describeNoSessions,
+  failSessionsRead,
+  foldSessionsLine,
+  listFilter,
+  loadMore,
+  type SessionsAnswer,
+} from '../lib/sessions';
 
 interface Reading {
   // The filter the answer was asked for, as text, so the page can tell an answer for an older ask.
@@ -25,6 +32,9 @@ interface Reading {
 export function Sessions() {
   const [reading, setReading] = useState<Reading | null>(null);
 
+  // One read at a time, so a changed filter stops a Load more still in flight.
+  const inFlight = useRef<AbortController | null>(null);
+
   useTabTitle(page.tabTitle);
 
   // The filter lives in the address bar, so a reload, a bookmark or a link lands on the same list.
@@ -34,29 +44,49 @@ export function Sessions() {
   // Text, as a filter is a new object every render.
   const asked = filterParams(filter).toString();
 
-  useEffect(() => {
+  const read = useCallback((ask: string, from: SessionsAnswer | null) => {
+    inFlight.current?.abort();
+
     const abort = new AbortController();
+    let answer = from;
 
-    const read = async () => {
-      let answer: SessionsAnswer | null = null;
+    inFlight.current = abort;
 
-      // Read back out of the text, so the effect depends only on what it is keyed on.
-      for await (const line of fetchSessions(readFilter(new URLSearchParams(asked)), abort.signal)) {
+    const place =
+      from === null || from.nextBeforeUtc === null ? null : { asOfUtc: from.asOfUtc, beforeUtc: from.nextBeforeUtc };
+
+    const lines = async () => {
+      // Read back out of the text, so the read depends only on what it is keyed on.
+      for await (const line of fetchSessions(readFilter(new URLSearchParams(ask)), abort.signal, place)) {
         answer = foldSessionsLine(answer, line);
-        setReading({ asked, answer, failure: null });
+        setReading({ asked: ask, answer, failure: null });
       }
     };
 
-    read().catch((failure: unknown) => {
+    lines().catch((failure: unknown) => {
       // An abort is the page tidying up after itself, not a failure worth showing.
-      if (!abort.signal.aborted) {
-        setReading({ asked, answer: null, failure: describeFetchFailure(failure) });
+      if (abort.signal.aborted) {
+        return;
       }
+
+      const reason = describeFetchFailure(failure);
+
+      setReading(
+        answer === null
+          ? { asked: ask, answer: null, failure: reason }
+          : { asked: ask, answer: failSessionsRead(answer, reason), failure: null },
+      );
     });
+
+    return abort;
+  }, []);
+
+  useEffect(() => {
+    const abort = read(asked, null);
 
     // A changed filter stops the old answer, so its rows never land under the new one.
     return () => abort.abort();
-  }, [asked]);
+  }, [asked, read]);
 
   const forOlderAsk = reading !== null && reading.asked !== asked;
   const answer = forOlderAsk ? null : (reading?.answer ?? null);
@@ -90,7 +120,17 @@ export function Sessions() {
 
       <ChosenSkill skill={filter.skill} onClear={() => show({ ...filter, skill: '' })} />
 
-      <SessionTable answer={answer} failure={failure} noRuns={describeNoSessions(filter)} filter={filter} />
+      <SessionTable
+        answer={answer}
+        failure={failure}
+        noRuns={describeNoSessions(filter)}
+        filter={filter}
+        onLoadMore={() => {
+          if (answer !== null && loadMore(answer) === 'ready') {
+            read(asked, answer);
+          }
+        }}
+      />
     </main>
   );
 }

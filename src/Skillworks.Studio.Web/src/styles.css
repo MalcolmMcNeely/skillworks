@@ -1544,6 +1544,38 @@ a.home-panel-face:hover::before {
   margin: 0;
 }
 
+.sessions-more {
+  align-items: center;
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  padding: 0.8rem 0;
+}
+
+.sessions-more button {
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  padding: 0.3rem 0.8rem;
+  text-transform: uppercase;
+}
+
+.sessions-more button:hover,
+.sessions-more button:focus-visible {
+  border-color: var(--hud);
+  color: var(--ink);
+}
+
+/* Tells a read in flight apart from a list that ended. */
+.sessions-more button[aria-busy='true'] {
+  border-style: dashed;
+  color: var(--ink-faint);
+  cursor: progress;
+}
+
 .sessions-table {
   border-collapse: collapse;
   font-size: 0.8rem;

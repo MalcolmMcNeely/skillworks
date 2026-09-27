@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Sessions.Answers;
@@ -19,6 +20,11 @@ public static class SessionRequests
 
     public static async Task<IReadOnlyList<SessionRow>> SessionsIn(this StudioHost studio, string filter = "") =>
         (await studio.SessionAnswer(filter)).Sessions;
+
+    public static Task<SessionsAnswer> LaterSessionAnswer(this StudioHost studio, SessionsAnswer earlier) =>
+        studio.SessionAnswer(
+            $"?asOf={Uri.EscapeDataString(earlier.Head.AsOfUtc.ToString("O", CultureInfo.InvariantCulture))}" +
+            $"&before={Uri.EscapeDataString(earlier.NextBeforeUtc!.Value.ToString("O", CultureInfo.InvariantCulture))}");
 
     public static Task<HttpResponseMessage> AskForSessions(this StudioHost studio, string filter) =>
         studio.Client.GetAsync($"/api/sessions{filter}");

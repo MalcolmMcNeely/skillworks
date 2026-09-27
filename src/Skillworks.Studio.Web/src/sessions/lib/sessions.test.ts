@@ -4,8 +4,11 @@ import {
   describeNoSessions,
   describeRunLength,
   describeStarted,
+  failSessionsRead,
   foldSessionsLine,
+  laterShortfall,
   listFilter,
+  loadMore,
   measureSymbols,
   measureWords,
   noRepository,
@@ -65,6 +68,7 @@ describe('foldSessionsLine', () => {
       arriving: true,
       gap: null,
       nextBeforeUtc: null,
+      held: 0,
     });
   });
 
@@ -178,6 +182,96 @@ describe('the Measures on a folded answer', () => {
 
     expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 0 });
     expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
+  });
+});
+
+describe('a later read folded into the rows held', () => {
+  const unreachable = { kind: 'unreachable', missing: 'The events store answered 503.' } as const;
+
+  function ended(answer: SessionsAnswer, place: string | null = nextBefore): SessionsAnswer {
+    return foldSessionsLine(answer, { kind: 'end', gap: complete, nextBeforeUtc: place });
+  }
+
+  function later(answer: SessionsAnswer): SessionsAnswer {
+    return foldSessionsLine(answer, head);
+  }
+
+  it('appends the rows of a second read to the rows already held', () => {
+    const answer = foldSessionsLine(later(ended(withRows(run))), { kind: 'sessions', sessions: [other] });
+
+    expect(answer.rows.map((row) => row.session.id)).toEqual([run.id, other.id]);
+  });
+
+  it('keeps the rows already held while the later read is in flight', () => {
+    const answer = later(ended(withRows(run)));
+
+    expect(answer.rows.map((row) => row.session)).toEqual([run]);
+    expect(answer.arriving).toBe(true);
+    expect(loadMore(answer)).toBe('arriving');
+  });
+
+  it('lands a later Measure on the new rows alone, so a row held from before never reads as a zero', () => {
+    const first = ended(foldSessionsLine(withRows(run), { kind: 'measure', measure: 'cost', values: { [run.id]: 1.25 } }));
+    const drawn = foldSessionsLine(later(first), { kind: 'sessions', sessions: [other] });
+    const answer = foldSessionsLine(drawn, { kind: 'measure', measure: 'cost', values: { [other.id]: 2 } });
+
+    expect(cell(answer, 'cost', run.id)).toEqual({ state: 'landed', value: 1.25 });
+    expect(cell(answer, 'cost', other.id)).toEqual({ state: 'landed', value: 2 });
+  });
+
+  it('takes the place the later read ended on, so the next click reads on from there', () => {
+    const drawn = foldSessionsLine(later(ended(withRows(run))), { kind: 'sessions', sessions: [other] });
+
+    expect(ended(drawn, '2026-09-13T08:00:00+00:00').nextBeforeUtc).toBe('2026-09-13T08:00:00+00:00');
+  });
+
+  it('keeps the rows and the button when the later read ends on a store that did not answer', () => {
+    const failed = foldSessionsLine(later(ended(withRows(run))), {
+      kind: 'end',
+      gap: unreachable,
+      nextBeforeUtc: null,
+    });
+
+    expect(failed.rows.map((row) => row.session)).toEqual([run]);
+    expect(failed.gap).toEqual(unreachable);
+    expect(failed.nextBeforeUtc).toBe(nextBefore);
+    expect(loadMore(failed)).toBe('ready');
+    expect(laterShortfall(failed)).toEqual(unreachable);
+  });
+
+  it('puts no shortfall under the rows for a first read, as the head already names it', () => {
+    const failed = foldSessionsLine(withRows(run), { kind: 'end', gap: unreachable, nextBeforeUtc: nextBefore });
+
+    expect(laterShortfall(failed)).toBeNull();
+  });
+
+  it('keeps the rows and the button when the later read breaks off before its end', () => {
+    const broken = foldSessionsLine(later(ended(withRows(run))), { kind: 'sessions', sessions: [other] });
+    const failed = failSessionsRead(broken, 'Studio could not reach its API.');
+
+    expect(failed.rows.map((row) => row.session.id)).toEqual([run.id, other.id]);
+    expect(cell(failed, 'cost', other.id)).toEqual({ state: 'fellShort' });
+    expect(failed.gap).toEqual({ kind: 'unreachable', missing: 'Studio could not reach its API.' });
+    expect(failed.arriving).toBe(false);
+    expect(loadMore(failed)).toBe('ready');
+  });
+});
+
+describe('loadMore', () => {
+  it('offers the button once a read has ended on a place', () => {
+    expect(loadMore(foldSessionsLine(withRows(run), { kind: 'end', gap: complete, nextBeforeUtc: nextBefore }))).toBe(
+      'ready',
+    );
+  });
+
+  it('hides the button while the first read is in flight, as no place is known yet', () => {
+    expect(loadMore(withRows(run))).toBe('hidden');
+  });
+
+  it('hides the button when the read ended on no place', () => {
+    expect(loadMore(foldSessionsLine(withRows(run), { kind: 'end', gap: complete, nextBeforeUtc: null }))).toBe(
+      'hidden',
+    );
   });
 });
 
