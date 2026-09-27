@@ -60,7 +60,7 @@ Show the user each outcome line and each diff under it. The labels on a diff say
 | `merged` | `yours/`: the team's file | `merged/`: the team's file with the seed's change applied |
 | `kept ..., which differs from the seed` | `yours/`: the team's file | `seed/`: the current seed |
 
-When a line says `asks`, the script has written nothing, and every other line says what it would do. Put each overlap to the user: show the `yours` side and the `seed` side, and ask which to keep. Ask every question before you change anything. Then run it again with one choice per overlap:
+When a line says `asks` or `kept ..., which differs from the seed`, the script has written nothing, and every other line says what it would do. No file changes until every question is answered. Put each overlap to the user: show the `yours` side and the `seed` side, and ask which to keep. Ask every question before you change anything. Then run it again with one choice per overlap:
 
 ```bash
 seed-steering --keep docs/agents/domain.md:1=yours --keep docs/agents/domain.md:2=seed

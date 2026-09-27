@@ -153,8 +153,9 @@ The labels on a shown change say what each side holds:
 | `merged` | `yours/`: your file | `merged/`: your file with the Seed's change applied |
 | `kept ..., which differs from the seed` | `yours/`: your file | `seed/`: the current Seed |
 
-Setup changes no file until you have answered every question. Then it writes the files you decided
-on and their base copies.
+Setup changes no file until you have answered every question. A file with no base copy is a question too,
+so while one waits, setup changes no other file either. Then it writes the files you decided on and
+their base copies, all in one run.
 
 A file with no base copy gets one after you decide on it, even if you take no lines. From then on,
 setup can merge it like any other file.

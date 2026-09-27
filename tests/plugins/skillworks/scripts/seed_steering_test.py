@@ -111,7 +111,41 @@ def test_a_seed_already_there_with_no_base_copy_gets_none(repo, runner):
     assert edited.read_text(encoding="utf-8") == "# Our own domain notes\n"
     assert "kept docs/agents/domain.md, which differs from the seed:\n" in ran.out
     assert not (repo.work / BASES / "domain.md").exists()
-    assert (repo.work / BASES / "suite.json").is_file()
+
+
+def with_no_base_copy_beside_a_file_to_update(repo, runner):
+    seeded_by_an_older_plugin(repo, runner, "suite.json")
+    seed_steering.write(repo.work / WHERE["domain.md"], "# Our own domain notes\n")
+    (repo.work / BASES / "domain.md").unlink()
+
+
+def test_a_file_with_no_base_copy_holds_the_whole_run_and_every_outcome_is_still_said(repo, runner):
+    with_no_base_copy_beside_a_file_to_update(repo, runner)
+    before = on_disk(repo.work)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert on_disk(repo.work) == before
+    assert "kept {}, which differs from the seed:\n".format(WHERE["domain.md"]) in ran.out
+    assert "would update {}\n".format(WHERE["suite.json"]) in ran.out
+    assert "updated {}\n".format(WHERE["suite.json"]) not in ran.out
+    assert "Nothing was written." in ran.out
+    assert "--settled" in ran.out.splitlines()[-1]
+
+
+def test_a_run_that_settles_the_file_with_no_base_copy_writes_every_file_and_base_copy(repo, runner):
+    with_no_base_copy_beside_a_file_to_update(repo, runner)
+
+    ran = run_seed_settling(runner, repo.work, WHERE["domain.md"])
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / WHERE["domain.md"]).read_text(encoding="utf-8") == "# Our own domain notes\n"
+    assert (repo.work / BASES / "domain.md").read_text(encoding="utf-8") == seeded("domain.md")
+    assert (repo.work / WHERE["suite.json"]).read_text(encoding="utf-8") == seeded("suite.json")
+    assert (repo.work / BASES / "suite.json").read_text(encoding="utf-8") == seeded("suite.json")
+    assert "updated {}\n".format(WHERE["suite.json"]) in ran.out
+    assert "Nothing was written." not in ran.out
 
 
 def run_seed_settling(runner, where, *places):
@@ -964,6 +998,14 @@ def test_the_seed_step_names_each_outcome_the_questions_and_the_review_before_co
     assert "--settled " in step
     assert "before you change anything" in step
     assert "before they commit" in step
+
+
+def test_the_seed_step_and_the_setup_page_say_a_file_with_no_base_copy_holds_every_change():
+    step = setup_section("### 1. Seed the Steering")
+    again = SETUP_PAGE.read_text(encoding="utf-8").split("## Run setup again", 1)[1]
+
+    assert "When a line says `asks` or `kept ..., which differs from the seed`, the script has written nothing" in step
+    assert "A file with no base copy is a question too" in again
 
 
 def test_the_setup_page_explains_each_outcome_of_a_second_run():

@@ -44,9 +44,13 @@ WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
 
 CHOICE = re.compile(r"^(.+):([0-9]+)=(yours|seed)$")
 
+KEEP = "--keep <file>:<overlap>=yours|seed for each overlap"
+
+SETTLE = "--settled <file> for each file that differs from its seed"
+
 
 class Outcome:
-    def __init__(self, done, would=None, shown=(), writes=(), asks=False, used=()):
+    def __init__(self, done, would=None, shown=(), writes=(), asks=None, used=()):
         self.done = done
         self.would = would or done
         self.shown = list(shown)
@@ -168,14 +172,15 @@ def weigh(top, default, name, place, choices, settled):
                        "would keep {}, as you settled it, and write its base copy\n".format(place),
                        writes=[(base, wanted)], used=[place])
     if was is None:
-        return Outcome("kept {}, which differs from the seed:\n".format(place), shown=diff(place, held, wanted, ("yours", "seed")))
+        return Outcome("kept {}, which differs from the seed:\n".format(place),
+                       shown=diff(place, held, wanted, ("yours", "seed")), asks=SETTLE)
 
     chosen = {number: keep for (where, number), keep in choices.items() if where == place}
     merged, overlaps = merge(was, held, wanted, chosen)
     used = {(place, number) for number in chosen if number <= len(overlaps)}
     if len(used) < len(overlaps):
         return Outcome("asks {}, where your edit and the seed's change overlap:\n".format(place),
-                       shown=shown_overlaps(place, overlaps), asks=True, used=used)
+                       shown=shown_overlaps(place, overlaps), asks=KEEP, used=used)
     return Outcome("merged {}, applying the seed's change:\n".format(place),
                    "would merge {}, applying the seed's change:\n".format(place),
                    shown=diff(place, held, merged, ("yours", "merged")), writes=[(target, merged), (base, wanted)], used=used)
@@ -236,7 +241,7 @@ def parsed(argv):
 
 # A run that stops for a question writes nothing, so no Steering file is left half-merged while the team decides.
 def report(outcomes, out):
-    asking = any(outcome.asks for outcome in outcomes)
+    asking = [ask for ask in (KEEP, SETTLE) if any(outcome.asks == ask for outcome in outcomes)]
     for outcome in outcomes:
         out.write(outcome.would if asking else outcome.done)
         out.writelines(outcome.shown)
@@ -244,7 +249,7 @@ def report(outcomes, out):
             for path, text in outcome.writes:
                 write(path, text)
     if asking:
-        out.write("Nothing was written. Run again with --keep <file>:<overlap>=yours|seed for each overlap.\n")
+        out.write("Nothing was written. Run again with {}.\n".format(" and ".join(asking)))
 
 
 def main(argv, runner, out, err):
