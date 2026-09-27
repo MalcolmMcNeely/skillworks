@@ -20,5 +20,7 @@ public sealed record StepRow
 
     public required bool Unnamed { get; init; }
 
+    public required bool SkillKnown { get; init; }
+
     public required decimal Cost { get; init; }
 }

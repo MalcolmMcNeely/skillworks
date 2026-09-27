@@ -40,7 +40,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(["kind", "steps"], StudioHost.Fields(page));
         Assert.Equal(
-            ["atUtc", "cost", "fault", "id", "kind", "lengthMs", "skill", "tool", "unnamed", "words"],
+            ["atUtc", "cost", "fault", "id", "kind", "lengthMs", "skill", "skillKnown", "tool", "unnamed", "words"],
             StudioHost.Fields(page["steps"]?[0]));
     }
 

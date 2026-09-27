@@ -31,7 +31,7 @@ public sealed record StepsAnswer(
 
         return new StepsAnswer(
             Opened(lines.Single(line => StudioHost.KindOf(line) == "head")),
-            Held<StepRow>(lines, "steps"),
+            Latest<StepRow>(lines, "steps"),
             Latest<ExchangeRow>(lines, "exchanges"),
             (decimal?)said?["beforeFirstPrompt"] ?? 0m,
             Held<ActivationRow>(lines, "activations"),
@@ -60,7 +60,7 @@ public sealed record StepsAnswer(
             .Select(StudioHost.Read<T>)
     ];
 
-    // The findings and the exchanges arrive twice and the second answers for the first, so a browser replaces where a page appends.
+    // The steps, the findings and the exchanges arrive twice and the second answers for the first, so a browser replaces where a page appends.
     private static IReadOnlyList<T> Latest<T>(IReadOnlyList<JsonObject> lines, string kind) =>
     [
         .. (lines.LastOrDefault(line => StudioHost.KindOf(line) == kind)?[kind]?.AsArray() ?? [])

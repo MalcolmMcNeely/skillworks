@@ -6,6 +6,34 @@ namespace Skillworks.Core.Sessions.Queries;
 
 public sealed partial class StepQueries
 {
+    // An agent id is never empty, so this key cannot name a Subagent.
+    private const string MainAgentKey = "";
+
+    // Claude Code names the skill on the Turn alone, and a Tool call is written after the Turn that asked for it.
+    public static StepsPage Steps(OpenedRun opened, OpenedSpans traced)
+    {
+        var asked = new Dictionary<string, Step>(StringComparer.Ordinal);
+        var steps = new List<Step>();
+
+        foreach (var step in opened.Drawn.Select(each => each.Step))
+        {
+            var agent = traced.Agents.GetValueOrDefault(step.Id) ?? MainAgentKey;
+
+            if (step.Kind == StepKind.Turn)
+            {
+                asked[agent] = step;
+            }
+
+            var asker = asked.GetValueOrDefault(agent);
+
+            steps.Add(step.Kind is StepKind.Tool or StepKind.Refused
+                ? step with { Skill = asker?.Skill, Unnamed = asker?.Unnamed ?? false, SkillKnown = true }
+                : step);
+        }
+
+        return new StepsPage(steps);
+    }
+
     public static IReadOnlyList<Subagent> Ran(
         OpenedRun opened,
         IReadOnlyDictionary<string, string> agents,

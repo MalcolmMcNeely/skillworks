@@ -13,6 +13,7 @@ function step(id: string, clock: string, fields: Partial<Step> = {}): Step {
     words: null,
     skill: null,
     unnamed: false,
+    skillKnown: true,
     cost: 0,
     ...fields,
   };

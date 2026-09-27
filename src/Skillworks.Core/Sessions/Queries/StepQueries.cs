@@ -125,7 +125,6 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
     private static IReadOnlyList<DrawnStep> Stepped(IReadOnlyList<EventLine> lines)
     {
         var drawn = new List<DrawnStep>();
-        Step? asker = null;
 
         for (var place = 0; place < lines.Count; place++)
         {
@@ -134,12 +133,11 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
                 continue;
             }
 
-            // Claude Code names the skill on the Turn alone, and a Tool call is written after the Turn that asked for it.
+            // Subagents running at once mix their events, so the Turn before a Tool call may be another agent's.
             step = step.Kind switch
             {
-                StepKind.Turn => asker = Attributed(lines[place], step),
-                StepKind.Tool or StepKind.Refused when asker is not null =>
-                    step with { Skill = asker.Skill, Unnamed = asker.Unnamed },
+                StepKind.Turn => Attributed(lines[place], step),
+                StepKind.Tool or StepKind.Refused => step with { SkillKnown = false },
                 _ => step,
             };
 

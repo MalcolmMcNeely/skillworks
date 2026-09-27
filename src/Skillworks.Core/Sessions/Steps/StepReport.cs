@@ -48,9 +48,15 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
             traced.Agents,
             ran);
 
-        // Again, now a Span has named the agent behind each Turn and a Subagent's part can be set apart.
         if (opened.Read.Unreachable is null)
         {
+            // Again, now a Span has named the agent behind each Tool call and the Turn that asked for it.
+            if (traced.Traced)
+            {
+                yield return StepQueries.Steps(opened, traced);
+            }
+
+            // Again, now a Span has named the agent behind each Turn and a Subagent's part can be set apart.
             yield return StepQueries.Exchanges(opened, traced);
         }
 

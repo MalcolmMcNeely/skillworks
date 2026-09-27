@@ -30,6 +30,7 @@ function step(id: string, fields: Partial<Step> = {}): Step {
     words: null,
     skill: null,
     unnamed: false,
+    skillKnown: true,
     cost: 0,
     ...fields,
   };

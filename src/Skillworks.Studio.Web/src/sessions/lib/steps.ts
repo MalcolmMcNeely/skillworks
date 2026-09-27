@@ -22,6 +22,8 @@ export interface Step {
   // Null both where no skill was in force and where Claude Code would not name it, so unnamed tells them apart.
   skill: string | null;
   unnamed: boolean;
+  // False on a Tool call until a Span names its agent, as the Turn before it may be another agent's.
+  skillKnown: boolean;
   // Nought on every Step but a Turn, as only a Turn is spend.
   cost: number;
 }
