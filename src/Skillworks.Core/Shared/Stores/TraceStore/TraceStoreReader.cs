@@ -201,7 +201,7 @@ public sealed class TraceStoreReader(IHttpClientFactory clients, IOptions<TempoO
 
             if (!response.IsSuccessStatusCode)
             {
-                return new Answer<T>(none, $"{address} answered {(int)response.StatusCode}.");
+                return new Answer<T>(none, await Refusal.OfAsync(address, response, within.Token));
             }
 
             await using var body = await response.Content.ReadAsStreamAsync(within.Token);

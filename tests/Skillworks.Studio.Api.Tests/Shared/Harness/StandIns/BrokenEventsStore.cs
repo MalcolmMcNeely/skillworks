@@ -29,6 +29,12 @@ public sealed class BrokenEventsStore : DelegatingHandler
     public static BrokenEventsStore Failing(HttpStatusCode status) =>
         new(Before(DateOnly.MaxValue), (_, _, _) => Task.FromResult(new HttpResponseMessage(status)));
 
+    // Loki gives its reason as plain text, as it does for a query over its series limit.
+    public static BrokenEventsStore Refusing(HttpStatusCode status, string reason) =>
+        new(
+            Before(DateOnly.MaxValue),
+            (_, _, _) => Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(reason) }));
+
     public static BrokenEventsStore DownBefore(DateOnly oldestAnswered) => new(Before(oldestAnswered), Refused);
 
     public static BrokenEventsStore StallingBefore(DateOnly oldestAnswered) =>

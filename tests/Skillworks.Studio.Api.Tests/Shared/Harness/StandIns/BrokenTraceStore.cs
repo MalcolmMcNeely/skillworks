@@ -12,6 +12,9 @@ public sealed class BrokenTraceStore(Func<HttpResponseMessage> broken) : Delegat
 
     public static BrokenTraceStore Failing(HttpStatusCode status) => new(() => new HttpResponseMessage(status));
 
+    public static BrokenTraceStore Refusing(HttpStatusCode status, string reason) =>
+        new(() => new HttpResponseMessage(status) { Content = new StringContent(reason) });
+
     // The Trace store refuses reads with a 503 until it has read back everything it was already sent.
     public static BrokenTraceStore StartingUp() => Failing(HttpStatusCode.ServiceUnavailable);
 

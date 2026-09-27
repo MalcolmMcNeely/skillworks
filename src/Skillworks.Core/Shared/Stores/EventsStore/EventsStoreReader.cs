@@ -287,7 +287,7 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
             if (!response.IsSuccessStatusCode)
             {
-                return failed($"{address} answered {(int)response.StatusCode}.");
+                return failed(await Refusal.OfAsync(address, response, within.Token));
             }
 
             await using var body = await response.Content.ReadAsStreamAsync(within.Token);
