@@ -13,13 +13,54 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one. Write them into the spec's Testing Decisions.
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` label. The spec title should begin with "SPEC:"
+3. Read `target-branch` in `docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `spec` means the spec gets a branch of its own; see [The spec's branch](#the-specs-branch) and do its first part now.
 
-4. Commit and push whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
+4. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` label. The spec title should begin with "SPEC:". In `spec` mode, the spec carries the `## Branch` section; with a branch name, leave that section out.
 
-5. Report the spec's issue number and URL. That number is the argument to `/skillworks:spec-loop`.
+5. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
+
+6. In `spec` mode, do the second part of [The spec's branch](#the-specs-branch).
+
+7. Report the spec's issue number and URL. That number is the argument to `/skillworks:spec-loop`. In `spec` mode, report the pull request's URL too.
+
+## The spec's branch
+
+In `spec` mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. The loop reads the branch from the spec's `## Branch` section, so a spec without it stops the loop.
+
+**First part, before the spec is published.** Find the branch.
+
+- If the grill settled a word or an ADR, it already created `spec/<slug>` and a draft pull request. Use that branch. `git branch --show-current` names it when this session is still on it.
+- If the grill settled nothing, create the branch. The slug is short, in kebab case, and comes from the design's subject. Cut it from the newest default branch and push it:
+
+  ```bash
+  default=$(gh api "repos/{owner}/{repo}" --jq .default_branch)
+  git fetch origin "$default"
+  git switch -c "spec/<slug>" "origin/$default"
+  git push -u origin "spec/<slug>"
+  ```
+
+**Second part, after the spec is published and the work pushed.** The pull request's body names the spec with a closing keyword, so a merge closes the spec. Ticket commits never carry one, so this body is the only thing that closes the spec.
+
+- If no pull request exists for the branch, open a draft one to the default branch:
+
+  ```bash
+  gh pr create --draft --base "$default" --head "spec/<slug>" --title "<the spec's title, without SPEC:>" --body "Closes #<spec>"
+  ```
+
+  A branch with no commit beyond the default branch cannot open a pull request. Push an empty commit that names the spec first: `git commit --allow-empty -m "Open the pull request for spec #<spec>"`.
+
+- If the grill already opened one, add the closing keyword to its body. Read the body, and write it back with `Closes #<spec>` on a line of its own at the end:
+
+  ```bash
+  gh pr view "spec/<slug>" --json number,body
+  gh api -X PATCH "repos/{owner}/{repo}/pulls/<number>" -f body="<the body, then Closes #<spec>>"
+  ```
 
 <spec-template>
+
+## Branch
+
+`spec/<slug>`, in `spec` mode only. The branch name alone, on the first line under the heading.
 
 ## Problem Statement
 

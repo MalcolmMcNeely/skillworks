@@ -38,5 +38,39 @@ def test_a_loop_file_with_no_target_branch_stops_and_names_the_setting(tmp_path)
     assert "target-branch" in stopped.value.said
 
 
+def test_in_spec_mode_the_target_branch_is_the_branch_the_spec_names(tmp_path):
+    write_loop(tmp_path, {"target-branch": "spec"})
+    spec = "## Problem Statement\r\n\r\nWords.\r\n\r\n## Branch\r\n\r\n`spec/target-branch`\r\n\r\n## Solution\r\n"
+
+    assert target_branch(tmp_path, spec) == "spec/target-branch"
+
+
+def test_in_spec_mode_a_spec_that_names_no_branch_stops_and_says_so(tmp_path):
+    write_loop(tmp_path, {"target-branch": "spec"})
+
+    with pytest.raises(Stop) as stopped:
+        target_branch(tmp_path, "## Problem Statement\n\nWords.\n")
+
+    assert stopped.value.status == REFUSED
+    assert "## Branch" in stopped.value.said
+    assert "to-spec" in stopped.value.said
+
+
+def test_in_spec_mode_no_spec_stops_and_says_one_is_needed(tmp_path):
+    write_loop(tmp_path, {"target-branch": "spec"})
+
+    with pytest.raises(Stop) as stopped:
+        target_branch(tmp_path)
+
+    assert stopped.value.status == REFUSED
+    assert "no spec was given" in stopped.value.said
+
+
+def test_a_branch_name_ignores_the_branch_a_spec_names(tmp_path):
+    write_loop(tmp_path, {"target-branch": "master"})
+
+    assert target_branch(tmp_path, "## Branch\n\n`spec/other`\n") == "master"
+
+
 def test_this_repo_lands_on_main():
     assert target_branch(ROOT) == "main"
