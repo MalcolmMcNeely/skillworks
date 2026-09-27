@@ -151,9 +151,12 @@ public sealed partial class SessionEndpointsTests
             Ran(Afternoon, At(DaysBack(3), "09:00:00.000"), "The run that never swept", "acme/xi"),
             Ran(Evening, At(Yesterday, "14:00:00.000"), "The run in another repository", "acme/nu"));
         await studio.Push(
-            new SkillActivated("tdd", At(Yesterday, "09:05:00.000")) { Session = Morning },
-            new SkillActivated("comment-sweep", At(DaysBack(3), "09:05:00.000")) { Session = Afternoon },
-            new SkillActivated("tdd", At(Yesterday, "14:05:00.000")) { Session = Evening });
+            new SkillActivated("tdd", At(Yesterday, "09:05:00.000"), Owner: "acme", RepositoryName: "xi") { Session = Morning },
+            new SkillActivated("comment-sweep", At(DaysBack(3), "09:05:00.000"), Owner: "acme", RepositoryName: "xi")
+            {
+                Session = Afternoon,
+            },
+            new SkillActivated("tdd", At(Yesterday, "14:05:00.000"), Owner: "acme", RepositoryName: "nu") { Session = Evening });
 
         var names = (await studio.SessionsIn("?repository=acme/xi&skill=tdd")).Select(session => session.Name);
 
@@ -166,7 +169,8 @@ public sealed partial class SessionEndpointsTests
         using var studio = new StudioHost();
 
         await PushWithPrompts(studio, Ran(Morning, At(Yesterday, "09:00:00.000"), "The only run", "acme/xi"));
-        await studio.Push(new SkillActivated("tdd", At(Yesterday, "09:05:00.000")) { Session = Morning });
+        await studio.Push(
+            new SkillActivated("tdd", At(Yesterday, "09:05:00.000"), Owner: "acme", RepositoryName: "xi") { Session = Morning });
 
         var answer = await studio.SessionAnswer("?repository=acme/nu&skill=tdd");
 
@@ -229,9 +233,9 @@ public sealed partial class SessionEndpointsTests
             Ran(Afternoon, At(Yesterday, "10:00:00.000"), "The run that was never traced", "acme/xi"),
             Ran(Evening, At(DaysBack(3), "09:00:00.000"), "The run in another repository", "acme/nu"));
         await studio.Push(
-            new SkillActivated("tdd", At(Yesterday, "09:05:00.000")) { Session = Morning },
-            new SkillActivated("tdd", At(Yesterday, "10:05:00.000")) { Session = Afternoon },
-            new SkillActivated("tdd", At(DaysBack(3), "09:05:00.000")) { Session = Evening });
+            new SkillActivated("tdd", At(Yesterday, "09:05:00.000"), Owner: "acme", RepositoryName: "xi") { Session = Morning },
+            new SkillActivated("tdd", At(Yesterday, "10:05:00.000"), Owner: "acme", RepositoryName: "xi") { Session = Afternoon },
+            new SkillActivated("tdd", At(DaysBack(3), "09:05:00.000"), Owner: "acme", RepositoryName: "nu") { Session = Evening });
         await studio.PushSpans(Morning, MorningTrace, Traced(MorningSpan));
         await studio.PushSpans(Evening, EveningTrace, Traced(EveningSpan));
 

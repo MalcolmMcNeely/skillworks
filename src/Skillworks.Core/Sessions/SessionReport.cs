@@ -47,7 +47,7 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
         }
 
         var gap = Shown(
-            gaps.InRows(read.Unreachable, read.Prompts),
+            gaps.InRows(read.Unreachable, read.LinesRead),
             // Only where rows stand, as a Measure with no row to sit on leaves no column of dashes to explain.
             Missed(read.Rows.Count > 0 ? fellShort : []),
             gaps.InDepths(read.Traced));
