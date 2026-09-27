@@ -2123,10 +2123,41 @@ def test_an_unknown_argument_still_prints_the_usage(loop, flags):
     assert ran.err == spec_loop.USAGE
 
 
+LOOP_PAGE = "docs/usage/the-loop.md"
+
+
 def test_the_loop_page_names_the_bypass_flag():
-    text = (ROOT / "docs/usage/the-loop.md").read_text(encoding="utf-8")
+    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
 
     assert "--bypass" in text
+
+
+def page_section(text, heading):
+    return text.split("\n" + heading + "\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_loop_page_explains_both_kinds_of_target_branch():
+    section = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The Target branch")
+
+    for named in ["`docs/agents/loop.json`", "`target-branch`", "`spec`", "`spec/<slug>`"]:
+        assert named in section, named
+    assert "Pick a branch name when" in section
+    assert "Pick `spec` when" in section
+
+
+def test_the_landing_chart_names_the_target_branch_and_never_main():
+    landing = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## Rebasing and Landing")
+    chart = landing.split("```mermaid\n", 1)[1].split("```", 1)[0]
+
+    assert "Target branch" in chart
+    assert re.search(r"\bmain\b", chart) is None
+
+
+def test_the_loop_page_names_main_only_as_an_example_of_a_target_branch():
+    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    outside = text.replace(page_section(text, "## The Target branch"), "")
+
+    assert re.search(r"\bmain\b", outside) is None
 
 
 # --- what the landing says, and when ----------------------------------------
@@ -2594,7 +2625,7 @@ def test_a_ticket_is_claimed_and_read_back_after_a_wait(loop, runner):
 
 # An ADR records what was decided on a day, so it keeps its old list and is not held here.
 LIVE_DOCUMENTS = (
-    "docs/usage/the-loop.md",
+    LOOP_PAGE,
     "plugins/skillworks/skills/what-next/SKILL.md",
 )
 
@@ -2654,7 +2685,7 @@ def test_the_prose_around_the_marked_line_is_never_read():
 
 # --- the stage map held to the step list ---------------------------------------
 
-STAGE_MAP_PAGE = "docs/usage/the-loop.md"
+STAGE_MAP_PAGE = LOOP_PAGE
 
 MAP_MARK = "<!-- stage map -->"
 

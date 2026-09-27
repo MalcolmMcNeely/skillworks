@@ -5,8 +5,8 @@ How a design becomes code in your repo. Two stages, and one gate between them.
 Stage one is an interview. You argue the design out with a Session, and the words and decisions are
 written to your repo as they settle. It ends when you confirm the design.
 
-Stage two is a script. It breaks the design into tickets and takes each one to `main` on its own, in a
-worktree of its own, through a fixed run of Claude Code Sessions. Nobody watches it.
+Stage two is a script. It breaks the design into tickets and takes each one to your Target branch on
+its own, in a worktree of its own, through a fixed run of Claude Code Sessions. Nobody watches it.
 
 ```mermaid
 flowchart TD
@@ -16,16 +16,61 @@ flowchart TD
     spec --> loop["/skillworks:spec-loop<br/>with the spec's number"]
     loop --> tickets["/skillworks:to-tickets<br/>cut the spec into tickets"]
     tickets --> ticket["Build one ticket"]
-    ticket --> land["Land it on main"]
+    ticket --> land["Land it on the Target branch"]
     land --> more{"Another open ticket?"}
     more -- yes --> ticket
-    more -- no --> full{"Full Suite run<br/>on the newest main"}
+    more -- no --> full{"Full Suite run<br/>on the newest Target branch"}
     full -- green --> drift["Drift check<br/>a comment on the spec"]
     full -- red --> stop(["The loop stops"])
+    drift -- "spec mode" --> ready["Mark the pull request<br/>ready for review"]
 ```
 
 Your `yes` at the gate is the whole of your consent. Nothing between it and the drift report at the
 end asks you anything, unless the loop stops.
+
+## The Target branch
+
+The **Target branch** is the branch a ticket Lands on. `target-branch` in `docs/agents/loop.json`
+says which one it is. Setup asks you, and writes your answer there. It takes one of two kinds of
+answer.
+
+**A branch name**, such as `main`, `master` or `develop`. That branch is the Target branch for every
+ticket of every spec. The loop cuts each Job branch from it, Lands each ticket on it, and pushes to it
+straight away. The grill pushes each word and ADR to it as they settle.
+
+```json
+{ "target-branch": "main" }
+```
+
+Pick a branch name when your team pushes straight to that branch. Your GitHub login must be able to
+push to it with no pull request and no status check. The preflight tests this, and stops if the push
+would be refused.
+
+**`spec`**. Each spec gets a branch of its own, `spec/<slug>`, and that branch is its Target branch.
+Your team reviews the whole spec as one pull request to your default branch.
+
+```json
+{ "target-branch": "spec" }
+```
+
+Pick `spec` when your default branch is protected, or when your team reviews its work through pull
+requests. The preflight checks that the default branch is on the remote, and does not care about its
+protection. With `spec`:
+
+- The grill makes `spec/<slug>` from the newest default branch when it settles the first word or ADR.
+  It pushes it, and opens a draft pull request to the default branch. Each later word and ADR goes to
+  that branch.
+- When the grill settled nothing, `/skillworks:to-spec` makes the branch and the draft pull request.
+- `/skillworks:to-spec` writes the branch name into the spec, under `## Branch`. The loop reads it
+  there.
+- Each ticket Lands on `spec/<slug>` exactly as it would on a branch name. Blocking, the push race and
+  the Turn work the same. A closed ticket still means its code is on its Target branch.
+- After the drift check, the loop marks the pull request ready for review, and stops. It never merges.
+  A person reviews it and merges it.
+- The pull request's body closes the spec, so the spec closes when the pull request merges.
+
+Every other part of this page is the same for both kinds. Where it says the Target branch, read the
+branch name you set, or `spec/<slug>`.
 
 ## Stage one: settle the design
 
@@ -54,8 +99,8 @@ the way, and what was ruled out. Then it asks you to confirm.
 ### The spec
 
 On your yes, `/skillworks:to-spec` runs. It publishes a `SPEC:` issue on GitHub with the
-`ready-for-agent` label. It commits and pushes what the interview changed on disk, and it reports the
-spec's number.
+`ready-for-agent` label. It commits and pushes what the interview changed on disk to the Target branch,
+and it reports the spec's number. With `spec`, the spec names its own branch under `## Branch`.
 
 The push matters as much as the issue. The spec points at decisions that must already be in the repo,
 because no later Session can see this one.
@@ -75,7 +120,8 @@ Then the skill starts the `spec-loop` script in the background, and tells you wh
 script does the rest. The skill never builds a ticket itself.
 
 Before the script starts work, it checks that `gh` is logged in, that `claude` is on `PATH`, and that
-the spec is open and has tickets. It records where `origin/main` stood in `.spec-loop/<spec>/base.sha`.
+the spec is open and has tickets. It records where the Target branch stood on `origin` in
+`.spec-loop/<spec>/base.sha`.
 That file is written once, so a restarted run still measures from where the first run began.
 
 **Picking a ticket** is a query, not a judgement. The script takes the spec's first open sub-issue
@@ -88,7 +134,7 @@ Open tickets that are all blocked or claimed by someone else stop the run with a
 
 ### Worktrees and Job branches
 
-Each ticket is built in a worktree of its own, cut from the newest `origin/main`:
+Each ticket is built in a worktree of its own, cut from the newest Target branch on `origin`:
 
 | What | Where |
 |---|---|
@@ -173,14 +219,14 @@ inputs the fix changed.
 ## Rebasing and Landing
 
 A ticket Lands the moment it passes, on its own. So a stopped run leaves every ticket before it
-already on `main`.
+already on the Target branch.
 
 ```mermaid
 flowchart TD
     verify["verify<br/>Clean, every commit names the ticket"] --> fetch["fetch origin"]
-    fetch --> moved{"main moved?"}
+    fetch --> moved{"Target branch moved?"}
     moved -- no --> turn["take the Turn"]
-    moved -- yes --> rebase["rebase onto main"]
+    moved -- yes --> rebase["rebase onto the Target branch"]
     rebase --> conflict{"conflict?"}
     conflict -- yes --> resolve["resolve<br/>resume the build Session"]
     conflict -- no --> suite2["Suite again<br/>only checks with no Proof"]
@@ -194,7 +240,7 @@ flowchart TD
 1. **Verify.** The worktree is Clean, and every commit carries a `Ticket: #<n>` trailer, so it can be
    traced back.
 2. **Fetch** `origin`.
-3. **Rebase** onto the newest `main`, only when `main` moved. Then the script checks that no commit
+3. **Rebase** onto the newest Target branch, only when it moved. Then the script checks that no commit
    and no file was lost.
 4. **Resolve**, only when the rebase conflicts. The build Session is resumed to fix it. It is told
    that it wrote one side and the other side is a stranger's, so it argues for the other side before
@@ -202,14 +248,14 @@ flowchart TD
 5. **The Suite again**, on the new base. Only the checks with no Proof for the rebased files run, so
    most landings run nothing. An unmoved base skips this, because the `suite` step already answers
    for it.
-6. **Push** to `main`.
+6. **Push** to the Target branch.
 
 Nothing is pushed unless every step passes.
 
 ### The push race and the Turn
 
 Two loops in one clone can finish at the same time. Both push, and one loses: its push is turned down
-because `main` moved. That is a lost push race, and it is expected.
+because the Target branch moved. That is a lost push race, and it is expected.
 
 The **Turn** is the right to push, held by one loop at a time in one clone. A loop takes the Turn only
 for its push. A loop that lost a race takes the Turn and keeps it from its next fetch until it Lands,
@@ -250,8 +296,8 @@ command, gets no Nudge. It stops the loop at once.
 
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, above. The script reopens the ticket, because `finish` may have closed it before its work
-reached `main`, and the loop only picks open tickets. If this run landed a ticket before the stop, the
-full run below runs next. The `FAIL` line in the log names the worktree and the files to read:
+reached the Target branch, and the loop only picks open tickets. If this run landed a ticket before
+the stop, the full run below runs next. The `FAIL` line in the log names the worktree and the files to read:
 
 ```
 FAIL  #203 step fix failed check ticket-open. Its worktree is at .claude/worktrees/spec-200/ticket-203. See ...
@@ -272,7 +318,7 @@ KEPT  ticket-203 held uncommitted work. The whole attempt is on branch spec-loop
 **Held** means the worktree had uncommitted work, and the Keep committed it. **Clean** means it had
 none. Either way, the attempt is on that branch if you want to read it.
 
-Then the run starts the first open ticket again from `main`, with a fresh build.
+Then the run starts the first open ticket again from the Target branch, with a fresh build.
 
 ### A Denial, and `--bypass`
 
@@ -298,15 +344,15 @@ names the mode the run is in.
 
 A Proof knows only the files in your repo. A change outside it, such as a new SDK, can leave a Proof
 stale. So after each loop run that landed at least one ticket, the script runs the whole Suite once
-more, on the newest `origin/main`, in a worktree of its own. It does this when the loop stopped early
-too, because the tickets that landed are on `main` all the same.
+more, on the newest Target branch on `origin`, in a worktree of its own. It does this when the loop
+stopped early too, because the tickets that landed are on the Target branch all the same.
 
 The full run trusts no Proof and uses no image, so every check runs on your own machine. A check that
 goes red there loses all its Proofs, so a stale Proof cannot skip it again.
 
 A red full run stops the loop, and the drift check does not run. The `RED` line names the red checks
 and the tickets that landed in the run. The spec stays open, and no Session is asked to fix it: a red
-`main` is yours to decide on. [The Suite](suite.md) says more.
+Target branch is yours to decide on. [The Suite](suite.md) says more.
 
 ## The drift check
 
@@ -330,8 +376,10 @@ It also lists anything **Unrequested**: work the spec never asked for. And it lo
 that brought in two names for one idea, with your glossary as the judge.
 
 The drift check fixes nothing and closes nothing. A fix is new work, and needs a ticket of its own.
-Closing the spec is where a human says the work is done. A clean finish needs two facts: the log
-reaches its `END` line, and the drift comment lists nothing Missing, Partial or Contradicts.
+Closing the spec is where a person says the work is done. With a branch name, a person closes it by
+hand. With `spec`, the loop marks the spec's pull request ready for review, and the spec closes when a
+person merges it. A clean finish needs two facts: the log reaches its `END` line, and the drift
+comment lists nothing Missing, Partial or Contradicts.
 
 ## The stage map
 
@@ -381,7 +429,7 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 15:59:38 EDIT  #202 standards    changed scripts/preflight.py
 16:02:18 STEP  #202 fix          2/6
 16:29:54 STEP  #202 finish       2/6
-16:56:48 ok    #202 landed on main as bfa44a6 in 1 try, holding the Turn for its push
+16:56:48 ok    #202 landed on master as bfa44a6 in 1 try, holding the Turn for its push
 16:56:52 DONE  #202  bfa44a6
 16:57:06 STEP  #203 build        3/6  ~245m left
 ```

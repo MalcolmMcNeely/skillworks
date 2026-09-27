@@ -19,9 +19,13 @@ You need these on your machine:
 Your repo needs these:
 
 - An `origin` remote on GitHub, with Issues turned on. GitHub Issues is the Tracker.
-- `main` as the default branch.
-- Permission for your GitHub login to push to `main` straight away. The loop Lands every ticket by
-  pushing to `main`, so a rule that asks for a pull request or a status check stops it.
+- A Target branch: the branch the loop Lands every ticket on. It can be any branch, such as `master`
+  or `develop`, and your GitHub login must be able to push to it straight away. A rule that asks for
+  a pull request or a status check on it stops the loop.
+- Or, if your default branch is protected, the Target branch `spec`. Each spec then gets a branch of
+  its own, and your team reviews it as one pull request to the default branch.
+
+[The loop](the-loop.md#the-target-branch) says how to choose.
 
 ## Install the Plugin
 
@@ -54,26 +58,29 @@ needs their clone of Skillworks at the same path.
 
 1. **Seed the Steering.** `seed-steering` copies each Seed to its place, keeps a base copy of it in
    `docs/agents/.seeds/`, and adds the loop's working folders to `.gitignore`.
-2. **Preflight.** `skillworks-preflight` checks the tools, the login, the remote, and the Target
+2. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `spec`. It
+   writes your answer into `docs/agents/loop.json`.
+3. **Preflight.** `skillworks-preflight` checks the tools, the login, the remote, and the Target
    branch `docs/agents/loop.json` names. Then it creates the `ready-for-agent` label on GitHub. If a
    check fails, setup stops there.
-3. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your tracker
+4. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your tracker
    docs and domain docs, and imports each rule.
-4. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
+5. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
    `"autoMemoryEnabled": false` into `.claude/settings.json`.
-5. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
+6. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
 Expect a permission prompt on a first run, at the seeding and at the preflight. The allowlist that clears it is written
-in step 4.
+in step 5.
 
 ## The questions setup asks
 
-Setup asks nothing on a clean repo except the one yes it needs. It asks more only where your repo
-already holds an answer of its own.
+Setup asks two things on a clean repo: your Target branch, and the one yes it needs. It asks more
+only where your repo already holds an answer of its own.
 
 | Question | When setup asks it |
 |---|---|
+| Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `spec` for one pull request per spec. If `docs/agents/loop.json` already names another answer, setup suggests that one. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line with them. The allowlist lets the loop run `git push` and `gh issue close` with no prompt. That is the point, and also the risk. |
 | Which side of this overlap do you keep, yours or the Seed's? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and asks once for each overlap. |
 | Which lines of the newer Seed do you want? | When a Steering file differs from its Seed and has no base copy, because your repo was set up before base copies existed. Setup shows the difference and changes the file only by the lines you pick. |

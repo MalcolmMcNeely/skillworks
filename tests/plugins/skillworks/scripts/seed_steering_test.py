@@ -797,6 +797,23 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
         assert tool in ["gh", "git"] + commands, entry
 
 
+def test_the_allowlist_names_the_pull_request_commands_of_a_spec_target_branch():
+    allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
+
+    for command in ["gh pr create", "gh pr ready", "gh pr view"]:
+        assert "Bash({}:*)".format(command) in allowed
+
+
+def test_setup_asks_for_the_target_branch_and_never_requires_main():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+    step = setup_section("### 2. Ask for the Target branch")
+
+    assert "suggest the remote's default branch" in step
+    assert "Offer one other answer: `spec`." in step
+    assert "`target-branch`" in step
+    assert "`main`" not in text
+
+
 def test_setup_writes_no_output_style(repo, runner):
     settings = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))
 
@@ -903,7 +920,7 @@ def setup_section(heading):
 
 
 def test_the_claude_md_pointer_imports_each_rule():
-    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 3. Point CLAUDE.md at the docs"), re.DOTALL)
+    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 4. Point CLAUDE.md at the docs"), re.DOTALL)
 
     assert len(pointer) == 1
     lines = pointer[0].splitlines()
@@ -912,7 +929,7 @@ def test_the_claude_md_pointer_imports_each_rule():
 
 
 def test_the_report_names_the_folder_each_steering_file_lives_in():
-    report = setup_section("### 5. Report")
+    report = setup_section("### 6. Report")
 
     assert "`docs/agents/rules/`" in report
     assert "`docs/agents/`" in report
@@ -987,7 +1004,7 @@ USAGE_FRONT_PAGE = "https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/
 
 
 def test_the_report_ends_with_a_link_to_the_usage_front_page():
-    last = setup_section("### 5. Report").strip().splitlines()[-1]
+    last = setup_section("### 6. Report").strip().splitlines()[-1]
 
     assert "]({})".format(USAGE_FRONT_PAGE) in last
     assert (ROOT / USAGE_FRONT_PAGE.split("/blob/main/", 1)[1]).is_file()
@@ -1044,6 +1061,30 @@ def test_the_seed_step_and_the_setup_page_name_each_label_on_a_shown_diff():
 
 def test_the_usage_front_page_lists_the_setup_page():
     assert "(setup.md)" in (ROOT / "docs" / "usage" / "README.md").read_text(encoding="utf-8")
+
+
+def test_the_setup_page_lists_the_target_branch_among_the_questions_setup_asks():
+    questions = SETUP_PAGE.read_text(encoding="utf-8").split("## The questions setup asks", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in questions.splitlines() if line.startswith("| Which is your Target branch? |")]
+
+    assert len(rows) == 1
+    assert "`spec`" in rows[0]
+    assert "default branch" in rows[0]
+
+
+def test_the_setup_page_never_requires_main():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+
+    assert "`main`" not in page
+
+
+def test_the_steering_page_describes_the_loop_file():
+    page = (ROOT / "docs" / "usage" / "steering.md").read_text(encoding="utf-8")
+    rows = [line for line in page.splitlines() if line.startswith("| `loop.json` |")]
+
+    assert len(rows) == 1
+    assert "`target-branch`" in rows[0]
+    assert "`spec`" in rows[0]
 
 
 def test_the_setup_page_names_every_file_setup_writes():

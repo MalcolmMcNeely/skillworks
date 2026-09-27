@@ -4,6 +4,8 @@
     "allow": [
       "Bash(gh api:*)",
       "Bash(gh issue:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr ready:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr diff:*)",
       "Bash(gh label list:*)",
