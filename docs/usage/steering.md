@@ -1,0 +1,93 @@
+# Steering
+
+Steering is what your repo tells the loop about itself: its rules, its tracker docs, its review
+baselines and its Suite. Setup copies a Seed of each file into your repo, and your team owns the files
+from then on. A Plugin update never overwrites them. Edit them by hand whenever your team changes its
+mind, and commit the edit like any other change.
+
+Every Steering file lives in `docs/agents/`, so you find all of it in one place. A few files sit
+somewhere else, because a tool or a design puts them there. They are at the end of the list.
+
+Each file below says what it does, which part of the loop reads it, and what your team can change in
+it. [The loop](the-loop.md) has the steps these parts name.
+
+## What always loads
+
+Some Steering has to be in every Session from the start. The rules are that kind. `CLAUDE.md` loads
+each one with an `@` import:
+
+```markdown
+@docs/agents/rules/comments.md
+@docs/agents/rules/determinism.md
+@docs/agents/rules/file-placement.md
+@docs/agents/rules/words.md
+```
+
+So `comments.md`, `determinism.md`, `file-placement.md` and `words.md` load into every Session, and
+into every step of the loop. Keep them short, because every Session pays for each line.
+
+The preflight checks that each rule in `docs/agents/rules/` still has its import. Without that check,
+one deleted line would turn a rule off without a word. A new rule you add to the folder needs a new
+import line in `CLAUDE.md`, or the preflight stops.
+
+## What loads on demand
+
+Every other file in `docs/agents/` loads only when a skill reads it. A Session that does not need a
+baseline does not carry it. So a long baseline costs only the step that reads it.
+
+## The rules, in `docs/agents/rules/`
+
+Each rule is prose with one YAML block at the end. The prose says what the rule asks for. The YAML
+block holds its settings. The settings start empty, so nothing is judged until your team fills them
+in.
+
+| File | What it does | What reads it | What your team can change |
+|---|---|---|---|
+| `comments.md` | Says which comments earn their place, and where doc comments may go. Its keep and cut table is your team's taste in comments. | Every Session. The `sweep` step judges each comment by its table. The `standards` review reads it too. | The table, the prose, and `doc-comments`: `true` lets code files carry doc comments, `false` lets no file carry them. |
+| `determinism.md` | Says how code reads time, so a test that fails means the code is wrong. | Every Session. The `standards` review judges the change by it. | The prose, `clock` (the type your code reads time through), and `contexts` (which parts of the code the rule judges). |
+| `file-placement.md` | Says where each file goes: folder shape, file names, where tests sit, and how many types a folder holds. | Every Session. The `architecture` review judges the change by it. | Every setting: the Slices, the folder size, the name map, the test file patterns, the folders to skip and the banned folder names. |
+| `words.md` | Lists the words that lost against a glossary word, one list per context. No source file uses a word that lost. | Every Session. The `standards` review judges the change by it. | The lists. A word joins a list when your glossary settles it and the code reaches for the loser again. |
+
+A check can read a rule's YAML block and fail the Suite on a breach. The Plugin ships no such check.
+It is yours to add, as a check in your Suite.
+
+## The files in `docs/agents/`
+
+| File | What it does | What reads it | What your team can change |
+|---|---|---|---|
+| `issue-tracker.md` | Holds the `gh` calls the loop makes, the ticket shape, and the two conventions the loop leans on: a commit names its ticket, and a ticket is closed with a comment. | `/skillworks:to-spec` and `/skillworks:to-tickets`, the `spec` review, `finish`, and the drift check. | "The ticket shape": the size of a ticket, its title and its sections. That is your team's taste in tickets. Leave the two conventions as they are, because the loop reads them back. |
+| `domain.md` | Says where your glossary and your ADRs live, and how a skill reads them. | A skill that explores your code, sent there by the pointer in `CLAUDE.md`. The `architecture` review reads it first. | Where your domain docs live, for example one `CONTEXT.md` or a `CONTEXT-MAP.md` with one glossary per context. |
+| `smell-baseline.md` | The code smells the `standards` review looks for, even when your repo documents nothing. | The `standards` review. | The list of smells. Add one your team cares about, or cut one it does not. A rule your repo writes down always beats the baseline. |
+| `arrangement-baseline.md` | The failures of placement and direction the `architecture` review looks for, even when your repo documents nothing. | The `architecture` review. | The list of failures and their weighting. A rule your repo writes down always beats the baseline. |
+| `placement-checks.md` | Names the commands that prove placement, each with its folder and anything to run first. It also maps each check back to the rule it runs. | The `architecture` review. It runs these commands and nothing else. | The commands. The Seed names none, so the review can only judge placement by reading until you add them. |
+| `suite.json` | The Suite: the checks that decide green for your repo. | The `suite` step, the Suite again after a rebase, the full run, and `skillworks-suite`. | Every check, its `ready` command, its `ignores`, its `image`, and `runs`. [The Suite](suite.md) has the whole file. The Seed names no check, so the loop stops until you add one. |
+| `script-tests.Dockerfile` | An image a Suite check runs in. This one is the Skillworks repo's own, and your repo has none until you add one. | The `suite` step, for a check that names it as its `image`. | All of it. Name any Dockerfile in `docs/agents/` as a check's `image`. |
+
+## The Steering outside `docs/agents/`
+
+These files stay where a tool or a design places them.
+
+| File | What it does | What reads it | What your team can change |
+|---|---|---|---|
+| `CLAUDE.md` | Loads into every Session. Setup adds an `## Agent skills` block that points at the tracker docs and the domain docs, and imports each rule. | Claude Code, at the start of every Session. | Anything outside the block. Inside the block, keep one import for each rule. |
+| `.claude/settings.json` | Holds the Plugin's Marketplace, the allowlist the loop needs to run with nobody watching, and `"autoMemoryEnabled": false`. | Claude Code, for every Session in the repo. | The allowlist: add each tool your Suite runs, such as a build or a test runner. A Session with nobody watching cannot ask you, so a missing entry is a Denial. |
+| `CONTEXT.md`, or `CONTEXT-MAP.md` and one `CONTEXT.md` per context | Your glossary: the words your repo uses, and the words that lost under _Avoid_. | The grill writes it as words settle. The reviews and the drift check judge names by it. | All of it. It is your domain. |
+| `docs/adr/` | Your decisions, one file each, with the options you turned down. | The grill writes an ADR as a decision settles. The `architecture` review reads the ADRs that touch the change. | All of it. Write a new ADR to change a decision, rather than editing an old one. |
+| A linter's own rules file, such as `.dependency-cruiser.cjs` | The rules a linter enforces, in the place the linter looks. | The linter, when a Suite check or a placement check runs it. | All of it. A review skips what a linter already enforces. |
+
+## What is fixed
+
+Some opinions are how Skillworks works. They are Machinery: the same in every repo, run from the
+Plugin, and no team edits them. There is no file for them, so do not look for one.
+
+- The three review axes: Standards, Spec and Architecture. Each review must cite a line or drop the
+  finding.
+- The test-first loop in `tdd`.
+- The deep-module view in `codebase-design`.
+- The plain writing in `unslop`, and the output style the Plugin forces on every Session.
+- The Session trailer on every commit, and auto-memory off.
+- The skills, the scripts they drive and the hooks: the steps of the loop, their order, the Nudge, the
+  Keep, the Turn, and the round a red Suite goes.
+
+A fix to any of these reaches every repo with the next Plugin update. Your Steering stays as your team
+left it.

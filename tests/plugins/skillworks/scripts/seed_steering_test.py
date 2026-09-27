@@ -424,6 +424,49 @@ def test_no_seed_promises_a_check_the_team_has_not_added():
         assert "the check reads" not in seeded(name).lower(), name
 
 
+STEERING_PAGE = ROOT / "docs" / "usage" / "steering.md"
+
+
+def unnamed_steering(page, folder):
+    return sorted(path.relative_to(folder).as_posix() for path in folder.rglob("*")
+                  if path.is_file() and "`{}`".format(path.name) not in page)
+
+
+def test_the_steering_page_names_every_file_in_docs_agents():
+    page = STEERING_PAGE.read_text(encoding="utf-8")
+
+    assert all((ROOT / where).is_file() for where in WHERE.values())
+    assert unnamed_steering(page, ROOT / "docs" / "agents") == []
+
+
+def test_a_steering_file_the_page_does_not_name_is_caught(tmp_path):
+    (tmp_path / "rules").mkdir()
+    (tmp_path / "rules" / "comments.md").write_text("", encoding="utf-8")
+    (tmp_path / "new-baseline.md").write_text("", encoding="utf-8")
+
+    assert unnamed_steering("`comments.md`", tmp_path) == ["new-baseline.md"]
+
+
+def test_the_steering_page_says_which_files_always_load():
+    page = STEERING_PAGE.read_text(encoding="utf-8")
+    loads = page.split("## What always loads", 1)[1].split("\n## ", 1)[0]
+
+    for rule in RULES:
+        assert "`{}`".format(rule) in loads, rule
+
+
+def test_the_steering_page_lists_the_machinery_no_team_edits():
+    page = STEERING_PAGE.read_text(encoding="utf-8")
+    fixed = page.split("## What is fixed", 1)[1]
+
+    for machinery in ("`tdd`", "`codebase-design`", "`unslop`", "output style", "auto-memory"):
+        assert machinery in fixed, machinery
+
+
+def test_the_usage_front_page_lists_the_steering_page():
+    assert "(steering.md)" in (ROOT / "docs" / "usage" / "README.md").read_text(encoding="utf-8")
+
+
 def test_implement_reads_the_suite_from_the_suite_file():
     text = (SKILLS / "implement" / "SKILL.md").read_text(encoding="utf-8")
 
