@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { Range } from '../../lib/view';
 import type { Highlight } from '../../lib/highlight';
-import type { ActivationSpell } from '../../lib/panels/activations';
 import type { Level } from '../../lib/panels/context';
+import type { SkillRow } from '../../lib/panels/skills';
 import type { ToolRow } from '../../lib/panels/tools';
 import { ContextTab } from './ContextTab';
 import { SkillsTab } from './SkillsTab';
@@ -19,29 +19,29 @@ const tabs: readonly { key: TabKey; label: string }[] = [
 export function TimelineTabs({
   levels,
   limitTokens,
-  spells,
+  skills,
+  cost,
   tools,
   view,
   selected,
-  opened,
   highlight,
   onOpen,
-  onActivation,
   onHighlight,
 }: {
   levels: readonly Level[];
   limitTokens: number | null;
-  spells: readonly ActivationSpell[];
+  skills: readonly SkillRow[];
+  cost: number;
   tools: readonly ToolRow[];
   view: Range | null;
   selected: string | null;
-  opened: string | null;
   highlight: Highlight | null;
   onOpen: (step: string) => void;
-  onActivation: (spell: ActivationSpell) => void;
   onHighlight: (picked: Highlight) => void;
 }) {
-  const [shown, setShown] = useState<TabKey>(highlight?.kind === 'tool' ? 'tools' : 'context');
+  const [shown, setShown] = useState<TabKey>(
+    highlight === null ? 'context' : highlight.kind === 'tool' ? 'tools' : 'skills',
+  );
 
   return (
     <section className="session-panel timeline-tabs" aria-label="What is in view">
@@ -66,7 +66,7 @@ export function TimelineTabs({
         {shown === 'context' ? (
           <ContextTab levels={levels} limitTokens={limitTokens} view={view} selected={selected} onOpen={onOpen} />
         ) : shown === 'skills' ? (
-          <SkillsTab spells={spells} view={view} opened={opened} onOpen={onActivation} />
+          <SkillsTab rows={skills} cost={cost} inView={view !== null} highlight={highlight} onPick={onHighlight} />
         ) : (
           <ToolsTab rows={tools} inView={view !== null} highlight={highlight} onPick={onHighlight} />
         )}

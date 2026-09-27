@@ -3,7 +3,19 @@ import { marksOf, type Step } from '../steps';
 import { toolRowsOf } from './tools';
 
 function step(id: string, clock: string, fields: Partial<Step> = {}): Step {
-  return { id, kind: 'tool', atUtc: `2026-09-14T${clock}.000Z`, lengthMs: 0, tool: 'Bash', fault: false, words: null, ...fields };
+  return {
+    id,
+    kind: 'tool',
+    atUtc: `2026-09-14T${clock}.000Z`,
+    lengthMs: 0,
+    tool: 'Bash',
+    fault: false,
+    words: null,
+    skill: null,
+    unnamed: false,
+    cost: 0,
+    ...fields,
+  };
 }
 
 const at = (clock: string) => Date.parse(`2026-09-14T${clock}.000Z`);

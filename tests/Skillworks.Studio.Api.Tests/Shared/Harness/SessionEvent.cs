@@ -52,6 +52,8 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? Parent { get; init; }
 
+    public string? Skill { get; init; }
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>
@@ -75,6 +77,7 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("vcs.owner.name", Owner),
         ("vcs.repository.name", RepositoryName),
         ("skillworks.parent.session.id", Parent),
+        ("skill.name", Skill),
     ];
 
     // Claude Code counts the characters on the event whether or not the switch lets the words through.

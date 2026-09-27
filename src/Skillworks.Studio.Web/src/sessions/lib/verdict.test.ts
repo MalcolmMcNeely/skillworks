@@ -20,7 +20,19 @@ const run: Session = {
 };
 
 function step(id: string, fields: Partial<Step> = {}): Step {
-  return { id, kind: 'tool', atUtc: '2026-09-14T09:00:00.000Z', lengthMs: 0, tool: 'Bash', fault: false, words: null, ...fields };
+  return {
+    id,
+    kind: 'tool',
+    atUtc: '2026-09-14T09:00:00.000Z',
+    lengthMs: 0,
+    tool: 'Bash',
+    fault: false,
+    words: null,
+    skill: null,
+    unnamed: false,
+    cost: 0,
+    ...fields,
+  };
 }
 
 function point(id: string, tokens: number): ContextPoint {

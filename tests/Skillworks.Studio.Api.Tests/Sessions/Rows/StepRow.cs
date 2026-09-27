@@ -15,4 +15,10 @@ public sealed record StepRow
     public required bool Fault { get; init; }
 
     public required string? Words { get; init; }
+
+    public required string? Skill { get; init; }
+
+    public required bool Unnamed { get; init; }
+
+    public required decimal Cost { get; init; }
 }

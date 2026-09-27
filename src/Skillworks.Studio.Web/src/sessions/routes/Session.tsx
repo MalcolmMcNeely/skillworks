@@ -15,14 +15,15 @@ import { CostBreakdown } from '../components/verdict/CostBreakdown';
 import { Findings } from '../components/verdict/Findings';
 import { Tiles } from '../components/verdict/Tiles';
 import { TimeBreakdown } from '../components/verdict/TimeBreakdown';
-import { rangeOf, readRange, widened, withRange, type Range } from '../lib/view';
+import { readRange, widened, withRange, type Range } from '../lib/view';
 import { type Named } from '../lib/findings';
-import { litBy, readHighlight, toggled, withHighlight, type Highlight } from '../lib/highlight';
-import { activationSpellsOf, type ActivationSpell } from '../lib/panels/activations';
+import { highlightKey, highlightOf, litBy, readHighlight, toggled, withHighlight, type Highlight } from '../lib/highlight';
+import { activationSpellsOf } from '../lib/panels/activations';
 import { ranByOne } from '../lib/panels/agents';
 import { levelsOf, levelsRanByOne } from '../lib/panels/context';
 import { bandsOf, type Band, type Exchange } from '../lib/panels/conversation';
 import { costBreakdownOf } from '../lib/panels/costBreakdown';
+import { costIn, skillRowsOf } from '../lib/panels/skills';
 import { toolRowsOf } from '../lib/panels/tools';
 import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
 import { foldSessionLine, marksOf, runSpan, type SessionAnswer } from '../lib/steps';
@@ -48,7 +49,7 @@ export function Session() {
   const view = readRange(params);
   const highlight = readHighlight(params);
   // Text, as a Highlight read off the address is a new object every render.
-  const litName = highlight?.name ?? null;
+  const litKey = highlight === null ? null : highlightKey(highlight);
 
   // Text, as a span read off the address is a new object every render.
   const span = `${filter.from}..${filter.to}`;
@@ -105,11 +106,18 @@ export function Session() {
   const shownLevels = useMemo(() => levelsRanByOne(levels, agents ?? {}, where.agent), [levels, agents, where.agent]);
   const viewFrom = view?.[0];
   const viewTo = view?.[1];
-  const tools = useMemo(
-    () => toolRowsOf(drawn, viewFrom === undefined || viewTo === undefined ? null : [viewFrom, viewTo]),
-    [drawn, viewFrom, viewTo],
+  const shownView = useMemo<Range | null>(
+    () => (viewFrom === undefined || viewTo === undefined ? null : [viewFrom, viewTo]),
+    [viewFrom, viewTo],
   );
-  const lit = useMemo(() => (litName === null ? null : litBy({ kind: 'tool', name: litName }, drawn)), [litName, drawn]);
+  const tools = useMemo(() => toolRowsOf(drawn, shownView), [drawn, shownView]);
+  const skills = useMemo(() => skillRowsOf(drawn, activationSpells, shownView), [drawn, activationSpells, shownView]);
+  const viewCost = useMemo(() => costIn(drawn, shownView), [drawn, shownView]);
+  const lit = useMemo(() => {
+    const shown = highlightOf(litKey);
+
+    return shown === null ? null : litBy(shown, drawn);
+  }, [litKey, drawn]);
 
   const beforeFirstPrompt = answer?.beforeFirstPrompt ?? 0;
   const subagents = answer?.subagents;
@@ -130,12 +138,6 @@ export function Session() {
 
   const onExchange = (band: Band) =>
     whole === null ? undefined : show(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index });
-
-  // Unpadded, unlike an Exchange: one spell abuts the next, and padding would pull that one in too.
-  const onActivation = (spell: ActivationSpell) =>
-    whole === null
-      ? undefined
-      : show(rangeOf(spell.atMs, spell.followedToMs, whole), { activation: spell.activation.id });
 
   // Lights the lanes and nothing more, so the View and every figure stay where the reader left them.
   const onHighlight = (picked: Highlight | null) =>
@@ -220,14 +222,13 @@ export function Session() {
             <TimelineTabs
               levels={shownLevels}
               limitTokens={landed.limitTokens}
-              spells={activationSpells}
+              skills={skills}
+              cost={viewCost}
               tools={tools}
               view={view}
               selected={where.step}
-              opened={where.activation}
               highlight={highlight}
               onOpen={open}
-              onActivation={onActivation}
               onHighlight={onHighlight}
             />
           </>

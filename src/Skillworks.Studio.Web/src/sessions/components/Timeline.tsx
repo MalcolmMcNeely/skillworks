@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
 import type { Range } from '../lib/view';
-import type { Highlight } from '../lib/highlight';
+import { describeLit, type Highlight } from '../lib/highlight';
 import type { Band } from '../lib/panels/conversation';
 import { describeLength } from '../../shared/figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../lib/steps';
@@ -131,7 +131,7 @@ export function Timeline({
         )}
         {highlight === null ? null : (
           <>
-            <p className="micro timeline-lit">Lit: every {highlight.name} call</p>
+            <p className="micro timeline-lit">Lit: {describeLit(highlight)}</p>
             <button type="button" className="timeline-clear" onClick={onClearHighlight}>
               Clear the highlight
             </button>

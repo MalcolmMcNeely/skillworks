@@ -14,6 +14,9 @@ function step(id: string, clock: string, fields: Partial<Step> = {}): Step {
     tool: 'Bash',
     fault: false,
     words: null,
+    skill: null,
+    unnamed: false,
+    cost: 0,
     ...fields,
   };
 }

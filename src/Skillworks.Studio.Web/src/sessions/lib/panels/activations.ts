@@ -25,13 +25,3 @@ export function activationSpellsOf(activations: readonly Activation[]): Activati
     return { activation, atMs, followedToMs: atMs + activation.followedMs };
   });
 }
-
-export interface Tally {
-  activations: number;
-  // Distinct, so a run that leaned on one Skill reads apart from one that used many.
-  skills: number;
-}
-
-export function tallyOf(spells: readonly ActivationSpell[]): Tally {
-  return { activations: spells.length, skills: new Set(spells.map((spell) => spell.activation.skill)).size };
-}

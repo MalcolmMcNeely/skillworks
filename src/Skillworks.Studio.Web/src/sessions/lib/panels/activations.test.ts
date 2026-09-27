@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activationSpellsOf, tallyOf, type Activation } from './activations';
+import { activationSpellsOf, type Activation } from './activations';
 
 function activation(id: string, skill: string, atUtc: string, followedMs: number): Activation {
   return { id, skill, atUtc, followedMs, trigger: 'user-slash' };
@@ -25,20 +25,5 @@ describe('activationSpellsOf', () => {
 
   it('gives a run no activation when no skill fired', () => {
     expect(activationSpellsOf([])).toEqual([]);
-  });
-});
-
-describe('tallyOf', () => {
-  it('counts one skill that fired twice as one skill and two activations', () => {
-    const twice = activationSpellsOf([
-      activation('1', 'tdd', '2026-09-14T09:00:00.000Z', 0),
-      activation('2', 'tdd', '2026-09-14T09:05:00.000Z', 0),
-    ]);
-
-    expect(tallyOf(twice)).toEqual({ activations: 2, skills: 1 });
-  });
-
-  it('counts nothing for a View no skill fired in', () => {
-    expect(tallyOf([])).toEqual({ activations: 0, skills: 0 });
   });
 });

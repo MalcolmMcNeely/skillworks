@@ -19,6 +19,11 @@ export interface Step {
   tool: string | null;
   fault: boolean;
   words: string | null;
+  // Null both where no skill was in force and where Claude Code would not name it, so unnamed tells them apart.
+  skill: string | null;
+  unnamed: boolean;
+  // Nought on every Step but a Turn, as only a Turn is spend.
+  cost: number;
 }
 
 export interface SessionHead {
@@ -211,6 +216,11 @@ export function lanesOf(step: Step): Lane[] {
 // A refused call never ran, and it is still a Tool call somebody asked for.
 export function isToolCall(step: Step): step is Step & { tool: string } {
   return (step.kind === 'tool' || step.kind === 'refused') && step.tool !== null;
+}
+
+// A Turn and the Tool calls it asked for are what a skill spent, so only these belong to one.
+export function isAttributed(step: Step): boolean {
+  return step.kind === 'turn' || isToolCall(step);
 }
 
 export type Tone = 'model' | 'tool' | 'refused' | 'fault';

@@ -1,11 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { readRange } from './view';
-import { litBy, readHighlight, toggled, withHighlight, type Highlight } from './highlight';
+import { describeLit, litBy, readHighlight, toggled, withHighlight, type Highlight } from './highlight';
 import { marksOf, type Step } from './steps';
 
 function step(id: string, fields: Partial<Step> = {}): Step {
-  return { id, kind: 'tool', atUtc: '2026-09-14T09:00:00.000Z', lengthMs: 0, tool: 'Bash', fault: false, words: null, ...fields };
+  return {
+    id,
+    kind: 'tool',
+    atUtc: '2026-09-14T09:00:00.000Z',
+    lengthMs: 0,
+    tool: 'Bash',
+    fault: false,
+    words: null,
+    skill: null,
+    unnamed: false,
+    cost: 0,
+    ...fields,
+  };
 }
+
+const turn = { kind: 'turn', tool: null } as const;
 
 const bash: Highlight = { kind: 'tool', name: 'Bash' };
 
@@ -18,6 +32,16 @@ describe('readHighlight', () => {
     expect(readHighlight(new URLSearchParams('lit=tool:mcp:search'))).toEqual({ kind: 'tool', name: 'mcp:search' });
   });
 
+  it('reads a skill from the address', () => {
+    expect(readHighlight(new URLSearchParams('lit=skill:tdd'))).toEqual({ kind: 'skill', name: 'tdd' });
+  });
+
+  it('reads No skill and Unnamed spend apart from a skill of either name', () => {
+    expect(readHighlight(new URLSearchParams('lit=no-skill'))).toEqual({ kind: 'noSkill' });
+    expect(readHighlight(new URLSearchParams('lit=unnamed'))).toEqual({ kind: 'unnamed' });
+    expect(readHighlight(new URLSearchParams('lit=skill:unnamed'))).toEqual({ kind: 'skill', name: 'unnamed' });
+  });
+
   it('reads no Highlight from an address without one', () => {
     expect(readHighlight(new URLSearchParams(''))).toBeNull();
   });
@@ -25,6 +49,7 @@ describe('readHighlight', () => {
   it('reads no Highlight from a hand-typed address it cannot make sense of', () => {
     expect(readHighlight(new URLSearchParams('lit=Bash'))).toBeNull();
     expect(readHighlight(new URLSearchParams('lit=tool:'))).toBeNull();
+    expect(readHighlight(new URLSearchParams('lit=skill:'))).toBeNull();
   });
 });
 
@@ -34,6 +59,17 @@ describe('withHighlight', () => {
 
     expect(written.get('lit')).toBe('tool:mcp__docs__read');
     expect(readHighlight(written)).toEqual({ kind: 'tool', name: 'mcp__docs__read' });
+  });
+
+  it('writes every skill row that reads back the same', () => {
+    const rows: Highlight[] = [{ kind: 'skill', name: 'diagnosing-bugs' }, { kind: 'noSkill' }, { kind: 'unnamed' }];
+
+    expect(rows.map((row) => withHighlight(new URLSearchParams(''), row).get('lit'))).toEqual([
+      'skill:diagnosing-bugs',
+      'no-skill',
+      'unnamed',
+    ]);
+    expect(rows.map((row) => readHighlight(withHighlight(new URLSearchParams(''), row)))).toEqual(rows);
   });
 
   it('takes the Highlight out of the address when it is cleared', () => {
@@ -49,6 +85,15 @@ describe('withHighlight', () => {
   });
 });
 
+describe('describeLit', () => {
+  it('says what is lit for a tool, a skill, No skill and Unnamed spend', () => {
+    expect(describeLit(bash)).toBe('every Bash call');
+    expect(describeLit({ kind: 'skill', name: 'tdd' })).toBe('every Step of tdd');
+    expect(describeLit({ kind: 'noSkill' })).toBe('every Step of No skill');
+    expect(describeLit({ kind: 'unnamed' })).toBe('every Step of Unnamed spend');
+  });
+});
+
 describe('toggled', () => {
   it('lights a row nobody has lit', () => {
     expect(toggled(null, bash)).toEqual(bash);
@@ -60,6 +105,14 @@ describe('toggled', () => {
 
   it('moves the light to another row', () => {
     expect(toggled(bash, { kind: 'tool', name: 'Read' })).toEqual({ kind: 'tool', name: 'Read' });
+  });
+
+  it('tells a skill from a tool of the same name', () => {
+    expect(toggled(bash, { kind: 'skill', name: 'Bash' })).toEqual({ kind: 'skill', name: 'Bash' });
+  });
+
+  it('puts out No skill when it is picked again', () => {
+    expect(toggled({ kind: 'noSkill' }, { kind: 'noSkill' })).toBeNull();
   });
 });
 
@@ -78,5 +131,35 @@ describe('litBy', () => {
 
   it('lights nothing when the tool made no call', () => {
     expect(litBy({ kind: 'tool', name: 'Write' }, marksOf([step('1')])).size).toBe(0);
+  });
+
+  it('lights the Turns attributed to a skill and the Tool calls they asked for', () => {
+    const marks = marksOf([
+      step('1', { ...turn, skill: 'tdd' }),
+      step('2', { skill: 'tdd' }),
+      step('3', { kind: 'refused', skill: 'tdd' }),
+      step('4', { ...turn, skill: 'implement' }),
+      step('5', { kind: 'prompt', tool: null, skill: 'tdd' }),
+    ]);
+
+    expect([...litBy({ kind: 'skill', name: 'tdd' }, marks)].toSorted()).toEqual(['1', '2', '3']);
+  });
+
+  it('lights only its own Steps for a skill that called another inside its spell', () => {
+    const marks = marksOf([
+      step('1', { ...turn, skill: 'implement' }),
+      step('2', { ...turn, skill: 'tdd' }),
+      step('3', { skill: 'tdd' }),
+      step('4', { ...turn, skill: 'implement' }),
+    ]);
+
+    expect([...litBy({ kind: 'skill', name: 'implement' }, marks)].toSorted()).toEqual(['1', '4']);
+  });
+
+  it('lights No skill and Unnamed spend apart', () => {
+    const marks = marksOf([step('1', turn), step('2'), step('3', { ...turn, unnamed: true }), step('4', { unnamed: true })]);
+
+    expect([...litBy({ kind: 'noSkill' }, marks)].toSorted()).toEqual(['1', '2']);
+    expect([...litBy({ kind: 'unnamed' }, marks)].toSorted()).toEqual(['3', '4']);
   });
 });

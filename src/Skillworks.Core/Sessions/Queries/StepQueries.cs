@@ -122,12 +122,44 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
     }
 
     // Paired with the event it came from, so an Exchange and a timeline band cover exactly one Spell.
-    private static IReadOnlyList<DrawnStep> Stepped(IReadOnlyList<EventLine> lines) =>
-        [
-            .. lines
-                .Select((line, place) => Stepped(line, Identity(line, place)) is { } step ? new DrawnStep(line, step) : null)
-                .OfType<DrawnStep>()
-        ];
+    private static IReadOnlyList<DrawnStep> Stepped(IReadOnlyList<EventLine> lines)
+    {
+        var drawn = new List<DrawnStep>();
+        Step? asker = null;
+
+        for (var place = 0; place < lines.Count; place++)
+        {
+            if (Stepped(lines[place], Identity(lines[place], place)) is not { } step)
+            {
+                continue;
+            }
+
+            // Claude Code names the skill on the Turn alone, and a Tool call is written after the Turn that asked for it.
+            step = step.Kind switch
+            {
+                StepKind.Turn => asker = Attributed(lines[place], step),
+                StepKind.Tool or StepKind.Refused when asker is not null =>
+                    step with { Skill = asker.Skill, Unnamed = asker.Unnamed },
+                _ => step,
+            };
+
+            drawn.Add(new DrawnStep(lines[place], step));
+        }
+
+        return drawn;
+    }
+
+    private static Step Attributed(EventLine line, Step turn)
+    {
+        var skill = line.Attribute(EventAttributes.Skill);
+
+        return turn with
+        {
+            Skill = skill == EventAttributes.Unnamed ? null : skill,
+            Unnamed = skill == EventAttributes.Unnamed,
+            Cost = Number(line, CostAttribute),
+        };
+    }
 
     private static Step? Stepped(EventLine line, string id)
     {

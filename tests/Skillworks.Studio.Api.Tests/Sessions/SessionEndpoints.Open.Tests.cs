@@ -39,7 +39,9 @@ public sealed partial class SessionEndpointsTests
             StudioHost.Fields(head["session"]));
 
         Assert.Equal(["kind", "steps"], StudioHost.Fields(page));
-        Assert.Equal(["atUtc", "fault", "id", "kind", "lengthMs", "tool", "words"], StudioHost.Fields(page["steps"]?[0]));
+        Assert.Equal(
+            ["atUtc", "cost", "fault", "id", "kind", "lengthMs", "skill", "tool", "unnamed", "words"],
+            StudioHost.Fields(page["steps"]?[0]));
     }
 
     [Fact]

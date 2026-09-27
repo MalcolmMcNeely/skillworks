@@ -1917,7 +1917,7 @@ a.home-panel-face:hover::before {
   padding: 0;
 }
 
-.call-row,
+.skill-row,
 .tool-row {
   background: none;
   border: 0;
@@ -1933,16 +1933,18 @@ a.home-panel-face:hover::before {
   width: 100%;
 }
 
-.call-row {
-  grid-template-columns: 5rem minmax(0, 1fr) 1.2rem 5rem;
-}
-
 /* The heads stand over the rows, so both take one set of columns. */
 .tool-row,
 .tool-heads {
   grid-template-columns: minmax(0, 1fr) 3.5rem 3.5rem 3.5rem 5rem;
 }
 
+.skill-row,
+.skill-heads {
+  grid-template-columns: minmax(0, 1fr) 3rem 3rem 4.5rem 4.5rem 5rem;
+}
+
+.skill-heads,
 .tool-heads {
   display: grid;
   gap: 0.6rem;
@@ -1960,9 +1962,9 @@ a.home-panel-face:hover::before {
   color: var(--failed);
 }
 
-.call-row:hover,
-.call-row:focus-visible,
-.call-row.is-open,
+.skill-row:hover,
+.skill-row:focus-visible,
+.skill-row.is-open,
 .tool-row:hover,
 .tool-row:focus-visible,
 .tool-row.is-open {
@@ -1970,6 +1972,7 @@ a.home-panel-face:hover::before {
   color: var(--ink);
 }
 
+.skill-row.is-open,
 .tool-row.is-open {
   box-shadow: inset 2px 0 0 var(--hud);
 }
@@ -1982,20 +1985,11 @@ a.home-panel-face:hover::before {
   white-space: nowrap;
 }
 
-.call-clock,
-.call-spell,
-.call-trigger {
-  font-family: var(--mono);
-  white-space: nowrap;
-}
-
-.call-trigger {
-  color: var(--hud);
-  text-align: center;
-}
-
-.call-spell {
-  text-align: right;
+/* No skill and Unnamed spend are no skill's name, so they read as words and not as a name in code. */
+.call-name.is-unskilled {
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-style: italic;
 }
 
 .session-id {

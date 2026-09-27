@@ -1,6 +1,7 @@
 namespace Skillworks.Core.Sessions.Steps;
 
 // Claude Code writes an event when a Step ends, so AtUtc is worked back from the length.
+// Skill is null both where none was in force and where Claude Code would not name one, so Unnamed tells them apart.
 public sealed record Step(
     string Id,
     StepKind Kind,
@@ -8,4 +9,7 @@ public sealed record Step(
     long LengthMs,
     string? Tool,
     bool Fault,
-    string? Words);
+    string? Words,
+    string? Skill = null,
+    bool Unnamed = false,
+    decimal Cost = 0);

@@ -32,7 +32,7 @@ const run: Session = {
 };
 
 function step(fields: Partial<Step> & Pick<Step, 'id' | 'kind' | 'atUtc'>): Step {
-  return { lengthMs: 0, tool: null, fault: false, words: null, ...fields };
+  return { lengthMs: 0, tool: null, fault: false, words: null, skill: null, unnamed: false, cost: 0, ...fields };
 }
 
 const prompt = step({ id: '1', kind: 'prompt', atUtc: '2026-09-14T09:00:00.000Z', words: 'Fix the build' });
