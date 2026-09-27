@@ -154,7 +154,7 @@ The `Skillworks-Session` trailer stays on every commit, whichever you answer.
 The Seeds judge nothing until your team fills them in. Before the loop can finish a ticket:
 
 - **`docs/agents/suite.json`**: add the checks that prove your code. [The Suite](suite.md) has the whole
-  file.
+  file. [Turn the rules into tests](#turn-the-rules-into-tests) adds the checks for the rules.
 - **The allowlist** in `.claude/settings.json`: add each tool your Suite runs, such as a build or a
   test runner. A Session with nobody watching cannot ask you, so a missing entry is a Denial.
 - **The rules' settings**, as your team settles them.
@@ -164,6 +164,32 @@ Then the loop is ready:
 ```
 /skillworks:grill-with-docs  →  /skillworks:spec-loop <spec#>
 ```
+
+## Turn the rules into tests
+
+Setup leaves the rules as prose. An agent reads their settings, but no check enforces them. Run
+`/skillworks:architecture-tests` after setup to turn the rules into tests your team owns.
+
+- **What it reads.** Each rule in `docs/agents/rules/` and the settings at its end, `CONTEXT-MAP.md`
+  where your repo has one, and your repo's languages and test runners.
+- **What it asks.** Which rules your team wants enforced. It recommends the rules whose settings are
+  filled in, because a rule with empty settings judges nothing.
+- **How it chooses.** For each rule and each language, it picks one of two ways. A **common tool** for
+  the language, where one fits, such as dependency-cruiser for TypeScript or ArchUnitNET for .NET. It
+  prefers a tool your repo already has. Or a **starter test** in your own language and test runner,
+  which reads the rule's settings at every run and checks the files. Some rules no tool or file check
+  can prove, and it leaves those to your team and says why.
+- **How it proves each test.** It writes each test red first, on a breach it builds for the test, so
+  you know the test can fail. Then it runs the test on your code and proves it green. A rule your code
+  breaks today is reported to you, and never weakened. You choose: fix the code, or change the setting.
+- **What it writes.** You approve each write before it happens:
+  - `docs/agents/suite.json`: each test's command, with the `ignores` that keep it asleep.
+  - `docs/agents/placement-checks.md`: both tables, which check proves which rule, and the exact
+    command that runs each check.
+  - `.claude/settings.json`: the command of any new tool, in the allowlist.
+
+Run it again when your team adds a language or a rule. A second run tests only what is new, and keeps
+every test you already have.
 
 ## Run setup again
 

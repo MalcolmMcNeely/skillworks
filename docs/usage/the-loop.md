@@ -562,6 +562,19 @@ use with nobody watching.
 | The full run | Nothing. No Session runs. | `suite.json` | The checks in `suite.json`. |
 | The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary | The glossary, which judges the names two tickets brought in. |
 
+The rules' settings load into every Session, but each one is enforced only once a check exists that
+reads it. Until then, `build` and `fix` follow them as prose, and the reviews judge the change by
+reading them. `suite` enforces a setting only when a check in `suite.json` reads it, and
+`architecture` runs only the commands in `placement-checks.md`. `/skillworks:architecture-tests`
+adds those checks.
+
+| Rule | The settings a check enforces |
+|---|---|
+| `file-placement.md` | `slices`, `concerns`, `max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names`, `name-map`, `test-roots` |
+| `determinism.md` | `clock`, `contexts` |
+| `words.md` | `banned-words`, `skip-folders` |
+| `comments.md` | `doc-comments` |
+
 The steps, their order and what each one does are Machinery. They are the same in every repo, and no
 file changes them. So this map lives here only, and setup copies no map into your repo.
 

@@ -6,9 +6,8 @@ with one context and no map names its one context here all the same.
 
 Every word in `banned-words` was weighed against another word and rejected. No source file uses a word
 that lost in the context that claims it, in any letter case. A word that lost in one context is free
-in another, and a file no context claims is judged by no list. Nothing checks this rule until the
-team adds a check. A check should read the whole text of a file, so that a word that lost cannot
-survive in a comment or in screen text either.
+in another, and a file no context claims is judged by no list. A check should read the whole text of
+a file, so that a word that lost cannot survive in a comment or in screen text either.
 
 Every context in the map carries a list, and every list names a context in the map. A context with no
 word to ban carries an empty list, written `[]`, so a list that judges nothing says so rather than
@@ -30,6 +29,10 @@ history is not renamed, so this rule skips it. The placement rules still judge i
 
 Settling a new word adds the winner to the context's glossary with the loser under _Avoid_. The
 loser joins that context's list on the day the code reaches for it again.
+
+Both settings are enforced only once a check exists that reads them: `banned-words` and
+`skip-folders`. Until then, an agent reads them as prose. `/skillworks:architecture-tests` adds the
+check.
 
 ```yaml
 banned-words: {}

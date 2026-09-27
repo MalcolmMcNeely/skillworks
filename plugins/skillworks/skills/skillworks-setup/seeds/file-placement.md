@@ -117,6 +117,13 @@ Each pattern in `name-map` is a name with `*` at the start or the end, such as `
 - A subject that matches several patterns sits in the folder of any one of them.
 - A subject that matches none goes where its Slice puts it.
 
+## What a check reads
+
+Every setting here is enforced only once a check exists that reads it: `slices`, `concerns`,
+`max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names`,
+`name-map` and `test-roots`. Until then, an agent reads them as prose. `/skillworks:architecture-tests`
+adds the checks.
+
 ```yaml
 slices: []
 concerns: []

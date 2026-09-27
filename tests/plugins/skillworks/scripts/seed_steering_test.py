@@ -1303,11 +1303,16 @@ def architecture_reference():
     return (ARCHITECTURE_TESTS / "REFERENCE.md").read_text(encoding="utf-8")
 
 
-def seed_rules(text):
-    numbered = re.findall(r"^\d+\. \*\*(.+?)\*\*", text, re.MULTILINE)
+def setting_keys(text):
     settings = re.findall(r"```yaml\n(.*?)```", text, re.DOTALL)[0]
     keys = re.findall(r"^\"?([a-z][a-z-]*)\"?:", settings, re.MULTILINE)
-    return numbered + ["`{}`".format(key) for key in keys]
+    assert keys, "expected the settings block to name a setting"
+    return keys
+
+
+def seed_rules(text):
+    numbered = re.findall(r"^\d+\. \*\*(.+?)\*\*", text, re.MULTILINE)
+    return numbered + ["`{}`".format(key) for key in setting_keys(text)]
 
 
 def reference_rows(reference, seed):
@@ -1363,6 +1368,75 @@ def test_the_architecture_tests_skill_can_be_invoked_by_the_model_and_states_the
     assert "`ignores`" in text
     assert "`when`" not in text
     assert "never quietly weakened" in text
+
+
+ENFORCED = "enforced only once a check exists"
+
+
+def enforcement_paragraph(text):
+    paragraphs = [paragraph for paragraph in text.split("\n\n") if ENFORCED in paragraph]
+    assert len(paragraphs) == 1, "expected one paragraph saying what is {}".format(ENFORCED)
+    return paragraphs[0]
+
+
+def unnamed(keys, text):
+    return [key for key in keys if "`{}`".format(key) not in text]
+
+
+def test_each_rule_seed_names_every_setting_enforced_only_once_a_check_exists():
+    for rule in RULES:
+        text = seeded(rule)
+        paragraph = enforcement_paragraph(text)
+
+        assert "`/skillworks:architecture-tests`" in paragraph, rule
+        assert unnamed(setting_keys(text), paragraph) == [], rule
+
+
+def test_a_setting_added_to_a_seed_without_being_named_as_enforced_is_caught():
+    added = seeded("words.md").replace("skip-folders: []\n", "skip-folders: []\nmax-length: 4\n")
+
+    assert unnamed(setting_keys(added), enforcement_paragraph(added)) == ["max-length"]
+
+
+STAGE_MAP_PAGE = ROOT / "docs" / "usage" / "the-loop.md"
+
+
+def enforced_row(section, rule):
+    rows = [line for line in section.splitlines() if line.startswith("| `{}` |".format(rule))]
+    assert len(rows) == 1, rule
+    return rows[0]
+
+
+def test_the_stage_map_names_every_setting_enforced_only_once_a_check_exists():
+    page = STAGE_MAP_PAGE.read_text(encoding="utf-8")
+    section = page.split("\n## The stage map\n", 1)[1].split("\n## ", 1)[0]
+
+    assert ENFORCED in section
+    assert "`/skillworks:architecture-tests`" in section
+    for rule in RULES:
+        assert unnamed(setting_keys(seeded(rule)), enforced_row(section, rule)) == [], rule
+
+
+def usage_section(heading):
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+    assert "\n{}\n".format(heading) in page, heading
+    return page.split("\n{}\n".format(heading), 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_usage_docs_explain_what_architecture_tests_reads_chooses_and_writes():
+    section = usage_section("## Turn the rules into tests")
+
+    assert "`/skillworks:architecture-tests`" in section
+    assert "`docs/agents/rules/`" in section
+    for way in ("common tool", "starter test"):
+        assert way in section, way
+    assert "red first" in section
+    assert "green" in section
+    for written in (WHERE["suite.json"], WHERE["placement-checks.md"], ".claude/settings.json"):
+        assert "`{}`".format(written) in section, written
+    assert "both tables" in section
+    assert "allowlist" in section
+    assert "adds a language or a rule" in section
 
 
 def test_implement_reads_the_suite_from_the_suite_file():

@@ -59,7 +59,8 @@ most likely to be wrong.
 
 ## What a check reads
 
-Nothing checks this rule until the team adds a check that reads these settings.
+Both settings are enforced only once a check exists that reads them: `clock` and `contexts`. Until
+then, an agent reads them as prose. `/skillworks:architecture-tests` adds the check.
 
 `contexts` names the contexts, from `CONTEXT-MAP.md`, whose code this rule judges. A context joins the
 list the day its code can pass, because a rule switched on before the code can meet it leaves the
