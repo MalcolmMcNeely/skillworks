@@ -22,6 +22,7 @@ PLACES = {
     "smell-baseline.md": "docs/agents/smell-baseline.md",
     "arrangement-baseline.md": "docs/agents/arrangement-baseline.md",
     "suite.json": "docs/agents/suite.json",
+    "loop.json": "docs/agents/loop.json",
 }
 
 BASES = "docs/agents/.seeds"
@@ -36,6 +37,8 @@ current Seed, to tell your edits from the Plugin's.
 These copies are not to be edited. Edit the Steering file in `docs/agents/` instead.
 """
 
+DEFAULT_BRANCH_PLACEHOLDER = "<default-branch>"
+
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
 
 
@@ -44,14 +47,23 @@ def write(path, text):
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
-def seed(top, out):
+def default_branch(runner, top):
+    found = runner.run(["git", "-C", str(top), "ls-remote", "--symref", "origin", "HEAD"])
+    for line in found.out.splitlines() if found.status == 0 else []:
+        if line.startswith("ref: refs/heads/") and line.endswith("\tHEAD"):
+            return line[len("ref: refs/heads/"):-len("\tHEAD")]
+    raise refusal("origin names no default branch, so loop.json has no Target branch to start from. "
+                  "Nothing was written.")
+
+
+def seed(top, default, out):
     readme = top / BASES / "README.md"
     if not readme.exists():
         write(readme, BASES_README)
         out.write("wrote {}/README.md\n".format(BASES))
 
     for name, place in PLACES.items():
-        wanted = (SEEDS / name).read_text(encoding="utf-8")
+        wanted = (SEEDS / name).read_text(encoding="utf-8").replace(DEFAULT_BRANCH_PLACEHOLDER, default)
         target = top / place
         base = top / BASES / name
         was = base.read_text(encoding="utf-8") if base.exists() else None
@@ -104,7 +116,7 @@ def main(argv, runner, out, err):
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        seed(top, out)
+        seed(top, default_branch(runner, top), out)
         ignore_working_folders(top, out)
         return 0
     except Stop as stop:

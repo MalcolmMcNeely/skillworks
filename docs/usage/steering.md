@@ -61,6 +61,7 @@ It is yours to add, as a check in your Suite.
 | `arrangement-baseline.md` | The failures of placement and direction the `architecture` review looks for, even when your repo documents nothing. | The `architecture` review. | The list of failures and their weighting. A rule your repo writes down always beats the baseline. |
 | `placement-checks.md` | Names the commands that prove placement, each with its folder and anything to run first. It also maps each check back to the rule it runs. | The `architecture` review. It runs these commands and nothing else. | The commands. The Seed names none, so the review can only judge placement by reading until you add them. |
 | `suite.json` | The Suite: the checks that decide green for your repo. | The `suite` step, the Suite again after a rebase, the full run, and `skillworks-suite`. | Every check, its `ready` command, its `ignores`, its `image`, and `runs`. [The Suite](suite.md) has the whole file. The Seed names no check, so the loop stops until you add one. A check can name a Dockerfile you keep in `docs/agents/` as its `image`. |
+| `loop.json` | The loop's settings. `target-branch` names the branch the loop Lands on. | The loop's scripts, through one reader. | `target-branch`. The Seed sets it to your remote's default branch. |
 
 ## The Steering outside `docs/agents/`
 

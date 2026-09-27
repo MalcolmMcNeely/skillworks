@@ -95,6 +95,7 @@ Review these before you commit them.
 | `docs/agents/smell-baseline.md` | The code smells the `standards` review looks for. |
 | `docs/agents/arrangement-baseline.md` | The failures of placement the `architecture` review looks for. |
 | `docs/agents/suite.json` | Your Suite. It starts with no checks, and the loop stops until you add one. |
+| `docs/agents/loop.json` | The loop's settings. `target-branch` starts as your remote's default branch. |
 | `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
 | `.claude/settings.json` | The Marketplace, the Plugin, the allowlist and `"autoMemoryEnabled": false`. |

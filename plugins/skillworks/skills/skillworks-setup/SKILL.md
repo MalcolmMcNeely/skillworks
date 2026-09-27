@@ -21,6 +21,7 @@ The outputs:
 | `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. |
 | `docs/agents/placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md` | What the review axes judge against. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
+| `docs/agents/loop.json` | The loop's settings. `target-branch` is the branch the loop Lands on, and it starts as the remote's default branch. |
 | `.gitignore` lines | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. They are per machine and never shared. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
@@ -47,7 +48,7 @@ If it fails, stop and report. Every step below assumes the repo is a GitHub clon
 seed-steering
 ```
 
-It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet. A seed that is missing is written. A seed that is there is kept, and when it differs from the seed the script prints the difference. It never overwrites a file.
+It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet. `loop.json` is written with the remote's default branch as its `target-branch`. A seed that is missing is written. A seed that is there is kept, and when it differs from the seed the script prints the difference. It never overwrites a file.
 
 Show the user each difference it printed. A difference is what a newer seed says against what the team has. Change a kept file only when the user asks, and only by the lines they pick.
 
@@ -114,7 +115,7 @@ Write nothing under `~/.claude`.
 Say what was written and what was kept. Say where each Steering file lives:
 
 - `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
-- `docs/agents/`: `issue-tracker.md`, `domain.md`, `placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md` and `suite.json`. A skill reads each one when it needs it.
+- `docs/agents/`: `issue-tracker.md`, `domain.md`, `placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md`, `suite.json` and `loop.json`. A skill reads each one when it needs it.
 
 Say that auto-memory is off for this repository, or that the user chose to keep it on. Then tell them what the team fills in before the loop can finish a ticket:
 

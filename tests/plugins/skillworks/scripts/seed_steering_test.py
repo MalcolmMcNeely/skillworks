@@ -21,6 +21,7 @@ WHERE = {
     "smell-baseline.md": "docs/agents/smell-baseline.md",
     "arrangement-baseline.md": "docs/agents/arrangement-baseline.md",
     "suite.json": "docs/agents/suite.json",
+    "loop.json": "docs/agents/loop.json",
 }
 
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
@@ -45,12 +46,16 @@ def seeded(name):
     return (SETUP / "seeds" / name).read_text(encoding="utf-8")
 
 
+def seeded_for(name, default_branch):
+    return seeded(name).replace(seed_steering.DEFAULT_BRANCH_PLACEHOLDER, default_branch)
+
+
 def test_an_empty_repo_gets_every_seed(repo, runner):
     ran = run_seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
     for seed, place in WHERE.items():
-        assert (repo.work / place).read_text(encoding="utf-8") == seeded(seed), place
+        assert (repo.work / place).read_text(encoding="utf-8") == seeded_for(seed, "main"), place
         assert "wrote {}\n".format(place) in ran.out
 
 
@@ -64,7 +69,7 @@ def test_an_empty_repo_gets_an_exact_base_copy_of_every_seed_it_was_written(repo
     for seed, place in WHERE.items():
         base = repo.work / BASES / seed
         assert base.read_bytes() == (repo.work / place).read_bytes(), seed
-        assert base.read_text(encoding="utf-8") == seeded(seed), seed
+        assert base.read_text(encoding="utf-8") == seeded_for(seed, "main"), seed
 
 
 def test_the_base_folder_holds_a_readme_that_says_the_copies_are_setups():
@@ -107,6 +112,47 @@ def test_a_seed_already_there_with_no_base_copy_gets_none(repo, runner):
     assert "kept docs/agents/domain.md, which differs from the seed:\n" in ran.out
     assert not (repo.work / BASES / "domain.md").exists()
     assert (repo.work / BASES / "suite.json").is_file()
+
+
+def make_master_the_default(repo):
+    git(repo.work, "push", "--quiet", "origin", "main:master")
+    git(repo.origin, "symbolic-ref", "HEAD", "refs/heads/master")
+
+
+def test_the_loop_file_names_the_remotes_default_branch_as_the_target_branch(repo, runner):
+    make_master_the_default(repo)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    loop = json.loads((repo.work / "docs" / "agents" / "loop.json").read_text(encoding="utf-8"))
+    assert loop == {"target-branch": "master"}
+
+
+def test_a_loop_file_already_there_is_kept_and_its_difference_shown(repo, runner):
+    make_master_the_default(repo)
+    held = repo.work / "docs" / "agents" / "loop.json"
+    held.parent.mkdir(parents=True)
+    held.write_text('{\n  "target-branch": "spec"\n}\n', encoding="utf-8", newline="\n")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert held.read_text(encoding="utf-8") == '{\n  "target-branch": "spec"\n}\n'
+    assert "kept docs/agents/loop.json, which differs from the seed:\n" in ran.out
+    assert '-  "target-branch": "spec"\n' in ran.out
+    assert '+  "target-branch": "master"\n' in ran.out
+
+
+def test_a_repo_with_no_origin_stops_before_anything_is_written(repo, runner):
+    git(repo.work, "remote", "remove", "origin")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 1
+    assert "origin" in ran.err
+    assert "Nothing was written." in ran.err
+    assert not (repo.work / "docs").exists()
 
 
 def test_every_seed_lands_under_docs_agents_and_the_rules_in_its_rules_folder(repo, runner):
@@ -454,7 +500,7 @@ THIS_REPO = ["Skillworks.", "slnx", "Studio", "Dashboard", "Loki", "Aspire", "do
 
 def test_the_seeds_carry_no_fact_about_this_repo():
     names = sorted(WHERE)
-    assert len(names) == 10
+    assert len(names) == 11
     for name in names:
         text = seeded(name)
         for fact in THIS_REPO:
