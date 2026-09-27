@@ -152,3 +152,10 @@ push race waits for its Turn and holds it until it Lands, so the loops beside it
 that has not lost takes its Turn only for the push. A Turn orders the loops of one clone and no
 others: a push from anywhere else can still beat it, and the loop tries again.
 _Avoid_: Lock, mutex, queue
+
+**Verdict**:
+A judge's call on one item, written as one line the driver reads: Done, Partial, Missing or
+Contradicts for a story or a decision, In step or Out of step for a Surface, and Done or Not done for
+a rename. The judge makes the call and the driver only counts, so an item with no Verdict is a Gap
+and never a pass.
+_Avoid_: Mark, grade, status
