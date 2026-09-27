@@ -1,3 +1,4 @@
+import { describeShare, describeTokens } from '../../../shared/figures/lib/figures';
 import { missingWords } from '../../../shared/gaps/lib/gaps';
 
 export interface ContextPoint {
@@ -64,27 +65,25 @@ export function ceilingOf(levels: readonly Level[], limitTokens: number | null):
   return limitTokens === null || limitTokens <= 0 ? peak : Math.max(limitTokens, peak);
 }
 
-export interface InForce {
-  label: string;
-  // Places in the View, not moments, and both ends taken in.
-  from: number;
-  to: number;
+export const limitNotKnown = 'limit not known';
+
+// Claude Code starts cutting a run down as its window nears full, so the last fifth is where a reader should look.
+const highShare = 0.8;
+
+export interface PeakContext {
+  figure: string;
+  note: string | null;
+  high: boolean;
 }
 
-// A long run would otherwise carry the same name on every point.
-export function inForceBands(levels: readonly Level[]): InForce[] {
-  const bands: InForce[] = [];
+// Said rather than guessed: a limit no model stated is unknown, and it is never read off the run's own peak.
+export function peakContextOf(levels: readonly Level[], limitTokens: number | null): PeakContext {
+  const tally = tallyOf(levels, limitTokens);
+  const note = limitTokens === null ? limitNotKnown : `of ${describeTokens(limitTokens)} tokens`;
 
-  levels.forEach((each, place) => {
-    const label = describeInForce(each.point);
-    const running = bands.at(-1);
+  if (tally.peakShare === null) {
+    return { figure: `${describeTokens(tally.peakTokens)} tokens`, note, high: false };
+  }
 
-    if (running !== undefined && running.label === label) {
-      running.to = place;
-    } else {
-      bands.push({ label, from: place, to: place });
-    }
-  });
-
-  return bands;
+  return { figure: describeShare(tally.peakShare), note, high: tally.peakShare > highShare };
 }

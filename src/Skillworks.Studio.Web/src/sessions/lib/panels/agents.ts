@@ -58,51 +58,6 @@ export function depthTone(depth: Depth, gap: Gap | null): Signal['tone'] {
   return gap === null ? 'quiet' : thinTones[gap.kind];
 }
 
-export interface AgentSpell {
-  agent: Subagent;
-  startMs: number;
-  endMs: number;
-}
-
-export function agentSpellsOf(subagents: readonly Subagent[]): AgentSpell[] {
-  return subagents.map((agent) => {
-    const startMs = Date.parse(agent.atUtc);
-
-    return { agent, startMs, endMs: startMs + agent.lengthMs };
-  });
-}
-
-export interface AgentTally {
-  subagents: number;
-  toolCalls: number;
-  cost: number;
-  faults: number;
-}
-
-export function tallyOf(spells: readonly AgentSpell[]): AgentTally {
-  return {
-    subagents: spells.length,
-    toolCalls: spells.reduce((sum, spell) => sum + spell.agent.toolCalls, 0),
-    cost: spells.reduce((sum, spell) => sum + spell.agent.cost, 0),
-    faults: spells.reduce((sum, spell) => sum + spell.agent.faults, 0),
-  };
-}
-
-export function briefNote(agent: Subagent): string {
-  return agent.brief === null ? 'The brief was not recorded.' : 'The rest of the brief was not recorded.';
-}
-
-export const noReport = 'This subagent wrote no report.';
-
-// A run with no Span has none to find a Subagent by, so it says so rather than reading as a run that had none.
-export function noSubagentsWord(traced: boolean, inRun: number): string {
-  if (!traced) {
-    return 'A run with no spans cannot say which subagents it ran.';
-  }
-
-  return inRun === 0 ? 'No subagent ran in this run.' : 'No subagent ran in view.';
-}
-
 export function ranByOne<T extends { step: { id: string } }>(
   marks: readonly T[],
   agents: Record<string, string>,

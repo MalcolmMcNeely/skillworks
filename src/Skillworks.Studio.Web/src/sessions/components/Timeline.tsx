@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
 import type { Range } from '../lib/view';
 import type { Band } from '../lib/panels/conversation';
 import { describeLength } from '../../shared/figures/lib/figures';
@@ -58,6 +58,7 @@ function Tip({ pointed }: { pointed: Pointed }) {
 }
 
 export function Timeline({
+  ref,
   marks,
   drawn,
   bands,
@@ -68,6 +69,7 @@ export function Timeline({
   onOpen,
   onExchange,
 }: {
+  ref?: Ref<HTMLElement>;
   marks: readonly Mark[];
   // What the lanes draw, which is one Subagent's Steps alone once a reader opens one.
   drawn: readonly Mark[];
@@ -96,8 +98,9 @@ export function Timeline({
   };
 
   return (
-    <section className="timeline" aria-label="Timeline">
+    <section className="timeline" aria-label="Timeline" ref={ref}>
       <header className="timeline-head">
+        <h2 className="timeline-title">Timeline</h2>
         <p className="micro timeline-readout">
           {view === null
             ? 'The whole run'

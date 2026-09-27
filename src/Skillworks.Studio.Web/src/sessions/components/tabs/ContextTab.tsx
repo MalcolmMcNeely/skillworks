@@ -1,6 +1,6 @@
 import { describeCount, describeShare, describeTokens } from '../../../shared/figures/lib/figures';
 import { inRange, type Range } from '../../lib/view';
-import { ceilingOf, describeInForce, inForceBands, tallyOf, type Level } from '../../lib/panels/context';
+import { ceilingOf, describeInForce, limitNotKnown, tallyOf, type Level } from '../../lib/panels/context';
 import { describeClock } from '../../lib/steps';
 
 function Turn({
@@ -37,8 +37,8 @@ function Turn({
   );
 }
 
-// Every bar and every figure here reads the View alone, or the panel would answer a question nobody asked.
-export function ContextPanel({
+// Every bar and every figure here reads the View alone, or the tab would answer a question nobody asked.
+export function ContextTab({
   levels,
   limitTokens,
   view,
@@ -54,18 +54,16 @@ export function ContextPanel({
   const shown = inRange(levels, view);
   const tally = tallyOf(shown, limitTokens);
   const ceiling = ceilingOf(shown, limitTokens);
-  const bands = inForceBands(shown);
 
   // Said rather than guessed: a limit no model stated is unknown, and it is never read off the run's own peak.
   const roof =
     limitTokens === null
-      ? `${describeTokens(ceiling)} at its peak · limit not known`
+      ? `${describeTokens(ceiling)} at its peak · ${limitNotKnown}`
       : `${describeTokens(limitTokens)} limit${ceiling > limitTokens ? `, passed at ${describeTokens(ceiling)}` : ''}`;
 
   return (
-    <section className="session-panel" aria-label="Context">
+    <>
       <header className="panel-head">
-        <h2>Context</h2>
         <p className="micro panel-figure">
           {describeCount(tally.turns)} turns · peak {describeTokens(tally.peakTokens)} tokens
           {tally.peakShare === null ? '' : `, ${describeShare(tally.peakShare)} of the limit`} ·{' '}
@@ -90,20 +88,8 @@ export function ContextPanel({
               />
             ))}
           </ol>
-          <ol className="context-forces">
-            {bands.map((band) => (
-              <li
-                key={`${band.label}-${band.from}`}
-                className="context-force"
-                style={{ flexGrow: band.to - band.from + 1 }}
-                title={`${band.label} in force`}
-              >
-                {band.label}
-              </li>
-            ))}
-          </ol>
         </div>
       )}
-    </section>
+    </>
   );
 }

@@ -2,11 +2,10 @@ import type { Gap, StoresEnd } from '../../shared/gaps/lib/gaps';
 import type { Range } from './view';
 import type { FindingsPage } from './findings';
 import type { Activation, ActivationsPage } from './panels/activations';
-import type { AgentsPage, Depth, Subagent } from './panels/agents';
+import type { AgentsPage, Depth } from './panels/agents';
 import type { ContextPage, ContextPoint } from './panels/context';
 import type { Exchange, ExchangesPage } from './panels/conversation';
 import type { TimeBreakdownPage } from './panels/timeBreakdown';
-import type { TracePage } from './panels/trace';
 import type { Session } from './sessions';
 
 export type StepKind = 'prompt' | 'turn' | 'answer' | 'tool' | 'refused' | 'fault';
@@ -33,6 +32,12 @@ export interface StepsPage {
   steps: Step[];
 }
 
+// Still sent, and nothing on the page reads it, so the fold takes it and sets it aside.
+export interface TracePage {
+  kind: 'trace';
+  inside: Record<string, string>;
+}
+
 export type SessionLine =
   | SessionHead
   | StepsPage
@@ -57,9 +62,6 @@ export interface SessionAnswer {
   // A narrower question than the Depth: withheld words leave a run Thin with its spans landed.
   traced: boolean;
   agents: Record<string, string>;
-  subagents: Subagent[];
-  // Only the Spans say what ran inside what, so a Thin run nests nothing.
-  inside: Record<string, string>;
   // Null until the spans land, as an empty Time breakdown and one nobody has read yet mean different things.
   timeBreakdown: TimeBreakdownPage | null;
   // Null until the spans land, as a run that crossed no bar and one nobody has read yet mean different things.
@@ -83,8 +85,6 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       depth: 'thin',
       traced: false,
       agents: {},
-      subagents: [],
-      inside: {},
       timeBreakdown: null,
       findings: null,
       landed: false,
@@ -115,11 +115,11 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
   }
 
   if (line.kind === 'agents') {
-    return { ...answer, depth: line.depth, traced: line.traced, agents: line.agents, subagents: line.subagents };
+    return { ...answer, depth: line.depth, traced: line.traced, agents: line.agents };
   }
 
   if (line.kind === 'trace') {
-    return { ...answer, inside: line.inside };
+    return answer;
   }
 
   if (line.kind === 'timeBreakdown') {

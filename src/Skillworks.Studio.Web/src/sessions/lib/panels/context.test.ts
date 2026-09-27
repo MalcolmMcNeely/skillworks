@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ceilingOf, describeInForce, inForceBands, levelsOf, tallyOf, type ContextPoint } from './context';
+import { ceilingOf, describeInForce, levelsOf, limitNotKnown, peakContextOf, tallyOf, type ContextPoint } from './context';
 
 function point(id: string, atUtc: string, tokens: number, held: Partial<ContextPoint> = {}): ContextPoint {
   return {
@@ -96,37 +96,33 @@ describe('ceilingOf', () => {
   });
 });
 
-describe('inForceBands', () => {
-  it('runs turns under one skill into one band', () => {
-    const levels = levelsOf([
-      point('1', '2026-09-14T09:00:00.000Z', 10, { skill: 'tdd' }),
-      point('2', '2026-09-14T09:01:00.000Z', 10, { skill: 'tdd' }),
-      point('3', '2026-09-14T09:02:00.000Z', 10, { skill: 'implement' }),
-    ]);
+describe('peakContextOf', () => {
+  const levels = levelsOf([
+    point('1', '2026-09-14T09:00:00.000Z', 40_000),
+    point('2', '2026-09-14T09:05:00.000Z', 420_000),
+  ]);
 
-    expect(inForceBands(levels)).toEqual([
-      { label: 'tdd', from: 0, to: 1 },
-      { label: 'implement', from: 2, to: 2 },
-    ]);
+  it('reads the peak as a share of the limit a model stated', () => {
+    expect(peakContextOf(levels, 1_000_000)).toEqual({ figure: '42%', note: 'of 1M tokens', high: false });
   });
 
-  it('breaks a band where the same skill comes back after another', () => {
-    const levels = levelsOf([
-      point('1', '2026-09-14T09:00:00.000Z', 10, { skill: 'tdd' }),
-      point('2', '2026-09-14T09:01:00.000Z', 10, { skill: 'implement' }),
-      point('3', '2026-09-14T09:02:00.000Z', 10, { skill: 'tdd' }),
-    ]);
-
-    expect(inForceBands(levels).map((band) => band.label)).toEqual(['tdd', 'implement', 'tdd']);
+  it('reads the peak in tokens where no model stated a limit, and says the limit is not known', () => {
+    expect(peakContextOf(levels, null)).toEqual({ figure: '420K tokens', note: limitNotKnown, high: false });
   });
 
-  it('bands the turns that had no skill too', () => {
-    const levels = levelsOf([point('1', '2026-09-14T09:00:00.000Z', 10)]);
-
-    expect(inForceBands(levels)).toEqual([{ label: 'None', from: 0, to: 0 }]);
+  it('never calls a peak high against a limit nobody stated', () => {
+    expect(peakContextOf(levelsOf([point('1', '2026-09-14T09:00:00.000Z', 900_000)]), null).high).toBe(false);
   });
 
-  it('gives a View with no turn no band', () => {
-    expect(inForceBands([])).toEqual([]);
+  it('calls a peak above four fifths of the limit high', () => {
+    expect(peakContextOf(levelsOf([point('1', '2026-09-14T09:00:00.000Z', 810_000)]), 1_000_000).high).toBe(true);
+  });
+
+  it('keeps a peak of four fifths of the limit exactly from reading high', () => {
+    expect(peakContextOf(levelsOf([point('1', '2026-09-14T09:00:00.000Z', 800_000)]), 1_000_000).high).toBe(false);
+  });
+
+  it('reads a run with no turn as no tokens, so it never reads as nought percent', () => {
+    expect(peakContextOf([], 1_000_000)).toEqual({ figure: '0 tokens', note: 'of 1M tokens', high: false });
   });
 });

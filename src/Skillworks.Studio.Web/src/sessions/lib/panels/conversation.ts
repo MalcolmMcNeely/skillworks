@@ -1,5 +1,3 @@
-import { describeCount } from '../../../shared/figures/lib/figures';
-
 export interface Exchange {
   index: number;
   atUtc: string;
@@ -19,7 +17,7 @@ export interface ExchangesPage {
   exchanges: Exchange[];
 }
 
-// Worked out once, so the band on the timeline and the block beneath it never disagree.
+// Worked out once, so the band on the timeline and the View it opens never disagree.
 export interface Band {
   exchange: Exchange;
   startMs: number;
@@ -32,27 +30,4 @@ export function bandsOf(exchanges: readonly Exchange[]): Band[] {
 
     return { exchange, startMs, endMs: startMs + exchange.lengthMs };
   });
-}
-
-export interface Figures {
-  exchanges: number;
-  turns: number;
-  toolCalls: number;
-  cost: number;
-}
-
-export function figuresOf(bands: readonly Band[]): Figures {
-  return bands.reduce<Figures>(
-    (sum, { exchange }) => ({
-      exchanges: sum.exchanges + 1,
-      turns: sum.turns + exchange.turns,
-      toolCalls: sum.toolCalls + exchange.toolCalls,
-      cost: sum.cost + exchange.cost,
-    }),
-    { exchanges: 0, turns: 0, toolCalls: 0, cost: 0 },
-  );
-}
-
-export function describeWithheld(length: number): string {
-  return `Withheld · ${describeCount(length)} characters`;
 }

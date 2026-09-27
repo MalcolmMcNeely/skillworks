@@ -1,31 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { filterParams, readFilter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
-import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
 import { describeFetchFailure } from '../../shared/wire/lib/errors';
 import { UpButton } from '../../shared/pages/components/UpButton';
 import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../shared/pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { DepthWord } from '../components/DepthWord';
-import { Findings } from '../components/Findings';
-import { ActivationPanel } from '../components/panels/ActivationPanel';
-import { ContextPanel } from '../components/panels/ContextPanel';
-import { ConversationPanel } from '../components/panels/ConversationPanel';
-import { TimeBreakdownPanel } from '../components/panels/TimeBreakdownPanel';
-import { StepPanel } from '../components/panels/StepPanel';
-import { SubagentPanel } from '../components/panels/SubagentPanel';
-import { TracePanel } from '../components/panels/TracePanel';
+import { OpenedStep } from '../components/OpenedStep';
 import { Timeline } from '../components/Timeline';
+import { TimelineTabs } from '../components/tabs/TimelineTabs';
+import { Findings } from '../components/verdict/Findings';
+import { Tiles } from '../components/verdict/Tiles';
+import { TimeBreakdown } from '../components/verdict/TimeBreakdown';
 import { rangeOf, readRange, widened, withRange, type Range } from '../lib/view';
 import { type Named } from '../lib/findings';
 import { activationSpellsOf, type ActivationSpell } from '../lib/panels/activations';
-import { agentSpellsOf, ranByOne, type AgentSpell } from '../lib/panels/agents';
-import { levelsOf, type Level } from '../lib/panels/context';
+import { ranByOne } from '../lib/panels/agents';
+import { levelsOf } from '../lib/panels/context';
 import { bandsOf, type Band } from '../lib/panels/conversation';
-import { describeRunLength, describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
-import { foldSessionLine, marksOf, runSpan, type Mark, type SessionAnswer } from '../lib/steps';
+import { describeStarted, noRepository, notKnown, readOrder, withOrder } from '../lib/sessions';
+import { foldSessionLine, marksOf, runSpan, type SessionAnswer } from '../lib/steps';
+import { tilesOf } from '../lib/verdict';
 import { readWhere, withWhere, type Where } from '../../shared/session/lib/where';
 
 interface Reading {
@@ -40,6 +37,7 @@ export function Session() {
   const { id = '' } = useParams();
   const [reading, setReading] = useState<Reading | null>(null);
   const [params, setParams] = useSearchParams();
+  const timeline = useRef<HTMLElement>(null);
 
   const filter = readFilter(params);
   const where = readWhere(params);
@@ -87,15 +85,14 @@ export function Session() {
   const exchanges = answer?.exchanges;
   const activations = answer?.activations;
   const context = answer?.context;
-  const subagents = answer?.subagents;
   const marks = useMemo(() => marksOf(steps ?? []), [steps]);
   const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
   const activationSpells = useMemo(() => activationSpellsOf(activations ?? []), [activations]);
   const levels = useMemo(() => levelsOf(context ?? []), [context]);
-  const agentSpells = useMemo(() => agentSpellsOf(subagents ?? []), [subagents]);
-  const whole = runSpan(marks);
+  // A new pair every render would make each Finding card work out its moment again.
+  const whole = useMemo(() => runSpan(marks), [marks]);
 
-  // An open Subagent is read like a small Session, so every lane and every row beneath shows its Steps alone.
+  // An open Subagent is read like a small Session, so every lane shows its Steps alone.
   const agents = answer?.agents;
   const drawn = useMemo(() => ranByOne(marks, agents ?? {}, where.agent), [marks, agents, where.agent]);
 
@@ -116,11 +113,10 @@ export function Session() {
       ? undefined
       : show(rangeOf(spell.atMs, spell.followedToMs, whole), { activation: spell.activation.id });
 
-  const onAgent = (spell: AgentSpell) =>
-    whole === null ? undefined : show(widened([spell.startMs, spell.endMs], whole), { agent: spell.agent.id });
-
-  const onFinding = (named: Named) =>
-    whole === null ? undefined : show(widened([named.startMs, named.endMs], whole), { step: named.finding.step });
+  const onFinding = (named: Named, extent: Range) => {
+    show(extent,{ step: named.finding.step });
+    timeline.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // What the table was asked for, so going up lands on the list the reader left rather than a fresh one.
   const table = withOrder(filterParams(filter), readOrder(params)).toString();
@@ -129,7 +125,7 @@ export function Session() {
     <main className="page session">
       <header className="sessions-head">
         <UpButton parent={page} query={table} />
-        <h1>{run?.name ?? 'Run'}</h1>
+        <h1 className="session-id">Session Id: {id}</h1>
         {run?.running === true ? <span className="session-running">Running</span> : null}
         <SignalWord gap={answer?.events ?? null} failure={failure} />
         {answer === null ? null : <DepthWord depth={answer.depth} gap={answer.traces} />}
@@ -138,29 +134,49 @@ export function Session() {
       <p className="micro session-crumb">
         {run === null
           ? ''
-          : `${run.repository ?? noRepository} · ${run.person ?? notKnown} · ${describeStarted(run.startedUtc)} · ` +
-            `${describeRunLength(run.lengthMs)} · ${describeCount(run.toolCalls)} tool calls · ${describeMoney(run.cost)}`}
+          : `${run.name} · ${run.repository ?? noRepository} · ${run.person ?? notKnown} · ${describeStarted(run.startedUtc)}`}
       </p>
 
       <Body
         answer={answer}
         failure={failure}
-        marks={marks}
-        drawn={drawn}
-        bands={bands}
-        activationSpells={activationSpells}
-        levels={levels}
-        agentSpells={agentSpells}
         whole={whole}
-        view={view}
-        where={where}
-        onView={(shown) => show(shown, shown === null ? { exchange: null, activation: null, agent: null } : {})}
-        onOpen={open}
-        onExchange={onExchange}
-        onActivation={onActivation}
-        onAgent={onAgent}
-        onCloseAgent={() => show(null, { agent: null })}
-        onFinding={onFinding}
+        render={(landed, bounds) => (
+          <>
+            <Tiles tiles={tilesOf(landed)} />
+            <Findings findings={landed.findings} marks={marks} whole={bounds} onShow={onFinding} />
+            <TimeBreakdown breakdown={landed.timeBreakdown} />
+            <Timeline
+              ref={timeline}
+              marks={marks}
+              drawn={drawn}
+              bands={bands}
+              whole={bounds}
+              view={view}
+              selected={where.step}
+              onView={(shown) => show(shown, shown === null ? { exchange: null, activation: null, agent: null } : {})}
+              onOpen={open}
+              onExchange={onExchange}
+            />
+            <OpenedStep
+              marks={drawn}
+              traced={landed.traced}
+              agents={landed.agents}
+              selected={where.step}
+              onClose={() => open(null)}
+            />
+            <TimelineTabs
+              levels={levels}
+              limitTokens={landed.limitTokens}
+              spells={activationSpells}
+              view={view}
+              selected={where.step}
+              opened={where.activation}
+              onOpen={open}
+              onActivation={onActivation}
+            />
+          </>
+        )}
       />
     </main>
   );
@@ -169,41 +185,13 @@ export function Session() {
 function Body({
   answer,
   failure,
-  marks,
-  drawn,
-  bands,
-  activationSpells,
-  levels,
-  agentSpells,
   whole,
-  view,
-  where,
-  onView,
-  onOpen,
-  onExchange,
-  onActivation,
-  onAgent,
-  onCloseAgent,
-  onFinding,
+  render,
 }: {
   answer: SessionAnswer | null;
   failure: string | null;
-  marks: readonly Mark[];
-  drawn: readonly Mark[];
-  bands: readonly Band[];
-  activationSpells: readonly ActivationSpell[];
-  levels: readonly Level[];
-  agentSpells: readonly AgentSpell[];
   whole: Range | null;
-  view: Range | null;
-  where: Where;
-  onView: (view: Range | null) => void;
-  onOpen: (step: string | null) => void;
-  onExchange: (band: Band) => void;
-  onActivation: (spell: ActivationSpell) => void;
-  onAgent: (spell: AgentSpell) => void;
-  onCloseAgent: () => void;
-  onFinding: (named: Named) => void;
+  render: (answer: SessionAnswer, whole: Range) => ReactNode;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
@@ -221,56 +209,5 @@ function Body({
     return <p className="session-word">Nothing was recorded for this run.</p>;
   }
 
-  return (
-    <>
-      <Findings findings={answer.findings} onOpen={onFinding} />
-      <Timeline
-        marks={marks}
-        drawn={drawn}
-        bands={bands}
-        whole={whole}
-        view={view}
-        selected={where.step}
-        onView={onView}
-        onOpen={onOpen}
-        onExchange={onExchange}
-      />
-      <TracePanel
-        marks={drawn}
-        inside={answer.inside}
-        traced={answer.traced}
-        agents={answer.agents}
-        view={view}
-        selected={where.step}
-        onOpen={onOpen}
-      />
-      <ConversationPanel bands={bands} view={view} opened={where.exchange} onOpen={onExchange} />
-      <ActivationPanel spells={activationSpells} view={view} opened={where.activation} onOpen={onActivation} />
-      <SubagentPanel
-        agentSpells={agentSpells}
-        traced={answer.traced}
-        view={view}
-        opened={where.agent}
-        onOpen={onAgent}
-        onClose={onCloseAgent}
-      />
-      <TimeBreakdownPanel breakdown={answer.timeBreakdown} view={view} />
-      <ContextPanel
-        levels={levels}
-        limitTokens={answer.limitTokens}
-        view={view}
-        selected={where.step}
-        onOpen={onOpen}
-      />
-      <StepPanel
-        marks={drawn}
-        traced={answer.traced}
-        agents={answer.agents}
-        agent={where.agent}
-        view={view}
-        selected={where.step}
-        onOpen={onOpen}
-      />
-    </>
-  );
+  return render(answer, whole);
 }

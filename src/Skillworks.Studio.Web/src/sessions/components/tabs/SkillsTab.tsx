@@ -31,8 +31,8 @@ function Row({
   );
 }
 
-// Every row and every figure here reads the View alone, or the panel would answer a question nobody asked.
-export function ActivationPanel({
+// Every row and every figure here reads the View alone, or the tab would answer a question nobody asked.
+export function SkillsTab({
   spells,
   view,
   opened,
@@ -47,9 +47,8 @@ export function ActivationPanel({
   const tally = tallyOf(shown);
 
   return (
-    <section className="session-panel" aria-label="Activations">
+    <>
       <header className="panel-head">
-        <h2>Activations</h2>
         <p className="micro panel-figure">
           {describeCount(tally.activations)} activations · {describeCount(tally.skills)} skills
           {view === null ? '' : ' in view'}
@@ -70,6 +69,6 @@ export function ActivationPanel({
           ))}
         </ol>
       )}
-    </section>
+    </>
   );
 }

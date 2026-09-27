@@ -84,6 +84,12 @@ export const surfaces: Record<string, Surface> = {
     text: ['ink', 'inkSoft', 'inkFaint', 'hud'],
     marks: ['hud', 'line', 'failed', 'warned'],
   },
+  // Each Part of a Time breakdown is told by its colour on the bar, which lies on a panel ground.
+  timeBreakdown: {
+    ground: 'panel',
+    text: [],
+    marks: ['warned', 'unnamed', 'line', 'hud', 'live', 'inkSoft', 'inkFaint'],
+  },
   // A pinned readout lies over the map, so its labels, figures and trigger glyphs are held to the thresholds too.
   tileReadout: {
     ground: 'panel',

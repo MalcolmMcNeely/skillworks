@@ -110,8 +110,8 @@ describe('noBreakdownWord', () => {
     expect(noBreakdownWord(null)).toBe('Still reading the run.');
   });
 
-  it('says a View nothing ran in held nothing', () => {
-    expect(noBreakdownWord(page([]))).toBe('Nothing ran in view.');
+  it('says a run nothing ran in held nothing', () => {
+    expect(noBreakdownWord(page([]))).toBe('Nothing ran in this run.');
   });
 });
 

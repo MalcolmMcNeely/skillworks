@@ -99,5 +99,5 @@ export function shareOf(share: Share, lengthMs: number): number {
 
 // The Time breakdown comes with the spans, so a run whose second part is still on its way has read nothing yet.
 export function noBreakdownWord(breakdown: TimeBreakdownPage | null): string {
-  return breakdown === null ? 'Still reading the run.' : 'Nothing ran in view.';
+  return breakdown === null ? 'Still reading the run.' : 'Nothing ran in this run.';
 }
