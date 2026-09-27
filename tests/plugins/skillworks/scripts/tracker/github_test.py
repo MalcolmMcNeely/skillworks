@@ -4,8 +4,6 @@ import pytest
 
 from conftest import SCRIPTS, Ran
 from stop import REFUSED, Stop
-from tracker import files as files_tracker
-from tracker import github as github_tracker
 from tracker.github import CLAIM_WAIT, GitHub
 
 
@@ -129,11 +127,6 @@ def test_a_drift_report_is_the_last_comment_on_the_spec_below_its_heading(runner
 
     assert github(runner).drift_report("158") == "- Story 1: Done"
     assert asked(runner) == ["issue view 158 --json comments --jq .comments[-1].body"]
-
-
-# Neither Tracker imports the other, so this is what holds the two headings to one.
-def test_both_trackers_find_a_drift_report_by_one_heading():
-    assert github_tracker.DRIFT_REPORT == files_tracker.DRIFT_REPORT
 
 
 @pytest.mark.parametrize("last", ["Looks good to me.\n", ""])

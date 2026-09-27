@@ -43,6 +43,7 @@ from runner import Subprocess, session_changes
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
+from tracker.reading import listed
 
 USAGE = (
     "usage: land-ticket <worktree> <ticket-number> [session-id] [--spec <spec-number>]\n"
@@ -94,10 +95,6 @@ class Conflict(NamedTuple):
 
     def size(self):
         return "files={} hunks={} lines={}".format(self.files, self.hunks, self.lines)
-
-
-def listed(said):
-    return [line for line in said.split("\n") if line != ""]
 
 
 # The shared git folder, so every worktree of one clone meets the same Turn.

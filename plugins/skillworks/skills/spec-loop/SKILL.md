@@ -22,7 +22,7 @@ If it already has tickets, as sub-issues or as files in its `tickets/` folder, t
 
 ### 2. Break it into tickets
 
-Call the Skill tool with "skillworks:to-tickets", passing the spec's issue number and telling it to skip its approval questions.
+Call the Skill tool with "skillworks:to-tickets", passing the spec's number from the argument and telling it to skip its approval questions.
 
 Let it finish. Every ticket must come back as a **sub-issue of the spec**, or with the files Tracker as a file in the spec's own `tickets/` folder — that parentage is what stops one person's loop picking up another person's tickets.
 

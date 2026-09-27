@@ -1,6 +1,7 @@
 # gh 2.92.0 has no dependency flags, so reads go through `gh api`: docs/research/harness/ticket-state-guardrails.md.
 
 from stop import is_a_number, refusal
+from tracker.reading import DRIFT_REPORT, listed
 
 # gh asks at a terminal, and a script run by a loop or by hand may have nobody at one.
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
@@ -12,12 +13,6 @@ THIS_REPO = "{owner}/{repo}"
 CLAIM_WAIT = 3
 
 BRANCH_HEADING = "## Branch"
-
-DRIFT_REPORT = "## Drift report"
-
-
-def listed(said):
-    return [line for line in said.split("\n") if line != ""]
 
 
 def spec_branch(spec):

@@ -8,6 +8,7 @@ from typing import NamedTuple
 
 from fetch_origin import fetch_origin
 from stop import is_a_number, refusal
+from tracker.reading import DRIFT_REPORT, listed
 
 SPECS = ".specs"
 SPEC_FILE = "spec.md"
@@ -17,7 +18,6 @@ CLAIMED_BY = "claimed-by"
 STATUS = "status"
 CLOSED = "closed"
 CLOSING_NOTE = "## Closing note"
-DRIFT_REPORT = "## Drift report"
 
 # Every remote branch at once, because in spec mode the spec's own folder says which one is its.
 EVERY_BRANCH = "*"
@@ -46,10 +46,6 @@ class Spec(NamedTuple):
 def number_of(name):
     lead = name.split("-", 1)[0]
     return str(int(lead)) if is_a_number(lead) else ""
-
-
-def listed(said):
-    return [line for line in said.split("\n") if line != ""]
 
 
 def bare(value):

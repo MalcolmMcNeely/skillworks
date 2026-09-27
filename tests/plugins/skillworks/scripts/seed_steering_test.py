@@ -6,7 +6,8 @@ import pytest
 import seed_steering
 from conftest import PLUGIN, ROOT, Ran, git, launch
 from suite import Suite
-from tracker.files import CLOSING_NOTE, DRIFT_REPORT
+from tracker.files import CLOSING_NOTE
+from tracker.reading import DRIFT_REPORT
 
 SKILLS = PLUGIN / "skills"
 SETUP = SKILLS / "skillworks-setup"
@@ -790,6 +791,17 @@ def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(skill)
     assert "docs/agents/issue-tracker.md" in text
     assert "docs/agents/loop.json" in text
     assert re.search(r"\bgh\b", text) is None
+
+
+GITHUB_ONLY_NAMES = ("the ticket's issue number", "the spec's issue number", "sub-issues of the spec")
+
+
+@pytest.mark.parametrize("skill", ["review-standards", "review-architecture", "spec-loop", "what-next"])
+def test_a_skill_names_a_spec_or_a_ticket_in_words_that_fit_either_tracker(skill):
+    text = skill_text(skill)
+
+    assert "docs/agents/issue-tracker.md" in text
+    assert [name for name in GITHUB_ONLY_NAMES if name in text] == []
 
 
 def test_what_next_lists_open_specs_and_startable_tickets_from_the_files_tracker():

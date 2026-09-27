@@ -8,9 +8,10 @@ disable-model-invocation: true
 
 One axis of the three-axis review. This one asks a single question: **does the code follow the standards this repo has written down?**
 
-The argument is the ticket's issue number.
+The argument is the ticket, named as its Tracker names it: `docs/agents/issue-tracker.md` says how each Tracker names its tickets.
 
 `/skillworks:review-standards 168`
+`/skillworks:review-standards 7/2`
 
 Two other axes run beside this one, each in a session of its own. Spec asks whether the change is what was asked for. Architecture asks whether the code sits in the right place and points the right way. Neither is this axis's business, so findings that belong to them are dropped rather than reported here.
 

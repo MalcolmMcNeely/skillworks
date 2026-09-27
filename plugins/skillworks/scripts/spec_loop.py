@@ -42,6 +42,7 @@ from runner import Subprocess, session_changes
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
+from tracker.reading import listed
 
 USAGE = "usage: spec-loop <spec-issue-number> [--dry-run] [--bypass]\n"
 
@@ -188,10 +189,6 @@ def written(path, text):
 def appended(path, text):
     with Path(path).open("a", encoding="utf-8", newline="\n") as file:
         file.write(text)
-
-
-def listed(said):
-    return [line for line in said.split("\n") if line != ""]
 
 
 # Every record the loop reads is three tab separated columns, and a short one still reads as three.
