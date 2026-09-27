@@ -48,3 +48,9 @@ four-query list.
 
 ADR 0013 replaces the one-page answer with a gate and its Measures. The midnight rule this ADR
 records is not replaced, and ADR 0013 rests on it.
+
+## Correction, 2026-09-27
+
+ADR 0040 replaces the read of the whole span. The list now reads newest activity first, fifty rows at
+a time, with no span and no column sort, because Loki refused the totals of a week of Sessions. The
+midnight rule stands.

@@ -98,3 +98,9 @@ word are two words, not a word and a loser. `Figure` therefore leaves _Avoid_ un
 never joins the banned words.
 
 The rest of this ADR stands.
+
+## Correction, 2026-09-27
+
+ADR 0040 replaces the read of the whole span. The list now reads newest activity first, fifty rows at
+a time, with no span and no column sort, because Loki refused the totals of a week of Sessions. The
+midnight rule stands.
