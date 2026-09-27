@@ -19,13 +19,13 @@ Read each rule in `docs/agents/rules/`, and the YAML block at its end. The setti
 
 Read `CONTEXT-MAP.md` where the repo has one, because a rule reaches only the code the map gives it.
 
-Find the repo's languages from its project files and its source files: a `.csproj` or `.sln`, a `package.json` with a `tsconfig.json`, a `go.mod`. Name the test runner each one already uses. A starter test runs in that runner, so the team needs no extra runtime.
+Find the repo's languages from its project files and its source files: a `.csproj`, `.sln` or `.slnx`, a `package.json` with a `tsconfig.json`, a `go.mod`. Name the test runner each one already uses. A starter test runs in that runner, so the team needs no extra runtime.
 
 Python and Java tools are not in the reference yet. For a repo in either, offer a starter test, and say that no common tool was weighed.
 
 ## 2. Ask which rules to enforce
 
-Show the user a table: each rule, the settings it reads, and for each language the tool or starter test the reference names. Mark each rule that already has a test, from the tables in `docs/agents/placement-checks.md` and the checks in `docs/agents/suite.json`.
+Show the user a table: each rule, the settings it reads, and for each language the tool or starter test the reference names. Mark each rule that already has a test, from the tables in `docs/agents/placement-checks.md` and the checks in `docs/agents/suite.json`. Mark too each rule that a tool the repo already runs holds, such as a boundary rule in a lint config, even where no table names it yet. That rule needs wiring in, not writing again.
 
 Ask which rules the team wants enforced. Offer every rule that has no test yet, and recommend the ones whose settings are filled in. A rule whose settings are empty, such as `slices: []`, judges nothing, so its test proves nothing until the team fills them.
 
@@ -33,8 +33,10 @@ Ask which rules the team wants enforced. Offer every rule that has no test yet, 
 
 For each rule the team picked, and each language it reaches:
 
-- **A common tool**, where the reference names one for the language. Prefer a tool the repo already has: a second boundary tool beside the one in use is two answers to one question. The tool's config says what the rule says, and names the settings it copies, so a reader can see where they came from.
-- **A starter test**, where the reference names none, or the team would rather own the code. It is written in the team's language, in the test runner the repo uses, and it reads the rule's YAML block itself. It checks the files the rule reaches, and skips what the rule skips: `skip-folders`, and any folder with its own `.git`.
+- **A common tool**, where the reference names one for the language. Prefer a tool the repo already has: a second boundary tool beside the one in use is two answers to one question. Where the tool runs as a test, it reads the settings from the rule, as a starter test does. Where it reads a config file, the config names the settings it copies, so a reader can see where they came from.
+- **A starter test**, where the reference names none, or the team would rather own the code. It is written in the team's language, in the test runner the repo uses, and it reads the rule's YAML block itself. It checks the files the rule reaches, and skips what the rule skips: the `skip-folders` of `file-placement.md`, and any folder with its own `.git`. A starter test is a source file too, so the rules judge it like any other: it uses no word that lost, and it sits where the placement rules allow. It fails when its walk finds nothing, so an empty walk cannot pass.
+
+In .NET, put the tests in a project of their own, such as `tests/<App>.Architecture.Tests`, because a folder in a Slice's test project breaks rule 1. Leave that project out of every context in the map, so the eight rules of `file-placement.md` that reach Slices do not judge its folders, and tell the team.
 
 Where the reference says a rule is left to the team, say why, and write nothing for it.
 
@@ -47,15 +49,15 @@ Follow `/skillworks:tdd`, one rule at a time.
 1. **Red.** Make the test fail on a breach you build for it: a fixture folder, a file the test writes and then removes, or a setting the test is handed. A test you never saw fail may test nothing.
 2. **Green.** Run it on the team's code, and read the result.
 
-A rule the code breaks today is reported to the team, and never quietly weakened. Do not loosen the test, add the breach to a skip list, or change a setting to get green. Name each breach, and ask the team to choose: fix the code, or change the setting in the rule. A test that is not green on the team's code does not join the Suite, because the loop would stop on it before every Landing.
+A rule the code breaks today is reported to the team, and never quietly weakened. Do not loosen the test, add the breach to a skip list, or change a setting to get green. Name each breach, and ask the team to choose: fix the code, or change the setting in the rule. Where neither fits, because a tool fixes the folder in place, say so, and read the rule again before you judge the code. A test that is not green on the team's code does not join the Suite, because the loop would stop on it before every Landing.
 
 ## 5. Wire it in
 
 Each write below is one the team approves, so show it before you make it.
 
-1. **The Suite.** Add the test's command to `docs/agents/suite.json`, with its `folder`, and with the `ignores` that keep it asleep: the paths, as git pathspecs from the repo root, that cannot change what it checks. Leave the rule files out of `ignores`, because a changed setting has to run the check again. Run `skillworks-suite` and read that the new check passes.
-2. **The placement checks.** Fill both tables in `docs/agents/placement-checks.md`. The first says which check proves which rule, so a review can cite a breach by the check's name. The second holds the exact command that runs the check, its folder, and any command to run first. List the narrowest command that proves the rule, and leave out a slow one that proves something else.
-3. **The allowlist.** Add the command of any tool new to the repo to `permissions.allow` in `.claude/settings.json`, in the form `Bash(<command>:*)`, so the loop is not stopped by a Denial.
+1. **The Suite.** Add the test's command to `docs/agents/suite.json`, with its `folder`, and with the `ignores` that keep it asleep: the paths, as git pathspecs from the repo root, that cannot change what it checks. Leave the rule files out of `ignores`, because a changed setting has to run the check again. In a pathspec `*` also matches `/`, so `docs/*.md` ignores the rule files too. A test that walks the whole repo ignores only exact file paths, never a folder or a pattern, because a new folder under an ignored path could break it. The Suite runs its checks at once, and two checks that build the same .NET project collide in its `obj` folder. So a .NET repo gives the Suite one check, `dotnet test` of the solution, and the placement checks can still list the narrow commands, because a review runs them one at a time. Where the command needs an install first, give the check a `ready` with the install command, and an `unless` path from the repo root, such as `web/node_modules`. Run `skillworks-suite` and read that the new check passes.
+2. **The placement checks.** Fill both tables in `docs/agents/placement-checks.md`. The first says which check proves which rule, so a review can cite a breach by the check's name. List the checks of every rule file, and for a rule outside `file-placement.md`, name its file in place of a number. The second holds the exact command that runs the check, its folder, and any command to run first. List the narrowest command that proves the rule, and leave out a slow one that proves something else.
+3. **The allowlist.** Add the command of any tool new to the repo to `permissions.allow` in `.claude/settings.json`, as the program and its first word, such as `Bash(dotnet test:*)`, so a review that runs the placement commands is not stopped by a Denial.
 
 ## 6. Run it again
 
