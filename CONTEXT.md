@@ -333,6 +333,11 @@ A Tool call a person refused, or one a hook blocked. Somebody chose it, so it is
 Faults and never added to them.
 _Avoid_: Block, rejection, denial
 
+**Headline**:
+One figure in the row at the top of a Session: its length, Cost, Tool calls, Faults, peak context or
+Findings. A Headline reads the whole run, and turns red when it is worth a person's attention.
+_Avoid_: Tile, stat, KPI, card
+
 **Finding**:
 Something Studio names in a Session because it crossed a bar worth a person's attention. Every
 Finding shows the figure it crossed on, so a reader sees how close the call was. Clicking a Finding
