@@ -30,19 +30,7 @@ The outputs:
 
 ## Process
 
-### 1. Preflight and labels
-
-```bash
-skillworks-preflight
-```
-
-It checks `gh`, the login, that `origin` is GitHub, that the default branch is `main` and that the loop may push to it, then creates the `ready-for-agent` label. It warns, and does not fail, when another enabled plugin also forces an output style. It creates only what is missing and never overwrites an existing label. Safe to run again.
-
-Expect a permission prompt here on a first run. The allowlist that would clear it is written in step 4, which has not happened yet.
-
-If it fails, stop and report. Every step below assumes the repo is a GitHub clone with a working `gh`, and the script is what proves that.
-
-### 2. Seed the Steering
+### 1. Seed the Steering
 
 ```bash
 seed-steering
@@ -81,6 +69,20 @@ seed-steering --settled docs/agents/domain.md
 Give the `--keep` and `--settled` choices in one run when both are due. A choice that names no overlap, or a `--settled` for a file that has a base copy, is refused, and nothing is written.
 
 The user reviews every changed file before they commit. Setup commits nothing.
+
+Expect a permission prompt here on a first run. The allowlist that would clear it is written in step 4, which has not happened yet.
+
+### 2. Preflight and labels
+
+```bash
+skillworks-preflight
+```
+
+It checks `gh`, the login, that `origin` is GitHub, and the Target branch that `docs/agents/loop.json` names. A branch name must be on the remote and must take a direct push from this login. With `spec`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It warns, and does not fail, when another enabled plugin also forces an output style. It creates only what is missing and never overwrites an existing label. Safe to run again.
+
+It runs after the seeding, because it reads `loop.json`. Expect a permission prompt here too on a first run.
+
+If it fails, stop and report. Every step below assumes the repo is a GitHub clone with a working `gh`, and the script is what proves that.
 
 ### 3. Point CLAUDE.md at the docs
 

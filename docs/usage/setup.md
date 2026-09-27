@@ -52,11 +52,11 @@ needs their clone of Skillworks at the same path.
 
 ## What setup does
 
-1. **Preflight.** `skillworks-preflight` checks the tools, the login, the remote, the default branch
-   and that you may push to `main`. Then it creates the `ready-for-agent` label on GitHub. If a check
-   fails, setup stops and writes nothing.
-2. **Seed the Steering.** `seed-steering` copies each Seed to its place, keeps a base copy of it in
+1. **Seed the Steering.** `seed-steering` copies each Seed to its place, keeps a base copy of it in
    `docs/agents/.seeds/`, and adds the loop's working folders to `.gitignore`.
+2. **Preflight.** `skillworks-preflight` checks the tools, the login, the remote, and the Target
+   branch `docs/agents/loop.json` names. Then it creates the `ready-for-agent` label on GitHub. If a
+   check fails, setup stops there.
 3. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your tracker
    docs and domain docs, and imports each rule.
 4. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
@@ -64,7 +64,7 @@ needs their clone of Skillworks at the same path.
 5. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
-Expect one permission prompt on a first run, at the preflight. The allowlist that clears it is written
+Expect a permission prompt on a first run, at the seeding and at the preflight. The allowlist that clears it is written
 in step 4.
 
 ## The questions setup asks

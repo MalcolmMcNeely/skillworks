@@ -26,8 +26,14 @@ case "$*" in
   "api repos/owner/repo --jq .has_issues") echo true ;;
   "api repos/owner/repo --jq .default_branch") cat "$here/default-branch" ;;
   "api repos/owner/repo --jq .permissions.push") cat "$here/may-push" ;;
-  "api repos/owner/repo/rules/branches/main --jq .[].type") cat "$here/main-rules" ;;
-  "api repos/owner/repo/branches/main/protection --jq "*) cat "$here/main-protection"; exit "$(cat "$here/main-protection-status")" ;;
+  "api repos/owner/repo/branches/"*"/protection --jq "*)
+    branch="${2#repos/owner/repo/branches/}"; branch="${branch%/protection}"
+    cat "$here/$branch-protection"; exit "$(cat "$here/$branch-protection-status")" ;;
+  "api repos/owner/repo/rules/branches/"*" --jq .[].type") cat "$here/${2#repos/owner/repo/rules/branches/}-rules" ;;
+  "api repos/owner/repo/branches/"*" --jq .name")
+    branch="${2#repos/owner/repo/branches/}"
+    grep -qxF -- "$branch" "$here/branches" || { echo "gh: Branch not found (HTTP 404)" >&2; exit 1; }
+    echo "$branch" ;;
   "label list --limit 200 --json name --jq .[].name") echo ready-for-agent ;;
   *) echo "unplanned gh call: $*" >&2; exit 97 ;;
 esac
@@ -65,7 +71,9 @@ class Work:
             stand_in.write_text(text, encoding="utf-8", newline="\n")
             stand_in.chmod(0o755)
         self.plugins = []
+        self.target("main")
         self.answer("default-branch", "main")
+        self.answer("branches", "main")
         self.answer("may-push", "true")
         self.answer("main-rules", "")
         self.protect("gh: Branch not protected (HTTP 404)", status=1)
@@ -74,9 +82,14 @@ class Work:
     def answer(self, name, text):
         (self.stand_ins / name).write_text(text + "\n" if text else "", encoding="utf-8", newline="\n")
 
-    def protect(self, *lines, status=0):
-        self.answer("main-protection", "\n".join(lines))
-        self.answer("main-protection-status", str(status))
+    def target(self, branch):
+        loop = self.repo / "docs" / "agents" / "loop.json"
+        loop.parent.mkdir(parents=True, exist_ok=True)
+        loop.write_text(json.dumps({"target-branch": branch}, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+    def protect(self, *lines, status=0, branch="main"):
+        self.answer(f"{branch}-protection", "\n".join(lines))
+        self.answer(f"{branch}-protection-status", str(status))
 
     def install(self, name, forces=False, enabled=True, scope="user", project=None, styles=None):
         home = self.root / "plugins" / f"{name}-{len(self.plugins)}"
@@ -305,14 +318,89 @@ def test_a_machine_without_node_warns_that_forced_styles_could_not_be_checked(wo
     assert STYLE_WARNING not in said(ran)
 
 
-def test_a_default_branch_other_than_main_fails_naming_the_branch(work):
-    work.answer("default-branch", "trunk")
+def test_a_missing_loop_file_fails_naming_the_command_that_writes_it(work):
+    (work.repo / "docs" / "agents" / "loop.json").unlink()
 
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "FAIL  the default branch of owner/repo is trunk, not main." in ran.err
+    assert "FAIL  docs/agents/loop.json is missing. Run seed-steering to write it." in ran.err
     assert "label ready-for-agent" not in ran.out
+
+
+def test_a_loop_file_with_no_target_branch_fails(work):
+    (work.repo / "docs" / "agents" / "loop.json").write_text('{"tracker": "github"}\n', encoding="utf-8")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  docs/agents/loop.json names no target-branch." in ran.err
+
+
+def test_a_target_branch_named_master_that_is_on_the_remote_passes(work):
+    work.target("master")
+    work.answer("default-branch", "master")
+    work.answer("branches", "master")
+    work.answer("master-rules", "")
+    work.protect("gh: Branch not protected (HTTP 404)", status=1, branch="master")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch master" in ran.out
+    assert "me may push to master" in ran.out
+
+
+def test_a_target_branch_missing_on_the_remote_fails_naming_it(work):
+    work.target("master")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  the Target branch master in docs/agents/loop.json is not on owner/repo." in ran.err
+    assert "label ready-for-agent" not in ran.out
+
+
+def test_a_target_branch_other_than_the_default_branch_passes(work):
+    work.answer("default-branch", "develop")
+    work.answer("branches", "develop\nmain")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch main" in ran.out
+
+
+def test_in_spec_mode_a_protected_default_branch_passes(work):
+    work.target("spec")
+    work.answer("main-rules", "pull_request\nrequired_status_checks")
+    work.protect("enforced", "pull_request", "required_status_checks")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch spec, each reviewed into main" in ran.out
+    assert "label ready-for-agent" in ran.out
+
+
+def test_in_spec_mode_a_default_branch_missing_on_the_remote_fails(work):
+    work.target("spec")
+    work.answer("branches", "")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  the default branch main is not on owner/repo" in ran.err
+
+
+def test_in_spec_mode_a_repo_that_refuses_this_login_a_push_fails(work):
+    work.target("spec")
+    work.answer("may-push", "false")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  me may not push to owner/repo, so the loop cannot land a ticket on a spec's branch." in ran.err
 
 
 def test_a_repo_that_refuses_this_login_a_push_fails(work):

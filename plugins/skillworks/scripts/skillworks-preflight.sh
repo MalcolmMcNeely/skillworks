@@ -82,44 +82,66 @@ probe=$(gh api "repos/$REPO" --jq .has_issues)
 [ "$probe" = "true" ] || die "Issues are disabled on $REPO. Enable them in repo settings."
 ok "issues enabled"
 
-default=$(gh api "repos/$REPO" --jq .default_branch)
-[ "$default" = "main" ] || die "the default branch of $REPO is $default, not main. The loop lands every ticket on main."
-ok "default branch main"
+loop="$top/docs/agents/loop.json"
+[ -f "$loop" ] || die "docs/agents/loop.json is missing. Run seed-steering to write it."
+# Read in bash, so the preflight runs none of the Python it checks the machine for.
+target=$(tr -d '\r\n' < "$loop" | sed -n 's/.*"target-branch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+[ -n "$target" ] || die "docs/agents/loop.json names no target-branch. Add one, such as \"target-branch\": \"main\"."
+
+on_remote() { gh api "repos/$REPO/branches/$1" --jq .name >/dev/null 2>&1; }
+
+if [ "$target" = "spec" ]; then
+  default=$(gh api "repos/$REPO" --jq .default_branch)
+  on_remote "$default" || die "the default branch $default is not on $REPO, and each spec's pull request merges into it."
+  ok "target-branch spec, each reviewed into $default"
+  landing="a spec's branch"
+else
+  on_remote "$target" || die "the Target branch $target in docs/agents/loop.json is not on $REPO."
+  ok "target-branch $target"
+  landing=$target
+fi
 
 [ "$(gh api "repos/$REPO" --jq .permissions.push)" = "true" ] \
-  || die "$login may not push to $REPO, so the loop cannot land a ticket on main."
-# A ruleset can refuse a login that may push, and its rule list is readable without admin rights.
-refusing=$(gh api "repos/$REPO/rules/branches/main" --jq '.[].type' \
-  | grep -xE 'pull_request|update|required_status_checks|required_deployments|merge_queue' \
-  | paste -sd, - || true)
-[ -z "$refusing" ] \
-  || die "a rule on main in $REPO refuses a direct push ($refusing). The loop lands every ticket by pushing to main."
-# Classic protection is readable with admin rights only, and an admin passes it unless it holds admins too.
-if classic=$(gh api "repos/$REPO/branches/main/protection" --jq '
-    (if .enforce_admins.enabled then "enforced" else empty end),
-    (if .required_pull_request_reviews then "pull_request" else empty end),
-    (if .required_status_checks then "required_status_checks" else empty end),
-    (if .lock_branch.enabled then "lock_branch" else empty end),
-    (if .restrictions then "restrictions" else empty end),
-    "user " + .restrictions.users[]?.login,
-    "team " + .restrictions.teams[]?.slug' 2>&1); then
-  if grep -qx enforced <<< "$classic"; then
-    refusing=$(grep -xE 'pull_request|required_status_checks|lock_branch' <<< "$classic" | paste -sd, - || true)
-    [ -z "$refusing" ] \
-      || die "classic branch protection on main in $REPO refuses a direct push ($refusing). The loop lands every ticket by pushing to main."
-    if grep -qx restrictions <<< "$classic" && ! grep -qx "user $login" <<< "$classic"; then
-      teams=$(sed -n 's/^team //p' <<< "$classic" | paste -sd, - || true)
-      [ -n "$teams" ] \
-        || die "classic branch protection on main in $REPO restricts who may push, and $login is not one of them. The loop lands every ticket by pushing to main."
-      warn "classic branch protection on main in $REPO lets teams push ($teams), and $login is not named. If $login is on none of those teams, the loop cannot land a ticket on main."
+  || die "$login may not push to $REPO, so the loop cannot land a ticket on $landing."
+
+takes_direct_push() {
+  local branch=$1 refusing classic teams
+  # A ruleset can refuse a login that may push, and its rule list is readable without admin rights.
+  refusing=$(gh api "repos/$REPO/rules/branches/$branch" --jq '.[].type' \
+    | grep -xE 'pull_request|update|required_status_checks|required_deployments|merge_queue' \
+    | paste -sd, - || true)
+  [ -z "$refusing" ] \
+    || die "a rule on $branch in $REPO refuses a direct push ($refusing). The loop lands every ticket by pushing to $branch."
+  # Classic protection is readable with admin rights only, and an admin passes it unless it holds admins too.
+  if classic=$(gh api "repos/$REPO/branches/$branch/protection" --jq '
+      (if .enforce_admins.enabled then "enforced" else empty end),
+      (if .required_pull_request_reviews then "pull_request" else empty end),
+      (if .required_status_checks then "required_status_checks" else empty end),
+      (if .lock_branch.enabled then "lock_branch" else empty end),
+      (if .restrictions then "restrictions" else empty end),
+      "user " + .restrictions.users[]?.login,
+      "team " + .restrictions.teams[]?.slug' 2>&1); then
+    if grep -qx enforced <<< "$classic"; then
+      refusing=$(grep -xE 'pull_request|required_status_checks|lock_branch' <<< "$classic" | paste -sd, - || true)
+      [ -z "$refusing" ] \
+        || die "classic branch protection on $branch in $REPO refuses a direct push ($refusing). The loop lands every ticket by pushing to $branch."
+      if grep -qx restrictions <<< "$classic" && ! grep -qx "user $login" <<< "$classic"; then
+        teams=$(sed -n 's/^team //p' <<< "$classic" | paste -sd, - || true)
+        [ -n "$teams" ] \
+          || die "classic branch protection on $branch in $REPO restricts who may push, and $login is not one of them. The loop lands every ticket by pushing to $branch."
+        warn "classic branch protection on $branch in $REPO lets teams push ($teams), and $login is not named. If $login is on none of those teams, the loop cannot land a ticket on $branch."
+      fi
     fi
+    ok "$login may push to $branch"
+  elif grep -q "Branch not protected" <<< "$classic"; then
+    ok "$login may push to $branch"
+  else
+    warn "could not read the classic branch protection on $branch in $REPO, so a rule there that refuses a direct push was not checked. Reading it needs admin rights on $REPO."
   fi
-  ok "$login may push to main"
-elif grep -q "Branch not protected" <<< "$classic"; then
-  ok "$login may push to main"
-else
-  warn "could not read the classic branch protection on main in $REPO, so a rule there that refuses a direct push was not checked. Reading it needs admin rights on $REPO."
-fi
+}
+
+# In spec mode a pull request, not a push, reaches the default branch, so its protection stops nothing the loop does.
+[ "$target" = "spec" ] || takes_direct_push "$target"
 
 # --- labels -----------------------------------------------------------------
 #

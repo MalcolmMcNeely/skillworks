@@ -867,7 +867,7 @@ OUTCOMES = ["`wrote`", "`updated`", "`kept ..., which you edited`", "`kept ..., 
 
 
 def test_the_seed_step_names_each_outcome_the_questions_and_the_review_before_commit():
-    step = setup_section("### 2. Seed the Steering")
+    step = setup_section("### 1. Seed the Steering")
 
     for outcome in OUTCOMES:
         assert "| {} |".format(outcome) in step, outcome
