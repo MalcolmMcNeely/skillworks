@@ -117,9 +117,10 @@ fails in Linux, so check out every `.sh` with LF, in `.gitattributes`:
 ## How the loop runs the Suite
 
 The Suite runs once for each ticket after the build, the reviews, the fix and the comment sweep.
-Before the ticket Lands, it rebases onto the newest `main`, and if `main` moved, the Suite runs again
-on the new base. A check whose inputs a Proof holds does not run, so that second run is usually
-short. No Session runs it. The driver runs it, reads the exit status itself, and keeps the output.
+Before the ticket Lands, it rebases onto the newest Target branch, and if the Target branch moved,
+the Suite runs again on the new base. A check whose inputs a Proof holds does not run, so that
+second run is usually short. No Session runs it. The driver runs it, reads the exit status itself,
+and keeps the output.
 
 1. **Ready first.** Every program a check that will run needs must be on `PATH`. Then the `ready`
    command of each check that will run runs, one by one, because two checks can share one install.
@@ -154,15 +155,16 @@ ends when `dotnet test`, the slowest, ends.
 
 A Proof knows only the files in the repo. A change outside the repo, such as a new SDK, can leave a
 Proof stale. So after each loop run that landed at least one ticket, the driver runs the whole Suite
-again on the newest `origin/main`, in a new worktree. It does this when the loop stopped early too,
-because the tickets that landed are on `main` all the same.
+again on the newest Target branch from `origin`, in a new worktree. It does this when the loop
+stopped early too, because the tickets that landed are on the Target branch all the same.
 
 The full run trusts no Proof and uses no image. Every check runs, on your own machine, so the code is
 proved on the OS your team uses. It keeps no Proof. A check that goes red there loses all its
 Proofs, so a stale Proof cannot skip it again.
 
 A red full run stops the loop. The report names the red checks and the tickets that landed in the
-run. The spec stays open, and no Session is asked to fix it: a red `main` is yours to decide on.
+run. The spec stays open, and no Session is asked to fix it: a red Target branch is yours to
+decide on.
 
 ## Running the Suite yourself
 
@@ -172,8 +174,8 @@ its own work adds almost nothing to the ticket. Point your agents at it, in your
 place of your raw test commands.
 
 `skillworks-suite --fresh` is the full run, by hand. It trusts no Proof, uses no image, keeps no
-Proof, and takes away the Proofs of a check that goes red. Run it when you want to prove `main`
-yourself.
+Proof, and takes away the Proofs of a check that goes red. Run it when you want to prove the Target
+branch yourself.
 
 ## A red Suite
 

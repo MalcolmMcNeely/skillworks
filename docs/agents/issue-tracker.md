@@ -74,7 +74,7 @@ These are load-bearing, and [ADR 0021](../adr/0021-the-loop-lands-each-ticket-as
 
 - **A commit names its ticket.** Put `Ticket: #<n>` in the message's trailer block — the last paragraph, held off the body by one blank line. Any other trailer, such as `Co-Authored-By`, sits beside it inside that same block with no blank line between them. Git reads the last paragraph and no earlier one, so a trailer stranded above a blank line is not a trailer.
   - **Read it back**: `git log -1 <commit> --format='%(trailers:key=Ticket,valueonly)'`. That is the whole lookup — no tracker call, no search.
-  - Never use `Closes #<n>`, `Fixes #<n>` or `Resolves #<n>`. Those close the issue the moment the commit lands on `main`, and an auto-closed issue carries no closing comment.
+  - Never use `Closes #<n>`, `Fixes #<n>` or `Resolves #<n>`. Those close the issue the moment the commit lands on the Target branch, and an auto-closed issue carries no closing comment.
 - **A ticket is closed with a comment.** `gh issue close <n> --comment "..." --reason completed`. The comment names the commit, what was done and which tests prove it. It is the richest source of intention in this repository, and skills read it back.
 
 A commit also names the Session that made it, though the loop leans on none of it. The Plugin's `PreToolUse` hook adds `Skillworks-Session: <id>` to every `git commit` Claude runs through the Bash or PowerShell tool, in the same trailer block as `Ticket:`. The id is the Session's `session.id`. A commit that more than one Session wrote, such as an amend by a second Session or a Keep of a stopped run, carries one line for each of them. A commit a person makes outside Claude carries none, and Land never asks for one.
