@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Resolve conflict
 
-The spec loop rebased your ticket onto the newest `main` and hit a conflict. You wrote one side of it.
+The spec loop rebased your ticket onto the newest Target branch and hit a conflict. You wrote one side of it.
 Resolve the conflicting files, stage them, and stop there.
 
 ## Your bias
@@ -24,7 +24,7 @@ have not read yet.
 
 The driver gathered the other side already and put it in this prompt:
 
-- the commits between this ticket's base and the newest `origin/main`
+- the commits between this ticket's base and the newest Target branch on `origin`
 - the ticket number behind each of those commits
 - each of those tickets' closing comments, which name the files touched, the tests run, and the findings
   that agent chose not to fix with its reasons

@@ -10,7 +10,7 @@ Take a spec that is already published on the tracker and run it to completion.
 
 The argument is the spec's issue number. If none was given, list the open `SPEC:` issues and ask which one.
 
-Once the spec is known, typing the command is the whole of the user's consent. Ask nothing else until the close offer in step 4.
+Once the spec is known, typing the command is the whole of the user's consent. Ask nothing else until step 4, and there only the close offer, which a spec reviewed as a pull request never gets.
 
 ## Process
 
@@ -42,11 +42,16 @@ Tell the user the log path: `.spec-loop/<spec-number>/loop.log`.
 
 When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which tickets closed.
 
-**A clean finish** takes two things together: the log reaches its `END` line, and the drift report `/skillworks:spec-drift` posted as a comment on the spec issue lists nothing Missing, Partial or Contradicts. A drift check that found gaps still exits 0, so the log alone never settles it — read the comment. Then make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.
+Each ticket Lands on its Target branch. `target-branch` in `docs/agents/loop.json` names it for every spec, or says `spec`, and then each spec names its own branch under `## Branch` and is reviewed as one pull request.
+
+**A clean finish** takes two things together: the log reaches its `END` line, and the drift report `/skillworks:spec-drift` posted as a comment on the spec issue lists nothing Missing, Partial or Contradicts. A drift check that found gaps still exits 0, so the log alone never settles it — read the comment. Then:
+
+- **With a branch name**, make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.
+- **With `spec`**, make no offer. The driver has marked the spec's pull request ready for review, and its `READY` line in the log says so. Say that a person reviews and merges it. Never merge it, and never close the spec: the pull request closes the spec when it merges, so the spec is done only when its code is on the default branch.
 
 **Anything else is an early stop.** The script stops on the first failure. Say what failed and give the log path. The close offer belongs to a clean finish alone. The failed ticket stays open, with the reason in the log and the session's stderr beside it. Its worktree stays too, so the broken state can be read; the log names the path. The fix is a human one, unless the stop names Denials, as below.
 
-Re-running the same command is a **real run**, every time. It first Keeps each leftover worktree: it commits what the worktree held, removes the worktree, and renames its branch to `spec-loop/<spec-number>/ticket-<n>-kept-<k>`, naming each branch in a `KEPT` line of the log. Then it starts the first open ticket again from `main`, with a fresh build. A Kept build stays on its branch and the rerun never reads it, so a rerun after a long build pays for that build again.
+Re-running the same command is a **real run**, every time. It first Keeps each leftover worktree: it commits what the worktree held, removes the worktree, and renames its branch to `spec-loop/<spec-number>/ticket-<n>-kept-<k>`, naming each branch in a `KEPT` line of the log. Then it starts the first open ticket again from the Target branch, with a fresh build. A Kept build stays on its branch and the rerun never reads it, so a rerun after a long build pays for that build again.
 
 **A stop that names Denials gets one rerun in bypass mode.** A Denial is a tool call Claude Code turned down because the Session had no permission for it, such as a write under `.claude/`. The `FAIL` line names each one on a `Denial:` line. When it names at least one, run, in the background:
 

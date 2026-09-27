@@ -12,17 +12,19 @@ Two arguments: the spec's issue number, then the commit the loop started from.
 
 `/skillworks:spec-drift 42 a1b2c3d`
 
-This repo commits straight to `main`, so there is no branch to diff. The base commit is the only thing that says where the work began. The loop stores it in `.spec-loop/<spec>/base.sha` and passes it in. If it was not passed, read that file. If that is missing too, stop and ask — do not guess a base.
+Every ticket Lands straight on the Target branch, and its Job branch goes when it passes, so no branch is left to diff. The base commit is the only thing that says where the work began. The loop stores it in `.spec-loop/<spec>/base.sha` and passes it in. If it was not passed, read that file. If that is missing too, stop and ask — do not guess a base.
+
+The Target branch is `target-branch` in `docs/agents/loop.json`. When that says `spec`, the spec names its own branch, under its `## Branch` heading.
 
 ## Process
 
 1. Read the spec issue in full, then every one of its sub-issues with their closing comments.
 
-2. Get the accumulated diff:
+2. Get the accumulated diff. The tickets Landed on the remote, so read `origin/<target>`, and not the branch this checkout holds:
 
    ```bash
-   git diff <base>..HEAD
-   git log --oneline <base>..HEAD
+   git diff <base>..origin/<target>
+   git log --oneline <base>..origin/<target>
    ```
 
 3. Classify every user story and implementation decision in the spec as one of:
