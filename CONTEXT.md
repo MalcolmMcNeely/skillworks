@@ -251,7 +251,7 @@ is reported beside it.
 _Avoid_: Reasoning level, thinking budget
 
 **Filter**:
-The one way every list narrows: a span of days, a Repository, a Skill and a Depth. The span is
+The one way every list narrows: a span of days, a Repository and a Skill. The span is
 counted in whole UTC days and takes both ends in. With no span, a list covers the **lookback**, the
 last seven days, and says so. The Sessions list is the one list no span narrows: it starts at now
 and reaches further back each time the reader asks for more. A Skill that never fired belongs in the unnarrowed answer, where its
@@ -366,8 +366,9 @@ back.
 How much of a Session can be read: **Full** when its Spans and its Prompts are both there, and
 **Thin** when they are not. A Prompt whose words were withheld is not there, so a Session recorded
 with the words switched off is Thin however whole its Spans. Each half is also reported on its own,
-because a figure only a Span can give still stands when the words alone are missing. It is part of
-the Filter, so a reader asks for what they can read instead of opening Sessions to find out.
+because a figure only a Span can give still stands when the words alone are missing. Each row of
+the Sessions list shows it, so a reader sees what they can read instead of opening Sessions to find
+out. It is not part of the Filter, because no store can narrow by it before the rows are read.
 _Avoid_: Fidelity, completeness, quality
 
 **Split**:
