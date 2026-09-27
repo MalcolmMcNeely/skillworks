@@ -17,9 +17,9 @@ export function widened(view: Spell, whole: Spell, least = 20_000): Spell {
 }
 
 // Counts moments or pixels alike, as a View is dragged in one, read in the other, and moved whole in both.
-export function moved(pair: [number, number], by: number, bounds: [number, number]): [number, number] {
-  const held = pair[1] - pair[0];
-  const start = clamp(pair[0] + by, bounds[0], bounds[1] - held);
+export function moved(spell: Spell, by: number, bounds: Spell): Spell {
+  const held = spell[1] - spell[0];
+  const start = clamp(spell[0] + by, bounds[0], bounds[1] - held);
 
   return [start, start + held];
 }

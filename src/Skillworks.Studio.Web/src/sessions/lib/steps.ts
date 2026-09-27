@@ -171,7 +171,7 @@ export function runSpell(marks: readonly Mark[]): Spell | null {
   );
 }
 
-export const boundsOf = (marks: readonly Mark[]): [number, number][] => marks.map((mark) => [mark.startMs, mark.endMs]);
+export const boundsOf = (marks: readonly Mark[]): Spell[] => marks.map((mark) => [mark.startMs, mark.endMs]);
 
 export type Lane = 'prompt' | 'model' | 'shell' | 'edit' | 'read' | 'tool' | 'fault';
 

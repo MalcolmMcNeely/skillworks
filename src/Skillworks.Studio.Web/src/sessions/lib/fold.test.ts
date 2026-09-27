@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { foldScale, foldsOver, ticksOf } from './fold';
+import type { Spell } from './timeline/view';
 
 const minute = 60_000;
 
@@ -8,7 +9,7 @@ const hour = 60 * minute;
 const width = 1_000;
 
 // Two short bursts of work eleven hours apart, which is the run the fold exists for.
-const longDay: [number, number][] = [
+const longDay: Spell[] = [
   [0, 5 * minute],
   [11 * hour, 11 * hour + 5 * minute],
 ];

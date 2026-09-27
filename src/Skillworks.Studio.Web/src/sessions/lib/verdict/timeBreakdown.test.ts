@@ -8,6 +8,7 @@ import {
   type PartSpell,
   type TimeBreakdownPage,
 } from './timeBreakdown';
+import type { Spell } from '../timeline/view';
 
 const at = (seconds: number) => new Date(seconds * 1_000).toISOString();
 
@@ -24,7 +25,7 @@ const page = (parts: PartSpell[], kinds: PartSpell[] = [], traced = true): TimeB
   kinds,
 });
 
-const msOf = (breakdown: TimeBreakdownPage, view: [number, number] | null = null) =>
+const msOf = (breakdown: TimeBreakdownPage, view: Spell | null = null) =>
   Object.fromEntries(
     sharesOf(breakdown, view)
       .filter((share) => share.ms > 0)

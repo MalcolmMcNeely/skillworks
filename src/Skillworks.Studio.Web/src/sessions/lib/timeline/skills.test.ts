@@ -3,6 +3,7 @@ import { marksOf, type Step } from '../steps';
 import { activationSpellsOf, type Activation } from './activations';
 import { ranByOne } from './agents';
 import { costIn, skillRowsOf } from './skills';
+import type { Spell } from './view';
 
 function step(id: string, clock: string, fields: Partial<Step> = {}): Step {
   return {
@@ -74,7 +75,7 @@ describe('skillRowsOf', () => {
       step('5', '09:03:00', { unnamed: true, cost: 0.1 }),
       step('6', '09:10:00', { skill: 'tdd', cost: 9 }),
     ]);
-    const view: [number, number] = [at('08:59:00'), at('09:05:00')];
+    const view: Spell = [at('08:59:00'), at('09:05:00')];
 
     const rows = skillRowsOf(marks, [], view);
 
@@ -176,7 +177,7 @@ describe('skillRowsOf', () => {
       step('5', '09:03:00', { unnamed: true, cost: 0.1 }),
       step('6', '09:10:00', { skill: 'tdd', cost: 9 }),
     ]);
-    const view: [number, number] = [at('08:59:00'), at('09:05:00')];
+    const view: Spell = [at('08:59:00'), at('09:05:00')];
 
     const rows = skillRowsOf(marks, [], view);
 

@@ -1,3 +1,5 @@
+import type { Spell } from './timeline/view';
+
 export interface Fold {
   x: number;
   fromMs: number;
@@ -7,7 +9,7 @@ export interface Fold {
 export interface FoldScale {
   map: (ms: number) => number;
   invert: (x: number) => number;
-  segments: readonly (readonly [number, number])[];
+  segments: readonly Spell[];
   folds: readonly Fold[];
   msPerPx: number;
 }
@@ -26,7 +28,7 @@ const leastMs = 500;
 
 // Without the fold, an eleven-hour run is a thin smear of work between long idle pauses.
 export function foldScale(
-  spells: readonly (readonly [number, number])[],
+  spells: readonly Spell[],
   x0: number,
   x1: number,
   foldMs = foldsOver,
@@ -99,13 +101,13 @@ export function foldScale(
   };
 }
 
-function joined(spells: readonly (readonly [number, number])[], foldMs: number): [number, number][] {
+function joined(spells: readonly Spell[], foldMs: number): Spell[] {
   const sorted = spells
     .filter(([from, to]) => Number.isFinite(from) && Number.isFinite(to))
-    .map(([from, to]): [number, number] => [from, Math.max(from, to)])
+    .map(([from, to]): Spell => [from, Math.max(from, to)])
     .toSorted((one, other) => one[0] - other[0]);
 
-  const segments: [number, number][] = [];
+  const segments: Spell[] = [];
 
   for (const [from, to] of sorted) {
     const last = segments.at(-1);
@@ -121,7 +123,7 @@ function joined(spells: readonly (readonly [number, number])[], foldMs: number):
   return segments.length === 0 ? [[0, leastMs]] : segments.map(([from, to]) => [from, Math.max(to, from + leastMs)]);
 }
 
-function holding(segments: readonly (readonly [number, number])[], ms: number): number {
+function holding(segments: readonly Spell[], ms: number): number {
   let low = 0;
   let high = segments.length - 1;
   let found = -1;

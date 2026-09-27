@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { namedIn, type Finding } from './findings';
 import { momentOf, mostFaults } from './moment';
 import { marksOf, type Step } from '../steps';
+import type { Spell } from '../timeline/view';
 
 const at = (clock: string) => Date.parse(`2026-09-14T${clock}.000Z`);
 
@@ -34,7 +35,7 @@ const finding: Finding = {
 
 const [named] = namedIn({ kind: 'findings', findings: [finding] });
 
-const whole: [number, number] = [at('09:00:00'), at('11:00:00')];
+const whole: Spell = [at('09:00:00'), at('11:00:00')];
 
 describe('momentOf', () => {
   it('pads the moment a finding happened in, so its steps never sit flush against the edge', () => {
