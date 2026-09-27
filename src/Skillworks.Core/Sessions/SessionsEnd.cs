@@ -3,5 +3,5 @@ using Skillworks.Core.Shared.Gaps;
 
 namespace Skillworks.Core.Sessions;
 
-// The place of the oldest row read, so the next read starts where this one stopped.
-public sealed record SessionsEnd(Gap Gap, DateTimeOffset? NextBeforeUtc) : AnswerEnd;
+// The next read starts at the oldest row's place, or at the date a quiet 30 days reached, as a quiet month is not the store's start.
+public sealed record SessionsEnd(Gap Gap, DateTimeOffset? NextBeforeUtc, DateTimeOffset? QuietSinceUtc) : AnswerEnd;

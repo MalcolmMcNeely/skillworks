@@ -10,7 +10,8 @@ public sealed record SessionsAnswer(
     IReadOnlyList<SessionRow> Sessions,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, decimal>> Measures,
     GapRow Gap,
-    DateTimeOffset? NextBeforeUtc)
+    DateTimeOffset? NextBeforeUtc,
+    DateTimeOffset? QuietSinceUtc)
 {
     // Read on their own as well, so a test that stops before the end line still sees the rows.
     public static IReadOnlyList<SessionRow> RowsIn(IReadOnlyList<JsonObject> lines) =>
@@ -35,7 +36,8 @@ public sealed record SessionsAnswer(
                     line => StudioHost.Read<IReadOnlyDictionary<string, decimal>>(line["values"]),
                     StringComparer.Ordinal),
             StudioHost.Read<GapRow>(end["gap"]),
-            end["nextBeforeUtc"]?.GetValue<DateTimeOffset>());
+            end["nextBeforeUtc"]?.GetValue<DateTimeOffset>(),
+            end["quietSinceUtc"]?.GetValue<DateTimeOffset>());
     }
 
     public decimal Measured(string measure, string id) => Measures[measure].GetValueOrDefault(id);

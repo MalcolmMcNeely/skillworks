@@ -52,7 +52,7 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
             Missed(read.Rows.Count > 0 ? fellShort : []),
             gaps.InDepths(read.Traced));
 
-        yield return new SessionsEnd(gap, read.NextBeforeUtc);
+        yield return new SessionsEnd(gap, read.NextBeforeUtc, read.QuietSinceUtc);
     }
 
     // They land in no order of their own, so the sentence would name them differently run to run.

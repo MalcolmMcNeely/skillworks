@@ -22,9 +22,15 @@ public static class SessionRequests
         (await studio.SessionAnswer(filter)).Sessions;
 
     public static Task<SessionsAnswer> LaterSessionAnswer(this StudioHost studio, SessionsAnswer earlier) =>
+        studio.SessionAnswerBefore(earlier, earlier.NextBeforeUtc!.Value);
+
+    public static Task<SessionsAnswer> FurtherBackSessionAnswer(this StudioHost studio, SessionsAnswer earlier) =>
+        studio.SessionAnswerBefore(earlier, earlier.QuietSinceUtc!.Value);
+
+    private static Task<SessionsAnswer> SessionAnswerBefore(this StudioHost studio, SessionsAnswer earlier, DateTimeOffset before) =>
         studio.SessionAnswer(
             $"?asOf={Uri.EscapeDataString(earlier.Head.AsOfUtc.ToString("O", CultureInfo.InvariantCulture))}" +
-            $"&before={Uri.EscapeDataString(earlier.NextBeforeUtc!.Value.ToString("O", CultureInfo.InvariantCulture))}");
+            $"&before={Uri.EscapeDataString(before.ToString("O", CultureInfo.InvariantCulture))}");
 
     public static Task<HttpResponseMessage> AskForSessions(this StudioHost studio, string filter) =>
         studio.Client.GetAsync($"/api/sessions{filter}");

@@ -4,16 +4,19 @@ import type { Filter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { nowhere, sessionAddress } from '../../shared/session/lib/where';
 import {
+  describeQuiet,
   describeRunLength,
   describeStarted,
   laterShortfall,
   loadMore,
+  lookFurtherBack,
   measureWords,
   noRepository,
   notKnown,
   rowParams,
   sessionHeadings,
   type DrawnSession,
+  type ReadOnState,
   type Measured,
   type SessionsAnswer,
 } from '../lib/sessions';
@@ -51,22 +54,34 @@ function Row({ row, filter }: { row: DrawnSession; filter: Filter }) {
   );
 }
 
-function More({ answer, onLoadMore }: { answer: SessionsAnswer; onLoadMore: () => void }) {
-  const state = loadMore(answer);
-  const shortfall = laterShortfall(answer);
+function ReadOn({ state, label, onPress }: { state: ReadOnState; label: string; onPress: () => void }) {
+  if (state === 'hidden') {
+    return null;
+  }
 
-  if (state === 'hidden' && shortfall === null) {
+  return (
+    <button type="button" aria-busy={state === 'arriving'} disabled={state === 'arriving'} onClick={onPress}>
+      {state === 'arriving' ? 'Reading…' : label}
+    </button>
+  );
+}
+
+function More({ answer, onReadOn }: { answer: SessionsAnswer; onReadOn: () => void }) {
+  const more = loadMore(answer);
+  const further = lookFurtherBack(answer);
+  const shortfall = laterShortfall(answer);
+  const quiet = describeQuiet(answer);
+
+  if (more === 'hidden' && further === 'hidden' && shortfall === null) {
     return null;
   }
 
   return (
     <footer className="sessions-more">
       {shortfall === null ? null : <SignalWord gap={shortfall} failure={null} />}
-      {state === 'hidden' ? null : (
-        <button type="button" aria-busy={state === 'arriving'} disabled={state === 'arriving'} onClick={onLoadMore}>
-          {state === 'arriving' ? 'Reading…' : 'Load more'}
-        </button>
-      )}
+      {quiet === null ? null : <p className="session-word">{quiet}</p>}
+      <ReadOn state={more} label="Load more" onPress={onReadOn} />
+      <ReadOn state={further} label="Look further back" onPress={onReadOn} />
     </footer>
   );
 }
@@ -77,13 +92,13 @@ export function SessionTable({
   failure,
   noRuns,
   filter,
-  onLoadMore,
+  onReadOn,
 }: {
   answer: SessionsAnswer | null;
   failure: string | null;
   noRuns: string;
   filter: Filter;
-  onLoadMore: () => void;
+  onReadOn: () => void;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;
@@ -93,8 +108,14 @@ export function SessionTable({
     return <p className="session-word">Reading the runs…</p>;
   }
 
+  // A quiet month is not the start of the store, so an empty list still offers to look further back.
   if (answer.rows.length === 0) {
-    return <p className="session-word">{noRuns}</p>;
+    return (
+      <>
+        <p className="session-word">{noRuns}</p>
+        <More answer={answer} onReadOn={onReadOn} />
+      </>
+    );
   }
 
   return (
@@ -116,7 +137,7 @@ export function SessionTable({
           ))}
         </tbody>
       </table>
-      <More answer={answer} onLoadMore={onLoadMore} />
+      <More answer={answer} onReadOn={onReadOn} />
     </>
   );
 }

@@ -17,7 +17,8 @@ import {
   failSessionsRead,
   foldSessionsLine,
   listFilter,
-  loadMore,
+  nextPlace,
+  readOn,
   type SessionsAnswer,
 } from '../lib/sessions';
 
@@ -52,8 +53,7 @@ export function Sessions() {
 
     inFlight.current = abort;
 
-    const place =
-      from === null || from.nextBeforeUtc === null ? null : { asOfUtc: from.asOfUtc, beforeUtc: from.nextBeforeUtc };
+    const place = from === null ? null : nextPlace(from);
 
     const lines = async () => {
       // Read back out of the text, so the read depends only on what it is keyed on.
@@ -125,8 +125,8 @@ export function Sessions() {
         failure={failure}
         noRuns={describeNoSessions(filter)}
         filter={filter}
-        onLoadMore={() => {
-          if (answer !== null && loadMore(answer) === 'ready') {
+        onReadOn={() => {
+          if (answer !== null && readOn(answer) === 'ready') {
             read(asked, answer);
           }
         }}

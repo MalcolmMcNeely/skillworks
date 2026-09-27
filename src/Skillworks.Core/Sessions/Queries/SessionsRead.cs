@@ -10,9 +10,11 @@ public sealed record SessionsRead(
     IAsyncEnumerable<MeasureLanding> Measures,
     // Every Prompt line read, before any Filter, so an empty list tells a quiet month from a narrowed one.
     long Prompts,
+    // At most one of the two, as a read either stopped at a place or ran out of Prompts at the end of its 30 days.
     DateTimeOffset? NextBeforeUtc,
+    DateTimeOffset? QuietSinceUtc,
     TracedSessions Traced)
 {
     public static SessionsRead Failed(string unreachable, long prompts) =>
-        new(unreachable, [], AsyncEnumerable.Empty<MeasureLanding>(), prompts, null, TracedSessions.Unasked);
+        new(unreachable, [], AsyncEnumerable.Empty<MeasureLanding>(), prompts, null, null, TracedSessions.Unasked);
 }

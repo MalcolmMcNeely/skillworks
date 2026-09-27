@@ -58,7 +58,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(["kind", "measure", "values"], StudioHost.Fields(measure));
 
-        Assert.Equal(["gap", "kind", "nextBeforeUtc"], StudioHost.Fields(end));
+        Assert.Equal(["gap", "kind", "nextBeforeUtc", "quietSinceUtc"], StudioHost.Fields(end));
     }
 
     [Fact]

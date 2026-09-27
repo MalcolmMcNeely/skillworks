@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { everything } from '../../shared/filters/lib/filters';
 import {
   describeNoSessions,
+  describeQuiet,
   describeRunLength,
   describeStarted,
   failSessionsRead,
@@ -9,16 +10,20 @@ import {
   laterShortfall,
   listFilter,
   loadMore,
+  lookFurtherBack,
   measureSymbols,
   measureWords,
+  nextPlace,
   noRepository,
   notKnown,
+  readOn,
   rowParams,
   sessionHeadings,
   type MeasureName,
   type SessionRow,
   type SessionsAnswer,
   type SessionsHead,
+  type SessionsLine,
 } from './sessions';
 
 const head: SessionsHead = { kind: 'head', asOfUtc: '2026-09-15T12:00:00+00:00' };
@@ -46,6 +51,10 @@ function withRows(...sessions: SessionRow[]): SessionsAnswer {
   return foldSessionsLine(foldSessionsLine(null, head), { kind: 'sessions', sessions });
 }
 
+function endOn(place: string | null): SessionsLine {
+  return { kind: 'end', gap: complete, nextBeforeUtc: place, quietSinceUtc: null };
+}
+
 function cell(answer: SessionsAnswer, measure: MeasureName, id: string = run.id) {
   return answer.rows.find((row) => row.session.id === id)?.measures[measure];
 }
@@ -68,6 +77,7 @@ describe('foldSessionsLine', () => {
       arriving: true,
       gap: null,
       nextBeforeUtc: null,
+      quietSinceUtc: null,
       held: 0,
     });
   });
@@ -92,7 +102,7 @@ describe('foldSessionsLine', () => {
   });
 
   it('ends the answer and keeps its gap, so a screen knows the rows are all there are', () => {
-    const answer = foldSessionsLine(withRows(run), { kind: 'end', gap: complete, nextBeforeUtc: nextBefore });
+    const answer = foldSessionsLine(withRows(run), endOn(nextBefore));
 
     expect(answer.arriving).toBe(false);
     expect(answer.gap).toEqual(complete);
@@ -100,7 +110,7 @@ describe('foldSessionsLine', () => {
   });
 
   it('keeps the place of the oldest row the end names, so the next read can start where this one stopped', () => {
-    const answer = foldSessionsLine(withRows(run), { kind: 'end', gap: complete, nextBeforeUtc: nextBefore });
+    const answer = foldSessionsLine(withRows(run), endOn(nextBefore));
 
     expect(answer.nextBeforeUtc).toBe(nextBefore);
   });
@@ -115,7 +125,7 @@ describe('foldSessionsLine', () => {
     const measured = withMeasures(drawn, 'cost');
 
     expect([opened.arriving, drawn.arriving, measured.arriving]).toEqual([true, true, true]);
-    expect(foldSessionsLine(measured, { kind: 'end', gap: complete, nextBeforeUtc: null }).arriving).toBe(false);
+    expect(foldSessionsLine(measured, endOn(null)).arriving).toBe(false);
   });
 
   it('refuses a line before the head, as a row with no as-of instant cannot be placed', () => {
@@ -166,6 +176,7 @@ describe('the Measures on a folded answer', () => {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
       nextBeforeUtc: nextBefore,
+      quietSinceUtc: null,
     });
 
     expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
@@ -178,6 +189,7 @@ describe('the Measures on a folded answer', () => {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
       nextBeforeUtc: nextBefore,
+      quietSinceUtc: null,
     });
 
     expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 0 });
@@ -189,7 +201,7 @@ describe('a later read folded into the rows held', () => {
   const unreachable = { kind: 'unreachable', missing: 'The events store answered 503.' } as const;
 
   function ended(answer: SessionsAnswer, place: string | null = nextBefore): SessionsAnswer {
-    return foldSessionsLine(answer, { kind: 'end', gap: complete, nextBeforeUtc: place });
+    return foldSessionsLine(answer, endOn(place));
   }
 
   function later(answer: SessionsAnswer): SessionsAnswer {
@@ -230,6 +242,7 @@ describe('a later read folded into the rows held', () => {
       kind: 'end',
       gap: unreachable,
       nextBeforeUtc: null,
+      quietSinceUtc: null,
     });
 
     expect(failed.rows.map((row) => row.session)).toEqual([run]);
@@ -240,7 +253,7 @@ describe('a later read folded into the rows held', () => {
   });
 
   it('puts no shortfall under the rows for a first read, as the head already names it', () => {
-    const failed = foldSessionsLine(withRows(run), { kind: 'end', gap: unreachable, nextBeforeUtc: nextBefore });
+    const failed = foldSessionsLine(withRows(run), { kind: 'end', gap: unreachable, nextBeforeUtc: nextBefore, quietSinceUtc: null });
 
     expect(laterShortfall(failed)).toBeNull();
   });
@@ -259,9 +272,7 @@ describe('a later read folded into the rows held', () => {
 
 describe('loadMore', () => {
   it('offers the button once a read has ended on a place', () => {
-    expect(loadMore(foldSessionsLine(withRows(run), { kind: 'end', gap: complete, nextBeforeUtc: nextBefore }))).toBe(
-      'ready',
-    );
+    expect(loadMore(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBe('ready');
   });
 
   it('hides the button while the first read is in flight, as no place is known yet', () => {
@@ -269,9 +280,100 @@ describe('loadMore', () => {
   });
 
   it('hides the button when the read ended on no place', () => {
-    expect(loadMore(foldSessionsLine(withRows(run), { kind: 'end', gap: complete, nextBeforeUtc: null }))).toBe(
-      'hidden',
-    );
+    expect(loadMore(foldSessionsLine(withRows(run), endOn(null)))).toBe('hidden');
+  });
+});
+
+describe('a read that ends on a quiet 30 days', () => {
+  const quietSince = '2026-08-16T12:00:00+00:00';
+
+  function quiet(answer: SessionsAnswer): SessionsAnswer {
+    return foldSessionsLine(answer, { kind: 'end', gap: complete, nextBeforeUtc: null, quietSinceUtc: quietSince });
+  }
+
+  it('keeps the quiet date the end names', () => {
+    expect(quiet(withRows(run)).quietSinceUtc).toBe(quietSince);
+  });
+
+  it('says there are no older Prompts back to that date, never that the store holds no more', () => {
+    expect(describeQuiet(quiet(withRows(run)))).toBe('No older Prompts back to 2026-08-16.');
+  });
+
+  it('says nothing about a quiet period while the read ended on a place', () => {
+    expect(describeQuiet(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBeNull();
+  });
+
+  it('hides Load more and offers Look further back after a quiet end', () => {
+    const answer = quiet(withRows(run));
+
+    expect(loadMore(answer)).toBe('hidden');
+    expect(lookFurtherBack(answer)).toBe('ready');
+  });
+
+  it('offers no Look further back while the read ended on a place', () => {
+    expect(lookFurtherBack(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBe('hidden');
+  });
+
+  it('starts the further read from the quiet date, on the same as-of instant', () => {
+    expect(nextPlace(quiet(withRows(run)))).toEqual({ asOfUtc: head.asOfUtc, beforeUtc: quietSince });
+  });
+
+  it('lets either button read on once the read has ended, and neither while it is in flight', () => {
+    expect(readOn(quiet(withRows(run)))).toBe('ready');
+    expect(readOn(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBe('ready');
+    expect(readOn(foldSessionsLine(quiet(withRows(run)), head))).toBe('arriving');
+    expect(readOn(withRows(run))).toBe('hidden');
+  });
+
+  it('starts a later read from the place of the oldest row', () => {
+    expect(nextPlace(foldSessionsLine(withRows(run), endOn(nextBefore)))).toEqual({
+      asOfUtc: head.asOfUtc,
+      beforeUtc: nextBefore,
+    });
+  });
+
+  it('holds the quiet date and shows the button busy while the further read is in flight', () => {
+    const answer = foldSessionsLine(quiet(withRows(run)), head);
+
+    expect(lookFurtherBack(answer)).toBe('arriving');
+    expect(describeQuiet(answer)).toBeNull();
+  });
+
+  it('keeps the quiet date and the button when the further read ends on a store that did not answer', () => {
+    const failed = foldSessionsLine(foldSessionsLine(quiet(withRows(run)), head), {
+      kind: 'end',
+      gap: { kind: 'unreachable', missing: 'The events store answered 503.' },
+      nextBeforeUtc: null,
+      quietSinceUtc: null,
+    });
+
+    expect(failed.quietSinceUtc).toBe(quietSince);
+    expect(lookFurtherBack(failed)).toBe('ready');
+    expect(loadMore(failed)).toBe('hidden');
+  });
+
+  it('takes the place a further read ended on, and drops the quiet date it started from', () => {
+    const further = foldSessionsLine(foldSessionsLine(quiet(withRows(run)), head), {
+      kind: 'sessions',
+      sessions: [other],
+    });
+    const answer = foldSessionsLine(further, endOn('2026-08-10T08:00:00+00:00'));
+
+    expect(answer.rows.map((row) => row.session.id)).toEqual([run.id, other.id]);
+    expect(loadMore(answer)).toBe('ready');
+    expect(lookFurtherBack(answer)).toBe('hidden');
+  });
+
+  it('offers Look further back when the end also carries a Gap that is not the read failing', () => {
+    const answer = foldSessionsLine(withRows(run), {
+      kind: 'end',
+      gap: { kind: 'unreachable', missing: 'Tool calls' },
+      nextBeforeUtc: null,
+      quietSinceUtc: quietSince,
+    });
+
+    expect(lookFurtherBack(answer)).toBe('ready');
+    expect(loadMore(answer)).toBe('hidden');
   });
 });
 

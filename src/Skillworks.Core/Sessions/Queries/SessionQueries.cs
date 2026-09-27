@@ -54,7 +54,11 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         Filter filter,
         CancellationToken cancellationToken)
     {
-        var heard = await HeardAsync(asOf, before, cancellationToken);
+        var start = before ?? asOf;
+        var heard = await HeardAsync(start, asOf, before, cancellationToken);
+
+        // Only a read that ran out of Prompts saw the rest of its 30 days quiet, as one that stopped at fifty never looked.
+        var quietSince = heard.ReadToItsEnd ? start - Reach : (DateTimeOffset?)null;
 
         if (heard.Unreachable is { } unheard)
         {
@@ -69,6 +73,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
                 AsyncEnumerable.Empty<MeasureLanding>(),
                 heard.Prompts,
                 null,
+                quietSince,
                 TracedSessions.Unasked);
         }
 
@@ -84,14 +89,20 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
 
         var present = Keyed(standing.Groups, EventAttributes.Session);
 
-        Work[] works =
+        Work[] unfolded =
         [
             .. heard.Works
                 .SelectMany(work => work.NamedAsParent && !work.Spoke && !present.Contains(work.Id) ? work.Unfolded() : [work])
                 .OrderByDescending(work => work.Place)
-                .ThenBy(work => work.Id, StringComparer.Ordinal)
-                .Take(RowsPerRead),
+                .ThenBy(work => work.Id, StringComparer.Ordinal),
         ];
+        Work[] works = [.. unfolded.Take(RowsPerRead)];
+
+        // Children left past the fifty sit between the place and the quiet date, so the next read starts from the place.
+        if (unfolded.Length > works.Length)
+        {
+            quietSince = null;
+        }
 
         string[] ids = [.. works.Select(work => work.Id)];
         var own = window with { Sessions = ids };
@@ -147,12 +158,17 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
             rows,
             LandingAsync(measuring.Values, rows, cancellationToken),
             heard.Prompts,
-            works[^1].Place,
+            quietSince is null ? works[^1].Place : null,
+            quietSince,
             traced);
     }
 
     // Newest first, until fifty pieces of work are held, so a busy week costs no more to read than a quiet one.
-    private async Task<Heard> HeardAsync(DateTimeOffset asOf, DateTimeOffset? before, CancellationToken cancellationToken)
+    private async Task<Heard> HeardAsync(
+        DateTimeOffset start,
+        DateTimeOffset asOf,
+        DateTimeOffset? before,
+        CancellationToken cancellationToken)
     {
         var works = new Dictionary<string, Work>(StringComparer.Ordinal);
         var placed = new List<Work>();
@@ -161,7 +177,6 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         var withheld = new HashSet<string>(StringComparer.Ordinal);
         long prompts = 0;
 
-        var start = before ?? asOf;
         var newest = events.NewestFirstAsync(new EventQuery(PromptEvent, start - Reach, start), cancellationToken);
 
         // Asked of the work heard since the last time, so a later read costs no more however far down the list it is.
@@ -196,7 +211,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
         {
             if (page.Unreachable is { } unreachable)
             {
-                return new Heard(unreachable, prompts, [], withheld);
+                return new Heard(unreachable, prompts, [], withheld, ReadToItsEnd: false);
             }
 
             foreach (var line in page.Lines)
@@ -223,12 +238,12 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
                     {
                         if (await SetAsideDrawnAsync() is { } unchecking)
                         {
-                            return new Heard(unchecking, prompts, [], withheld);
+                            return new Heard(unchecking, prompts, [], withheld, ReadToItsEnd: false);
                         }
 
                         if (works.Count == RowsPerRead)
                         {
-                            return new Heard(null, prompts, placed, withheld);
+                            return new Heard(null, prompts, placed, withheld, ReadToItsEnd: false);
                         }
                     }
 
@@ -249,10 +264,10 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
 
         if (await SetAsideDrawnAsync() is { } unsure)
         {
-            return new Heard(unsure, prompts, [], withheld);
+            return new Heard(unsure, prompts, [], withheld, ReadToItsEnd: false);
         }
 
-        return new Heard(null, prompts, placed, withheld);
+        return new Heard(null, prompts, placed, withheld, ReadToItsEnd: true);
     }
 
     // Work with a Prompt from the place up to the as-of instant sat higher in an earlier read, so it was drawn there.
@@ -409,7 +424,12 @@ public sealed partial class SessionQueries(EventsStoreReader events, DepthQuerie
     private static EventQuery Activations(EventQuery events, Filter filter) =>
         events with { EventName = ActivationEvent, Skill = filter.Skill };
 
-    private sealed record Heard(string? Unreachable, long Prompts, IReadOnlyList<Work> Works, IReadOnlySet<string> Withheld);
+    private sealed record Heard(
+        string? Unreachable,
+        long Prompts,
+        IReadOnlyList<Work> Works,
+        IReadOnlySet<string> Withheld,
+        bool ReadToItsEnd);
 
     // One short of these is no answer, as a run missing its name or its length would read as a lie.
     private sealed record Gate(

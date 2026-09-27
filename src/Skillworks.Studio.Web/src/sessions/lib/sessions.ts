@@ -82,9 +82,12 @@ export interface SessionsMeasure {
   values: Record<string, number>;
 }
 
+// At most one of the two: a read either stopped at a place or ran out of Prompts at the end of its 30 days.
 export interface SessionsEnd extends GapEnd {
   // The place of the oldest row read, so the next read starts where this one stopped.
   nextBeforeUtc: string | null;
+  // How far back a quiet 30 days reached, so a quiet month is never read as the start of the store.
+  quietSinceUtc: string | null;
 }
 
 export type SessionsLine = SessionsHead | SessionsPage | SessionsMeasure | SessionsEnd;
@@ -99,6 +102,7 @@ export interface SessionsAnswer {
   gap: Gap | null;
   // While a later read is in flight, the place it started from, so a read that fails can be asked again.
   nextBeforeUtc: string | null;
+  quietSinceUtc: string | null;
   held: number;
 }
 
@@ -107,7 +111,7 @@ export interface SessionsPlace {
   beforeUtc: string;
 }
 
-export type LoadMore = 'hidden' | 'ready' | 'arriving';
+export type ReadOnState = 'hidden' | 'ready' | 'arriving';
 
 const arriving: Measured = { state: 'arriving' };
 
@@ -130,6 +134,7 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
           arriving: true,
           gap: null,
           nextBeforeUtc: null,
+          quietSinceUtc: null,
           held: 0,
         }
       : { ...answer, asOfUtc: line.asOfUtc, arriving: true, gap: null, held: answer.rows.length };
@@ -152,9 +157,10 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
   }
 
   // A store that did not answer brought no place, so the one the read started from stays for the next click.
-  const nextBeforeUtc = line.nextBeforeUtc ?? (line.gap.kind === 'unreachable' ? answer.nextBeforeUtc : null);
+  const ended = line.nextBeforeUtc !== null || line.quietSinceUtc !== null || line.gap.kind !== 'unreachable';
+  const { nextBeforeUtc, quietSinceUtc } = ended ? line : answer;
 
-  return { ...answer, arriving: false, gap: line.gap, nextBeforeUtc, rows: inRead(answer, settled) };
+  return { ...answer, arriving: false, gap: line.gap, nextBeforeUtc, quietSinceUtc, rows: inRead(answer, settled) };
 }
 
 export function failSessionsRead(answer: SessionsAnswer, reason: string): SessionsAnswer {
@@ -162,12 +168,37 @@ export function failSessionsRead(answer: SessionsAnswer, reason: string): Sessio
 }
 
 // Only a finished read names where the next one starts, so the button waits for it.
-export function loadMore(answer: SessionsAnswer): LoadMore {
-  if (answer.nextBeforeUtc === null) {
+export function loadMore(answer: SessionsAnswer): ReadOnState {
+  return offered(answer, answer.nextBeforeUtc);
+}
+
+export function lookFurtherBack(answer: SessionsAnswer): ReadOnState {
+  return offered(answer, answer.quietSinceUtc);
+}
+
+export function readOn(answer: SessionsAnswer): ReadOnState {
+  return offered(answer, answer.nextBeforeUtc ?? answer.quietSinceUtc);
+}
+
+function offered(answer: SessionsAnswer, from: string | null): ReadOnState {
+  if (from === null) {
     return 'hidden';
   }
 
   return answer.arriving ? 'arriving' : 'ready';
+}
+
+export function nextPlace(answer: SessionsAnswer): SessionsPlace | null {
+  const beforeUtc = answer.nextBeforeUtc ?? answer.quietSinceUtc;
+
+  return beforeUtc === null ? null : { asOfUtc: answer.asOfUtc, beforeUtc };
+}
+
+// Said only once the read has ended, as a further read in flight may yet find work past the date.
+export function describeQuiet(answer: SessionsAnswer): string | null {
+  return answer.arriving || answer.quietSinceUtc === null
+    ? null
+    : `No older Prompts back to ${answer.quietSinceUtc.slice(0, 10)}.`;
 }
 
 // Only a later read's shortfall goes under the rows, as the first read's already stands in the head.
