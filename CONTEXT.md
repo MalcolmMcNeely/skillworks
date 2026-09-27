@@ -333,9 +333,14 @@ A Tool call a person refused, or one a hook blocked. Somebody chose it, so it is
 Faults and never added to them.
 _Avoid_: Block, rejection, denial
 
+**Verdict**:
+Everything above a Session's timeline: its Headlines, its Findings, its Time breakdown and its Cost
+breakdown. It reads the whole run and never the View, because it says how the Session went.
+_Avoid_: Summary, overview, report
+
 **Headline**:
-One figure in the row at the top of a Session: its length, Cost, Tool calls, Faults, peak context or
-Findings. A Headline reads the whole run, and turns red when it is worth a person's attention.
+One figure in the row that opens the Verdict: a Session's length, Cost, Tool calls, Faults, peak
+context or Findings. It turns red when it is worth a person's attention.
 _Avoid_: Tile, stat, KPI, card
 
 **Finding**:
@@ -409,8 +414,8 @@ _Avoid_: Stint, stretch, interval, segment, block
 **View**:
 The part of a run a reader dragged over on the timeline. Every panel beneath the timeline reads the
 View alone, so its figures answer the question the reader asked and no other. With no View, every
-panel reads the whole run. The figures above the timeline always read the whole run, because they
-are the verdict on the Session and hold still while a reader digs in. A reader meets it as **in view** and never by name, so nobody has to learn a word to read a
+panel reads the whole run. The Verdict above the timeline always reads the whole run, so it holds
+still while a reader digs in. A reader meets it as **in view** and never by name, so nobody has to learn a word to read a
 figure.
 _Avoid_: Brush, stretch, range, selection, window
 
