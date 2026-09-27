@@ -27,6 +27,13 @@ Denial is final. Many Denials are worked around. One that stops a step is the ca
 loop again in bypass mode.
 _Avoid_: Refusal, wall, block
 
+**Drift check**:
+The judge that reads a spec's whole diff against the spec once every ticket has Landed, and gives
+each story, decision and Surface a Verdict. It judges against the spec and not the tickets, because a
+ticket that drifted still passed its own criteria. It fixes nothing: the loop builds the Gaps it
+finds.
+_Avoid_: Audit, acceptance check, final review
+
 **Dumb zone**:
 The part of a context window past the Smart zone. A model there does not fail loudly. It leaves out
 an instruction, a constraint or the middle of what it read, and still sounds sure, so the error is
