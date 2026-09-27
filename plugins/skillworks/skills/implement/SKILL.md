@@ -20,15 +20,15 @@ The order is the spec loop's own, so the developer at the keyboard and the drive
 
 ## Before you start
 
-If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why.
+If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why. `tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to read each one. With the files Tracker a ticket comes as `<spec>/<ticket>`, such as `7/2`, because its number is local to its spec.
 
-**Refuse a blocked ticket.** A ticket with an open blocker is not ready:
+**Refuse a blocked ticket.** A ticket with an open blocker is not ready. With the GitHub Tracker, ask:
 
 ```bash
 gh api "repos/$REPO/issues/$N" --jq '.issue_dependencies_summary.blocked_by'
 ```
 
-Anything but `0` means stop, name the open blockers, and do nothing else.
+Anything but `0` means stop, name the open blockers, and do nothing else. With the files Tracker, a ticket is blocked while any ticket in its `blocked-by` is open on the remote's Target branch.
 
 ## Test runs
 
@@ -42,7 +42,7 @@ One refused write blocks one line of the ticket and nothing else. Do every other
 
 1. **Commit the verified work**, with the ticket named in the message as Finishing says. Under `--stop-after-tests` the change stays uncommitted, as that flag already says.
 2. **Leave the ticket open.** Work that is not done is not closed, and the driver reads the open ticket as the stop.
-3. **Write the wall on the ticket.** Comment with the exact path, the exact change you could not write, and that the write was refused as a sensitive file. A developer has to be able to make that change from the comment alone, without opening anything else.
+3. **Write the wall on the ticket.** Comment with the exact path, the exact change you could not write, and that the write was refused as a sensitive file. A developer has to be able to make that change from the comment alone, without opening anything else. With the files Tracker, write it at the end of the ticket file under `## Blocked`, in the commit, and leave its `status` open.
 
 Say the same in your report, so it reaches the driver's log as well.
 
@@ -101,7 +101,8 @@ Run no review of your own, and fix no finding here. Under the spec loop the thre
 Run no tests here either. One step owns that gate: under the spec loop the driver ran the whole suite and put the passing output in this prompt, and under a hand run the section above has just run it. A result reported here would be one nobody else saw.
 
 1. **Read the passing suite output you were handed.** The checks that ran are what proved the work, and the closing comment names them. A check that did not run has a line of its own in that output, saying it did not run and naming the Proof that holds its inputs: an earlier pass on the same files. The closing comment names each such check and its Proof beside the ones that passed, so a reader sees what this run proved and what an earlier one did. Where no line says a check did not run, every check ran, and the closing comment says nothing about checks that did not run.
-2. **Commit to the branch you are on.** Under the spec loop that is the Job branch, and the ticket Lands on its Target branch later. Under a hand run it is the Target branch, which `target-branch` in `docs/agents/loop.json` names; when that says `spec`, it is the branch the spec names under `## Branch`. Do NOT push. A spec loop pushes the ticket itself, by a step of its own that runs after this one, so the push is checked rather than taken on trust.
-   - **Name the ticket in the message.** See "Two conventions the loop leans on" in `docs/agents/issue-tracker.md` for the form, and for why it is not a closing word.
-3. **Leave the working tree clean.** A caller may be driving you in a loop and will stop if it is not.
-4. **Close the ticket** with a comment saying what was done, which tests prove it, which checks did not run, and any finding left unfixed with the reason.
+2. **With the files Tracker, close the ticket now**, before the commit. Set `status: closed` in the ticket file and add its `## Closing note`, as "The files Tracker" in `docs/agents/issue-tracker.md` says. The note holds what step 5 puts in a closing comment. The close then sits in the same commit as the code, so it reaches the remote only when the ticket Lands.
+3. **Commit to the branch you are on.** Under the spec loop that is the Job branch, and the ticket Lands on its Target branch later. Under a hand run it is the Target branch, which `target-branch` in `docs/agents/loop.json` names; when that says `spec`, it is the branch the spec names, under `## Branch` on GitHub or as `branch` in `spec.md` with the files Tracker. Do NOT push. A spec loop pushes the ticket itself, by a step of its own that runs after this one, so the push is checked rather than taken on trust.
+   - **Name the ticket in the message.** See "Two conventions the loop leans on" in `docs/agents/issue-tracker.md` for the form, and for why it is not a closing word. With the files Tracker the trailer names the spec and the ticket, as `Ticket: 7/2`.
+4. **Leave the working tree clean.** A caller may be driving you in a loop and will stop if it is not.
+5. **With the GitHub Tracker, close the ticket** with a comment saying what was done, which tests prove it, which checks did not run, and any finding left unfixed with the reason. With the files Tracker, step 2 has closed it already.

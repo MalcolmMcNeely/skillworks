@@ -225,10 +225,9 @@ class Landing:
                 "pushed. The suite said:\n{}".format(self.ticket, outcome.said))
 
     # Read from the message, so a commit reaches its ticket with no tracker call.
-    def ticket_of(self, commit):
+    def trailer_of(self, commit):
         said = self.git("log", "-1", commit, "--format=%(trailers:key=Ticket,valueonly)").out
-        named = "".join(c for c in said.split("\n")[0] if not c.isspace())
-        return named[1:] if named.startswith("#") else named
+        return "".join(c for c in said.split("\n")[0] if not c.isspace())
 
     # A worktree is cut from its Target branch, so the fork point is where its own commits begin.
     def ticket_commits(self):
@@ -239,13 +238,13 @@ class Landing:
         return listed(self.read("has commits git would not list against its base",
                                 "log", "--reverse", "--format=%h", base.out.strip() + "..HEAD"))
 
-    # The last comment is how a ticket was closed, and a tracker that will not answer says so.
-    def closing_comment(self, ticket):
-        body = self.tracker.last_comment(ticket)
+    # A tracker that will not answer says so, so the session is not left guessing.
+    def closing_comment(self, trailer):
+        body = self.tracker.closing_note(trailer)
         if body is None:
-            return ("(The tracker would not answer for #{}, so its closing comment is "
-                    "missing.)".format(ticket))
-        return body if body else "(#{} was closed with no comment.)".format(ticket)
+            return ("(The tracker would not answer for {}, so its closing comment is "
+                    "missing.)".format(trailer))
+        return body if body else "({} was closed with no comment.)".format(trailer)
 
     # The session may only refuse for want of a ticket once it has had them all.
     def other_side(self, base):
@@ -255,12 +254,12 @@ class Landing:
         said = ""
         for line in listed(commits.out):
             sha, _, subject = line.partition(" ")
-            ticket = self.ticket_of(sha)
+            ticket = self.trailer_of(sha)
             if not ticket:
                 said += ("### {} {}\n\nThis commit names no ticket. Read it with: "
                          "git show {}\n\n").format(sha, subject, sha)
                 continue
-            said += "### {} {}, from ticket #{}\n\nHow #{} was closed:\n\n{}\n\n".format(
+            said += "### {} {}, from ticket {}\n\nHow {} was closed:\n\n{}\n\n".format(
                 sha, subject, ticket, ticket, self.closing_comment(ticket))
         return said
 
@@ -437,15 +436,16 @@ class Landing:
                 self.ticket, self.worktree))
 
         # A commit with no trailer can never be traced back, and a ticket can make more than one.
+        mine = self.tracker.trailer(self.ticket)
         for sha in self.ticket_commits():
-            named = self.ticket_of(sha)
+            named = self.trailer_of(sha)
             if not named:
                 raise self.die(
-                    "commit {} carries no 'Ticket: #{}' trailer, so it could never be traced "
-                    "back. Nothing was pushed.".format(sha, self.ticket))
-            if named != self.ticket:
-                raise self.die("commit {} names ticket #{}, and this is #{}. Nothing was pushed."
-                               .format(sha, named, self.ticket))
+                    "commit {} carries no 'Ticket: {}' trailer, so it could never be traced "
+                    "back. Nothing was pushed.".format(sha, mine))
+            if named != mine:
+                raise self.die("commit {} names ticket {}, and this is {}. Nothing was pushed."
+                               .format(sha, named, mine))
 
     # Git lists the main checkout first, whichever worktree asks.
     def main_checkout(self):
@@ -521,7 +521,7 @@ class Landing:
                 self.say("#{} landed on {} as {} in {} {}, holding the Turn {}".format(
                     self.ticket, self.target, commit, tries, "try" if tries == 1 else "tries",
                     "from fetch to push" if kept else "for its push"))
-                if rebased:
+                if rebased and self.tracker.close_names_commits:
                     self.name_the_rebased(built)
                 return
 

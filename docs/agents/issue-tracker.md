@@ -4,6 +4,8 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for every
 
 Infer the repo from `git remote -v` — `gh` does this by itself inside a clone.
 
+`tracker` in `docs/agents/loop.json` names the Tracker. With `github`, read on. With `files`, specs and tickets are committed files and nothing calls `gh`: "The files Tracker", below, takes the place of every GitHub call and convention in this file. "The ticket shape" holds for both.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for a multi-line body.
@@ -81,6 +83,55 @@ A commit also names the Session that made it, though the loop leans on none of i
 
 - **Read it back**: `git log -1 <commit> --format='%(trailers:key=Skillworks-Session,valueonly)'`. Each line is one Session.
 - **Take the id** to the Stores, where it is the `session.id` on every event that Session sent, or to `claude --resume <id>` on the machine that made the commit. The resume works only there, because the Session's history lives on that machine.
+
+## The files Tracker
+
+Used when `tracker` in `docs/agents/loop.json` says `files`. Each spec is a folder under `.specs/`, and each ticket a Markdown file of its own in that folder's `tickets/`:
+
+```
+.specs/
+  0007-local-tracker/
+    spec.md
+    tickets/
+      01-read-loop-json.md
+      02-close-in-worktree.md
+```
+
+`.specs/` is committed, and it is never gitignored. Each job builds in a worktree of its own, and a worktree cannot see a gitignored folder.
+
+### A spec and its tickets
+
+Each file opens with frontmatter. A ticket's body follows "The ticket shape".
+
+```markdown
+---
+status: open
+blocked-by: [1]
+claimed-by:
+---
+
+# TICKET: Close the ticket in the worktree
+```
+
+- **`status`**: `open` or `closed`, on `spec.md` and on each ticket.
+- **`blocked-by`**: the numbers of the tickets in the same spec that this one waits for.
+- **`claimed-by`**: the `user.email` of the loop that took the ticket. The loop sets it. Leave it empty.
+- **`branch`**: on `spec.md` alone, when `target-branch` says `spec`. It names the spec's own branch.
+
+A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<ticket>`, such as `7/2` for ticket `02` of spec `0007`. The loop hands each Session its ticket in that form, as in `/skillworks:implement 7/2 --finish`.
+
+- **Read a ticket**: its file, on the remote's Target branch. `git fetch origin <target>`, then `git show origin/<target>:.specs/<spec-folder>/tickets/<ticket-file>`. Inside a loop's worktree, read the file in the worktree, which is where the ticket is closed.
+- **Find a ticket's spec**: the folder its file sits in.
+- **Is a ticket startable?** It is open, and every ticket in its `blocked-by` is closed on the remote's Target branch.
+- **Claim a ticket**: the loop does it, with a commit that sets `claimed-by`, pushed to the Target branch. A push the remote turns down lost a race, so the loop reads again and takes another ticket.
+
+### The two conventions, with files
+
+These stand in for the two above.
+
+- **A commit names its spec and its ticket.** Put `Ticket: <spec>/<ticket>` in the message's trailer block, such as `Ticket: 7/2`, in the same trailer block as any other. Read it back the same way: `git log -1 <commit> --format='%(trailers:key=Ticket,valueonly)'`.
+- **A ticket is closed in the commit that holds its code.** Before you commit, set `status: closed` in the ticket's frontmatter, and add a `## Closing note` section at the end of its file. The note holds what a GitHub closing comment holds: what was done, which tests prove it, which checks did not run, and any finding left unfixed with the reason. It cannot name its own commit, and it has no need to. Commit the note with the code, and push nothing. The close reaches the remote only as the ticket Lands, so a ticket whose Land fails is never closed there. Skills read the note back.
+- **A spec is closed by its loop.** After the last ticket and the drift check, the loop sets `status: closed` in `spec.md` on the Target branch. Never close it by hand while a loop runs on it.
 
 ## Wayfinding operations
 

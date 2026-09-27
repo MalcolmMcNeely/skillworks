@@ -9,7 +9,9 @@ import pytest
 
 import spec_loop
 from conftest import Ran, RecordingRunner, Repo, git
+from spec_loop_test import Sessions, given_a_suite_that_passes
 from steering.target_branch import LOOP_FILE
+from tracker.files import Files
 
 SPEC = "7"
 FOLDER = ".specs/0007-local-tracker"
@@ -83,7 +85,8 @@ class Racing(RecordingRunner):
 
 # A run with a claude that answers nothing stops at the build, after its claim has reached origin.
 def run_loop(runner, checkout, *flags):
-    runner.stub("claude")
+    if "claude" not in runner.stubs:
+        runner.stub("claude")
     out, err = io.StringIO(), io.StringIO()
     with contextlib.chdir(checkout):
         status = spec_loop.main([SPEC, *flags], runner, out, err, lambda seconds: None)
@@ -300,3 +303,155 @@ def test_in_spec_mode_a_spec_that_names_no_branch_stops_the_dry_run(driver):
 
     assert ran.status == 1
     assert "branch in its spec.md frontmatter" in said(ran)
+
+
+# --- a close, in the commit that Lands ---------------------------------------
+
+REFERENCE = "7/1"
+FINISH = "implement {} --finish".format(REFERENCE)
+NOTE = "Built the reader. Proved by the reader tests."
+CODE = "reader.txt"
+
+
+def closed_in_file(text):
+    return text.replace("status: open", "status: closed") + "\n## Closing note\n\n" + NOTE + "\n"
+
+
+def finishing(runner, trailer=REFERENCE, closes=True):
+    def finish():
+        tree = Path(runner.where)
+        (tree / CODE).write_text("read\n", encoding="utf-8", newline="\n")
+        if closes:
+            held = tree / ticket_path("01-read-loop-json")
+            held.write_text(closed_in_file(held.read_text(encoding="utf-8")), encoding="utf-8",
+                            newline="\n")
+        git(tree, "add", "-A")
+        git(tree, "commit", "--quiet", "-m", "Built the reader\n\nTicket: " + trailer)
+    return finish
+
+
+def given_sessions_that_finish(driver, **finish):
+    given_a_suite_that_passes(driver)
+    sessions = Sessions(driver.repo, driver.runner)
+    sessions.then[FINISH] = finishing(driver.runner, **finish)
+    driver.push({
+        FOLDER + "/spec.md": spec_file(),
+        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
+    })
+    return sessions
+
+
+def on_remote(repo, path, branch="main"):
+    return git(repo.origin, "show", "{}:{}".format(branch, path))
+
+
+def status_on_remote(repo, path):
+    return next(line[len("status:"):].strip() for line in on_remote(repo, path).split("\n")
+                if line.startswith("status:"))
+
+
+def asked_of_claude(driver):
+    return [call[2] for call in driver.runner.started("claude")]
+
+
+def test_a_landed_tickets_commit_holds_its_code_its_close_and_its_closing_note(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert "DONE  #1" in ran.out, said(ran)
+    landed = git(driver.repo.origin, "log", "--format=%H", "--grep=Built the reader",
+                 "main").split()
+    assert len(landed) == 1
+    changed = git(driver.repo.origin, "show", "--name-only", "--format=", landed[0]).split()
+    assert CODE in changed
+    assert ticket_path("01-read-loop-json") in changed
+    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "closed"
+    assert NOTE in on_remote(driver.repo, ticket_path("01-read-loop-json"))
+
+
+def test_each_session_is_handed_the_ticket_by_its_spec_and_its_number(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    commands = [prompt.split("\n", 1)[0] for prompt in asked_of_claude(driver)]
+    assert "/skillworks:implement 7/1 --stop-after-tests" in commands
+    assert "/skillworks:review-spec 7/1" in commands
+    assert "/skillworks:implement 7/1 --finish" in commands
+
+
+def test_the_landed_commit_names_the_spec_and_the_ticket_in_its_trailer(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    trailer = git(driver.repo.origin, "log", "-1", "--grep=Built the reader",
+                  "--format=%(trailers:key=Ticket,valueonly)", "main")
+    assert trailer.strip() == REFERENCE
+
+
+def test_a_commit_naming_the_ticket_alone_is_not_landed(driver):
+    given_sessions_that_finish(driver, trailer="#1")
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "names ticket #1, and this is 7/1" in said(ran)
+    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "open"
+
+
+def test_a_ticket_whose_land_fails_is_still_open_on_the_remote(driver):
+    given_sessions_that_finish(driver)
+    driver.runner.refuse("HEAD:main", "remote: the push was turned down")
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "did not reach main" in said(ran)
+    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "open"
+    assert CODE not in git(driver.repo.origin, "ls-tree", "--name-only", "main").split()
+
+
+def test_a_finish_that_left_its_ticket_file_open_is_nudged_to_close_it_there(driver):
+    given_sessions_that_finish(driver, closes=False)
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    nudges = [prompt for prompt in asked_of_claude(driver) if not prompt.startswith("/")]
+    assert nudges, said(ran)
+    assert "status: closed" in nudges[0]
+    assert "same commit" in nudges[0]
+    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "open"
+
+
+def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_on_the_remote(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+    assert ran.out.index("DRIFT") < ran.out.index("CLOSE spec #7") < ran.out.index("END   spec #7")
+
+
+def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(driver):
+    given_sessions_that_finish(driver)
+    ran = driver.run()
+
+    read = Files(RecordingRunner(), driver.repo.work, "main", SPEC).closing_note(REFERENCE)
+
+    assert ran.status == 0, said(ran)
+    assert read == NOTE
+
+
+def test_a_spec_whose_run_stopped_is_left_open_on_the_remote(driver):
+    given_sessions_that_finish(driver, closes=False)
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"

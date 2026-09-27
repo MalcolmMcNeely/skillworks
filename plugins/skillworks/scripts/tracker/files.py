@@ -14,12 +14,15 @@ SPEC_FILE = "spec.md"
 TICKETS = "tickets"
 FENCE = "---"
 CLAIMED_BY = "claimed-by"
+STATUS = "status"
+CLOSED = "closed"
+CLOSING_NOTE = "## Closing note"
 
 # Every remote branch at once, because in spec mode the spec's own folder says which one is its.
 EVERY_BRANCH = "*"
 
 # Enough for several loops starting at once, few enough that a remote refusing for another reason cannot spin.
-CLAIM_ATTEMPTS = 5
+PUSH_ATTEMPTS = 5
 
 LOST_RACE = ("[rejected]", "fetch first", "non-fast-forward", "cannot lock ref")
 
@@ -78,19 +81,27 @@ def frontmatter(text):
     return {}, "\n".join(lines)
 
 
-def claimed_in(text, me):
+def with_field(text, key, value):
     ending = "\r\n" if "\r\n" in text else "\n"
     lines = text.split(ending)
-    line = "{}: {}".format(CLAIMED_BY, me)
+    line = "{}: {}".format(key, value)
     closing = next((at for at, each in enumerate(lines) if at > 0 and each.strip() == FENCE), None)
     if not lines or lines[0].strip() != FENCE or closing is None:
         return ending.join([FENCE, line, FENCE] + lines)
-    held = [at for at in range(1, closing) if lines[at].partition(":")[0].strip() == CLAIMED_BY]
+    held = [at for at in range(1, closing) if lines[at].partition(":")[0].strip() == key]
     if held:
         lines[held[0]] = line
     else:
         lines.insert(closing, line)
     return ending.join(lines)
+
+
+def closing_note_in(body):
+    lines = body.split("\n")
+    stripped = [line.strip() for line in lines]
+    if CLOSING_NOTE not in stripped:
+        return ""
+    return "\n".join(lines[stripped.index(CLOSING_NOTE) + 1:]).strip("\n")
 
 
 def heading(body, otherwise):
@@ -103,6 +114,9 @@ def as_numbers(value):
 
 
 class Files:
+    # The close is in the commit that Lands, so no rebase can leave it naming a commit on no branch.
+    close_names_commits = False
+
     # A target of None is spec mode, where each spec's frontmatter names its own branch.
     def __init__(self, runner, where, target, spec=None, wait=time.sleep):
         self.runner = runner
@@ -250,57 +264,101 @@ class Files:
             return ""
         return found.claimed_by
 
-    def not_yet(self, what):
-        return refusal("The files Tracker cannot {} yet.".format(what))
+    # A ticket number is local to its spec, so the spec comes with it wherever it is named.
+    def reference(self, ticket):
+        if self.spec is None:
+            raise refusal("The files Tracker numbers each ticket inside its spec, and it was "
+                          "given no spec to name ticket {} by.".format(ticket))
+        return "{}/{}".format(self.spec, ticket)
+
+    def trailer(self, ticket):
+        return self.reference(ticket)
+
+    # Read in the worktree, because the close is made there and reaches origin only as it Lands.
+    def state_in(self, ticket, worktree):
+        found = self.ticket(ticket)
+        if found is None:
+            return None
+        try:
+            text = (Path(worktree) / found.path).read_text(encoding="utf-8")
+        except OSError:
+            return None
+        return frontmatter(text)[0].get(STATUS, "")
+
+    def close_asked(self, ticket):
+        found = self.ticket(ticket)
+        named = found.path if found else "the file of ticket " + self.reference(ticket)
+        return ("Ticket {} is still open in {}. Set status: closed in its frontmatter and add its "
+                "closing note under {}, in the same commit as the code.\n".format(
+                    self.reference(ticket), named, CLOSING_NOTE))
+
+    def closing_note(self, trailer):
+        spec, _, ticket = trailer.partition("/")
+        if not is_a_number(spec) or not is_a_number(ticket):
+            return None
+        spec, ticket = str(int(spec)), str(int(ticket))
+        held = self.read(spec)
+        found = [each for each in held.tickets if each.number == ticket] if held else []
+        if not found:
+            return None
+        ref = "origin/" + self.branch_of(spec)
+        return closing_note_in(frontmatter(self.shown(ref, found[0].path))[1])
+
+    # A ticket closes only in the commit that Lands, so one that failed to Land was never closed.
+    def reopen(self, ticket):
+        return False
 
     # The remote takes only the first push on top of a read, so the loser reads again.
     def claim(self, ticket, wait):
-        for _ in range(CLAIM_ATTEMPTS):
+        for _ in range(PUSH_ATTEMPTS):
             found = self.ticket(ticket)
             if found is None:
                 raise refusal("Ticket {} of spec {} has no file on origin, so it cannot be "
                               "claimed.".format(ticket, self.spec))
             if found.claimed_by:
                 return "" if found.claimed_by == self.me else found.claimed_by
-            if self.pushed_claim(found):
+            if self.pushed_change(
+                    self.spec, found.path, lambda text: with_field(text, CLAIMED_BY, self.me),
+                    "Claim ticket {} of spec {} for {}".format(found.number, self.spec, self.me),
+                    "The claim on ticket {} of spec {}".format(found.number, self.spec)):
                 return ""
         raise refusal("The claim on ticket {} of spec {} lost to another push {} times in a row. "
-                      "Run the loop again.".format(ticket, self.spec, CLAIM_ATTEMPTS))
+                      "Run the loop again.".format(ticket, self.spec, PUSH_ATTEMPTS))
 
-    def pushed_claim(self, found):
-        branch = self.branch_of(self.spec)
+    def close_spec(self, spec):
+        for _ in range(PUSH_ATTEMPTS):
+            branch = self.branch_of(spec)
+            self.fetched(branch)
+            folder = self.folder_on("origin/" + branch, spec)
+            if not folder:
+                raise refusal("Spec {} has no folder on origin/{}, so it cannot be "
+                              "closed.".format(spec, branch))
+            commit = self.pushed_change(
+                spec, folder + "/" + SPEC_FILE, lambda text: with_field(text, STATUS, CLOSED),
+                "Close spec {}".format(spec), "The close of spec {}".format(spec))
+            if commit:
+                return self.git("rev-parse", "--short", commit).out.strip()
+        raise refusal("The close of spec {} lost to another push {} times in a row. Set status: "
+                      "closed in its spec.md by hand.".format(spec, PUSH_ATTEMPTS))
+
+    def pushed_change(self, spec, path, change, message, what):
+        branch = self.branch_of(spec)
         parent = self.git("rev-parse", "origin/" + branch).out.strip()
-        text = claimed_in(self.shown(parent, found.path), self.me)
+        text = change(self.shown(parent, path))
         with tempfile.TemporaryDirectory() as scratch:
-            written = Path(scratch) / "ticket.md"
+            written = Path(scratch) / "changed.md"
             written.write_text(text, encoding="utf-8", newline="")
             blob = self.git("hash-object", "-w", "--no-filters", written.as_posix()).out.strip()
             # An index of its own, so neither the checkout nor its staged work is touched.
             index = {"GIT_INDEX_FILE": (Path(scratch) / "index").as_posix()}
             self.git("read-tree", parent, env=index)
-            self.git("update-index", "--cacheinfo", "100644,{},{}".format(blob, found.path),
-                     env=index)
+            self.git("update-index", "--cacheinfo", "100644,{},{}".format(blob, path), env=index)
             tree = self.git("write-tree", env=index).out.strip()
-        commit = self.git("commit-tree", tree, "-p", parent, "-m",
-                          "Claim ticket {} of spec {} for {}".format(
-                              found.number, self.spec, self.me)).out.strip()
+        commit = self.git("commit-tree", tree, "-p", parent, "-m", message).out.strip()
         pushed = self.git("push", "--quiet", "origin", "{}:refs/heads/{}".format(commit, branch))
         if pushed.status == 0:
-            return True
+            return commit
         said = (pushed.out + pushed.err).rstrip("\n")
         if any(mark in said for mark in LOST_RACE):
-            return False
-        raise refusal("The claim on ticket {} of spec {} did not reach {} on origin. git "
-                      "said:\n{}".format(found.number, self.spec, branch, said))
-
-    def close(self, ticket, comment):
-        raise self.not_yet("close ticket {}".format(ticket))
-
-    def reopen(self, ticket):
-        raise self.not_yet("reopen ticket {}".format(ticket))
-
-    def comment(self, ticket, body):
-        raise self.not_yet("comment on ticket {}".format(ticket))
-
-    def last_comment(self, ticket):
-        raise self.not_yet("read the last comment on ticket {}".format(ticket))
+            return ""
+        raise refusal("{} did not reach {} on origin. git said:\n{}".format(what, branch, said))

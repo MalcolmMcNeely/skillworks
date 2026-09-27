@@ -6,6 +6,7 @@ import pytest
 import seed_steering
 from conftest import PLUGIN, ROOT, Ran, git, launch
 from suite import Suite
+from tracker.files import CLOSING_NOTE
 
 SKILLS = PLUGIN / "skills"
 SETUP = SKILLS / "skillworks-setup"
@@ -708,6 +709,27 @@ def test_this_repos_tracker_docs_hold_the_seeds_ticket_shape():
     ours = (ROOT / "docs" / "agents" / "issue-tracker.md").read_text(encoding="utf-8")
 
     assert ticket_shape(ours) == ticket_shape(seeded("issue-tracker.md"))
+
+
+def files_tracker(tracker):
+    assert "\n## The files Tracker\n" in tracker, "no files Tracker"
+    return tracker.split("\n## The files Tracker\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_issue_tracker_seed_says_how_a_ticket_closes_with_the_files_tracker():
+    files = files_tracker(seeded("issue-tracker.md"))
+
+    assert "`.specs/`" in files
+    assert "`Ticket: <spec>/<ticket>`" in files
+    assert "`status: closed`" in files
+    assert "`{}`".format(CLOSING_NOTE) in files
+    assert "closed in the commit that holds its code" in files
+
+
+def test_this_repos_tracker_docs_hold_the_seeds_files_tracker():
+    ours = (ROOT / "docs" / "agents" / "issue-tracker.md").read_text(encoding="utf-8")
+
+    assert files_tracker(ours) == files_tracker(seeded("issue-tracker.md"))
 
 
 def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():

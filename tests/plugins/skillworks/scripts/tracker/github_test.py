@@ -115,6 +115,25 @@ def test_a_last_comment_the_tracker_would_not_give_is_none(runner):
     assert github(runner).last_comment("168") is None
 
 
+def test_a_closing_note_is_the_last_comment_on_the_issue_the_trailer_names(runner):
+    runner.stub("gh", says="Done, and proved.\n")
+
+    assert github(runner).closing_note("#168") == "Done, and proved."
+    assert asked(runner) == ["issue view 168 --json comments --jq .comments[-1].body"]
+
+
+def test_a_commit_names_its_issue_by_number_alone(runner):
+    assert github(runner).trailer("168") == "#168"
+    assert github(runner).reference("168") == "168"
+
+
+def test_a_spec_is_left_for_a_person_or_its_pull_request_to_close(runner):
+    runner.stub("gh")
+
+    assert github(runner).close_spec("158") == ""
+    assert asked(runner) == []
+
+
 def test_the_body_of_a_spec_is_read_whole(runner):
     runner.stub("gh", says="## Branch\n\n`spec/x`\n")
 

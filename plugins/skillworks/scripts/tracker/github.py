@@ -29,6 +29,9 @@ def spec_branch(spec):
 
 
 class GitHub:
+    # A Session closes the issue naming its commits, and a rebase at Land replaces them.
+    close_names_commits = True
+
     def __init__(self, runner, where, repo=THIS_REPO):
         self.runner = runner
         self.where = str(where)
@@ -56,10 +59,29 @@ class GitHub:
         return self.gh("api", "--paginate", "repos/{}/issues/{}/sub_issues".format(
             self.repo, spec), "--jq", query)
 
+    # An issue number is unique in the repo, so it names a ticket on its own.
+    def reference(self, ticket):
+        return ticket
+
+    def trailer(self, ticket):
+        return "#" + ticket
+
     # A failed read is not a ticket in any state.
     def state(self, issue):
         read = self.field(issue, ".state")
         return read.out.strip() if read.status == 0 else None
+
+    # The issue is the one place a GitHub ticket's state is kept, whichever worktree asks.
+    def state_in(self, ticket, worktree):
+        return self.state(ticket)
+
+    def close_asked(self, ticket):
+        return ("Ticket #{} is still open. Close it with a comment saying what was done and "
+                "which tests prove it.\n".format(ticket))
+
+    # A person closes a GitHub spec, or its pull request does as it merges.
+    def close_spec(self, spec):
+        return ""
 
     def title(self, issue):
         return self.field(issue, ".title").out.strip()
@@ -123,3 +145,7 @@ class GitHub:
     def last_comment(self, ticket):
         ran = self.gh("issue", "view", ticket, "--json", "comments", "--jq", ".comments[-1].body")
         return ran.out.rstrip("\n") if ran.status == 0 else None
+
+    # The last comment is how a ticket was closed.
+    def closing_note(self, trailer):
+        return self.last_comment(trailer.removeprefix("#"))

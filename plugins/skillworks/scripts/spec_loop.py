@@ -113,22 +113,21 @@ def heading_of(axis):
     return "## " + axis[0].upper() + axis[1:]
 
 
-def owed(ticket, step, check):
+def owed(tracker, ticket, step, check):
     if check == "axis-reported":
         return ("You have not written your report under the heading {}. Write it, with your "
                 "findings or a statement that you found none.\n".format(heading_of(step.name)))
     if check == "tree-changed":
-        return ("You have changed nothing in the worktree. Build what ticket #{} asks, and leave "
-                "the change uncommitted.\n".format(ticket))
+        return ("You have changed nothing in the worktree. Build what ticket {} asks, and leave "
+                "the change uncommitted.\n".format(tracker.trailer(ticket)))
     if check == "new-commit":
-        return ("You have not committed the work. Commit it, with ticket #{} named in the "
-                "message.\n".format(ticket))
+        return ("You have not committed the work. Commit it, with Ticket: {} in the message's "
+                "trailer.\n".format(tracker.trailer(ticket)))
     if check == "tree-clean":
         return ("The worktree still holds uncommitted changes. Commit them or remove them, so "
                 "the tree is clean.\n")
     if check == "ticket-closed":
-        return ("Ticket #{} is still open. Close it with a comment saying what was done and "
-                "which tests prove it.\n".format(ticket))
+        return tracker.close_asked(ticket)
     return "The check {} has not passed.\n".format(check)
 
 
@@ -414,9 +413,13 @@ class Loop:
                 "the Proof it names, which an earlier pass on the same inputs made.\n\n{}\n").format(
                     self.green_suite.said.rstrip("\n"))
 
+    # The Tracker names the ticket, so a number local to its spec reaches the Session with its spec.
+    def asks(self, step, ticket):
+        return step.asks.format(self.tracker.reference(ticket))
+
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
-        asked = step.asks.format(ticket) + SUITE_BY_COMMAND
+        asked = self.asks(step, ticket) + SUITE_BY_COMMAND
         if step.name == "finish":
             return asked + self.suite_report(), ""
         if step.name != "fix":
@@ -457,14 +460,14 @@ class Loop:
         if check == "no-error":
             return field(held, "is_error") is False, ""
         if check == "command-loaded":
-            command, _, args = step.asks.format(ticket).partition(" ")
+            command, _, args = self.asks(step, ticket).partition(" ")
             return self.command_loaded(str(field(held, "session_id")), command, args)
         if check == "axis-reported":
             return self.axis_reported(step.name, held)
         if check == "ticket-open":
-            return self.tracker.state(ticket) == "open", ""
+            return self.tracker.state_in(ticket, self.job_worktree) == "open", ""
         if check == "ticket-closed":
-            return self.tracker.state(ticket) == "closed", ""
+            return self.tracker.state_in(ticket, self.job_worktree) == "closed", ""
         if check == "tree-changed":
             return self.tree_of_job() != "", ""
         if check == "tree-clean":
@@ -563,7 +566,8 @@ class Loop:
             nudge += 1
             self.say("NUDGE #{} {:<13}{} of {}, failed {}".format(
                 ticket, step.name, nudge, NUDGES, " ".join(failed)))
-            ran = self.claude_p("".join(owed(ticket, step, check) for check in failed) + NUDGE_TAIL,
+            ran = self.claude_p("".join(owed(self.tracker, ticket, step, check)
+                                        for check in failed) + NUDGE_TAIL,
                                 "--resume", field(held, "session_id"))
             appended(reasons, ran.err)
 
@@ -668,7 +672,7 @@ class Loop:
                 if not step.session:
                     plan += plan_line(step.name, step.asks, step.checks)
                     continue
-                call = 'claude -p "{}"'.format(step.asks.format(number))
+                call = 'claude -p "{}"'.format(self.asks(step, number))
                 if step.resumes:
                     call += " --resume <build session>"
                 else:
@@ -903,6 +907,15 @@ class Loop:
         if self.worktree("close", "drift")[0] != 0:
             raise stop("FAIL  the drift worktree at {} would not go.".format(self.job_worktree))
 
+    # --- the spec's close ---------------------------------------------------
+
+    # After the drift check, so no spec is closed before its work was read against it.
+    def close_spec(self):
+        closed_at = self.tracker.close_spec(self.spec)
+        if closed_at:
+            self.say("CLOSE spec #{} is closed on {} as {}".format(
+                self.spec, self.target, closed_at))
+
     # --- the pull request, in spec mode --------------------------------------
 
     # Ready and never merged, so a person reviews the spec before it reaches the default branch.
@@ -963,6 +976,7 @@ class Loop:
         self.run_full()
 
         self.check_drift(base)
+        self.close_spec()
         if self.spec_mode:
             self.mark_ready()
         self.say("END   spec #{} complete. Every ticket is on {}.".format(self.spec, self.target))
