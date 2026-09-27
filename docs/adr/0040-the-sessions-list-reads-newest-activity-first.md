@@ -17,6 +17,11 @@ Loki would read them all to find each row. A run that works on with no new Promp
 and still reads Running from its last event. The title event was not used, because only one Session
 in ten has one.
 
+A Skill filter reads that Skill's Activations in place of Prompts, so a row's place is its newest
+Activation of the Skill and every read still brings fifty rows. Depth leaves the Filter and becomes a
+column. No store can narrow by it, so a Depth filter would read fifty rows and keep a few, and a
+reader could ask for more and get none.
+
 ## Considered options
 
 **Raise Loki's series limit and keep the list.** Rejected. The reads still grow with every Session,
