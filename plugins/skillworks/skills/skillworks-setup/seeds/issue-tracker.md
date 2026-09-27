@@ -122,6 +122,8 @@ A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<t
 
 - **Read a ticket**: its file, on the remote's Target branch. `git fetch origin <target>`, then `git show origin/<target>:.specs/<spec-folder>/tickets/<ticket-file>`. Inside a loop's worktree, read the file in the worktree, which is where the ticket is closed.
 - **Find a ticket's spec**: the folder its file sits in.
+- **Write a spec**: `tracker-publish spec <slug> <file>`, with the spec's branch last in `spec` mode. It numbers the spec one above the highest number on the remote, writes the frontmatter and pushes the folder. `/skillworks:to-spec` says how.
+- **Write a spec's tickets**: `tracker-publish tickets <spec> <file>...`, every file at once. `/skillworks:to-tickets` says how.
 - **Is a ticket startable?** It is open, and every ticket in its `blocked-by` is closed on the remote's Target branch.
 - **Claim a ticket**: the loop does it, with a commit that sets `claimed-by`, pushed to the Target branch. A push the remote turns down lost a race, so the loop reads again and takes another ticket.
 

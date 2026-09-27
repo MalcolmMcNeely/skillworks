@@ -344,18 +344,26 @@ class Files:
     def pushed_change(self, spec, path, change, message, what):
         branch = self.branch_of(spec)
         parent = self.git("rev-parse", "origin/" + branch).out.strip()
-        text = change(self.shown(parent, path))
+        return self.pushed(branch, parent, {path: change(self.shown(parent, path))}, message, what)
+
+    # A ref in reserved is new on the remote, so a push that finds it already there loses a race.
+    def pushed(self, branch, parent, written, message, what, reserved=()):
         with tempfile.TemporaryDirectory() as scratch:
-            written = Path(scratch) / "changed.md"
-            written.write_text(text, encoding="utf-8", newline="")
-            blob = self.git("hash-object", "-w", "--no-filters", written.as_posix()).out.strip()
             # An index of its own, so neither the checkout nor its staged work is touched.
             index = {"GIT_INDEX_FILE": (Path(scratch) / "index").as_posix()}
             self.git("read-tree", parent, env=index)
-            self.git("update-index", "--cacheinfo", "100644,{},{}".format(blob, path), env=index)
+            for path, text in written.items():
+                held = Path(scratch) / "changed.md"
+                held.write_text(text, encoding="utf-8", newline="")
+                blob = self.git("hash-object", "-w", "--no-filters", held.as_posix()).out.strip()
+                self.git("update-index", "--add", "--cacheinfo", "100644,{},{}".format(blob, path),
+                         env=index)
             tree = self.git("write-tree", env=index).out.strip()
         commit = self.git("commit-tree", tree, "-p", parent, "-m", message).out.strip()
-        pushed = self.git("push", "--quiet", "origin", "{}:refs/heads/{}".format(commit, branch))
+        refs = ["refs/heads/" + branch] + list(reserved)
+        atomic = ["--atomic"] if reserved else []
+        pushed = self.git("push", "--quiet", *atomic, "origin",
+                          *["{}:{}".format(commit, ref) for ref in refs])
         if pushed.status == 0:
             return commit
         said = (pushed.out + pushed.err).rstrip("\n")

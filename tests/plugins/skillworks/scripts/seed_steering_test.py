@@ -754,6 +754,27 @@ def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
     assert "-template>" not in to_tickets
 
 
+def skill_text(skill):
+    return (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+
+
+def test_to_tickets_publishes_to_the_files_tracker_and_no_scratch_folder():
+    to_tickets = skill_text("to-tickets")
+
+    assert ".scratch" not in to_tickets
+    assert "tracker-publish tickets <spec> <file>..." in to_tickets
+    assert "`blocked-by`" in to_tickets
+    assert "`status: open`" in to_tickets
+
+
+def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_spec_mode():
+    to_spec = skill_text("to-spec")
+
+    assert "tracker-publish spec <slug> <file>" in to_spec
+    assert "tracker-publish spec <slug> <file> spec/<slug>" in to_spec
+    assert "`.specs/`" in to_spec
+
+
 def stops(skill, *names):
     return says_stop((SKILLS / skill / "SKILL.md").read_text(encoding="utf-8"), *names)
 
@@ -819,7 +840,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 6
+    assert len(commands) == 7
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed

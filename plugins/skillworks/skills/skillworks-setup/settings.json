@@ -27,7 +27,8 @@
       "Bash(spec-loop:*)",
       "Bash(land-ticket:*)",
       "Bash(ticket-worktree:*)",
-      "Bash(skillworks-suite:*)"
+      "Bash(skillworks-suite:*)",
+      "Bash(tracker-publish:*)"
     ]
   },
   "extraKnownMarketplaces": {
