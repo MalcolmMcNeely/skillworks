@@ -290,6 +290,13 @@ class Files:
                           "given no spec to name ticket {} by.".format(ticket))
         return "{}/{}".format(self.spec, ticket)
 
+    # A landing run by hand may name no spec, and its stop still has to say which ticket it was.
+    def named(self, ticket):
+        return self.reference(ticket) if self.spec is not None else "ticket " + ticket
+
+    def spec_named(self, spec):
+        return spec
+
     def trailer(self, ticket):
         return self.reference(ticket)
 

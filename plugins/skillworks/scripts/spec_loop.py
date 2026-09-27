@@ -337,6 +337,12 @@ class Loop:
     def say(self, said):
         self.wrote("{} {}\n".format(datetime.now(timezone.utc).strftime("%H:%M:%S"), said))
 
+    def named(self, ticket):
+        return self.tracker.named(ticket)
+
+    def spec_named(self):
+        return self.tracker.spec_named(self.spec)
+
     # --- the programs this reaches -------------------------------------------
 
     # A pull request is GitHub's own and no Tracker's, so it is the one thing asked of gh here.
@@ -491,7 +497,7 @@ class Loop:
         changed = changed_between(before, self.reading_of_job())
         said = "changed " + (", ".join(changed) if changed else "nothing")
         written(self.step_file(ticket, axis, "edit"), said + "\n")
-        self.say("EDIT  #{} {:<13}{}".format(ticket, axis, said))
+        self.say("EDIT  {} {:<13}{}".format(self.named(ticket), axis, said))
 
     # --- running one step ----------------------------------------------------
 
@@ -500,22 +506,22 @@ class Loop:
         # A read that failed is not a ticket that is open, and guessing it is loses the ticket.
         state = self.tracker.state(ticket)
         if state is None:
-            self.say("WARN  #{} would not be read, so it may still be closed and a rerun skip "
-                     "it.".format(ticket))
+            self.say("WARN  {} would not be read, so it may still be closed and a rerun skip "
+                     "it.".format(self.named(ticket)))
             return
         if state != "closed":
             return
         if self.tracker.reopen(ticket):
-            self.say("      #{} is open again, so a rerun starts from it".format(ticket))
+            self.say("      {} is open again, so a rerun starts from it".format(self.named(ticket)))
         else:
-            self.say("WARN  #{} did not reopen. Reopen it by hand, or a rerun will skip it."
-                     .format(ticket))
+            self.say("WARN  {} did not reopen. Reopen it by hand, or a rerun will skip it."
+                     .format(self.named(ticket)))
 
     # The hint only where a Denial was listed, since a stop with another cause needs another fix.
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
-        said = "FAIL  #{} step {} {}. Its worktree is at {}. See {}".format(
-            ticket, step, reason, self.job_worktree, see)
+        said = "FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
+            self.named(ticket), step, reason, self.job_worktree, see)
         named = denials(result) if result is not None else []
         if not named:
             return stop(said)
@@ -528,8 +534,8 @@ class Loop:
     def run_step(self, ticket, step, *rest):
         held = self.step_file(ticket, step.name, "json")
         reasons = self.step_file(ticket, step.name, "err")
-        self.say("STEP  #{} {:<13}{}".format(
-            ticket, step.name,
+        self.say("STEP  {} {:<13}{}".format(
+            self.named(ticket), step.name,
             progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
 
         # Built before the session starts, so two axes out of three never reach the fix step.
@@ -564,8 +570,8 @@ class Loop:
                     ticket, step.name, "failed check {} after {} Nudges".format(failed[0], NUDGES),
                     "{} and {}".format(held, reasons), held)
             nudge += 1
-            self.say("NUDGE #{} {:<13}{} of {}, failed {}".format(
-                ticket, step.name, nudge, NUDGES, " ".join(failed)))
+            self.say("NUDGE {} {:<13}{} of {}, failed {}".format(
+                self.named(ticket), step.name, nudge, NUDGES, " ".join(failed)))
             ran = self.claude_p("".join(owed(self.tracker, ticket, step, check)
                                         for check in failed) + NUDGE_TAIL,
                                 "--resume", field(held, "session_id"))
@@ -591,14 +597,15 @@ class Loop:
     def suite_heard(self, ticket, held):
         def heard(outcome, at):
             appended(held, "--- suite run {}\n{}".format(at, outcome.said))
-            self.say("      #{} suite run {} {}".format(ticket, at, suite_verdict(outcome, at)))
+            self.say("      {} suite run {} {}".format(
+                self.named(ticket), at, suite_verdict(outcome, at)))
         return heard
 
     # Red is handed back rather than raised, so the caller chooses between a circuit and a stop.
     def run_suite_step(self, ticket, step):
         held = self.step_file(ticket, step.name, "out")
-        self.say("STEP  #{} {:<13}{}".format(
-            ticket, step.name,
+        self.say("STEP  {} {:<13}{}".format(
+            self.named(ticket), step.name,
             progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
 
         # The red that sent the loop round is why it ran again, so a second run adds to the record.
@@ -610,9 +617,9 @@ class Loop:
         # A machine short of what the checks need is nothing a Session could mend, so none is asked.
         if not outcome.ready:
             appended(held, "--- the suite could not start\n{}".format(outcome.said))
-            raise stop("ABORT #{} failed check suite-can-run, so no Session was asked to mend "
+            raise stop("ABORT {} failed check suite-can-run, so no Session was asked to mend "
                        "it: {}\n      Its worktree is at {}. See {}".format(
-                           ticket, outcome.said.strip(), self.job_worktree, held))
+                           self.named(ticket), outcome.said.strip(), self.job_worktree, held))
         self.green_suite = outcome if outcome.passed else None
         return None if outcome.passed else outcome
 
@@ -628,14 +635,15 @@ class Loop:
 
         state = self.tracker.spec_state(self.spec)
         if state is None:
-            raise stop("ABORT cannot read {}#{}".format(self.tracker.repo, self.spec))
+            raise stop("ABORT cannot read spec {} from {}".format(self.spec_named(), self.tracker.repo))
         self.spec_title = self.tracker.spec_title(self.spec)
         if state != "open":
-            raise stop("ABORT spec #{} is {}. The loop needs it open.".format(self.spec, state))
+            raise stop("ABORT spec {} is {}. The loop needs it open.".format(self.spec_named(), state))
 
         self.ticket_count = len(self.tracker.tickets(self.spec))
         if self.ticket_count == 0:
-            raise stop("ABORT spec #{} has no sub-issues. Run /skillworks:to-tickets first.".format(self.spec))
+            raise stop("ABORT spec {} has no tickets. Run /skillworks:to-tickets first.".format(
+                self.spec_named()))
 
     # --- the dry run ---------------------------------------------------------
 
@@ -646,7 +654,7 @@ class Loop:
 
     def dry_run(self):
         self.say("DRY   repo={}  me={}".format(self.tracker.repo, self.tracker.me))
-        self.say("DRY   spec #{}: {}".format(self.spec, self.spec_title))
+        self.say("DRY   spec {}: {}".format(self.spec_named(), self.spec_title))
 
         # Asked of the scripts that do the work, so the plan cannot drift from the run.
         landing = self.landing_plan()
@@ -657,14 +665,15 @@ class Loop:
         # Gathered whole and printed once, so a step that cannot be planned can still stop the run.
         plan = ""
         for number, state, title in self.tracker.ticket_rows(self.spec):
-            plan += "  #{} [{}] {}\n".format(number, state, title)
+            plan += "  {} [{}] {}\n".format(self.named(number), state, title)
             if state != "open":
                 continue
 
             status, said, _ = self.worktree("plan", "ticket-" + number)
             told = said.strip().split("\t")
             if status != 0 or len(told) != 2:
-                raise stop("ABORT #{} could not be told where it would be built.".format(number))
+                raise stop("ABORT {} could not be told where it would be built.".format(
+                    self.named(number)))
             plan += plan_line("worktree", told[0])
             plan += plan_line("branch", told[1])
 
@@ -691,7 +700,7 @@ class Loop:
         # Asked the way the run asks, so the ticket named is the one a run would claim first.
         chosen = self.next_ticket(self.tracker.open_tickets(self.spec))
         if chosen:
-            self.say("DRY   the next ticket is #{}".format(chosen))
+            self.say("DRY   the next ticket is {}".format(self.named(chosen)))
         else:
             self.say("DRY   no ticket is startable")
         self.say("DRY   no session was run, and nothing reached the remote")
@@ -715,8 +724,8 @@ class Loop:
                 self.say("KEPT  {} held nothing uncommitted. Its attempt is on branch {}".format(
                     job, branch))
         if status != 0:
-            raise stop("ABORT spec #{} has a worktree group that would not be kept. Nothing was "
-                       "started.".format(self.spec))
+            raise stop("ABORT spec {} has a worktree group that would not be kept. Nothing was "
+                       "started.".format(self.spec_named()))
 
     # --- picking the next ticket ---------------------------------------------
 
@@ -724,8 +733,8 @@ class Loop:
         for number in open_tickets:
             blocked = self.tracker.open_blockers(number)
             if blocked is None:
-                raise stop("ABORT #{} reports no issue_dependencies_summary. Refusing to "
-                           "guess.".format(number))
+                raise stop("ABORT the Tracker would not say how many open blockers {} has. "
+                           "Refusing to guess.".format(self.named(number)))
             if blocked != 0:
                 continue
             if self.tracker.claimed_by_others(number):
@@ -737,7 +746,7 @@ class Loop:
         others = self.tracker.claim(ticket, self.wait)
         if not others:
             return True
-        self.say("SKIP  #{} claimed by {}".format(ticket, others))
+        self.say("SKIP  {} claimed by {}".format(self.named(ticket), others))
         return False
 
     # --- one ticket ----------------------------------------------------------
@@ -755,8 +764,8 @@ class Loop:
     # The circuit ends at the suite, so the verdict of its last step is the circuit's own.
     def go_round(self, ticket, session, red):
         self.red_suite = red
-        self.say("      #{} the suite went red on every run it was given, so the loop goes "
-                 "round once: {}".format(ticket, ", then ".join(CIRCUIT)))
+        self.say("      {} the suite went red on every run it was given, so the loop goes "
+                 "round once: {}".format(self.named(ticket), ", then ".join(CIRCUIT)))
         outcome = None
         for name in CIRCUIT:
             outcome = self.run_any_step(ticket, step_named(name), session)
@@ -777,7 +786,8 @@ class Loop:
             held = self.step_file(ticket, "build", "json")
             session = str(field(held, "session_id"))
             if not session:
-                raise stop("FAIL  #{} step build gave no session id. See {}".format(ticket, held))
+                raise stop("FAIL  {} step build gave no session id. See {}".format(
+                    self.named(ticket), held))
         return session
 
     # The session that wrote the ticket goes too, to resolve what its work conflicts with.
@@ -796,17 +806,17 @@ class Loop:
         if landed != 0:
             # The finishing step closed it, and the work it closed on never reached the remote.
             self.reopen(ticket)
-            raise stop("FAIL  #{} did not reach {}. Its worktree is at {}. See {}".format(
-                ticket, self.target, self.job_worktree, held))
+            raise stop("FAIL  {} did not reach {}. Its worktree is at {}. See {}".format(
+                self.named(ticket), self.target, self.job_worktree, held))
 
     def run_ticket(self, ticket):
-        self.say("START #{} {}".format(ticket, self.tracker.title(ticket)))
+        self.say("START {} {}".format(self.named(ticket), self.tracker.title(ticket)))
 
         self.red_suite = None
         self.green_suite = None
         self.job_worktree = self.opened("ticket-" + ticket)
         if not self.job_worktree:
-            raise stop("FAIL  #{} got no worktree to be built in.".format(ticket))
+            raise stop("FAIL  {} got no worktree to be built in.".format(self.named(ticket)))
         self.ticket_base = self.git(self.job_worktree, "rev-parse", "HEAD").out.strip()
         started = time.time()
 
@@ -816,14 +826,14 @@ class Loop:
 
         # A ticket that failed never gets here, so a worktree left behind means a stop.
         if self.worktree("close", "ticket-" + ticket)[0] != 0:
-            raise stop("FAIL  #{} landed, but its worktree at {} would not go.".format(
-                ticket, self.job_worktree))
+            raise stop("FAIL  {} landed, but its worktree at {} would not go.".format(
+                self.named(ticket), self.job_worktree))
 
         # A skipped ticket never reaches here, so nobody else's work is in the mean.
         self.timed_seconds += int(time.time() - started)
         self.timed_tickets += 1
         self.mean_seconds = self.timed_seconds // self.timed_tickets
-        self.say("DONE  #{}  {}".format(ticket, landed_at))
+        self.say("DONE  {}  {}".format(self.named(ticket), landed_at))
 
     def run_tickets(self):
         while True:
@@ -848,7 +858,7 @@ class Loop:
     def run_full(self, stopped=None):
         if not self.landed:
             return
-        landed = ", ".join("#" + ticket for ticket in self.landed)
+        landed = ", ".join(self.named(ticket) for ticket in self.landed)
         self.say("FULL  {} landed in this run, so the whole Suite runs on the newest origin/{} "
                  "with no Proofs and no images".format(landed, self.target))
 
@@ -886,8 +896,8 @@ class Loop:
     # --- the drift check -----------------------------------------------------
 
     def check_drift(self, base):
-        self.say("DRIFT all tickets closed. Checking the result against spec #{}.".format(
-            self.spec))
+        self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
+            self.spec_named()))
 
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened("drift")
@@ -912,11 +922,13 @@ class Loop:
     def read_drift_report(self):
         report = self.tracker.drift_report(self.spec)
         if not report:
-            self.say("WARN  the drift check recorded no report on spec #{}.".format(self.spec))
+            self.say("WARN  the drift check recorded no report on spec {}.".format(
+                self.spec_named()))
             return
         held = self.log_dir / "drift.md"
         written(held, report + "\n")
-        self.say("DRIFT the report is recorded on spec #{}. Read it at {}".format(self.spec, held))
+        self.say("DRIFT the report is recorded on spec {}. Read it at {}".format(
+            self.spec_named(), held))
 
     # --- the spec's close ---------------------------------------------------
 
@@ -924,8 +936,8 @@ class Loop:
     def close_spec(self):
         closed_at = self.tracker.close_spec(self.spec)
         if closed_at:
-            self.say("CLOSE spec #{} is closed on {} as {}".format(
-                self.spec, self.target, closed_at))
+            self.say("CLOSE spec {} is closed on {} as {}".format(
+                self.spec_named(), self.target, closed_at))
 
     # --- the pull request, in spec mode --------------------------------------
 
@@ -982,8 +994,8 @@ class Loop:
             written(held, self.git(self.root, "rev-parse", "origin/" + self.target).out)
         base = held.read_text(encoding="utf-8").strip()
 
-        self.say("LOOP  spec #{} from {} ({}) in {} mode".format(
-            self.spec, base, self.tracker.repo, self.permission_mode))
+        self.say("LOOP  spec {} from {} ({}) in {} mode".format(
+            self.spec_named(), base, self.tracker.repo, self.permission_mode))
 
         # A landed ticket stays when the loop stops, so a stop is followed by the full run too.
         try:
@@ -997,7 +1009,8 @@ class Loop:
         self.close_spec()
         if self.spec_mode:
             self.hand_over()
-        self.say("END   spec #{} complete. Every ticket is on {}.".format(self.spec, self.target))
+        self.say("END   spec {} complete. Every ticket is on {}.".format(
+            self.spec_named(), self.target))
         self.say("      Review it with: git log --oneline {}..origin/{}".format(base, self.target))
 
 

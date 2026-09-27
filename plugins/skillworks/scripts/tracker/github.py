@@ -66,8 +66,14 @@ class GitHub:
     def reference(self, ticket):
         return ticket
 
-    def trailer(self, ticket):
+    def named(self, ticket):
         return "#" + ticket
+
+    def spec_named(self, spec):
+        return "#" + spec
+
+    def trailer(self, ticket):
+        return self.named(ticket)
 
     # A failed read is not a ticket in any state.
     def state(self, issue):

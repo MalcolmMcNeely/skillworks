@@ -3,6 +3,7 @@
 import contextlib
 import io
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,7 @@ NO_TICKET = "DRY   no ticket is startable"
 
 
 def next_is(ticket):
-    return "DRY   the next ticket is #{}\n".format(ticket)
+    return "DRY   the next ticket is {}/{}\n".format(SPEC, ticket)
 
 
 def spec_file(status="open", branch=None):
@@ -152,8 +153,8 @@ def test_the_dry_run_names_the_first_ticket_whose_blockers_are_all_closed(driver
 
     assert ran.status == 0, said(ran)
     assert next_is(2) in ran.out
-    assert "#1 [closed] Read loop.json" in ran.out
-    assert "#2 [open] Close in the worktree" in ran.out
+    assert "7/1 [closed] Read loop.json" in ran.out
+    assert "7/2 [open] Close in the worktree" in ran.out
 
 
 def test_a_ticket_whose_blocker_is_open_is_not_picked_until_the_remote_closes_it(driver):
@@ -242,7 +243,7 @@ def test_a_claim_pushes_a_commit_that_sets_claimed_by_on_the_target_branch(drive
 
     ran = driver.run()
 
-    assert "START #1" in ran.out, said(ran)
+    assert "START 7/1" in ran.out, said(ran)
     assert claimed_on_remote(driver.repo, "01-read-loop-json") == ME
     assert claimed_on_remote(driver.repo, "02-close-in-worktree") == ""
     assert git(driver.repo.origin, "log", "--format=%P", "{}..main".format(before)).split() == [before]
@@ -257,8 +258,8 @@ def test_a_ticket_another_loop_claimed_is_not_picked(driver):
 
     ran = driver.run()
 
-    assert "START #2" in ran.out, said(ran)
-    assert "START #1" not in ran.out
+    assert "START 7/2" in ran.out, said(ran)
+    assert "START 7/1" not in ran.out
     assert claimed_on_remote(driver.repo, "01-read-loop-json") == RIVAL
     assert claimed_on_remote(driver.repo, "02-close-in-worktree") == ME
 
@@ -272,10 +273,10 @@ def test_two_loops_racing_for_one_ticket_build_different_tickets(driver):
 
     ran = driver.run()
 
-    assert "START #1" in rivalled[0].out, said(rivalled[0])
+    assert "START 7/1" in rivalled[0].out, said(rivalled[0])
     assert len([call for call in driver.runner.calls if "push" in call]) == 2
-    assert "START #2" in ran.out, said(ran)
-    assert "START #1" not in ran.out
+    assert "START 7/2" in ran.out, said(ran)
+    assert "START 7/1" not in ran.out
     assert claimed_on_remote(driver.repo, "01-read-loop-json") == RIVAL
     assert claimed_on_remote(driver.repo, "02-close-in-worktree") == ME
 
@@ -289,7 +290,7 @@ def test_in_spec_mode_a_claim_reaches_the_branch_the_spec_names(driver):
 
     ran = driver.run()
 
-    assert "START #1" in ran.out, said(ran)
+    assert "START 7/1" in ran.out, said(ran)
     assert claimed_on_remote(driver.repo, "01-read-loop-json", SPEC_BRANCH) == ME
 
 
@@ -364,7 +365,7 @@ def test_a_landed_tickets_commit_holds_its_code_its_close_and_its_closing_note(d
 
     ran = driver.run()
 
-    assert "DONE  #1" in ran.out, said(ran)
+    assert "DONE  7/1" in ran.out, said(ran)
     landed = git(driver.repo.origin, "log", "--format=%H", "--grep=Built the reader",
                  "main").split()
     assert len(landed) == 1
@@ -440,7 +441,7 @@ def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_on_the_rem
 
     assert ran.status == 0, said(ran)
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
-    assert ran.out.index("DRIFT") < ran.out.index("CLOSE spec #7") < ran.out.index("END   spec #7")
+    assert ran.out.index("DRIFT") < ran.out.index("CLOSE spec 7") < ran.out.index("END   spec 7")
 
 
 def given_sessions_that_finish_on_the_spec_branch(driver):
@@ -465,7 +466,7 @@ def test_in_spec_mode_the_run_ends_at_the_close_and_never_calls_gh(driver):
     assert ran.status == 0, said(ran)
     assert driver.runner.started("gh") == []
     assert status_on_remote_branch(driver.repo, FOLDER + "/spec.md", SPEC_BRANCH) == "closed"
-    assert "CLOSE spec #7" in ran.out
+    assert "CLOSE spec 7" in ran.out
 
 
 def test_in_spec_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_branch(driver):
@@ -503,7 +504,7 @@ def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
     held = driver.repo.work / ".spec-loop" / SPEC / "drift.md"
     assert held.read_text(encoding="utf-8") == "- Story 1: Done\n"
-    assert "DRIFT the report is recorded on spec #7" in ran.out
+    assert "DRIFT the report is recorded on spec 7" in ran.out
 
 
 def test_a_drift_check_that_recorded_no_report_is_said(driver):
@@ -512,7 +513,7 @@ def test_a_drift_check_that_recorded_no_report_is_said(driver):
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
-    assert "WARN  the drift check recorded no report on spec #7" in ran.out
+    assert "WARN  the drift check recorded no report on spec 7" in ran.out
 
 
 def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(driver):
@@ -532,3 +533,59 @@ def test_a_spec_whose_run_stopped_is_left_open_on_the_remote(driver):
 
     assert ran.status == 1
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+
+
+# --- the log, in the Tracker's words ------------------------------------------
+
+GITHUB_WORDS = ("sub-issue", "issue_dependencies_summary")
+
+
+def log_of(driver):
+    return (driver.repo.work / ".spec-loop" / SPEC / "loop.log").read_text(encoding="utf-8")
+
+
+def speaks_github(text):
+    return re.search(r"#[0-9]", text) or any(word in text for word in GITHUB_WORDS)
+
+
+def test_a_whole_run_logs_every_ticket_and_the_spec_by_the_files_trackers_names(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    log = log_of(driver)
+    assert "START 7/1" in log
+    assert "STEP  7/1 build" in log
+    assert "LOOP  spec 7 " in log
+    assert not speaks_github(log), log
+
+
+def test_the_dry_run_names_every_ticket_by_the_files_trackers_names(driver):
+    driver.push(two_free_tickets())
+
+    ran = driver.dry_run()
+
+    assert ran.status == 0, said(ran)
+    assert "DRY   spec 7: " in ran.out
+    assert not speaks_github(log_of(driver)), log_of(driver)
+
+
+def test_a_spec_with_no_tickets_is_refused_in_the_files_trackers_words(driver):
+    driver.push({FOLDER + "/spec.md": spec_file()})
+
+    ran = driver.dry_run()
+
+    assert ran.status == 1
+    assert "ABORT spec 7 has no tickets" in said(ran)
+    assert not speaks_github(said(ran)), said(ran)
+
+
+def test_a_spec_that_cannot_be_read_is_refused_naming_no_github_repo(driver):
+    driver.push({"elsewhere.txt": "nothing about the spec\n"})
+
+    ran = driver.dry_run()
+
+    assert ran.status == 1
+    assert "ABORT cannot read spec 7" in said(ran)
+    assert not speaks_github(said(ran)), said(ran)

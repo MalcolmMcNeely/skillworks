@@ -417,6 +417,26 @@ def planned_checks(ran, step):
 
 # --- the dry run ------------------------------------------------------------
 
+def test_the_dry_run_names_the_spec_and_its_tickets_by_issue_number(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET + ONE_CLOSED_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert "DRY   spec #158: " in ran.out
+    assert "#168 [open]" in ran.out
+    assert "DRY   the next ticket is #168" in ran.out
+
+
+def test_a_spec_with_no_tickets_is_refused_naming_it_by_issue_number(loop):
+    given_the_tracker_holds(loop, ())
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert "ABORT spec #158 has no tickets" in said(ran)
+
+
 def test_the_dry_run_prints_the_worktree_and_the_branch(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 
