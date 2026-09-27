@@ -5,13 +5,13 @@ import sys
 from pathlib import Path
 
 from stop import Stop, refusal
+from tracker.files import Files
 from tracker.github import GitHub
 
 LOOP_FILE = "docs/agents/loop.json"
 SPEC_MODE = "spec"
-BRANCH_HEADING = "## Branch"
 
-TRACKERS = {"github": GitHub}
+TRACKERS = ("github", "files")
 
 
 def settings(top):
@@ -40,39 +40,31 @@ def tracker_setting(top):
     return held["tracker"]
 
 
-def tracker_for(runner, top):
-    return TRACKERS[tracker_setting(top)](runner, Path(top).as_posix())
+def tracker_for(runner, top, spec=None):
+    where = Path(top).as_posix()
+    if tracker_setting(top) == "github":
+        return GitHub(runner, where)
+    named = target_setting(top)
+    return Files(runner, where, None if named == SPEC_MODE else named, spec)
 
 
 def in_spec_mode(top):
     return target_setting(top) == SPEC_MODE
 
 
-def target_branch(top, spec=None):
+def target_branch(top):
     named = target_setting(top)
-    if named != SPEC_MODE:
-        return named
-    if spec is None:
+    if named == SPEC_MODE:
         raise refusal("{} says spec, so each spec names its own Target branch, and no spec was given to read it from.".format(LOOP_FILE))
-    return spec_branch(spec)
+    return named
 
 
 # A script knows the spec's number and not its body, so the Tracker is asked, and only in spec mode.
 def target_branch_for(runner, top, spec, tracker=None):
     if spec is None or not in_spec_mode(top):
         return target_branch(top)
-    tracker = tracker or tracker_for(runner, top)
-    return target_branch(top, tracker.spec_body(spec))
-
-
-def spec_branch(spec):
-    lines = [line.strip() for line in spec.splitlines()]
-    if BRANCH_HEADING in lines:
-        below = lines[lines.index(BRANCH_HEADING) + 1:]
-        named = next((line for line in below if line), "").strip("`")
-        if named and not named.startswith("#"):
-            return named
-    raise refusal("The spec names no branch under {}. Run to-spec, which writes it, or add it by hand.".format(BRANCH_HEADING))
+    tracker = tracker or tracker_for(runner, top, spec)
+    return tracker.branch_of(spec)
 
 
 def main(argv, out, err):

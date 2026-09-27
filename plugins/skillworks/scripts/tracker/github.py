@@ -11,9 +11,21 @@ THIS_REPO = "{owner}/{repo}"
 # Long enough for another loop's write to be visible, and handed a wait so a test need not pay it.
 CLAIM_WAIT = 3
 
+BRANCH_HEADING = "## Branch"
+
 
 def listed(said):
     return [line for line in said.split("\n") if line != ""]
+
+
+def spec_branch(spec):
+    lines = [line.strip() for line in spec.splitlines()]
+    if BRANCH_HEADING in lines:
+        below = lines[lines.index(BRANCH_HEADING) + 1:]
+        named = next((line for line in below if line), "").strip("`")
+        if named and not named.startswith("#"):
+            return named
+    raise refusal("The spec names no branch under {}. Run to-spec, which writes it, or add it by hand.".format(BRANCH_HEADING))
 
 
 class GitHub:
@@ -52,12 +64,22 @@ class GitHub:
     def title(self, issue):
         return self.field(issue, ".title").out.strip()
 
+    # A spec is an issue like its tickets, so it is asked the same way.
+    def spec_state(self, spec):
+        return self.state(spec)
+
+    def spec_title(self, spec):
+        return self.title(spec)
+
     def spec_body(self, spec):
         asked = self.field(spec, ".body")
         if asked.status != 0:
             raise refusal("The tracker would not give the body of spec #{}, which names its "
                           "branch. gh said:\n{}".format(spec, (asked.out + asked.err).rstrip("\n")))
         return asked.out
+
+    def branch_of(self, spec):
+        return spec_branch(self.spec_body(spec))
 
     # --paginate runs --jq once per page, so a length would count only the first hundred.
     def tickets(self, spec):

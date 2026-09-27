@@ -615,17 +615,17 @@ class Loop:
     # --- getting started -----------------------------------------------------
 
     def preflight(self):
-        self.tracker = tracker_for(self.runner, self.root)
+        self.tracker = tracker_for(self.runner, self.root, self.spec)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")
         reason = self.tracker.connect()
         if reason:
             raise stop("ABORT " + reason)
 
-        state = self.tracker.state(self.spec)
+        state = self.tracker.spec_state(self.spec)
         if state is None:
             raise stop("ABORT cannot read {}#{}".format(self.tracker.repo, self.spec))
-        self.spec_title = self.tracker.title(self.spec)
+        self.spec_title = self.tracker.spec_title(self.spec)
         if state != "open":
             raise stop("ABORT spec #{} is {}. The loop needs it open.".format(self.spec, state))
 
@@ -684,6 +684,12 @@ class Loop:
                 plan += plan_line(named, what, checks)
 
         self.wrote(plan)
+        # Asked the way the run asks, so the ticket named is the one a run would claim first.
+        chosen = self.next_ticket(self.tracker.open_tickets(self.spec))
+        if chosen:
+            self.say("DRY   the next ticket is #{}".format(chosen))
+        else:
+            self.say("DRY   no ticket is startable")
         self.say("DRY   no session was run, and nothing reached the remote")
 
     # --- the restart ---------------------------------------------------------

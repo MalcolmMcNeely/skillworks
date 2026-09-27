@@ -421,7 +421,7 @@ class Landing:
         # The Tracker is read before the push, so a landing never pushes and then finds it has none.
         if not self.target or self.tracker is None:
             top = self.main_checkout()
-            self.tracker = self.tracker or tracker_for(self.runner, top)
+            self.tracker = self.tracker or tracker_for(self.runner, top, self.spec)
         if not self.target:
             if self.spec is None and in_spec_mode(top):
                 raise self.die(

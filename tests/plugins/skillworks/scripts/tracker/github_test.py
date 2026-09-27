@@ -1,6 +1,9 @@
 import ast
 
+import pytest
+
 from conftest import SCRIPTS, Ran
+from stop import REFUSED, Stop
 from tracker.github import CLAIM_WAIT, GitHub
 
 
@@ -117,6 +120,23 @@ def test_the_body_of_a_spec_is_read_whole(runner):
 
     assert github(runner).spec_body("158") == "## Branch\n\n`spec/x`\n"
     assert asked(runner) == ["api repos/owner/repo/issues/158 --jq .body"]
+
+
+def test_the_branch_of_a_spec_is_the_one_its_body_names(runner):
+    runner.stub("gh", says="## Problem Statement\r\n\r\nWords.\r\n\r\n## Branch\r\n\r\n`spec/target-branch`\r\n\r\n## Solution\r\n")
+
+    assert github(runner).branch_of("158") == "spec/target-branch"
+
+
+def test_a_spec_that_names_no_branch_stops_and_says_so(runner):
+    runner.stub("gh", says="## Problem Statement\n\nWords.\n")
+
+    with pytest.raises(Stop) as stopped:
+        github(runner).branch_of("158")
+
+    assert stopped.value.status == REFUSED
+    assert "## Branch" in stopped.value.said
+    assert "to-spec" in stopped.value.said
 
 
 # --- only the Tracker asks gh about an issue ---------------------------------
