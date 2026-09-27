@@ -31,27 +31,57 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
    git log --oneline <base>..origin/<target>
    ```
 
-3. Classify every user story and implementation decision in the spec as one of:
+3. Give every user story and implementation decision in the spec one Verdict. A story is `S<n>` and a decision is `D<n>`, by its number in the spec's list:
 
    - **Done** — the diff delivers it
    - **Partial** — started, not finished
    - **Missing** — no code for it
    - **Contradicts** — the code does something the spec ruled out
 
-   Then list **Unrequested** — behaviour in the diff that no story and no ticket asked for.
+   Judge against the **spec**, not against the tickets. A ticket that drifted still passed its own criteria, which is exactly why this step exists. Testing Decisions get no Verdict, because the Suite already proves them.
 
-   Judge against the **spec**, not against the tickets. A ticket that drifted still passed its own criteria, which is exactly why this step exists.
-
-4. Check every Surface the spec names. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each one the change touches, with what it has to say once the change Lands. Read each Surface on `origin/<target>`, at the path the spec gives or at its "Where it lives" in `docs/agents/surfaces.md`, and mark it:
+4. Give every Surface the spec names one Verdict, by its bold name. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each one the change touches, with what it has to say once the change Lands. Read each Surface on `origin/<target>`, at the path the spec gives or at its "Where it lives" in `docs/agents/surfaces.md`:
 
    - **In step** — it says what the spec asked
    - **Out of step** — it says less, or says something the code no longer does
 
-   The report lists every Surface the spec names under its own `### Surfaces` heading, each with its mark, and says what an Out of step Surface lacks. A spec whose Surfaces section says "None", or that has none, gets a line saying so.
+   A spec whose Surfaces section says "None" has no Surface to judge.
 
-5. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. The project glossary is the arbiter.
+5. List **Unrequested** work: behaviour in the diff that no story and no ticket asked for.
 
-6. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back.
+6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. The project glossary is the arbiter.
+
+7. Write the report. The loop reads its lists, so their shape is fixed:
+
+   - The first line is `## Drift report`.
+   - The `### Verdicts` list comes next. Each line is `- <item>: <Verdict>`, one line per item, and every item of the spec gets exactly one. The loop counts them: an item with no Verdict, or with two, is a Gap, like a Missing one.
+   - After the Verdict, every Verdict other than Done or In step carries one sentence of reason, on the same line.
+   - The prose follows: what each Partial, Missing and Contradicts lacks or breaks, then a `### Surfaces` heading with what each Out of step Surface lacks, then the glossary notes from step 6.
+   - The `### Unrequested` list comes last, one item per line. With nothing Unrequested it says `- None`.
+
+   ```markdown
+   ## Drift report
+
+   ### Verdicts
+
+   - S1: Done
+   - S2: Partial. The stop line names the Contradicts but not the Gaps beside it.
+   - D1: Missing. No code reads the report's Verdicts.
+   - D2: Contradicts. The driver closes the spec when a Gap is left.
+   - The user docs: Out of step. `the-loop.md` does not say what a Gap is.
+
+   S2 is half there: ...
+
+   ### Surfaces
+
+   The user docs: ...
+
+   ### Unrequested
+
+   - A helper that trims the log's lines to 80 characters.
+   ```
+
+8. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back.
    - **GitHub**: post it as a comment on the spec issue.
    - **Files**: there is no issue to comment on, so the report goes at the end of the spec's `spec.md`, under that heading. Write it to a file outside the repo, such as in `$(mktemp -d)`, and record it:
 
@@ -61,4 +91,4 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
      The command pushes it to the spec's branch on the remote and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
 
-7. **Report only. Fix nothing.** A fix is new work and needs its own ticket. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step.
+9. **Report only. Fix nothing.** A fix is new work and needs its own ticket. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step, when the count finds nothing owed.

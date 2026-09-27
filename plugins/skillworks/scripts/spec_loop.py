@@ -37,7 +37,9 @@ from typing import NamedTuple
 
 import land_ticket
 import ticket_worktree
+from count.gaps import count_verdicts, gap_said
 from count.items import read_items
+from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
@@ -287,6 +289,10 @@ def how_many(count, word, words):
     return "{} {}".format(count, word if count == 1 else words)
 
 
+def contradicts_said(verdict):
+    return verdict.item + (": " + verdict.reason if verdict.reason else "")
+
+
 def plan_line(name, what, checks=""):
     said = "      {:<12} {}\n".format(name, what)
     if checks:
@@ -312,6 +318,8 @@ class Loop:
         self.tracker = None
         self.spec_title = ""
         self.ticket_count = 0
+        # Read before the first ticket, so the count judges the report by the spec the run began on.
+        self.items = None
 
         self.job_worktree = ""
         self.ticket_base = ""
@@ -656,6 +664,7 @@ class Loop:
                        "the loop again.".format(
                            self.spec_named(),
                            "".join("      Fault: {}\n".format(fault) for fault in items.faults)))
+        self.items = items
         self.say("SHAPE spec {} holds {}, {} and {}, so the drift check's Verdicts can be "
                  "counted".format(self.spec_named(),
                                   how_many(len(items.stories), "story", "stories"),
@@ -940,13 +949,44 @@ class Loop:
     def read_drift_report(self):
         report = self.tracker.drift_report(self.spec)
         if not report:
-            self.say("WARN  the drift check recorded no report on spec {}.".format(
-                self.spec_named()))
-            return
+            raise stop("STOP  the drift check recorded no report on spec {}, so nothing was "
+                       "counted and the spec stays open.".format(self.spec_named()))
         held = self.log_dir / "drift.md"
         written(held, report + "\n")
         self.say("DRIFT the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
+        self.count_drift(read_verdicts(report), held)
+
+    # The driver judges nothing: it counts, so a skipped item is caught by arithmetic.
+    def count_drift(self, report, held):
+        if report.verdicts is None:
+            raise stop("STOP  the drift report on spec {} holds no {} list, so nothing was "
+                       "counted and the spec stays open. Read it at {}".format(
+                           self.spec_named(), VERDICTS, held))
+        counted = count_verdicts(self.items, report.verdicts)
+        self.say("COUNT the spec holds {}, and the drift report gives {}".format(
+            how_many(len(self.items.every()), "item", "items"),
+            how_many(counted.verdicts_given, "Verdict", "Verdicts")))
+        for verdict in counted.unknown:
+            self.say("WARN  the drift report judges {}, which spec {} does not hold, so its "
+                     "Verdict is not counted".format(verdict.item, self.spec_named()))
+        for said in report.unrequested:
+            self.say("NOTE  Unrequested: " + said)
+
+        gaps = "".join("      Gap: {}\n".format(gap_said(gap)) for gap in counted.gaps)
+        if counted.contradicts:
+            raise stop("STOP  the drift report finds the code contradicts spec {}, so the loop "
+                       "stops before anything more is built. A person decides.\n{}{}"
+                       "      Read it at {}".format(
+                           self.spec_named(),
+                           "".join("      Contradicts: {}\n".format(contradicts_said(verdict))
+                                   for verdict in counted.contradicts),
+                           gaps, held))
+        if counted.gaps:
+            raise stop("STOP  the drift report leaves {} on spec {}, so the spec stays open.\n{}"
+                       "      Read it at {}".format(
+                           how_many(len(counted.gaps), "Gap", "Gaps"), self.spec_named(), gaps,
+                           held))
 
     # --- the spec's close ---------------------------------------------------
 

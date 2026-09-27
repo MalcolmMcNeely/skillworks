@@ -341,6 +341,7 @@ def given_sessions_that_finish(driver, **finish):
     given_a_suite_that_passes(driver)
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner, **finish)
+    sessions.then["spec-drift"] = drifting(driver)
     driver.push({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -460,6 +461,7 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     given_a_suite_that_passes(driver)
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner)
+    sessions.then["spec-drift"] = drifting(driver)
     return sessions
 
 
@@ -485,21 +487,22 @@ def test_in_spec_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_bran
     assert "mark it ready for review" in last
 
 
-REPORT = "## Drift report\n\n- Story 1: Done\n"
+VERDICTS = "### Verdicts\n\n- S1: Done\n- D1: Done\n"
+
+REPORT = "## Drift report\n\n" + VERDICTS
 
 
-def drifting(driver):
+def drifting(driver, report=REPORT):
     def drift():
-        report = driver.repo.root / "drift-report.md"
-        report.write_text(REPORT, encoding="utf-8", newline="\n")
-        publish.main(["drift", SPEC, report.as_posix()], driver.runner, io.StringIO(),
+        held = driver.repo.root / "drift-report.md"
+        held.write_text(report, encoding="utf-8", newline="\n")
+        publish.main(["drift", SPEC, held.as_posix()], driver.runner, io.StringIO(),
                      io.StringIO(), lambda seconds: None, driver.repo.work.as_posix())
     return drift
 
 
 def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
-    sessions = given_sessions_that_finish(driver)
-    sessions.then["spec-drift"] = drifting(driver)
+    given_sessions_that_finish(driver)
 
     ran = driver.run()
 
@@ -508,17 +511,33 @@ def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
     assert text.endswith(REPORT)
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
     held = driver.repo.work / ".spec-loop" / SPEC / "drift.md"
-    assert held.read_text(encoding="utf-8") == "- Story 1: Done\n"
+    assert held.read_text(encoding="utf-8") == VERDICTS
     assert "DRIFT the report is recorded on spec 7" in ran.out
+    assert "COUNT the spec holds 2 items, and the drift report gives 2 Verdicts" in ran.out
 
 
-def test_a_drift_check_that_recorded_no_report_is_said(driver):
-    given_sessions_that_finish(driver)
+def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):
+    sessions = given_sessions_that_finish(driver)
+    del sessions.then["spec-drift"]
 
     ran = driver.run()
 
-    assert ran.status == 0, said(ran)
-    assert "WARN  the drift check recorded no report on spec 7" in ran.out
+    assert ran.status == 1
+    assert "STOP  the drift check recorded no report on spec 7" in ran.out
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+
+
+def test_a_gap_in_the_drift_report_leaves_the_spec_open(driver):
+    sessions = given_sessions_that_finish(driver)
+    sessions.then["spec-drift"] = drifting(
+        driver, "## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Missing. Not there.\n")
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "      Gap: D1 is Missing: Not there.\n" in ran.out
+    assert "CLOSE" not in ran.out
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
 
 
 def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(driver):

@@ -70,6 +70,20 @@ COUNTED = ("## Problem Statement\n\nWords.\n\n"
 
 NAMES_ITS_BRANCH = COUNTED + "\n## Branch\n\n`{}`\n".format(SPEC_BRANCH)
 
+ALL_DONE = {"S1": "Done", "S2": "Done", "D1": "Done", "The user docs": "In step"}
+
+
+def drift_report(*extra, unrequested=(), **given):
+    judged = dict(ALL_DONE, **{name.replace("_", " "): said for name, said in given.items()})
+    said = "## Drift report\n\n### Verdicts\n\n"
+    said += "".join("- {}: {}\n".format(name, verdict) for name, verdict in judged.items()
+                    if verdict is not None)
+    said += "".join("- {}\n".format(line) for line in extra)
+    said += "\nThe prose.\n"
+    if unrequested:
+        said += "\n### Unrequested\n\n" + "".join("- {}\n".format(line) for line in unrequested)
+    return said
+
 
 # The checkout sits on the spec's branch, so what a case commits there reaches it and not main.
 @pytest.fixture
@@ -110,8 +124,8 @@ class Tracker:
         self.closed = set()
         self.body = NAMES_ITS_BRANCH
         self.ready = Ran(0, "", "")
-        # A drift check that ran as it should, so only a case about a missing report reads a WARN.
-        self.last_comment = "## Drift report\n\nNothing drifted.\n"
+        # A drift check that found everything done, so only a case about the count reads a stop.
+        self.last_comment = drift_report()
         runner.stub("gh", does=self.answer)
 
     def numbers(self, only_open=False):
@@ -2076,25 +2090,112 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
 def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runner):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
-    tracker.last_comment = "## Drift report\n\n- Story 1: Done\n"
+    tracker.last_comment = drift_report()
 
     ran = loop.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert (loop.records() / "drift.md").read_text(encoding="utf-8") == "- Story 1: Done\n"
+    assert (loop.records() / "drift.md").read_text(encoding="utf-8") == (
+        drift_report().removeprefix("## Drift report\n\n"))
     assert "DRIFT the report is recorded on spec #{}".format(SPEC) in ran.out
 
 
-def test_a_spec_whose_last_comment_is_no_drift_report_is_said(loop, runner):
+# --- the count ---------------------------------------------------------------
+
+def drifted(loop, report):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
-    tracker.last_comment = "Looks good to me.\n"
+    tracker.last_comment = report
+    return loop.run(SPEC)
 
-    ran = loop.run(SPEC)
+
+def test_every_verdict_done_or_in_step_ends_the_run_and_says_what_was_counted(loop):
+    ran = drifted(loop, drift_report())
 
     assert ran.status == 0, said(ran)
-    assert "WARN  the drift check recorded no report on spec #{}".format(SPEC) in ran.out
+    assert "COUNT the spec holds 4 items, and the drift report gives 4 Verdicts" in loop.log()
+    assert "STOP" not in loop.log()
+    assert "END   spec #{}".format(SPEC) in loop.log()
+
+
+def test_a_missing_a_partial_and_an_item_not_judged_stop_the_loop_naming_each_gap(loop):
+    ran = drifted(loop, drift_report(S2="Missing. No code stops.", D1="Partial. Half of it.",
+                                     The_user_docs=None))
+
+    assert ran.status == 1
+    log = loop.log()
+    assert "COUNT the spec holds 4 items, and the drift report gives 3 Verdicts" in log
+    assert "STOP  the drift report leaves 3 Gaps on spec #{}".format(SPEC) in log
+    assert "      Gap: S2 is Missing: No code stops.\n" in log
+    assert "      Gap: D1 is Partial: Half of it.\n" in log
+    assert "      Gap: The user docs has no Verdict\n" in log
+    assert "END" not in log
+
+
+def test_an_item_judged_twice_stops_the_loop(loop):
+    ran = drifted(loop, drift_report("S1: Missing. It is not there."))
+
+    assert ran.status == 1
+    assert "STOP  the drift report leaves 1 Gap on spec #{}".format(SPEC) in loop.log()
+    assert "      Gap: S1 has 2 Verdicts: Done, Missing\n" in loop.log()
+
+
+def test_a_verdict_for_an_item_the_spec_does_not_hold_is_warned_of_and_stops_nothing(loop):
+    ran = drifted(loop, drift_report("S9: Missing. Nothing."))
+
+    assert ran.status == 0, said(ran)
+    assert ("WARN  the drift report judges S9, which spec #{} does not hold, so its Verdict is "
+            "not counted").format(SPEC) in loop.log()
+    assert "END   spec #{}".format(SPEC) in loop.log()
+
+
+def test_a_report_with_no_verdicts_list_stops_the_loop(loop):
+    ran = drifted(loop, "## Drift report\n\nNothing drifted.\n")
+
+    assert ran.status == 1
+    assert ("STOP  the drift report on spec #{} holds no ### Verdicts list, so nothing was "
+            "counted").format(SPEC) in loop.log()
+    assert "COUNT" not in loop.log()
+    assert "END" not in loop.log()
+
+
+def test_a_spec_whose_last_comment_is_no_drift_report_stops_the_loop(loop):
+    ran = drifted(loop, "Looks good to me.\n")
+
+    assert ran.status == 1
+    assert ("STOP  the drift check recorded no report on spec #{}, so nothing was counted"
+            .format(SPEC)) in loop.log()
     assert not (loop.records() / "drift.md").exists()
+    assert "END" not in loop.log()
+
+
+def test_a_contradicts_stops_the_loop_naming_it_and_every_gap_beside_it(loop):
+    ran = drifted(loop, drift_report(D1="Contradicts. It closes the spec.", S2="Missing",
+                                     S1=None))
+
+    assert ran.status == 1
+    log = loop.log()
+    assert "STOP  the drift report finds the code contradicts spec #{}".format(SPEC) in log
+    assert "      Contradicts: D1: It closes the spec.\n" in log
+    assert "      Gap: S1 has no Verdict\n" in log
+    assert "      Gap: S2 is Missing\n" in log
+    assert "STOP  the drift report leaves" not in log
+
+
+def test_each_unrequested_item_gets_a_note_and_stops_nothing(loop):
+    ran = drifted(loop, drift_report(unrequested=("A helper that trims logs.", "A retry.")))
+
+    assert ran.status == 0, said(ran)
+    assert "NOTE  Unrequested: A helper that trims logs.\n" in loop.log()
+    assert "NOTE  Unrequested: A retry.\n" in loop.log()
+
+
+def test_unrequested_items_are_noted_even_when_a_gap_stops_the_loop(loop):
+    ran = drifted(loop, drift_report(S1="Missing", unrequested=("A retry.",)))
+
+    assert ran.status == 1
+    assert "NOTE  Unrequested: A retry.\n" in loop.log()
+    assert loop.log().index("NOTE") < loop.log().index("STOP")
 
 
 def test_attributes_already_set_are_kept_and_the_parent_is_added(loop, runner, monkeypatch):

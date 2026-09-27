@@ -486,6 +486,20 @@ ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
       Write it in the shape /skillworks:to-spec writes, and run the loop again.
 ```
 
+**A drift report that leaves work owed.** After the last ticket, the script [counts the drift
+check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, a Contradicts or a Gap
+stops the loop with a `STOP` line, and the spec stays open. Every ticket has landed by then, so there
+is nothing to Keep. The line names each Contradicts and each Gap:
+
+```
+STOP  the drift report leaves 2 Gaps on spec #200, so the spec stays open.
+      Gap: S4 is Missing: No code writes the NOTE lines.
+      Gap: The user docs has no Verdict
+      Read it at .spec-loop/200/drift.md
+```
+
+Build what is owed in a ticket of its own, or change the spec, and run the loop again.
+
 ### Restarting a stopped run: the Keep
 
 To restart, run the same command again: `spec-loop <spec>`.
@@ -548,28 +562,57 @@ tickets, because a ticket that drifted still passed its own criteria. It records
 spec, under the heading `## Drift report`. With the GitHub Tracker the report is a comment on the spec
 issue. With the files Tracker there is no issue, so the report goes at the end of the spec's `spec.md`.
 The script then reads the report back from the Tracker and keeps a copy at
-`.spec-loop/<spec>/drift.md`. If it finds none, the log says so on a `WARN` line.
+`.spec-loop/<spec>/drift.md`.
 
-The report puts each user story and each decision of the spec in one of four groups:
+### Verdicts
 
-| Mark | What it means |
+The report opens with a `### Verdicts` list. It gives every item of the spec one **Verdict**, on a
+line of its own: `- S2: Missing. No code reads the report.` A story is `S<n>`, a decision is `D<n>`,
+and a Surface is its bold name. Each story and decision gets one of four Verdicts:
+
+| Verdict | What it means |
 |---|---|
 | Done | The code does what the spec asked. |
 | Partial | Some of it is there, and the report says what is not. |
 | Missing | None of it is there. |
 | Contradicts | The code does something the spec ruled out. |
 
-It also lists anything **Unrequested**: work the spec never asked for. It marks each Surface the spec
-names **In step** or **Out of step**, under a `### Surfaces` heading of its own. And it looks for two
-tickets that brought in two names for one idea, with your glossary as the judge.
+Each Surface gets **In step** or **Out of step**. Every Verdict other than Done or In step carries one
+sentence of reason. The prose follows the list, with what each Out of step Surface lacks under a
+`### Surfaces` heading, and a look for two tickets that brought in two names for one idea, with your
+glossary as the judge. Last comes a `### Unrequested` list: work the spec never asked for, one item
+per line.
+
+### The count
+
+The drift check judges. The script does not. It counts the Verdicts against the items it read from
+the spec before the first ticket, so an item the drift check skipped is caught by arithmetic.
+
+A **Gap** is an item the spec asked for that is not proved done:
+
+- an item with a Verdict of Missing, Partial or Out of step;
+- an item with no Verdict;
+- an item with more than one Verdict, because two Verdicts that disagree never pass as one.
+
+A Verdict that names no item of the spec, such as a typo, gets a `WARN` line and counts for nothing.
+Each Unrequested item gets a `NOTE` line. Unrequested work never stops the loop.
+
+The loop stops, and the spec stays open, when:
+
+- the drift check recorded no report;
+- the report has no `### Verdicts` list;
+- any Verdict is Contradicts. The stop line names each Contradicts and every Gap beside it, because a
+  person decides on a part of the spec the code ruled against;
+- any Gap is left. The stop line names each one.
 
 The drift check fixes nothing and closes nothing. A fix is new work, and needs a ticket of its own.
 Closing the spec is where a person says the work is done. With a branch name, a person closes it by
 hand. With `spec`, the loop marks the spec's pull request ready for review, and the spec closes when a
-person merges it. With the files Tracker, the loop closes the spec itself after the drift check, and
-with `spec` it leaves the pull request to you. A clean finish needs two facts: the log reaches its
-`END` line, and the drift report lists nothing Missing, Partial or Contradicts, and no Surface Out of
-step.
+person merges it. With the files Tracker, the loop closes the spec itself after a count that finds no
+Gap and no Contradicts, and with `spec` it leaves the pull request to you. A clean finish needs two
+facts: the log reaches its `END` line, and the drift report lists nothing Missing, Partial or
+Contradicts, and no Surface Out of step. The count runs before `END`, so a log that reaches `END` has
+both.
 
 ## The stage map
 
@@ -640,6 +683,20 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
+
+After the last ticket and the full run, the drift check adds its own lines:
+
+```
+18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift.md
+18:40:12 COUNT the spec holds 21 items, and the drift report gives 21 Verdicts
+18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
+18:40:12 END   spec #200 complete. Every ticket is on master.
+```
+
+The `COUNT` line says how many items the spec holds and how many Verdicts the report gave. A `NOTE`
+line names each Unrequested item. A `WARN` line names a Verdict for an item the spec does not hold. A
+`STOP` line in place of `END` names each Gap and each Contradicts, as [When a step
+fails](#when-a-step-fails) shows.
 
 The position counts closed tickets, so a restarted run starts at its real place. The time left is the
 mean of the tickets this run has finished, with the one now running counted as still to do.
