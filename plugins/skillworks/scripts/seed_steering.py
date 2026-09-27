@@ -8,7 +8,7 @@ from pathlib import Path
 from runner import Subprocess
 from stop import Stop, misuse, refusal
 
-USAGE = "usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]...\n"
+USAGE = "usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... [--settled <file>]...\n"
 
 SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "seeds"
 
@@ -138,7 +138,7 @@ def shown_overlaps(place, overlaps):
     return shown
 
 
-def weigh(top, default, name, place, choices):
+def weigh(top, default, name, place, choices, settled):
     wanted = (SEEDS / name).read_text(encoding="utf-8").replace(DEFAULT_BRANCH_PLACEHOLDER, default)
     target = top / place
     base = top / BASES / name
@@ -151,12 +151,20 @@ def weigh(top, default, name, place, choices):
 
     held = target.read_text(encoding="utf-8")
     if held == wanted:
-        return Outcome("kept {}, the same as the seed\n".format(place))
+        same = "kept {}, the same as the seed\n".format(place)
+        if was is None:
+            return Outcome(same, writes=[(base, wanted)], used=[place])
+        return Outcome(same)
     if held == was:
         return Outcome("updated {}\n".format(place), "would update {}\n".format(place),
                        writes=[(target, wanted), (base, wanted)])
     if was == wanted:
         return Outcome("kept {}, which you edited\n".format(place))
+    # With no base copy the team's edits cannot be told from an older Seed, so the base waits until the team has read the diff.
+    if was is None and place in settled:
+        return Outcome("kept {}, as you settled it, and wrote its base copy\n".format(place),
+                       "would keep {}, as you settled it, and write its base copy\n".format(place),
+                       writes=[(base, wanted)], used=[place])
     if was is None:
         return Outcome("kept {}, which differs from the seed:\n".format(place), shown=diff(place, held, wanted))
 
@@ -171,17 +179,21 @@ def weigh(top, default, name, place, choices):
                    shown=diff(place, held, merged), writes=[(target, merged), (base, wanted)], used=used)
 
 
-def seed(top, default, choices):
+def seed(top, default, choices, settled):
     outcomes = []
     readme = top / BASES / "README.md"
     if not readme.exists():
         outcomes.append(Outcome("wrote {}/README.md\n".format(BASES), "would write {}/README.md\n".format(BASES),
                                 writes=[(readme, BASES_README)]))
-    outcomes += [weigh(top, default, name, place, choices) for name, place in PLACES.items()]
+    outcomes += [weigh(top, default, name, place, choices, settled) for name, place in PLACES.items()]
     used = set().union(*(outcome.used for outcome in outcomes))
     unused = sorted(choice for choice in choices if choice not in used)
     if unused:
         raise refusal("{}:{} names no overlap. Nothing was written.".format(*unused[0]))
+    unsettled = sorted(place for place in settled if place not in used)
+    if unsettled:
+        raise refusal("{} is not a file that differs from its seed with no base copy. Nothing was written."
+                      .format(unsettled[0]))
     return outcomes
 
 
@@ -200,7 +212,7 @@ def ignore_working_folders(top):
 
 
 def parsed(argv):
-    where, choices = None, {}
+    where, choices, settled = None, {}, set()
     rest = iter(argv)
     for arg in rest:
         if arg == "--keep":
@@ -208,11 +220,16 @@ def parsed(argv):
             if not found:
                 raise misuse(USAGE)
             choices[(found.group(1), int(found.group(2)))] = found.group(3)
+        elif arg == "--settled":
+            place = next(rest, "")
+            if not place or place.startswith("--"):
+                raise misuse(USAGE)
+            settled.add(place)
         elif where is None and not arg.startswith("--"):
             where = arg
         else:
             raise misuse(USAGE)
-    return where or ".", choices
+    return where or ".", choices, settled
 
 
 # A run that stops for a question writes nothing, so no Steering file is left half-merged while the team decides.
@@ -230,12 +247,12 @@ def report(outcomes, out):
 
 def main(argv, runner, out, err):
     try:
-        where, choices = parsed(argv)
+        where, choices, settled = parsed(argv)
         found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        report(seed(top, default_branch(runner, top), choices) + ignore_working_folders(top), out)
+        report(seed(top, default_branch(runner, top), choices, settled) + ignore_working_folders(top), out)
         return 0
     except Stop as stop:
         err.write(stop.said)

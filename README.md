@@ -232,8 +232,8 @@ Run it once per clone. Run it again any time to repair.
 
 It creates the `ready-for-agent` label, seeds the Steering (the rules, `docs/agents/` and a starting
 Suite file) where it is missing, points `CLAUDE.md` at it, enables the Plugin, and installs the
-permission allowlist the loop needs to run unattended. It never overwrites a file you have edited: it
-shows you the difference instead.
+permission allowlist the loop needs to run unattended. A second run brings in a newer Seed. It
+merges the Seed's change into a file you have edited, and asks you where the two touch the same lines.
 
 ### The dev loop
 

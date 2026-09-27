@@ -29,9 +29,9 @@ WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
 RULES = ["comments.md", "determinism.md", "file-placement.md", "words.md"]
 
 
-def run_seed(runner, where):
+def run_seed(runner, where, *flags):
     out, err = io.StringIO(), io.StringIO()
-    status = seed_steering.main([where.as_posix()], runner, out, err)
+    status = seed_steering.main([where.as_posix(), *flags], runner, out, err)
     return Ran(status, out.getvalue(), err.getvalue())
 
 
@@ -112,6 +112,79 @@ def test_a_seed_already_there_with_no_base_copy_gets_none(repo, runner):
     assert "kept docs/agents/domain.md, which differs from the seed:\n" in ran.out
     assert not (repo.work / BASES / "domain.md").exists()
     assert (repo.work / BASES / "suite.json").is_file()
+
+
+def run_seed_settling(runner, where, *places):
+    return run_seed(runner, where, *[part for place in places for part in ("--settled", place)])
+
+
+@pytest.mark.parametrize("seed", ["domain.md", "suite.json"])
+def test_a_file_with_no_base_copy_gets_one_once_the_team_has_settled_it(repo, runner, seed):
+    place = WHERE[seed]
+    settled = "# What the team settled\n" if seed == "domain.md" else '{\n  "runs": 3,\n  "checks": []\n}\n'
+    seed_steering.write(repo.work / place, settled)
+
+    ran = run_seed_settling(runner, repo.work, place)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / place).read_text(encoding="utf-8") == settled
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded_for(seed, "main")
+    assert "kept {}, as you settled it, and wrote its base copy\n".format(place) in ran.out
+    assert "differs" not in ran.out
+
+
+def test_a_settled_file_is_weighed_against_its_new_base_copy_on_the_next_run(repo, runner):
+    place = WHERE["domain.md"]
+    seed_steering.write(repo.work / place, "# Our own domain notes\n")
+    run_seed_settling(runner, repo.work, place)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert "kept {}, which you edited\n".format(place) in ran.out
+
+
+def test_a_file_with_no_base_copy_the_same_as_the_seed_gets_one(repo, runner):
+    run_seed(runner, repo.work)
+    (repo.work / BASES / "domain.md").unlink()
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / BASES / "domain.md").read_text(encoding="utf-8") == seeded("domain.md")
+    assert "kept docs/agents/domain.md, the same as the seed\n" in ran.out
+
+
+def test_a_file_with_no_base_copy_settled_by_taking_the_whole_seed_gets_one(repo, runner):
+    place = WHERE["domain.md"]
+    seed_steering.write(repo.work / place, seeded("domain.md"))
+
+    ran = run_seed_settling(runner, repo.work, place)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / BASES / "domain.md").read_text(encoding="utf-8") == seeded("domain.md")
+
+
+def test_a_settling_that_names_no_file_without_a_base_copy_is_refused_and_nothing_is_written(repo, runner):
+    run_seed(runner, repo.work)
+    seed_steering.write(repo.work / WHERE["domain.md"], "# Our own domain notes\n")
+    before = on_disk(repo.work)
+
+    ran = run_seed_settling(runner, repo.work, "docs/agents/domain.md")
+
+    assert ran.status == 1
+    assert "docs/agents/domain.md" in ran.err
+    assert "Nothing was written." in ran.err
+    assert on_disk(repo.work) == before
+
+
+def test_a_settling_with_no_file_prints_the_usage(repo, runner):
+    out, err = io.StringIO(), io.StringIO()
+
+    status = seed_steering.main([repo.work.as_posix(), "--settled"], runner, out, err)
+
+    assert status == 64
+    assert err.getvalue() == seed_steering.USAGE
 
 
 def make_master_the_default(repo):
@@ -309,10 +382,7 @@ def test_a_seed_new_in_the_plugin_is_written_with_its_base_copy(repo, runner, se
 
 
 def run_seed_choosing(runner, where, *choices):
-    out, err = io.StringIO(), io.StringIO()
-    argv = [where.as_posix()] + [part for choice in choices for part in ("--keep", choice)]
-    status = seed_steering.main(argv, runner, out, err)
-    return Ran(status, out.getvalue(), err.getvalue())
+    return run_seed(runner, where, *[part for choice in choices for part in ("--keep", choice)])
 
 
 def on_disk(folder):
@@ -790,6 +860,30 @@ def test_the_report_ends_with_a_link_to_the_usage_front_page():
 
 
 SETUP_PAGE = ROOT / "docs" / "usage" / "setup.md"
+
+
+OUTCOMES = ["`wrote`", "`updated`", "`kept ..., which you edited`", "`kept ..., the same as the seed`", "`merged`",
+            "`asks`", "`left out`", "`kept ..., which differs from the seed`", "`kept ..., as you settled it`"]
+
+
+def test_the_seed_step_names_each_outcome_the_questions_and_the_review_before_commit():
+    step = setup_section("### 2. Seed the Steering")
+
+    for outcome in OUTCOMES:
+        assert "| {} |".format(outcome) in step, outcome
+    assert "--keep " in step
+    assert "--settled " in step
+    assert "before you change anything" in step
+    assert "before they commit" in step
+
+
+def test_the_setup_page_explains_each_outcome_of_a_second_run():
+    again = SETUP_PAGE.read_text(encoding="utf-8").split("## Run setup again", 1)[1]
+
+    for outcome in OUTCOMES:
+        assert "| {} |".format(outcome) in again, outcome
+    assert "`docs/agents/.seeds/`" in again
+    assert "before you commit" in again
 
 
 def test_the_usage_front_page_lists_the_setup_page():

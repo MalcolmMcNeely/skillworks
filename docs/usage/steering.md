@@ -2,8 +2,9 @@
 
 Steering is what your repo tells the loop about itself: its rules, its tracker docs, its review
 baselines and its Suite. Setup copies a Seed of each file into your repo, and your team owns the files
-from then on. A Plugin update never overwrites them. Edit them by hand whenever your team changes its
-mind, and commit the edit like any other change.
+from then on. A Plugin update never changes them by itself. A second run of setup brings in a newer
+Seed and keeps your edits: [Setup](setup.md#run-setup-again) says how. Edit them by hand whenever your
+team changes its mind, and commit the edit like any other change.
 
 Every Steering file lives in `docs/agents/`, so you find all of it in one place. A few files sit
 somewhere else, because a tool or a design puts them there. They are at the end of the list.

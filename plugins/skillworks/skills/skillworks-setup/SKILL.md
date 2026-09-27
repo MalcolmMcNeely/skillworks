@@ -6,9 +6,9 @@ disable-model-invocation: true
 
 # Skillworks Setup
 
-Write the Steering the Skillworks skills read, and the settings the loop needs. Run it once. Re-run it to repair.
+Write the Steering the Skillworks skills read, and the settings the loop needs. Run it once. Re-run it to repair, or to bring in a newer seed.
 
-The Plugin carries the Machinery: the skills, the scripts, the hooks and the output style. They run from the Plugin, so setup copies none of them. Steering is what the repo tells the loop about itself. Setup copies a starting version of each piece, and the team owns it from then on. A Plugin update never overwrites it.
+The Plugin carries the Machinery: the skills, the scripts, the hooks and the output style. They run from the Plugin, so setup copies none of them. Steering is what the repo tells the loop about itself. Setup copies a starting version of each piece, and the team owns it from then on. A Plugin update never changes it by itself. A second run of setup brings in the newer seed and keeps the team's edits.
 
 Skillworks is **GitHub only**. There is no tracker question, because there is no other answer. If a repo tracks work somewhere else, it cannot run this loop.
 
@@ -48,9 +48,39 @@ If it fails, stop and report. Every step below assumes the repo is a GitHub clon
 seed-steering
 ```
 
-It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet. `loop.json` is written with the remote's default branch as its `target-branch`. A seed that is missing is written. A seed that is there is kept, and when it differs from the seed the script prints the difference. It never overwrites a file.
+It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet. `loop.json` is written with the remote's default branch as its `target-branch`.
 
-Show the user each difference it printed. A difference is what a newer seed says against what the team has. Change a kept file only when the user asks, and only by the lines they pick.
+It keeps a base copy of each seed in `docs/agents/.seeds/`, exactly as it copied it. On a later run it weighs three versions of each file: the base copy, the team's file and the current seed. It prints one line per file:
+
+| Outcome | What happened |
+|---|---|
+| `wrote` | The seed is new, or the file was never there. The file and its base copy are written. |
+| `updated` | The team never edited the file, and the seed moved on. The file and its base copy take the new seed. |
+| `kept ..., which you edited` | The team edited the file, and the seed did not move. Nothing changes. |
+| `kept ..., the same as the seed` | Nothing changed on either side. |
+| `merged` | The team edited the file, and the seed moved on in other lines. The seed's change is applied, and the diff under the line shows it. |
+| `asks` | The team's edit and the seed's change touch the same lines. Both sides of each overlap are printed, numbered. |
+| `left out` | The team deleted the file. It stays deleted. |
+| `kept ..., which differs from the seed` | The file has no base copy, because the repo was set up before base copies existed. The diff against the seed is printed. |
+| `kept ..., as you settled it` | The file had no base copy, and the run named it with `--settled`. The file is kept, and its base copy is written. |
+
+Show the user each outcome line and each diff under a `merged` line.
+
+When a line says `asks`, the script has written nothing, and every other line says what it would do. Put each overlap to the user: show the `yours` side and the `seed` side, and ask which to keep. Ask every question before you change anything. Then run it again with one choice per overlap:
+
+```bash
+seed-steering --keep docs/agents/domain.md:1=yours --keep docs/agents/domain.md:2=seed
+```
+
+When a line says `kept ..., which differs from the seed`, treat the file as edited. Show the user the diff, and change the file only by the lines they pick. When they have decided, even to take no lines, give the file back so the script writes its base copy, and the merge works from the next run on:
+
+```bash
+seed-steering --settled docs/agents/domain.md
+```
+
+Give the `--keep` and `--settled` choices in one run when both are due. A choice that names no overlap, or a `--settled` for a file that has a base copy, is refused, and nothing is written.
+
+The user reviews every changed file before they commit. Setup commits nothing.
 
 ### 3. Point CLAUDE.md at the docs
 
@@ -132,6 +162,6 @@ Then tell them the loop is ready:
 The grill runs `/skillworks:to-spec` itself once the user confirms the shape it settled, so it hands them a
 spec number rather than a command to type.
 
-Mention they can edit the Steering by hand at any time. Re-running this skill is only for repair.
+Mention they can edit the Steering by hand at any time. Re-running this skill repairs, and brings in a newer seed after a Plugin update.
 
 End the report with a link to the usage docs, so the team finds them at the moment it needs them: [Using Skillworks](https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/README.md)
