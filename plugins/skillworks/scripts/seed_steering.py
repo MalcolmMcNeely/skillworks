@@ -124,9 +124,10 @@ def merge(was, held, wanted, chosen):
     return "".join(merged + base[at:]), overlaps
 
 
-def diff(place, before, after):
+def diff(place, before, after, labels):
     return list(difflib.unified_diff(
-        before.splitlines(keepends=True), after.splitlines(keepends=True), "yours/" + place, "seed/" + place))
+        before.splitlines(keepends=True), after.splitlines(keepends=True),
+        labels[0] + "/" + place, labels[1] + "/" + place))
 
 
 def shown_overlaps(place, overlaps):
@@ -157,6 +158,7 @@ def weigh(top, default, name, place, choices, settled):
         return Outcome(same, writes=[(base, wanted)], used=[place] if was is None else [])
     if held == was:
         return Outcome("updated {}\n".format(place), "would update {}\n".format(place),
+                       shown=diff(place, held, wanted, ("old-seed", "new-seed")),
                        writes=[(target, wanted), (base, wanted)])
     if was == wanted:
         return Outcome("kept {}, which you edited\n".format(place))
@@ -166,7 +168,7 @@ def weigh(top, default, name, place, choices, settled):
                        "would keep {}, as you settled it, and write its base copy\n".format(place),
                        writes=[(base, wanted)], used=[place])
     if was is None:
-        return Outcome("kept {}, which differs from the seed:\n".format(place), shown=diff(place, held, wanted))
+        return Outcome("kept {}, which differs from the seed:\n".format(place), shown=diff(place, held, wanted, ("yours", "seed")))
 
     chosen = {number: keep for (where, number), keep in choices.items() if where == place}
     merged, overlaps = merge(was, held, wanted, chosen)
@@ -176,7 +178,7 @@ def weigh(top, default, name, place, choices, settled):
                        shown=shown_overlaps(place, overlaps), asks=True, used=used)
     return Outcome("merged {}, applying the seed's change:\n".format(place),
                    "would merge {}, applying the seed's change:\n".format(place),
-                   shown=diff(place, held, merged), writes=[(target, merged), (base, wanted)], used=used)
+                   shown=diff(place, held, merged, ("yours", "merged")), writes=[(target, merged), (base, wanted)], used=used)
 
 
 def seed(top, default, choices, settled):

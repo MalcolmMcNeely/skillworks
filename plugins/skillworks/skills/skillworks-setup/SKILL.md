@@ -43,7 +43,7 @@ It keeps a base copy of each seed in `docs/agents/.seeds/`, exactly as it copied
 | Outcome | What happened |
 |---|---|
 | `wrote` | The seed is new, or the file was never there. The file and its base copy are written. |
-| `updated` | The team never edited the file, and the seed moved on. The file and its base copy take the new seed. |
+| `updated` | The team never edited the file, and the seed moved on. The file and its base copy take the new seed, and the diff under the line shows the change. |
 | `kept ..., which you edited` | The team edited the file, and the seed did not move. Nothing changes. |
 | `kept ..., the same as the seed` | The team's file is the same as the seed. The base copy takes the seed if it differs. |
 | `merged` | The team edited the file, and the seed moved on in other lines. The seed's change is applied, and the diff under the line shows it. |
@@ -52,7 +52,13 @@ It keeps a base copy of each seed in `docs/agents/.seeds/`, exactly as it copied
 | `kept ..., which differs from the seed` | The file has no base copy, because the repo was set up before base copies existed. The diff against the seed is printed. |
 | `kept ..., as you settled it` | The file had no base copy, and the run named it with `--settled`. The file is kept, and its base copy is written. |
 
-Show the user each outcome line and each diff under a `merged` line.
+Show the user each outcome line and each diff under it. The labels on a diff say what each side holds:
+
+| Outcome | `---` side | `+++` side |
+|---|---|---|
+| `updated` | `old-seed/`: the old seed, which the team never edited | `new-seed/`: the new seed |
+| `merged` | `yours/`: the team's file | `merged/`: the team's file with the seed's change applied |
+| `kept ..., which differs from the seed` | `yours/`: the team's file | `seed/`: the current seed |
 
 When a line says `asks`, the script has written nothing, and every other line says what it would do. Put each overlap to the user: show the `yours` side and the `seed` side, and ask which to keep. Ask every question before you change anything. Then run it again with one choice per overlap:
 

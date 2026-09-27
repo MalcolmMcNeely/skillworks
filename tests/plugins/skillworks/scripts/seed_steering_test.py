@@ -324,6 +324,25 @@ def test_a_file_never_edited_whose_seed_moved_on_is_updated_with_its_base_copy(r
 
 
 @pytest.mark.parametrize("seed", sorted(OLDER))
+def test_an_updated_file_shows_the_change_from_the_old_seed_to_the_new_after_its_line(repo, runner, seed):
+    seeded_by_an_older_plugin(repo, runner, seed)
+    place = WHERE[seed]
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert "updated {}\n--- old-seed/{}\n+++ new-seed/{}\n".format(place, place, place) in ran.out
+    older, newer = OLDER[seed].splitlines(keepends=True), seeded(seed).splitlines(keepends=True)
+    gone = [line for line in older if line not in newer]
+    came = [line for line in newer if line not in older]
+    assert gone and came
+    for line in gone:
+        assert "-" + line in ran.out
+    for line in came:
+        assert "+" + line in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(OLDER))
 def test_a_file_edited_whose_seed_did_not_move_is_kept_as_it_is(repo, runner, seed):
     run_seed(runner, repo.work)
     place = WHERE[seed]
@@ -488,6 +507,29 @@ def test_a_file_edited_whose_seed_moved_elsewhere_is_merged_and_the_change_shown
     for line in changed:
         assert "+" + line in ran.out
     assert "asks" not in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(APART))
+def test_a_merged_file_labels_its_diff_as_your_file_and_the_merged_file(repo, runner, seed):
+    edited_on_both_sides(repo, runner, seed, APART[seed])
+    place = WHERE[seed]
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert "merged {}, applying the seed's change:\n--- yours/{}\n+++ merged/{}\n".format(place, place, place) \
+        in ran.out
+    assert "seed/{}".format(place) not in ran.out
+
+
+def test_a_file_with_no_base_copy_labels_its_diff_as_your_file_and_the_seed(repo, runner):
+    place = WHERE["domain.md"]
+    seed_steering.write(repo.work / place, "# Our own domain notes\n")
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert "which differs from the seed:\n--- yours/{}\n+++ seed/{}\n".format(place, place) in ran.out
 
 
 @pytest.mark.parametrize("seed", sorted(ACROSS))
@@ -931,6 +973,18 @@ def test_the_setup_page_explains_each_outcome_of_a_second_run():
         assert "| {} |".format(outcome) in again, outcome
     assert "`docs/agents/.seeds/`" in again
     assert "before you commit" in again
+
+
+DIFF_LABELS = ["`old-seed/`", "`new-seed/`", "`yours/`", "`merged/`", "`seed/`"]
+
+
+def test_the_seed_step_and_the_setup_page_name_each_label_on_a_shown_diff():
+    step = setup_section("### 1. Seed the Steering")
+    again = SETUP_PAGE.read_text(encoding="utf-8").split("## Run setup again", 1)[1]
+
+    for label in DIFF_LABELS:
+        assert label in step, label
+        assert label in again, label
 
 
 def test_the_usage_front_page_lists_the_setup_page():
