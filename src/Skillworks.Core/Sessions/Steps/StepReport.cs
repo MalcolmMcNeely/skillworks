@@ -5,6 +5,7 @@ using Skillworks.Core.Shared.Gaps;
 using Skillworks.Core.Sessions.Activations;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Context;
+using Skillworks.Core.Sessions.DepthColumn;
 using Skillworks.Core.Sessions.Queries;
 using Skillworks.Core.Sessions.Trace;
 

@@ -12,8 +12,8 @@ public sealed record SessionsRead(
     Task<DepthLanding?> Depths,
     // Every line of activity read, so an empty list tells a quiet month from a narrowed one.
     long LinesRead,
-    // At most one of the two, as a read either stopped at a place or ran out of lines at the end of its 30 days.
-    DateTimeOffset? NextBeforeUtc,
+    // At most one of the two, as a read either stopped at a Latest or ran out of lines at the end of its 30 days.
+    DateTimeOffset? OldestLatestUtc,
     DateTimeOffset? QuietSinceUtc)
 {
     public static SessionsRead Failed(string unreachable, long linesRead) =>

@@ -22,19 +22,19 @@ public static class SessionRequests
         (await studio.SessionAnswer(filter)).Sessions;
 
     public static Task<SessionsAnswer> LaterSessionAnswer(this StudioHost studio, SessionsAnswer earlier, string filter = "") =>
-        studio.SessionAnswerBefore(earlier, earlier.NextBeforeUtc!.Value, filter);
+        studio.SessionAnswerOlderThan(earlier, earlier.OldestLatestUtc!.Value, filter);
 
     public static Task<SessionsAnswer> FurtherBackSessionAnswer(this StudioHost studio, SessionsAnswer earlier) =>
-        studio.SessionAnswerBefore(earlier, earlier.QuietSinceUtc!.Value, "");
+        studio.SessionAnswerOlderThan(earlier, earlier.QuietSinceUtc!.Value, "");
 
-    private static Task<SessionsAnswer> SessionAnswerBefore(
+    private static Task<SessionsAnswer> SessionAnswerOlderThan(
         this StudioHost studio,
         SessionsAnswer earlier,
-        DateTimeOffset before,
+        DateTimeOffset latestBefore,
         string filter) =>
         studio.SessionAnswer(
             $"?asOf={Uri.EscapeDataString(earlier.Head.AsOfUtc.ToString("O", CultureInfo.InvariantCulture))}" +
-            $"&before={Uri.EscapeDataString(before.ToString("O", CultureInfo.InvariantCulture))}" +
+            $"&latestBefore={Uri.EscapeDataString(latestBefore.ToString("O", CultureInfo.InvariantCulture))}" +
             (filter.Length == 0 ? "" : $"&{filter.TrimStart('?')}"));
 
     public static Task<HttpResponseMessage> AskForSessions(this StudioHost studio, string filter) =>

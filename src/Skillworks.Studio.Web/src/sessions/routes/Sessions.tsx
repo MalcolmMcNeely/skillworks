@@ -10,15 +10,7 @@ import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page } from '../../shared/pages/lib/pages';
 import { fetchSessions } from '../api/sessions';
 import { SessionTable } from '../components/SessionTable';
-import {
-  describeNoSessions,
-  failSessionsRead,
-  foldSessionsLine,
-  listFilter,
-  nextPlace,
-  readOn,
-  type SessionsAnswer,
-} from '../lib/sessions';
+import { failSessionsRead, foldSessionsLine, listFilter, nextRead, readOn, type SessionsAnswer } from '../lib/sessions';
 
 interface Reading {
   // The filter the answer was asked for, as text, so the page can tell an answer for an older ask.
@@ -51,11 +43,11 @@ export function Sessions() {
 
     inFlight.current = abort;
 
-    const place = from === null ? null : nextPlace(from);
+    const later = from === null ? null : nextRead(from);
 
     const lines = async () => {
       // Read back out of the text, so the read depends only on what it is keyed on.
-      for await (const line of fetchSessions(readFilter(new URLSearchParams(ask)), abort.signal, place)) {
+      for await (const line of fetchSessions(readFilter(new URLSearchParams(ask)), abort.signal, later)) {
         answer = foldSessionsLine(answer, line);
         setReading({ asked: ask, answer, failure: null });
       }
@@ -115,7 +107,6 @@ export function Sessions() {
       <SessionTable
         answer={answer}
         failure={failure}
-        noRuns={describeNoSessions(filter)}
         filter={filter}
         onReadOn={() => {
           if (answer !== null && readOn(answer) === 'ready') {

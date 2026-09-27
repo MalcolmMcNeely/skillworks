@@ -57,13 +57,13 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(["kind", "sessions"], StudioHost.Fields(page));
         Assert.Equal(
-            ["firstDay", "id", "lastActivityUtc", "lastDay", "lengthMs", "name", "person", "repository", "running", "startedUtc"],
+            ["firstDay", "id", "lastDay", "latestUtc", "lengthMs", "name", "person", "repository", "running", "startedUtc"],
             StudioHost.Fields(page["sessions"]?[0]));
 
         Assert.Equal(["kind", "measure", "values"], StudioHost.Fields(measure));
         Assert.Equal(["depths", "kind"], StudioHost.Fields(depths));
 
-        Assert.Equal(["gap", "kind", "nextBeforeUtc", "quietSinceUtc"], StudioHost.Fields(end));
+        Assert.Equal(["gap", "kind", "oldestLatestUtc", "quietSinceUtc"], StudioHost.Fields(end));
     }
 
     [Fact]

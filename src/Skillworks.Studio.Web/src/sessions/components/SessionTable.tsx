@@ -4,6 +4,7 @@ import type { Filter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { nowhere, sessionAddress } from '../../shared/session/lib/where';
 import {
+  describeNoSessions,
   describeQuiet,
   describeRunLength,
   describeStarted,
@@ -92,13 +93,11 @@ function More({ answer, onReadOn }: { answer: SessionsAnswer; onReadOn: () => vo
 export function SessionTable({
   answer,
   failure,
-  noRuns,
   filter,
   onReadOn,
 }: {
   answer: SessionsAnswer | null;
   failure: string | null;
-  noRuns: string;
   filter: Filter;
   onReadOn: () => void;
 }) {
@@ -114,7 +113,7 @@ export function SessionTable({
   if (answer.rows.length === 0) {
     return (
       <>
-        <p className="session-word">{noRuns}</p>
+        <p className="session-word">{describeNoSessions(filter, answer)}</p>
         <More answer={answer} onReadOn={onReadOn} />
       </>
     );

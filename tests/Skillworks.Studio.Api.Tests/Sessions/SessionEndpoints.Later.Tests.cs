@@ -1,3 +1,4 @@
+using System.Globalization;
 using Skillworks.Studio.Api.Tests.Shared.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Sessions;
@@ -21,6 +22,32 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
+    public async Task Draws_each_of_two_pieces_of_work_that_share_the_latest_a_read_ends_on_once()
+    {
+        using var studio = new StudioHost();
+
+        var last = Numbered(RowsPerRead - 1);
+        var tied = Numbered(900);
+        var asked = Asked(RowsPerRead + 5);
+
+        // Loki keeps one of two lines sharing a stream, an instant and a body, so the two differ inside the millisecond the list reads.
+        var sameMillisecond = Moment(asked[RowsPerRead - 1].At) + TimeSpan.FromTicks(5_000);
+
+        await studio.Push(asked);
+        await studio.Push(SessionEvent.Prompted(tied, sameMillisecond.ToString("O", CultureInfo.InvariantCulture), "Same instant"));
+
+        var first = await studio.SessionAnswer();
+        var second = await studio.LaterSessionAnswer(first);
+
+        string[] drawn = [.. first.Sessions.Concat(second.Sessions).Select(session => session.Id)];
+
+        Assert.Contains(last, first.Sessions.Select(session => session.Id));
+        Assert.Contains(tied, first.Sessions.Select(session => session.Id));
+        Assert.Equal(drawn.Distinct().Count(), drawn.Length);
+        Assert.Equal([.. asked.Select(said => said.Session).Append(tied).Order()], drawn.Order());
+    }
+
+    [Fact]
     public async Task Measures_the_rows_a_later_read_loaded()
     {
         using var studio = new StudioHost();
@@ -37,7 +64,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Leaves_out_of_a_later_read_the_work_with_a_prompt_after_its_place()
+    public async Task Leaves_out_of_a_later_read_the_work_with_a_prompt_after_its_latest()
     {
         using var studio = new StudioHost();
 
@@ -55,7 +82,7 @@ public sealed partial class SessionEndpointsTests
         var first = await studio.SessionAnswer();
         var second = await studio.LaterSessionAnswer(first);
 
-        // Their older Prompts sit past the place, but each piece of work was already drawn at its newest.
+        // Their older Prompts sit past the Latest, but each piece of work was already drawn at its newest.
         Assert.Equal([plain, parent], first.Sessions.Take(2).Select(session => session.Id));
         Assert.Equal(Enumerable.Range(RowsPerRead - 2, 7).Select(Numbered), second.Sessions.Select(session => session.Id));
     }

@@ -16,7 +16,7 @@ public sealed record SessionRow
 
     public required bool Running { get; init; }
 
-    public required DateTimeOffset LastActivityUtc { get; init; }
+    public required DateTimeOffset LatestUtc { get; init; }
 
     public required DateOnly FirstDay { get; init; }
 

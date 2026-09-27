@@ -24,7 +24,7 @@ public sealed partial class SessionEndpointsTests
 
         // The newest Prompt and the newest Activation of another Skill place no row under the filter.
         Assert.Equal([Afternoon, Morning], sessions.Select(session => session.Id));
-        Assert.Equal(Moment(At(Yesterday, "11:00:00.000")), sessions[0].LastActivityUtc);
+        Assert.Equal(Moment(At(Yesterday, "11:00:00.000")), sessions[0].LatestUtc);
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public sealed partial class SessionEndpointsTests
         var answer = await studio.SessionAnswer(Swept);
 
         Assert.Equal(Enumerable.Range(0, RowsPerRead).Select(Numbered), answer.Sessions.Select(session => session.Id));
-        Assert.Equal(answer.Sessions[^1].LastActivityUtc, answer.NextBeforeUtc);
+        Assert.Equal(answer.Sessions[^1].LatestUtc, answer.OldestLatestUtc);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed partial class SessionEndpointsTests
         var sessions = await studio.SessionsIn(Swept);
 
         Assert.Equal([Morning, Evening], sessions.Select(session => session.Id));
-        Assert.Equal(Moment(At(Yesterday, "12:00:00.000")), sessions[0].LastActivityUtc);
+        Assert.Equal(Moment(At(Yesterday, "12:00:00.000")), sessions[0].LatestUtc);
     }
 
     // A run that never activated the Skill sits between each pair, newer than the run that did.

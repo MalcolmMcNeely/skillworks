@@ -34,7 +34,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Loads_later_the_work_whose_prompts_since_the_place_ran_in_another_repository()
+    public async Task Loads_later_the_work_whose_prompts_since_the_latest_ran_in_another_repository()
     {
         using var studio = new StudioHost();
 

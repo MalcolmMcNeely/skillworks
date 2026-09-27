@@ -14,10 +14,10 @@ public static class SessionEndpoints
             "sessions",
             ([AsParameters] Filter filter,
                 DateTimeOffset? asOf,
-                DateTimeOffset? before,
+                DateTimeOffset? latestBefore,
                 SessionReport report,
                 CancellationToken cancellationToken) =>
-                new ArrivingAnswer(report.AnswerAsync(filter, asOf, before, cancellationToken)));
+                new ArrivingAnswer(report.AnswerAsync(filter, asOf, latestBefore, cancellationToken)));
 
         // The span narrows the read, so opening a run from a table narrowed to a day reads that day alone.
         api.MapGet(

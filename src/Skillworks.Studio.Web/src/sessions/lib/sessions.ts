@@ -17,8 +17,7 @@ interface SessionOutline {
 
 // It carries no Measure, so a number still being read costs a reader no rows.
 export interface SessionRow extends SessionOutline {
-  // The newest Prompt of the whole piece of work, which is the row's place in the list.
-  lastActivityUtc: string;
+  latestUtc: string;
   // Both ends in, from the start to the last event of any Child.
   firstDay: string;
   lastDay: string;
@@ -93,10 +92,10 @@ export interface SessionsDepths {
   depths: Record<string, Depth>;
 }
 
-// At most one of the two: a read either stopped at a place or ran out of Prompts at the end of its 30 days.
+// At most one of the two: a read either stopped at a Latest or ran out of Prompts at the end of its 30 days.
 export interface SessionsEnd extends GapEnd {
-  // The place of the oldest row read, so the next read starts where this one stopped.
-  nextBeforeUtc: string | null;
+  // So the next read starts where this one stopped.
+  oldestLatestUtc: string | null;
   // How far back a quiet 30 days reached, so a quiet month is never read as the start of the store.
   quietSinceUtc: string | null;
 }
@@ -111,15 +110,15 @@ export interface SessionsAnswer {
   arriving: boolean;
   // Null while arriving, as whether the answer fell short is known only once it ends.
   gap: Gap | null;
-  // While a later read is in flight, the place it started from, so a read that fails can be asked again.
-  nextBeforeUtc: string | null;
+  // While a later read is in flight, the Latest it started from, so a read that fails can be asked again.
+  oldestLatestUtc: string | null;
   quietSinceUtc: string | null;
   held: number;
 }
 
-export interface SessionsPlace {
+export interface LaterRead {
   asOfUtc: string;
-  beforeUtc: string;
+  latestBeforeUtc: string;
 }
 
 export type ReadOnState = 'hidden' | 'ready' | 'arriving';
@@ -144,7 +143,7 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
           landed: false,
           arriving: true,
           gap: null,
-          nextBeforeUtc: null,
+          oldestLatestUtc: null,
           quietSinceUtc: null,
           held: 0,
         }
@@ -174,11 +173,11 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
     return { ...answer, rows: inRead(answer, (row) => ({ ...row, depth: depthIn(row, line) })) };
   }
 
-  // A store that did not answer brought no place, so the one the read started from stays for the next click.
-  const ended = line.nextBeforeUtc !== null || line.quietSinceUtc !== null || line.gap.kind !== 'unreachable';
-  const { nextBeforeUtc, quietSinceUtc } = ended ? line : answer;
+  // A store that did not answer brought no Latest, so the one the read started from stays for the next click.
+  const ended = line.oldestLatestUtc !== null || line.quietSinceUtc !== null || line.gap.kind !== 'unreachable';
+  const { oldestLatestUtc, quietSinceUtc } = ended ? line : answer;
 
-  return { ...answer, arriving: false, gap: line.gap, nextBeforeUtc, quietSinceUtc, rows: inRead(answer, settled) };
+  return { ...answer, arriving: false, gap: line.gap, oldestLatestUtc, quietSinceUtc, rows: inRead(answer, settled) };
 }
 
 export function failSessionsRead(answer: SessionsAnswer, reason: string): SessionsAnswer {
@@ -187,7 +186,7 @@ export function failSessionsRead(answer: SessionsAnswer, reason: string): Sessio
 
 // Only a finished read names where the next one starts, so the button waits for it.
 export function loadMore(answer: SessionsAnswer): ReadOnState {
-  return offered(answer, answer.nextBeforeUtc);
+  return offered(answer, answer.oldestLatestUtc);
 }
 
 export function lookFurtherBack(answer: SessionsAnswer): ReadOnState {
@@ -195,7 +194,7 @@ export function lookFurtherBack(answer: SessionsAnswer): ReadOnState {
 }
 
 export function readOn(answer: SessionsAnswer): ReadOnState {
-  return offered(answer, answer.nextBeforeUtc ?? answer.quietSinceUtc);
+  return offered(answer, answer.oldestLatestUtc ?? answer.quietSinceUtc);
 }
 
 function offered(answer: SessionsAnswer, from: string | null): ReadOnState {
@@ -206,10 +205,10 @@ function offered(answer: SessionsAnswer, from: string | null): ReadOnState {
   return answer.arriving ? 'arriving' : 'ready';
 }
 
-export function nextPlace(answer: SessionsAnswer): SessionsPlace | null {
-  const beforeUtc = answer.nextBeforeUtc ?? answer.quietSinceUtc;
+export function nextRead(answer: SessionsAnswer): LaterRead | null {
+  const latestBeforeUtc = answer.oldestLatestUtc ?? answer.quietSinceUtc;
 
-  return beforeUtc === null ? null : { asOfUtc: answer.asOfUtc, beforeUtc };
+  return latestBeforeUtc === null ? null : { asOfUtc: answer.asOfUtc, latestBeforeUtc };
 }
 
 // Said only once the read has ended, as a further read in flight may yet find work past the date.
@@ -294,9 +293,20 @@ export function describeStarted(startedUtc: string): string {
   return startedUtc.replace('T', ' ').slice(0, 16);
 }
 
-// One read looks 30 days back, so an empty list with nothing narrowed says that much and no more.
-export function describeNoSessions(filter: Filter): string {
-  const narrowed = filter.repository !== '' || filter.skill !== '';
+const day = 24 * hour;
 
-  return narrowed ? 'No runs match this filter.' : 'No runs in the last 30 days.';
+const reach = 30;
+
+// Each Look further back reaches another 30 days, so an empty list with nothing narrowed says how far it has looked.
+export function describeNoSessions(filter: Filter, answer: SessionsAnswer): string {
+  if (filter.repository !== '' || filter.skill !== '') {
+    return 'No runs match this filter.';
+  }
+
+  const days =
+    answer.quietSinceUtc === null
+      ? reach
+      : Math.round((Date.parse(answer.asOfUtc) - Date.parse(answer.quietSinceUtc)) / day);
+
+  return `No runs in the last ${days} days.`;
 }

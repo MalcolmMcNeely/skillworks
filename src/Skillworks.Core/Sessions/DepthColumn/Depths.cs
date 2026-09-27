@@ -1,4 +1,4 @@
-namespace Skillworks.Core.Shared.Filters;
+namespace Skillworks.Core.Sessions.DepthColumn;
 
 // Both halves or Thin, in one place, so a row of the Sessions list and the Session it opens cannot disagree.
 public static class Depths

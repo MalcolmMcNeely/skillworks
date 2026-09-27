@@ -193,7 +193,8 @@ An answer from a store that has not finished reaching the screen. What has lande
 and its Measures can still grow. It is **complete** when its last part lands. An arriving answer has
 not fallen short, so it is not a Gap, and a complete answer can still carry one. A Session arrives
 in two parts, its events and then its Spans, so its Depth can grow from Thin to Full as a reader
-looks at it. A Sessions list arrives in two parts as well, its rows and then its Measures.
+looks at it. A Sessions list arrives in parts as well: its rows first, and then behind them its
+Measures and a line of Depths, in whichever order they land.
 _Avoid_: Loading, pending, partial, streaming
 
 **Gate**:
@@ -295,6 +296,19 @@ A Session another Session started, as its own separate run of Claude Code. It na
 stays out of the list while that Parent is there to stand for it. A Session that names no Parent is never a Child, however it was
 started.
 _Avoid_: Owned session, spawned session, sub-session
+
+**Latest**:
+The instant that sets where a row sits in the Sessions list: the newest Prompt of its whole piece
+of work, or, under a Skill filter, its newest Activation of that Skill. The list puts the newest
+Latest first, and each read ends on the Latest of its oldest row. Work that shares that Latest is
+drawn in the same read, because the next read takes only work older than it.
+_Avoid_: Place, last activity, before, cursor
+
+**Load more**:
+The button under the Sessions list that reads the next fifty rows, older than the oldest row's
+Latest. It is the one place the word load appears on screen, because it names what a reader asks
+for. An answer still reaching the screen is Arriving, and never Loading.
+_Avoid_: Show more, next page, more rows
 
 **Prompt**:
 The words a person typed, and nothing that followed them.

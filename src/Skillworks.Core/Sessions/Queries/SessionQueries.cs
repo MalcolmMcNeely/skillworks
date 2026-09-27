@@ -42,12 +42,12 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
     // Every read after the Prompts names the loaded rows, as grouping over every Session ran Loki past its series limit.
     public async Task<SessionsRead> ListAsync(
         DateTimeOffset asOf,
-        DateTimeOffset? before,
+        DateTimeOffset? latestBefore,
         Filter filter,
         CancellationToken cancellationToken)
     {
-        var start = before ?? asOf;
-        var heard = await HeardAsync(start, asOf, before, filter, cancellationToken);
+        var start = latestBefore ?? asOf;
+        var heard = await HeardAsync(start, asOf, latestBefore, filter, cancellationToken);
 
         // Only a read that ran out of lines saw the rest of its 30 days quiet, as one that stopped at fifty never looked.
         var quietSince = heard.ReadToItsEnd ? start - Reach : (DateTimeOffset?)null;
@@ -71,7 +71,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             return SessionsRead.Empty(linesRead, quietSince);
         }
 
-        var from = heard.Works.Min(work => work.Place) - ParentReach;
+        var from = heard.Works.Min(work => work.Latest) - ParentReach;
         var window = new EventQuery(EventQuery.AnyEvent, from, asOf);
 
         var standing = await StandingAsync(window, heard.Works, cancellationToken);
@@ -87,12 +87,12 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         [
             .. heard.Works
                 .SelectMany(work => work.NamedAsParent && !work.Spoke && !present.Contains(work.Id) ? work.Unfolded() : [work])
-                .OrderByDescending(work => work.Place)
+                .OrderByDescending(work => work.Latest)
                 .ThenBy(work => work.Id, StringComparer.Ordinal),
         ];
-        Work[] works = [.. unfolded.Take(RowsPerRead)];
+        Work[] works = [.. FiftyWithTies(unfolded)];
 
-        // Children left past the fifty sit between the place and the quiet date, so the next read starts from the place.
+        // Children left past the fifty sit between the Latest and the quiet date, so the next read starts from the Latest.
         if (unfolded.Length > works.Length)
         {
             quietSince = null;
@@ -147,9 +147,13 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             LandingAsync(measuring.Values, rows, cancellationToken),
             DepthsAsync(tracing, works, rows, withheld),
             heard.LinesRead,
-            quietSince is null ? works[^1].Place : null,
+            quietSince is null ? works[^1].Latest : null,
             quietSince);
     }
+
+    // A later read takes only work older than the Latest it starts from, so work sharing the fiftieth Latest comes along.
+    private static IEnumerable<Work> FiftyWithTies(IReadOnlyList<Work> newestFirst) =>
+        newestFirst.Where((work, index) => index < RowsPerRead || work.Latest == newestFirst[RowsPerRead - 1].Latest);
 
     // Behind the rows, so a slow trace store never holds back a table the events store has already answered.
     private static async Task<DepthLanding?> DepthsAsync(
@@ -193,7 +197,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
     private async Task<Heard> HeardAsync(
         DateTimeOffset start,
         DateTimeOffset asOf,
-        DateTimeOffset? before,
+        DateTimeOffset? latestBefore,
         Filter filter,
         CancellationToken cancellationToken)
     {
@@ -209,13 +213,13 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         // Asked of the work heard since the last time, so a later read costs no more however far down the list it is.
         async Task<string?> SetAsideDrawnAsync()
         {
-            if (before is not { } place || unasked.Count == 0)
+            if (latestBefore is not { } latest || unasked.Count == 0)
             {
                 return null;
             }
 
             var since = await DrawnSinceAsync(
-                place,
+                latest,
                 asOf,
                 [.. unasked.Select(work => work.Id)],
                 filter,
@@ -266,14 +270,15 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
 
                 if (!works.TryGetValue(id, out var work))
                 {
-                    if (works.Count == RowsPerRead)
+                    // Work heard at the instant of the oldest held is taken in too, as the next read starts older than it.
+                    if (works.Count >= RowsPerRead && line.At < placed[^1].Latest)
                     {
                         if (await SetAsideDrawnAsync() is { } unchecking)
                         {
                             return new Heard(unchecking, linesRead, [], withheld, ReadToItsEnd: false);
                         }
 
-                        if (works.Count == RowsPerRead)
+                        if (works.Count >= RowsPerRead)
                         {
                             return new Heard(null, linesRead, placed, withheld, ReadToItsEnd: false);
                         }
@@ -315,16 +320,16 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         return (null, 0);
     }
 
-    // Work with a line of activity from the place up to the as-of instant sat higher in an earlier read, so it was drawn there.
+    // Work with a line of activity from the Latest up to the as-of instant sat higher in an earlier read, so it was drawn there.
     // Only a line the Filter keeps counts, as the earlier read under it never heard another.
     private async Task<(string? Unreachable, IReadOnlySet<string> Drawn)> DrawnSinceAsync(
-        DateTimeOffset place,
+        DateTimeOffset latest,
         DateTimeOffset asOf,
         string[] ids,
         Filter filter,
         CancellationToken cancellationToken)
     {
-        var since = Activity(place, asOf, filter);
+        var since = Activity(latest, asOf, filter);
 
         var own = events.CountAsync(since with { Sessions = ids }, BySession, cancellationToken);
         var children = events.CountAsync(since with { Parents = ids }, ByParent, cancellationToken);
@@ -388,7 +393,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
                 SessionName.Of(titles.GetValueOrDefault(work.Id), prompts.GetValueOrDefault(work.Id), repository, startedAt),
                 (long)(workEnded - startedAt).TotalMilliseconds,
                 RunningWindow.Covers(workEnded, asOf),
-                work.Place,
+                work.Latest,
                 DayOf(startedAt),
                 DayOf(workEnded)));
         }
@@ -469,14 +474,14 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             Titled.Unreachable ?? Prompted.Unreachable;
     }
 
-    // A piece of work as the lines of activity found it: its place is the first one heard, which is the newest.
-    private sealed class Work(string id, DateTimeOffset place)
+    // A piece of work as the lines of activity found it: its Latest is the first one heard, which is the newest.
+    private sealed class Work(string id, DateTimeOffset latest)
     {
         private readonly Dictionary<string, DateTimeOffset> _members = new(StringComparer.Ordinal);
 
         public string Id => id;
 
-        public DateTimeOffset Place => place;
+        public DateTimeOffset Latest => latest;
 
         public bool NamedAsParent { get; private set; }
 

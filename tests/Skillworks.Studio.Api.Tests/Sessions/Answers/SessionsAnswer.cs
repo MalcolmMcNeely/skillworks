@@ -12,7 +12,7 @@ public sealed record SessionsAnswer(
     // Empty when no line of Depths came, so a row it names nothing for reads as a dash either way.
     IReadOnlyDictionary<string, string> Depths,
     GapRow Gap,
-    DateTimeOffset? NextBeforeUtc,
+    DateTimeOffset? OldestLatestUtc,
     DateTimeOffset? QuietSinceUtc)
 {
     // Read on their own as well, so a test that stops before the end line still sees the rows.
@@ -42,7 +42,7 @@ public sealed record SessionsAnswer(
                 .Select(line => StudioHost.Read<IReadOnlyDictionary<string, string>>(line["depths"]))
                 .SingleOrDefault() ?? new Dictionary<string, string>(),
             StudioHost.Read<GapRow>(end["gap"]),
-            end["nextBeforeUtc"]?.GetValue<DateTimeOffset>(),
+            end["oldestLatestUtc"]?.GetValue<DateTimeOffset>(),
             end["quietSinceUtc"]?.GetValue<DateTimeOffset>());
     }
 

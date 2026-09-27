@@ -22,7 +22,7 @@ public sealed partial class SessionEndpointsTests
 
         // The run a developer spoke to last is on top, however long ago it began.
         Assert.Equal([Morning, Afternoon, Evening], sessions.Select(session => session.Id));
-        Assert.Equal(Moment(At(Yesterday, "15:00:00.000")), sessions[0].LastActivityUtc);
+        Assert.Equal(Moment(At(Yesterday, "15:00:00.000")), sessions[0].LatestUtc);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public sealed partial class SessionEndpointsTests
 
         // The loop driver asks its Children, so the Parent's own Prompts alone would sink work that is still going.
         Assert.Equal([Morning, Afternoon], sessions.Select(session => session.Id));
-        Assert.Equal(Moment(At(Yesterday, "14:00:00.000")), sessions[0].LastActivityUtc);
+        Assert.Equal(Moment(At(Yesterday, "14:00:00.000")), sessions[0].LatestUtc);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Answers_fifty_rows_where_more_exist_and_names_the_place_of_the_oldest()
+    public async Task Answers_fifty_rows_where_more_exist_and_names_the_latest_of_the_oldest()
     {
         using var studio = new StudioHost();
 
@@ -69,7 +69,7 @@ public sealed partial class SessionEndpointsTests
 
         // The newest fifty, so the next read starts where this one stopped.
         Assert.Equal(Enumerable.Range(0, RowsPerRead).Select(Numbered), answer.Sessions.Select(session => session.Id));
-        Assert.Equal(answer.Sessions[^1].LastActivityUtc, answer.NextBeforeUtc);
+        Assert.Equal(answer.Sessions[^1].LatestUtc, answer.OldestLatestUtc);
     }
 
     [Fact]

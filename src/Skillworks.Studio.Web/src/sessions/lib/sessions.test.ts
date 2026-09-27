@@ -13,7 +13,7 @@ import {
   lookFurtherBack,
   measureSymbols,
   measureWords,
-  nextPlace,
+  nextRead,
   noRepository,
   notKnown,
   readOn,
@@ -36,7 +36,7 @@ const run: SessionRow = {
   name: 'Fixing the failing build',
   lengthMs: 2_460_000,
   running: false,
-  lastActivityUtc: '2026-09-14T09:00:00+00:00',
+  latestUtc: '2026-09-14T09:00:00+00:00',
   firstDay: '2026-09-13',
   lastDay: '2026-09-14',
 };
@@ -45,14 +45,14 @@ const other: SessionRow = { ...run, id: '8f1c0a9e-0000-4000-8000-000000000002', 
 
 const complete = { kind: 'complete', missing: null } as const;
 
-const nextBefore = '2026-09-14T09:00:00+00:00';
+const oldestLatest = '2026-09-14T09:00:00+00:00';
 
 function withRows(...sessions: SessionRow[]): SessionsAnswer {
   return foldSessionsLine(foldSessionsLine(null, head), { kind: 'sessions', sessions });
 }
 
-function endOn(place: string | null): SessionsLine {
-  return { kind: 'end', gap: complete, nextBeforeUtc: place, quietSinceUtc: null };
+function endOn(latest: string | null): SessionsLine {
+  return { kind: 'end', gap: complete, oldestLatestUtc: latest, quietSinceUtc: null };
 }
 
 function cell(answer: SessionsAnswer, measure: MeasureName, id: string = run.id) {
@@ -80,7 +80,7 @@ describe('foldSessionsLine', () => {
       landed: false,
       arriving: true,
       gap: null,
-      nextBeforeUtc: null,
+      oldestLatestUtc: null,
       quietSinceUtc: null,
       held: 0,
     });
@@ -106,21 +106,21 @@ describe('foldSessionsLine', () => {
   });
 
   it('ends the answer and keeps its gap, so a screen knows the rows are all there are', () => {
-    const answer = foldSessionsLine(withRows(run), endOn(nextBefore));
+    const answer = foldSessionsLine(withRows(run), endOn(oldestLatest));
 
     expect(answer.arriving).toBe(false);
     expect(answer.gap).toEqual(complete);
     expect(answer.rows.map((row) => row.session)).toEqual([run]);
   });
 
-  it('keeps the place of the oldest row the end names, so the next read can start where this one stopped', () => {
-    const answer = foldSessionsLine(withRows(run), endOn(nextBefore));
+  it('keeps the Latest of the oldest row the end names, so the next read can start where this one stopped', () => {
+    const answer = foldSessionsLine(withRows(run), endOn(oldestLatest));
 
-    expect(answer.nextBeforeUtc).toBe(nextBefore);
+    expect(answer.oldestLatestUtc).toBe(oldestLatest);
   });
 
-  it('holds no place while the answer is arriving, as only the end says where the read stopped', () => {
-    expect(withRows(run).nextBeforeUtc).toBeNull();
+  it('holds no Latest while the answer is arriving, as only the end says where the read stopped', () => {
+    expect(withRows(run).oldestLatestUtc).toBeNull();
   });
 
   it('stays arriving through its rows and its Measures, so it is complete only once the end line lands', () => {
@@ -179,7 +179,7 @@ describe('the Measures on a folded answer', () => {
     const answer = foldSessionsLine(landed, {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
-      nextBeforeUtc: nextBefore,
+      oldestLatestUtc: oldestLatest,
       quietSinceUtc: null,
     });
 
@@ -192,7 +192,7 @@ describe('the Measures on a folded answer', () => {
     const answer = foldSessionsLine(nought, {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
-      nextBeforeUtc: nextBefore,
+      oldestLatestUtc: oldestLatest,
       quietSinceUtc: null,
     });
 
@@ -229,7 +229,7 @@ describe('the Depth on a folded answer', () => {
   it('lands a later line of Depths on the new rows alone, so a row held from before keeps its own', () => {
     const first = foldSessionsLine(
       foldSessionsLine(withRows(run), { kind: 'depths', depths: { [run.id]: 'full' } }),
-      endOn(nextBefore),
+      endOn(oldestLatest),
     );
     const drawn = foldSessionsLine(foldSessionsLine(first, head), { kind: 'sessions', sessions: [other] });
     const answer = foldSessionsLine(drawn, { kind: 'depths', depths: { [other.id]: 'thin' } });
@@ -246,8 +246,8 @@ describe('the Depth on a folded answer', () => {
 describe('a later read folded into the rows held', () => {
   const unreachable = { kind: 'unreachable', missing: 'The events store answered 503.' } as const;
 
-  function ended(answer: SessionsAnswer, place: string | null = nextBefore): SessionsAnswer {
-    return foldSessionsLine(answer, endOn(place));
+  function ended(answer: SessionsAnswer, latest: string | null = oldestLatest): SessionsAnswer {
+    return foldSessionsLine(answer, endOn(latest));
   }
 
   function later(answer: SessionsAnswer): SessionsAnswer {
@@ -277,29 +277,29 @@ describe('a later read folded into the rows held', () => {
     expect(cell(answer, 'cost', other.id)).toEqual({ state: 'landed', value: 2 });
   });
 
-  it('takes the place the later read ended on, so the next click reads on from there', () => {
+  it('takes the Latest the later read ended on, so the next click reads on from there', () => {
     const drawn = foldSessionsLine(later(ended(withRows(run))), { kind: 'sessions', sessions: [other] });
 
-    expect(ended(drawn, '2026-09-13T08:00:00+00:00').nextBeforeUtc).toBe('2026-09-13T08:00:00+00:00');
+    expect(ended(drawn, '2026-09-13T08:00:00+00:00').oldestLatestUtc).toBe('2026-09-13T08:00:00+00:00');
   });
 
   it('keeps the rows and the button when the later read ends on a store that did not answer', () => {
     const failed = foldSessionsLine(later(ended(withRows(run))), {
       kind: 'end',
       gap: unreachable,
-      nextBeforeUtc: null,
+      oldestLatestUtc: null,
       quietSinceUtc: null,
     });
 
     expect(failed.rows.map((row) => row.session)).toEqual([run]);
     expect(failed.gap).toEqual(unreachable);
-    expect(failed.nextBeforeUtc).toBe(nextBefore);
+    expect(failed.oldestLatestUtc).toBe(oldestLatest);
     expect(loadMore(failed)).toBe('ready');
     expect(laterShortfall(failed)).toEqual(unreachable);
   });
 
   it('puts no shortfall under the rows for a first read, as the head already names it', () => {
-    const failed = foldSessionsLine(withRows(run), { kind: 'end', gap: unreachable, nextBeforeUtc: nextBefore, quietSinceUtc: null });
+    const failed = foldSessionsLine(withRows(run), { kind: 'end', gap: unreachable, oldestLatestUtc: oldestLatest, quietSinceUtc: null });
 
     expect(laterShortfall(failed)).toBeNull();
   });
@@ -317,15 +317,15 @@ describe('a later read folded into the rows held', () => {
 });
 
 describe('loadMore', () => {
-  it('offers the button once a read has ended on a place', () => {
-    expect(loadMore(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBe('ready');
+  it('offers the button once a read has ended on a Latest', () => {
+    expect(loadMore(foldSessionsLine(withRows(run), endOn(oldestLatest)))).toBe('ready');
   });
 
-  it('hides the button while the first read is in flight, as no place is known yet', () => {
+  it('hides the button while the first read is in flight, as no Latest is known yet', () => {
     expect(loadMore(withRows(run))).toBe('hidden');
   });
 
-  it('hides the button when the read ended on no place', () => {
+  it('hides the button when the read ended on no Latest', () => {
     expect(loadMore(foldSessionsLine(withRows(run), endOn(null)))).toBe('hidden');
   });
 });
@@ -334,7 +334,7 @@ describe('a read that ends on a quiet 30 days', () => {
   const quietSince = '2026-08-16T12:00:00+00:00';
 
   function quiet(answer: SessionsAnswer): SessionsAnswer {
-    return foldSessionsLine(answer, { kind: 'end', gap: complete, nextBeforeUtc: null, quietSinceUtc: quietSince });
+    return foldSessionsLine(answer, { kind: 'end', gap: complete, oldestLatestUtc: null, quietSinceUtc: quietSince });
   }
 
   it('keeps the quiet date the end names', () => {
@@ -345,8 +345,8 @@ describe('a read that ends on a quiet 30 days', () => {
     expect(describeQuiet(quiet(withRows(run)))).toBe('No older Prompts back to 2026-08-16.');
   });
 
-  it('says nothing about a quiet period while the read ended on a place', () => {
-    expect(describeQuiet(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBeNull();
+  it('says nothing about a quiet period while the read ended on a Latest', () => {
+    expect(describeQuiet(foldSessionsLine(withRows(run), endOn(oldestLatest)))).toBeNull();
   });
 
   it('hides Load more and offers Look further back after a quiet end', () => {
@@ -356,25 +356,25 @@ describe('a read that ends on a quiet 30 days', () => {
     expect(lookFurtherBack(answer)).toBe('ready');
   });
 
-  it('offers no Look further back while the read ended on a place', () => {
-    expect(lookFurtherBack(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBe('hidden');
+  it('offers no Look further back while the read ended on a Latest', () => {
+    expect(lookFurtherBack(foldSessionsLine(withRows(run), endOn(oldestLatest)))).toBe('hidden');
   });
 
   it('starts the further read from the quiet date, on the same as-of instant', () => {
-    expect(nextPlace(quiet(withRows(run)))).toEqual({ asOfUtc: head.asOfUtc, beforeUtc: quietSince });
+    expect(nextRead(quiet(withRows(run)))).toEqual({ asOfUtc: head.asOfUtc, latestBeforeUtc: quietSince });
   });
 
   it('lets either button read on once the read has ended, and neither while it is in flight', () => {
     expect(readOn(quiet(withRows(run)))).toBe('ready');
-    expect(readOn(foldSessionsLine(withRows(run), endOn(nextBefore)))).toBe('ready');
+    expect(readOn(foldSessionsLine(withRows(run), endOn(oldestLatest)))).toBe('ready');
     expect(readOn(foldSessionsLine(quiet(withRows(run)), head))).toBe('arriving');
     expect(readOn(withRows(run))).toBe('hidden');
   });
 
-  it('starts a later read from the place of the oldest row', () => {
-    expect(nextPlace(foldSessionsLine(withRows(run), endOn(nextBefore)))).toEqual({
+  it('starts a later read from the Latest of the oldest row', () => {
+    expect(nextRead(foldSessionsLine(withRows(run), endOn(oldestLatest)))).toEqual({
       asOfUtc: head.asOfUtc,
-      beforeUtc: nextBefore,
+      latestBeforeUtc: oldestLatest,
     });
   });
 
@@ -389,7 +389,7 @@ describe('a read that ends on a quiet 30 days', () => {
     const failed = foldSessionsLine(foldSessionsLine(quiet(withRows(run)), head), {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'The events store answered 503.' },
-      nextBeforeUtc: null,
+      oldestLatestUtc: null,
       quietSinceUtc: null,
     });
 
@@ -398,7 +398,7 @@ describe('a read that ends on a quiet 30 days', () => {
     expect(loadMore(failed)).toBe('hidden');
   });
 
-  it('takes the place a further read ended on, and drops the quiet date it started from', () => {
+  it('takes the Latest a further read ended on, and drops the quiet date it started from', () => {
     const further = foldSessionsLine(foldSessionsLine(quiet(withRows(run)), head), {
       kind: 'sessions',
       sessions: [other],
@@ -414,7 +414,7 @@ describe('a read that ends on a quiet 30 days', () => {
     const answer = foldSessionsLine(withRows(run), {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
-      nextBeforeUtc: null,
+      oldestLatestUtc: null,
       quietSinceUtc: quietSince,
     });
 
@@ -496,12 +496,28 @@ describe('the words for what a row does not carry', () => {
 });
 
 describe('describeNoSessions', () => {
+  function quietBackTo(answer: SessionsAnswer, quietSinceUtc: string): SessionsAnswer {
+    return foldSessionsLine(answer, { kind: 'end', gap: complete, oldestLatestUtc: null, quietSinceUtc });
+  }
+
+  const empty = quietBackTo(withRows(), '2026-08-16T12:00:00+00:00');
+
   it('says an empty unnarrowed list found nothing in the 30 days one read looks back', () => {
-    expect(describeNoSessions(everything)).toBe('No runs in the last 30 days.');
+    expect(describeNoSessions(everything, empty)).toBe('No runs in the last 30 days.');
+  });
+
+  it('says how far back the list has looked once it has looked further back', () => {
+    const further = quietBackTo(foldSessionsLine(empty, head), '2026-07-17T12:00:00+00:00');
+
+    expect(describeNoSessions(everything, further)).toBe('No runs in the last 60 days.');
+  });
+
+  it('keeps the days already looked back while a further read is in flight', () => {
+    expect(describeNoSessions(everything, foldSessionsLine(empty, head))).toBe('No runs in the last 30 days.');
   });
 
   it('says a list narrowed by a Repository or a Skill matched nothing, never reading as a blank page', () => {
-    expect(describeNoSessions({ ...everything, repository: 'acme/nu' })).toBe('No runs match this filter.');
-    expect(describeNoSessions({ ...everything, skill: 'tdd' })).toBe('No runs match this filter.');
+    expect(describeNoSessions({ ...everything, repository: 'acme/nu' }, empty)).toBe('No runs match this filter.');
+    expect(describeNoSessions({ ...everything, skill: 'tdd' }, empty)).toBe('No runs match this filter.');
   });
 });

@@ -1,4 +1,3 @@
-using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Core.Sessions.DepthColumn;

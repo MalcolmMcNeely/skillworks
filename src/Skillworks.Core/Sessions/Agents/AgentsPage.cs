@@ -1,5 +1,5 @@
 using Skillworks.Core.Shared.Arriving;
-using Skillworks.Core.Shared.Filters;
+using Skillworks.Core.Sessions.DepthColumn;
 
 namespace Skillworks.Core.Sessions.Agents;
 

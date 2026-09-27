@@ -16,7 +16,7 @@ public sealed partial class SessionEndpointsTests
         var answer = await studio.SessionAnswer();
 
         Assert.Equal([Morning], answer.Sessions.Select(session => session.Id));
-        Assert.Null(answer.NextBeforeUtc);
+        Assert.Null(answer.OldestLatestUtc);
         Assert.Equal(answer.Head.AsOfUtc - Reach, answer.QuietSinceUtc);
     }
 
@@ -32,7 +32,7 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Names_the_next_place_and_no_quiet_date_while_older_prompts_remain()
+    public async Task Names_the_oldest_latest_and_no_quiet_date_while_older_prompts_remain()
     {
         using var studio = new StudioHost();
 
@@ -40,7 +40,7 @@ public sealed partial class SessionEndpointsTests
 
         var answer = await studio.SessionAnswer();
 
-        Assert.NotNull(answer.NextBeforeUtc);
+        Assert.NotNull(answer.OldestLatestUtc);
         Assert.Null(answer.QuietSinceUtc);
     }
 
