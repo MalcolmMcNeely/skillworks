@@ -1,13 +1,14 @@
 # Each file is weighed against the base copy setup last wrote, so a newer Plugin's Seed replaces only what a team never edited.
 
 import difflib
+import re
 import sys
 from pathlib import Path
 
 from runner import Subprocess
 from stop import Stop, misuse, refusal
 
-USAGE = "usage: seed-steering [folder]\n"
+USAGE = "usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]...\n"
 
 SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "seeds"
 
@@ -41,6 +42,26 @@ DEFAULT_BRANCH_PLACEHOLDER = "<default-branch>"
 
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
 
+CHOICE = re.compile(r"^(.+):([0-9]+)=(yours|seed)$")
+
+
+class Outcome:
+    def __init__(self, done, would=None, shown=(), writes=(), asks=False, used=()):
+        self.done = done
+        self.would = would or done
+        self.shown = list(shown)
+        self.writes = list(writes)
+        self.asks = asks
+        self.used = set(used)
+
+
+class Hunk:
+    def __init__(self, start, end, lines, side):
+        self.start = start
+        self.end = end
+        self.lines = lines
+        self.side = side
+
 
 def write(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -56,68 +77,165 @@ def default_branch(runner, top):
                   "Nothing was written.")
 
 
-def seed(top, default, out):
+def hunks(base, side, lines):
+    matcher = difflib.SequenceMatcher(None, base, lines, autojunk=False)
+    return [Hunk(i1, i2, lines[j1:j2], side)
+            for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag != "equal"]
+
+
+# Two changes that start on the same base line overlap even when one is a bare insertion, since either order would be a guess.
+def clusters(changes):
+    grouped = []
+    for hunk in sorted(changes, key=lambda h: (h.start, h.end)):
+        last = grouped[-1] if grouped else None
+        if last and (hunk.start < last["end"] or any(hunk.start == held.start for held in last["hunks"])):
+            last["hunks"].append(hunk)
+            last["end"] = max(last["end"], hunk.end)
+        else:
+            grouped.append({"start": hunk.start, "end": hunk.end, "hunks": [hunk]})
+    return grouped
+
+
+def applied(base, start, end, hunks_of_one_side):
+    lines, at = [], start
+    for hunk in hunks_of_one_side:
+        lines += base[at:hunk.start] + hunk.lines
+        at = hunk.end
+    return lines + base[at:end]
+
+
+def merge(was, held, wanted, chosen):
+    base = was.splitlines(keepends=True)
+    changes = hunks(base, "yours", held.splitlines(keepends=True)) + hunks(base, "seed", wanted.splitlines(keepends=True))
+    merged, overlaps, at = [], [], 0
+    for cluster in clusters(changes):
+        merged += base[at:cluster["start"]]
+        at = cluster["end"]
+        sides = {side: applied(base, cluster["start"], cluster["end"], [h for h in cluster["hunks"] if h.side == side])
+                 for side in ("yours", "seed")}
+        touched = {hunk.side for hunk in cluster["hunks"]}
+        if touched == {"yours"} or sides["yours"] == sides["seed"]:
+            merged += sides["yours"]
+        elif touched == {"seed"}:
+            merged += sides["seed"]
+        else:
+            overlaps.append(sides)
+            merged += sides[chosen.get(len(overlaps), "yours")]
+    return "".join(merged + base[at:]), overlaps
+
+
+def diff(place, before, after):
+    return list(difflib.unified_diff(
+        before.splitlines(keepends=True), after.splitlines(keepends=True), "yours/" + place, "seed/" + place))
+
+
+def shown_overlaps(place, overlaps):
+    shown = []
+    for number, sides in enumerate(overlaps, 1):
+        shown.append("overlap {} in {}\n".format(number, place))
+        for side, label in (("yours", "yours | "), ("seed", "seed  | ")):
+            shown += [label + line.rstrip("\n") + "\n" for line in sides[side]] or [label.rstrip() + "\n"]
+    return shown
+
+
+def weigh(top, default, name, place, choices):
+    wanted = (SEEDS / name).read_text(encoding="utf-8").replace(DEFAULT_BRANCH_PLACEHOLDER, default)
+    target = top / place
+    base = top / BASES / name
+    was = base.read_text(encoding="utf-8") if base.exists() else None
+    if not target.exists():
+        if was is not None:
+            return Outcome("left out {}, which you deleted\n".format(place))
+        return Outcome("wrote {}\n".format(place), "would write {}\n".format(place),
+                       writes=[(target, wanted), (base, wanted)])
+
+    held = target.read_text(encoding="utf-8")
+    if held == wanted:
+        return Outcome("kept {}, the same as the seed\n".format(place))
+    if held == was:
+        return Outcome("updated {}\n".format(place), "would update {}\n".format(place),
+                       writes=[(target, wanted), (base, wanted)])
+    if was == wanted:
+        return Outcome("kept {}, which you edited\n".format(place))
+    if was is None:
+        return Outcome("kept {}, which differs from the seed:\n".format(place), shown=diff(place, held, wanted))
+
+    chosen = {number: keep for (where, number), keep in choices.items() if where == place}
+    merged, overlaps = merge(was, held, wanted, chosen)
+    used = {(place, number) for number in chosen if number <= len(overlaps)}
+    if len(used) < len(overlaps):
+        return Outcome("asks {}, where your edit and the seed's change overlap:\n".format(place),
+                       shown=shown_overlaps(place, overlaps), asks=True, used=used)
+    return Outcome("merged {}, applying the seed's change:\n".format(place),
+                   "would merge {}, applying the seed's change:\n".format(place),
+                   shown=diff(place, held, merged), writes=[(target, merged), (base, wanted)], used=used)
+
+
+def seed(top, default, choices):
+    outcomes = []
     readme = top / BASES / "README.md"
     if not readme.exists():
-        write(readme, BASES_README)
-        out.write("wrote {}/README.md\n".format(BASES))
-
-    for name, place in PLACES.items():
-        wanted = (SEEDS / name).read_text(encoding="utf-8").replace(DEFAULT_BRANCH_PLACEHOLDER, default)
-        target = top / place
-        base = top / BASES / name
-        was = base.read_text(encoding="utf-8") if base.exists() else None
-        if not target.exists():
-            if was is not None:
-                out.write("left out {}, which you deleted\n".format(place))
-                continue
-            write(target, wanted)
-            write(base, wanted)
-            out.write("wrote {}\n".format(place))
-            continue
-
-        held = target.read_text(encoding="utf-8")
-        if held == wanted:
-            out.write("kept {}, the same as the seed\n".format(place))
-            continue
-        if held == was:
-            write(target, wanted)
-            write(base, wanted)
-            out.write("updated {}\n".format(place))
-            continue
-        if was == wanted:
-            out.write("kept {}, which you edited\n".format(place))
-            continue
-        out.write("kept {}, which differs from the seed:\n".format(place))
-        out.writelines(difflib.unified_diff(
-            held.splitlines(keepends=True), wanted.splitlines(keepends=True),
-            "yours/" + place, "seed/" + place))
+        outcomes.append(Outcome("wrote {}/README.md\n".format(BASES), "would write {}/README.md\n".format(BASES),
+                                writes=[(readme, BASES_README)]))
+    outcomes += [weigh(top, default, name, place, choices) for name, place in PLACES.items()]
+    used = set().union(*(outcome.used for outcome in outcomes))
+    unused = sorted(choice for choice in choices if choice not in used)
+    if unused:
+        raise refusal("{}:{} names no overlap. Nothing was written.".format(*unused[0]))
+    return outcomes
 
 
-def ignore_working_folders(top, out):
+def ignore_working_folders(top):
     path = top / ".gitignore"
     held = path.read_text(encoding="utf-8") if path.exists() else ""
     missing = [folder for folder in WORKING_FOLDERS if folder not in held.splitlines()]
     if not missing:
-        return
+        return []
     if held and not held.endswith("\n"):
         held += "\n"
     lines = ["# The spec loop's working folders. Transient, per-machine."] + missing
-    path.write_text(held + "\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    out.write("added {} to .gitignore\n".format(", ".join(missing)))
+    named = ", ".join(missing)
+    return [Outcome("added {} to .gitignore\n".format(named), "would add {} to .gitignore\n".format(named),
+                    writes=[(path, held + "\n".join(lines) + "\n")])]
+
+
+def parsed(argv):
+    where, choices = None, {}
+    rest = iter(argv)
+    for arg in rest:
+        if arg == "--keep":
+            found = CHOICE.match(next(rest, ""))
+            if not found:
+                raise misuse(USAGE)
+            choices[(found.group(1), int(found.group(2)))] = found.group(3)
+        elif where is None and not arg.startswith("--"):
+            where = arg
+        else:
+            raise misuse(USAGE)
+    return where or ".", choices
+
+
+# A run that stops for a question writes nothing, so no Steering file is left half-merged while the team decides.
+def report(outcomes, out):
+    asking = any(outcome.asks for outcome in outcomes)
+    for outcome in outcomes:
+        out.write(outcome.would if asking else outcome.done)
+        out.writelines(outcome.shown)
+        if not asking:
+            for path, text in outcome.writes:
+                write(path, text)
+    if asking:
+        out.write("Nothing was written. Run again with --keep <file>:<overlap>=yours|seed for each overlap.\n")
 
 
 def main(argv, runner, out, err):
     try:
-        if len(argv) > 1:
-            raise misuse(USAGE)
-        where = argv[0] if argv else "."
+        where, choices = parsed(argv)
         found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        seed(top, default_branch(runner, top), out)
-        ignore_working_folders(top, out)
+        report(seed(top, default_branch(runner, top), choices) + ignore_working_folders(top), out)
         return 0
     except Stop as stop:
         err.write(stop.said)

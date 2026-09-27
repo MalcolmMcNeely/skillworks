@@ -308,19 +308,130 @@ def test_a_seed_new_in_the_plugin_is_written_with_its_base_copy(repo, runner, se
     assert "wrote {}\n".format(place) in ran.out
 
 
-@pytest.mark.parametrize("seed", sorted(OLDER))
-def test_a_file_edited_whose_seed_also_moved_still_shows_its_difference(repo, runner, seed):
-    seeded_by_an_older_plugin(repo, runner, seed)
+def run_seed_choosing(runner, where, *choices):
+    out, err = io.StringIO(), io.StringIO()
+    argv = [where.as_posix()] + [part for choice in choices for part in ("--keep", choice)]
+    status = seed_steering.main(argv, runner, out, err)
+    return Ran(status, out.getvalue(), err.getvalue())
+
+
+def on_disk(folder):
+    return {path.relative_to(folder).as_posix(): path.read_bytes()
+            for path in folder.rglob("*") if path.is_file() and ".git" not in path.relative_to(folder).parts}
+
+
+# Each base is the Seed with its early lines older, and each edit is the team's change further down.
+APART = {
+    "domain.md": {
+        "base": seeded("domain.md").replace("# Domain Docs\n", "# Domain docs\n"),
+        "yours": seeded("domain.md").replace("# Domain Docs\n", "# Domain docs\n").replace(
+            "## Flag ADR conflicts\n", "## Flag ADR conflicts early\n"),
+        "merged": seeded("domain.md").replace("## Flag ADR conflicts\n", "## Flag ADR conflicts early\n"),
+    },
+    "suite.json": {
+        "base": '{\n  "runs": 2,\n  "checks": []\n}\n',
+        "yours": '{\n  "runs": 2,\n  "checks": [{"name": "unit", "run": ["pytest"]}]\n}\n',
+        "merged": '{\n  "runs": 1,\n  "checks": [{"name": "unit", "run": ["pytest"]}]\n}\n',
+    },
+}
+
+ACROSS = {
+    "domain.md": {
+        "base": seeded("domain.md").replace("# Domain Docs\n", "# Domain docs\n"),
+        "yours": seeded("domain.md").replace("# Domain Docs\n", "# Our domain\n"),
+    },
+    "suite.json": {
+        "base": '{\n  "runs": 2,\n  "checks": []\n}\n',
+        "yours": '{\n  "runs": 3,\n  "checks": []\n}\n',
+    },
+}
+
+
+def edited_on_both_sides(repo, runner, seed, sides):
+    run_seed(runner, repo.work)
+    seed_steering.write(repo.work / BASES / seed, sides["base"])
+    seed_steering.write(repo.work / WHERE[seed], sides["yours"])
+
+
+@pytest.mark.parametrize("seed", sorted(APART))
+def test_a_file_edited_whose_seed_moved_elsewhere_is_merged_and_the_change_shown(repo, runner, seed):
+    edited_on_both_sides(repo, runner, seed, APART[seed])
     place = WHERE[seed]
-    seed_steering.write(repo.work / place, OLDER[seed] + "\nOur own line.\n")
 
     ran = run_seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
-    assert (repo.work / place).read_text(encoding="utf-8") == OLDER[seed] + "\nOur own line.\n"
-    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == OLDER[seed]
-    assert "kept {}, which differs from the seed:\n".format(place) in ran.out
-    assert "-Our own line.\n" in ran.out
+    assert (repo.work / place).read_text(encoding="utf-8") == APART[seed]["merged"]
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
+    assert "merged {}, applying the seed's change:\n".format(place) in ran.out
+    theirs = seeded(seed).splitlines(keepends=True)[:2]
+    base = APART[seed]["base"].splitlines(keepends=True)[:2]
+    changed = [line for line in theirs if line not in base]
+    assert changed
+    for line in changed:
+        assert "+" + line in ran.out
+    assert "asks" not in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(ACROSS))
+def test_a_file_whose_edit_and_seed_overlap_asks_shows_both_sides_and_writes_nothing(repo, runner, seed):
+    edited_on_both_sides(repo, runner, seed, ACROSS[seed])
+    (repo.work / WHERE["words.md"]).unlink()
+    (repo.work / BASES / "words.md").unlink()
+    before = on_disk(repo.work)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert on_disk(repo.work) == before
+    place = WHERE[seed]
+    assert "asks {}, where your edit and the seed's change overlap:\n".format(place) in ran.out
+    ours = [line for line in ACROSS[seed]["yours"].splitlines() if line not in ACROSS[seed]["base"].splitlines()]
+    theirs = [line for line in seeded(seed).splitlines() if line not in ACROSS[seed]["base"].splitlines()]
+    assert ours and theirs
+    report = ran.out.splitlines()
+    for line in ours + theirs:
+        assert any(said.endswith(line) and said != line for said in report), line
+    assert "overlap 1 in {}\n".format(place) in ran.out
+    assert "would write {}\n".format(WHERE["words.md"]) in ran.out
+    assert "wrote {}\n".format(WHERE["words.md"]) not in ran.out
+    assert "Nothing was written." in ran.out
+
+
+@pytest.mark.parametrize("seed", sorted(ACROSS))
+@pytest.mark.parametrize("keep", ["yours", "seed"])
+def test_a_choice_for_each_overlap_writes_the_merged_file_and_its_base_copy(repo, runner, seed, keep):
+    edited_on_both_sides(repo, runner, seed, ACROSS[seed])
+    place = WHERE[seed]
+
+    ran = run_seed_choosing(runner, repo.work, "{}:1={}".format(place, keep))
+
+    assert ran.status == 0, ran.err
+    kept = ACROSS[seed]["yours"] if keep == "yours" else seeded(seed)
+    assert (repo.work / place).read_text(encoding="utf-8") == kept
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
+    assert "merged {}".format(place) in ran.out
+    assert "asks" not in ran.out
+
+
+def test_a_choice_that_names_no_overlap_is_refused_and_nothing_is_written(repo, runner):
+    run_seed(runner, repo.work)
+    before = on_disk(repo.work)
+
+    ran = run_seed_choosing(runner, repo.work, "docs/agents/domain.md:1=yours")
+
+    assert ran.status == 1
+    assert "docs/agents/domain.md:1" in ran.err
+    assert on_disk(repo.work) == before
+
+
+@pytest.mark.parametrize("choice", ["docs/agents/domain.md:1", "docs/agents/domain.md=yours",
+                                    "docs/agents/domain.md:x=yours", "docs/agents/domain.md:1=both"])
+def test_a_choice_written_wrong_prints_the_usage(repo, runner, choice):
+    ran = run_seed_choosing(runner, repo.work, choice)
+
+    assert ran.status == 64
+    assert ran.err == seed_steering.USAGE
 
 
 def test_the_issue_tracker_seed_holds_the_two_conventions():
