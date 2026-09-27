@@ -1,7 +1,9 @@
 # Reads only the remote's Target branch, so unpushed work cannot change what the loop starts.
 
 import io
+import tempfile
 import time
+from pathlib import Path
 from typing import NamedTuple
 
 from fetch_origin import fetch_origin
@@ -11,9 +13,15 @@ SPECS = ".specs"
 SPEC_FILE = "spec.md"
 TICKETS = "tickets"
 FENCE = "---"
+CLAIMED_BY = "claimed-by"
 
 # Every remote branch at once, because in spec mode the spec's own folder says which one is its.
 EVERY_BRANCH = "*"
+
+# Enough for several loops starting at once, few enough that a remote refusing for another reason cannot spin.
+CLAIM_ATTEMPTS = 5
+
+LOST_RACE = ("[rejected]", "fetch first", "non-fast-forward", "cannot lock ref")
 
 
 class Ticket(NamedTuple):
@@ -22,6 +30,7 @@ class Ticket(NamedTuple):
     blocked_by: list
     claimed_by: str
     title: str
+    path: str
 
 
 class Spec(NamedTuple):
@@ -69,6 +78,21 @@ def frontmatter(text):
     return {}, "\n".join(lines)
 
 
+def claimed_in(text, me):
+    ending = "\r\n" if "\r\n" in text else "\n"
+    lines = text.split(ending)
+    line = "{}: {}".format(CLAIMED_BY, me)
+    closing = next((at for at, each in enumerate(lines) if at > 0 and each.strip() == FENCE), None)
+    if not lines or lines[0].strip() != FENCE or closing is None:
+        return ending.join([FENCE, line, FENCE] + lines)
+    held = [at for at in range(1, closing) if lines[at].partition(":")[0].strip() == CLAIMED_BY]
+    if held:
+        lines[held[0]] = line
+    else:
+        lines.insert(closing, line)
+    return ending.join(lines)
+
+
 def heading(body, otherwise):
     return next((line[2:].strip() for line in body.split("\n") if line.startswith("# ")), otherwise)
 
@@ -92,8 +116,8 @@ class Files:
         # Keyed by the commit read, so a ref that has not moved is not read again.
         self.read_at = {}
 
-    def git(self, *args):
-        return self.runner.run(["git", "-C", self.where] + [str(a) for a in args])
+    def git(self, *args, env=None):
+        return self.runner.run(["git", "-C", self.where] + [str(a) for a in args], None, env)
 
     def connect(self):
         found = self.git("remote", "get-url", "origin")
@@ -101,6 +125,8 @@ class Files:
             return "this repo has no remote named origin, and the files Tracker reads from it"
         self.repo = found.out.strip()
         self.me = self.git("config", "user.email").out.strip()
+        if not self.me:
+            return "git has no user.email, and the files Tracker claims each ticket in that name"
         return ""
 
     def fetched(self, branch):
@@ -174,7 +200,7 @@ class Files:
             ticket, text = frontmatter(self.shown(ref, path))
             tickets.append(Ticket(number, ticket.get("status", ""),
                                   as_numbers(ticket.get("blocked-by", [])),
-                                  ticket.get("claimed-by", ""), heading(text, name[:-3])))
+                                  ticket.get(CLAIMED_BY, ""), heading(text, name[:-3]), path))
         tickets.sort(key=lambda ticket: int(ticket.number))
         return Spec(held.get("status", ""), heading(body, folder.rsplit("/", 1)[-1]), tickets)
 
@@ -227,8 +253,45 @@ class Files:
     def not_yet(self, what):
         return refusal("The files Tracker cannot {} yet.".format(what))
 
+    # The remote takes only the first push on top of a read, so the loser reads again.
     def claim(self, ticket, wait):
-        raise self.not_yet("claim ticket {}".format(ticket))
+        for _ in range(CLAIM_ATTEMPTS):
+            found = self.ticket(ticket)
+            if found is None:
+                raise refusal("Ticket {} of spec {} has no file on origin, so it cannot be "
+                              "claimed.".format(ticket, self.spec))
+            if found.claimed_by:
+                return "" if found.claimed_by == self.me else found.claimed_by
+            if self.pushed_claim(found):
+                return ""
+        raise refusal("The claim on ticket {} of spec {} lost to another push {} times in a row. "
+                      "Run the loop again.".format(ticket, self.spec, CLAIM_ATTEMPTS))
+
+    def pushed_claim(self, found):
+        branch = self.branch_of(self.spec)
+        parent = self.git("rev-parse", "origin/" + branch).out.strip()
+        text = claimed_in(self.shown(parent, found.path), self.me)
+        with tempfile.TemporaryDirectory() as scratch:
+            written = Path(scratch) / "ticket.md"
+            written.write_text(text, encoding="utf-8", newline="")
+            blob = self.git("hash-object", "-w", "--no-filters", written.as_posix()).out.strip()
+            # An index of its own, so neither the checkout nor its staged work is touched.
+            index = {"GIT_INDEX_FILE": (Path(scratch) / "index").as_posix()}
+            self.git("read-tree", parent, env=index)
+            self.git("update-index", "--cacheinfo", "100644,{},{}".format(blob, found.path),
+                     env=index)
+            tree = self.git("write-tree", env=index).out.strip()
+        commit = self.git("commit-tree", tree, "-p", parent, "-m",
+                          "Claim ticket {} of spec {} for {}".format(
+                              found.number, self.spec, self.me)).out.strip()
+        pushed = self.git("push", "--quiet", "origin", "{}:refs/heads/{}".format(commit, branch))
+        if pushed.status == 0:
+            return True
+        said = (pushed.out + pushed.err).rstrip("\n")
+        if any(mark in said for mark in LOST_RACE):
+            return False
+        raise refusal("The claim on ticket {} of spec {} did not reach {} on origin. git "
+                      "said:\n{}".format(found.number, self.spec, branch, said))
 
     def close(self, ticket, comment):
         raise self.not_yet("close ticket {}".format(ticket))
