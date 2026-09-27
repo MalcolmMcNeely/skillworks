@@ -8,26 +8,26 @@ import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../shared/pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { DepthWord } from '../components/DepthWord';
-import { OpenedStep } from '../components/OpenedStep';
-import { Timeline } from '../components/Timeline';
-import { TimelineTabs } from '../components/tabs/TimelineTabs';
+import { OpenedStep } from '../components/timeline/OpenedStep';
+import { Timeline } from '../components/timeline/Timeline';
+import { TimelineTabs } from '../components/timeline/tabs/TimelineTabs';
 import { CostBreakdown } from '../components/verdict/CostBreakdown';
 import { Findings } from '../components/verdict/Findings';
-import { Tiles } from '../components/verdict/Tiles';
+import { Headlines } from '../components/verdict/Headlines';
 import { TimeBreakdown } from '../components/verdict/TimeBreakdown';
-import { readRange, widened, withRange, type Range } from '../lib/view';
-import { type Named } from '../lib/findings';
-import { highlightKey, highlightOf, litBy, readHighlight, toggled, withHighlight, type Highlight } from '../lib/highlight';
-import { activationSpellsOf } from '../lib/panels/activations';
-import { ranByOne } from '../lib/panels/agents';
-import { levelsOf, levelsRanByOne } from '../lib/panels/context';
-import { bandsOf, type Band, type Exchange } from '../lib/panels/conversation';
-import { costBreakdownOf } from '../lib/panels/costBreakdown';
-import { costIn, skillRowsOf } from '../lib/panels/skills';
-import { toolRowsOf } from '../lib/panels/tools';
+import { readView, widened, withView, type Spell } from '../lib/timeline/view';
+import { type Named } from '../lib/verdict/findings';
+import { highlightKey, highlightOf, litBy, readHighlight, toggled, withHighlight, type Highlight } from '../lib/timeline/highlight';
+import { activationSpellsOf } from '../lib/timeline/activations';
+import { ranByOne } from '../lib/timeline/agents';
+import { levelsOf, levelsRanByOne } from '../lib/timeline/context';
+import { bandsOf, type Band, type Exchange } from '../lib/timeline/conversation';
+import { costBreakdownOf } from '../lib/verdict/costBreakdown';
+import { costIn, skillRowsOf } from '../lib/timeline/skills';
+import { toolRowsOf } from '../lib/timeline/tools';
 import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
-import { foldSessionLine, marksOf, runSpan, type SessionAnswer } from '../lib/steps';
-import { tilesOf } from '../lib/verdict';
+import { foldSessionLine, marksOf, runSpell, type SessionAnswer } from '../lib/steps';
+import { headlinesOf } from '../lib/verdict/verdict';
 import { readWhere, withWhere, type Where } from '../../shared/session/lib/where';
 
 interface Reading {
@@ -46,7 +46,7 @@ export function Session() {
 
   const filter = readFilter(params);
   const where = readWhere(params);
-  const view = readRange(params);
+  const view = readView(params);
   const highlight = readHighlight(params);
   // Text, as a Highlight read off the address is a new object every render.
   const litKey = highlight === null ? null : highlightKey(highlight);
@@ -98,7 +98,7 @@ export function Session() {
   const activationSpells = useMemo(() => activationSpellsOf(activations ?? []), [activations]);
   const levels = useMemo(() => levelsOf(context ?? []), [context]);
   // A new pair every render would make each Finding card work out its moment again.
-  const whole = useMemo(() => runSpan(marks), [marks]);
+  const whole = useMemo(() => runSpell(marks), [marks]);
 
   // An open Subagent is read like a small Session, so every lane shows its Steps alone.
   const agents = answer?.agents;
@@ -106,7 +106,7 @@ export function Session() {
   const shownLevels = useMemo(() => levelsRanByOne(levels, agents ?? {}, where.agent), [levels, agents, where.agent]);
   const viewFrom = view?.[0];
   const viewTo = view?.[1];
-  const shownView = useMemo<Range | null>(
+  const shownView = useMemo<Spell | null>(
     () => (viewFrom === undefined || viewTo === undefined ? null : [viewFrom, viewTo]),
     [viewFrom, viewTo],
   );
@@ -131,8 +131,8 @@ export function Session() {
   // Replaced, not pushed, so setting four Views does not cost four presses of the back button.
   const write = (written: URLSearchParams) => setParams(written, { replace: true });
 
-  const show = (shown: Range | null, opened: Partial<Where>) =>
-    write(withRange(withWhere(params, { ...where, ...opened }), shown));
+  const show = (shown: Spell | null, opened: Partial<Where>) =>
+    write(withView(withWhere(params, { ...where, ...opened }), shown));
 
   const open = (step: string | null) => write(withWhere(params, { ...where, step }));
 
@@ -145,8 +145,8 @@ export function Session() {
 
   const toTimeline = () => timeline.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const onFinding = (named: Named, extent: Range) => {
-    show(extent,{ step: named.finding.step });
+  const onFinding = (named: Named, spell: Spell) => {
+    show(spell, { step: named.finding.step });
     toTimeline();
   };
 
@@ -189,7 +189,7 @@ export function Session() {
         whole={whole}
         render={(landed, bounds) => (
           <>
-            <Tiles tiles={tilesOf(landed)} />
+            <Headlines headlines={headlinesOf(landed)} />
             <Findings findings={landed.findings} marks={marks} whole={bounds} onShow={onFinding} />
             <div className="verdict-breakdowns">
               <TimeBreakdown breakdown={landed.timeBreakdown} />
@@ -246,8 +246,8 @@ function Body({
 }: {
   answer: SessionAnswer | null;
   failure: string | null;
-  whole: Range | null;
-  render: (answer: SessionAnswer, whole: Range) => ReactNode;
+  whole: Spell | null;
+  render: (answer: SessionAnswer, whole: Spell) => ReactNode;
 }) {
   if (failure !== null) {
     return <p className="session-word">{notKnown}</p>;

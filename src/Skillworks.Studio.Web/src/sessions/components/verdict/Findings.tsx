@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { namedIn, noFindingsWord, type FindingsPage, type Named } from '../../lib/findings';
-import { momentOf } from '../../lib/moment';
+import { namedIn, noFindingsWord, type FindingsPage, type Named } from '../../lib/verdict/findings';
+import { momentOf } from '../../lib/verdict/moment';
 import { describeClock, titleOf, type Mark } from '../../lib/steps';
-import type { Range } from '../../lib/view';
+import type { Spell } from '../../lib/timeline/view';
 import { MomentDrawing } from './MomentDrawing';
 
 function Card({
@@ -13,8 +13,8 @@ function Card({
 }: {
   named: Named;
   marks: readonly Mark[];
-  whole: Range;
-  onShow: (named: Named, extent: Range) => void;
+  whole: Spell;
+  onShow: (named: Named, spell: Spell) => void;
 }) {
   const moment = useMemo(() => momentOf(named, marks, whole), [named, marks, whole]);
 
@@ -47,7 +47,7 @@ function Card({
               ))}
             </ol>
           )}
-          <button type="button" className="finding-show" onClick={() => onShow(named, moment.extent)}>
+          <button type="button" className="finding-show" onClick={() => onShow(named, moment.spell)}>
             Show in the Timeline
           </button>
         </>
@@ -66,8 +66,8 @@ export function Findings({
 }: {
   findings: FindingsPage | null;
   marks: readonly Mark[];
-  whole: Range;
-  onShow: (named: Named, extent: Range) => void;
+  whole: Spell;
+  onShow: (named: Named, spell: Spell) => void;
 }) {
   const named = namedIn(findings);
 

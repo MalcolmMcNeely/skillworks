@@ -1,11 +1,11 @@
 import type { Gap, StoresEnd } from '../../shared/gaps/lib/gaps';
-import type { Range } from './view';
-import type { FindingsPage } from './findings';
-import type { Activation, ActivationsPage } from './panels/activations';
-import type { AgentsPage, Depth, Subagent } from './panels/agents';
-import type { ContextPage, ContextPoint } from './panels/context';
-import type { Exchange, ExchangesPage } from './panels/conversation';
-import type { TimeBreakdownPage } from './panels/timeBreakdown';
+import type { Spell } from './timeline/view';
+import type { FindingsPage } from './verdict/findings';
+import type { Activation, ActivationsPage } from './timeline/activations';
+import type { AgentsPage, Depth, Subagent } from './timeline/agents';
+import type { ContextPage, ContextPoint } from './timeline/context';
+import type { Exchange, ExchangesPage } from './timeline/conversation';
+import type { TimeBreakdownPage } from './verdict/timeBreakdown';
 import type { Session } from './sessions';
 
 export type StepKind = 'prompt' | 'turn' | 'answer' | 'tool' | 'refused' | 'fault';
@@ -157,12 +157,12 @@ export function marksOf(steps: readonly Step[]): Mark[] {
 }
 
 // Null where nothing ran, as a run with no Step has no bounds to draw.
-export function runSpan(marks: readonly Mark[]): Range | null {
+export function runSpell(marks: readonly Mark[]): Spell | null {
   if (marks.length === 0) {
     return null;
   }
 
-  return marks.reduce<Range>(
+  return marks.reduce<Spell>(
     (span, mark) => [Math.min(span[0], mark.startMs), Math.max(span[1], mark.endMs)],
     [marks[0].startMs, marks[0].endMs],
   );

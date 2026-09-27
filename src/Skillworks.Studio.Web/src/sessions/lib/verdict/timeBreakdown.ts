@@ -1,4 +1,4 @@
-import type { Range } from '../view';
+import type { Spell } from '../timeline/view';
 
 export type Part = 'waiting' | 'tools' | 'hooks' | 'model' | 'subagents' | 'side' | 'quiet' | 'yourTurn';
 
@@ -59,7 +59,7 @@ export interface Share extends PartWords {
 }
 
 // Always all eight, as a part that took none of a run is an answer and a row that comes and goes is not.
-export function sharesOf(page: TimeBreakdownPage | null, view: Range | null): Share[] {
+export function sharesOf(page: TimeBreakdownPage | null, view: Spell | null): Share[] {
   const exclusive = summed(page?.parts ?? [], view);
   const whole = summed(page?.kinds ?? [], view);
 
@@ -72,7 +72,7 @@ export function sharesOf(page: TimeBreakdownPage | null, view: Range | null): Sh
 }
 
 // Clipped rather than filtered, as a Spell can run in and out of the View and only its middle counts.
-function summed(spells: readonly PartSpell[], view: Range | null): Map<Part, number> {
+function summed(spells: readonly PartSpell[], view: Spell | null): Map<Part, number> {
   const totals = new Map<Part, number>();
 
   for (const spell of spells) {

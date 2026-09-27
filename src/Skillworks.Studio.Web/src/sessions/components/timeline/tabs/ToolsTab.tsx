@@ -1,6 +1,6 @@
-import { describeCount, describeLength } from '../../../shared/figures/lib/figures';
-import type { Highlight } from '../../lib/highlight';
-import type { ToolRow } from '../../lib/panels/tools';
+import { describeCount, describeLength } from '../../../../shared/figures/lib/figures';
+import type { Highlight } from '../../../lib/timeline/highlight';
+import type { ToolRow } from '../../../lib/timeline/tools';
 
 function Row({ row, lit, onPick }: { row: ToolRow; lit: boolean; onPick: (picked: Highlight) => void }) {
   return (

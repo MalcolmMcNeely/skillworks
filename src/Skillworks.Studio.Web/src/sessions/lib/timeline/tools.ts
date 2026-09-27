@@ -1,4 +1,4 @@
-import { inRange, type Range } from '../view';
+import { inSpell, type Spell } from './view';
 import { isToolCall, type Mark } from '../steps';
 
 export interface ToolRow {
@@ -10,10 +10,10 @@ export interface ToolRow {
   lengthMs: number;
 }
 
-export function toolRowsOf(marks: readonly Mark[], view: Range | null): ToolRow[] {
+export function toolRowsOf(marks: readonly Mark[], view: Spell | null): ToolRow[] {
   const rows = new Map<string, ToolRow>();
 
-  for (const { step } of inRange(marks, view)) {
+  for (const { step } of inSpell(marks, view)) {
     if (!isToolCall(step)) {
       continue;
     }

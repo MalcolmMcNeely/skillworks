@@ -1,4 +1,4 @@
-import { isAttributed, isToolCall, type Mark, type Step } from './steps';
+import { isAttributed, isToolCall, type Mark, type Step } from '../steps';
 
 export type Highlight =
   | { kind: 'tool'; name: string }

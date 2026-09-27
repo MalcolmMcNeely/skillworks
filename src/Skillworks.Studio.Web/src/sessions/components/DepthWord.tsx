@@ -1,5 +1,5 @@
 import type { Gap } from '../../shared/gaps/lib/gaps';
-import { depthTone, describeDepth, type Depth } from '../lib/panels/agents';
+import { depthTone, describeDepth, type Depth } from '../lib/timeline/agents';
 
 // Drawn from the moment the head lands, not when the answer ends, so a reader watches Thin become Full.
 export function DepthWord({ depth, gap }: { depth: Depth; gap: Gap | null }) {

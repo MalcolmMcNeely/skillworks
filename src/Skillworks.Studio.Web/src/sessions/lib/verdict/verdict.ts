@@ -1,19 +1,19 @@
-import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
+import { describeCount, describeMoney } from '../../../shared/figures/lib/figures';
 import { namedIn, type FindingsPage } from './findings';
-import { levelsOf, peakContextOf } from './panels/context';
-import { describeRunLength, notKnown } from './sessions';
-import type { SessionAnswer } from './steps';
+import { levelsOf, peakContextOf } from '../timeline/context';
+import { describeRunLength, notKnown } from '../sessions';
+import type { SessionAnswer } from '../steps';
 
-export interface Tile {
+export interface Headline {
   name: string;
   figure: string;
   note: string | null;
-  // Colour is never the only sign, so a tile that raises the alarm also carries a figure a reader can check.
+  // Colour is never the only sign, so a headline that raises the alarm also carries a figure a reader can check.
   alarm: boolean;
 }
 
 // The whole run and never the View, so the verdict holds still while a reader digs in beneath it.
-export function tilesOf(answer: SessionAnswer): Tile[] {
+export function headlinesOf(answer: SessionAnswer): Headline[] {
   const run = answer.session;
 
   if (run === null) {
@@ -29,11 +29,11 @@ export function tilesOf(answer: SessionAnswer): Tile[] {
     { name: 'Tool calls', figure: describeCount(run.toolCalls), note: null, alarm: false },
     { name: 'Faults', figure: describeCount(faults), note: null, alarm: faults > 0 },
     { name: 'Peak context', figure: peak.figure, note: peak.note, alarm: peak.high },
-    findingsTile(answer.findings),
+    findingsHeadline(answer.findings),
   ];
 }
 
-function findingsTile(findings: FindingsPage | null): Tile {
+function findingsHeadline(findings: FindingsPage | null): Headline {
   if (findings === null) {
     return { name: 'Findings', figure: notKnown, note: null, alarm: false };
   }

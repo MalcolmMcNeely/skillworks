@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { Range } from '../../lib/view';
-import type { Highlight } from '../../lib/highlight';
-import type { Level } from '../../lib/panels/context';
-import type { SkillRow } from '../../lib/panels/skills';
-import type { ToolRow } from '../../lib/panels/tools';
+import type { Spell } from '../../../lib/timeline/view';
+import type { Highlight } from '../../../lib/timeline/highlight';
+import type { Level } from '../../../lib/timeline/context';
+import type { SkillRow } from '../../../lib/timeline/skills';
+import type { ToolRow } from '../../../lib/timeline/tools';
 import { ContextTab } from './ContextTab';
 import { SkillsTab } from './SkillsTab';
 import { ToolsTab } from './ToolsTab';
@@ -33,7 +33,7 @@ export function TimelineTabs({
   skills: readonly SkillRow[];
   cost: number;
   tools: readonly ToolRow[];
-  view: Range | null;
+  view: Spell | null;
   selected: string | null;
   highlight: Highlight | null;
   onOpen: (step: string) => void;

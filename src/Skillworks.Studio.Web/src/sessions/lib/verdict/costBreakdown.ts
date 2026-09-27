@@ -1,5 +1,5 @@
-import type { Subagent } from './agents';
-import type { Exchange } from './conversation';
+import type { Subagent } from '../timeline/agents';
+import type { Exchange } from '../timeline/conversation';
 
 export interface NamedSubagentCost {
   agent: string;

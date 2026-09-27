@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Activation } from './panels/activations';
-import type { ContextPoint } from './panels/context';
-import type { Exchange } from './panels/conversation';
+import type { Activation } from './timeline/activations';
+import type { ContextPoint } from './timeline/context';
+import type { Exchange } from './timeline/conversation';
 import type { Session } from './sessions';
 import {
   describeClock,
@@ -10,7 +10,7 @@ import {
   lanesOf,
   marksOf,
   noteOf,
-  runSpan,
+  runSpell,
   titleOf,
   toneOf,
   type SessionAnswer,
@@ -232,14 +232,14 @@ describe('marksOf', () => {
   });
 });
 
-describe('runSpan', () => {
+describe('runSpell', () => {
   it('covers the whole run, from the first step to the end of the last', () => {
     const marks = marksOf([
       prompt,
       step({ id: '2', kind: 'tool', atUtc: '2026-09-14T09:00:06.000Z', lengthMs: 4_000 }),
     ]);
 
-    expect(runSpan(marks)).toEqual([Date.parse('2026-09-14T09:00:00.000Z'), Date.parse('2026-09-14T09:00:10.000Z')]);
+    expect(runSpell(marks)).toEqual([Date.parse('2026-09-14T09:00:00.000Z'), Date.parse('2026-09-14T09:00:10.000Z')]);
   });
 
   it('covers a step that started before the one written before it', () => {
@@ -248,11 +248,11 @@ describe('runSpan', () => {
       step({ id: '2', kind: 'turn', atUtc: '2026-09-14T09:00:02.000Z', lengthMs: 2_000 }),
     ]);
 
-    expect(runSpan(marks)?.[0]).toBe(Date.parse('2026-09-14T09:00:02.000Z'));
+    expect(runSpell(marks)?.[0]).toBe(Date.parse('2026-09-14T09:00:02.000Z'));
   });
 
   it('says a run with no steps has no bounds to draw', () => {
-    expect(runSpan([])).toBeNull();
+    expect(runSpell([])).toBeNull();
   });
 });
 

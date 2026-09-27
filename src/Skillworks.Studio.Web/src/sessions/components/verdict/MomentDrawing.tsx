@@ -1,4 +1,4 @@
-import type { Moment } from '../../lib/moment';
+import type { Moment } from '../../lib/verdict/moment';
 import { lanes, lanesOf, toneOf } from '../../lib/steps';
 
 const width = 300;
@@ -11,7 +11,7 @@ const gap = 2;
 const leastWidth = 1.5;
 
 export function MomentDrawing({ moment, from, to }: { moment: Moment; from: number; to: number }) {
-  const [start, end] = moment.extent;
+  const [start, end] = moment.spell;
   const x = (ms: number) => ((Math.min(end, Math.max(start, ms)) - start) / Math.max(1, end - start)) * width;
   const laneY = (lane: string) => lanes.findIndex((each) => each.key === lane) * (laneHeight + gap);
   const height = lanes.length * (laneHeight + gap);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { readRange } from './view';
+import { readView } from './view';
 import { describeLit, litBy, readHighlight, toggled, withHighlight, type Highlight } from './highlight';
-import { marksOf, type Step } from './steps';
+import { marksOf, type Step } from '../steps';
 
 function step(id: string, fields: Partial<Step> = {}): Step {
   return {
@@ -80,7 +80,7 @@ describe('withHighlight', () => {
     const params = new URLSearchParams('at=1000&until=5000&step=7');
     const written = withHighlight(params, bash);
 
-    expect(readRange(written)).toEqual([1000, 5000]);
+    expect(readView(written)).toEqual([1000, 5000]);
     expect(written.get('step')).toBe('7');
   });
 });

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, holds, inRange, madeIn, moved, rangeOf, readRange, widened, withRange, type Range } from './view';
+import { clamp, holds, inSpell, madeIn, moved, spellOf, readView, widened, withView, type Spell } from './view';
 
-const whole: Range = [1_000, 101_000];
+const whole: Spell = [1_000, 101_000];
 
-describe('rangeOf', () => {
+describe('spellOf', () => {
   it('puts the two ends in order, so a View dragged backwards still reads the right way round', () => {
-    expect(rangeOf(60_000, 20_000, whole)).toEqual([20_000, 60_000]);
+    expect(spellOf(60_000, 20_000, whole)).toEqual([20_000, 60_000]);
   });
 
   it('holds both ends inside the run, so a View dragged off the edge stops at it', () => {
-    expect(rangeOf(-5_000, 500_000, whole)).toEqual(whole);
+    expect(spellOf(-5_000, 500_000, whole)).toEqual(whole);
   });
 });
 
@@ -63,7 +63,7 @@ describe('holds', () => {
   });
 });
 
-describe('inRange', () => {
+describe('inSpell', () => {
   const items = [
     { name: 'early', startMs: 5_000, endMs: 10_000 },
     { name: 'across', startMs: 15_000, endMs: 21_000 },
@@ -72,15 +72,15 @@ describe('inRange', () => {
   ];
 
   it('narrows to what the View holds, so a panel shows only what is in view', () => {
-    expect(inRange(items, [20_000, 30_000]).map((each) => each.name)).toEqual(['across', 'inside']);
+    expect(inSpell(items, [20_000, 30_000]).map((each) => each.name)).toEqual(['across', 'inside']);
   });
 
   it('keeps everything while there is no View, so clearing the View returns the whole run', () => {
-    expect(inRange(items, null)).toHaveLength(4);
+    expect(inSpell(items, null)).toHaveLength(4);
   });
 
   it('narrows to nothing where the View holds nothing, rather than falling back to everything', () => {
-    expect(inRange(items, [31_000, 35_000])).toEqual([]);
+    expect(inSpell(items, [31_000, 35_000])).toEqual([]);
   });
 });
 
@@ -115,29 +115,29 @@ describe('clamp', () => {
 
 describe('the View in the address bar', () => {
   it('reads a View a link named', () => {
-    expect(readRange(new URLSearchParams('at=20000&until=30000'))).toEqual([20_000, 30_000]);
+    expect(readView(new URLSearchParams('at=20000&until=30000'))).toEqual([20_000, 30_000]);
   });
 
   it('reads no View when the address names none, so the page opens on the whole run', () => {
-    expect(readRange(new URLSearchParams(''))).toBeNull();
+    expect(readView(new URLSearchParams(''))).toBeNull();
   });
 
   it('refuses a View a hand-typed address got wrong, rather than opening on a part nobody asked for', () => {
-    expect(readRange(new URLSearchParams('at=soon&until=30000'))).toBeNull();
-    expect(readRange(new URLSearchParams('at=30000&until=20000'))).toBeNull();
-    expect(readRange(new URLSearchParams('at=20000'))).toBeNull();
+    expect(readView(new URLSearchParams('at=soon&until=30000'))).toBeNull();
+    expect(readView(new URLSearchParams('at=30000&until=20000'))).toBeNull();
+    expect(readView(new URLSearchParams('at=20000'))).toBeNull();
   });
 
   it('writes the View as whole milliseconds', () => {
-    expect(withRange(new URLSearchParams(''), [20_000.4, 30_000.6]).toString()).toBe('at=20000&until=30001');
+    expect(withView(new URLSearchParams(''), [20_000.4, 30_000.6]).toString()).toBe('at=20000&until=30001');
   });
 
   it('takes the View off the address when it is cleared', () => {
-    expect(withRange(new URLSearchParams('at=1&until=2&step=7'), null).toString()).toBe('step=7');
+    expect(withView(new URLSearchParams('at=1&until=2&step=7'), null).toString()).toBe('step=7');
   });
 
   it('keeps the parameters it was given, so setting a View never throws a filter away', () => {
-    const written = withRange(new URLSearchParams('from=2026-09-14&to=2026-09-14'), [1, 2]);
+    const written = withView(new URLSearchParams('from=2026-09-14&to=2026-09-14'), [1, 2]);
 
     expect(written.get('from')).toBe('2026-09-14');
   });

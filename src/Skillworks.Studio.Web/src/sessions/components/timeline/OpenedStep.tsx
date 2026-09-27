@@ -1,6 +1,6 @@
-import { describeLength } from '../../shared/figures/lib/figures';
-import { ranBy } from '../lib/panels/agents';
-import { describeClock, noteOf, titleOf, type Mark } from '../lib/steps';
+import { describeLength } from '../../../shared/figures/lib/figures';
+import { ranBy } from '../../lib/timeline/agents';
+import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 
 export function OpenedStep({
   marks,

@@ -1,6 +1,6 @@
-import { describeCount, describeLength, describeMoney } from '../../../shared/figures/lib/figures';
-import { sameHighlight, type Highlight } from '../../lib/highlight';
-import type { SkillRow } from '../../lib/panels/skills';
+import { describeCount, describeLength, describeMoney } from '../../../../shared/figures/lib/figures';
+import { sameHighlight, type Highlight } from '../../../lib/timeline/highlight';
+import type { SkillRow } from '../../../lib/timeline/skills';
 
 function Row({ row, lit, onPick }: { row: SkillRow; lit: boolean; onPick: (picked: Highlight) => void }) {
   // Left blank rather than nought, as No skill and Unnamed spend never fire.

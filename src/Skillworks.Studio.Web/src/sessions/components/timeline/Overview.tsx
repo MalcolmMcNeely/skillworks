@@ -1,7 +1,7 @@
 import { useMemo, useRef, type PointerEvent } from 'react';
-import { clamp, moved, rangeOf, type Range } from '../lib/view';
-import { foldScale } from '../lib/fold';
-import { boundsOf, describeClock, toneOf, type Mark, type Tone } from '../lib/steps';
+import { clamp, moved, spellOf, type Spell } from '../../lib/timeline/view';
+import { foldScale } from '../../lib/fold';
+import { boundsOf, describeClock, toneOf, type Mark, type Tone } from '../../lib/steps';
 
 const reachPx = 7;
 
@@ -15,14 +15,14 @@ type Grip = 'new' | 'move' | 'from' | 'to';
 interface Dragging {
   grip: Grip;
   fromX: number;
-  wasX: Range;
+  wasX: Spell;
   dragged: boolean;
 }
 
 // Three rows and no more, so a run's shape reads at a glance on a strip a few pixels tall.
 const rows: Record<Tone, number> = { model: 0, tool: 1, refused: 1, fault: 2 };
 
-function gripAt(x: number, view: Range | null): Grip {
+function gripAt(x: number, view: Spell | null): Grip {
   if (view === null) {
     return 'new';
   }
@@ -47,11 +47,11 @@ export function Overview({
   onView,
 }: {
   marks: readonly Mark[];
-  whole: Range;
-  view: Range | null;
+  whole: Spell;
+  view: Spell | null;
   left: number;
   width: number;
-  onView: (view: Range | null) => void;
+  onView: (view: Spell | null) => void;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const dragging = useRef<Dragging | null>(null);
@@ -59,14 +59,14 @@ export function Overview({
 
   const scale = useMemo(() => foldScale(boundsOf(marks), left, right), [marks, left, right]);
 
-  const viewPx: Range | null = view === null ? null : [scale.map(view[0]), scale.map(view[1])];
+  const viewPx: Spell | null = view === null ? null : [scale.map(view[0]), scale.map(view[1])];
   const cursorX = (event: PointerEvent) => event.clientX - (svg.current?.getBoundingClientRect().left ?? 0);
 
   // A View is dragged in pixels and read in moments, so a folded idle pause is crossed at the speed it is drawn.
-  const moments = (one: number, other: number): Range =>
-    rangeOf(scale.invert(clamp(one, left, right)), scale.invert(clamp(other, left, right)), whole);
+  const moments = (one: number, other: number): Spell =>
+    spellOf(scale.invert(clamp(one, left, right)), scale.invert(clamp(other, left, right)), whole);
 
-  const viewOf = (held: Dragging, x: number): Range => {
+  const viewOf = (held: Dragging, x: number): Spell => {
     const by = x - held.fromX;
 
     if (held.grip === 'new') {

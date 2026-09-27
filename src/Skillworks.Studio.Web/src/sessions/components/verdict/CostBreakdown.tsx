@@ -1,6 +1,6 @@
 import { describeMoney } from '../../../shared/figures/lib/figures';
-import type { Exchange } from '../../lib/panels/conversation';
-import { noExchangeWord, shareOf, type CostBar, type CostBreakdown as Breakdown } from '../../lib/panels/costBreakdown';
+import type { Exchange } from '../../lib/timeline/conversation';
+import { noExchangeWord, shareOf, type CostBar, type CostBreakdown as Breakdown } from '../../lib/verdict/costBreakdown';
 
 function Bar({
   bar,

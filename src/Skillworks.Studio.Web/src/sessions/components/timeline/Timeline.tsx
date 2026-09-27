@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
-import type { Range } from '../lib/view';
-import { describeLit, type Highlight } from '../lib/highlight';
-import type { Band } from '../lib/panels/conversation';
-import { describeLength } from '../../shared/figures/lib/figures';
-import { describeClock, noteOf, titleOf, type Mark } from '../lib/steps';
+import type { Spell } from '../../lib/timeline/view';
+import { describeLit, type Highlight } from '../../lib/timeline/highlight';
+import type { Band } from '../../lib/timeline/conversation';
+import { describeLength } from '../../../shared/figures/lib/figures';
+import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 import { Lanes } from './Lanes';
 import { Overview } from './Overview';
 
@@ -80,13 +80,13 @@ export function Timeline({
   // What the lanes draw, which is one Subagent's Steps alone once a reader opens one.
   drawn: readonly Mark[];
   bands: readonly Band[];
-  whole: Range;
-  view: Range | null;
+  whole: Spell;
+  view: Spell | null;
   selected: string | null;
   agent: string | null;
   highlight: Highlight | null;
   lit: ReadonlySet<string> | null;
-  onView: (view: Range | null) => void;
+  onView: (view: Spell | null) => void;
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
   onAllAgents: () => void;

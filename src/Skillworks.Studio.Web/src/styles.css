@@ -1996,27 +1996,27 @@ a.home-panel-face:hover::before {
   overflow-wrap: anywhere;
 }
 
-.verdict-tiles {
+.verdict-headlines {
   display: grid;
   gap: 0.5rem;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   margin: 0;
 }
 
-.verdict-tile {
+.verdict-headline {
   background: var(--panel);
   border: 1px solid var(--rule);
   padding: 0.4rem 0.6rem;
 }
 
-.verdict-tile dt {
+.verdict-headline dt {
   color: var(--ink-soft);
   font-size: 0.6rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.verdict-tile dd {
+.verdict-headline dd {
   margin: 0;
 }
 
@@ -2026,11 +2026,11 @@ a.home-panel-face:hover::before {
   font-size: 1.1rem;
 }
 
-.verdict-tile.is-alarm {
+.verdict-headline.is-alarm {
   border-color: var(--failed);
 }
 
-.verdict-tile.is-alarm .verdict-figure {
+.verdict-headline.is-alarm .verdict-figure {
   color: var(--failed);
 }
 

@@ -1,9 +1,9 @@
 import { useMemo, type PointerEvent } from 'react';
-import { inRange, type Range } from '../lib/view';
-import type { Band } from '../lib/panels/conversation';
-import { foldScale, ticksOf } from '../lib/fold';
-import { describeLength } from '../../shared/figures/lib/figures';
-import { describeClock, lanes, lanesOf, toneOf, type Lane, type Mark } from '../lib/steps';
+import { inSpell, type Spell } from '../../lib/timeline/view';
+import type { Band } from '../../lib/timeline/conversation';
+import { foldScale, ticksOf } from '../../lib/fold';
+import { describeLength } from '../../../shared/figures/lib/figures';
+import { describeClock, lanes, lanesOf, toneOf, type Lane, type Mark } from '../../lib/steps';
 
 // Narrow marks are common and a cursor is not, so every mark is drawn at least this wide to stay reachable.
 const leastPx = 3;
@@ -45,7 +45,7 @@ export function Lanes({
 }: {
   marks: readonly Mark[];
   bands: readonly Band[];
-  view: Range;
+  view: Spell;
   selected: string | null;
   // Null where nothing is lit, which is not the same as a Highlight whose tool made no call in view.
   lit: ReadonlySet<string> | null;
@@ -57,7 +57,7 @@ export function Lanes({
 }) {
   const right = Math.max(left + 10, width - 8);
   const height = top + lanes.length * (laneHeight + gap) + axis;
-  const shown = useMemo(() => inRange(marks, view), [marks, view]);
+  const shown = useMemo(() => inSpell(marks, view), [marks, view]);
 
   const scale = useMemo(
     () => foldScale(shown.map((mark) => [Math.max(view[0], mark.startMs), Math.min(view[1], mark.endMs)]), left, right),
@@ -78,7 +78,7 @@ export function Lanes({
     [shown, scale, view],
   );
 
-  const opened = inRange(bands, view);
+  const opened = inSpell(bands, view);
 
   return (
     <svg width={width} height={height} className="timeline-lanes" role="img" aria-label="The steps in view">

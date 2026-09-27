@@ -1,5 +1,5 @@
-import { inRange, madeIn, type Range } from '../view';
-import { highlightKey, skillLabelOf, type Highlight } from '../highlight';
+import { inSpell, madeIn, type Spell } from './view';
+import { highlightKey, skillLabelOf, type Highlight } from './highlight';
 import { isAttributed, type Mark, type Step } from '../steps';
 import type { ActivationSpell } from './activations';
 
@@ -26,20 +26,20 @@ function keyOf(step: Step): SkillKey {
 // Named skills first, then the two rows that belong to no named skill, so those never push a skill off the top.
 const place = { skill: 0, noSkill: 1, unnamed: 2 } as const;
 
-export function costIn(marks: readonly Mark[], view: Range | null): number {
-  return inRange(marks, view).reduce((sum, { step }) => sum + step.cost, 0);
+export function costIn(marks: readonly Mark[], view: Spell | null): number {
+  return inSpell(marks, view).reduce((sum, { step }) => sum + step.cost, 0);
 }
 
 // Found by the Attribution each Step carries, so a skill that called another counts none of the other's Steps.
 export function skillRowsOf(
   marks: readonly Mark[],
   spells: readonly ActivationSpell[],
-  view: Range | null,
+  view: Spell | null,
 ): SkillRow[] {
   const fired = madeIn(spells, view);
   const rows = new Map<string, SkillRow>();
 
-  for (const { step } of inRange(marks, view)) {
+  for (const { step } of inSpell(marks, view)) {
     if (!isAttributed(step)) {
       continue;
     }

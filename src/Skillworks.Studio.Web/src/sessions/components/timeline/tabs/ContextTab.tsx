@@ -1,7 +1,7 @@
-import { describeCount, describeShare, describeTokens } from '../../../shared/figures/lib/figures';
-import { inRange, type Range } from '../../lib/view';
-import { ceilingOf, describeInForce, limitNotKnown, tallyOf, type Level } from '../../lib/panels/context';
-import { describeClock } from '../../lib/steps';
+import { describeCount, describeShare, describeTokens } from '../../../../shared/figures/lib/figures';
+import { inSpell, type Spell } from '../../../lib/timeline/view';
+import { ceilingOf, describeInForce, limitNotKnown, tallyOf, type Level } from '../../../lib/timeline/context';
+import { describeClock } from '../../../lib/steps';
 
 function Turn({
   level,
@@ -47,11 +47,11 @@ export function ContextTab({
 }: {
   levels: readonly Level[];
   limitTokens: number | null;
-  view: Range | null;
+  view: Spell | null;
   selected: string | null;
   onOpen: (step: string) => void;
 }) {
-  const shown = inRange(levels, view);
+  const shown = inSpell(levels, view);
   const tally = tallyOf(shown, limitTokens);
   const ceiling = ceilingOf(shown, limitTokens);
 

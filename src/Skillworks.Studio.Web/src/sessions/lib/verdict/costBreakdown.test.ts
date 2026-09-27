@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Subagent } from './agents';
-import type { Exchange, SubagentCost } from './conversation';
+import type { Subagent } from '../timeline/agents';
+import type { Exchange, SubagentCost } from '../timeline/conversation';
 import { beforeFirstPromptWord, costBreakdownOf, shareOf, type CostBar } from './costBreakdown';
 
 const exchange = (index: number, cost: number, subagents: SubagentCost[] | null = []): Exchange => ({

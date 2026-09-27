@@ -7,7 +7,7 @@ import {
   sharesOf,
   type Share,
   type TimeBreakdownPage,
-} from '../../lib/panels/timeBreakdown';
+} from '../../lib/verdict/timeBreakdown';
 
 function Legend({ share, lengthMs }: { share: Share; lengthMs: number }) {
   return (
