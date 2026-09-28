@@ -47,6 +47,12 @@ Edit. It is a record and never a judgement: an axis that edits is doing its job,
 loop. What an Edit cannot be is silent.
 _Avoid_: Record, change, diff
 
+**Flake**:
+A check that went red on one run of a Suite and passed on a later run of the same Suite, on the same
+inputs. Nothing changed between the two, so the red was not the code's. A Flake counts as green, and
+it is always reported, with its red output kept, so a check that flakes is never silent.
+_Avoid_: Flaky test, intermittent, retry
+
 **Gap**:
 An item of a spec the finished work does not yet deliver: a story or a decision the drift check found
 Missing or Partial, or did not judge exactly once, or a Surface it found Out of step. The loop builds
@@ -148,11 +154,6 @@ API or a sample app. A team lists its own, and the grill asks about each one a c
 Surface is left out of step without anyone deciding it.
 _Avoid_: Axis, touchpoint, artefact
 
-**Trial**:
-A run of some of a check's tests, where that check runs, so a Session tries its work without the
-wait of the whole check. It proves nothing: it keeps no Proof, and the loop never reads it.
-_Avoid_: Spot check, narrow run, focused run
-
 **Target branch**:
 The branch a ticket Lands on. It is `main` for a team that pushes straight to it. For a team that
 reviews each spec as one pull request, it is that spec's own branch.
@@ -163,6 +164,11 @@ Where a repo keeps its specs and tickets, and their state: GitHub Issues, or fil
 `.specs/`. The loop reads what is open, blocked and claimed from it, so a ticket's state has to be
 something every loop and every teammate sees.
 _Avoid_: Backlog, board, issue store
+
+**Trial**:
+A run of some of a check's tests, where that check runs, so a Session tries its work without the
+wait of the whole check. It proves nothing: it keeps no Proof, and the loop never reads it.
+_Avoid_: Spot check, narrow run, focused run
 
 **Turn**:
 The right to push to the Target branch, held by one loop at a time in one clone. A loop that lost a
