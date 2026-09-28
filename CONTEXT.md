@@ -128,7 +128,8 @@ _Avoid_: Backend, data layer, persistence, infrastructure
 
 **Patience**:
 How long Studio waits on a store before it gives up and reports a Gap. It is measured on the Clock
-and never on the machine's, so a busy machine cannot run it out for Studio.
+and never on the machine's, so a busy machine cannot run it out for Studio. It starts when a read
+goes out to the store, so a read that waits its turn inside Studio has not found the store short.
 _Avoid_: Timeout, budget, deadline, expiry
 
 **Collector**:
