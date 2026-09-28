@@ -32,3 +32,12 @@ A Surface you add reads like this one:
   or alters: setup, the loop, Steering or the Suite?
 - **What to capture:** Each page that changes, and what it has to say once the change Lands. Name a
   page the change needs that does not exist yet. Point at each page, and do not copy it.
+
+## The Seeds
+
+- **Where it lives:** `plugins/skillworks/skills/skillworks-setup/seeds/`
+- **The question:** Does this change add a Steering file, or change what a Seed says, so that every
+  team gets it the next time setup runs?
+- **What to capture:** Each Seed that is added or changed, in general words with no word from this
+  repo, and whether this repo's own copy changes with it. For a new Steering file, capture that every
+  team's loop stops at its preflight until the team runs setup again.
