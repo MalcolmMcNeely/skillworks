@@ -27,3 +27,6 @@ keep no method of its own. The fixed parts are what make it easy to pick up for 
 **Read the team's file first, and fall back to the Plugin's.** Rejected. A team that never edited a
 file would get each new default at once, but what a session loads would then change with the Plugin
 version and no commit. ADR 0030 turned that trade down already.
+
+_The two lists above record the decision as it was made.
+[The Steering page](../usage/steering.md) keeps the current lists._

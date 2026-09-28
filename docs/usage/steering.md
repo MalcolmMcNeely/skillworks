@@ -6,6 +6,9 @@ from then on. A Plugin update never changes them by itself. A second run of setu
 Seed and keeps your edits: [Setup](setup.md#run-setup-again) says how. Edit them by hand whenever your
 team changes its mind, and commit the edit like any other change.
 
+This page is the one living list of what a team steers and what is fixed. An ADR records a decision
+as it was made. When a list changes, this page changes, and the ADR stays as it was.
+
 Every Steering file lives in `docs/agents/`, so you find all of it in one place. A few files sit
 somewhere else, because a tool or a design puts them there. They are at the end of the list.
 
@@ -40,8 +43,13 @@ baseline does not carry it. So a long baseline costs only the step that reads it
 ## The rules, in `docs/agents/rules/`
 
 Each rule is prose with one YAML block at the end. The prose says what the rule asks for. The YAML
-block holds its settings. The settings start empty, so nothing is judged until your team fills them
-in.
+block holds its settings.
+
+The settings that name what a rule judges start empty, so nothing is judged until your team fills
+them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the words rule's
+`skip-folders`. The others ship with a default your team can change: `doc-comments`, `clock`,
+`max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`,
+`banned-folder-names` and `name-map`.
 
 | File | What it does | What reads it | What your team can change |
 |---|---|---|---|

@@ -19,7 +19,7 @@ The outputs:
 | Output | Why it exists |
 |---|---|
 | The `ready-for-agent` label, with `github` only | `/skillworks:to-spec` and `/skillworks:to-tickets` apply it, and `gh issue create` fails on a label that does not exist. Nothing in the loop reads it. |
-| `docs/agents/rules/*.md` | The four rules: comments, determinism, file placement and words. The review axes read them. Their settings start empty, so nothing is judged until the team fills them in. |
+| `docs/agents/rules/*.md` | The four rules: comments, determinism, file placement and words. The review axes read them. The settings that name what a rule judges start empty, so nothing is judged until the team fills them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the words rule's `skip-folders`. The others ship with a default the team can change: `doc-comments`, `clock`, `max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`, `banned-folder-names` and `name-map`. |
 | `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. |
 | `docs/agents/placement-checks.md`, `smell-baseline.md`, `arrangement-baseline.md` | What the review axes judge against. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |

@@ -159,7 +159,7 @@ npm test
 
 The loop runs the same checks from `docs/agents/suite.json`. A new check goes in both places.
 [docs/usage/suite.md](docs/usage/suite.md) says how the loop runs them. This repo's Suite file sets
-`runs` to 1, because a second run never turned a red Suite green here. The Architecture tests run
+`runs` to 2, so that a check that goes red and then passes shows as a Flake. The Architecture tests run
 alone, so they never wait on Docker. The Core and API tests run over one solution filter,
 `Skillworks.Studio.slnf`, so they build once. The loop runs the script
 tests in the Linux image `docs/agents/script-tests.Dockerfile`, because on Windows each git and bash
@@ -259,7 +259,7 @@ Then, in Claude Code:
 /skillworks:skillworks-setup
 ```
 
-Run it once per clone. Run it again any time to repair.
+Run it once per repo. Run it again at any time to repair.
 
 It creates the `ready-for-agent` label, seeds the Steering (the rules, `docs/agents/` and a starting
 Suite file) where it is missing, points `CLAUDE.md` at it, enables the Plugin, and installs the

@@ -55,3 +55,6 @@ are new. Most landings run nothing.
 
 An agent may run the Suite with `skillworks-suite`, and the Proofs it writes count for the driver, so
 an agent that checks its own work does not cost the ticket twice.
+
+_This repo's Suite file now sets `runs` to 2, so that a check that goes red and then passes shows as a
+Flake. The rest of this decision stands._

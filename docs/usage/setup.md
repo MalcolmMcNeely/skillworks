@@ -107,10 +107,10 @@ Review these before you commit them.
 
 | File | What it holds |
 |---|---|
-| `docs/agents/rules/comments.md` | The comments rule. Its settings start empty. |
-| `docs/agents/rules/determinism.md` | The determinism rule. Its settings start empty. |
-| `docs/agents/rules/file-placement.md` | The file placement rule. Its settings start empty. |
-| `docs/agents/rules/words.md` | The words rule. Its lists start empty. |
+| `docs/agents/rules/comments.md` | The comments rule. `doc-comments` ships as `false`. |
+| `docs/agents/rules/determinism.md` | The determinism rule. `contexts` starts empty. `clock` ships as `TimeProvider`. |
+| `docs/agents/rules/file-placement.md` | The file placement rule. `slices`, `concerns` and `test-roots` start empty. `max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names` and `name-map` ship with a default. |
+| `docs/agents/rules/words.md` | The words rule. `banned-words` and `skip-folders` start empty. |
 | `docs/agents/issue-tracker.md` | How the skills read and write each Tracker: the `gh` calls for `github`, and the `.specs/` files for `files`. The ticket shape, and the two conventions the loop leans on. |
 | `docs/agents/domain.md` | Where your glossary and your ADRs live. |
 | `docs/agents/placement-checks.md` | The commands that prove placement. It starts with none. |
