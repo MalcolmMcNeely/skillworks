@@ -1,6 +1,8 @@
 # gh 2.92.0 has no dependency flags, so reads go through `gh api`: docs/research/harness/ticket-state-guardrails.md.
 
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import NamedTuple
 
 from stop import is_a_number, refusal
@@ -67,10 +69,12 @@ class GitHub:
     close_names_commits = True
     marks_pull_requests = True
 
-    def __init__(self, runner, where, repo=THIS_REPO):
+    # The Target branch, or None in spec mode, where each spec names its own.
+    def __init__(self, runner, where, repo=THIS_REPO, target=None):
         self.runner = runner
         self.where = str(where)
         self.repo = repo
+        self.target = target
         self.me = ""
 
     def gh(self, *args):
@@ -222,12 +226,14 @@ class GitHub:
                             self.sub_issues(spec, ROWS))
         return rows(said)
 
+    def open_ready(self, row):
+        return self.gh("api", "--paginate", "repos/{}/issues?labels={}&state=open&per_page=100".format(
+            self.repo, READY), "--jq", ".[] | select(.pull_request == null) | " + row)
+
     # An issue filed by a run that failed before it was linked has the label and no parent yet.
     def unlinked(self, spec, filing):
-        said = self.checked(filing, "would not list the open tickets", self.gh(
-            "api", "--paginate", "repos/{}/issues?labels={}&state=open&per_page=100".format(
-                self.repo, READY),
-            "--jq", '.[] | select(.pull_request == null) | "\\(.number)\\t\\(.title)"'))
+        said = self.checked(filing, "would not list the open tickets",
+                            self.open_ready('"\\(.number)\\t\\(.title)"'))
         loose = {}
         for number, title in (line.split("\t", 1) for line in listed(said) if "\t" in line):
             if title not in loose and not self.checked(
@@ -271,6 +277,30 @@ class GitHub:
                                      self.repo, number),
                                  "-F", "issue_id=" + self.issue_id(blocker, filing)))
             filing.changed = True
+
+    # Found by its title first, so a run after one that failed on the network files no second spec.
+    def file_spec(self, title, body):
+        found = self.open_ready('"\\(.number)\\t\\(.html_url)\\t\\(.title)"')
+        if found.status != 0:
+            raise refusal("GitHub would not list the open specs, so nothing was filed. Run "
+                          "tracker-publish again. gh said:\n{}".format(
+                              (found.out + found.err).rstrip("\n")))
+        for number, url, named in rows(found.out):
+            if named == title:
+                return number, url
+        # A spec can outgrow the longest command line Windows takes, so the body goes by file.
+        with tempfile.TemporaryDirectory() as folder:
+            body_file = Path(folder) / "spec.md"
+            body_file.write_text(body, encoding="utf-8", newline="\n")
+            made = self.gh("issue", "create", "--title", title, "--body-file", body_file,
+                           "--label", READY)
+        url = made.out.strip()
+        number = url.rsplit("/", 1)[-1]
+        if made.status != 0 or not is_a_number(number):
+            raise refusal("GitHub would not file the spec {}. Run tracker-publish again: a second "
+                          "run finds a spec already filed by its title, and files nothing twice. "
+                          "gh said:\n{}".format(title, (made.out + made.err).rstrip("\n")))
+        return number, url
 
     # Always a new comment, because the loop reads the last one and an old report stays for a person to see.
     def post_report(self, spec, report_file, what):

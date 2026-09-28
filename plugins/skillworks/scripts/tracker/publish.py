@@ -12,7 +12,7 @@ from stop import Stop, is_a_number, misuse, refusal
 from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
                            TICKETS, Files, as_numbers, frontmatter, heading, number_of,
                            with_last_section)
-from tracker.github import GitHub
+from tracker.github import BRANCH_HEADING, GitHub
 from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
 USAGE = (
@@ -26,6 +26,8 @@ REPORTS = {"drift": (DRIFT_REPORT, "drift report"), "names": (NAME_REPORT, "Name
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 
+SPEC_HEADING = "# SPEC: "
+
 # Outside refs/heads and refs/tags, so no clone or fetch brings the reservations down.
 RESERVED = "refs/skillworks/specs/"
 
@@ -35,14 +37,15 @@ def opened(runner, where, spec, wait, writes_github=False):
     if found.status != 0:
         raise refusal("{} is not inside a git repo.".format(where))
     top = found.out.strip()
+    named = target_setting(top)
+    target = None if named == SPEC_MODE else named
     if tracker_setting(top) == "files":
-        named = target_setting(top)
-        tracker = Files(runner, top, None if named == SPEC_MODE else named, spec, wait)
+        tracker = Files(runner, top, target, spec, wait)
     elif writes_github:
-        tracker = GitHub(runner, top)
+        tracker = GitHub(runner, top, target=target)
     else:
         raise refusal("tracker in docs/agents/loop.json is not files, and tracker-publish writes "
-                      "a spec and its tickets to the files Tracker alone. Publish as "
+                      "a spec's tickets to the files Tracker alone. Publish as "
                       "docs/agents/issue-tracker.md says.")
     problem = tracker.connect()
     if problem:
@@ -83,6 +86,21 @@ def highest_reserved(tracker):
     return max([int(name) for name in names if is_a_number(name)], default=0)
 
 
+# The title is the heading and the body what is below it, as the loop reads a spec issue back.
+def github_spec(body, branch):
+    first, _, below = body.replace("\r\n", "\n").lstrip("\n").partition("\n")
+    if not first.startswith(SPEC_HEADING):
+        raise refusal("The spec file does not open with {}<title>, which names the "
+                      "issue.".format(SPEC_HEADING))
+    text = below.strip("\n") + "\n"
+    if branch:
+        if BRANCH_HEADING in [line.strip() for line in text.split("\n")]:
+            raise refusal("The spec file already holds a {} section. tracker-publish writes it "
+                          "from the branch named, so leave it out.".format(BRANCH_HEADING))
+        text = "{}\n\n{}\n\n{}".format(BRANCH_HEADING, branch, text)
+    return first[2:].strip(), text
+
+
 def publish_spec(tracker, slug, body, branch, out):
     in_spec_mode = tracker.target is None
     if not SLUG.fullmatch(slug):
@@ -93,6 +111,9 @@ def publish_spec(tracker, slug, body, branch, out):
     if not in_spec_mode and branch:
         raise refusal("docs/agents/loop.json names the Target branch {}, so the spec goes there, "
                       "and no branch is named.".format(tracker.target))
+    if isinstance(tracker, GitHub):
+        out.write("{}\t{}\n".format(*tracker.file_spec(*github_spec(body, branch))))
+        return
     if body.lstrip().startswith(FENCE):
         raise refusal("The body already opens with frontmatter. tracker-publish writes it, so "
                       "leave it out.")
@@ -196,7 +217,7 @@ def main(argv, runner, out, err, wait, where=None):
     try:
         command = argv[0] if argv else ""
         if command == "spec" and len(argv) in (3, 4):
-            tracker = opened(runner, where, None, wait)
+            tracker = opened(runner, where, None, wait, writes_github=True)
             publish_spec(tracker, argv[1], read(where, argv[2]), argv[3] if len(argv) == 4 else "",
                          out)
             return 0

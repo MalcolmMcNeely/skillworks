@@ -12,7 +12,7 @@ from files_test import Racing, commit_files, spec_file, ticket_file, write_loop
 from steering.target_branch import LOOP_FILE
 from tracker import publish
 from tracker.files import Files
-from tracker.github import GitHub
+from tracker.github import GitHub, spec_branch
 
 SPEC_BRANCH = "spec/local-tracker"
 
@@ -203,11 +203,11 @@ def test_with_a_branch_named_target_a_branch_given_is_turned_down(writer):
     assert writer.folders() == []
 
 
-def test_the_github_tracker_is_turned_down(writer):
+def test_tickets_on_the_github_tracker_are_turned_down(writer):
     path = writer.repo.work / LOOP_FILE
     path.write_text(json.dumps({"tracker": "github", "target-branch": "main"}), encoding="utf-8")
 
-    ran = writer.spec()
+    ran = writer.tickets("1", three_tickets())
 
     assert ran.status == 1
     assert "files" in ran.err
@@ -489,6 +489,154 @@ def test_on_github_a_report_gh_would_not_post_is_refused_and_says_to_run_again(w
     assert "HTTP 502: Bad Gateway" in ran.err
     assert "Name report" in ran.err
     assert "again" in ran.err
+
+
+class Specs:
+    def __init__(self, runner):
+        self.runner = runner
+        self.open = []
+        self.filed = []
+        self.fails = None
+        runner.stub("gh", does=self.answer)
+
+    def answer(self):
+        called = self.runner.calls[-1][1:]
+        if called[:2] == ["repo", "view"]:
+            return Ran(0, "owner/repo\n", "")
+        if called[:2] == ["api", "user"]:
+            return Ran(0, "me\n", "")
+        if self.fails and self.fails in " ".join(called):
+            return Ran(1, "", "HTTP 502: Bad Gateway\n")
+        if called[0] == "api" and "labels=ready-for-agent&state=open" in " ".join(called):
+            return Ran(0, "".join("{0}\thttps://github.com/owner/repo/issues/{0}\t{1}\n".format(
+                number, title) for number, title in self.open), "")
+        if called[:2] == ["issue", "create"]:
+            assert called[called.index("--label") + 1] == "ready-for-agent"
+            title = called[called.index("--title") + 1]
+            body = Path(called[called.index("--body-file") + 1]).read_text(encoding="utf-8")
+            number = str(400 + len(self.filed) + 1)
+            self.filed.append((title, body))
+            self.open.append((number, title))
+            return Ran(0, "https://github.com/owner/repo/issues/{}\n".format(number), "")
+        return None
+
+
+def specs_on_github(writer, target):
+    path = writer.repo.work / LOOP_FILE
+    path.write_text(json.dumps({"tracker": "github", "target-branch": target}), encoding="utf-8")
+    return Specs(writer.runner)
+
+
+@pytest.fixture
+def github_specs(writer):
+    return specs_on_github(writer, "main")
+
+
+def test_on_github_a_spec_is_filed_as_one_labelled_issue_and_its_number_and_url_printed(
+        writer, github_specs):
+    ran = writer.spec()
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == "401\thttps://github.com/owner/repo/issues/401\n"
+    assert github_specs.filed == [("SPEC: A local tracker", "## Problem Statement\n\nNo GitHub.\n")]
+    assert len(writer.runner.built("issue create")) == 1
+
+
+def test_on_github_an_open_spec_with_the_title_is_printed_and_nothing_is_filed(writer, github_specs):
+    github_specs.open = [("312", "SPEC: Something else"), ("398", "SPEC: A local tracker")]
+
+    ran = writer.spec()
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == "398\thttps://github.com/owner/repo/issues/398\n"
+    assert github_specs.filed == []
+
+
+def test_on_github_a_second_run_files_nothing_twice(writer, github_specs):
+    first = writer.spec()
+
+    ran = writer.spec()
+
+    assert ran.out == first.out, said(ran)
+    assert len(github_specs.filed) == 1
+
+
+def test_on_github_in_spec_mode_the_branch_section_is_written_from_the_branch_named(writer):
+    specs = specs_on_github(writer, "spec")
+
+    ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
+
+    assert ran.status == 0, said(ran)
+    body = specs.filed[0][1]
+    assert body == "## Branch\n\n{}\n\n## Problem Statement\n\nNo GitHub.\n".format(SPEC_BRANCH)
+    assert spec_branch(body) == SPEC_BRANCH
+
+
+def test_on_github_in_spec_mode_a_spec_that_holds_its_own_branch_section_is_turned_down(writer):
+    specs = specs_on_github(writer, "spec")
+    body = "# SPEC: A local tracker\n\n## Branch\n\nspec/other\n\n## Problem Statement\n"
+
+    ran = writer.spec("local-tracker", body, SPEC_BRANCH)
+
+    assert ran.status == 1
+    assert "## Branch" in ran.err
+    assert specs.filed == []
+
+
+def test_on_github_in_spec_mode_a_spec_with_no_branch_is_turned_down(writer):
+    specs = specs_on_github(writer, "spec")
+
+    ran = writer.spec()
+
+    assert ran.status == 1
+    assert "branch" in ran.err
+    assert specs.filed == []
+
+
+def test_on_github_with_a_branch_named_target_a_branch_given_is_turned_down(writer, github_specs):
+    ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
+
+    assert ran.status == 1
+    assert "main" in ran.err
+    assert github_specs.filed == []
+
+
+def test_on_github_a_spec_file_with_no_spec_heading_is_turned_down(writer, github_specs):
+    ran = writer.spec(body="## Problem Statement\n\nNo GitHub.\n")
+
+    assert ran.status == 1
+    assert "# SPEC: " in ran.err
+    assert github_specs.filed == []
+
+
+@pytest.mark.parametrize("tracker", ["files", "github"])
+def test_a_slug_not_in_kebab_case_is_turned_down(writer, tracker):
+    specs = specs_on_github(writer, "main") if tracker == "github" else None
+
+    ran = writer.spec("Local_Tracker")
+
+    assert ran.status == 1
+    assert "kebab case" in ran.err
+    assert writer.folders() == []
+    assert specs is None or specs.filed == []
+
+
+@pytest.mark.parametrize("failing, what", [
+    ("labels=ready-for-agent", "list"),
+    ("issue create", "file"),
+])
+def test_on_github_a_gh_call_that_fails_is_refused_and_says_to_run_again(writer, github_specs,
+                                                                        failing, what):
+    github_specs.fails = failing
+
+    ran = writer.spec()
+
+    assert ran.status == 1
+    assert ran.out == ""
+    assert what in ran.err
+    assert "HTTP 502: Bad Gateway" in ran.err
+    assert "again" in ran.err
+    assert github_specs.filed == []
 
 
 def test_the_command_runs_from_the_plugins_bin_folder(writer):

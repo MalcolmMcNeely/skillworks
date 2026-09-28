@@ -17,13 +17,11 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 4. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
 
-5. Write the spec using the template below. The spec title should begin with "SPEC:". Keep the three counted sections in the shape [The counted shape](#the-counted-shape) gives. Then publish it:
-   - With `github`, publish it to the project issue tracker and apply the `ready-for-agent` label. In `spec` mode, the spec carries the `## Branch` section; with a branch name, leave that section out.
-   - With `files`, follow [The files Tracker](#the-files-tracker). The spec never carries the `## Branch` section, because its frontmatter names the branch.
+5. Write the spec using the template below. The spec title should begin with "SPEC:". Keep the three counted sections in the shape [The counted shape](#the-counted-shape) gives. Then publish it as [Publishing the spec](#publishing-the-spec) says.
 
 6. In `spec` mode, do the second part of [The spec's branch](#the-specs-branch).
 
-7. Report the spec's number: with `github` its issue number and URL, with `files` its number and folder. That number is the argument to `/skillworks:spec-loop`. In `spec` mode, report the pull request's URL too.
+7. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In `spec` mode, report the pull request's URL too.
 
 ## The counted shape
 
@@ -35,19 +33,29 @@ The spec loop counts the drift check's Verdicts against the spec, so it reads th
 
 An item runs over several lines when its later lines are indented, so a nested list stays part of its item. Testing Decisions are not counted. The loop reads the shape before its first ticket, and turns down a spec in another shape.
 
-## The files Tracker
+## Publishing the spec
 
-With `files`, the spec is a folder in `.specs/`, and `tracker-publish` writes it. The command numbers the spec one above the highest number on the remote, and pushes the folder at once. Two specs written at once get two numbers: the remote refuses the second push, and the command reads again and takes the next number. In `spec` mode each spec pushes to a branch of its own, so the same push also holds the number on the remote as `refs/skillworks/specs/<number>`, and a second spec cannot take it. It writes through an index of its own, so it never touches the checkout.
+`tracker-publish` writes the spec with either Tracker, from one file and one command.
 
-1. Write the spec to a file outside the repo, such as in `$(mktemp -d)`. Its first line is `# SPEC: <title>`, and the template's sections follow. Leave out the frontmatter, because the command writes it: `status: open`, and in `spec` mode `branch`.
-2. Publish it. The slug is short and in kebab case. In `spec` mode, name the spec's branch last, so the folder sits on that branch and the pull request carries the spec and its code together:
+1. Write the spec to a file outside the repo, such as in `$(mktemp -d)`. Its first line is `# SPEC: <title>`, and the template's sections follow. Leave out the `## Branch` section and any frontmatter, because the command writes them.
+2. Publish it. The slug is short and in kebab case. In `spec` mode, name the spec's branch last:
 
    ```bash
    tracker-publish spec <slug> <file>                 # target-branch names a branch
    tracker-publish spec <slug> <file> spec/<slug>     # target-branch says spec
    ```
 
-3. It prints the number, a tab and the folder, such as `8	.specs/0008-local-tracker`. Pull the branch, so the checkout holds the folder too.
+3. It prints the number, a tab, and then the issue's URL with `github` or the folder with `files`, such as `8	.specs/0008-local-tracker`. With `files`, pull the branch, so the checkout holds the folder too.
+
+When the command fails, run it again. It files nothing twice.
+
+### With `github`
+
+The command files one issue. Its title is the `# SPEC: ` heading, its body is the text below that heading, and it carries the `ready-for-agent` label. In `spec` mode it writes the `## Branch` section at the top of the body, from the branch named. It first looks for an open `ready-for-agent` issue with the same title. When it finds one, it files nothing and prints that issue's number and URL, so a run after a network failure never files a second spec.
+
+### With `files`
+
+The spec is a folder in `.specs/`. The command writes its frontmatter: `status: open`, and in `spec` mode `branch`, so the folder sits on that branch and the pull request carries the spec and its code together. The command numbers the spec one above the highest number on the remote, and pushes the folder at once. Two specs written at once get two numbers: the remote refuses the second push, and the command reads again and takes the next number. In `spec` mode each spec pushes to a branch of its own, so the same push also holds the number on the remote as `refs/skillworks/specs/<number>`, and a second spec cannot take it. It writes through an index of its own, so it never touches the checkout.
 
 ## The spec's branch
 
@@ -86,10 +94,6 @@ With `github`, the pull request's body names the spec with a closing keyword, so
   ```
 
 <spec-template>
-
-## Branch
-
-`spec/<slug>`, in `spec` mode only. The branch name alone, on the first line under the heading.
 
 ## Problem Statement
 
