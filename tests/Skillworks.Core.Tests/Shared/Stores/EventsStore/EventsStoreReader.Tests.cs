@@ -66,12 +66,13 @@ public sealed class EventsStoreReaderTests
     {
         // Arrange
         using var stalling = new StallingEventsStore();
-        var reader = Reader(stalling, HarnessClock.Still());
+        var (reader, line) = Watched(stalling, HarnessClock.Still());
 
         // Act
         var readings = Enumerable.Range(0, 6).Select(_ => reader.CountAsync(OneDay, [], CancellationToken.None)).ToList();
 
         await stalling.AskedFor(4);
+        await line.JoinedBy(6);
 
         stalling.LetGo();
 
@@ -87,14 +88,19 @@ public sealed class EventsStoreReaderTests
     {
         // Arrange
         using var stalling = new StallingEventsStore();
-        var reader = Reader(stalling, HarnessClock.Still(), readsAtOnce: 1);
+        var (reader, line) = Watched(stalling, HarnessClock.Still(), readsAtOnce: 1);
 
         var first = reader.CountAsync(Named("first"), [], CancellationToken.None);
 
         await stalling.Asked;
 
         var second = reader.CountAsync(Named("second"), [], CancellationToken.None);
+
+        await line.JoinedBy(2);
+
         var third = reader.CountAsync(Named("third"), [], CancellationToken.None);
+
+        await line.JoinedBy(3);
 
         // Act
         stalling.LetGo();
@@ -115,13 +121,15 @@ public sealed class EventsStoreReaderTests
         // Arrange
         using var stalling = new StallingEventsStore();
         var clock = HarnessClock.Still();
-        var reader = Reader(stalling, clock, readsAtOnce: 1);
+        var (reader, line) = Watched(stalling, clock, readsAtOnce: 1);
 
         var first = reader.CountAsync(OneDay, [], CancellationToken.None);
 
         await stalling.Asked;
 
         var held = reader.CountAsync(OneDay, [], CancellationToken.None);
+
+        await line.JoinedBy(2);
 
         // Act
         clock.Advance(TimeSpan.FromSeconds(PatienceSeconds + 1));
@@ -146,14 +154,19 @@ public sealed class EventsStoreReaderTests
         // Arrange
         using var stalling = new StallingEventsStore();
         using var leaving = new CancellationTokenSource();
-        var reader = Reader(stalling, HarnessClock.Still(), readsAtOnce: 1);
+        var (reader, line) = Watched(stalling, HarnessClock.Still(), readsAtOnce: 1);
 
         var first = reader.CountAsync(OneDay, [], CancellationToken.None);
 
         await stalling.Asked;
 
         var left = reader.CountAsync(Named("left"), [], leaving.Token);
+
+        await line.JoinedBy(2);
+
         var after = reader.CountAsync(OneDay, [], CancellationToken.None);
+
+        await line.JoinedBy(3);
 
         // Act
         await leaving.CancelAsync();
@@ -209,14 +222,30 @@ public sealed class EventsStoreReaderTests
     }
 
     // The real registration, so the address, the Patience and the line under test are the ones Studio runs with.
-    private static EventsStoreReader Reader(HttpMessageHandler store, TimeProvider clock, int? readsAtOnce = null)
+    private static EventsStoreReader Reader(HttpMessageHandler store, TimeProvider clock, int? readsAtOnce = null) =>
+        Handled(store, clock, readsAtOnce).BuildServiceProvider().GetRequiredService<EventsStoreReader>();
+
+    // Built from the same settings, so the line under test is still the size and the order Studio runs with.
+    private static (EventsStoreReader Reader, HarnessLine Line) Watched(HttpMessageHandler store, TimeProvider clock, int? readsAtOnce = null)
+    {
+        var services = Handled(store, clock, readsAtOnce);
+
+        services.AddSingleton<HarnessLine>();
+        services.AddSingleton<EventsStoreLine>(provider => provider.GetRequiredService<HarnessLine>());
+
+        var provider = services.BuildServiceProvider();
+
+        return (provider.GetRequiredService<EventsStoreReader>(), provider.GetRequiredService<HarnessLine>());
+    }
+
+    private static ServiceCollection Handled(HttpMessageHandler store, TimeProvider clock, int? readsAtOnce)
     {
         var services = Registered(clock, readsAtOnce, address: null);
 
         // Only the handler is replaced, and after the registration that clears them, so Studio's own Patience stays under test.
         services.AddHttpClient(EventsStoreReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => store);
 
-        return services.BuildServiceProvider().GetRequiredService<EventsStoreReader>();
+        return services;
     }
 
     // Studio's own handler too, so the connections a store sees are the ones Studio opens.

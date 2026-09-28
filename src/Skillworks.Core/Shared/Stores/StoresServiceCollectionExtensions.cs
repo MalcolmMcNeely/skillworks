@@ -58,6 +58,8 @@ public static class StoresServiceCollectionExtensions
         services.AddHttpClient(EventsStoreReader.ClientName)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.Zero });
 
+        // A singleton, so the reads out at the store at once are counted for all of Studio and not page by page.
+        services.AddSingleton<EventsStoreLine>();
         services.AddSingleton<EventsStoreReader>();
         services.AddSingleton<TraceStoreReader>();
         services.AddSingleton<CollectorReader>();
