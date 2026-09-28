@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for everything.
+Issues and specs for this repo live as GitHub issues. The skills write both Trackers through `tracker-publish`, one command for each write, and read with the `gh` CLI.
 
 Infer the repo from `git remote -v` — `gh` does this by itself inside a clone.
 
@@ -17,7 +17,7 @@ Infer the repo from `git remote -v` — `gh` does this by itself inside a clone.
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue.
+Run the `tracker-publish` command the skill gives. It writes to either Tracker.
 
 ## When a skill says "fetch the relevant ticket"
 
@@ -57,7 +57,7 @@ Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-dri
 
 A **spec** issue is the parent. Its **tickets** are GitHub sub-issues of it. That parentage scopes the loop: a driver reads one spec's children and nothing else, so two people running the loop on two specs cannot take each other's tickets.
 
-Write everything through `gh api`. The `gh` flags for sub-issues and dependencies only arrived in gh 2.94.0; `gh api` works on every version.
+Read everything through `gh api`. The `gh` flags for sub-issues and dependencies only arrived in gh 2.94.0; `gh api` works on every version. The skills make no write below by hand: `tracker-publish` makes them, and the calls are here so a person can check what it did.
 
 - **The numeric database id.** Both write endpoints below take an issue's numeric `id` — not its `#number`, and not its `node_id`. `gh issue view --json id` hands you the node id, which they reject. Get the right one with `gh api repos/<owner>/<repo>/issues/<n> --jq .id`.
 - **Make a ticket a child of a spec**: `gh api --method POST repos/<owner>/<repo>/issues/<spec>/sub_issues -F sub_issue_id=<ticket-db-id>`. Limits: 100 sub-issues per parent, 8 levels of nesting.
@@ -67,6 +67,7 @@ Write everything through `gh api`. The `gh` flags for sub-issues and dependencie
 - **Is a ticket startable?** `gh api repos/<owner>/<repo>/issues/<n> --jq '.issue_dependencies_summary.blocked_by'`. That field counts **open** blockers only, so `0` means go. Do not count the `dependencies/blocked_by` list instead — it includes closed blockers.
 - **Claim a ticket**: `gh issue edit <n> --add-assignee @me`, then pause and read the assignees back. There is no compare-and-swap anywhere on the Issues API, so two claims can both succeed. Reading back detects the race; nothing prevents it.
 - **Write a spec**: `tracker-publish spec <slug> <file>`, with the spec's branch last in `spec` mode. The file opens with `# SPEC: <title>`. The command files one issue with that title, the text below the heading as its body and the `ready-for-agent` label, and prints its number and URL. In `spec` mode it writes the `## Branch` section from the branch named. It first looks for an open `ready-for-agent` issue with the same title and prints that one instead, so a rerun files no second spec. `/skillworks:to-spec` says how.
+- **Write a spec's tickets**: `tracker-publish tickets <spec> <file>...`, every file at once, the same files as with the files Tracker. It files each ticket blockers first as an issue with the `ready-for-agent` label, makes it a sub-issue of the spec, adds a blocking link for each ticket its `blocked-by` names, and prints each issue number. The issue body is the text below the ticket's `# ` heading, with no frontmatter. A rerun matches each file to an open sub-issue by title, files only what is missing and adds only the missing links, so two tickets with one title are turned down. `/skillworks:to-tickets` says how.
 - **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command posts it as a new comment on the spec issue and prints the comment's URL. A rerun adds another comment and leaves the old one, since the loop reads the last comment. `/skillworks:spec-drift` says how.
 - **Record a Name report**: `tracker-publish names <spec> <file>`. The file opens with `## Name report`, and the command posts it as a new comment on the spec issue, as for a drift report. `/skillworks:spec-names` says how.
 - **Never use `is:blocked` in search** without `-f advanced_search=true`. On the legacy path it silently degrades to a free-text match on the word "blocked" and returns confident nonsense.

@@ -9,6 +9,7 @@ import pytest
 
 from conftest import Ran, Repo, git, launch
 from files_test import Racing, commit_files, spec_file, ticket_file, write_loop
+from github_test import Issues
 from steering.target_branch import LOOP_FILE
 from tracker import publish
 from tracker.files import Files
@@ -203,16 +204,6 @@ def test_with_a_branch_named_target_a_branch_given_is_turned_down(writer):
     assert writer.folders() == []
 
 
-def test_tickets_on_the_github_tracker_are_turned_down(writer):
-    path = writer.repo.work / LOOP_FILE
-    path.write_text(json.dumps({"tracker": "github", "target-branch": "main"}), encoding="utf-8")
-
-    ran = writer.tickets("1", three_tickets())
-
-    assert ran.status == 1
-    assert "files" in ran.err
-
-
 def three_tickets():
     return {
         "01-read-loop-json.md": ticket_file("TICKET: Read loop.json"),
@@ -263,7 +254,7 @@ def test_tickets_for_a_spec_with_no_folder_are_turned_down(writer):
     assert "9" in ran.err
 
 
-@pytest.mark.parametrize("tickets, reason", [
+UNFOLLOWABLE = [
     ({"01-a.md": ticket_file("TICKET: A", blocked_by=[2]), "02-b.md": ticket_file("TICKET: B")},
      "dependency order"),
     ({"01-a.md": ticket_file("TICKET: A", blocked_by=[3])}, "dependency order"),
@@ -271,7 +262,11 @@ def test_tickets_for_a_spec_with_no_folder_are_turned_down(writer):
     ({"01-a.md": ticket_file("TICKET: A", claimed_by="someone@example.invalid")}, "claimed-by"),
     ({"a.md": ticket_file("TICKET: A")}, "number"),
     ({"01-a.md": ticket_file("TICKET: A"), "01-b.md": ticket_file("TICKET: B")}, "number"),
-])
+    ({"01-a.md": ticket_file("TICKET: A"), "02-b.md": ticket_file("TICKET: A")}, "title"),
+]
+
+
+@pytest.mark.parametrize("tickets, reason", UNFOLLOWABLE)
 def test_a_ticket_the_tracker_could_not_follow_is_turned_down(writer, tickets, reason):
     writer.spec()
 
@@ -637,6 +632,94 @@ def test_on_github_a_gh_call_that_fails_is_refused_and_says_to_run_again(writer,
     assert "HTTP 502: Bad Gateway" in ran.err
     assert "again" in ran.err
     assert github_specs.filed == []
+
+
+class ConnectedIssues(Issues):
+    def answer(self):
+        called = self.runner.calls[-1][1:]
+        if called[:2] == ["auth", "status"]:
+            return Ran(0, "", "")
+        if called[:2] == ["repo", "view"]:
+            return Ran(0, "owner/repo\n", "")
+        if called[:2] == ["api", "user"]:
+            return Ran(0, "me\n", "")
+        return super().answer()
+
+
+@pytest.fixture
+def github_tickets(writer):
+    path = writer.repo.work / LOOP_FILE
+    path.write_text(json.dumps({"tracker": "github", "target-branch": "main"}), encoding="utf-8")
+    return ConnectedIssues(writer.runner)
+
+
+def with_body(ticket, body):
+    return ticket + "\n" + body
+
+
+def test_on_github_tickets_are_filed_blockers_first_each_a_labelled_sub_issue_with_its_blockers(
+        writer, github_tickets):
+    tickets = three_tickets()
+    tickets["01-read-loop-json.md"] = with_body(tickets["01-read-loop-json.md"],
+                                                "## What to build\n\nRead it.\n")
+
+    ran = writer.tickets("158", tickets)
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == "400\n401\n402\n"
+    assert [(i["title"], i["parent"], i["labels"], i["blocked_by"])
+            for i in github_tickets.issues.values()] == [
+        ("TICKET: Read loop.json", "158", ["ready-for-agent"], []),
+        ("TICKET: Close in the worktree", "158", ["ready-for-agent"], ["400"]),
+        ("TICKET: Claim", "158", ["ready-for-agent"], ["400", "401"])]
+    assert github_tickets.issues["400"]["body"] == "## What to build\n\nRead it.\n"
+    assert all("status:" not in i["body"] for i in github_tickets.issues.values())
+
+
+@pytest.mark.parametrize("tickets, reason", UNFOLLOWABLE)
+def test_on_github_a_ticket_the_tracker_could_not_follow_is_turned_down_before_any_write(
+        writer, github_tickets, tickets, reason):
+    ran = writer.tickets("158", tickets)
+
+    assert ran.status == 1
+    assert reason in ran.err
+    assert github_tickets.issues == {}
+    assert writer.runner.started("gh") == []
+
+
+def test_on_github_a_second_run_after_one_that_failed_halfway_files_only_what_is_missing(
+        writer, github_tickets):
+    github_tickets.fail("issue create", nth=2)
+    first = writer.tickets("158", three_tickets())
+    github_tickets.writes.clear()
+
+    ran = writer.tickets("158", three_tickets())
+
+    assert first.status == 1
+    assert "Already filed: #400" in first.err
+    assert "again" in first.err
+    assert ran.status == 0, said(ran)
+    assert ran.out == "400\n401\n402\n"
+    assert github_tickets.writes == [
+        "issue create",
+        "api --method POST repos/owner/repo/issues/158/sub_issues -F sub_issue_id=9401",
+        "api --method POST repos/owner/repo/issues/401/dependencies/blocked_by -F issue_id=9400",
+        "issue create",
+        "api --method POST repos/owner/repo/issues/158/sub_issues -F sub_issue_id=9402",
+        "api --method POST repos/owner/repo/issues/402/dependencies/blocked_by -F issue_id=9400",
+        "api --method POST repos/owner/repo/issues/402/dependencies/blocked_by -F issue_id=9401"]
+
+
+def test_on_github_a_second_run_after_a_full_one_changes_nothing_and_says_so(writer, github_tickets):
+    writer.tickets("158", three_tickets())
+    github_tickets.writes.clear()
+
+    ran = writer.tickets("158", three_tickets())
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == "400\n401\n402\n"
+    assert "nothing" in ran.err.lower()
+    assert github_tickets.writes == []
 
 
 def test_the_command_runs_from_the_plugins_bin_folder(writer):

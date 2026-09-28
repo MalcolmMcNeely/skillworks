@@ -1,6 +1,6 @@
 ---
 name: to-tickets
-description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges in each ticket file's frontmatter with the files Tracker, or native blocking links on GitHub.
+description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker with one tracker-publish command — edges in each ticket file's frontmatter, which become native blocking links on GitHub.
 ---
 
 # To Tickets
@@ -64,21 +64,17 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets to the configured tracker
 
-Publish the tickets you showed. **How** depends on `tracker` in `docs/agents/loop.json` — the tickets are the same either way, only the shape of the blocking edges changes:
+Publish the tickets you showed, with the same files and the same command for both Trackers. Write one file per ticket to a folder outside the repo, such as `$(mktemp -d)`, named `<NN>-<slug>.md` and numbered from `01` in dependency order, blockers first. Each file opens with the frontmatter the tracker docs show: `status: open`, `blocked-by` listing the numbers of the tickets that block it, such as `blocked-by: [1, 2]`, and `claimed-by` left empty, because the loop sets it. The ticket shape's title and body follow, the title as a `# ` heading. Then publish every file in one call:
 
-- **`files`** → write one file per ticket to a folder outside the repo, such as `$(mktemp -d)`, named `<NN>-<slug>.md` and numbered from `01` in dependency order, blockers first. Each file opens with the frontmatter the tracker docs show: `status: open`, `blocked-by` listing the numbers of the tickets that block it, such as `blocked-by: [1, 2]`, and `claimed-by` left empty, because the loop sets it. The ticket shape's title and body follow, the title as a `# ` heading. Then publish every file in one call:
+```bash
+tracker-publish tickets <spec> <file>...
+```
 
-  ```bash
-  tracker-publish tickets <spec> <file>...
-  ```
+Before it writes anything, it turns down a set the loop could not follow: a file with no number, two files with one number, a ticket not `open`, a `claimed-by` already set, a blocker that is not a ticket before it, or two tickets with one title.
 
-  It pushes the files into the spec's `tickets/` folder, on the spec's branch in `spec` mode. It turns down a set the loop could not follow: a file with no number, two files with one number, a ticket not `open`, a `claimed-by` already set, or a blocker that is not a ticket before it. It also turns down a spec that already has tickets, so a second run adds nothing. The folder is the parent relationship, so nothing more links a ticket to its spec.
-- **`github`** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` label unless instructed otherwise — the tickets are agent-grabbable by construction.
-
-Each ticket takes its title and its body from the ticket shape.
+- **`files`**: it pushes the files into the spec's `tickets/` folder, on the spec's branch in `spec` mode. The folder is the parent relationship, so nothing more links a ticket to its spec. It turns down a spec that already has tickets, so a second run adds nothing.
+- **`github`**: it files each ticket blockers first as an issue with the `ready-for-agent` label, makes it a sub-issue of the spec, turns its `blocked-by` into blocking links, and prints each issue number. `/skillworks:spec-loop` reads a spec's sub-issues to find its own work, so the link is what keeps two people's loops off each other's tickets. It is safe to run again: a rerun files only the tickets still missing and adds only the missing links, and after a full success it changes nothing and says so. When it stops on a failed `gh` call, run it again.
 
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
-
-**With `github`, when the source was an existing issue, make every ticket a child of it on the tracker.** Not a `Parent:` line in the body — the native parent/child relationship, so it is queryable. `/skillworks:spec-loop` reads a spec's children to find its own work and ignores everything else, which is the only thing stopping two people's loops taking each other's tickets. Your tracker doc carries the exact calls.
 
 **Leave the parent issue open**, or with `files` the spec's `status: open`. It is the loop's anchor and the drift check reads it at the end. With `github` the human closes it when the work merges, and with `files` the loop closes it. (Without a loop — a plain conversation, no parent issue on the tracker — there is nothing to leave open.)

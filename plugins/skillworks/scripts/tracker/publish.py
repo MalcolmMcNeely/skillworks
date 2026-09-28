@@ -12,7 +12,7 @@ from stop import Stop, is_a_number, misuse, refusal
 from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
                            TICKETS, Files, as_numbers, frontmatter, heading, number_of,
                            with_last_section)
-from tracker.github import BRANCH_HEADING, GitHub
+from tracker.github import BRANCH_HEADING, GitHub, NewTicket
 from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
 USAGE = (
@@ -32,7 +32,7 @@ SPEC_HEADING = "# SPEC: "
 RESERVED = "refs/skillworks/specs/"
 
 
-def opened(runner, where, spec, wait, writes_github=False):
+def opened(runner, where, spec, wait):
     found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
     if found.status != 0:
         raise refusal("{} is not inside a git repo.".format(where))
@@ -41,12 +41,8 @@ def opened(runner, where, spec, wait, writes_github=False):
     target = None if named == SPEC_MODE else named
     if tracker_setting(top) == "files":
         tracker = Files(runner, top, target, spec, wait)
-    elif writes_github:
-        tracker = GitHub(runner, top, target=target)
     else:
-        raise refusal("tracker in docs/agents/loop.json is not files, and tracker-publish writes "
-                      "a spec's tickets to the files Tracker alone. Publish as "
-                      "docs/agents/issue-tracker.md says.")
+        tracker = GitHub(runner, top, target=target)
     problem = tracker.connect()
     if problem:
         raise refusal(problem[0].upper() + problem[1:] + ".")
@@ -150,7 +146,13 @@ def checked_tickets(where, paths):
         if number in named:
             raise refusal("{} and {} share the number {}.".format(named[number][0], name, number))
         named[number] = (name, read(where, path))
+    titles = {}
     for number, (name, text) in named.items():
+        title = titled(name, text)[0]
+        if title in titles:
+            raise refusal("{} and {} share the title {}, so a second run could not tell them "
+                          "apart.".format(titles[title], name, title))
+        titles[title] = name
         held, _ = frontmatter(text)
         if held.get(STATUS) != "open":
             raise refusal("{} needs status: open in its frontmatter.".format(name))
@@ -161,10 +163,34 @@ def checked_tickets(where, paths):
             if blocker not in named or int(blocker) >= int(number):
                 raise refusal("{} is blocked by {}, which is not a ticket before it. Number the "
                               "tickets in dependency order, blockers first.".format(name, blocker))
-    return named.values()
+    return [named[number] for number in sorted(named, key=int)]
 
 
-def publish_tickets(tracker, spec, tickets, out):
+# Falls back to the file name as the files Tracker does, so one file names one ticket on both.
+def titled(name, text):
+    lines = frontmatter(text)[1].split("\n")
+    at = next((at for at, line in enumerate(lines) if line.startswith("# ")), None)
+    if at is None:
+        return name[:-3], "\n".join(lines).strip("\n") + "\n"
+    return lines[at][2:].strip(), "\n".join(lines[at + 1:]).strip("\n") + "\n"
+
+
+def github_tickets(tickets):
+    titles = {number_of(name): titled(name, text)[0] for name, text in tickets}
+    return [NewTicket(*titled(name, text),
+                      tuple(titles[blocker] for blocker in
+                            as_numbers(frontmatter(text)[0].get("blocked-by", []))))
+            for name, text in tickets]
+
+
+def publish_tickets(tracker, spec, tickets, out, err):
+    if isinstance(tracker, GitHub):
+        filing = tracker.file_tickets(spec, github_tickets(tickets))
+        out.write("".join(number + "\n" for number in filing.numbers))
+        if not filing.changed:
+            err.write("Every ticket of spec #{} was already filed and linked, so nothing "
+                      "changed.\n".format(spec))
+        return
     branch = tracker.branch_of(spec)
     for _ in range(PUSH_ATTEMPTS):
         tracker.fetched(branch)
@@ -217,20 +243,20 @@ def main(argv, runner, out, err, wait, where=None):
     try:
         command = argv[0] if argv else ""
         if command == "spec" and len(argv) in (3, 4):
-            tracker = opened(runner, where, None, wait, writes_github=True)
+            tracker = opened(runner, where, None, wait)
             publish_spec(tracker, argv[1], read(where, argv[2]), argv[3] if len(argv) == 4 else "",
                          out)
             return 0
         if command == "tickets" and len(argv) > 2 and is_a_number(argv[1]):
             spec = str(int(argv[1]))
             tickets = checked_tickets(where, argv[2:])
-            publish_tickets(opened(runner, where, spec, wait), spec, tickets, out)
+            publish_tickets(opened(runner, where, spec, wait), spec, tickets, out, err)
             return 0
         if command in REPORTS and len(argv) == 3 and is_a_number(argv[1]):
             spec = str(int(argv[1]))
             heading, what = REPORTS[command]
             report_file = (Path(where) / argv[2]).as_posix()
-            publish_report(opened(runner, where, spec, wait, writes_github=True), spec, report_file,
+            publish_report(opened(runner, where, spec, wait), spec, report_file,
                            read(where, argv[2]), heading, what, out)
             return 0
         raise misuse(USAGE)
