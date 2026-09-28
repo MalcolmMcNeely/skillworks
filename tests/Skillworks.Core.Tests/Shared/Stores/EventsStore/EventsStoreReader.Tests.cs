@@ -158,6 +158,9 @@ public sealed class EventsStoreReaderTests
         // Act
         await leaving.CancelAsync();
 
+        // A cancel can return before the read leaves the line, and a place freed then can still go to it.
+        await Task.WhenAny(left);
+
         stalling.LetGo();
 
         await Task.WhenAll(first, after);
