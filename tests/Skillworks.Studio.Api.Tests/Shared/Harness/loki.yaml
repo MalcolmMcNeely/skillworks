@@ -33,7 +33,6 @@ limits_config:
 
 query_range:
   # A cached answer for a past period would hide events a test pushed after an earlier read.
-  cache_results: false
   cache_index_stats_results: false
 
 ingester:

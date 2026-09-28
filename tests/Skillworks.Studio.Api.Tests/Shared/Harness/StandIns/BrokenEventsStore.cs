@@ -18,7 +18,7 @@ public sealed class BrokenEventsStore : DelegatingHandler
     private BrokenEventsStore(
         Func<Uri, bool> breaks,
         Func<BrokenEventsStore, Uri, CancellationToken, Task<HttpResponseMessage>> broken)
-        : base(new HttpClientHandler())
+        : base(TestLoki.Handler())
     {
         _breaks = breaks;
         _broken = broken;

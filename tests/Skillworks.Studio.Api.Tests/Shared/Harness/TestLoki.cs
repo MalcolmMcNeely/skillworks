@@ -29,6 +29,9 @@ public static class TestLoki
 
     public static Uri Address => StartedAddress.Value;
 
+    // Under sixteen reads at once, the container's port forward resets pooled connections, and each reset reports a Gap.
+    public static HttpMessageHandler Handler() => new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.Zero };
+
     public static Task PushAsync(string tenant, IReadOnlyList<SkillActivated> events) =>
         PushAsync(
             tenant,
@@ -83,7 +86,7 @@ public static class TestLoki
         var container = new ContainerBuilder($"{LokiImage.Name}:{LokiImage.Tag}")
             .WithResourceMapping(configuration, "/etc/loki/test.yaml")
             // A flag, not loki.yaml, so Loki's limit and the host's option share one constant.
-            .WithCommand(["-config.file=/etc/loki/test.yaml", $"-store.max-query-length={MaxQueryDays * 24}h", .. LokiFlags.Split])
+            .WithCommand(["-config.file=/etc/loki/test.yaml", $"-store.max-query-length={MaxQueryDays * 24}h", .. LokiFlags.All])
             .WithPortBinding(Port, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(ready => ready.ForPort(Port).ForPath("/ready")))
             .Build();
