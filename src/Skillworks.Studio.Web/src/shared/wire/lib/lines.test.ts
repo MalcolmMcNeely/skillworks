@@ -41,19 +41,31 @@ describe('readLines', () => {
     // Arrange
     const abort = new AbortController();
     let cancelled = false;
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode('{"kind":"head"}\n'));
-      },
-      cancel() {
-        cancelled = true;
-      },
+    let holdRead: (() => void) | undefined;
+    const holdingRead = new Promise<void>((resolve) => {
+      holdRead = resolve;
     });
+    const body = new ReadableStream<Uint8Array>(
+      {
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"kind":"head"}\n'));
+        },
+        pull() {
+          holdRead?.();
+        },
+        cancel() {
+          cancelled = true;
+        },
+      },
+      // With nothing kept in hand, the body is pulled only while a read waits on it, so a pull shows the read is out.
+      { highWaterMark: 0 },
+    );
     const lines = readLines(body, abort.signal);
 
     // Act
     const first = await lines.next();
     const waiting = lines.next();
+    await holdingRead;
     abort.abort();
 
     // Assert

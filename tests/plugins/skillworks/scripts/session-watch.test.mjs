@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtemp, open, readFile, rm } from "node:fs/promises";
+import { constants, mkdtemp, open, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createServer as createSocketServer } from "node:net";
 import { platform, tmpdir } from "node:os";
@@ -114,28 +114,44 @@ async function silentEndpoint() {
   return { endpoint, accepted: () => accepted, close };
 }
 
-// Git reads its global config before anything else, so a config that is slow to arrive holds every git call.
-// With no delay it never arrives.
-async function slowGitConfig(delay) {
+// Git reads its global config before anything else, so a config held back holds every git call.
+async function heldGitConfig() {
   if (platform() !== "win32") {
-    const fifo = join(temp, "slow-config");
+    const fifo = join(temp, "held-config");
     execFileSync("mkfifo", [fifo]);
-    const timer = delay === undefined ? undefined : setTimeout(async () => (await open(fifo, "w")).close(), delay);
-    return { path: fifo, close: async () => clearTimeout(timer) };
+    let writer;
+    // A fifo opened to write waits for a reader, so the open ending shows a git waits on the config.
+    const writing = () => (writer ??= open(fifo, "w"));
+    const close = async () => {
+      if (writer === undefined) return;
+      // A reader of its own, so an open no git ever met ends rather than keeping the test run alive.
+      const reader = await open(fifo, constants.O_RDONLY | constants.O_NONBLOCK);
+      await (await writer).close();
+      await reader.close();
+    };
+    return { path: fifo, holding: async () => void (await writing()), letGo: async () => (await writing()).close(), close };
   }
   const pipe = `\\\\.\\pipe\\session-watch-${process.pid}-${Math.random().toString(36).slice(2)}`;
   const sockets = new Set();
+  let released = false;
+  let met;
+  const holding = new Promise((resolve) => (met = resolve));
   const server = createSocketServer((socket) => {
     sockets.add(socket);
     socket.on("error", () => {});
-    if (delay !== undefined) setTimeout(() => socket.end(), delay);
+    met();
+    if (released) socket.end();
   });
   await new Promise((resolve) => server.listen(pipe, resolve));
+  const letGo = () => {
+    released = true;
+    for (const socket of sockets) socket.end();
+  };
   const close = () => {
     for (const socket of sockets) socket.destroy();
     return new Promise((resolve) => server.close(resolve));
   };
-  return { path: pipe, close };
+  return { path: pipe, holding: () => holding, letGo, close };
 }
 
 async function pluginHooks() {
@@ -401,7 +417,7 @@ for (const [name, payload] of EVENTS) {
   test(`${name} whose Repository lookup never ends exits zero inside the hook limit`, { timeout: limit * 2 }, async (t) => {
     // Arrange
     const store = await collector();
-    const config = await slowGitConfig();
+    const config = await heldGitConfig();
     const cwd = await repository(ORIGINS[0]);
 
     try {
@@ -567,19 +583,33 @@ for (const [name, payload] of [["a Load", REQUIRED], ["a Session", SESSION]]) {
 
   test(`${name} whose Repository lookup outlasts the shipped limit carries its owner and name under a longer one`, async () => {
     // Arrange
-    const config = await slowGitConfig(3000);
+    const config = await heldGitConfig();
     const cwd = await repository(ORIGINS[0]);
+    const store = await collector();
+    const cut = await collector();
 
     try {
       // Act
-      const record = onlyRecord(await recordFor({ ...payload, cwd }, { ...REPOSITORY_ON, GIT_CONFIG_GLOBAL: config.path }));
+      const running = watch({ ...payload, cwd }, store.endpoint, { ...REPOSITORY_ON, GIT_CONFIG_GLOBAL: config.path });
+      // A hook that ends before its git waits leaves nothing to hold, so the case fails rather than waiting for ever.
+      assert.ok(await Promise.race([config.holding().then(() => true), running.then(() => false)]), "git waited on its config");
+      // Started only once the lookup above is held, so its own limit running out shows that lookup outlasted it too.
+      const shipped = await watch({ ...payload, cwd }, cut.endpoint, { ...REPOSITORY_ON, ...SHIPPED_LIMIT, GIT_CONFIG_GLOBAL: config.path });
+      await config.letGo();
+      const patient = await running;
 
       // Assert
-      const got = attributes(record);
+      assert.equal(shipped.status, 0, shipped.err);
+      assert.equal(cut.received.length, 0, "the shipped limit ran out while git waited");
+      assert.equal(patient.status, 0, patient.err);
+      assert.equal(store.received.length, 1);
+      const got = attributes(onlyRecord(store.received[0]));
       assert.equal(got["vcs.owner.name"], "octo-org");
       assert.equal(got["vcs.repository.name"], "widgets");
     } finally {
       await config.close();
+      await store.close();
+      await cut.close();
     }
   });
 

@@ -75,9 +75,9 @@ def busy(holder):
     sys.exit(0)
 
 turn = Turn.of(Subprocess(), sys.argv[2], sys.argv[3])
-turn.take(busy if sys.argv[4] == "try" else lambda holder: None)
+turn.take(busy if sys.argv[4] in ("try", "grab") else lambda holder: None)
 print("held", flush=True)
-if sys.argv[4] == "hold":
+if sys.argv[4] in ("hold", "grab"):
     sys.stdin.read()
 turn.let_go()
 """
@@ -733,12 +733,13 @@ def test_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_once_it_is_let_
     base = target_of(repo)
     runner.refuse("push --quiet origin HEAD:main", LOST_RACE, times=1)
     held = []
-    # The landing lets the Turn go as it says it lost, so the other loop takes it then.
-    out = Heard(WAITS, {LOST: lambda: held.append(other_loops(repo))})
+    # Only grabbed, never waited for, so a landing that still holds the Turn fails the case, not hangs it.
+    out = Heard(WAITS, {LOST: lambda: held.append(other_loops(repo, how="grab"))})
 
     landing = Beside(runner, out, repo.work, 163)
     heard = landing.heard()
 
+    assert held[0].said == "held"
     assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
     assert target_of(repo) == base
 
@@ -828,11 +829,13 @@ def test_a_landing_on_master_that_lost_a_race_waits_for_the_turn_and_then_lands_
     base = target_of(master)
     runner.refuse("push --quiet origin HEAD:master", LOST_RACE, times=1)
     held = []
-    out = Heard(WAITS, {"lost a race to master": lambda: held.append(other_loops(master))})
+    out = Heard(WAITS, {"lost a race to master": lambda: held.append(
+        other_loops(master, how="grab"))})
 
     landing = Beside(runner, out, master.work, 163)
     heard = landing.heard()
 
+    assert held[0].said == "held"
     assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
     assert target_of(master) == base
 
@@ -872,11 +875,12 @@ def test_in_spec_mode_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_on
     runner.refuse("push --quiet origin HEAD:" + SPEC_BRANCH, LOST_RACE, times=1)
     held = []
     out = Heard(WAITS, {"lost a race to " + SPEC_BRANCH: lambda: held.append(
-        other_loops(spec_mode))})
+        other_loops(spec_mode, how="grab"))})
 
     landing = Beside(runner, out, spec_mode.work, 163, target=SPEC_BRANCH)
     heard = landing.heard()
 
+    assert held[0].said == "held"
     assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
     assert spec_branch_of(spec_mode) == base
 
