@@ -52,6 +52,14 @@ Use /skillworks:tdd where possible, at pre-agreed seams.
 
 Run typechecking and single test files regularly.
 
+**A test that a check with an image runs is run as a Trial, and never on the host.** A check with `image` in the Suite file runs in a container, and its tests can take many times as long on the host. Start from that check's own `command`, runner options included, and narrow only its paths and filters, such as a test file and `-k`:
+
+```bash
+skillworks-suite --image <the check's Dockerfile> -- <the check's command, narrowed>
+```
+
+A Trial prints the command's output and returns its exit code. It keeps no Proof, so it never stands in for the Suite. A test of a check with no image runs on the host as before.
+
 To check the work against the whole Suite, run `skillworks-suite`, never the test commands the Suite file names. It keeps a Proof of each check that passes, so a check whose inputs have not changed does not run again. In a loop the driver runs the Suite as a step of its own, and it reads the Proofs your run kept.
 
 Building is done when the typecheck is clean and every test the change adds or touches passes.
@@ -79,6 +87,8 @@ Work reaches this section three ways, and it covers all of them:
 3. **Leave a finding you judge wrong**, and keep the reason for the Closing note.
 4. **Fix a failing suite the prompt carries.** The driver ran the whole suite as often as the Suite file asks and read a failure every time, so treat it as the work. Make the suite green. Do not weaken a test to get there, and say so in your report if the failure turns out to be nothing this ticket caused.
 5. **A prompt carrying neither a report nor a failing suite has nothing to fix**, so go straight on.
+
+Run the tests of a fix as Building runs them: a test that a check with an image runs is run as a Trial, and never on the host.
 
 Leave the change uncommitted. The sweep has still to run, and committing is Finishing's job.
 

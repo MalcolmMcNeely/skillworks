@@ -101,6 +101,8 @@ with the rest of your Steering.
    exit status are the check's.
 4. It removes the container, red or green.
 
+A Session runs the tests of a check with `image` as a Trial, below, and never on the host.
+
 The Dockerfile is one of the check's inputs, unless the check ignores it. So a new image runs the
 check again.
 
