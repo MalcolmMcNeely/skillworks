@@ -25,7 +25,7 @@ The outputs:
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
 | `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. |
 | `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
-| `.gitignore` lines | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. They are per machine and never shared. |
+| `.gitignore` lines | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. They are per machine and never shared. Setup also creates `.handoff/`, where `handoff` saves. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
 | The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of a `spec` Target branch among them. It names no tool the Suite runs: those are the team's to add. |
@@ -40,7 +40,7 @@ The outputs:
 seed-steering
 ```
 
-It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet. `loop.json` is written with the remote's default branch as its `target-branch`.
+It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet, and creates `.handoff/` when it is missing. `loop.json` is written with the remote's default branch as its `target-branch`.
 
 It keeps a base copy of each seed in `docs/agents/.seeds/`, exactly as it copied it. On a later run it weighs three versions of each file: the base copy, the team's file and the current seed. It prints one line per file:
 

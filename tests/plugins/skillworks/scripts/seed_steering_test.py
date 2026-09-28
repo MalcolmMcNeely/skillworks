@@ -1063,6 +1063,41 @@ def test_the_working_folders_are_ignored_once(repo, runner):
     assert lines[0] == ".handoff/"
 
 
+def test_the_handoff_folder_is_created_beside_a_new_gitignore(repo, runner):
+    (repo.work / ".gitignore").unlink(missing_ok=True)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / ".handoff").is_dir()
+    assert "created .handoff/\n" in ran.out
+    assert ".handoff/" in (repo.work / ".gitignore").read_text(encoding="utf-8").splitlines()
+
+
+def test_a_run_that_asks_says_it_would_create_the_handoff_folder_and_creates_nothing(repo, runner):
+    edited_on_both_sides(repo, runner, "suite.json", ACROSS["suite.json"])
+    (repo.work / ".handoff").rmdir()
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert "would create .handoff/\n" in ran.out
+    assert not (repo.work / ".handoff").exists()
+    assert "Nothing was written." in ran.out
+
+
+def test_a_second_run_creates_nothing_more(repo, runner):
+    run_seed(runner, repo.work)
+    before = on_disk(repo.work)
+
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert "create" not in ran.out
+    assert on_disk(repo.work) == before
+    assert list((repo.work / ".handoff").iterdir()) == []
+
+
 def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())

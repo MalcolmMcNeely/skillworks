@@ -41,7 +41,9 @@ These copies are not to be edited. Edit the Steering file in `docs/agents/` inst
 
 DEFAULT_BRANCH_PLACEHOLDER = "<default-branch>"
 
-WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
+HANDOFF = ".handoff/"
+
+WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/"]
 
 CHOICE = re.compile(r"^(.+):([0-9]+)=(yours|seed)$")
 
@@ -51,11 +53,12 @@ SETTLE = "--settled <file> for each file that differs from its seed"
 
 
 class Outcome:
-    def __init__(self, done, would=None, shown=(), writes=(), asks=None, used=()):
+    def __init__(self, done, would=None, shown=(), writes=(), asks=None, used=(), makes=()):
         self.done = done
         self.would = would or done
         self.shown = list(shown)
         self.writes = list(writes)
+        self.makes = list(makes)
         self.asks = asks
         self.used = set(used)
 
@@ -231,6 +234,12 @@ def ignore_working_folders(top):
                     writes=[(path, held + "\n".join(lines) + "\n")])]
 
 
+def make_handoff_folder(top):
+    if (top / HANDOFF).is_dir():
+        return []
+    return [Outcome("created {}\n".format(HANDOFF), "would create {}\n".format(HANDOFF), makes=[top / HANDOFF])]
+
+
 def parsed(argv):
     where, choices, settled = None, {}, set()
     rest = iter(argv)
@@ -261,6 +270,8 @@ def report(outcomes, out):
         if not asking:
             for path, text in outcome.writes:
                 write(path, text)
+            for path in outcome.makes:
+                path.mkdir(parents=True, exist_ok=True)
     if asking:
         out.write("Nothing was written. Run again with {}.\n".format(" and ".join(asking)))
 
@@ -272,7 +283,7 @@ def main(argv, runner, out, err):
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        report(seed(top, default_branch(runner, top), choices, settled) + ignore_working_folders(top), out)
+        report(seed(top, default_branch(runner, top), choices, settled) + ignore_working_folders(top) + make_handoff_folder(top), out)
         return 0
     except Stop as stop:
         err.write(stop.said)

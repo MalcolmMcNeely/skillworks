@@ -5,7 +5,11 @@ argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+Write a handoff document summarising the current conversation so a fresh agent can continue the work.
+
+Save it in `.handoff/` at the repo's top level, which `git rev-parse --show-toplevel` prints. Name the file for today's date and a short slug of its subject, such as `2026-09-28-setup-order.md`, so the folder reads in order. Create `.handoff/` when it is missing.
+
+A handoff must never be committed. When `git check-ignore -q .handoff/` fails at the top level, because git does not ignore the folder or because there is no git repo, save to the temporary directory of the user's OS instead. Then tell the user the full path you saved to.
 
 Include a "suggested skills" section in the document, naming which skills the next agent should call the Skill tool for.
 
