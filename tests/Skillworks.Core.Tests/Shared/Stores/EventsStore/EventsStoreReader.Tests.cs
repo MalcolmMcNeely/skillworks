@@ -61,13 +61,144 @@ public sealed class EventsStoreReaderTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => reading);
     }
 
-    // The real registration, so the address and the Patience under test are the ones Studio runs with.
-    private static EventsStoreReader Reader(HttpMessageHandler store, TimeProvider clock)
+    [Fact]
+    public async Task Lets_no_more_than_four_reads_out_at_the_store_at_once()
+    {
+        // Arrange
+        using var stalling = new StallingEventsStore();
+        var reader = Reader(stalling, HarnessClock.Still());
+
+        // Act
+        var readings = Enumerable.Range(0, 6).Select(_ => reader.CountAsync(OneDay, [], CancellationToken.None)).ToList();
+
+        await stalling.AskedFor(4);
+
+        stalling.LetGo();
+
+        await Task.WhenAll(readings);
+
+        // Assert
+        Assert.Equal(4, stalling.MostAtOnce);
+        Assert.Equal(6, stalling.Queries.Count);
+    }
+
+    [Fact]
+    public async Task Sends_the_reads_it_holds_first_come_first_served()
+    {
+        // Arrange
+        using var stalling = new StallingEventsStore();
+        var reader = Reader(stalling, HarnessClock.Still(), readsAtOnce: 1);
+
+        var first = reader.CountAsync(Named("first"), [], CancellationToken.None);
+
+        await stalling.Asked;
+
+        var second = reader.CountAsync(Named("second"), [], CancellationToken.None);
+        var third = reader.CountAsync(Named("third"), [], CancellationToken.None);
+
+        // Act
+        stalling.LetGo();
+
+        await Task.WhenAll(first, second, third);
+
+        // Assert
+        Assert.Collection(
+            stalling.Queries,
+            query => Assert.Contains("claude_code.first", query, StringComparison.Ordinal),
+            query => Assert.Contains("claude_code.second", query, StringComparison.Ordinal),
+            query => Assert.Contains("claude_code.third", query, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Starts_the_Patience_when_the_read_leaves_the_line()
+    {
+        // Arrange
+        using var stalling = new StallingEventsStore();
+        var clock = HarnessClock.Still();
+        var reader = Reader(stalling, clock, readsAtOnce: 1);
+
+        var first = reader.CountAsync(OneDay, [], CancellationToken.None);
+
+        await stalling.Asked;
+
+        var held = reader.CountAsync(OneDay, [], CancellationToken.None);
+
+        // Act
+        clock.Advance(TimeSpan.FromSeconds(PatienceSeconds + 1));
+
+        var ranOut = await first;
+
+        await stalling.AskedFor(2);
+
+        stalling.LetGo();
+
+        var read = await held;
+
+        // Assert
+        // The read ahead of it ran out, so the Clock did move past a Patience while this one waited its turn.
+        Assert.NotNull(ranOut.Unreachable);
+        Assert.Null(read.Unreachable);
+    }
+
+    [Fact]
+    public async Task Never_sends_a_read_whose_caller_left_while_it_waited()
+    {
+        // Arrange
+        using var stalling = new StallingEventsStore();
+        using var leaving = new CancellationTokenSource();
+        var reader = Reader(stalling, HarnessClock.Still(), readsAtOnce: 1);
+
+        var first = reader.CountAsync(OneDay, [], CancellationToken.None);
+
+        await stalling.Asked;
+
+        var left = reader.CountAsync(Named("left"), [], leaving.Token);
+        var after = reader.CountAsync(OneDay, [], CancellationToken.None);
+
+        // Act
+        await leaving.CancelAsync();
+
+        stalling.LetGo();
+
+        await Task.WhenAll(first, after);
+
+        // Assert
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => left);
+
+        // The read behind it goes out only after it would have, so the store has seen every read it ever will.
+        Assert.DoesNotContain(stalling.Queries, query => query.Contains("claude_code.left", StringComparison.Ordinal));
+        Assert.Equal(2, stalling.Queries.Count);
+    }
+
+    [Fact]
+    public async Task Reports_each_refused_read_as_a_Gap_without_waiting()
+    {
+        // Arrange
+        using var refusing = new RefusingEventsStore();
+        var reader = Reader(refusing, HarnessClock.Still());
+
+        // Act
+        // Awaited with the Clock held still, so a refusal that waited out a Patience would never return.
+        var reads = await Task.WhenAll(
+            Enumerable.Range(0, 5).Select(_ => reader.CountAsync(OneDay, [], CancellationToken.None)));
+
+        // Assert
+        Assert.All(reads, read => Assert.Contains("could not be read", read.Unreachable ?? "", StringComparison.Ordinal));
+    }
+
+    // The real registration, so the address, the Patience and the line under test are the ones Studio runs with.
+    private static EventsStoreReader Reader(HttpMessageHandler store, TimeProvider clock, int? readsAtOnce = null)
     {
         var settings = new Dictionary<string, string?>
         {
             ["Loki:PatienceSeconds"] = PatienceSeconds.ToString(CultureInfo.InvariantCulture),
         };
+
+        // Left out unless asked for, so the default is the one under test.
+        if (readsAtOnce is { } reads)
+        {
+            settings["Loki:ReadsAtOnce"] = reads.ToString(CultureInfo.InvariantCulture);
+        }
 
         var services = new ServiceCollection();
 
@@ -81,6 +212,8 @@ public sealed class EventsStoreReaderTests
 
         return services.BuildServiceProvider().GetRequiredService<EventsStoreReader>();
     }
+
+    private static EventQuery Named(string eventName) => OneDay with { EventName = eventName };
 
     private static DateTimeOffset Moment(string at) => DateTimeOffset.Parse(at, CultureInfo.InvariantCulture);
 }

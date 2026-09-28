@@ -14,6 +14,9 @@ public sealed class LokiOptions
     // Short on purpose: a Loki container that is down must show as a Gap, not stall the page.
     public int PatienceSeconds { get; set; } = 5;
 
+    // The store cuts each read into many parts and runs sixteen at a time, so more reads than this wait in its queue and run out their Patience.
+    public int ReadsAtOnce { get; set; } = 4;
+
     public int LookbackDays { get; set; } = 7;
 
     // Loki refuses a range longer than 721 hours by default.

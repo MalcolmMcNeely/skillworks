@@ -11,6 +11,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 {
     public const string ClientName = "loki";
 
+    // A line of none would hold every read for ever, and a semaphore lets out the reads that await it first come, first served.
+    private readonly SemaphoreSlim _line = new(Math.Max(1, options.Value.ReadsAtOnce));
+
     // A real query over a short window: a readiness route would pass a store that refuses queries.
     private static readonly TimeSpan Probe = TimeSpan.FromMinutes(1);
 
@@ -328,6 +331,9 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
         // One per request, as a long period is asked for a window at a time and one Patience over them all would cut it short.
         var patience = Patience.PerRequest(loki.PatienceSeconds);
 
+        // Ahead of the Patience, so a read that waits its turn inside Studio never reads as the store falling short.
+        await _line.WaitAsync(cancellationToken);
+
         using var spent = new CancellationTokenSource(patience.Length, clock);
         using var within = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, spent.Token);
 
@@ -351,6 +357,10 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
             return failed(spent.IsCancellationRequested
                 ? patience.RanOut(address.ToString(), Patience.OneRequest)
                 : $"{address} could not be read ({failure.Message}).");
+        }
+        finally
+        {
+            _line.Release();
         }
     }
 
