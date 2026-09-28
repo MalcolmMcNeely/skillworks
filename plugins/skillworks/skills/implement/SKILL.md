@@ -22,13 +22,13 @@ The order is the spec loop's own, so the developer at the keyboard and the drive
 
 If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why. `tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to read each one. With the files Tracker a ticket comes as `<spec>/<ticket>`, such as `7/2`, because its number is local to its spec.
 
-**Refuse a blocked ticket.** A ticket with an open blocker is not ready. With the GitHub Tracker, ask:
+**Refuse a blocked ticket.** A ticket with an open blocker is not ready. With the GitHub Tracker, ask, with the ticket number in place of `<n>`:
 
 ```bash
-gh api "repos/$REPO/issues/$N" --jq '.issue_dependencies_summary.blocked_by'
+gh api "repos/{owner}/{repo}/issues/<n>" --jq '.issue_dependencies_summary.blocked_by'
 ```
 
-Anything but `0` means stop, name the open blockers, and do nothing else. With the files Tracker, a ticket is blocked while any ticket in its `blocked-by` is open on the remote's Target branch.
+`gh api` fills in `{owner}` and `{repo}` from the repo you are in. Anything but `0` means stop, name the open blockers, and do nothing else. With the files Tracker, a ticket is blocked while any ticket in its `blocked-by` is open on the remote's Target branch.
 
 ## Test runs
 

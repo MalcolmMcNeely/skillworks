@@ -75,6 +75,16 @@ looking.
 1. Run the project's checks — the typecheck, then the tests the conflict touched. You ran them when you
    built this ticket, so you know them. Fix what the resolution broke. One attempt: a second failure is
    refusal rule 2.
+
+   Run them as `/skillworks:implement`'s Building runs them. A test of a check with `image` in the Suite
+   file `docs/agents/suite.json` runs as a Trial, and never on the host. Start from that check's own
+   `command`, and narrow only its paths and filters:
+
+   ```bash
+   skillworks-suite --image <the check's Dockerfile> -- <the check's command, narrowed>
+   ```
+
+   A test of a check with no image runs on the host.
 2. Stage the resolved files: `git add <file>...`
 
 Then stop. The rebase, the full suite and the push all belong to the driver, so leave
