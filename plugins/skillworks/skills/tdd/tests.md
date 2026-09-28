@@ -17,6 +17,7 @@ test("user can checkout with valid cart", async () => {
 Characteristics:
 
 - Deterministic
+- Before it acts while the code runs, it waits on a fact the test sees
 - Tests behavior users/callers care about
 - Uses public API only
 - Survives internal refactors
@@ -41,6 +42,7 @@ test("checkout calls paymentService.process", async () => {
 Red flags:
 
 - Undeterministic
+- Acts while the code runs, and trusts that the code got there first
 - Mocking internal collaborators
 - Testing private methods
 - Asserting on call counts/order
@@ -77,5 +79,34 @@ test("calculateTotal sums line items", () => {
 // GOOD: Expected value is an independent, known literal
 test("calculateTotal sums line items", () => {
   expect(calculateTotal([{ price: 10 }, { price: 5 }])).toBe(15);
+});
+```
+
+**Racing tests**: Act while the code runs, and trust that the code got there first. They pass on a quiet machine, and hang or fail on a busy one.
+
+An act is anything a test does to the code while it runs: a cancel, a close of a request, a clock move, a second request, a stop of a host. Ask of every act: "What fact does this act wait on?"
+
+A fact is something the test sees at the point the act needs, such as a fake saying that it holds a call. A sleep is not a fact. The code's own order is not a fact either, because the code can change its order for a good reason. When nothing the test sees answers the question, add the fact to the fake.
+
+The team's determinism rule, `docs/agents/rules/determinism.md`, holds the full rule under Order of events.
+
+```typescript
+// BAD: Cancels, and trusts that the read already reached the store
+test("cancelling a read releases the store", async () => {
+  const store = holdingStore();
+  const controller = new AbortController();
+  readOrders(store, controller.signal);
+  controller.abort();
+  await store.released;
+});
+
+// GOOD: Waits until the store holds the read, then cancels
+test("cancelling a read releases the store", async () => {
+  const store = holdingStore();
+  const controller = new AbortController();
+  readOrders(store, controller.signal);
+  await store.holding;
+  controller.abort();
+  await store.released;
 });
 ```
