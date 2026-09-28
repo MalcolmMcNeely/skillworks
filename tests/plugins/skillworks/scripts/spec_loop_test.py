@@ -1790,6 +1790,147 @@ def test_a_machine_short_of_what_the_suite_needs_is_never_run_again(loop, runner
     assert len(runner.started("docker")) == 1
 
 
+# --- a Flake is named and its red output kept --------------------------------
+
+FLAKE_STAMP = r"[0-9]{8}T[0-9]{12}Z(-[0-9]+)?"
+
+
+def flake_files(loop, step):
+    return sorted(loop.records().glob("flake-ticket-168-{}-*.out".format(step)))
+
+
+def flake_lines(loop):
+    return [line for line in loop.log().split("\n") if line[9:15] == "FLAKE "]
+
+
+def given_two_checks_that_each_flake(loop):
+    given_a_suite_on_the_target(loop, check("dotnet", "test", "Skillworks.slnx"),
+                                check("npm", "test"), runs=2)
+    loop.runner.stub("dotnet", says="the solution passed")
+    loop.runner.stub("npm", says="the front end passed")
+    loop.runner.refuse(SOLUTION, "a Span test failed", times=1)
+    loop.runner.refuse("npm test", "a front end test failed", times=1)
+    return Sessions(loop.repo, loop.runner)
+
+
+def test_a_check_that_flakes_in_the_suite_step_gets_a_flake_line_naming_it(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    [line] = flake_lines(loop)
+    assert "FLAKE #168 suite        dotnet test Skillworks.slnx went red and then passed" in line
+
+
+def test_the_red_output_of_a_flake_is_kept_in_a_file_named_for_the_step_and_a_stamp(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    [kept] = flake_files(loop, "suite")
+    assert re.fullmatch("flake-ticket-168-suite-" + FLAKE_STAMP + r"\.out", kept.name)
+    assert "a Span test failed" in kept.read_text(encoding="utf-8")
+    assert kept.as_posix() in flake_lines(loop)[0]
+
+
+def test_a_second_flake_does_not_write_over_the_first(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_two_checks_that_each_flake(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    kept = flake_files(loop, "suite")
+    assert len(kept) == 2
+    held = [each.read_text(encoding="utf-8") for each in kept]
+    assert any("a Span test failed" in each for each in held)
+    assert any("a front end test failed" in each for each in held)
+    assert len(flake_lines(loop)) == 2
+
+
+def test_a_flaked_suite_step_goes_on_to_finish_and_starts_no_fix_session(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert implement_flags(runner) == ["--stop-after-tests", "--fix", "--finish"]
+    assert "goes round once" not in loop.log()
+
+
+def test_the_finishing_step_is_handed_each_flake_and_its_kept_file(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_two_checks_that_each_flake(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    prompt = finish_prompt(runner)
+    assert "Closing note" in prompt
+    kept = flake_files(loop, "suite")
+    assert len(kept) == 2
+    for each in kept:
+        assert each.as_posix() in prompt
+    assert "dotnet test Skillworks.slnx" in prompt
+    assert "npm test" in prompt
+
+
+def test_a_suite_step_with_no_flake_hands_the_finishing_step_no_flake(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "Flake" not in finish_prompt(runner)
+    assert flake_lines(loop) == []
+
+
+# The base moves while the ticket finishes, so the landing rebases and runs the Suite again.
+def given_a_run_that_lands_on_a_moved_base_and_flakes(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop, runs=2)
+    sessions.then[FINISH] = all_of(
+        committed(loop.runner), closed(tracker), lambda: loop.repo.advance_origin("later"),
+        lambda: loop.runner.refuse(SOLUTION, "a landing test failed", times=1))
+
+
+def test_a_flake_in_the_landing_gets_a_flake_line_and_a_kept_file(loop):
+    given_a_run_that_lands_on_a_moved_base_and_flakes(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    [line] = flake_lines(loop)
+    assert "FLAKE #168 land         dotnet test Skillworks.slnx went red and then passed" in line
+    [kept] = flake_files(loop, "land")
+    assert re.fullmatch("flake-ticket-168-land-" + FLAKE_STAMP + r"\.out", kept.name)
+    assert "a landing test failed" in kept.read_text(encoding="utf-8")
+    assert kept.as_posix() in line
+
+
+def test_a_ticket_that_passes_with_a_flake_lands_and_its_worktree_is_removed(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop, runs=2)
+    sessions.then[FINISH] = all_of(committed(runner), closed(tracker))
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert len(flake_files(loop, "suite")) == 1
+    assert "DONE  #168" in loop.log()
+    assert not ticket_worktree_of(loop).exists()
+
+
 # --- a red suite goes round once --------------------------------------------
 
 # Red on both runs is the ticket's own, and a third run is the one the circuit leads back to.

@@ -518,6 +518,38 @@ def test_a_suite_red_then_green_on_the_new_base_lands_when_a_second_run_is_asked
     assert target_of(repo) == head_of(repo)
 
 
+def test_a_landing_run_by_hand_names_a_flake_on_the_new_base(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    runner.refuse("dotnet test", "a test failed", times=1)
+    given_a_project(repo, runs=2)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert ran.status == 0, report(ran)
+    assert ("note  #165 met a Flake on the new base: dotnet test Skillworks.slnx went red and "
+            "then passed") in ran.out
+
+
+def test_a_landing_hands_each_flake_to_the_driver_that_asked_for_them(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    runner.refuse("dotnet test", "a test failed", times=1)
+    given_a_project(repo, runs=2)
+    repo.advance_origin("later")
+    commit_for_ticket(repo, 165)
+    flakes = []
+
+    status = land_ticket.main([repo.work.as_posix(), "165"], runner, io.StringIO(), io.StringIO(),
+                              no_wait, flaked=flakes.append)
+
+    assert status == 0
+    assert [flake.check for flake in flakes] == ["dotnet test Skillworks.slnx"]
+    assert "a test failed" in flakes[0].said
+
+
 def test_a_suite_red_twice_on_the_new_base_is_not_pushed_when_a_second_run_is_asked_for(
         repo, runner):
     given_the_suite_passes(runner)

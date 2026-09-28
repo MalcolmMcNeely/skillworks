@@ -130,8 +130,9 @@ class Turn:
 
 class Landing:
     def __init__(self, runner, worktree, ticket, session, out, err, wait, permission_mode,
-                 target=None, spec=None, tracker=None):
+                 target=None, spec=None, tracker=None, flaked=None):
         self.runner = runner
+        self.flaked = flaked or self.note_flake
         self.tracker = tracker
         self.spec = spec
         self.worktree = Path(worktree).as_posix()
@@ -221,10 +222,16 @@ class Landing:
             raise self.die(
                 "{} could not be proved on the new base, because the suite could not start. "
                 "Nothing was pushed. The reason was: {}".format(self.named, outcome.said))
+        for flake in outcome.flakes:
+            self.flaked(flake)
         if not outcome.passed:
             raise self.die(
                 "{} passed on its own and then failed the suite on the new base. Nothing was "
                 "pushed. The suite said:\n{}".format(self.named, outcome.said))
+
+    def note_flake(self, flake):
+        self.out.write("note  {} met a Flake on the new base: {} went red and then passed\n".format(
+            self.named, flake.check))
 
     # Read from the message, so a commit reaches its ticket with no tracker call.
     def trailer_of(self, commit):
@@ -557,7 +564,9 @@ def permission_mode_set():
 
 # The driver hands in the mode of its run, so the resolving Session never falls back to the default.
 # It hands in the Target branch too, since in spec mode only the driver has read the spec.
-def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracker=None):
+# A Flake goes to the driver when it asks, so the loop keeps the red output a hand run only notes.
+def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracker=None,
+         flaked=None):
     if permission_mode is None:
         permission_mode = permission_mode_set()
     try:
@@ -574,7 +583,7 @@ def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracke
             raise misuse(USAGE)
 
         Landing(runner, worktree, ticket, session, out, err, wait, permission_mode,
-                target, spec, tracker).land()
+                target, spec, tracker, flaked).land()
         return 0
     except Stop as stop:
         err.write(stop.said)

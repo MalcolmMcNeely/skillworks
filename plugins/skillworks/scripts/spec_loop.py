@@ -339,6 +339,7 @@ class Loop:
 
         # The driver read this one, so the finishing Session names it rather than proving it again.
         self.green_suite = None
+        self.flakes = []
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -435,8 +436,16 @@ class Loop:
         return ("\n\n## The suite passed\n\nThe driver ran the whole suite and read the result, so "
                 "run no tests yourself. Name what follows in the Closing note: the checks that "
                 "ran as what proved the work, and each check whose line says it did not run beside "
-                "the Proof it names, which an earlier pass on the same inputs made.\n\n{}\n").format(
-                    self.green_suite.said.rstrip("\n"))
+                "the Proof it names, which an earlier pass on the same inputs made.\n\n{}\n{}").format(
+                    self.green_suite.said.rstrip("\n"), self.flakes_report())
+
+    def flakes_report(self):
+        if not self.flakes:
+            return ""
+        return ("\n## Flakes\n\nEach check below went red and then passed, so the suite counted it "
+                "green. Name each Flake in the Closing note, with the file that keeps its red "
+                "output.\n\n{}").format(
+                    "".join("- {}: {}\n".format(check, held) for check, held in self.flakes))
 
     # The Tracker names the ticket, so a number local to its spec reaches the Session with its spec.
     def asks(self, step, ticket):
@@ -620,6 +629,20 @@ class Loop:
                 self.named(ticket), at, suite_verdict(outcome, at)))
         return heard
 
+    # A file of its own for each, so a later Flake, or a later loop on the spec, never writes over one.
+    def keep_flake(self, ticket, step, flake):
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        named = "flake-ticket-{}-{}-{}".format(ticket, step, stamp)
+        held = self.log_dir / (named + ".out")
+        again = 1
+        while held.exists():
+            again += 1
+            held = self.log_dir / "{}-{}.out".format(named, again)
+        written(held, flake.said)
+        self.say("FLAKE {} {:<13}{} went red and then passed. Its red output is kept at {}".format(
+            self.named(ticket), step, flake.check, held.as_posix()))
+        return held.as_posix()
+
     # Red is handed back rather than raised, so the caller chooses between a circuit and a stop.
     def run_suite_step(self, ticket, step):
         held = self.step_file(ticket, step.name, "out")
@@ -639,6 +662,8 @@ class Loop:
             raise stop("ABORT {} failed check suite-can-run, so no Session was asked to mend "
                        "it: {}\n      Its worktree is at {}. See {}".format(
                            self.named(ticket), outcome.said.strip(), self.job_worktree, held))
+        for flake in outcome.flakes:
+            self.flakes.append((flake.check, self.keep_flake(ticket, step.name, flake)))
         self.green_suite = outcome if outcome.passed else None
         return None if outcome.passed else outcome
 
@@ -856,7 +881,8 @@ class Loop:
         said = Lines(heard)
         landed = land_ticket.main(
             [self.job_worktree, ticket, session], self.runner, said, said, self.wait,
-            self.permission_mode, self.target, self.tracker)
+            self.permission_mode, self.target, self.tracker,
+            lambda flake: self.keep_flake(ticket, "land", flake))
         said.end()
         if landed != 0:
             # The finishing step closed it, and the work it closed on never reached the remote.
@@ -869,6 +895,7 @@ class Loop:
 
         self.red_suite = None
         self.green_suite = None
+        self.flakes = []
         self.job_worktree = self.opened("ticket-" + ticket)
         if not self.job_worktree:
             raise stop("FAIL  {} got no worktree to be built in.".format(self.named(ticket)))

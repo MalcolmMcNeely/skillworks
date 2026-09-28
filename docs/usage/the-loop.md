@@ -401,6 +401,14 @@ the failing output into the `fix` prompt, then runs `sweep`, then the Suite agai
 before the fix keep their Proofs, so the second Suite runs only the red checks and the checks whose
 inputs the fix changed.
 
+**A Flake is green, and never silent.** A check that goes red and then passes on a later run of the
+same Suite is a Flake. The `suite` step counts it as passed and goes on to `finish`, with no `fix`.
+The log gets a `FLAKE` line naming the check, and its red output is kept in a file of its own under
+`.spec-loop/<spec>/`, such as `.spec-loop/<spec>/flake-ticket-<n>-suite-<stamp>.out`. The stamp is the
+time to the microsecond, so no later run writes over it. A Flake in the Suite a landing runs gets the
+same line and a file named for `land`. The `finish` Session is handed each Flake and its kept file,
+and names both in the ticket's Closing note. The ticket's worktree goes when it lands, Flake or not.
+
 ## Rebasing and Landing
 
 A ticket Lands the moment it passes, on its own. So a stopped run leaves every ticket before it
@@ -854,6 +862,13 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
+
+A check that flakes in a ticket's `suite` step, or in its landing, adds a `FLAKE` line that names
+the check and the file that keeps its red output:
+
+```
+16:27:40 FLAKE #202 suite        dotnet test Skillworks.slnx went red and then passed. Its red output is kept at .spec-loop/200/flake-ticket-202-suite-20260928T162740512804Z.out
+```
 
 After the last ticket, the drift check adds its own lines, then the Name check, then the full run:
 
