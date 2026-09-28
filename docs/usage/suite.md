@@ -174,6 +174,11 @@ A red full run stops the loop. The report names the red checks and the tickets t
 run. The spec stays open, and no Session is asked to fix it: a red Target branch is yours to
 decide on.
 
+A full run with a red or a Flake keeps its worktree, so a crash dump or a log a tool wrote there
+survives for you to read. A full run with neither removes its worktree. The next full run of that
+spec removes a kept worktree before it opens its own. If the kept worktree will not go, the run stops
+and names its path.
+
 ## Running the Suite yourself
 
 `skillworks-suite` is the Plugin's command for the Suite. It runs the Suite in the worktree you are

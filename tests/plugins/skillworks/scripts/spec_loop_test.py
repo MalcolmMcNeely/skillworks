@@ -3147,6 +3147,10 @@ def full_run_calls(loop, name):
             if call.args[0] == name and call.where == full_run_tree(loop)]
 
 
+def full_run_outputs(loop):
+    return sorted(loop.records().glob("full-run-*.out"))
+
+
 # Red in the full run alone, so the ticket's own Suite step still passes.
 def given_a_full_run_that_goes_red(loop):
     def answer():
@@ -3248,8 +3252,8 @@ def test_a_red_full_run_stops_the_loop_naming_the_red_checks_and_the_landed_tick
     assert "the full run of the Suite went red" in said(ran)
     assert "Red: dotnet test Skillworks.slnx" in said(ran)
     assert "Landed in this run: #168" in said(ran)
-    assert "a test failed on this OS" in (loop.records() / "full-run.out").read_text(
-        encoding="utf-8")
+    [held] = full_run_outputs(loop)
+    assert "a test failed on this OS" in held.read_text(encoding="utf-8")
 
 
 def test_a_red_full_run_tries_no_fix_and_leaves_the_spec_open(loop, runner):
@@ -3410,6 +3414,141 @@ def test_the_log_shows_the_full_run_and_its_result_before_the_end_line(loop):
     started = log.index("FULL  #168 landed in this run")
     passed = log.index("FULL  run 1 passed")
     assert started < passed < log.index("END   spec #158 complete")
+
+
+# --- a full run with a red or a Flake keeps its worktree ---------------------
+
+def given_a_full_run_that_flakes(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop, runs=2)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    red = []
+
+    def answer():
+        if loop.runner.where == full_run_tree(loop) and not red:
+            red.append(True)
+            return Ran(1, "a full run test failed once\n", "")
+        return None
+    loop.runner.stub("dotnet", says="the solution passed", does=answer)
+
+
+# 169 is blocked in the first loop alone, so each loop lands one ticket and has a full run.
+def given_two_loops_that_each_land_a_ticket(loop):
+    tracker = given_the_tracker_holds(loop, TWO_OPEN_TICKETS)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "169")
+    blocked = {"169"}
+    asked = tracker.answer
+
+    def answer():
+        call = " ".join(loop.runner.calls[-1])
+        if "blocked_by" in call and any("issues/" + n in call for n in blocked):
+            return Ran(0, "1\n", "")
+        return asked()
+    loop.runner.stub("gh", does=answer)
+    return blocked
+
+
+def given_a_first_loop_whose_full_run_went_red(loop):
+    blocked = given_two_loops_that_each_land_a_ticket(loop)
+    given_a_full_run_that_goes_red(loop)
+    assert loop.run(SPEC).status == 1
+    assert Path(full_run_tree(loop)).exists()
+    blocked.clear()
+    loop.runner.stub("dotnet", says="the solution passed")
+
+
+def full_run_flake_files(loop):
+    return sorted(loop.records().glob("flake-full-run-*.out"))
+
+
+def test_each_full_run_writes_a_file_of_its_own_and_a_later_loop_empties_none(loop):
+    given_a_first_loop_whose_full_run_went_red(loop)
+    [first] = full_run_outputs(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert re.fullmatch("full-run-" + FLAKE_STAMP + r"\.out", first.name)
+    assert len(full_run_outputs(loop)) == 2
+    assert "a test failed on this OS" in first.read_text(encoding="utf-8")
+
+
+def test_a_full_run_flake_gets_a_flake_line_and_a_kept_red_output_file(loop):
+    given_a_full_run_that_flakes(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    [line] = flake_lines(loop)
+    assert "FLAKE full-run          dotnet test Skillworks.slnx went red and then passed" in line
+    [kept] = full_run_flake_files(loop)
+    assert re.fullmatch("flake-full-run-" + FLAKE_STAMP + r"\.out", kept.name)
+    assert "a full run test failed once" in kept.read_text(encoding="utf-8")
+    assert kept.as_posix() in line
+
+
+def test_a_full_run_with_a_flake_keeps_its_worktree_and_the_log_names_it(loop):
+    given_a_full_run_that_flakes(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert Path(full_run_tree(loop)).exists()
+    assert "FULL  its worktree is kept at {}".format(full_run_tree(loop)) in loop.log()
+    assert "END   spec #158 complete" in loop.log()
+
+
+def test_a_red_full_run_keeps_its_worktree_and_the_log_names_it(loop):
+    given_a_run_that_lands(loop)
+    given_a_full_run_that_goes_red(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert Path(full_run_tree(loop)).exists()
+    assert "FULL  its worktree is kept at {}".format(full_run_tree(loop)) in loop.log()
+
+
+def test_a_clean_full_run_keeps_no_worktree(loop):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert not Path(full_run_tree(loop)).exists()
+    assert "its worktree is kept" not in loop.log()
+
+
+def test_the_next_full_run_removes_a_kept_full_run_worktree_before_it_opens_its_own(loop):
+    given_a_first_loop_whose_full_run_went_red(loop)
+    (Path(full_run_tree(loop)) / "crash.dmp").write_text("dump\n", encoding="utf-8")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    removed = log.index("FULL  removed the worktree the last full run kept at {}".format(
+        full_run_tree(loop)))
+    assert log.index("FULL  #169 landed in this run") < removed < log.index("FULL  run 1 passed")
+    assert not Path(full_run_tree(loop)).exists()
+    assert "KEPT  full-run" not in log
+    assert "full-run-kept" not in git(loop.repo.work, "branch", "--list", "spec-loop/*")
+
+
+def test_a_kept_full_run_worktree_that_will_not_go_stops_the_run_naming_it(loop, runner):
+    given_a_first_loop_whose_full_run_went_red(loop)
+    runner.refuse("worktree remove --force " + full_run_tree(loop), "the folder is in use")
+    started = len(runner.made)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert ("FAIL  the worktree the last full run kept at {} would not go, so this full run "
+            "did not start.".format(full_run_tree(loop))) in said(ran)
+    assert [call for call in runner.made[started:]
+            if call.args[0] == "dotnet" and call.where == full_run_tree(loop)] == []
 
 
 # --- the Target branch ------------------------------------------------------

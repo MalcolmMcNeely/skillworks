@@ -60,6 +60,8 @@ BYPASS_MODE = "bypassPermissions"
 # gh asks at a terminal, and a loop run has nobody at one.
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
 
+FULL_RUN = ticket_worktree.FULL_RUN
+
 
 class Step(NamedTuple):
     name: str
@@ -629,18 +631,25 @@ class Loop:
                 self.named(ticket), at, suite_verdict(outcome, at)))
         return heard
 
-    # A file of its own for each, so a later Flake, or a later loop on the spec, never writes over one.
-    def keep_flake(self, ticket, step, flake):
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-        named = "flake-ticket-{}-{}-{}".format(ticket, step, stamp)
+    # A file of its own for each, so a later run, or a later loop on the spec, never writes over one.
+    def stamped(self, named):
+        named += "-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
         held = self.log_dir / (named + ".out")
         again = 1
         while held.exists():
             again += 1
             held = self.log_dir / "{}-{}.out".format(named, again)
+        return held
+
+    def keep_flake(self, ticket, step, flake):
+        return self.keep_flake_output("ticket-{}-{}".format(ticket, step),
+                                      "{} {:<13}".format(self.named(ticket), step), flake)
+
+    def keep_flake_output(self, named, who, flake):
+        held = self.stamped("flake-" + named)
         written(held, flake.said)
-        self.say("FLAKE {} {:<13}{} went red and then passed. Its red output is kept at {}".format(
-            self.named(ticket), step, flake.check, held.as_posix()))
+        self.say("FLAKE {}{} went red and then passed. Its red output is kept at {}".format(
+            who, flake.check, held.as_posix()))
         return held.as_posix()
 
     # Red is handed back rather than raised, so the caller chooses between a circuit and a stop.
@@ -944,9 +953,10 @@ class Loop:
         self.say("FULL  {} landed in this run, so the whole Suite runs on the newest origin/{} "
                  "with no Proofs and no images".format(landed, self.target))
 
-        held = self.log_dir / "full-run.out"
+        held = self.stamped(FULL_RUN)
         written(held, "")
-        tree = self.opened("full-run")
+        self.remove_kept_full_run(stopped)
+        tree = self.opened(FULL_RUN)
         if not tree:
             raise after(stop("FAIL  the full run got no worktree to run in, so {} is unproved "
                              "since {} landed.".format(self.target, landed)), stopped)
@@ -956,9 +966,15 @@ class Loop:
             appended(held, "--- suite run {}\n{}".format(run, outcome.said))
             self.say("FULL  run {} {}".format(run, suite_verdict(outcome, run)))
         outcome = Suite(self.runner, tree, fresh=True).run(heard)
+        for flake in outcome.flakes:
+            self.keep_flake_output(FULL_RUN, "{:<18}".format(FULL_RUN), flake)
 
-        # The Target branch is on the remote, so the worktree holds nothing a stop needs kept.
-        closed = self.worktree("close", "full-run")[0] == 0
+        # A crash dump or a log a tool wrote there is all a red or a Flake leaves to read.
+        kept = outcome.ready and (not outcome.passed or bool(outcome.flakes))
+        if kept:
+            self.say("FULL  its worktree is kept at {}. The next full run of spec {} removes "
+                     "it.".format(tree, self.spec_named()))
+        stuck = not kept and self.worktree("close", FULL_RUN)[0] != 0
         if not outcome.ready:
             appended(held, "--- the suite could not start\n{}".format(outcome.said))
             raise after(stop("ABORT the full run of the Suite could not start, so {} at {} is "
@@ -971,9 +987,19 @@ class Loop:
                              "      See {}".format(
                                  self.target, at, ", ".join(outcome.red), landed, held)), stopped)
         self.say("FULL  {} at {} passed the whole Suite".format(self.target, at))
-        if not closed:
+        if stuck:
             raise after(stop("FAIL  the full run's worktree at {} would not go.".format(tree)),
                         stopped)
+
+    def remove_kept_full_run(self, stopped):
+        tree, branch, _ = columns(self.worktree("plan", FULL_RUN)[1].strip())
+        if not Path(tree).exists() and self.git(
+                self.root, "rev-parse", "--verify", "--quiet", "refs/heads/" + branch).status != 0:
+            return
+        if self.worktree("close", FULL_RUN)[0] != 0:
+            raise after(stop("FAIL  the worktree the last full run kept at {} would not go, so "
+                             "this full run did not start.".format(tree)), stopped)
+        self.say("FULL  removed the worktree the last full run kept at {}".format(tree))
 
     # --- the drift check -----------------------------------------------------
 

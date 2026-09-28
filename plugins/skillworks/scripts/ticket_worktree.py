@@ -20,7 +20,8 @@
 #
 # Worktrees are grouped by spec, so `keep` takes the whole group a stopped run left
 # behind: each job's uncommitted work is committed, its branch is renamed out of the
-# way so the job can be opened again, and the worktree goes.
+# way so the job can be opened again, and the worktree goes. A full run's worktree
+# is left where it is, because the next full run removes it.
 #
 # `keep` prints one line per job, tab separated: the job, the branch it is kept on,
 # and `held` if the worktree had uncommitted changes or `clean` if it had none.
@@ -62,6 +63,9 @@ JOB_LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
 
 # In the worktree's git folder, so it is never committed and goes when the worktree goes.
 SESSIONS_RECORD = "skillworks-sessions"
+
+# Kept after a red or a Flake for what its tools wrote, which a commit on a kept branch would bury.
+FULL_RUN = "full-run"
 
 # Named in full, because the way out it offers is read after a cd somewhere else.
 SELF = Path(__file__).resolve().as_posix()
@@ -228,7 +232,7 @@ class Worktrees:
             return
 
         for tree in sorted(self.group.iterdir()):
-            if not tree.is_dir():
+            if not tree.is_dir() or tree.name == FULL_RUN:
                 continue
             job = tree.name
 

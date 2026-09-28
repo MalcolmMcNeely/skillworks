@@ -606,6 +606,13 @@ A red full run stops the loop, and there is no clean finish. The `RED` line name
 and the tickets that landed in the run. The spec stays open, and no Session is asked to fix it: a red
 Target branch is yours to decide on. [The Suite](suite.md) says more.
 
+Each full run writes its output to a file of its own, such as
+`.spec-loop/<spec>/full-run-<stamp>.out`, so a later loop on the same spec never empties it. A check
+that flakes in the full run gets a `FLAKE` line, and its red output is kept in
+`.spec-loop/<spec>/flake-full-run-<stamp>.out`. A full run with a red or a Flake keeps its worktree,
+and the log names its path. The next full run of the spec removes that worktree before it opens its
+own. A kept worktree that will not go stops the run, and the `FAIL` line names its path.
+
 ## The drift check
 
 Every ticket passed its own acceptance criteria. Nothing so far has asked whether all of them together
@@ -883,6 +890,16 @@ After the last ticket, the drift check adds its own lines, then the Name check, 
 18:52:30 FULL  run 1 passed
 18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
 18:52:31 END   spec #200 complete. Every ticket is on master.
+```
+
+A full run with a Flake names the check, the file that keeps its red output, and the worktree it
+keeps:
+
+```
+18:52:30 FULL  run 2 passed
+18:52:30 FLAKE full-run          dotnet test Skillworks.slnx went red and then passed. Its red output is kept at .spec-loop/200/flake-full-run-20260928T185230204417Z.out
+18:52:30 FULL  its worktree is kept at .claude/worktrees/spec-200/full-run. The next full run of spec #200 removes it.
+18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
 ```
 
 The `COUNT` line says how many items the spec holds and how many Verdicts the report gave. A `NOTE`

@@ -419,6 +419,21 @@ def test_keeping_one_spec_leaves_another_alone(repo, runner):
         == "spec-loop/200/ticket-201"
 
 
+def test_keeping_leaves_a_full_run_worktree_and_what_its_tools_wrote_where_they_are(repo, runner):
+    given_job(repo, runner, 158, "ticket-164")
+    given_job(repo, runner, 158, "full-run")
+    dump = repo.tree(158, "full-run") / "crash.dmp"
+    dump.write_text("dump\n", encoding="utf-8", newline="\n")
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert ran.status == 0
+    assert ran.out == record("ticket-164", "ticket-164-kept-1", "clean")
+    assert dump.exists()
+    assert repo.has_branch(158, "full-run")
+    assert not repo.has_branch(158, "full-run-kept-1")
+
+
 def test_keeping_with_a_job_prints_the_usage(repo, runner):
     ran = run_worktree(runner, "keep", repo.work, 158, "ticket-164")
 
