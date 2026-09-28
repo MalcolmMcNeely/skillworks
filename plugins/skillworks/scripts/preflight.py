@@ -8,14 +8,13 @@ from pathlib import Path
 
 from configuration.checks import check_configuration
 from runner import Subprocess
+from steering.rule_imports import RULES_FOLDER, missing_import
 from steering.target_branch import SPEC_MODE, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: skillworks-preflight [--check-only]\n"
 
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
-
-RULES_FOLDER = "docs/agents/rules"
 
 CACHING_CLAUDE = (2, 1, 242)
 
@@ -89,20 +88,12 @@ class Preflight:
         if not only_checking:
             self.out.write("\nReady. Next: the rest of /skillworks:skillworks-setup.\n")
 
-    # A rule loads into a session only through its @ import in CLAUDE.md, so a deleted line turns it off in silence.
     def check_rule_imports(self):
-        folder = Path(self.top) / RULES_FOLDER
-        if not folder.is_dir():
+        if not (Path(self.top) / RULES_FOLDER).is_dir():
             return
-        try:
-            imports = {line.strip() for line in (Path(self.top) / "CLAUDE.md").read_text(encoding="utf-8").splitlines()}
-        except OSError:
-            imports = set()
-        for rule in sorted(path.name for path in folder.glob("*.md") if path.is_file()):
-            line = "@{}/{}".format(RULES_FOLDER, rule)
-            if line not in imports:
-                raise refusal("{}/{} has no import in CLAUDE.md, so it does not load into a session. "
-                              "Add this line to CLAUDE.md: {}".format(RULES_FOLDER, rule, line))
+        missing = missing_import(self.top)
+        if missing:
+            raise refusal(missing)
         ok(self.out, "CLAUDE.md imports every rule in " + RULES_FOLDER)
 
     def check_claude(self):

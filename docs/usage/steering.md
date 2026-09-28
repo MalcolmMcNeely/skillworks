@@ -29,7 +29,8 @@ into every step of the loop. Keep them short, because every Session pays for eac
 
 The preflight checks that each rule in `docs/agents/rules/` still has its import. Without that check,
 one deleted line would turn a rule off without a word. A new rule you add to the folder needs a new
-import line in `CLAUDE.md`, or the preflight stops.
+import line in `CLAUDE.md`, or the preflight stops. The loop runs the same check, so it stops too,
+before any ticket runs.
 
 ## What loads on demand
 

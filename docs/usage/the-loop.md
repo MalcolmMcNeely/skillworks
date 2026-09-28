@@ -519,6 +519,15 @@ ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
       Write it in the shape /skillworks:to-spec writes, and run the loop again.
 ```
 
+**A rule with no import.** Before any ticket, and before a dry run prints its plan, the script checks
+that `CLAUDE.md` imports each rule in `docs/agents/rules/`. It reads both from the repo's top level.
+A rule with no import would not load into any step, so the loop stops. The `ABORT` line names the
+rule and the line to add. It is the same check, and the same words, as setup's preflight:
+
+```
+ABORT docs/agents/rules/words.md has no import in CLAUDE.md, so it does not load into a session. Add this line to CLAUDE.md: @docs/agents/rules/words.md
+```
+
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
 check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
 stops the loop with a `STOP` line, and the spec stays open. A Gap does not stop it at once: the loop

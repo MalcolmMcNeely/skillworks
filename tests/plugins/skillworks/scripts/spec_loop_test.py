@@ -501,6 +501,19 @@ def test_a_spec_with_no_tickets_is_refused_naming_it_by_issue_number(loop):
     assert "ABORT spec #158 has no tickets" in said(ran)
 
 
+def test_a_rule_with_no_import_stops_the_dry_run_naming_the_rule_and_the_line_to_add(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    rules = loop.repo.work / "docs" / "agents" / "rules"
+    rules.mkdir(parents=True)
+    (rules / "words.md").write_text("# A rule\n", encoding="utf-8", newline="\n")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert ("ABORT docs/agents/rules/words.md has no import in CLAUDE.md, so it does not load into a session. "
+            "Add this line to CLAUDE.md: @docs/agents/rules/words.md") in said(ran)
+
+
 def test_the_dry_run_prints_the_worktree_and_the_branch(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 

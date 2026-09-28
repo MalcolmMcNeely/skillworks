@@ -46,6 +46,7 @@ from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
+from steering.rule_imports import missing_import
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
@@ -688,6 +689,9 @@ class Loop:
         self.tracker = tracker_for(self.runner, self.root, self.spec)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")
+        missing = missing_import(self.root)
+        if missing:
+            raise stop("ABORT " + missing)
         reason = self.tracker.connect()
         if reason:
             raise stop("ABORT " + reason)
