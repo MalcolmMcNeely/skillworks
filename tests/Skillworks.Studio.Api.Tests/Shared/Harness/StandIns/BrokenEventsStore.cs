@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Web;
@@ -7,18 +6,22 @@ using Skillworks.Core.Tests.Shared.Harness;
 
 namespace Skillworks.Studio.Api.Tests.Shared.Harness.StandIns;
 
-// Stands in for a store that is down, failing or stops part way, which a running Loki cannot be made to be.
+// Stands in for a store that is down, failing, stops part way or answers late, which a running Loki cannot be made to be.
 public sealed class BrokenEventsStore : DelegatingHandler
 {
     private readonly Func<Uri, bool> _breaks;
-    private readonly Func<BrokenEventsStore, Uri, CancellationToken, Task<HttpResponseMessage>> _broken;
+    private readonly Func<BrokenEventsStore, HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _broken;
     private readonly ConcurrentQueue<Uri> _asked = new();
     private readonly TaskCompletionSource<string> _holding = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<string> _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _letGo = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Lock _gate = new();
+    private readonly List<string> _answered = [];
+    private readonly List<(Func<string, bool> Read, TaskCompletionSource Reached)> _awaited = [];
 
     private BrokenEventsStore(
         Func<Uri, bool> breaks,
-        Func<BrokenEventsStore, Uri, CancellationToken, Task<HttpResponseMessage>> broken)
+        Func<BrokenEventsStore, HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> broken)
         : base(TestLoki.Handler())
     {
         _breaks = breaks;
@@ -49,11 +52,32 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
     public IReadOnlyList<string> Asked => [.. _asked.Select(route => route.PathAndQuery)];
 
+    public IReadOnlyList<string> Queries => [.. _asked.Select(QueryOf)];
+
     public IReadOnlyList<DateOnly> DaysAsked => [.. _asked.Select(DayOf).OfType<DateOnly>()];
 
     public Task<string> HoldingRead => _holding.Task;
 
     public Task<string> HeldRead => _held.Task;
+
+    public Task Answered(Func<string, bool> read)
+    {
+        lock (_gate)
+        {
+            if (_answered.Any(read))
+            {
+                return Task.CompletedTask;
+            }
+
+            var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _awaited.Add((read, reached));
+
+            return reached.Task;
+        }
+    }
+
+    public void LetGo() => _letGo.TrySetResult();
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
@@ -63,7 +87,7 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
         _asked.Enqueue(route);
 
-        return _breaks(route) ? _broken(this, route, cancellationToken) : base.SendAsync(request, cancellationToken);
+        return _breaks(route) ? _broken(this, request, cancellationToken) : AnswerAsync(request, cancellationToken);
     }
 
     // Answered days come from the test Loki, so the days on or after this one hold real figures.
@@ -73,31 +97,52 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
     private static Task<HttpResponseMessage> Refused(
         BrokenEventsStore store,
-        Uri route,
+        HttpRequestMessage request,
         CancellationToken cancellationToken) =>
         throw new HttpRequestException("connection refused");
 
     private static Task<HttpResponseMessage> Hold(
         BrokenEventsStore store,
-        Uri route,
+        HttpRequestMessage request,
         CancellationToken cancellationToken) =>
-        store.HoldAsync(route, cancellationToken);
+        store.HoldAsync(request, cancellationToken);
 
-    private async Task<HttpResponseMessage> HoldAsync(Uri route, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> HoldAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        _holding.TrySetResult(QueryOf(route));
+        var query = QueryOf(request.RequestUri!);
+
+        _holding.TrySetResult(query);
 
         try
         {
-            await Never.Answers(cancellationToken);
+            // Awaiting the winner rethrows what a real send given up on throws, which a finished WhenAny would swallow.
+            await await Task.WhenAny(_letGo.Task, Never.Answers(cancellationToken));
         }
         catch (OperationCanceledException)
         {
-            _held.TrySetResult(QueryOf(route));
+            _held.TrySetResult(query);
             throw;
         }
 
-        throw new UnreachableException();
+        return await AnswerAsync(request, cancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> AnswerAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var answer = await base.SendAsync(request, cancellationToken);
+        var query = QueryOf(request.RequestUri!);
+
+        lock (_gate)
+        {
+            _answered.Add(query);
+
+            foreach (var wait in _awaited.Where(wait => wait.Read(query)))
+            {
+                wait.Reached.TrySetResult();
+            }
+        }
+
+        return answer;
     }
 
     // Studio ends an instant query's day just before midnight, and starts an hour-by-hour query at its day's first step.

@@ -110,7 +110,6 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             DaySpan.Of(DayOf(asOf)).UntilUtc,
             cancellationToken);
 
-        // The gate: issued ahead of the Measures, because Loki runs four queries at a time.
         var placing = events.CountAsync(own, ByWhereabouts, cancellationToken);
         var starting = events.EarliestAsync(own, BySession, cancellationToken);
         var ending = events.LatestAsync(own, BySession, cancellationToken);
@@ -119,8 +118,6 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
 
         // Lines, not a total by the words, as every different Prompt would be a series of its own.
         var prompting = events.LinesAsync(own with { EventName = PromptEvent }, cancellationToken);
-
-        var measuring = Measuring(own, children, cancellationToken);
 
         var gate = new Gate(
             await placing,
@@ -136,6 +133,9 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         }
 
         var rows = Rows(gate, works, asOf);
+
+        // Only once the gate is back, so no Measure shares the store with a Gate read and a slow one never costs the rows.
+        var measuring = Measuring(own, children, cancellationToken);
 
         // Taken from the reads that place and name a run, so the words half of a Depth costs no question of its own.
         var withheld = new HashSet<string>(heard.Withheld, StringComparer.Ordinal);

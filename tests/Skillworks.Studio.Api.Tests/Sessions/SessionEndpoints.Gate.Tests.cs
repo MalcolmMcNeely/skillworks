@@ -15,6 +15,65 @@ public sealed partial class SessionEndpointsTests
     // The read that finds the rows and the read that names them, and no Measure's.
     private const string PromptRead = "claude_code.user_prompt";
 
+    // A Gate read, and the only read of the list that asks for these events.
+    private const string TitleRead = "claude_code.assistant_response";
+
+    // More reads than one list asks for, so no read waits in Studio's line and only the order Studio asks in decides what is out.
+    private const int EveryReadAtOnce = 16;
+
+    [Fact]
+    public async Task Asks_for_no_measure_until_every_gate_read_is_back()
+    {
+        using var events = Holding(TitleRead);
+        using var studio = new StudioHost(events: events, readsAtOnce: EveryReadAtOnce);
+
+        await PushWithPrompts(
+            studio,
+            SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"),
+            SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")));
+
+        var answering = studio.SessionAnswer();
+
+        await events.HoldingRead;
+        await events.Answered(NamesTheRows);
+
+        Assert.DoesNotContain(events.Queries, Measures);
+
+        events.LetGo();
+
+        var answer = await answering;
+
+        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
+        Assert.Equal(1m, answer.Measured("toolCalls", Morning));
+    }
+
+    [Fact]
+    public async Task Asks_for_no_measure_of_a_later_read_until_every_gate_read_is_back()
+    {
+        var older = Numbered(RowsPerRead);
+
+        // The later read alone names the older run, so the first read is answered in full.
+        using var events = BrokenEventsStore.StallingOn(asked => asked.Contains(TitleRead, StringComparison.Ordinal) && Names(asked, older));
+        using var studio = new StudioHost(events: events, readsAtOnce: EveryReadAtOnce);
+
+        await studio.Push(Asked(RowsPerRead + 1));
+        await studio.Push(SessionEvent.ToolRan(older, At(Yesterday, "23:00:00.000")));
+
+        var answering = studio.LaterSessionAnswer(await studio.SessionAnswer());
+
+        await events.HoldingRead;
+        await events.Answered(asked => NamesTheRows(asked) && Names(asked, older));
+
+        Assert.DoesNotContain(events.Queries, asked => Measures(asked) && Names(asked, older));
+
+        events.LetGo();
+
+        var later = await answering;
+
+        Assert.Equal([older], later.Sessions.Select(session => session.Id));
+        Assert.Equal(1m, later.Measured("toolCalls", older));
+    }
+
     [Fact]
     public async Task Draws_the_rows_while_a_measure_read_is_still_out()
     {
@@ -166,6 +225,17 @@ public sealed partial class SessionEndpointsTests
 
     private static BrokenEventsStore Breaking(string read) =>
         BrokenEventsStore.DownOn(asked => asked.Contains(read, StringComparison.Ordinal));
+
+    // By this answer a Measure asked beside the gate has had its chance to reach the store; a later read's Prompt count names Sessions too.
+    private static bool NamesTheRows(string asked) =>
+        asked.Contains(PromptRead, StringComparison.Ordinal) &&
+        asked.Contains("session_id=~", StringComparison.Ordinal) &&
+        !asked.Contains("count_over_time", StringComparison.Ordinal);
+
+    private static bool Measures(string asked) =>
+        asked.Contains(TurnRead, StringComparison.Ordinal) || asked.Contains(CountRead, StringComparison.Ordinal);
+
+    private static bool Names(string asked, string session) => asked.Contains(session, StringComparison.Ordinal);
 
     // Without this a predicate that matched no read would leave every test above passing on an answer it never held.
     private static async Task StillOut(BrokenEventsStore events, string read) =>

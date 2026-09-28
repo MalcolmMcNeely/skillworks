@@ -42,7 +42,7 @@ public sealed class StudioHost : IDisposable
 
     public StudioHost(
         string? marketplacePath = null,
-        // Only for a store that is down, failing or stops part way; data comes from the test Loki.
+        // Only for a store that is down, failing, stops part way or answers late; data comes from the test Loki.
         BrokenEventsStore? events = null,
         // Only for a store that is down, failing or still starting; spans come from the test Trace store.
         BrokenTraceStore? traces = null,
@@ -57,7 +57,9 @@ public sealed class StudioHost : IDisposable
         string? collectorAddress = null,
         // Only to make the test Trace store cut an answer short, which it will not do on the handful of spans a test pushes.
         int? mostTraces = null,
-        int? mostSessions = null)
+        int? mostSessions = null,
+        // Only to let every read out at once, so a test sees the order Studio asks in and not the order its line lets out.
+        int? readsAtOnce = null)
     {
         var settingsPath = Path.Combine(_folder.Path, "settings.json");
         File.WriteAllText(settingsPath, settings ?? Settings(emitting, tracing, words));
@@ -71,6 +73,7 @@ public sealed class StudioHost : IDisposable
         // Left out unless asked for, as an empty value binds as none and would hide the default.
         (string Key, string? Value)[] perRun = mostTraces is { } trace ? [("Tempo:MostTraces", trace.ToString())] : [];
         (string Key, string? Value)[] perPeriod = mostSessions is { } run ? [("Tempo:MostSessions", run.ToString())] : [];
+        (string Key, string? Value)[] atOnce = readsAtOnce is { } reads ? [("Loki:ReadsAtOnce", reads.ToString())] : [];
 
         _api = new StudioApiHost(
             events,
@@ -90,6 +93,7 @@ public sealed class StudioHost : IDisposable
                 .. address,
                 .. perRun,
                 .. perPeriod,
+                .. atOnce,
             ]);
 
         _client = _api.CreateClient();
