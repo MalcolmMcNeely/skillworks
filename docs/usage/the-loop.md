@@ -412,12 +412,12 @@ and names both in the ticket's Closing note. The ticket's worktree goes when it 
 **The spec gets a note of the run's Flakes.** When the loop ends, whether the spec completes or the
 run stops, the script adds one note to the spec under the heading `## Flakes`. It lists each Flake of
 the run: the check, the step it came in, such as `#202 suite` or `the full run`, and the file that
-keeps its red output. When [the full run](#the-full-run) kept its worktree, the note names that path
-too, so a crash dump is found without a search. A run with no Flake adds no note. The note goes the
-way the drift report goes. With the GitHub Tracker it is a new comment on the spec issue. With the
-files Tracker it is a section of `spec.md`, above the drift report, and a later run's note takes its
-place. The log gets a `NOTE` line when the note is recorded. A note the Tracker turns down gets a
-`WARN` line and ends nothing, because the `FLAKE` lines already name each Flake.
+keeps its red output. When [the full run](#the-full-run) left its worktree in place, the note names
+that path too, so a crash dump is found without a search. A run with no Flake adds no note. The note
+goes the way the drift report goes. With the GitHub Tracker it is a new comment on the spec issue.
+With the files Tracker it is a section of `spec.md`, above the drift report, and a later run's note
+takes its place. The log gets a `NOTE` line when the note is recorded. A note the Tracker turns down
+gets a `WARN` line and ends nothing, because the `FLAKE` lines already name each Flake.
 
 ## Rebasing and Landing
 
@@ -619,9 +619,9 @@ Target branch is yours to decide on. [The Suite](suite.md) says more.
 Each full run writes its output to a file of its own, such as
 `.spec-loop/<spec>/full-run-<stamp>.out`, so a later loop on the same spec never empties it. A check
 that flakes in the full run gets a `FLAKE` line, and its red output is kept in
-`.spec-loop/<spec>/flake-full-run-<stamp>.out`. A full run with a red or a Flake keeps its worktree,
-and the log names its path. The next full run of the spec removes that worktree before it opens its
-own. A kept worktree that will not go stops the run, and the `FAIL` line names its path.
+`.spec-loop/<spec>/flake-full-run-<stamp>.out`. A full run with a red or a Flake leaves its worktree
+in place, and the log names its path. The next full run of the spec removes that worktree before it
+opens its own. A left worktree that will not go stops the run, and the `FAIL` line names its path.
 
 ## The drift check
 
@@ -903,12 +903,12 @@ After the last ticket, the drift check adds its own lines, then the Name check, 
 ```
 
 A full run with a Flake names the check, the file that keeps its red output, and the worktree it
-keeps:
+leaves:
 
 ```
 18:52:30 FULL  run 2 passed
 18:52:30 FLAKE full-run          dotnet test Skillworks.slnx went red and then passed. Its red output is kept at .spec-loop/200/flake-full-run-20260928T185230204417Z.out
-18:52:30 FULL  its worktree is kept at .claude/worktrees/spec-200/full-run. The next full run of spec #200 removes it.
+18:52:30 FULL  its worktree is left at .claude/worktrees/spec-200/full-run. The next full run of spec #200 removes it.
 18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
 ```
 

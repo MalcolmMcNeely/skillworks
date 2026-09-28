@@ -64,7 +64,7 @@ JOB_LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
 # In the worktree's git folder, so it is never committed and goes when the worktree goes.
 SESSIONS_RECORD = "skillworks-sessions"
 
-# Kept after a red or a Flake for what its tools wrote, which a commit on a kept branch would bury.
+# Left after a red or a Flake for what its tools wrote, which a commit on a kept branch would bury.
 FULL_RUN = "full-run"
 
 # Named in full, because the way out it offers is read after a cd somewhere else.

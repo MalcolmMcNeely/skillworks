@@ -345,7 +345,7 @@ class Loop:
 
         # Every step's and not one ticket's, so the note on the spec names each Flake of the run.
         self.run_flakes = []
-        self.kept_full_run_tree = ""
+        self.left_full_run_tree = ""
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -961,7 +961,7 @@ class Loop:
 
         held = self.stamped(FULL_RUN)
         written(held, "")
-        self.remove_kept_full_run(stopped)
+        self.remove_left_full_run(stopped)
         tree = self.opened(FULL_RUN)
         if not tree:
             raise after(stop("FAIL  the full run got no worktree to run in, so {} is unproved "
@@ -976,12 +976,12 @@ class Loop:
             self.keep_flake_output(FULL_RUN, "{:<18}".format(FULL_RUN), "the full run", flake)
 
         # A crash dump or a log a tool wrote there is all a red or a Flake leaves to read.
-        kept = outcome.ready and (not outcome.passed or bool(outcome.flakes))
-        if kept:
-            self.kept_full_run_tree = tree
-            self.say("FULL  its worktree is kept at {}. The next full run of spec {} removes "
+        left = outcome.ready and (not outcome.passed or bool(outcome.flakes))
+        if left:
+            self.left_full_run_tree = tree
+            self.say("FULL  its worktree is left at {}. The next full run of spec {} removes "
                      "it.".format(tree, self.spec_named()))
-        stuck = not kept and self.worktree("close", FULL_RUN)[0] != 0
+        stuck = not left and self.worktree("close", FULL_RUN)[0] != 0
         if not outcome.ready:
             appended(held, "--- the suite could not start\n{}".format(outcome.said))
             raise after(stop("ABORT the full run of the Suite could not start, so {} at {} is "
@@ -998,15 +998,15 @@ class Loop:
             raise after(stop("FAIL  the full run's worktree at {} would not go.".format(tree)),
                         stopped)
 
-    def remove_kept_full_run(self, stopped):
+    def remove_left_full_run(self, stopped):
         tree, branch, _ = columns(self.worktree("plan", FULL_RUN)[1].strip())
         if not Path(tree).exists() and self.git(
                 self.root, "rev-parse", "--verify", "--quiet", "refs/heads/" + branch).status != 0:
             return
         if self.worktree("close", FULL_RUN)[0] != 0:
-            raise after(stop("FAIL  the worktree the last full run kept at {} would not go, so "
+            raise after(stop("FAIL  the worktree the last full run left at {} would not go, so "
                              "this full run did not start.".format(tree)), stopped)
-        self.say("FULL  removed the worktree the last full run kept at {}".format(tree))
+        self.say("FULL  removed the worktree the last full run left at {}".format(tree))
 
     # --- the drift check -----------------------------------------------------
 
@@ -1218,9 +1218,9 @@ class Loop:
                 "Its red output is kept in the file named beside it.\n\n{}".format(
                     FLAKES, "".join("- {}, in {}: {}\n".format(check, step, held)
                                     for check, step, held in self.run_flakes)))
-        if self.kept_full_run_tree:
-            note += ("\nThe full run's worktree is kept at {}. The next full run of spec {} "
-                     "removes it.\n".format(self.kept_full_run_tree, self.spec_named()))
+        if self.left_full_run_tree:
+            note += ("\nThe full run's worktree is left at {}. The next full run of spec {} "
+                     "removes it.\n".format(self.left_full_run_tree, self.spec_named()))
         try:
             self.tracker.record_flakes(self.spec, note)
         except Stop as refused:

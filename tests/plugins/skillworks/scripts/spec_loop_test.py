@@ -3421,7 +3421,7 @@ def test_the_log_shows_the_full_run_and_its_result_before_the_end_line(loop):
     assert started < passed < log.index("END   spec #158 complete")
 
 
-# --- a full run with a red or a Flake keeps its worktree ---------------------
+# --- a full run with a red or a Flake leaves its worktree --------------------
 
 def given_a_full_run_that_flakes(loop):
     tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
@@ -3495,18 +3495,18 @@ def test_a_full_run_flake_gets_a_flake_line_and_a_kept_red_output_file(loop):
     assert kept.as_posix() in line
 
 
-def test_a_full_run_with_a_flake_keeps_its_worktree_and_the_log_names_it(loop):
+def test_a_full_run_with_a_flake_leaves_its_worktree_and_the_log_names_it(loop):
     given_a_full_run_that_flakes(loop)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 0, said(ran)
     assert Path(full_run_tree(loop)).exists()
-    assert "FULL  its worktree is kept at {}".format(full_run_tree(loop)) in loop.log()
+    assert "FULL  its worktree is left at {}".format(full_run_tree(loop)) in loop.log()
     assert "END   spec #158 complete" in loop.log()
 
 
-def test_a_red_full_run_keeps_its_worktree_and_the_log_names_it(loop):
+def test_a_red_full_run_leaves_its_worktree_and_the_log_names_it(loop):
     given_a_run_that_lands(loop)
     given_a_full_run_that_goes_red(loop)
 
@@ -3514,20 +3514,20 @@ def test_a_red_full_run_keeps_its_worktree_and_the_log_names_it(loop):
 
     assert ran.status == 1
     assert Path(full_run_tree(loop)).exists()
-    assert "FULL  its worktree is kept at {}".format(full_run_tree(loop)) in loop.log()
+    assert "FULL  its worktree is left at {}".format(full_run_tree(loop)) in loop.log()
 
 
-def test_a_clean_full_run_keeps_no_worktree(loop):
+def test_a_clean_full_run_leaves_no_worktree(loop):
     given_a_run_that_lands(loop)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 0, said(ran)
     assert not Path(full_run_tree(loop)).exists()
-    assert "its worktree is kept" not in loop.log()
+    assert "its worktree is left" not in loop.log()
 
 
-def test_the_next_full_run_removes_a_kept_full_run_worktree_before_it_opens_its_own(loop):
+def test_the_next_full_run_removes_a_left_full_run_worktree_before_it_opens_its_own(loop):
     given_a_first_loop_whose_full_run_went_red(loop)
     (Path(full_run_tree(loop)) / "crash.dmp").write_text("dump\n", encoding="utf-8")
 
@@ -3535,7 +3535,7 @@ def test_the_next_full_run_removes_a_kept_full_run_worktree_before_it_opens_its_
 
     assert ran.status == 0, said(ran)
     log = loop.log()
-    removed = log.index("FULL  removed the worktree the last full run kept at {}".format(
+    removed = log.index("FULL  removed the worktree the last full run left at {}".format(
         full_run_tree(loop)))
     assert log.index("FULL  #169 landed in this run") < removed < log.index("FULL  run 1 passed")
     assert not Path(full_run_tree(loop)).exists()
@@ -3543,7 +3543,7 @@ def test_the_next_full_run_removes_a_kept_full_run_worktree_before_it_opens_its_
     assert "full-run-kept" not in git(loop.repo.work, "branch", "--list", "spec-loop/*")
 
 
-def test_a_kept_full_run_worktree_that_will_not_go_stops_the_run_naming_it(loop, runner):
+def test_a_left_full_run_worktree_that_will_not_go_stops_the_run_naming_it(loop, runner):
     given_a_first_loop_whose_full_run_went_red(loop)
     runner.refuse("worktree remove --force " + full_run_tree(loop), "the folder is in use")
     started = len(runner.made)
@@ -3551,7 +3551,7 @@ def test_a_kept_full_run_worktree_that_will_not_go_stops_the_run_naming_it(loop,
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert ("FAIL  the worktree the last full run kept at {} would not go, so this full run "
+    assert ("FAIL  the worktree the last full run left at {} would not go, so this full run "
             "did not start.".format(full_run_tree(loop))) in said(ran)
     assert [call for call in runner.made[started:]
             if call.args[0] == "dotnet" and call.where == full_run_tree(loop)] == []
@@ -3580,14 +3580,14 @@ def test_a_run_with_flakes_in_a_suite_step_and_the_full_run_adds_one_note_naming
     assert "NOTE  spec #158 has a note listing the 2 Flakes of this run" in loop.log()
 
 
-def test_the_note_names_the_full_runs_kept_worktree(loop):
+def test_the_note_names_the_full_runs_left_worktree(loop):
     tracker = given_a_full_run_that_flakes(loop)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 0, said(ran)
     [note] = tracker.notes
-    assert "The full run's worktree is kept at {}.".format(full_run_tree(loop)) in note
+    assert "The full run's worktree is left at {}.".format(full_run_tree(loop)) in note
 
 
 def test_a_run_that_stops_early_with_a_flake_still_adds_the_note(loop, runner):
