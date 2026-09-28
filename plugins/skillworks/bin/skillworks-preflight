@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Bash and not uv, so a machine with no uv is told what to install.
+if ! command -v uv >/dev/null; then
+  printf "FAIL  uv is not on PATH. The loop's scripts are Python and run under it. https://docs.astral.sh/uv\n" >&2
+  exit 1
+fi
 plugin="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Bash and not uv: the preflight is what checks uv is on the machine.
-exec bash "$plugin/scripts/skillworks-preflight.sh" "$@"
+# A repo with a Python project of its own would otherwise have it built first.
+exec uv run --no-project --quiet "$plugin/scripts/preflight.py" "$@"

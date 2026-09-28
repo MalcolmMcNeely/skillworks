@@ -1,10 +1,9 @@
 # One reader, so no script keeps its own idea of the Target branch.
 
 import json
-import sys
 from pathlib import Path
 
-from stop import Stop, refusal
+from stop import refusal
 from tracker.files import Files
 from tracker.github import GitHub
 
@@ -65,23 +64,3 @@ def target_branch_for(runner, top, spec, tracker=None):
         return target_branch(top)
     tracker = tracker or tracker_for(runner, top, spec)
     return tracker.branch_of(spec)
-
-
-READERS = {"target-branch": target_setting, "tracker": tracker_setting}
-
-
-def main(argv, out, err):
-    try:
-        read = READERS[argv[1]] if len(argv) > 1 else target_setting
-        out.write(read(argv[0]) + "\n")
-        return 0
-    except Stop as stop:
-        err.write(stop.said)
-        return stop.status
-
-
-if __name__ == "__main__":
-    # Windows adds a carriage return, which the preflight would read as part of the branch name.
-    sys.stdout.reconfigure(newline="\n")
-    sys.stderr.reconfigure(newline="\n")
-    sys.exit(main(sys.argv[1:], sys.stdout, sys.stderr))

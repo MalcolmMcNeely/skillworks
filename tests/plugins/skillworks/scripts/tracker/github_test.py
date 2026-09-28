@@ -258,21 +258,54 @@ def test_a_ticket_github_would_not_file_under_the_spec_stops_and_says_so(runner,
 ISSUE_WORK = ("api", "issue")
 
 
-def first_words_to_gh(tree):
+def asks_of_gh(tree):
     for node in ast.walk(tree):
         if isinstance(node, ast.List) and node.elts and getattr(node.elts[0], "value", None) == "gh":
             if len(node.elts) > 1 and isinstance(node.elts[1], ast.Constant):
-                yield node.elts[1].value
+                yield node.elts[1:]
         if isinstance(node, ast.Call):
             named = getattr(node.func, "attr", getattr(node.func, "id", None))
             if named == "gh" and node.args and isinstance(node.args[0], ast.Constant):
-                yield node.args[0].value
+                yield node.args
+
+
+def first_words_to_gh(tree):
+    return [asked[0].value for asked in asks_of_gh(tree)]
+
+
+# The fixed text of a path still shows through a path built with format or +.
+def spelled(nodes):
+    return " ".join(part.value for node in nodes for part in ast.walk(node)
+                    if isinstance(part, ast.Constant) and isinstance(part.value, str))
+
+
+# The preflight asks `gh api` about the login, the repo and its branches. A path the code does not spell could be anything.
+def about_an_issue(asked):
+    word = asked[0].value
+    if word == "api":
+        path = spelled(asked[1:])
+        return path == "" or "issue" in path
+    return word in ISSUE_WORK
 
 
 def test_the_walk_finds_the_issue_work_the_tracker_itself_asks_of_gh():
     tree = ast.parse((SCRIPTS / "tracker" / "github.py").read_text(encoding="utf-8"))
 
     assert set(ISSUE_WORK) <= set(first_words_to_gh(tree))
+
+
+@pytest.mark.parametrize("code, issue_work", [
+    ('gh("api", "repos/{}/issues/{}".format(repo, n))', True),
+    ('run(["gh", "api", path])', True),
+    ('run(["gh", "api", "repos/" + repo, "--jq", ".has_issues"])', True),
+    ('gh("issue", "close", n)', True),
+    ('gh("api", "user", "--jq", ".login")', False),
+    ('run(["gh", "api", "repos/{}/branches/{}".format(repo, branch)])', False),
+])
+def test_the_walk_counts_a_gh_api_path_about_an_issue_or_spelled_nowhere_as_issue_work(code, issue_work):
+    [asked] = asks_of_gh(ast.parse(code))
+
+    assert about_an_issue(asked) == issue_work
 
 
 def test_no_script_outside_the_tracker_asks_gh_about_an_issue():
@@ -282,7 +315,7 @@ def test_no_script_outside_the_tracker_asks_gh_about_an_issue():
         if tracker in script.parents:
             continue
         tree = ast.parse(script.read_text(encoding="utf-8"))
-        reached += ["{}: gh {}".format(script.relative_to(SCRIPTS).as_posix(), word)
-                    for word in first_words_to_gh(tree) if word in ISSUE_WORK]
+        reached += ["{}: gh {}".format(script.relative_to(SCRIPTS).as_posix(), spelled(asked))
+                    for asked in asks_of_gh(tree) if about_an_issue(asked)]
 
     assert reached == []

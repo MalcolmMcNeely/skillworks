@@ -1,12 +1,11 @@
-import io
 import json
 
 import pytest
 
 from conftest import ROOT
 from stop import REFUSED, Stop
-from steering.target_branch import (LOOP_FILE, in_spec_mode, main, target_branch, target_branch_for,
-                                    tracker_for, tracker_setting)
+from steering.target_branch import (LOOP_FILE, in_spec_mode, target_branch, target_branch_for, tracker_for,
+                                    tracker_setting)
 from tracker.github import GitHub
 
 
@@ -154,27 +153,6 @@ def test_a_missing_loop_file_stops_the_question_of_the_tracker_too(tmp_path, run
         tracker_for(runner, tmp_path)
 
     assert "seed-steering" in stopped.value.said
-
-
-def test_the_command_prints_the_tracker_when_asked_and_the_target_branch_otherwise(tmp_path):
-    write_loop(tmp_path, {"tracker": "files", "target-branch": "master"})
-    out, err = io.StringIO(), io.StringIO()
-
-    assert main([str(tmp_path), "tracker"], out, err) == 0
-    assert main([str(tmp_path)], out, err) == 0
-
-    assert out.getvalue() == "files\nmaster\n"
-    assert err.getvalue() == ""
-
-
-def test_the_command_asked_for_a_missing_tracker_prints_why_it_stopped(tmp_path):
-    write_loop(tmp_path, {"target-branch": "master"})
-    out, err = io.StringIO(), io.StringIO()
-
-    assert main([str(tmp_path), "tracker"], out, err) == REFUSED
-
-    assert out.getvalue() == ""
-    assert "names no tracker" in err.getvalue()
 
 
 def test_this_repo_tracks_on_github():

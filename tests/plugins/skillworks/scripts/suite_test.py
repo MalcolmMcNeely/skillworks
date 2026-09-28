@@ -1349,7 +1349,6 @@ DOCKER_TESTS_IGNORE = {
     "plugins/skillworks/skills": "the API tests read a test Marketplace of their own",
     "plugins/skillworks/scripts/hooks": "of the Plugin the tests read only session-watch.mjs",
     "plugins/skillworks/scripts/*.py": "of the Plugin the tests read only session-watch.mjs",
-    "plugins/skillworks/scripts/*.sh": "of the Plugin the tests read only session-watch.mjs",
 }
 
 

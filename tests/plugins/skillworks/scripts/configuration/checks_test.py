@@ -4,7 +4,7 @@ import sys
 
 import pytest
 
-from configuration.checks import main
+from configuration.checks import check_configuration
 
 WARNING = "autoMemoryEnabled is not false in .claude/settings.json"
 MEMORY_WARNING = ("warn  " + WARNING + ", so each session loads memory files only this machine holds. "
@@ -53,8 +53,7 @@ class Machine:
 
     def check(self):
         out = io.StringIO()
-        status = main([str(self.top)], self.runner, out)
-        assert status == 0
+        check_configuration(self.runner, str(self.top), out)
         return out.getvalue()
 
 

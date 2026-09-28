@@ -7,8 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-from runner import Subprocess
-
 SETTINGS_FILE = ".claude/settings.json"
 OWN_PLUGIN = "skillworks@"
 STYLES_FOLDER = "output-styles"
@@ -106,14 +104,6 @@ def check_output_styles(runner, top, out):
         ok(out, "no other plugin forces an output style")
 
 
-def main(argv, runner, out):
-    top = argv[0]
+def check_configuration(runner, top, out):
     check_auto_memory(top, out)
     check_output_styles(runner, top, out)
-    return 0
-
-
-if __name__ == "__main__":
-    # Windows adds a carriage return, which the preflight's output would carry to the screen.
-    sys.stdout.reconfigure(newline="\n")
-    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout))

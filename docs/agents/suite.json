@@ -40,8 +40,7 @@
         "plugins/skillworks/output-styles",
         "plugins/skillworks/skills",
         "plugins/skillworks/scripts/hooks",
-        "plugins/skillworks/scripts/*.py",
-        "plugins/skillworks/scripts/*.sh"
+        "plugins/skillworks/scripts/*.py"
       ]
     },
     {
