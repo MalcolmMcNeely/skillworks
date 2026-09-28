@@ -141,7 +141,7 @@ public sealed class ActivationEndpointsTests
     [Fact]
     public async Task Names_the_events_store_when_the_activations_cannot_be_read()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
         var answer = await studio.ActivationAnswer("?skill=tdd");

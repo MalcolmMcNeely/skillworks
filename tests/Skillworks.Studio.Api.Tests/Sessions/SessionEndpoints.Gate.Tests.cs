@@ -53,7 +53,7 @@ public sealed partial class SessionEndpointsTests
         var older = Numbered(RowsPerRead);
 
         // The later read alone names the older run, so the first read is answered in full.
-        using var events = BrokenEventsStore.StallingOn(asked => asked.Contains(TitleRead, StringComparison.Ordinal) && Names(asked, older));
+        using var events = StandInEventsStore.StallingOn(asked => asked.Contains(TitleRead, StringComparison.Ordinal) && Names(asked, older));
         using var studio = new StudioHost(events: events, readsAtOnce: EveryReadAtOnce);
 
         await studio.Push(Asked(RowsPerRead + 1));
@@ -160,7 +160,7 @@ public sealed partial class SessionEndpointsTests
     public async Task Asks_the_events_store_for_nothing_twice()
     {
         // Breaks no read, so every route is recorded.
-        using var events = BrokenEventsStore.DownOn(_ => false);
+        using var events = StandInEventsStore.DownOn(_ => false);
         using var studio = new StudioHost(events: events);
 
         await PushWithPrompts(
@@ -193,7 +193,7 @@ public sealed partial class SessionEndpointsTests
     public async Task Empties_the_table_when_the_read_that_names_the_rows_fell_short()
     {
         // Only the read that names the loaded rows asks for their Prompts by Session.
-        using var events = BrokenEventsStore.DownOn(asked =>
+        using var events = StandInEventsStore.DownOn(asked =>
             asked.Contains(PromptRead, StringComparison.Ordinal) && asked.Contains("session_id=~", StringComparison.Ordinal));
         using var studio = new StudioHost(events: events);
 
@@ -220,11 +220,11 @@ public sealed partial class SessionEndpointsTests
         Assert.Contains("Tool calls, Faults and Friction", answer.Gap.Missing ?? "", StringComparison.Ordinal);
     }
 
-    private static BrokenEventsStore Holding(string read) =>
-        BrokenEventsStore.StallingOn(asked => asked.Contains(read, StringComparison.Ordinal));
+    private static StandInEventsStore Holding(string read) =>
+        StandInEventsStore.StallingOn(asked => asked.Contains(read, StringComparison.Ordinal));
 
-    private static BrokenEventsStore Breaking(string read) =>
-        BrokenEventsStore.DownOn(asked => asked.Contains(read, StringComparison.Ordinal));
+    private static StandInEventsStore Breaking(string read) =>
+        StandInEventsStore.DownOn(asked => asked.Contains(read, StringComparison.Ordinal));
 
     // By this answer a Measure asked beside the gate has had its chance to reach the store; a later read's Prompt count names Sessions too.
     private static bool NamesTheRows(string asked) =>
@@ -238,6 +238,6 @@ public sealed partial class SessionEndpointsTests
     private static bool Names(string asked, string session) => asked.Contains(session, StringComparison.Ordinal);
 
     // A hold shows only that the store was asked, and a read given up at the close shows it was still unanswered.
-    private static async Task StillOut(BrokenEventsStore events, string read) =>
+    private static async Task StillOut(StandInEventsStore events, string read) =>
         Assert.Contains(read, await events.HeldRead, StringComparison.Ordinal);
 }

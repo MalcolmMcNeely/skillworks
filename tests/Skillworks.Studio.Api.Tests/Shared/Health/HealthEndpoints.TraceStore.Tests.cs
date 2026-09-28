@@ -115,7 +115,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Tells_the_two_stores_apart_when_only_one_of_them_is_down()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         var health = await studio.Health();

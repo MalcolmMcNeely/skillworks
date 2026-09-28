@@ -6,7 +6,7 @@ namespace Skillworks.Core.Tests.Shared.Harness;
 // No stand-in can see inside Studio's line, so the fact that a read joined it comes from the line itself.
 public sealed class HarnessLine(IOptions<LokiOptions> options) : EventsStoreLine(options)
 {
-    private readonly Lock _gate = new();
+    private readonly Lock _lock = new();
     private readonly List<(int Reads, TaskCompletionSource Reached)> _waits = [];
 
     private int _joined;
@@ -14,7 +14,7 @@ public sealed class HarnessLine(IOptions<LokiOptions> options) : EventsStoreLine
     // A test waits for this before it acts on a read that waits its turn, so no test trusts the reader's own order to have put it there.
     public Task JoinedBy(int reads)
     {
-        lock (_gate)
+        lock (_lock)
         {
             if (_joined >= reads)
             {
@@ -34,7 +34,7 @@ public sealed class HarnessLine(IOptions<LokiOptions> options) : EventsStoreLine
         // Reported only once the line has taken the read, which it does before the call returns, so the fact never comes early.
         var turn = base.WaitAsync(cancellationToken);
 
-        lock (_gate)
+        lock (_lock)
         {
             _joined++;
 

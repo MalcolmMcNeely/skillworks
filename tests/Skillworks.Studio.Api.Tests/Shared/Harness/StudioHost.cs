@@ -43,7 +43,7 @@ public sealed class StudioHost : IDisposable
     public StudioHost(
         string? marketplacePath = null,
         // Only for a store that is down, failing, stops part way or answers late; data comes from the test Loki.
-        BrokenEventsStore? events = null,
+        StandInEventsStore? events = null,
         // Only for a store that is down, failing or still starting; spans come from the test Trace store.
         BrokenTraceStore? traces = null,
         // Always a fake: no test starts a Collector, and a real one on this machine would answer for it.

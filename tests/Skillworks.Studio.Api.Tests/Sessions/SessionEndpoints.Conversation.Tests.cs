@@ -245,7 +245,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Answers_no_exchanges_when_one_run_cannot_be_read()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
         Assert.Empty(await studio.ExchangesIn(Morning));

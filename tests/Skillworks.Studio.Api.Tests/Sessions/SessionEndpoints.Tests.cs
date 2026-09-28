@@ -162,7 +162,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Empties_the_table_when_the_events_store_never_answered()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
         var answer = await studio.SessionAnswer();

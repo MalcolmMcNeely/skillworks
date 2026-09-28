@@ -9,7 +9,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Ends_with_no_day_and_the_unreachable_Gap_when_the_store_cannot_be_read_from_the_start()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         var answer = await studio.SkillAnswer();
@@ -25,7 +25,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Reports_an_events_store_that_answers_badly_as_unreachable_rather_than_as_quiet()
     {
-        using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
+        using var events = StandInEventsStore.Failing(HttpStatusCode.BadGateway);
         using var studio = new StudioHost(events: events);
 
         var answer = await studio.SkillAnswer();
@@ -80,7 +80,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_was_never_switched_on()
     {
-        using var down = BrokenEventsStore.Down();
+        using var down = StandInEventsStore.Down();
         using var broken = new StudioHost(events: down, emitting: true);
         using var off = new StudioHost(emitting: false);
 

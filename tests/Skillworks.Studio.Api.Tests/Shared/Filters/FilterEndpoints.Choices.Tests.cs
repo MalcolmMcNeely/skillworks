@@ -84,7 +84,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Offers_no_day_at_all_when_the_store_cannot_offer_choices_from_the_start()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
         var lines = await studio.FilterChoiceLines(FiveDays);
@@ -95,7 +95,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Keeps_the_choices_already_sent_and_leaves_out_the_day_it_could_not_read_when_the_store_fails_part_way()
     {
-        using var events = BrokenEventsStore.DownBefore(Yesterday);
+        using var events = StandInEventsStore.DownBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         await studio.Push(
@@ -114,7 +114,7 @@ public sealed partial class FilterEndpointsTests
     [Fact]
     public async Task Lets_go_of_the_store_when_the_choices_request_is_closed()
     {
-        using var events = BrokenEventsStore.StallingBefore(Yesterday);
+        using var events = StandInEventsStore.StallingBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         // Head and two days, then closed while the store holds the third, as when the span changes.

@@ -52,7 +52,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Points_no_part_at_transcripts_or_the_ingest_when_every_part_needs_attention()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var collector = FakeCollector.Down();
         using var studio = new StudioHost(events: events, collector: collector, emitting: false, tracing: false);
 
@@ -85,7 +85,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Reports_an_events_store_that_is_down_as_broken_and_says_how_to_start_it()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         var part = await studio.Part("Events store");
@@ -97,7 +97,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Reports_an_events_store_that_answers_badly_as_broken_too()
     {
-        using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
+        using var events = StandInEventsStore.Failing(HttpStatusCode.BadGateway);
         using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         var part = await studio.Part("Events store");
@@ -110,7 +110,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Reads_the_events_store_with_a_real_query_rather_than_asking_if_it_is_up()
     {
-        using var events = BrokenEventsStore.Failing(HttpStatusCode.BadGateway);
+        using var events = StandInEventsStore.Failing(HttpStatusCode.BadGateway);
         using var studio = new StudioHost(StudioHost.Marketplace(), events: events);
 
         await studio.Part("Events store");
@@ -135,7 +135,7 @@ public sealed partial class HealthEndpointsTests
     [Fact]
     public async Task Tells_a_store_that_is_down_apart_from_telemetry_that_is_switched_off()
     {
-        using var down = BrokenEventsStore.Down();
+        using var down = StandInEventsStore.Down();
         using var broken = new StudioHost(StudioHost.Marketplace(), events: down);
         using var off = new StudioHost(StudioHost.Marketplace(), emitting: false);
 

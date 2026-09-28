@@ -86,7 +86,7 @@ test("calculateTotal sums line items", () => {
 
 An act is anything a test does to the code while it runs: a cancel, a close of a request, a clock move, a second request, a stop of a host. Ask of every act: "What fact does this act wait on?"
 
-A fact is something the test sees at the point the act needs, such as a fake saying that it holds a call. A sleep is not a fact. The code's own order is not a fact either, because the code can change its order for a good reason. When nothing the test sees answers the question, add the fact to the fake.
+A fact is something the test sees at the point the act needs, such as a stand-in saying that it holds a call. A sleep is not a fact. The code's own order is not a fact either, because the code can change its order for a good reason. When nothing the test sees answers the question, add the fact to the stand-in.
 
 The team's determinism rule, `docs/agents/rules/determinism.md`, holds the full rule under Order of events.
 

@@ -59,7 +59,7 @@ public sealed partial class SessionEndpointsTests
     public async Task Empties_the_table_when_the_read_of_whether_a_parent_left_events_fell_short()
     {
         // Only that read counts every event of a run by its Session alone.
-        using var events = BrokenEventsStore.DownOn(asked =>
+        using var events = StandInEventsStore.DownOn(asked =>
             asked.StartsWith("sum by (session_id) (count_over_time(", StringComparison.Ordinal) &&
             asked.Contains("|= \"claude_code.\" |", StringComparison.Ordinal));
         using var studio = new StudioHost(events: events);

@@ -9,7 +9,7 @@ public sealed class StallingEventsStore : HttpMessageHandler
 {
     private const string NothingFound = """{"status":"success","data":{"resultType":"vector","result":[]}}""";
 
-    private readonly Lock _gate = new();
+    private readonly Lock _lock = new();
     private readonly List<string> _queries = [];
     private readonly List<(int Reads, TaskCompletionSource Reached)> _waits = [];
     private readonly TaskCompletionSource _letGo = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -24,7 +24,7 @@ public sealed class StallingEventsStore : HttpMessageHandler
     {
         get
         {
-            lock (_gate)
+            lock (_lock)
             {
                 return [.. _queries];
             }
@@ -35,7 +35,7 @@ public sealed class StallingEventsStore : HttpMessageHandler
     {
         get
         {
-            lock (_gate)
+            lock (_lock)
             {
                 return _mostAtOnce;
             }
@@ -44,7 +44,7 @@ public sealed class StallingEventsStore : HttpMessageHandler
 
     public Task AskedFor(int reads)
     {
-        lock (_gate)
+        lock (_lock)
         {
             if (_queries.Count >= reads)
             {
@@ -65,7 +65,7 @@ public sealed class StallingEventsStore : HttpMessageHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        lock (_gate)
+        lock (_lock)
         {
             _queries.Add(HttpUtility.ParseQueryString(request.RequestUri?.Query ?? "")["query"] ?? "");
             _atOnce++;
@@ -84,7 +84,7 @@ public sealed class StallingEventsStore : HttpMessageHandler
         }
         finally
         {
-            lock (_gate)
+            lock (_lock)
             {
                 _atOnce--;
             }

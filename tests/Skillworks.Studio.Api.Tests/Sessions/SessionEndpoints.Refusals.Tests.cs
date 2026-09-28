@@ -11,7 +11,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Names_the_events_stores_own_reason_in_the_Gap_for_a_read_it_refused()
     {
-        using var events = BrokenEventsStore.Refusing(HttpStatusCode.BadRequest, SeriesLimit);
+        using var events = StandInEventsStore.Refusing(HttpStatusCode.BadRequest, SeriesLimit);
         using var studio = new StudioHost(events: events);
 
         var answer = await studio.SessionAnswer();
@@ -25,7 +25,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Names_the_status_in_the_Gap_for_a_refusal_that_gave_no_reason()
     {
-        using var events = BrokenEventsStore.Failing(HttpStatusCode.BadRequest);
+        using var events = StandInEventsStore.Failing(HttpStatusCode.BadRequest);
         using var studio = new StudioHost(events: events);
 
         var answer = await studio.SessionAnswer();

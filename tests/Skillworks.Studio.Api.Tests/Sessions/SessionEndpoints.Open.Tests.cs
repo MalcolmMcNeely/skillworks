@@ -200,7 +200,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Names_the_events_store_when_one_run_cannot_be_read()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
         var answer = await studio.StepAnswer(Morning);

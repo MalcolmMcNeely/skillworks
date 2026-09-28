@@ -177,7 +177,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Names_the_events_store_and_not_the_trace_store_when_only_the_events_store_falls_short()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
         await studio.PushSpans(Morning, MainTrace, Ran(ToolSpan, "toolu_01", "agent-a"));

@@ -10,7 +10,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Keeps_the_days_already_sent_and_ends_with_the_unreachable_Gap_when_the_store_fails_part_way()
     {
-        using var events = BrokenEventsStore.DownBefore(Yesterday);
+        using var events = StandInEventsStore.DownBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         await studio.Push(
@@ -30,7 +30,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Names_every_day_it_did_not_read_in_the_Gap()
     {
-        using var events = BrokenEventsStore.DownBefore(Yesterday);
+        using var events = StandInEventsStore.DownBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         var missing = (await studio.SkillAnswer(FiveDays)).Gap.Missing ?? "";
@@ -45,7 +45,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Asks_the_store_nothing_again_and_nothing_older_once_a_day_fails()
     {
-        using var events = BrokenEventsStore.DownBefore(Yesterday);
+        using var events = StandInEventsStore.DownBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         await studio.SkillAnswer(FiveDays);
@@ -58,7 +58,7 @@ public sealed partial class SkillEndpointsTests
     [Fact]
     public async Task Lets_go_of_the_store_when_the_request_is_closed()
     {
-        using var events = BrokenEventsStore.StallingBefore(Yesterday);
+        using var events = StandInEventsStore.StallingBefore(Yesterday);
         using var studio = new StudioHost(events: events);
 
         // Head and two days, then closed while the store holds the third, as when the Filter changes.

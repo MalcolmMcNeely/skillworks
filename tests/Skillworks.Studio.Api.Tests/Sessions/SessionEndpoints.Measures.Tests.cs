@@ -89,7 +89,7 @@ public sealed partial class SessionEndpointsTests
     [Fact]
     public async Task Sends_no_measure_when_the_events_store_never_answered()
     {
-        using var events = BrokenEventsStore.Down();
+        using var events = StandInEventsStore.Down();
         using var studio = new StudioHost(events: events);
 
         // No rows to hang a number on, so a Measure for them would be a figure about nothing.
