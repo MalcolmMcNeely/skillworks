@@ -74,9 +74,10 @@ needs their clone of Skillworks at the same path.
    `gh` login too, and then creates the `ready-for-agent` label on GitHub. With `files`, it needs no
    `gh` and creates no label. If a check fails, setup stops there. The `CLAUDE.md` block from step 4
    is safe to leave: fix the fault and run setup again.
-6. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
-   `"autoMemoryEnabled": false` into `.claude/settings.json`. Then `set-attribution` writes your
-   answer on the credit for Claude, as [Credit for Claude](#credit-for-claude) says.
+6. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist,
+   `"autoMemoryEnabled": false` and the prompt cache keys into `.claude/settings.json`. Then
+   `set-attribution` writes your answer on the credit for Claude, as
+   [Credit for Claude](#credit-for-claude) says.
 7. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
@@ -121,7 +122,7 @@ Review these before you commit them.
 | `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. Setup also creates `.handoff/`, where `handoff` saves. |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
-| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist and `"autoMemoryEnabled": false`. With `hide`, an `attribution` block too. |
+| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. With `hide`, an `attribution` block too. On a second run, setup adds a cache key that is missing and keeps one your team set. |
 
 Setup writes nothing under `~/.claude`, and it leaves `.claude/settings.local.json` alone.
 
@@ -244,4 +245,6 @@ Setup commits nothing. Review each changed file before you commit.
 - **`CLAUDE.md`.** Setup updates the `## Agent skills` block in place. It never adds a second copy,
   and it leaves every other section alone.
 - **`.claude/settings.json`.** Setup adds the allowlist entries that are missing and removes none. It
-  keeps an `attribution` block that is there. It leaves every other key as you have it.
+  keeps an `attribution` block that is there. It adds `promptCacheTtl` or `subagentPromptCacheTtl`
+  where one is missing, and keeps a value your team set. It sets `autoMemoryEnabled` to `false` where
+  nothing sets it, and asks before it changes a `true`. It leaves every other key as you have it.

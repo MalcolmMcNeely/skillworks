@@ -103,7 +103,7 @@ These files stay where a tool or a design places them.
 | File | What it does | What reads it | What your team can change |
 |---|---|---|---|
 | `CLAUDE.md` | Loads into every Session. Setup adds an `## Agent skills` block that points at the tracker docs and the domain docs, and imports each rule. | Claude Code, at the start of every Session. | Anything outside the block. Inside the block, keep one import for each rule. |
-| `.claude/settings.json` | Holds the Plugin's Marketplace, the allowlist the loop needs to run with nobody watching, and `"autoMemoryEnabled": false`. | Claude Code, for every Session in the repo. | The allowlist: add each tool your Suite runs, such as a build or a test runner. A Session with nobody watching cannot ask you, so a missing entry is a Denial. |
+| `.claude/settings.json` | Holds the Plugin's Marketplace, the allowlist the loop needs to run with nobody watching, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`, so each ticket reads its prompt from a warm cache. | Claude Code, for every Session in the repo. | The allowlist: add each tool your Suite runs, such as a build or a test runner. A Session with nobody watching cannot ask you, so a missing entry is a Denial. Auto-memory, off by default: set `autoMemoryEnabled` to `true` and memory files on each machine steer the loop, so it runs differently from one machine to the next. The cache keys: a value your team sets is kept. |
 | `CONTEXT.md`, or `CONTEXT-MAP.md` and one `CONTEXT.md` per context | Your glossary: the words your repo uses, and the words that lost under _Avoid_. | The grill writes it as words settle. The reviews and the drift check judge names by it. The Name check reads it beside the spec's diff, to find each name whose meaning moved and each concept two tickets named two ways. | All of it. It is your domain. |
 | `docs/adr/` | Your decisions, one file each, with the options you turned down. | The grill writes an ADR as a decision settles. The `architecture` review reads the ADRs that touch the change. | All of it. Write a new ADR to change a decision, rather than editing an old one. |
 | A linter's own rules file, such as `.dependency-cruiser.cjs` | The rules a linter enforces, in the place the linter looks. | The linter, when a Suite check or a placement check runs it. | All of it. A review skips what a linter already enforces. |
@@ -118,7 +118,7 @@ Plugin, and no team edits them. There is no file for them, so do not look for on
 - The test-first loop in `tdd`.
 - The deep-module view in `codebase-design`.
 - The plain writing in `unslop`, and the output style the Plugin forces on every Session.
-- The Session trailer on every commit, and auto-memory off.
+- The Session trailer on every commit.
 - The skills, the scripts they drive and the hooks: the steps of the loop, their order, the Nudge, the
   Keep, the Turn, and the round a red Suite goes.
 

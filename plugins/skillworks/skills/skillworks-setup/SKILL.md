@@ -30,6 +30,7 @@ The outputs:
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
 | The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of a `spec` Target branch among them. It names no tool the Suite runs: those are the team's to add. |
 | An `attribution` block in `.claude/settings.json`, when the team hides the credit | Claude Code credits Claude on each commit and pull request unless `attribution` says otherwise. The choice is the team's, so it goes in the file the team commits, and every developer and every loop Session follows it. |
+| `"promptCacheTtl": "1h"` and `"subagentPromptCacheTtl": "1h"` in `.claude/settings.json` | A loop Session waits on the Suite and on its sub-agents for longer than the default five minutes of prompt cache. With one hour, each ticket reads its prompt from a warm cache and does not pay for a cold one. |
 | `"autoMemoryEnabled": false` in `.claude/settings.json` | Every Load comes from the repository. Claude Code keeps memory files under `~/.claude`, on the machine and outside the repository, and loads them into every session. With memory on, one commit steers two machines differently, and a run cannot be read back from what the repository holds. With it off, one commit steers every machine the same way. The memory files stay on disk, so removing the line brings them back. |
 
 ## Process
@@ -166,8 +167,10 @@ Copy [settings.json](./settings.json) to `.claude/settings.json`. The Marketplac
 
 If the file exists, merge:
 
+- Keep `$schema` as the file has it, and add it where missing.
 - Add the missing entries to `permissions.allow`. Remove none.
 - Add `extraKnownMarketplaces.skillworks` and `enabledPlugins["skillworks@skillworks"]` where missing. If either is there with another value, show the user both and ask which to keep.
+- Add `promptCacheTtl` and `subagentPromptCacheTtl` where missing, each as `"1h"`. Where the team set one, keep its value.
 - Settle `autoMemoryEnabled` by the table below.
 - Leave every other key as the user has it.
 

@@ -1365,6 +1365,64 @@ def test_setup_leaves_the_claude_md_block_in_place_when_the_preflight_fails():
     assert "safe to leave" in step
 
 
+def test_the_settings_step_names_every_top_level_key_of_the_settings_file():
+    shipped = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))
+    step = setup_section("### 6. Write the settings")
+
+    assert {"promptCacheTtl", "subagentPromptCacheTtl"} <= shipped.keys()
+    for key in shipped:
+        assert "`{}".format(key) in step, key
+
+
+def test_the_settings_step_adds_a_missing_cache_key_and_keeps_one_the_team_set():
+    step = setup_section("### 6. Write the settings")
+    lines = [line for line in step.split("\n") if "`promptCacheTtl`" in line]
+
+    assert len(lines) == 1
+    assert "`subagentPromptCacheTtl`" in lines[0]
+    assert "where missing" in lines[0]
+    assert "keep" in lines[0]
+
+
+def test_the_outputs_name_both_prompt_cache_keys():
+    outputs = (SETUP / "SKILL.md").read_text(encoding="utf-8").split("## Process", 1)[0]
+    rows = [line for line in outputs.split("\n") if '`"promptCacheTtl"' in line]
+
+    assert len(rows) == 1
+    assert '`"subagentPromptCacheTtl"' in rows[0]
+
+
+def settings_row(page):
+    rows = [line for line in (ROOT / "docs" / "usage" / page).read_text(encoding="utf-8").split("\n")
+            if line.startswith("| `.claude/settings.json` |")]
+    assert len(rows) == 1
+    return rows[0]
+
+
+def test_the_setup_page_names_the_cache_keys_and_what_a_second_run_does_with_them():
+    row = settings_row("setup.md")
+
+    assert "`promptCacheTtl`" in row
+    assert "`subagentPromptCacheTtl`" in row
+    assert "adds a cache key that is missing and keeps one your team set" in row
+
+
+def test_auto_memory_is_a_lever_off_by_default_and_not_fixed():
+    page = (ROOT / "docs" / "usage" / "steering.md").read_text(encoding="utf-8")
+    row = settings_row("steering.md")
+    fixed = page.split("## What is fixed", 1)[1]
+
+    assert "Auto-memory, off by default" in row.split(" | ")[-1]
+    assert "memory" not in fixed.lower()
+
+
+def test_the_steering_page_names_the_cache_keys():
+    row = settings_row("steering.md")
+
+    assert "`promptCacheTtl`" in row
+    assert "`subagentPromptCacheTtl`" in row
+
+
 def test_the_claude_md_pointer_imports_each_rule():
     pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 4. Point CLAUDE.md at the docs"), re.DOTALL)
 
@@ -1466,7 +1524,7 @@ def test_the_steering_page_lists_the_machinery_no_team_edits():
     page = STEERING_PAGE.read_text(encoding="utf-8")
     fixed = page.split("## What is fixed", 1)[1]
 
-    for machinery in ("`tdd`", "`codebase-design`", "`unslop`", "output style", "auto-memory"):
+    for machinery in ("`tdd`", "`codebase-design`", "`unslop`", "output style"):
         assert machinery in fixed, machinery
 
 
