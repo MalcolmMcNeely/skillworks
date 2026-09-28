@@ -27,6 +27,12 @@ Denial is final. Many Denials are worked around. One that stops a step is the ca
 loop again in bypass mode.
 _Avoid_: Refusal, wall, block
 
+**Dev loop**:
+The Grill, then the spec loop: the two stages a developer starts, one command each, to take an idea
+to work that has landed. A stage of the Dev loop names only the next stage. Every other skill stays
+open to a developer who types it, and the Dev loop never asks for one.
+_Avoid_: Rail, main flow, happy path
+
 **Drift check**:
 The judge that reads a spec's whole diff against the spec once every ticket has Landed, and gives
 each story, decision and Surface a Verdict. It judges against the spec and not the tickets, because a
