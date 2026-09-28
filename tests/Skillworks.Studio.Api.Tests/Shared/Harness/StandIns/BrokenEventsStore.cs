@@ -13,6 +13,7 @@ public sealed class BrokenEventsStore : DelegatingHandler
     private readonly Func<Uri, bool> _breaks;
     private readonly Func<BrokenEventsStore, Uri, CancellationToken, Task<HttpResponseMessage>> _broken;
     private readonly ConcurrentQueue<Uri> _asked = new();
+    private readonly TaskCompletionSource<string> _holding = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<string> _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private BrokenEventsStore(
@@ -50,6 +51,8 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
     public IReadOnlyList<DateOnly> DaysAsked => [.. _asked.Select(DayOf).OfType<DateOnly>()];
 
+    public Task<string> HoldingRead => _holding.Task;
+
     public Task<string> HeldRead => _held.Task;
 
     protected override Task<HttpResponseMessage> SendAsync(
@@ -82,6 +85,8 @@ public sealed class BrokenEventsStore : DelegatingHandler
 
     private async Task<HttpResponseMessage> HoldAsync(Uri route, CancellationToken cancellationToken)
     {
+        _holding.TrySetResult(QueryOf(route));
+
         try
         {
             await Never.Answers(cancellationToken);

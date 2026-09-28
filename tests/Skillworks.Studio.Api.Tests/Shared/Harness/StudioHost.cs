@@ -113,7 +113,7 @@ public sealed class StudioHost : IDisposable
         TestTraceStore.PushAsync(_tenant, session, [.. spans.Select(span => span.Record(trace, session))]);
 
     // Headers first and then one line at a time, as a browser reads an answer that arrives day by day.
-    public async Task<IReadOnlyList<JsonObject>> Lines(string path, int count = int.MaxValue)
+    public async Task<IReadOnlyList<JsonObject>> Lines(string path, int count = int.MaxValue, Task? closeAfter = null)
     {
         using var response = await _client.GetAsync(path, HttpCompletionOption.ResponseHeadersRead);
 
@@ -125,6 +125,12 @@ public sealed class StudioHost : IDisposable
         while (lines.Count < count && await body.ReadLineAsync() is { } line)
         {
             lines.Add(JsonNode.Parse(line)?.AsObject() ?? throw new InvalidOperationException("A line held null."));
+        }
+
+        // A read Studio has not sent when its request closes may never be sent, so a test that needs the store to hold one keeps the request open until it does.
+        if (closeAfter is not null)
+        {
+            await closeAfter;
         }
 
         return lines;

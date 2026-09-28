@@ -118,7 +118,7 @@ public sealed partial class FilterEndpointsTests
         using var studio = new StudioHost(events: events);
 
         // Head and two days, then closed while the store holds the third, as when the span changes.
-        await studio.FilterChoiceLines(FiveDays, count: 3);
+        await studio.FilterChoiceLines(FiveDays, count: 3, closeAfter: events.HoldingRead);
 
         // The store never answered this read, so the two days the reader saw came back without it.
         await events.HeldRead;

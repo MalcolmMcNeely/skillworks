@@ -62,7 +62,7 @@ public sealed partial class SkillEndpointsTests
         using var studio = new StudioHost(events: events);
 
         // Head and two days, then closed while the store holds the third, as when the Filter changes.
-        await studio.SkillLines(FiveDays, count: 3);
+        await studio.SkillLines(FiveDays, count: 3, closeAfter: events.HoldingRead);
 
         // The store never answered this read, so the two days the reader saw came back without it.
         await events.HeldRead;
