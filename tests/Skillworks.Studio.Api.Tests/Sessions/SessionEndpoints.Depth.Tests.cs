@@ -155,12 +155,12 @@ public sealed partial class SessionEndpointsTests
 
         await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
-        var lines = await studio.SessionLines(count: 2);
+        var lines = await studio.SessionLines(count: 2, closeAfter: traces.FirstAsked);
 
         Assert.Equal(["head", "sessions"], lines.Select(StudioHost.KindOf));
         Assert.Equal(["The run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
-        // Without this a trace store nobody asked would pass the test above on an answer it never held.
+        // The close waited for the store to be asked anything, and only this says it was asked for the rows' Depths.
         Assert.Contains("span.session.id", await traces.FirstAsked, StringComparison.Ordinal);
     }
 

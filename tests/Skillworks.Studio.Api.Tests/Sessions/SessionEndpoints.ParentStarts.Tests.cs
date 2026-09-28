@@ -36,7 +36,7 @@ public sealed partial class SessionEndpointsTests
             new SessionEvent(Morning, "tool_result", At(DaysBack(2), "22:00:00.000")),
             SessionEvent.Titled(Afternoon, At(Yesterday, "09:05:00.000"), "The build step") with { Parent = Morning });
 
-        var lines = await studio.SessionLines(count: 2);
+        var lines = await studio.SessionLines(count: 2, closeAfter: events.HoldingRead);
 
         Assert.Equal(["head", "sessions"], lines.Select(StudioHost.KindOf));
         Assert.Equal(

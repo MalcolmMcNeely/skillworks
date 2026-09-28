@@ -82,7 +82,7 @@ public sealed partial class SessionEndpointsTests
 
         await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
 
-        var lines = await studio.SessionLines(count: 2);
+        var lines = await studio.SessionLines(count: 2, closeAfter: events.HoldingRead);
 
         Assert.Equal(["head", "sessions"], lines.Select(StudioHost.KindOf));
         Assert.Equal(["The run"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
@@ -101,7 +101,7 @@ public sealed partial class SessionEndpointsTests
             SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"),
             SessionEvent.ToolRan(Morning, At(Yesterday, "09:01:00.000")));
 
-        var lines = await studio.SessionLines(count: 6);
+        var lines = await studio.SessionLines(count: 6, closeAfter: events.HoldingRead);
 
         // Nothing ready waited on Cost, and no line was held back to buy a fixed order.
         Assert.Equal(["head", "sessions"], lines.Take(2).Select(StudioHost.KindOf));
@@ -128,7 +128,7 @@ public sealed partial class SessionEndpointsTests
         await studio.Push(new SkillActivated("comment-sweep", At(Yesterday, "09:05:00.000")) { Session = Morning });
 
         // The activation read decides which rows exist, so it lands with the reads that name them.
-        var lines = await studio.SessionLines("?skill=comment-sweep", count: 2);
+        var lines = await studio.SessionLines("?skill=comment-sweep", count: 2, closeAfter: events.HoldingRead);
 
         Assert.Equal(["The run that swept"], SessionsAnswer.RowsIn(lines).Select(row => row.Name));
 
@@ -237,7 +237,7 @@ public sealed partial class SessionEndpointsTests
 
     private static bool Names(string asked, string session) => asked.Contains(session, StringComparison.Ordinal);
 
-    // Without this a predicate that matched no read would leave every test above passing on an answer it never held.
+    // A hold shows only that the store was asked, and a read given up at the close shows it was still unanswered.
     private static async Task StillOut(BrokenEventsStore events, string read) =>
         Assert.Contains(read, await events.HeldRead, StringComparison.Ordinal);
 }

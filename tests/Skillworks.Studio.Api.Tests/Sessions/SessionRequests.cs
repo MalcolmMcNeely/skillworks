@@ -12,8 +12,9 @@ public static class SessionRequests
     public static Task<IReadOnlyList<JsonObject>> SessionLines(
         this StudioHost studio,
         string filter = "",
-        int count = int.MaxValue) =>
-        studio.Lines($"/api/sessions{filter}", count);
+        int count = int.MaxValue,
+        Task? closeAfter = null) =>
+        studio.Lines($"/api/sessions{filter}", count, closeAfter);
 
     public static async Task<SessionsAnswer> SessionAnswer(this StudioHost studio, string filter = "") =>
         SessionsAnswer.Of(await studio.SessionLines(filter));
