@@ -13,8 +13,6 @@ You need these on your machine:
 - `gh`, logged in, with the GitHub Tracker only. Check with `gh auth status`.
 - `claude` on your `PATH`. The loop starts a Session with it for each step.
 - `uv` on your `PATH`. The loop's scripts are Python and run under it.
-- `node`, if you want the preflight to check your settings. Without it the preflight warns and goes
-  on.
 
 Your repo needs these:
 

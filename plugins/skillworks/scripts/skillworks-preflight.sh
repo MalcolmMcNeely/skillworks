@@ -198,67 +198,8 @@ else
 fi
 
 # --- configuration ----------------------------------------------------------
-#
-# A check here warns and never fails: a team may have chosen otherwise on purpose.
 
-# The file is piped in, so node never has to read a path that bash spelled.
-settings="$(git rev-parse --show-toplevel)/.claude/settings.json"
-# node is not required, so without it the setting is unknown rather than wrong.
-if ! command -v node >/dev/null; then
-  warn "could not check autoMemoryEnabled in .claude/settings.json, because node is not on PATH."
-elif [ -f "$settings" ] && node -e '
-  let text = "";
-  process.stdin.on("data", chunk => text += chunk);
-  process.stdin.on("end", () => {
-    try { process.exit(JSON.parse(text).autoMemoryEnabled === false ? 0 : 1); }
-    catch { process.exit(1); }
-  });
-' < "$settings" 2>/dev/null; then
-  ok "auto-memory off"
-else
-  warn "autoMemoryEnabled is not false in .claude/settings.json, so each session loads memory files only this machine holds. Add \"autoMemoryEnabled\": false to that file."
-fi
-
-if ! command -v node >/dev/null; then
-  warn "could not check which plugins force an output style, because node is not on PATH."
-elif ! plugins=$(claude plugin list --json 2>/dev/null) || ! forcing=$(printf '%s' "$plugins" | node -e '
-  const fs = require("fs");
-  const path = require("path");
-  const key = p => process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p);
-  const top = key(process.argv[1]);
-  const forces = file => {
-    const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(fs.readFileSync(file, "utf8"));
-    return front !== null && /^force-for-plugin:\s*true\s*$/m.test(front[1]);
-  };
-  const styles = where => {
-    if (!fs.existsSync(where)) return [];
-    if (!fs.statSync(where).isDirectory()) return [where];
-    return fs.readdirSync(where).filter(name => name.endsWith(".md")).map(name => path.join(where, name));
-  };
-  let text = "";
-  process.stdin.on("data", chunk => text += chunk);
-  process.stdin.on("end", () => {
-    for (const plugin of JSON.parse(text)) {
-      if (!plugin.enabled || plugin.id.startsWith("skillworks@")) continue;
-      if (plugin.projectPath && key(plugin.projectPath) !== top) continue;
-      const places = ["output-styles"];
-      try {
-        const manifest = JSON.parse(fs.readFileSync(path.join(plugin.installPath, ".claude-plugin", "plugin.json"), "utf8"));
-        places.push(...[].concat(manifest.outputStyles ?? []));
-      } catch {}
-      const files = places.flatMap(place => styles(path.resolve(plugin.installPath, place)));
-      if (files.some(forces)) console.log(plugin.id);
-    }
-  });
-' "$(git rev-parse --show-toplevel)"); then
-  warn "could not check which plugins force an output style, because claude plugin list --json gave nothing node could read."
-elif [ -n "$forcing" ]; then
-  while IFS= read -r id; do
-    warn "$id also forces an output style. When two plugins force one the first loaded wins, so the loop's reports may not come in the skillworks style."
-  done <<< "$forcing"
-else
-  ok "no other plugin forces an output style"
-fi
+(cd "$(dirname "${BASH_SOURCE[0]}")" && uv run --no-project --quiet python -m configuration.checks "$top")
 
 if [ "$CHECK_ONLY" = "0" ]; then
   printf '\nReady. Next: the rest of /skillworks:skillworks-setup.\n'

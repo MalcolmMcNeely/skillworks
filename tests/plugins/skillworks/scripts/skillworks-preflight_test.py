@@ -1,4 +1,4 @@
-# Git, node and uv stay real, so the settings file and loop.json are really read. One case takes node off PATH.
+# Git and uv stay real, so the settings file and loop.json are really read. One case takes node off PATH.
 
 import json
 import os
@@ -13,6 +13,7 @@ from conftest import BASH, SCRIPTS, Ran, Repo, git, launch, run
 PREFLIGHT = SCRIPTS / "skillworks-preflight.sh"
 
 WARNING = "autoMemoryEnabled is not false in .claude/settings.json"
+STYLE_WARNING = "also forces an output style"
 
 # Every call preflight makes is answered, and any other one fails, so a new call cannot pass on a guess.
 # Varied answers sit in files beside the stand-ins, so one stand-in serves every case.
@@ -47,8 +48,10 @@ case "$*" in
 esac
 """
 
+# Python finds a program on Windows only by an extension PATHEXT names, and the plugin list is read from Python.
+CLAUDE_CMD = '@echo off\r\ntype "%~dp0plugins.json"\r\n'
+
 FORCED = "---\nname: {name}\nforce-for-plugin: true\n---\n\nTalk like a pirate.\n"
-PLAIN = "---\nname: {name}\n---\n\nPlain.\n"
 
 
 class Work:
@@ -65,6 +68,7 @@ class Work:
             stand_in = self.stand_ins / name
             stand_in.write_text(text, encoding="utf-8", newline="\n")
             stand_in.chmod(0o755)
+        (self.stand_ins / "claude.cmd").write_text(CLAUDE_CMD, encoding="utf-8", newline="")
         self.plugins = []
         self.target("main")
         self.answer("default-branch", "main")
@@ -72,7 +76,7 @@ class Work:
         self.answer("may-push", "true")
         self.answer("main-rules", "")
         self.protect("gh: Branch not protected (HTTP 404)", status=1)
-        self.install("skillworks", forces=True)
+        self.install("skillworks")
 
     def answer(self, name, text):
         (self.stand_ins / name).write_text(text + "\n" if text else "", encoding="utf-8", newline="\n")
@@ -99,22 +103,14 @@ class Work:
         self.answer(f"{branch}-protection", "\n".join(lines))
         self.answer(f"{branch}-protection-status", str(status))
 
-    def install(self, name, forces=False, enabled=True, scope="user", project=None, styles=None):
+    def install(self, name):
         home = self.root / "plugins" / f"{name}-{len(self.plugins)}"
         (home / ".claude-plugin").mkdir(parents=True)
-        manifest = {"name": name}
+        (home / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": name}), encoding="utf-8")
         folder = home / "output-styles"
-        if styles is not None:
-            manifest["outputStyles"] = styles
-            folder = home / styles.strip("./")
-        (home / ".claude-plugin" / "plugin.json").write_text(json.dumps(manifest), encoding="utf-8")
         folder.mkdir(parents=True)
-        style = (FORCED if forces else PLAIN).format(name=name)
-        (folder / f"{name}.md").write_text(style, encoding="utf-8", newline="\n")
-        entry = {"id": f"{name}@market", "scope": scope, "enabled": enabled, "installPath": str(home)}
-        if project is not None:
-            entry["projectPath"] = project
-        self.plugins.append(entry)
+        (folder / f"{name}.md").write_text(FORCED.format(name=name), encoding="utf-8", newline="\n")
+        self.plugins.append({"id": f"{name}@market", "scope": "user", "enabled": True, "installPath": str(home)})
         (self.stand_ins / "plugins.json").write_text(json.dumps(self.plugins), encoding="utf-8")
 
 
@@ -215,15 +211,16 @@ def test_a_settings_file_that_is_not_json_warns_and_does_not_crash(work):
     assert WARNING in ran.out
 
 
-def test_a_machine_without_node_warns_that_the_setting_could_not_be_checked(work):
-    settings(work, '{"autoMemoryEnabled": false}')
+def test_a_machine_without_node_still_checks_the_setting_and_the_output_styles(work):
+    settings(work, '{"autoMemoryEnabled": true}')
+    work.install("pirate")
 
     ran = preflight(work, node=False)
 
     assert ran.status == 0, said(ran)
-    assert "could not check autoMemoryEnabled" in ran.out
-    assert "node is not on PATH" in ran.out
-    assert WARNING not in said(ran)
+    assert WARNING in ran.out
+    assert "warn  pirate@market " + STYLE_WARNING in ran.out
+    assert "node" not in said(ran)
 
 
 def test_check_only_prints_the_same_warning(work):
@@ -260,74 +257,6 @@ def test_the_preflight_command_names_itself_in_its_usage(work):
 
     assert ran.status == 64
     assert ran.err == "usage: skillworks-preflight [--check-only]\n"
-
-
-STYLE_WARNING = "also forces an output style"
-
-
-def test_no_other_plugin_forcing_a_style_draws_no_warning(work):
-    work.install("quiet")
-
-    ran = preflight(work)
-
-    assert ran.status == 0, said(ran)
-    assert STYLE_WARNING not in said(ran)
-    assert "no other plugin forces an output style" in ran.out
-
-
-def test_a_second_enabled_plugin_that_forces_a_style_warns_and_passes(work):
-    work.install("pirate", forces=True)
-
-    ran = preflight(work)
-
-    assert ran.status == 0, said(ran)
-    assert "warn  pirate@market " + STYLE_WARNING in ran.out
-
-
-def test_a_forced_style_in_the_folder_the_manifest_names_warns(work):
-    work.install("pirate", forces=True, styles="./voices")
-
-    ran = preflight(work)
-
-    assert ran.status == 0, said(ran)
-    assert "pirate@market " + STYLE_WARNING in ran.out
-
-
-def test_a_disabled_plugin_that_forces_a_style_draws_no_warning(work):
-    work.install("pirate", forces=True, enabled=False)
-
-    ran = preflight(work)
-
-    assert ran.status == 0, said(ran)
-    assert STYLE_WARNING not in said(ran)
-
-
-def test_a_plugin_enabled_for_another_project_draws_no_warning(work):
-    work.install("pirate", forces=True, scope="project", project=str(work.root / "elsewhere"))
-
-    ran = preflight(work)
-
-    assert ran.status == 0, said(ran)
-    assert STYLE_WARNING not in said(ran)
-
-
-def test_a_plugin_enabled_for_this_project_that_forces_a_style_warns(work):
-    work.install("pirate", forces=True, scope="project", project=work.top)
-
-    ran = preflight(work)
-
-    assert ran.status == 0, said(ran)
-    assert "pirate@market " + STYLE_WARNING in ran.out
-
-
-def test_a_machine_without_node_warns_that_forced_styles_could_not_be_checked(work):
-    work.install("pirate", forces=True)
-
-    ran = preflight(work, node=False)
-
-    assert ran.status == 0, said(ran)
-    assert "could not check which plugins force an output style" in ran.out
-    assert STYLE_WARNING not in said(ran)
 
 
 def test_a_missing_loop_file_fails_naming_the_command_that_writes_it(work):
