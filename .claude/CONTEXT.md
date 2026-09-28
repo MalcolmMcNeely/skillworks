@@ -108,6 +108,12 @@ Session that stopped short, never one that could not run, and a step that still 
 of them stops the loop.
 _Avoid_: Continuation, retry, prod
 
+**Order of events**:
+The order in which a test and the code it runs do things. It has to come out the same on a busy
+machine as on a quiet one, so a test that acts while the code runs first waits on a fact that shows
+the code is where the act needs it.
+_Avoid_: Ordering, interleaving, timing
+
 **Proof**:
 A check that passed on one exact set of its inputs, kept by the Suite. A check whose inputs match a
 Proof is not run again, so work already proved costs nothing a second time. A Proof knows only what
