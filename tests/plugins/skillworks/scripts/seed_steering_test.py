@@ -926,6 +926,14 @@ def test_the_drift_check_checks_and_reports_each_surface_the_spec_names():
     assert "In step" in drift
 
 
+def test_the_drift_check_given_a_list_of_items_judges_those_alone():
+    drift = skill_text("spec-drift")
+
+    assert "`/skillworks:spec-drift 42 a1b2c3d S2, D1, The user docs`" in drift
+    assert "judge only those items" in drift
+    assert "write Verdicts for those alone" in drift
+
+
 def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_report():
     files = files_tracker(seeded("issue-tracker.md"))
 
@@ -1227,6 +1235,20 @@ def test_the_loop_page_says_the_driver_decides_a_clean_finish_after_the_full_run
     assert "The script decides a clean finish, and nothing else does." in page
     assert "every Verdict Done or In step, and [the full run](#the-full-run) green" in page
     assert "It runs once, at the end, after the drift check and its count." in page
+
+
+def test_the_loop_page_describes_the_gap_ticket_and_the_one_round():
+    text = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
+    page = " ".join(text.split())
+
+    assert "\n### The Gap round\n" in text
+    assert "There is one round." in page
+    assert ('"The drift check did not judge this exactly once. Check it, and build it if it is not '
+            'there."') in page
+    assert "on the Gap items alone" in page
+    assert "| The Gap ticket |" in text
+    assert "FILED #210 under spec #200" in text
+    assert "STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was built" in text
 
 
 def setup_section(heading):

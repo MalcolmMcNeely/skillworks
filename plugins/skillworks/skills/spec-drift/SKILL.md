@@ -14,6 +14,12 @@ Two arguments: the spec's number, then the commit the loop started from. The num
 
 `/skillworks:spec-drift 42 a1b2c3d`
 
+A list of items can follow the base commit, separated by commas. The loop gives one when it checks the Gaps again after the Gap ticket Lands:
+
+`/skillworks:spec-drift 42 a1b2c3d S2, D1, The user docs`
+
+Given a list, judge only those items, and write Verdicts for those alone. Every other step runs as usual. The loop counts only the items it asked about, so a Verdict for any other item counts for nothing.
+
 Every ticket Lands straight on the Target branch, and its Job branch goes when it passes, so no branch is left to diff. The base commit is the only thing that says where the work began. The loop stores it in `.spec-loop/<spec>/base.sha` and passes it in. If it was not passed, read that file. If that is missing too, stop and ask — do not guess a base.
 
 The Target branch is `target-branch` in `docs/agents/loop.json`. When that says `spec`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
@@ -54,7 +60,7 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 7. Write the report. The loop reads its lists, so their shape is fixed:
 
    - The first line is `## Drift report`.
-   - The `### Verdicts` list comes next. Each line is `- <item>: <Verdict>`, one line per item, and every item of the spec gets exactly one. The loop counts them: an item with no Verdict, or with two, is a Gap, like a Missing one.
+   - The `### Verdicts` list comes next. Each line is `- <item>: <Verdict>`, one line per item, and every item of the spec gets exactly one. Given a list of items, every item in the list gets exactly one, and no other item gets any. The loop counts them: an item with no Verdict, or with two, is a Gap, like a Missing one.
    - After the Verdict, every Verdict other than Done or In step carries one sentence of reason, on the same line.
    - The prose follows: what each Partial, Missing and Contradicts lacks or breaks, then a `### Surfaces` heading with what each Out of step Surface lacks, then the glossary notes from step 6.
    - The `### Unrequested` list comes last, one item per line. With nothing Unrequested it says `- None`.
@@ -91,4 +97,4 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
      The command pushes it to the spec's branch on the remote and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
 
-9. **Report only. Fix nothing.** A fix is new work and needs its own ticket. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step, when the count finds nothing owed.
+9. **Report only. Fix nothing.** A fix is new work and needs its own ticket. The loop files the Gaps you find as a ticket of its own. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step, when the count finds nothing owed.

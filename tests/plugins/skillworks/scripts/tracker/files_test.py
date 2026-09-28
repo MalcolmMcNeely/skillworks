@@ -547,10 +547,50 @@ def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(dr
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
 
 
-def test_a_gap_in_the_drift_report_leaves_the_spec_open(driver):
+GAP_TICKET = "02-ticket-build-the-gaps-the-drift-check-found"
+
+D1_MISSING = "## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Missing. Not there.\n"
+
+
+# A file of its own, since the ticket landed before it already holds what every build writes.
+def given_a_gap_round(driver, *reports):
     sessions = given_sessions_that_finish(driver)
-    sessions.then["spec-drift"] = drifting(
-        driver, "## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Missing. Not there.\n")
+
+    def build():
+        (Path(driver.runner.where) / "gaps.txt").write_text("built\n", encoding="utf-8",
+                                                            newline="\n")
+
+    def finish():
+        tree = Path(driver.runner.where)
+        held = tree / ticket_path(GAP_TICKET)
+        held.write_text(held.read_text(encoding="utf-8").replace("status: open", "status: closed")
+                        + "\n## Closing note\n\nBuilt the Gaps.\n", encoding="utf-8", newline="\n")
+        git(tree, "add", "-A")
+        git(tree, "commit", "--quiet", "-m", "Built the Gaps\n\nTicket: {}/2".format(SPEC))
+
+    waiting = list(reports)
+    sessions.then["implement {}/2 --stop-after-tests".format(SPEC)] = build
+    sessions.then["implement {}/2 --finish".format(SPEC)] = finish
+    sessions.then["spec-drift"] = lambda: drifting(driver, waiting.pop(0))()
+    return sessions
+
+
+def test_a_gap_is_filed_as_a_ticket_file_under_the_spec_and_a_closed_round_closes_it(driver):
+    given_a_gap_round(driver, D1_MISSING, "## Drift report\n\n### Verdicts\n\n- D1: Done\n")
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert "FILED {}/2 under spec {} builds 1 Gap".format(SPEC, SPEC) in ran.out
+    filed = on_remote(driver.repo, ticket_path(GAP_TICKET))
+    assert "### D1\n\n> The tracker is files.\n\nVerdict: Missing. Not there.\n" in filed
+    assert status_on_remote(driver.repo, ticket_path(GAP_TICKET)) == "closed"
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+
+
+def test_a_gap_left_after_the_round_leaves_the_spec_open(driver):
+    given_a_gap_round(driver, D1_MISSING,
+                      "## Drift report\n\n### Verdicts\n\n- D1: Missing. Not there.\n")
 
     ran = driver.run()
 

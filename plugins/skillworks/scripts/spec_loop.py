@@ -37,6 +37,7 @@ from typing import NamedTuple
 
 import land_ticket
 import ticket_worktree
+from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items
 from count.verdicts import VERDICTS, read_verdicts
@@ -104,6 +105,9 @@ SUITE_BY_COMMAND = (
     "\n\nWhen you check your work against the Suite, run `skillworks-suite`, and never the test "
     "commands the Suite file names. In this loop the driver runs the whole Suite as a step of its "
     "own.")
+
+# A Surface is named in words with spaces between, so a space alone cannot part two items.
+ITEM_SEPARATOR = ", "
 
 # The sweep follows the fix, because the fix writes and a sweep has to follow whatever wrote last.
 CIRCUIT = ("fix", "sweep", "suite")
@@ -320,6 +324,7 @@ class Loop:
         self.ticket_count = 0
         # Read before the first ticket, so the count judges the report by the spec the run began on.
         self.items = None
+        self.drift_read = None
 
         self.job_worktree = ""
         self.ticket_base = ""
@@ -678,6 +683,18 @@ class Loop:
         land_ticket.main(["--plan"], self.runner, out, err, self.wait)
         return listed(out.getvalue())
 
+    def after_tickets_plan(self):
+        drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
+        return ("  after every ticket is closed\n"
+                + plan_line("drift", drift + '" --session-id <new id>',
+                            "a report recorded, a Verdicts list, no Contradicts")
+                + plan_line("gap-ticket", "one ticket under the spec when the count finds a Gap, "
+                            "built through every step above")
+                + plan_line("re-check", drift + ' <the Gap items>" --session-id <new id>, once',
+                            "no Gap left, no Contradicts")
+                + plan_line("full-run", "the whole Suite on the newest origin/<target>, with no "
+                            "Proofs and no images, once and last"))
+
     def dry_run(self):
         self.say("DRY   repo={}  me={}".format(self.tracker.repo, self.tracker.me))
         self.say("DRY   spec {}: {}".format(self.spec_named(), self.spec_title))
@@ -723,7 +740,7 @@ class Loop:
                 named, what, checks = columns(step)
                 plan += plan_line(named, what, checks)
 
-        self.wrote(plan)
+        self.wrote(plan + self.after_tickets_plan())
         # Asked the way the run asks, so the ticket named is the one a run would claim first.
         chosen = self.next_ticket(self.tracker.open_tickets(self.spec))
         if chosen:
@@ -922,54 +939,70 @@ class Loop:
 
     # --- the drift check -----------------------------------------------------
 
-    def check_drift(self, base):
-        self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
-            self.spec_named()))
+    # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
+    def check_drift(self, base, asked=()):
+        named = "drift-gaps" if asked else "drift"
+        if asked:
+            self.say("DRIFT the Gap ticket is closed. Checking {} against spec {} again.".format(
+                ", ".join(asked), self.spec_named()))
+        else:
+            self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
+                self.spec_named()))
 
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
-        self.job_worktree = self.opened("drift")
+        self.job_worktree = self.opened(named)
         if not self.job_worktree:
             raise stop("FAIL  the drift check got no worktree to run in.")
 
-        ran = self.claude_p(PLUGIN + "spec-drift {} {}".format(self.spec, base))
-        written(self.log_dir / "drift.json", ran.out)
-        written(self.log_dir / "drift.err", ran.err)
+        ran = self.claude_p(PLUGIN + "spec-drift {} {}{}".format(
+            self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""))
+        written(self.log_dir / (named + ".json"), ran.out)
+        written(self.log_dir / (named + ".err"), ran.err)
         if ran.status != 0:
             self.say("WARN  drift check exited non-zero. See {}".format(
-                self.log_dir / "drift.err"))
+                self.log_dir / (named + ".err")))
 
         if self.tree_of_job():
             raise stop("FAIL  drift check left uncommitted changes in {}.".format(
                 self.job_worktree))
-        if self.worktree("close", "drift")[0] != 0:
+        if self.worktree("close", named)[0] != 0:
             raise stop("FAIL  the drift worktree at {} would not go.".format(self.job_worktree))
-        self.read_drift_report()
+        return self.read_drift_report(named, asked)
 
     # Read back from the Tracker, so a report the Session only said and never recorded is caught.
-    def read_drift_report(self):
+    def read_drift_report(self, named, asked):
         report = self.tracker.drift_report(self.spec)
         if not report:
             raise stop("STOP  the drift check recorded no report on spec {}, so nothing was "
                        "counted and the spec stays open.".format(self.spec_named()))
-        held = self.log_dir / "drift.md"
+        # The Tracker hands back the newest report, so a re-check that recorded none reads the first.
+        if asked and report == self.drift_read:
+            raise stop("STOP  the re-check recorded no new report on spec {}, so the Gap items were "
+                       "not judged again and the spec stays open.".format(self.spec_named()))
+        self.drift_read = report
+        held = self.log_dir / (named + ".md")
         written(held, report + "\n")
         self.say("DRIFT the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
-        self.count_drift(read_verdicts(report), held)
+        return self.count_drift(read_verdicts(report), held, asked)
 
     # The driver judges nothing: it counts, so a skipped item is caught by arithmetic.
-    def count_drift(self, report, held):
+    def count_drift(self, report, held, asked):
         if report.verdicts is None:
             raise stop("STOP  the drift report on spec {} holds no {} list, so nothing was "
                        "counted and the spec stays open. Read it at {}".format(
                            self.spec_named(), VERDICTS, held))
-        counted = count_verdicts(self.items, report.verdicts)
-        self.say("COUNT the spec holds {}, and the drift report gives {}".format(
-            how_many(len(self.items.every()), "item", "items"),
+        items = self.items.only(asked) if asked else self.items
+        counted = count_verdicts(items, report.verdicts)
+        self.say("COUNT {} {}, and the drift report gives {}".format(
+            "the re-check was asked about" if asked else "the spec holds",
+            how_many(len(items.every()), "item", "items"),
             how_many(counted.verdicts_given, "Verdict", "Verdicts")))
+        outside = ("the re-check was not asked about" if asked
+                   else "spec {} does not hold".format(self.spec_named()))
         for verdict in counted.unknown:
-            self.say("WARN  the drift report judges {}, which spec {} does not hold, so its "
-                     "Verdict is not counted".format(verdict.item, self.spec_named()))
+            self.say("WARN  the drift report judges {}, which {}, so its Verdict is not "
+                     "counted".format(verdict.item, outside))
         for said in report.unrequested:
             self.say("NOTE  Unrequested: " + said)
 
@@ -982,11 +1015,34 @@ class Loop:
                            "".join("      Contradicts: {}\n".format(contradicts_said(verdict))
                                    for verdict in counted.contradicts),
                            gaps, held))
-        if counted.gaps:
-            raise stop("STOP  the drift report leaves {} on spec {}, so the spec stays open.\n{}"
+        if counted.gaps and asked:
+            raise stop("STOP  the drift check still finds {} on spec {} after the Gap ticket was "
+                       "built, and the loop goes round once. A person decides.\n{}"
                        "      Read it at {}".format(
                            how_many(len(counted.gaps), "Gap", "Gaps"), self.spec_named(), gaps,
                            held))
+        return counted.gaps
+
+    # --- the Gap round -------------------------------------------------------
+
+    # Filed and then built like any ticket, since the loop reads the open tickets again before each.
+    def file_gap_ticket(self, gaps):
+        for gap in gaps:
+            self.say("GAP   " + gap_said(gap))
+        title, body = gap_ticket(gaps)
+        ticket = self.tracker.file_ticket(self.spec, title, body)
+        self.ticket_count += 1
+        self.say("FILED {} under spec {} builds {}, so the loop goes round once".format(
+            self.named(ticket), self.spec_named(), how_many(len(gaps), "Gap", "Gaps")))
+
+    # One round, so a Gap that survives a build aimed at it comes to a person rather than looping.
+    def close_gaps(self, base):
+        gaps = self.check_drift(base)
+        if not gaps:
+            return
+        self.file_gap_ticket(gaps)
+        self.run_tickets()
+        self.check_drift(base, [gap.item.name for gap in gaps])
 
     # --- the spec's close ---------------------------------------------------
 
@@ -1060,7 +1116,7 @@ class Loop:
         # It runs last and once, so the slowest step proves the finished spec and nothing before it.
         try:
             self.run_tickets()
-            self.check_drift(base)
+            self.close_gaps(base)
         except Stop as stopped:
             self.run_full(stopped)
             raise

@@ -28,6 +28,11 @@ class Items(NamedTuple):
     def every(self):
         return self.stories + self.decisions + self.surfaces
 
+    def only(self, names):
+        def kept(items):
+            return [item for item in items if item.name in names]
+        return Items(kept(self.stories), kept(self.decisions), kept(self.surfaces), self.faults)
+
 
 # A heading inside a fence belongs to an example, so it never opens or ends a section.
 def sections_of(spec):

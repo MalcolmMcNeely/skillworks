@@ -38,6 +38,13 @@ def test_each_item_keeps_its_own_text():
     assert items.surfaces[0].text == "**The user docs** (`docs/usage/`): the shape is described."
 
 
+def test_the_items_narrowed_to_some_names_keep_those_alone_in_the_specs_order():
+    items = read_items(spec(STORIES, DECISIONS, SURFACES)).only(["The user docs", "S2", "D9"])
+
+    assert names(items) == ["S2", "The user docs"]
+    assert items.stories[0].text == "As a team member, I want a stop."
+
+
 def test_an_item_that_runs_over_several_lines_keeps_them_all():
     wrapped = "## User Stories\n\n1. As a team member,\n   I want a count.\n2. Another.\n"
 

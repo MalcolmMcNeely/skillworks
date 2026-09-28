@@ -126,6 +126,7 @@ class Tracker:
         self.ready = Ran(0, "", "")
         # A drift check that found everything done, so only a case about the count reads a stop.
         self.last_comment = drift_report()
+        self.filed = []
         runner.stub("gh", does=self.answer)
 
     def numbers(self, only_open=False):
@@ -141,6 +142,12 @@ class Tracker:
         if asked == "api user --jq .login":
             return Ran(0, "me\n", "")
         if asked.startswith("issue edit"):
+            return Ran(0, "", "")
+        if asked.startswith("issue create"):
+            return self.file(self.runner.calls[-1])
+        if asked.endswith("--jq .id"):
+            return Ran(0, "9" + asked.split(" ")[1].rsplit("/", 1)[-1] + "\n", "")
+        if asked.startswith("api --method POST repos/owner/repo/issues/{}/sub_issues".format(SPEC)):
             return Ran(0, "", "")
         if "blocked_by" in asked:
             return Ran(0, "0\n", "")
@@ -164,6 +171,13 @@ class Tracker:
         if asked == "issue view {} --json comments --jq .comments[-1].body".format(SPEC):
             return Ran(0, self.last_comment, "")
         return Ran(1, "", "the tracker has no answer for: " + asked + "\n")
+
+    # Numbered after the last ticket, and open, so the loop's next read of the spec finds it.
+    def file(self, called):
+        number = str(max(int(row[0]) for row in self.tickets) + 1)
+        self.filed.append((called[called.index("--title") + 1], called[called.index("--body") + 1]))
+        self.tickets = self.tickets + ((number, "open", self.filed[-1][0]),)
+        return Ran(0, "https://github.com/owner/repo/issues/{}\n".format(number), "")
 
 
 def given_the_tracker_holds(loop, tickets):
@@ -594,6 +608,20 @@ def test_the_dry_run_names_the_steps_that_can_be_nudged_and_no_others(loop):
     assert planned_nudges(ran, "finish") == "up to 2, on new-commit tree-clean ticket-closed"
     for step in ("fix", "sweep", "suite"):
         assert planned_nudges(ran, step) == ""
+
+
+def test_the_dry_run_names_the_gap_round_between_the_drift_check_and_the_full_run(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert planned_steps(ran)[-4:] == ["drift", "gap-ticket", "re-check", "full-run"]
+    assert '"/skillworks:spec-drift 158 <base>"' in planned_call(ran, "drift")
+    assert "one ticket under the spec when the count finds a Gap" in planned_call(ran, "gap-ticket")
+    assert '"/skillworks:spec-drift 158 <base> <the Gap items>"' in planned_call(ran, "re-check")
+    assert planned_checks(ran, "re-check") == "no Gap left, no Contradicts"
+    assert "once and last" in planned_call(ran, "full-run")
 
 
 def test_a_closed_ticket_is_listed_and_given_no_plan(loop):
@@ -1346,15 +1374,15 @@ def built_on_nudge(runner):
     return build
 
 
-def committed(runner):
+def committed(runner, ticket="168"):
     def commit():
         git(runner.where, "add", "-A")
-        git(runner.where, "commit", "--quiet", "-m", "Built\n\nTicket: #168")
+        git(runner.where, "commit", "--quiet", "-m", "Built\n\nTicket: #" + ticket)
     return commit
 
 
-def closed(tracker):
-    return lambda: tracker.closed.add("168")
+def closed(tracker, ticket="168"):
+    return lambda: tracker.closed.add(ticket)
 
 
 def all_of(*done):
@@ -2118,28 +2146,6 @@ def test_every_verdict_done_or_in_step_ends_the_run_and_says_what_was_counted(lo
     assert "END   spec #{}".format(SPEC) in loop.log()
 
 
-def test_a_missing_a_partial_and_an_item_not_judged_stop_the_loop_naming_each_gap(loop):
-    ran = drifted(loop, drift_report(S2="Missing. No code stops.", D1="Partial. Half of it.",
-                                     The_user_docs=None))
-
-    assert ran.status == 1
-    log = loop.log()
-    assert "COUNT the spec holds 4 items, and the drift report gives 3 Verdicts" in log
-    assert "STOP  the drift report leaves 3 Gaps on spec #{}".format(SPEC) in log
-    assert "      Gap: S2 is Missing: No code stops.\n" in log
-    assert "      Gap: D1 is Partial: Half of it.\n" in log
-    assert "      Gap: The user docs has no Verdict\n" in log
-    assert "END" not in log
-
-
-def test_an_item_judged_twice_stops_the_loop(loop):
-    ran = drifted(loop, drift_report("S1: Missing. It is not there."))
-
-    assert ran.status == 1
-    assert "STOP  the drift report leaves 1 Gap on spec #{}".format(SPEC) in loop.log()
-    assert "      Gap: S1 has 2 Verdicts: Done, Missing\n" in loop.log()
-
-
 def test_a_verdict_for_an_item_the_spec_does_not_hold_is_warned_of_and_stops_nothing(loop):
     ran = drifted(loop, drift_report("S9: Missing. Nothing."))
 
@@ -2179,7 +2185,15 @@ def test_a_contradicts_stops_the_loop_naming_it_and_every_gap_beside_it(loop):
     assert "      Contradicts: D1: It closes the spec.\n" in log
     assert "      Gap: S1 has no Verdict\n" in log
     assert "      Gap: S2 is Missing\n" in log
-    assert "STOP  the drift report leaves" not in log
+
+
+def test_a_contradicts_stops_the_loop_before_any_gap_is_built(loop, runner):
+    ran = drifted(loop, drift_report(D1="Contradicts. It closes the spec.", S2="Missing"))
+
+    assert ran.status == 1
+    assert not runner.built("issue create")
+    assert len(prompts_asking(runner, "/skillworks:spec-drift")) == 1
+    assert "GAP" not in loop.log()
 
 
 def test_each_unrequested_item_gets_a_note_and_stops_nothing(loop):
@@ -2191,11 +2205,179 @@ def test_each_unrequested_item_gets_a_note_and_stops_nothing(loop):
 
 
 def test_unrequested_items_are_noted_even_when_a_gap_stops_the_loop(loop):
-    ran = drifted(loop, drift_report(S1="Missing", unrequested=("A retry.",)))
+    ran = drifted_in_a_round(loop, drift_report(S1="Missing", unrequested=("A retry.",)),
+                             verdicts_alone(S1="Missing"))
 
     assert ran.status == 1
     assert "NOTE  Unrequested: A retry.\n" in loop.log()
     assert loop.log().index("NOTE") < loop.log().index("STOP")
+
+
+# --- the Gap round -------------------------------------------------------------
+
+# Numbered after the one closed ticket, the way the Tracker numbers what it is handed next.
+GAP_TICKET = "162"
+
+
+def verdicts_alone(**given):
+    return "## Drift report\n\n### Verdicts\n\n" + "".join(
+        "- {}: {}\n".format(name.replace("_", " "), said) for name, said in given.items())
+
+
+# Each drift check records the next report, so the re-check reads its own and not the first.
+def given_drift_reports(sessions, tracker, *reports):
+    waiting = list(reports)
+
+    def record():
+        tracker.last_comment = waiting.pop(0)
+    sessions.then["spec-drift"] = record
+
+
+# A file of its own, since a ticket landed before it already holds what every build writes.
+def given_a_gap_ticket_that_lands(loop, tracker, sessions, ticket):
+    def build():
+        (Path(loop.runner.where) / "gaps.txt").write_text("built\n", encoding="utf-8", newline="\n")
+    sessions.then["implement {} --stop-after-tests".format(ticket)] = build
+    sessions.then["implement {} --finish".format(ticket)] = all_of(
+        committed(loop.runner, ticket), closed(tracker, ticket))
+
+
+def drifted_in_a_round(loop, first, second):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_a_gap_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
+    given_drift_reports(sessions, tracker, first, second)
+    return loop.run(SPEC)
+
+
+def base_of(loop):
+    return (loop.records() / "base.sha").read_text(encoding="utf-8").strip()
+
+
+def test_a_missing_a_partial_and_an_item_not_judged_are_filed_as_one_gap_ticket(loop, runner):
+    ran = drifted_in_a_round(
+        loop, drift_report(S2="Missing. No code stops.", D1="Partial. Half of it.",
+                           The_user_docs=None),
+        verdicts_alone(S2="Done", D1="Done", The_user_docs="In step"))
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    assert "COUNT the spec holds 4 items, and the drift report gives 3 Verdicts" in log
+    assert "GAP   S2 is Missing: No code stops.\n" in log
+    assert "GAP   D1 is Partial: Half of it.\n" in log
+    assert "GAP   The user docs has no Verdict\n" in log
+    assert ("FILED #{} under spec #{} builds 3 Gaps, so the loop goes round once".format(
+        GAP_TICKET, SPEC)) in log
+    assert len(runner.built("issue create")) == 1
+    assert "ready-for-agent" in runner.built("issue create")[0]
+
+
+def test_the_gap_ticket_quotes_each_items_spec_text_its_verdict_and_the_reason(loop):
+    drifted_in_a_round(
+        loop, drift_report(S2="Missing. No code stops.", The_user_docs=None),
+        verdicts_alone(S2="Done", The_user_docs="In step"))
+
+    created = loop.runner.built("issue create")[0]
+    title = created[created.index("--title") + 1]
+    body = created[created.index("--body") + 1]
+    assert title == "TICKET: Build the Gaps the drift check found"
+    assert "### S2\n\n> As a team member, I want a run.\n\nVerdict: Missing. No code stops.\n" in body
+    assert ("### The user docs\n\n> **The user docs** (`docs/usage/`): the plan is described.\n\n"
+            "The drift check did not judge this exactly once. Check it, and build it if it is not "
+            "there.\n") in body
+    assert "- [ ] S2: As a team member, I want a run.\n" in body
+
+
+def test_an_item_judged_twice_reaches_the_gap_ticket_as_a_check_before_a_build(loop):
+    ran = drifted_in_a_round(loop, drift_report("S1: Missing. It is not there."),
+                             verdicts_alone(S1="Done"))
+
+    assert ran.status == 0, said(ran)
+    assert "GAP   S1 has 2 Verdicts: Done, Missing\n" in loop.log()
+    created = loop.runner.built("issue create")[0]
+    assert ("### S1\n\n> As a team member, I want a plan.\n\nThe drift check did not judge this "
+            "exactly once.") in created[created.index("--body") + 1]
+
+
+def test_the_gap_ticket_is_built_through_every_step_and_lands(loop, runner):
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
+
+    assert ran.status == 0, said(ran)
+    asked = [call[2].split()[0] for call in step_calls(runner)
+             if call[2].split()[1:2] == [GAP_TICKET]]
+    assert asked == ["/skillworks:" + name for name in (
+        "implement", "review-standards", "review-spec", "review-architecture", "implement",
+        "implement")]
+    assert "DONE  #{}".format(GAP_TICKET) in loop.log()
+
+
+def test_the_re_check_judges_the_gap_items_alone_and_a_closed_round_ends_the_run(loop, runner):
+    ran = drifted_in_a_round(
+        loop, drift_report(S2="Missing. No code stops.", The_user_docs="Out of step. Short."),
+        verdicts_alone(S2="Done", The_user_docs="In step"))
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, "/skillworks:spec-drift") == [
+        "/skillworks:spec-drift {} {}".format(SPEC, base_of(loop)),
+        "/skillworks:spec-drift {} {} S2, The user docs".format(SPEC, base_of(loop))]
+    log = loop.log()
+    assert "COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts" in log
+    assert (loop.records() / "drift-gaps.md").is_file()
+    assert "STOP" not in log
+    assert "END   spec #{}".format(SPEC) in log
+
+
+def test_a_gap_left_after_the_round_stops_the_loop_naming_each_one(loop, runner):
+    ran = drifted_in_a_round(
+        loop, drift_report(S2="Missing. No code stops.", D1="Partial. Half of it."),
+        verdicts_alone(S2="Missing. Still no code.", D1="Done"))
+
+    assert ran.status == 1
+    log = loop.log()
+    assert ("STOP  the drift check still finds 1 Gap on spec #{} after the Gap ticket was built, "
+            "and the loop goes round once. A person decides.").format(SPEC) in log
+    assert "      Gap: S2 is Missing: Still no code.\n" in log
+    assert "      Gap: D1" not in log
+    assert len(runner.built("issue create")) == 1
+    assert len(prompts_asking(runner, "/skillworks:spec-drift")) == 2
+    assert "END" not in log
+
+
+def test_a_re_check_that_recorded_no_new_report_stops_the_loop_saying_so(loop):
+    report = drift_report(S2="Missing")
+    ran = drifted_in_a_round(loop, report, report)
+
+    assert ran.status == 1
+    log = loop.log()
+    assert ("STOP  the re-check recorded no new report on spec #{}, so the Gap items were not "
+            "judged again").format(SPEC) in log
+    assert "still finds" not in log
+    assert "END" not in log
+
+
+def test_an_item_the_re_check_skips_is_a_gap_left_after_the_round(loop):
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing", D1="Missing"),
+                             verdicts_alone(S2="Done"))
+
+    assert ran.status == 1
+    assert "      Gap: D1 has no Verdict\n" in loop.log()
+
+
+def test_a_verdict_the_re_check_was_not_asked_for_is_warned_of_and_stops_nothing(loop):
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done", S1="Done"))
+
+    assert ran.status == 0, said(ran)
+    assert ("WARN  the drift report judges S1, which the re-check was not asked about, so its "
+            "Verdict is not counted") in loop.log()
+
+
+def test_a_contradicts_in_the_re_check_stops_the_loop(loop):
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing"),
+                             verdicts_alone(S2="Contradicts. It closes the spec."))
+
+    assert ran.status == 1
+    assert "      Contradicts: S2: It closes the spec.\n" in loop.log()
+    assert "END" not in loop.log()
 
 
 def test_attributes_already_set_are_kept_and_the_parent_is_added(loop, runner, monkeypatch):
@@ -2697,9 +2879,18 @@ def test_the_full_run_runs_once_and_last_after_the_drift_check_and_its_count(loo
     assert drift < full
 
 
-def test_a_gap_in_the_drift_report_still_gets_the_full_run_and_writes_no_end(loop, runner):
-    tracker = given_a_run_that_lands(loop)
-    tracker.last_comment = drift_report(S1="Missing. Not there.")
+def given_a_run_that_lands_and_goes_round(loop, *reports):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    given_a_gap_ticket_that_lands(loop, tracker, sessions, "169")
+    given_drift_reports(sessions, tracker, *reports)
+    return tracker
+
+
+def test_a_gap_left_after_the_round_still_gets_the_full_run_and_writes_no_end(loop):
+    given_a_run_that_lands_and_goes_round(loop, drift_report(S1="Missing. Not there."),
+                                          verdicts_alone(S1="Missing. Not there."))
 
     ran = loop.run(SPEC)
 
@@ -2707,8 +2898,25 @@ def test_a_gap_in_the_drift_report_still_gets_the_full_run_and_writes_no_end(loo
     assert full_run_calls(loop, "dotnet") == [["dotnet", "test", "Skillworks.slnx"]]
     log = loop.log()
     assert "      Gap: S1 is Missing: Not there.\n" in log
+    assert "FULL  #168, #169 landed in this run" in log
     assert "FULL  main at" in log
     assert "END" not in log
+
+
+def test_the_full_run_runs_once_and_last_after_the_gap_round(loop, runner):
+    given_a_run_that_lands_and_goes_round(loop, drift_report(S1="Missing"), verdicts_alone(S1="Done"))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert len(full_run_calls(loop, "dotnet")) == 1
+    log = loop.log()
+    assert log.index("DONE  #169") < log.index("COUNT the re-check") < log.index("FULL  #168, #169")
+    re_check = max(at for at, call in enumerate(runner.made) if call.args[0] == "claude"
+                   and call.args[2].startswith("/skillworks:spec-drift"))
+    full = next(at for at, call in enumerate(runner.made)
+                if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
+    assert re_check < full
 
 
 def test_a_red_full_run_after_every_verdict_done_writes_no_end(loop):

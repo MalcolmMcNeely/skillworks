@@ -22,7 +22,12 @@ flowchart TD
     more -- no --> drift["Drift check<br/>a report kept with the spec"]
     drift --> count{"Every Verdict<br/>Done or In step?"}
     count -- yes --> full{"Full Suite run, once<br/>on the newest Target branch"}
-    count -- no --> last["Full Suite run, once"] --> stop(["The loop stops"])
+    count -- "a Gap" --> gaps["The Gap ticket<br/>filed under the spec, built like any ticket"]
+    gaps --> recheck["Drift check again<br/>on the Gap items alone"]
+    recheck --> recount{"Every Verdict<br/>Done or In step?"}
+    recount -- yes --> full
+    recount -- "no: one round only" --> last
+    count -- "a Contradicts" --> last["Full Suite run, once"] --> stop(["The loop stops"])
     full -- red --> stop
     full -- green --> clean["A clean finish<br/>END, and the spec closes with files"]
     clean -- "spec mode" --> ready["Mark the pull request<br/>ready for review"]
@@ -490,19 +495,21 @@ ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
 ```
 
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
-check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, a Contradicts or a Gap
-stops the loop with a `STOP` line, and the spec stays open. Every ticket has landed by then, so there
-is nothing to Keep, and the full run still runs before the loop ends. The line names each
-Contradicts and each Gap:
+check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
+stops the loop with a `STOP` line, and the spec stays open. A Gap does not stop it at once: the loop
+builds its Gaps in [one round](#the-gap-round). A Gap still left after that round stops the loop.
+Every ticket has landed by then, so there is nothing to Keep, and the full run still runs before the
+loop ends. The line names each Gap left:
 
 ```
-STOP  the drift report leaves 2 Gaps on spec #200, so the spec stays open.
+STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was built, and the loop goes round once. A person decides.
       Gap: S4 is Missing: No code writes the NOTE lines.
       Gap: The user docs has no Verdict
-      Read it at .spec-loop/200/drift.md
+      Read it at .spec-loop/200/drift-gaps.md
 ```
 
-Build what is owed in a ticket of its own, or change the spec, and run the loop again.
+The loop built these once and they are still owed, so a second build would most likely miss again.
+Read the report, build what is owed in a ticket of its own or change the spec, and run the loop again.
 
 ### Restarting a stopped run: the Keep
 
@@ -547,8 +554,9 @@ A Proof knows only the files in your repo. A change outside it, such as a new SD
 stale. So after each loop run that landed at least one ticket, the script runs the whole Suite once
 more, on the newest Target branch on `origin`, in a worktree of its own.
 
-It runs once, at the end, after the drift check and its count. It is the slowest step, so it runs
-only on the finished spec. It runs when the loop stopped early too, whether at a ticket or at the
+It runs once, at the end, after the drift check and its count. When the count finds a Gap, it runs
+after [the Gap round](#the-gap-round) too. It is the slowest step, so it runs only on the finished
+spec. It runs when the loop stopped early too, whether at a ticket or at the
 count, because the tickets that landed are on the Target branch all the same.
 
 The full run trusts no Proof and uses no image, so every check runs on your own machine. A check that
@@ -609,17 +617,41 @@ The loop stops, and the spec stays open, when:
 - the drift check recorded no report;
 - the report has no `### Verdicts` list;
 - any Verdict is Contradicts. The stop line names each Contradicts and every Gap beside it, because a
-  person decides on a part of the spec the code ruled against;
-- any Gap is left. The stop line names each one.
+  person decides on a part of the spec the code ruled against. The loop stops at the count, before any
+  Gap is built;
+- any Gap is left after [the Gap round](#the-gap-round). The stop line names each one.
 
-The drift check fixes nothing and closes nothing. A fix is new work, and needs a ticket of its own.
+The drift check fixes nothing and closes nothing. A fix is new work, and the loop files it as a ticket
+of its own.
+
+### The Gap round
+
+When the count finds a Gap and no Contradicts, the loop builds the Gaps itself. You do not have to
+ask for a ticket.
+
+1. **The Gap ticket.** The script writes one ticket for every Gap, from a fixed template and with no
+   model. For each Gap it quotes the item's text from the spec, its Verdict and the reason. An item
+   with no Verdict, or with two, reads "The drift check did not judge this exactly once. Check it,
+   and build it if it is not there.", so work already done is not built twice. The acceptance
+   criteria are the Gap items. The Tracker files it under the spec: a sub-issue with the
+   `ready-for-agent` label with GitHub, and a new file in the spec's `tickets/` folder with files.
+2. **The build.** The loop reads the open tickets again, finds the Gap ticket, and builds it through
+   [the same steps](#the-steps-of-one-ticket) as every other ticket, then Lands it.
+3. **The re-check.** The script runs the drift check again, on the Gap items alone:
+   `/skillworks:spec-drift <spec> <base> S4, The user docs`. A small context misses less. The
+   report is kept at `.spec-loop/<spec>/drift-gaps.md`, and the script counts it against those items
+   only.
+
+There is one round. A Gap that survives a build aimed at it comes to you rather than looping, so a Gap
+left after the re-check stops the loop and names each one. A Contradicts in the re-check stops it too,
+and so does a re-check that recorded no new report, because the Gap items were not judged again.
 
 ### A clean finish
 
 The script decides a clean finish, and nothing else does. A clean finish is every Verdict Done or In
 step, and [the full run](#the-full-run) green. Only then does the script write its `END` line, and
-with the files Tracker only then does it close the spec. A Gap, a Contradicts or a red full run stops
-the loop before either. `/skillworks:spec-loop` reads the `END` line and does not judge the report
+with the files Tracker only then does it close the spec. A Gap left after the round, a Contradicts or
+a red full run stops the loop before either. `/skillworks:spec-loop` reads the `END` line and does not judge the report
 itself, so the skill and the script never disagree. Before it offers to close the spec, it names each
 Unrequested item from the `NOTE` lines.
 
@@ -660,6 +692,7 @@ use with nobody watching.
 | `finish` | `CLAUDE.md` and the rules | `issue-tracker.md` | Nothing. The loop reads back the two conventions in `issue-tracker.md`, so leave them as they are. |
 | Landing | `CLAUDE.md` and the rules, in the Session that resolves a conflict | `suite.json`, for the Suite again | The checks in `suite.json`. |
 | The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `surfaces.md` | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
+| The Gap ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of the drift report's Verdicts and reasons. |
 | The full run | Nothing. No Session runs. | `suite.json` | The checks in `suite.json`. |
 
 The rules' settings load into every Session, but each one is enforced only once a check exists that
@@ -711,10 +744,27 @@ After the last ticket, the drift check adds its own lines, then the full run add
 ```
 
 The `COUNT` line says how many items the spec holds and how many Verdicts the report gave. A `NOTE`
-line names each Unrequested item. A `WARN` line names a Verdict for an item the spec does not hold. A
-`STOP` line names each Gap and each Contradicts, as [When a step fails](#when-a-step-fails) shows.
-It comes last, after the full run's lines, in place of `END`. `END` comes only on [a clean
-finish](#a-clean-finish).
+line names each Unrequested item. A `WARN` line names a Verdict for an item the spec does not hold.
+
+When the count finds a Gap, [the Gap round](#the-gap-round) adds its lines before the full run's. A
+`GAP` line names each Gap, and the `FILED` line names the Gap ticket. The ticket's own lines follow,
+then the re-check's:
+
+```
+18:40:12 COUNT the spec holds 21 items, and the drift report gives 20 Verdicts
+18:40:12 GAP   S4 is Missing: No code writes the NOTE lines.
+18:40:12 GAP   The user docs has no Verdict
+18:40:14 FILED #210 under spec #200 builds 2 Gaps, so the loop goes round once
+18:40:15 START #210 TICKET: Build the Gaps the drift check found
+19:31:02 DONE  #210  9e3a1f0
+19:31:03 DRIFT the Gap ticket is closed. Checking S4, The user docs against spec #200 again.
+19:39:47 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift-gaps.md
+19:39:47 COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts
+```
+
+A `STOP` line names each Gap left after the round and each Contradicts, as [When a step
+fails](#when-a-step-fails) shows. It comes last, after the full run's lines, in place of `END`. `END`
+comes only on [a clean finish](#a-clean-finish).
 
 The position counts closed tickets, so a restarted run starts at its real place. The time left is the
 mean of the tickets this run has finished, with the one now running counted as still to do.
@@ -722,6 +772,7 @@ mean of the tickets this run has finished, with the one now running counted as s
 Expect a long run. A ticket can take from half an hour to a few hours.
 
 `spec-loop <spec> --dry-run` prints the whole plan instead of running it: the `SHAPE` line, every
-ticket, its worktree and Job branch, every step's command and facts, and the landing steps. A spec in
+ticket, its worktree and Job branch, every step's command and facts, the landing steps, and what comes
+after the last ticket: the drift check, the Gap round and the full run. A spec in
 another shape stops the dry run at its `ABORT` line, as it would stop a run. It starts no Session and
 reaches no remote.
