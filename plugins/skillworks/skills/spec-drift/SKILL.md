@@ -87,14 +87,13 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
    - A helper that trims the log's lines to 80 characters.
    ```
 
-8. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back.
-   - **GitHub**: post it as a comment on the spec issue.
-   - **Files**: there is no issue to comment on, so the report goes at the end of the spec's `spec.md`, under that heading. Write it to a file outside the repo, such as in `$(mktemp -d)`, and record it:
+8. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back. Write it to a file outside the repo, such as in `$(mktemp -d)`, and record it with this one command, whichever the Tracker:
 
-     ```bash
-     tracker-publish drift <spec> <file>
-     ```
+   ```bash
+   tracker-publish drift <spec> <file>
+   ```
 
-     The command pushes it to the spec's branch on the remote and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
+   - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. A second run adds a second comment, and the loop reads the last one.
+   - **Files**: the command pushes the report to the end of the spec's `spec.md` on the remote, and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
 
 9. **Report only. Fix nothing.** A fix is new work and needs its own ticket. The loop files the Gaps you find as a ticket of its own. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step, when the count finds nothing owed.

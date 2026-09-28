@@ -66,6 +66,8 @@ Write everything through `gh api`. The `gh` flags for sub-issues and dependencie
 - **Add a blocking edge** ("A blocks B"): POST to **B's** `blocked_by` with **A's** id — `gh api --method POST repos/<owner>/<repo>/issues/<B>/dependencies/blocked_by -F issue_id=<A-db-id>`. There is no `blocking` write endpoint; the asymmetry is deliberate. Limit 50 per relationship type.
 - **Is a ticket startable?** `gh api repos/<owner>/<repo>/issues/<n> --jq '.issue_dependencies_summary.blocked_by'`. That field counts **open** blockers only, so `0` means go. Do not count the `dependencies/blocked_by` list instead — it includes closed blockers.
 - **Claim a ticket**: `gh issue edit <n> --add-assignee @me`, then pause and read the assignees back. There is no compare-and-swap anywhere on the Issues API, so two claims can both succeed. Reading back detects the race; nothing prevents it.
+- **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command posts it as a new comment on the spec issue and prints the comment's URL. A rerun adds another comment and leaves the old one, since the loop reads the last comment. `/skillworks:spec-drift` says how.
+- **Record a Name report**: `tracker-publish names <spec> <file>`. The file opens with `## Name report`, and the command posts it as a new comment on the spec issue, as for a drift report. `/skillworks:spec-names` says how.
 - **Never use `is:blocked` in search** without `-f advanced_search=true`. On the legacy path it silently degrades to a free-text match on the word "blocked" and returns confident nonsense.
 
 Sub-issues carry **no** blocking semantics. A spec with open children is not reported as blocked. Ordering comes from the dependency edges alone.

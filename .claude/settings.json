@@ -36,7 +36,8 @@
       "Bash(aspire:*)",
       "Bash(aspire.cmd:*)",
       "Bash(docker:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(tracker-publish:*)"
     ]
   },
   "env": {

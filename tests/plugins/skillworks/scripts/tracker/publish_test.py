@@ -12,6 +12,7 @@ from files_test import Racing, commit_files, spec_file, ticket_file, write_loop
 from steering.target_branch import LOOP_FILE
 from tracker import publish
 from tracker.files import Files
+from tracker.github import GitHub
 
 SPEC_BRANCH = "spec/local-tracker"
 
@@ -401,6 +402,93 @@ def test_a_name_report_without_its_heading_is_turned_down(writer):
     assert ran.status == 1
     assert "## Name report" in ran.err
     assert writer.tracker("1").name_report("1") == ""
+
+
+class Comments:
+    def __init__(self, runner):
+        self.runner = runner
+        self.fails = False
+        self.posted = []
+        runner.stub("gh", does=self.answer)
+
+    def answer(self):
+        called = self.runner.calls[-1][1:]
+        if called[:2] == ["repo", "view"]:
+            return Ran(0, "owner/repo\n", "")
+        if called[:2] == ["api", "user"]:
+            return Ran(0, "me\n", "")
+        if called[:2] == ["issue", "comment"]:
+            if self.fails:
+                return Ran(1, "", "HTTP 502: Bad Gateway\n")
+            assert "--edit-last" not in called
+            body = Path(called[called.index("--body-file") + 1]).read_text(encoding="utf-8")
+            self.posted.append((called[2], body))
+            return Ran(0, "https://github.com/owner/repo/issues/{}#issuecomment-{}\n".format(
+                called[2], len(self.posted)), "")
+        if called[:2] == ["issue", "view"]:
+            return Ran(0, self.posted[-1][1] if self.posted else "", "")
+        return None
+
+
+@pytest.fixture
+def on_github(writer):
+    path = writer.repo.work / LOOP_FILE
+    path.write_text(json.dumps({"tracker": "github", "target-branch": "main"}), encoding="utf-8")
+    return Comments(writer.runner)
+
+
+def github(runner):
+    return GitHub(runner, "/checkout", "owner/repo")
+
+
+@pytest.mark.parametrize("command, report, read_back", [
+    ("drift", REPORT, GitHub.drift_report),
+    ("names", NAMES, GitHub.name_report),
+])
+def test_on_github_a_report_is_posted_as_a_comment_on_the_spec_and_its_url_printed(
+        writer, on_github, command, report, read_back):
+    ran = writer.run(command, "158", writer.written("report.md", report))
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == "https://github.com/owner/repo/issues/158#issuecomment-1\n"
+    assert on_github.posted == [("158", report)]
+    assert read_back(github(writer.runner), "158") == report.split("\n", 2)[2].strip("\n")
+
+
+def test_on_github_a_second_report_is_a_second_comment_and_the_first_stays(writer, on_github):
+    writer.run("drift", "158", writer.written("drift.md", REPORT))
+
+    ran = writer.run("drift", "158", writer.written("again.md", "## Drift report\n\nAll done.\n"))
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == "https://github.com/owner/repo/issues/158#issuecomment-2\n"
+    assert on_github.posted == [("158", REPORT), ("158", "## Drift report\n\nAll done.\n")]
+    assert github(writer.runner).drift_report("158") == "All done."
+
+
+@pytest.mark.parametrize("command, report, heading", [
+    ("drift", "- Story 1: Done\n", "## Drift report"),
+    ("names", "### Renames\n\n- None\n", "## Name report"),
+])
+def test_on_github_a_report_without_its_heading_is_turned_down(writer, on_github, command, report,
+                                                                heading):
+    ran = writer.run(command, "158", writer.written("report.md", report))
+
+    assert ran.status == 1
+    assert heading in ran.err
+    assert on_github.posted == []
+
+
+def test_on_github_a_report_gh_would_not_post_is_refused_and_says_to_run_again(writer, on_github):
+    on_github.fails = True
+
+    ran = writer.run("names", "158", writer.written("names.md", NAMES))
+
+    assert ran.status == 1
+    assert ran.out == ""
+    assert "HTTP 502: Bad Gateway" in ran.err
+    assert "Name report" in ran.err
+    assert "again" in ran.err
 
 
 def test_the_command_runs_from_the_plugins_bin_folder(writer):

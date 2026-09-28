@@ -574,6 +574,11 @@ The default mode is `acceptEdits`. `spec-loop <spec> --bypass` runs every Sessio
 Denials gives no hint, because its cause lies somewhere else. The `LOOP` line at the top of the log
 names the mode the run is in.
 
+The drift check and the Name check record their reports through `tracker-publish`. With no
+`Bash(tracker-publish:*)` rule in your allowlist, that command is a Denial, and the loop stops at the
+check. Add the rule, with `allow-commands`. Do not rerun with `--bypass`, because the next run meets
+the same Denial.
+
 ## The full run
 
 A Proof knows only the files in your repo. A change outside it, such as a new SDK, can leave a Proof
@@ -601,8 +606,10 @@ are what the spec wanted.
 So when no open ticket is left, the script opens one more worktree and runs
 `/skillworks:spec-drift <spec> <base>` in a fresh Session. It judges the work against the spec, not the
 tickets, because a ticket that drifted still passed its own criteria. It records one report with the
-spec, under the heading `## Drift report`. With the GitHub Tracker the report is a comment on the spec
-issue. With the files Tracker there is no issue, so the report goes at the end of the spec's `spec.md`.
+spec, under the heading `## Drift report`, through `tracker-publish drift` with either Tracker. With
+the GitHub Tracker the report is a new comment on the spec issue, and a rerun adds another comment
+below it. With the files Tracker there is no issue, so the report goes at the end of the spec's
+`spec.md`.
 The script then reads the report back from the Tracker and keeps a copy at
 `.spec-loop/<spec>/drift.md`.
 
@@ -713,10 +720,11 @@ whether to fix it.
 
 ### The Name report
 
-The Session records a **Name report** with the spec, as the drift check records its report. With the
-GitHub Tracker it is a comment on the spec issue. With the files Tracker it goes at the end of
-`spec.md`, below the drift report, through `tracker-publish names`. A new drift report takes an old
-Name report away, because a new drift check starts the judging again.
+The Session records a **Name report** with the spec, as the drift check records its report, through
+`tracker-publish names` with either Tracker. With the GitHub Tracker it is a new comment on the spec
+issue, and a rerun adds another comment below it. With the files Tracker it goes at the end of
+`spec.md`, below the drift report. A new drift report takes an old Name report away, because a new
+drift check starts the judging again.
 
 ```markdown
 ## Name report

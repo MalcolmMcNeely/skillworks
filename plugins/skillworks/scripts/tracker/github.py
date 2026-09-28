@@ -164,6 +164,15 @@ class GitHub:
                                                 (attached.out + attached.err).rstrip("\n")))
         return number
 
+    # Always a new comment, because the loop reads the last one and an old report stays for a person to see.
+    def post_report(self, spec, report_file, what):
+        posted = self.gh("issue", "comment", spec, "--body-file", report_file)
+        if posted.status != 0:
+            raise refusal("GitHub would not post the {} on spec #{}, so nothing was posted. Run "
+                          "tracker-publish again. gh said:\n{}".format(
+                              what, spec, (posted.out + posted.err).rstrip("\n")))
+        return posted.out.strip()
+
     def last_comment(self, ticket):
         ran = self.gh("issue", "view", ticket, "--json", "comments", "--jq", ".comments[-1].body")
         return ran.out.rstrip("\n") if ran.status == 0 else None

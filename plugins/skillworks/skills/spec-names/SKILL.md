@@ -64,14 +64,14 @@ The loop reads its list, so its shape is fixed:
 
 Record the report with the spec. Its first line is `## Name report`, with either Tracker, because the loop finds the report by that heading and reads it back. A finding you only say in this Session is lost.
 
-- **GitHub**: post it as a comment on the spec issue. Post nothing on the spec after it, because the loop reads the last comment.
-- **Files**: write it to a file outside the repo, such as in `$(mktemp -d)`, and record it:
+Write it to a file outside the repo, such as in `$(mktemp -d)`, and record it with this one command, whichever the Tracker:
 
-  ```bash
-  tracker-publish names <spec> <file>
-  ```
+```bash
+tracker-publish names <spec> <file>
+```
 
-  The command pushes it to the end of the spec's `spec.md`, below the drift report, and takes the place of any earlier Name report. It writes through an index of its own, so the checkout stays clean. The loop turns down a Name check that leaves the checkout changed.
+- **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. Post nothing on the spec after it, because the loop reads the last comment.
+- **Files**: the command pushes the report to the end of the spec's `spec.md`, below the drift report, and takes the place of any earlier Name report. It writes through an index of its own, so the checkout stays clean. The loop turns down a Name check that leaves the checkout changed.
 
 **Report only. Rename nothing.** A rename is new work, and needs a ticket of its own.
 

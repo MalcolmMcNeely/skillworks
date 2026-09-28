@@ -12,6 +12,7 @@ from stop import Stop, is_a_number, misuse, refusal
 from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
                            TICKETS, Files, as_numbers, frontmatter, heading, number_of,
                            with_last_section)
+from tracker.github import GitHub
 from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
 USAGE = (
@@ -29,16 +30,20 @@ SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 RESERVED = "refs/skillworks/specs/"
 
 
-def opened(runner, where, spec, wait):
+def opened(runner, where, spec, wait, writes_github=False):
     found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
     if found.status != 0:
         raise refusal("{} is not inside a git repo.".format(where))
     top = found.out.strip()
-    if tracker_setting(top) != "files":
+    if tracker_setting(top) == "files":
+        named = target_setting(top)
+        tracker = Files(runner, top, None if named == SPEC_MODE else named, spec, wait)
+    elif writes_github:
+        tracker = GitHub(runner, top)
+    else:
         raise refusal("tracker in docs/agents/loop.json is not files, and tracker-publish writes "
-                      "the files Tracker alone. Publish as docs/agents/issue-tracker.md says.")
-    named = target_setting(top)
-    tracker = Files(runner, top, None if named == SPEC_MODE else named, spec, wait)
+                      "a spec and its tickets to the files Tracker alone. Publish as "
+                      "docs/agents/issue-tracker.md says.")
     problem = tracker.connect()
     if problem:
         raise refusal(problem[0].upper() + problem[1:] + ".")
@@ -159,11 +164,14 @@ def publish_tickets(tracker, spec, tickets, out):
                   "tracker-publish again.".format(spec, PUSH_ATTEMPTS))
 
 
-# Each report replaces its heading to the end of the file, so a drift report takes the Name report after it too.
-def publish_report(tracker, spec, report, heading, what, out):
+# On the files Tracker each report replaces its heading to the end of the file, so a drift report takes the Name report after it too.
+def publish_report(tracker, spec, report_file, report, heading, what, out):
     if report.replace("\r\n", "\n").split("\n", 1)[0].strip() != heading:
         raise refusal("The {} does not open with {}. Its first line is that heading, as it is on a "
                       "GitHub comment.".format(what, heading))
+    if isinstance(tracker, GitHub):
+        out.write(tracker.post_report(spec, report_file, what) + "\n")
+        return
     branch = tracker.branch_of(spec)
     for _ in range(PUSH_ATTEMPTS):
         tracker.fetched(branch)
@@ -200,8 +208,9 @@ def main(argv, runner, out, err, wait, where=None):
         if command in REPORTS and len(argv) == 3 and is_a_number(argv[1]):
             spec = str(int(argv[1]))
             heading, what = REPORTS[command]
-            publish_report(opened(runner, where, spec, wait), spec, read(where, argv[2]), heading,
-                           what, out)
+            report_file = (Path(where) / argv[2]).as_posix()
+            publish_report(opened(runner, where, spec, wait, writes_github=True), spec, report_file,
+                           read(where, argv[2]), heading, what, out)
             return 0
         raise misuse(USAGE)
     except Stop as stop:
