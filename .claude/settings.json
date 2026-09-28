@@ -41,7 +41,8 @@
     ]
   },
   "env": {
-    "BASH_DEFAULT_TIMEOUT_MS": "600000"
+    "BASH_DEFAULT_TIMEOUT_MS": "600000",
+    "PYTHON_BASIC_REPL": "1"
   },
   "extraKnownMarketplaces": {
     "skillworks": {

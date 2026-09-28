@@ -188,6 +188,13 @@ the background dies with the Session's last turn, so a long check has to finish 
 This does not reach the loop itself, which runs for hours and still has to be started in the
 background.
 
+#### A Python with nothing to run
+
+`.claude/settings.json` also sets `PYTHON_BASIC_REPL=1`. On Windows, Python 3.13 handed an empty
+script, such as `python - <<'EOF'` with nothing before the `EOF`, opens its new prompt. That prompt
+fails to read the console, starts again, and never stops, so the command holds a session for the
+whole of its wait. The basic prompt reads the empty input and exits at once.
+
 ## Repo layout
 
 | Path | What it is |
