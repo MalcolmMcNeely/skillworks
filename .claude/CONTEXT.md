@@ -59,6 +59,12 @@ Missing or Partial, or did not judge exactly once, or a Surface it found Out of 
 its Gaps itself, in one ticket, once. A Gap still open after that stops the loop.
 _Avoid_: Shortfall, hole, miss
 
+**Grill**:
+The stage where a developer and Claude argue a design out until nothing is left open, writing the
+glossary and the ADRs as each settles, and ending in a published spec. The developer's yes to its
+summary is the one gate before the spec loop runs with nobody watching.
+_Avoid_: grill-with-docs, interview, design session
+
 **Held**:
 A worktree that had uncommitted work in it when the run stopped. A Keep commits that work to the
 Job branch before the worktree goes, so Held says the Job branch carries work that reached no
