@@ -355,12 +355,14 @@ class Suite:
         return self.run_in_image(check)
 
     def run_in_image(self, check):
-        workdir = posixpath.normpath(posixpath.join(
-            REPO_IN_IMAGE, check.folder.relative_to(self.tree).as_posix()))
-        return self.contained(check, check.command, workdir)[1]
+        return self.contained([check], check.command, self.in_image(check.folder))[1]
+
+    def in_image(self, folder):
+        return posixpath.normpath(posixpath.join(
+            REPO_IN_IMAGE, folder.relative_to(self.tree).as_posix()))
 
     # A Trial takes its image from the Suite file, so it never runs tests where no check runs them.
-    def trial(self, image, command):
+    def trial(self, image, command, here):
         try:
             wanted, _ = self.read()
         except Unreadable as fault:
@@ -369,30 +371,39 @@ class Suite:
         if not named:
             raise refusal("no check in the Suite file {} names the image {}, so a Trial cannot "
                           "run in it.".format(SUITE_FILE, image))
+        try:
+            workdir = self.in_image(self.tree / Path(here).resolve().relative_to(self.tree.resolve()))
+        except ValueError:
+            raise refusal("{} is outside the repo {}, so a Trial has no folder in the image to "
+                          "run from.".format(Path(here).as_posix(), self.tree.as_posix()))
         short = self.docker_short_of(named[0])
         if short:
             raise refusal(short.rstrip("\n"))
-        failed, ran = self.contained(named[0], command, REPO_IN_IMAGE)
+        failed, ran = self.contained(named, command, workdir)
         if failed:
             raise refusal("the Trial could not {} for the image {}, so the command never ran.\n"
                           "docker said:\n{}".format(failed, image, ran.out + ran.err).rstrip("\n"))
         return ran
 
-    def contained(self, check, command, workdir):
+    # Every check here names one image, and a file any of them reads is copied, so none misses it.
+    def contained(self, checks, command, workdir):
         tree = self.tree.as_posix()
-        dockerfile = self.tree / check.image
+        dockerfile = self.tree / checks[0].image
         built = self.runner.run(["docker", "build", "--quiet", "--file", dockerfile.as_posix(),
                                  dockerfile.parent.as_posix()], tree)
         if built.status != 0:
             return "build the image", built
         # The copy is the Proof's inputs and no more, so what was proved is what was tested.
-        listed = self.listed_inputs(check)
-        if listed.status != 0:
-            return "list the files to copy", listed
+        names = set()
+        for check in checks:
+            listed = self.listed_inputs(check)
+            if listed.status != 0:
+                return "list the files to copy", listed
+            names.update(name for name in listed.out.split("\0") if name)
 
         with tempfile.TemporaryDirectory() as stage:
             # A tracked file the worktree deleted is still listed, and the check must not see it.
-            for name in {name for name in listed.out.split("\0") if name}:
+            for name in names:
                 if (self.tree / name).is_file():
                     (Path(stage) / name).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(self.tree / name, Path(stage) / name)
@@ -431,7 +442,7 @@ def main(argv, runner, out, err):
             raise refusal("{} is not in a git repository, so it has no Suite file.".format(
                 Path.cwd().as_posix()))
         if trying:
-            ran = Suite(runner, found.out.strip()).trial(argv[1], argv[3:])
+            ran = Suite(runner, found.out.strip()).trial(argv[1], argv[3:], Path.cwd())
             out.write(ran.out)
             err.write(ran.err)
             return ran.status

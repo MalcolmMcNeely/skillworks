@@ -192,9 +192,11 @@ Suite file gives it. Everything after `--` is the command, one word to an argume
 
 1. It builds the image, as the check does.
 2. It copies the check's inputs into a new container, the same copy a run of the check makes.
-   Untracked files go in. Paths the check ignores, and tracked files you deleted, do not.
-3. It runs the command from the repo root in the container, prints what the command printed, and
-   exits with its exit code.
+   Untracked files go in. Paths the check ignores, and tracked files you deleted, do not. When two
+   checks name the image, a path goes in unless both of them ignore it.
+3. It runs the command from the folder you are in, at its place under `/repo` in the container, so a
+   relative path means the same thing there. It prints what the command printed, and exits with its
+   exit code. A Trial started from a folder outside the repo is refused.
 4. It removes the container, however the Trial ends.
 
 A Trial keeps no Proof, reads none and forgets none. Part of a check never stands in for the whole

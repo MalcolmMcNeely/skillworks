@@ -1218,9 +1218,57 @@ def test_an_image_that_is_not_a_file_in_the_repo_makes_the_suite_file_unreadable
 
 # --- a Trial -------------------------------------------------------------------
 
-def trial(runner, repo, *command, image=DOCKERFILE, monkeypatch):
-    monkeypatch.chdir(repo.work)
+def trial(runner, repo, *command, image=DOCKERFILE, monkeypatch, where=None):
+    monkeypatch.chdir(repo.work if where is None else where)
     return suite_command(runner, "--image", image, "--", *command)
+
+
+def test_a_trial_runs_its_command_from_the_folder_it_is_started_in(repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+    below = repo.work / "web" / "app"
+    below.mkdir(parents=True)
+    docker = FakeDocker(runner)
+
+    ran = trial(runner, repo, "prove", "page_test.py", where=below, monkeypatch=monkeypatch)
+
+    assert ran.status == 0, ran.err
+    assert ["docker", "create", "--workdir", "/repo/web/app", "the-image", "prove",
+            "page_test.py"] in docker.calls()
+
+
+def test_a_trial_started_outside_the_repo_is_refused_and_says_so(
+        repo, runner, monkeypatch, tmp_path):
+    given_a_suite_in_an_image(repo.work, "prove")
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    # Git then names the repo from a folder outside it, as it does for a caller that sets them.
+    monkeypatch.setenv("GIT_DIR", (repo.work / ".git").as_posix())
+    monkeypatch.setenv("GIT_WORK_TREE", repo.work.as_posix())
+    docker = FakeDocker(runner)
+
+    ran = trial(runner, repo, "prove", where=outside, monkeypatch=monkeypatch)
+
+    assert ran.status == 1
+    assert ran.err.startswith("FAIL  ")
+    assert "outside the repo" in ran.err
+    assert outside.name in ran.err
+    assert docker.calls() == []
+
+
+def test_a_trial_copies_what_any_check_of_its_image_reads(repo, runner, monkeypatch):
+    given_a_dockerfile(repo.work)
+    write_suite(repo.work,
+                check("prove", image=DOCKERFILE, ignores=["web", "notes"]),
+                check("lint", image=DOCKERFILE, ignores=["web/app", "scripts"]),
+                check("compile", ignores=["web", "notes", "scripts"]))
+    for name in ("web/app/page.ts", "web/api.ts", "notes/one.md", "scripts/two.sh"):
+        committing(repo, name)
+    docker = FakeDocker(runner)
+
+    trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+    assert docker.copied == sorted(["base.txt", DOCKERFILE, SUITE_FILE, "web/api.ts",
+                                    "notes/one.md", "scripts/two.sh"])
 
 
 def test_a_trial_builds_the_image_and_runs_its_command_from_the_copy_s_root(
@@ -1424,7 +1472,7 @@ def test_the_suite_page_says_what_a_trial_is_after_running_the_suite_yourself():
     section = " ".join((ROOT / SUITE_PAGE).read_text(encoding="utf-8")
                        .split("## " + headings[at + 1])[1].split("\n## ")[0].split())
     for words in ("`skillworks-suite --image <Dockerfile> -- <command>`", "keeps no Proof",
-                  "no check", "Docker"):
+                  "no check", "Docker", "from the folder you are in"):
         assert words in section, words
 
 
