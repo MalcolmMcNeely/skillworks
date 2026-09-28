@@ -11,8 +11,6 @@ namespace Skillworks.Core.Sessions.Queries;
 
 public sealed partial class StepQueries(EventsStoreReader events, TimeProvider clock)
 {
-    private const string EventNameAttribute = "event.name";
-
     private const string SequenceAttribute = "event.sequence";
 
     private const string DurationAttribute = "duration_ms";
@@ -164,7 +162,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
         var length = (long)Number(line, DurationAttribute);
         var began = line.At.AddMilliseconds(-length);
 
-        return line.Attribute(EventNameAttribute) switch
+        return line.Attribute(EventAttributes.EventName) switch
         {
             PromptEvent => new Step(id, StepKind.Prompt, line.At, 0, null, false, Words(line, EventAttributes.Prompt)),
 
@@ -197,7 +195,7 @@ public sealed partial class StepQueries(EventsStoreReader events, TimeProvider c
         line.Attribute(SequenceAttribute) ?? place.ToString(CultureInfo.InvariantCulture);
 
     private static Func<EventLine, bool> Named(string eventName) =>
-        line => line.Attribute(EventNameAttribute) == eventName;
+        line => line.Attribute(EventAttributes.EventName) == eventName;
 
     private static bool Failed(EventLine line) => line.Attribute(SuccessAttribute) == Unsuccessful;
 

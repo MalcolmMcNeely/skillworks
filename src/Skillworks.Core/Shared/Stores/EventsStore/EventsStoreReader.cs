@@ -244,7 +244,14 @@ public sealed class EventsStoreReader(IHttpClientFactory clients, IOptions<LokiO
 
     private static string Selected(EventQuery query)
     {
-        var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\" {NotHookRecords}";
+        var logql = $"{AnyStream} |= \"claude_code.{query.EventName}\"";
+
+        if (query.AnyOfEvents is { } names)
+        {
+            logql += $" |= {string.Join(" or ", names.Select(name => Quoted($"claude_code.{name}")))}";
+        }
+
+        logql += $" {NotHookRecords}";
 
         if (query.Session is { } session)
         {

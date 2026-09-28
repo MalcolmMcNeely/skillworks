@@ -6,6 +6,9 @@ public sealed record EventQuery(string EventName, DateTimeOffset From, DateTimeO
     // The body of every event is claude_code. then its name, so the bare stem matches all of them.
     public const string AnyEvent = "";
 
+    // Narrows on top of EventName, so a read of several events leaves EventName at AnyEvent.
+    public IReadOnlyCollection<string>? AnyOfEvents { get; init; }
+
     public string? Repository { get; init; }
 
     public string? Session { get; init; }

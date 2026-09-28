@@ -9,8 +9,8 @@ public sealed partial class SessionEndpointsTests
     // Cost is the only Measure this read answers.
     private const string TurnRead = "claude_code.api_request";
 
-    // Tool calls and the tool half of Faults, and no part of Cost or Friction.
-    private const string ToolResultRead = "claude_code.tool_result";
+    // Tool calls, Friction and Faults, and no part of Cost.
+    private const string CountRead = "claude_code.tool_result";
 
     // The read that finds the rows and the read that names them, and no Measure's.
     private const string PromptRead = "claude_code.user_prompt";
@@ -144,6 +144,21 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Empty(answer.Sessions);
         Assert.Equal("unreachable", answer.Gap.Kind);
+    }
+
+    [Fact]
+    public async Task Loses_tool_calls_friction_and_faults_together_and_keeps_cost_when_their_count_fell_short()
+    {
+        using var events = Breaking(CountRead);
+        using var studio = new StudioHost(events: events);
+
+        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
+
+        var answer = await studio.SessionAnswer();
+
+        Assert.Equal(["The run"], answer.Sessions.Select(session => session.Name));
+        Assert.Equal(["cost"], answer.Measures.Keys);
+        Assert.Contains("Tool calls, Faults and Friction", answer.Gap.Missing ?? "", StringComparison.Ordinal);
     }
 
     private static BrokenEventsStore Holding(string read) =>

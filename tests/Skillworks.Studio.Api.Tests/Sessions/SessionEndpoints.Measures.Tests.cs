@@ -127,20 +127,6 @@ public sealed partial class SessionEndpointsTests
     }
 
     [Fact]
-    public async Task Names_both_measures_that_one_read_falling_short_took_away()
-    {
-        using var events = Breaking(ToolResultRead);
-        using var studio = new StudioHost(events: events);
-
-        await PushWithPrompts(studio, SessionEvent.Titled(Morning, At(Yesterday, "09:00:00.000"), "The run"));
-
-        var answer = await studio.SessionAnswer();
-
-        Assert.Equal(["cost", "friction"], answer.Measures.Keys.Order(StringComparer.Ordinal));
-        Assert.Contains("Tool calls and Faults", answer.Gap.Missing ?? "", StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task Reads_a_quiet_period_as_quiet_while_a_measure_read_falls_short()
     {
         using var events = Breaking(TurnRead);

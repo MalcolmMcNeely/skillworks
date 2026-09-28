@@ -3,6 +3,8 @@ namespace Skillworks.Core.Shared.Stores.EventsStore;
 // Spelled as Claude Code sends them, on every event.
 public static class EventAttributes
 {
+    public const string EventName = "event.name";
+
     public const string Skill = "skill.name";
 
     public const string Owner = "vcs.owner.name";
