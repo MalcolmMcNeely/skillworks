@@ -67,12 +67,13 @@ needs their clone of Skillworks at the same path.
    you that `.specs/` is committed and must never be gitignored.
 3. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `spec`. It
    writes your answer into `target-branch` in `docs/agents/loop.json`.
-4. **Preflight.** `skillworks-preflight` checks the tools, the remote, and the Target branch
-   `docs/agents/loop.json` names. With `github`, it checks the `gh` login too, and then creates the
-   `ready-for-agent` label on GitHub. With `files`, it needs no `gh` and creates no label. If a check
-   fails, setup stops there.
-5. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your Tracker,
+4. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your Tracker,
    your tracker docs and your domain docs, and imports each rule.
+5. **Preflight.** `skillworks-preflight` checks the tools, the remote, the Target branch
+   `docs/agents/loop.json` names, and that `CLAUDE.md` imports each rule. With `github`, it checks the
+   `gh` login too, and then creates the `ready-for-agent` label on GitHub. With `files`, it needs no
+   `gh` and creates no label. If a check fails, setup stops there. The `CLAUDE.md` block from step 4
+   is safe to leave: fix the fault and run setup again.
 6. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist and
    `"autoMemoryEnabled": false` into `.claude/settings.json`. Then `set-attribution` writes your
    answer on the credit for Claude, as [Credit for Claude](#credit-for-claude) says.

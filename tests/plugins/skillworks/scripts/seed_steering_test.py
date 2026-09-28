@@ -1106,7 +1106,7 @@ def test_setup_says_the_files_tracker_folder_is_committed_and_why():
 
 def test_setup_skips_the_github_steps_with_the_files_tracker():
     text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
-    step = setup_section("### 4. Preflight and labels")
+    step = setup_section("### 5. Preflight and labels")
 
     assert "GitHub only" not in text
     assert "With `files`, it needs no `gh` and creates no label." in step
@@ -1316,8 +1316,22 @@ def setup_section(heading):
     return re.split(r"\n### \d", text.split(heading, 1)[1], maxsplit=1)[0]
 
 
+def test_setup_points_claude_md_at_the_rules_before_the_preflight_checks_their_imports():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+    steps = re.findall(r"^### \d+\. (.+)$", text, re.MULTILINE)
+
+    assert steps.index("Point CLAUDE.md at the docs") < steps.index("Preflight and labels")
+
+
+def test_setup_leaves_the_claude_md_block_in_place_when_the_preflight_fails():
+    step = setup_section("### 5. Preflight and labels")
+
+    assert "If it fails, stop and report." in step
+    assert "safe to leave" in step
+
+
 def test_the_claude_md_pointer_imports_each_rule():
-    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 5. Point CLAUDE.md at the docs"), re.DOTALL)
+    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 4. Point CLAUDE.md at the docs"), re.DOTALL)
 
     assert len(pointer) == 1
     lines = pointer[0].splitlines()

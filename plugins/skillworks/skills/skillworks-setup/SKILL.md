@@ -107,23 +107,7 @@ Offer one other answer: `spec`. With `spec`, each spec gets a branch of its own,
 
 Write the answer into `target-branch` in `docs/agents/loop.json`, and change no other key.
 
-### 4. Preflight and labels
-
-```bash
-skillworks-preflight
-```
-
-It reads the Tracker and the Target branch from `docs/agents/loop.json`. It warns, and does not fail, when another enabled plugin also forces an output style. Safe to run again.
-
-With `github`, it checks `gh`, the login, that `origin` is GitHub, and the Target branch. A branch name must be on the remote and must take a direct push from this login. With `spec`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label.
-
-With `files`, it needs no `gh` and creates no label. It checks that `origin` exists and holds the Target branch, or with `spec`, the remote's default branch.
-
-It runs after the Tracker and the Target branch are written, because it reads `loop.json`. Expect a permission prompt here too on a first run.
-
-If it fails, stop and report. Every step below assumes the remote works, and with `github` a working `gh`, and the script is what proves that.
-
-### 5. Point CLAUDE.md at the docs
+### 4. Point CLAUDE.md at the docs
 
 Add this block to `CLAUDE.md`. Create the file if it is missing. If the block is already there, update it in place — never append a second copy. Leave every other section alone.
 
@@ -159,6 +143,22 @@ With `files`, write the Issue tracker line as: committed files in `.specs/`, one
 If the repo has `CONTEXT-MAP.md`, write the Domain docs line as multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context.
 
 If the repo has `AGENTS.md` and no `CLAUDE.md`, edit `AGENTS.md` instead. Never create the one that is missing when the other exists.
+
+### 5. Preflight and labels
+
+```bash
+skillworks-preflight
+```
+
+It reads the Tracker and the Target branch from `docs/agents/loop.json`, and checks that `CLAUDE.md` imports each rule in `docs/agents/rules/`. It warns, and does not fail, when another enabled plugin also forces an output style. Safe to run again.
+
+With `github`, it checks `gh`, the login, that `origin` is GitHub, and the Target branch. A branch name must be on the remote and must take a direct push from this login. With `spec`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label.
+
+With `files`, it needs no `gh` and creates no label. It checks that `origin` exists and holds the Target branch, or with `spec`, the remote's default branch.
+
+It runs after the Tracker and the Target branch are written, because it reads `loop.json`, and after the `CLAUDE.md` block is written, because it refuses a rule with no import. Expect a permission prompt here too on a first run.
+
+If it fails, stop and report. Every step below assumes the remote works, and with `github` a working `gh`, and the script is what proves that. The `CLAUDE.md` block step 4 wrote is safe to leave: a second run of setup updates it in place, so the team fixes the fault and runs setup again.
 
 ### 6. Write the settings
 
