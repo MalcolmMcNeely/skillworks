@@ -54,6 +54,10 @@ public static class StoresServiceCollectionExtensions
                 options => options.HttpMessageHandlerBuilderActions.Clear());
         }
 
+        // After the clear, or it goes too; a container's port forward resets a reused connection, which reads as a Gap.
+        services.AddHttpClient(EventsStoreReader.ClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.Zero });
+
         services.AddSingleton<EventsStoreReader>();
         services.AddSingleton<TraceStoreReader>();
         services.AddSingleton<CollectorReader>();

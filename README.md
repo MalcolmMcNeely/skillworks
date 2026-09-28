@@ -114,6 +114,26 @@ stores are not touched.
 To seed the stores and nothing else, add `--seed-only`. The containers keep running after the tool
 exits. Remove them with `docker rm -f skillworks-seeded-loki skillworks-seeded-tempo`.
 
+### Check the Sessions list on your own data
+
+With Aspire running, this loads the Sessions list 15 times, one load after another. It counts the
+loads that end in "No signal", and then reads Loki's query log to find how long the parts of those
+loads waited in Loki's queue. From the repo root:
+
+```
+node tools/no-signal-check.mjs
+```
+
+It exits with 1 when a load ended in "No signal". Add `--api <address>` when the API is not on
+`http://localhost:5222`, `--loads <n>` for another number of loads, and `--loki <name>` when more than
+one container is named `loki-*`. The check is not in the Suite, because it needs your own data and a
+running app.
+
+The AppHost's Loki is a persistent container, and it keeps the flags it was made with. The check
+stops when the container lacks a flag from `src/Skillworks.AppHost/LokiFlags.cs`, and names the
+container. Stop Aspire, remove the container with `docker rm -f <name>`, and start Aspire again. The
+data stays in its volume.
+
 ### Checks
 
 Docker must be running, because the API tests start Loki in a container. `uv` must be on PATH,

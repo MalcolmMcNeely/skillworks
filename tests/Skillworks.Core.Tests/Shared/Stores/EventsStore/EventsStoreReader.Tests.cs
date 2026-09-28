@@ -189,8 +189,41 @@ public sealed class EventsStoreReaderTests
         Assert.All(reads, read => Assert.Contains("could not be read", read.Unreachable ?? "", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Opens_a_new_connection_for_each_read()
+    {
+        // Arrange
+        using var store = new SocketEventsStore();
+        var reader = Reader(store.Address, HarnessClock.Still());
+
+        // Act
+        var first = await reader.CountAsync(OneDay, [], CancellationToken.None);
+        var second = await reader.CountAsync(OneDay, [], CancellationToken.None);
+
+        // Assert
+        Assert.Null(first.Unreachable);
+        Assert.Null(second.Unreachable);
+
+        // A container's port forward resets a reused connection, which reads as a Gap.
+        Assert.Equal(2, store.Connections);
+    }
+
     // The real registration, so the address, the Patience and the line under test are the ones Studio runs with.
     private static EventsStoreReader Reader(HttpMessageHandler store, TimeProvider clock, int? readsAtOnce = null)
+    {
+        var services = Registered(clock, readsAtOnce, address: null);
+
+        // Only the handler is replaced, and after the registration that clears them, so Studio's own Patience stays under test.
+        services.AddHttpClient(EventsStoreReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => store);
+
+        return services.BuildServiceProvider().GetRequiredService<EventsStoreReader>();
+    }
+
+    // Studio's own handler too, so the connections a store sees are the ones Studio opens.
+    private static EventsStoreReader Reader(Uri address, TimeProvider clock) =>
+        Registered(clock, readsAtOnce: null, address).BuildServiceProvider().GetRequiredService<EventsStoreReader>();
+
+    private static ServiceCollection Registered(TimeProvider clock, int? readsAtOnce, Uri? address)
     {
         var settings = new Dictionary<string, string?>
         {
@@ -203,6 +236,11 @@ public sealed class EventsStoreReaderTests
             settings["Loki:ReadsAtOnce"] = reads.ToString(CultureInfo.InvariantCulture);
         }
 
+        if (address is not null)
+        {
+            settings["Loki:Address"] = address.ToString();
+        }
+
         var services = new ServiceCollection();
 
         // Ahead of AddStores, which falls back to the machine's clock only where nothing has supplied one.
@@ -210,10 +248,7 @@ public sealed class EventsStoreReaderTests
 
         services.AddStores(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
 
-        // Only the handler is replaced, and after the registration that clears them, so Studio's own Patience stays under test.
-        services.AddHttpClient(EventsStoreReader.ClientName).ConfigurePrimaryHttpMessageHandler(() => store);
-
-        return services.BuildServiceProvider().GetRequiredService<EventsStoreReader>();
+        return services;
     }
 
     private static EventQuery Named(string eventName) => OneDay with { EventName = eventName };
