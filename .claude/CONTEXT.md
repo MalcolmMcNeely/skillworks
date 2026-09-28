@@ -148,6 +148,11 @@ API or a sample app. A team lists its own, and the grill asks about each one a c
 Surface is left out of step without anyone deciding it.
 _Avoid_: Axis, touchpoint, artefact
 
+**Trial**:
+A run of some of a check's tests, where that check runs, so a Session tries its work without the
+wait of the whole check. It proves nothing: it keeps no Proof, and the loop never reads it.
+_Avoid_: Spot check, narrow run, focused run
+
 **Target branch**:
 The branch a ticket Lands on. It is `main` for a team that pushes straight to it. For a team that
 reviews each spec as one pull request, it is that spec's own branch.
