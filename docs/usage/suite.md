@@ -51,7 +51,12 @@ adding its own:
 | `image` | Optional. A Dockerfile in the repo, from the repo root. The check runs in that image. See below. |
 
 `runs`, beside `checks`, says how many times the loop runs a red Suite before it believes it. It is 1
-when the file leaves it out.
+when the file leaves it out. With `runs` at 2 or more, a check that goes red and then passes on the
+same inputs is a **Flake**. A Flake counts as green, so it does not stop the loop. It is always
+reported: the Suite output names each Flake after the last run, and keeps what it said when red. Set
+`runs: 2` when your checks fail now and then for reasons that are not the code, such as a busy
+machine or a process that crashes at random. Leave it at 1 when every red is real, because a second
+run of a real red only costs time.
 
 ## Proofs: a check never proves the same thing twice
 

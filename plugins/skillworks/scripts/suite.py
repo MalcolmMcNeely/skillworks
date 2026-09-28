@@ -12,6 +12,7 @@
 # A command is an argument list and never a shell line, so it reads the same on every machine.
 # An `unless` path that exists skips its readiness command, so an install is not done twice.
 # Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
+# A check red and then green is a Flake, and it is always reported, so a second run never hides it.
 # A check can name an image, for tests that start processes an OS is slow to start.
 # Fresh mode trusts no Proof and no image, so a Proof gone stale outside the repo is caught.
 # A Trial runs part of a check, so it keeps no Proof and reads none: a part never stands for the whole.
@@ -52,6 +53,12 @@ class Outcome(NamedTuple):
     # False when the checks never started, so nothing at all was proved about the work.
     ready: bool = True
     red: tuple = ()
+    flakes: tuple = ()
+
+
+class Flake(NamedTuple):
+    check: str
+    said: str
 
 
 class Ready(NamedTuple):
@@ -314,17 +321,21 @@ class Suite:
         if short:
             return Outcome(False, short, ready=False)
 
+        said_red = {}
         for at in range(1, runs + 1):
             # A check that went green in the run before is proved now, so only red runs again.
             # Fresh mode keeps no Proof, so it carries the earlier pass itself.
             if at > 1 and not self.fresh:
                 keys, found = self.proved(wanted, proofs)
-            outcome, found = self.run_checks(wanted, proofs, keys, found)
+            outcome, found, reds = self.run_checks(wanted, proofs, keys, found)
+            said_red.update(reds)
             if heard is not None:
                 heard(outcome, at)
             if outcome.passed:
                 break
-        return outcome
+        flakes = tuple(Flake(" ".join(wanted[index].command), said)
+                       for index, said in sorted(said_red.items()) if found[index] is not None)
+        return outcome._replace(flakes=flakes)
 
     # A red check lets the others finish, so the one fix circuit reads every failure, not the first.
     # A Proof is a real pass on the same inputs, so a Suite whose every check is proved passes.
@@ -347,7 +358,9 @@ class Suite:
         passed = [held if each is None else each if each.status == 0 else None
                   for held, each in zip(found, ran)]
         red = tuple(" ".join(check.command) for check, _ in went_red)
-        return Outcome(not red, said, red=red), passed
+        reds = {index: each.out + each.err for index, each in enumerate(ran)
+                if each and each.status != 0}
+        return Outcome(not red, said, red=red), passed, reds
 
     def run_check(self, check):
         if check.image is None:
@@ -449,6 +462,9 @@ def main(argv, runner, out, err):
         outcome = Suite(runner, found.out.strip(), fresh=argv == ["--fresh"]).run(printed(out))
         if not outcome.ready:
             raise refusal(outcome.said.rstrip("\n"))
+        for flake in outcome.flakes:
+            out.write("FLAKE {} went red and then passed. What it said when red is above.\n".format(
+                flake.check))
         if not outcome.passed:
             raise refusal("the Suite went red. What each check said is above.")
         out.write("ok    the Suite passed\n")

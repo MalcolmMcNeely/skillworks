@@ -1,5 +1,5 @@
 {
-  "runs": 1,
+  "runs": 2,
   "checks": [
     {
       "command": ["dotnet", "test", "tests/Skillworks.Architecture.Tests"],

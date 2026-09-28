@@ -436,6 +436,66 @@ def test_each_run_is_heard_with_its_number(tmp_path, runner):
     assert heard == [(1, False), (2, True)]
 
 
+def test_a_check_red_and_then_green_is_a_flake_with_its_red_output_and_the_suite_passes(
+        repo, runner):
+    write_suite(repo.work, check("compile"), check("prove"), runs=2)
+    given_every_program_passes(runner)
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert outcome.passed
+    assert [flake.check for flake in outcome.flakes] == ["prove"]
+    assert "a test failed" in outcome.flakes[0].said
+    assert by_words(runner.started("compile") + runner.started("prove")) == [
+        ["compile"], ["prove"], ["prove"]]
+
+
+def test_a_check_red_on_every_run_is_no_flake(tmp_path, runner):
+    write_suite(tmp_path, check("prove"), runs=2)
+    given_every_program_passes(runner)
+    runner.stub("prove", says="a test failed", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.passed
+    assert outcome.flakes == ()
+
+
+def test_a_check_that_flakes_beside_one_red_on_every_run_is_still_a_flake(tmp_path, runner):
+    write_suite(tmp_path, check("compile"), check("prove"), runs=2)
+    given_every_program_passes(runner)
+    runner.stub("compile", says="it does not compile", status=1)
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.passed
+    assert outcome.red == ("compile",)
+    assert [flake.check for flake in outcome.flakes] == ["prove"]
+
+
+def test_with_one_run_a_red_check_is_no_flake(tmp_path, runner):
+    write_suite(tmp_path, check("prove"), runs=1)
+    given_every_program_passes(runner)
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.passed
+    assert outcome.flakes == ()
+
+
+def test_a_green_suite_has_no_flake(tmp_path, runner):
+    write_suite(tmp_path, check("prove"), runs=2)
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.passed
+    assert outcome.flakes == ()
+
+
 # A second run cannot make a missing tool appear, so nothing is spent proving that twice.
 def test_a_machine_that_is_not_ready_is_never_run_again(tmp_path, runner):
     write_suite(tmp_path, check("prove", ready=["ping"], message="no store"), runs=2)
@@ -823,6 +883,21 @@ def test_fresh_mode_runs_again_only_the_checks_that_went_red(repo, runner):
     assert "compiled" in heard[1].said
 
 
+def test_a_flake_in_fresh_mode_loses_its_proof_and_runs_again_next_time(repo, runner):
+    write_suite(repo.work, check("prove"), runs=2)
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    fresh = Suite(runner, repo.work, fresh=True).run()
+    after = Suite(runner, repo.work).run()
+
+    assert fresh.passed
+    assert [flake.check for flake in fresh.flakes] == ["prove"]
+    assert after.passed
+    assert len(runner.started("prove")) == 4
+
+
 # --- the skillworks-suite command --------------------------------------------
 
 def suite_command(runner, *args):
@@ -869,6 +944,32 @@ def test_a_red_suite_fails_the_command_and_says_what_went_red(repo, runner, monk
     assert ran.status == 1
     assert "a test failed" in ran.out
     assert "FAIL  the Suite went red" in ran.err
+
+
+def test_the_command_names_each_flake_after_the_last_run(repo, runner, monkeypatch):
+    write_suite(repo.work, check("compile", "all"), check("prove"), runs=2)
+    given_every_program_passes(runner)
+    given_a_check_red_on_its_first_run_alone(runner)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner)
+
+    assert ran.status == 0, ran.err
+    last_run = ran.out.rindex("--- suite run 2")
+    flake = ran.out.index("FLAKE prove went red and then passed")
+    assert last_run < flake < ran.out.index("ok    the Suite passed")
+    assert "compile all went red" not in ran.out
+
+
+def test_the_command_names_no_flake_when_none_happened(repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove"), runs=2)
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner)
+
+    assert ran.status == 0, ran.err
+    assert "FLAKE" not in ran.out
 
 
 def test_a_machine_short_of_what_the_suite_needs_fails_the_command_naming_it(
@@ -1423,8 +1524,8 @@ def test_a_trial_keeps_no_proof_reads_none_and_forgets_none(repo, runner, monkey
         assert proofs.read_bytes() == kept, status
 
 
-def test_this_repo_s_suite_file_runs_once():
-    assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 1
+def test_this_repo_s_suite_file_runs_a_red_suite_twice():
+    assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 2
 
 
 def test_the_loop_docs_say_the_checks_run_together():
@@ -1462,6 +1563,15 @@ def test_the_suite_page_tells_a_team_how_to_run_the_suite_itself():
     for words in ("`skillworks-suite`", "`skillworks-suite --fresh`", "Proof", "full run",
                   "`image`", "`runs`"):
         assert words in text, words
+
+
+def test_the_suite_page_says_what_a_flake_is_where_it_says_what_runs_does():
+    paragraphs = (ROOT / SUITE_PAGE).read_text(encoding="utf-8").split("\n\n")
+    naming = [" ".join(paragraph.split()) for paragraph in paragraphs if "**Flake**" in paragraph]
+
+    assert len(naming) == 1
+    for words in ("`runs`", "counts as green", "always reported", "`runs: 2`"):
+        assert words in naming[0], words
 
 
 def test_the_suite_page_says_what_a_trial_is_after_running_the_suite_yourself():
