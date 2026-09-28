@@ -8,7 +8,7 @@ copyright notices are reproduced here, as MIT requires.
 
 Source: https://github.com/mattpocock/skills
 Covers: every skill under `plugins/skillworks/skills/` and `.claude/skills/` except `unslop`, `skillworks-setup`,
-`spec-loop`, `spec-drift` and `comment-sweep`, which are ours and carry this
+`spec-loop`, `spec-drift`, `spec-names` and `comment-sweep`, which are ours and carry this
 repo's Apache 2.0 licence. `implement`, `to-spec`, `to-tickets`, `code-review`,
 `wayfinder` and `what-next` (upstream `ask-matt`) are upstream skills we have
 modified.

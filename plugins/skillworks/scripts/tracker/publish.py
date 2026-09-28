@@ -12,13 +12,16 @@ from stop import Stop, is_a_number, misuse, refusal
 from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
                            TICKETS, Files, as_numbers, frontmatter, heading, number_of,
                            with_last_section)
-from tracker.reading import DRIFT_REPORT, listed
+from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
 USAGE = (
     "usage: tracker-publish spec <slug> <body-file> [<branch>]\n"
     "       tracker-publish tickets <spec> <ticket-file>...\n"
     "       tracker-publish drift <spec> <report-file>\n"
+    "       tracker-publish names <spec> <report-file>\n"
 )
+
+REPORTS = {"drift": (DRIFT_REPORT, "drift report"), "names": (NAME_REPORT, "Name report")}
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 
@@ -156,27 +159,28 @@ def publish_tickets(tracker, spec, tickets, out):
                   "tracker-publish again.".format(spec, PUSH_ATTEMPTS))
 
 
-def publish_drift(tracker, spec, report, out):
-    if report.replace("\r\n", "\n").split("\n", 1)[0].strip() != DRIFT_REPORT:
-        raise refusal("The drift report does not open with {}. Its first line is that heading, "
-                      "as it is on a GitHub comment.".format(DRIFT_REPORT))
+# Each report replaces its heading to the end of the file, so a drift report takes the Name report after it too.
+def publish_report(tracker, spec, report, heading, what, out):
+    if report.replace("\r\n", "\n").split("\n", 1)[0].strip() != heading:
+        raise refusal("The {} does not open with {}. Its first line is that heading, as it is on a "
+                      "GitHub comment.".format(what, heading))
     branch = tracker.branch_of(spec)
     for _ in range(PUSH_ATTEMPTS):
         tracker.fetched(branch)
         parent = tip(tracker, branch)
         folder = tracker.folder_on(parent, spec)
         if not folder:
-            raise refusal("Spec {} has no folder on origin/{}, so its drift report has nowhere to "
-                          "go.".format(spec, branch))
+            raise refusal("Spec {} has no folder on origin/{}, so its {} has nowhere to "
+                          "go.".format(spec, branch, what))
         path = folder + "/" + SPEC_FILE
-        written = with_last_section(tracker.shown(parent, path), DRIFT_REPORT, report)
+        written = with_last_section(tracker.shown(parent, path), heading, report)
         if tracker.pushed(branch, parent, {path: written},
-                          "Record the drift report of spec {}".format(spec),
-                          "The drift report of spec {}".format(spec)):
+                          "Record the {} of spec {}".format(what, spec),
+                          "The {} of spec {}".format(what, spec)):
             out.write(path + "\n")
             return
-    raise refusal("The drift report of spec {} lost to another push {} times in a row. Run "
-                  "tracker-publish again.".format(spec, PUSH_ATTEMPTS))
+    raise refusal("The {} of spec {} lost to another push {} times in a row. Run "
+                  "tracker-publish again.".format(what, spec, PUSH_ATTEMPTS))
 
 
 def main(argv, runner, out, err, wait, where=None):
@@ -193,9 +197,11 @@ def main(argv, runner, out, err, wait, where=None):
             tickets = checked_tickets(where, argv[2:])
             publish_tickets(opened(runner, where, spec, wait), spec, tickets, out)
             return 0
-        if command == "drift" and len(argv) == 3 and is_a_number(argv[1]):
+        if command in REPORTS and len(argv) == 3 and is_a_number(argv[1]):
             spec = str(int(argv[1]))
-            publish_drift(opened(runner, where, spec, wait), spec, read(where, argv[2]), out)
+            heading, what = REPORTS[command]
+            publish_report(opened(runner, where, spec, wait), spec, read(where, argv[2]), heading,
+                           what, out)
             return 0
         raise misuse(USAGE)
     except Stop as stop:

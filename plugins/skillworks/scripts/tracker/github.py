@@ -1,7 +1,7 @@
 # gh 2.92.0 has no dependency flags, so reads go through `gh api`: docs/research/harness/ticket-state-guardrails.md.
 
 from stop import is_a_number, refusal
-from tracker.reading import DRIFT_REPORT, listed
+from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
 # gh asks at a terminal, and a script run by a loop or by hand may have nobody at one.
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
@@ -173,8 +173,14 @@ class GitHub:
         return self.last_comment(trailer.removeprefix("#"))
 
     # The heading tells the report from a comment a person left after it, or from none at all.
-    def drift_report(self, spec):
+    def report_below(self, spec, heading):
         lines = (self.last_comment(spec) or "").replace("\r\n", "\n").split("\n")
-        if lines[0].strip() != DRIFT_REPORT:
+        if lines[0].strip() != heading:
             return ""
         return "\n".join(lines[1:]).strip("\n")
+
+    def drift_report(self, spec):
+        return self.report_below(spec, DRIFT_REPORT)
+
+    def name_report(self, spec):
+        return self.report_below(spec, NAME_REPORT)

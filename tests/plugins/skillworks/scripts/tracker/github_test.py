@@ -136,6 +136,20 @@ def test_a_spec_whose_last_comment_is_no_drift_report_has_none(runner, last):
     assert github(runner).drift_report("158") == ""
 
 
+def test_a_name_report_is_the_last_comment_on_the_spec_below_its_heading(runner):
+    runner.stub("gh", says="## Name report\n\n### Renames\n\n- None\n")
+
+    assert github(runner).name_report("158") == "### Renames\n\n- None"
+    assert asked(runner) == ["issue view 158 --json comments --jq .comments[-1].body"]
+
+
+@pytest.mark.parametrize("last", ["## Drift report\n\n- S1: Done\n", "Looks good to me.\n", ""])
+def test_a_spec_whose_last_comment_is_no_name_report_has_none(runner, last):
+    runner.stub("gh", says=last)
+
+    assert github(runner).name_report("158") == ""
+
+
 def test_a_commit_names_its_issue_by_number_alone(runner):
     assert github(runner).trailer("168") == "#168"
     assert github(runner).reference("168") == "168"

@@ -7,7 +7,7 @@ import seed_steering
 from conftest import PLUGIN, ROOT, Ran, git, launch
 from suite import Suite
 from tracker.files import CLOSING_NOTE
-from tracker.reading import DRIFT_REPORT
+from tracker.reading import DRIFT_REPORT, NAME_REPORT
 
 SKILLS = PLUGIN / "skills"
 SETUP = SKILLS / "skillworks-setup"
@@ -940,9 +940,11 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
     assert "**List what is open**" in files
     assert "tracker-publish drift <spec> <file>" in files
     assert "`{}`".format(DRIFT_REPORT) in files
+    assert "tracker-publish names <spec> <file>" in files
+    assert "`{}`".format(NAME_REPORT) in files
 
 
-@pytest.mark.parametrize("skill", ["what-next", "review-spec", "spec-drift"])
+@pytest.mark.parametrize("skill", ["what-next", "review-spec", "spec-drift", "spec-names"])
 def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(skill):
     text = skill_text(skill)
 
@@ -984,6 +986,20 @@ def test_spec_drift_records_its_report_with_the_spec_under_the_heading_the_loop_
     assert "tracker-publish drift <spec> <file>" in spec_drift
     assert "`{}`".format(DRIFT_REPORT) in spec_drift
     assert "`spec.md`" in spec_drift
+
+
+def test_spec_names_reads_only_the_diff_and_the_glossary_and_records_a_name_report():
+    spec_names = skill_text("spec-names")
+
+    assert "git diff <base>..origin/<target>" in spec_names
+    assert "**The glossary of each context the diff touches.**" in spec_names
+    assert "Read nothing else: not the spec, not its tickets, not the drift report" in spec_names
+    assert "**A name whose meaning moved.**" in spec_names
+    assert "**A concept two tickets named two ways.**" in spec_names
+    assert 'A rename is never "Optional"' in spec_names
+    assert "The first line is `{}`.".format(NAME_REPORT) in spec_names
+    assert "The `### Renames` list comes next." in spec_names
+    assert "tracker-publish names <spec> <file>" in spec_names
 
 
 def stops(skill, *names):
@@ -1233,8 +1249,10 @@ def test_the_loop_page_says_the_driver_decides_a_clean_finish_after_the_full_run
     page = " ".join((ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8").split())
 
     assert "The script decides a clean finish, and nothing else does." in page
-    assert "every Verdict Done or In step, and [the full run](#the-full-run) green" in page
-    assert "It runs once, at the end, after the drift check and its count." in page
+    assert ("every Verdict Done or In step, no rename owed in [the Name report](#the-name-check), "
+            "and [the full run](#the-full-run) green") in page
+    assert ("It runs once, at the end, after the drift check, its count and [the Name "
+            "check](#the-name-check).") in page
 
 
 def test_the_loop_page_describes_the_gap_ticket_and_the_one_round():
@@ -1249,6 +1267,31 @@ def test_the_loop_page_describes_the_gap_ticket_and_the_one_round():
     assert "| The Gap ticket |" in text
     assert "FILED #210 under spec #200" in text
     assert "STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was built" in text
+
+
+def test_the_loop_page_describes_the_name_check_and_its_report():
+    text = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
+    page = " ".join(text.split())
+
+    assert "\n## The Name check\n" in text
+    assert "\n### The Name report\n" in text
+    assert "/skillworks:spec-names <spec> <base>" in page
+    assert "the spec's whole diff from the base commit" in page
+    assert "A rename is never \"Optional\"." in page
+    assert "`.spec-loop/<spec>/names.md`, beside `drift.md`" in page
+    assert 'names["Name check' in text
+    assert "| The Name check |" in text
+    assert "STOP  the Name check finds 1 rename on spec #200" in text
+
+
+def test_the_steering_page_says_the_name_check_reads_the_glossary():
+    rows = [line for line in (ROOT / "docs" / "usage" / "steering.md").read_text(
+        encoding="utf-8").split("\n") if line.startswith(("| `surfaces.md`", "| `CONTEXT.md`"))]
+
+    assert len(rows) == 2
+    for row in rows:
+        assert "The Name check" in row
+        assert "glossary" in row
 
 
 def setup_section(heading):

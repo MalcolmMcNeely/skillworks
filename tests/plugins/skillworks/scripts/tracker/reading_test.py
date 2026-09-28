@@ -3,7 +3,7 @@ import ast
 from conftest import SCRIPTS
 from tracker.reading import listed
 
-ONE_COPY = {"listed", "DRIFT_REPORT"}
+ONE_COPY = {"listed", "DRIFT_REPORT", "NAME_REPORT"}
 
 
 def defined_in(tree):
@@ -29,4 +29,4 @@ def test_each_fact_the_tracker_package_keeps_is_defined_once():
         for name in ONE_COPY & set(defined_in(tree)):
             homes.setdefault(name, []).append(script.relative_to(SCRIPTS).as_posix())
 
-    assert homes == {"listed": ["tracker/reading.py"], "DRIFT_REPORT": ["tracker/reading.py"]}
+    assert homes == {name: ["tracker/reading.py"] for name in ONE_COPY}

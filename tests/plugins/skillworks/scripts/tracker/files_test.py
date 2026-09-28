@@ -342,6 +342,7 @@ def given_sessions_that_finish(driver, **finish):
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner, **finish)
     sessions.then["spec-drift"] = drifting(driver)
+    sessions.then["spec-names"] = naming(driver)
     driver.push({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -482,6 +483,7 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner)
     sessions.then["spec-drift"] = drifting(driver)
+    sessions.then["spec-names"] = naming(driver)
     return sessions
 
 
@@ -512,13 +514,26 @@ VERDICTS = "### Verdicts\n\n- S1: Done\n- D1: Done\n"
 REPORT = "## Drift report\n\n" + VERDICTS
 
 
-def drifting(driver, report=REPORT):
-    def drift():
-        held = driver.repo.root / "drift-report.md"
+def recording(driver, command, report):
+    def record():
+        held = driver.repo.root / (command + "-report.md")
         held.write_text(report, encoding="utf-8", newline="\n")
-        publish.main(["drift", SPEC, held.as_posix()], driver.runner, io.StringIO(),
+        publish.main([command, SPEC, held.as_posix()], driver.runner, io.StringIO(),
                      io.StringIO(), lambda seconds: None, driver.repo.work.as_posix())
-    return drift
+    return record
+
+
+def drifting(driver, report=REPORT):
+    return recording(driver, "drift", report)
+
+
+RENAMES = "### Renames\n\n- None\n"
+
+NAMES = "## Name report\n\n" + RENAMES
+
+
+def naming(driver, report=NAMES):
+    return recording(driver, "names", report)
 
 
 def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
@@ -528,12 +543,48 @@ def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
 
     assert ran.status == 0, said(ran)
     text = on_remote(driver.repo, FOLDER + "/spec.md")
-    assert text.endswith(REPORT)
+    assert REPORT + "\n" + NAMES in text
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
     held = driver.repo.work / ".spec-loop" / SPEC / "drift.md"
     assert held.read_text(encoding="utf-8") == VERDICTS
     assert "DRIFT the report is recorded on spec 7" in ran.out
     assert "COUNT the spec holds 2 items, and the drift report gives 2 Verdicts" in ran.out
+
+
+def test_the_loop_reads_back_the_name_report_recorded_below_the_drift_report(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert on_remote(driver.repo, FOLDER + "/spec.md").endswith(NAMES)
+    held = driver.repo.work / ".spec-loop" / SPEC / "names.md"
+    assert held.read_text(encoding="utf-8") == RENAMES
+    assert "NAMES no rename is owed on spec 7" in ran.out
+
+
+def test_a_name_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):
+    sessions = given_sessions_that_finish(driver)
+    del sessions.then["spec-names"]
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "STOP  the Name check recorded no report on spec 7" in ran.out
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+
+
+def test_a_rename_found_leaves_the_spec_open(driver):
+    sessions = given_sessions_that_finish(driver)
+    sessions.then["spec-names"] = naming(
+        driver, "## Name report\n\n### Renames\n\n- `Batch`: it now holds a whole spec.\n")
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "      Rename: `Batch`: it now holds a whole spec.\n" in ran.out
+    assert "CLOSE" not in ran.out
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
 
 
 def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):

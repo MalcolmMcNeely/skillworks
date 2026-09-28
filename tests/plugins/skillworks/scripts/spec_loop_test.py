@@ -85,6 +85,19 @@ def drift_report(*extra, unrequested=(), **given):
     return said
 
 
+NAME_CHECK = "/skillworks:spec-names"
+
+JUDGES = ("/skillworks:spec-drift", NAME_CHECK)
+
+
+def name_report(*renames):
+    return "## Name report\n\n### Renames\n\n" + "".join(
+        "- {}\n".format(line) for line in renames or ("None",))
+
+
+NO_RENAMES = name_report()
+
+
 # The checkout sits on the spec's branch, so what a case commits there reaches it and not main.
 @pytest.fixture
 def spec_mode(tmp_path, runner, monkeypatch):
@@ -125,7 +138,9 @@ class Tracker:
         self.body = NAMES_ITS_BRANCH
         self.ready = Ran(0, "", "")
         # A drift check that found everything done, so only a case about the count reads a stop.
-        self.last_comment = drift_report()
+        self.drift_report = drift_report()
+        # A Name check that found no rename, so only a case about the names reads a stop.
+        self.name_report = NO_RENAMES
         self.filed = []
         runner.stub("gh", does=self.answer)
 
@@ -169,8 +184,16 @@ class Tracker:
         if asked == "pr ready " + SPEC_BRANCH:
             return self.ready
         if asked == "issue view {} --json comments --jq .comments[-1].body".format(SPEC):
-            return Ran(0, self.last_comment, "")
+            return Ran(0, self.newest_comment(), "")
         return Ran(1, "", "the tracker has no answer for: " + asked + "\n")
+
+    # Each judge posts its report as it runs, so the newest comment is the last judge's.
+    def newest_comment(self):
+        judges = [call[2] for call in self.runner.calls
+                  if call[0] == "claude" and call[2].startswith(JUDGES)]
+        if judges and judges[-1].startswith(NAME_CHECK):
+            return self.name_report
+        return self.drift_report
 
     # Numbered after the last ticket, and open, so the loop's next read of the spec finds it.
     def file(self, called):
@@ -616,12 +639,22 @@ def test_the_dry_run_names_the_gap_round_between_the_drift_check_and_the_full_ru
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0, said(ran)
-    assert planned_steps(ran)[-4:] == ["drift", "gap-ticket", "re-check", "full-run"]
+    assert planned_steps(ran)[-5:] == ["drift", "gap-ticket", "re-check", "names", "full-run"]
     assert '"/skillworks:spec-drift 158 <base>"' in planned_call(ran, "drift")
     assert "one ticket under the spec when the count finds a Gap" in planned_call(ran, "gap-ticket")
     assert '"/skillworks:spec-drift 158 <base> <the Gap items>"' in planned_call(ran, "re-check")
     assert planned_checks(ran, "re-check") == "no Gap left, no Contradicts"
     assert "once and last" in planned_call(ran, "full-run")
+
+
+def test_the_dry_run_names_the_name_check_after_the_gap_round(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert '"/skillworks:spec-names 158 <base>"' in planned_call(ran, "names")
+    assert planned_checks(ran, "names") == "a Name report recorded, a Renames list, no rename"
 
 
 def test_a_closed_ticket_is_listed_and_given_no_plan(loop):
@@ -2118,7 +2151,7 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
 def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runner):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
-    tracker.last_comment = drift_report()
+    tracker.drift_report = drift_report()
 
     ran = loop.run(SPEC)
 
@@ -2133,7 +2166,7 @@ def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runn
 def drifted(loop, report):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
-    tracker.last_comment = report
+    tracker.drift_report = report
     return loop.run(SPEC)
 
 
@@ -2229,7 +2262,7 @@ def given_drift_reports(sessions, tracker, *reports):
     waiting = list(reports)
 
     def record():
-        tracker.last_comment = waiting.pop(0)
+        tracker.drift_report = waiting.pop(0)
     sessions.then["spec-drift"] = record
 
 
@@ -2378,6 +2411,84 @@ def test_a_contradicts_in_the_re_check_stops_the_loop(loop):
     assert ran.status == 1
     assert "      Contradicts: S2: It closes the spec.\n" in loop.log()
     assert "END" not in loop.log()
+
+
+# --- the Name check ------------------------------------------------------------
+
+def named_back(loop, report):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_sessions_that_report(loop)
+    tracker.name_report = report
+    return loop.run(SPEC)
+
+
+def test_a_name_check_that_finds_no_rename_goes_on_to_a_clean_finish(loop, runner):
+    ran = named_back(loop, NO_RENAMES)
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, NAME_CHECK) == [
+        "{} {} {}".format(NAME_CHECK, SPEC, base_of(loop))]
+    log = loop.log()
+    assert "NAMES the report is recorded on spec #{}".format(SPEC) in log
+    assert "NAMES no rename is owed on spec #{}".format(SPEC) in log
+    assert (loop.records() / "names.md").read_text(encoding="utf-8") == "### Renames\n\n- None\n"
+    assert log.index("COUNT") < log.index("NAMES") < log.index("END   spec #{}".format(SPEC))
+
+
+def test_the_name_check_runs_after_the_gap_round(loop, runner):
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
+
+    assert ran.status == 0, said(ran)
+    judged = [call[2].split()[0] for call in session_calls(runner) if call[2].startswith(JUDGES)]
+    assert judged == ["/skillworks:spec-drift", "/skillworks:spec-drift", NAME_CHECK]
+
+
+def test_the_name_check_names_the_session_that_started_the_driver(loop, runner, monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
+    named_back(loop, NO_RENAMES)
+
+    assert session_calls(runner)[-1][2].startswith(NAME_CHECK)
+    assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
+
+
+def test_each_rename_found_is_logged_and_stops_the_loop_before_a_clean_finish(loop):
+    ran = named_back(loop, name_report("`Batch`: it now holds a whole spec.",
+                                       "Gap and Hole: two tickets named one concept two ways."))
+
+    assert ran.status == 1
+    log = loop.log()
+    assert "NAME  `Batch`: it now holds a whole spec.\n" in log
+    assert "NAME  Gap and Hole: two tickets named one concept two ways.\n" in log
+    assert ("STOP  the Name check finds 2 renames on spec #{}. A rename is owed and not yet "
+            "built, so this is not a clean finish.").format(SPEC) in log
+    assert "      Rename: `Batch`: it now holds a whole spec.\n" in log
+    assert "END" not in log
+
+
+def test_a_name_check_that_recorded_no_report_stops_the_loop(loop):
+    ran = named_back(loop, "Looks good to me.\n")
+
+    assert ran.status == 1
+    assert ("STOP  the Name check recorded no report on spec #{}, so no name was read and the "
+            "spec stays open.").format(SPEC) in loop.log()
+    assert not (loop.records() / "names.md").exists()
+    assert "END" not in loop.log()
+
+
+def test_a_name_report_with_no_renames_list_stops_the_loop(loop):
+    ran = named_back(loop, "## Name report\n\nEvery name is true.\n")
+
+    assert ran.status == 1
+    assert ("STOP  the Name report on spec #{} holds no ### Renames list, so no rename was "
+            "read").format(SPEC) in loop.log()
+    assert "END" not in loop.log()
+
+
+def test_a_drift_stop_runs_no_name_check(loop, runner):
+    ran = drifted(loop, drift_report(D1="Contradicts. It closes the spec."))
+
+    assert ran.status == 1
+    assert prompts_asking(runner, NAME_CHECK) == []
 
 
 def test_attributes_already_set_are_kept_and_the_parent_is_added(loop, runner, monkeypatch):
@@ -2917,6 +3028,34 @@ def test_the_full_run_runs_once_and_last_after_the_gap_round(loop, runner):
     full = next(at for at, call in enumerate(runner.made)
                 if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
     assert re_check < full
+
+
+def test_the_full_run_runs_after_the_name_check(loop, runner):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    assert log.index("NAMES no rename is owed") < log.index("FULL  #168 landed in this run")
+    names = next(at for at, call in enumerate(runner.made)
+                 if call.args[0] == "claude" and call.args[2].startswith(NAME_CHECK))
+    full = next(at for at, call in enumerate(runner.made)
+                if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
+    assert names < full
+
+
+def test_a_rename_found_still_gets_the_full_run_and_writes_no_end(loop):
+    tracker = given_a_run_that_lands(loop)
+    tracker.name_report = name_report("`Batch`: it now holds a whole spec.")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    log = loop.log()
+    assert "      Rename: `Batch`: it now holds a whole spec.\n" in log
+    assert "FULL  main at" in log
+    assert "END" not in log
 
 
 def test_a_red_full_run_after_every_verdict_done_writes_no_end(loop):

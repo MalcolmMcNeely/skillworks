@@ -53,7 +53,7 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 
 ## Spec loop operations
 
-Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift` and the `spec-loop` command.
+Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift`, `/skillworks:spec-names` and the `spec-loop` command.
 
 A **spec** issue is the parent. Its **tickets** are GitHub sub-issues of it. That parentage scopes the loop: a driver reads one spec's children and nothing else, so two people running the loop on two specs cannot take each other's tickets.
 
@@ -127,6 +127,7 @@ A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<t
 - **Is a ticket startable?** It is open, and every ticket in its `blocked-by` is closed on the remote's Target branch.
 - **List what is open**: each spec folder in `.specs/` on the remote's Target branch whose `spec.md` says `status: open`, and in each one the tickets that are startable. `git ls-tree --name-only origin/<target> .specs/` lists the folders. In `spec` mode each spec sits on a branch of its own, so `git fetch origin`, and look on every branch for a spec folder whose `spec.md` names that branch as its `branch`.
 - **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command puts it at the end of the spec's `spec.md` in place of any earlier one, since there is no issue to comment on. The loop reads it back from there. `/skillworks:spec-drift` says how.
+- **Record a Name report**: `tracker-publish names <spec> <file>`. The file opens with `## Name report`, and the command puts it below the drift report in place of any earlier one. A new drift report takes it away, since a new drift check starts the judging again. `/skillworks:spec-names` says how.
 - **Claim a ticket**: the loop does it, with a commit that sets `claimed-by`, pushed to the Target branch. A push the remote turns down lost a race, so the loop reads again and takes another ticket.
 
 ### The two conventions, with files

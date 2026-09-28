@@ -40,6 +40,7 @@ import ticket_worktree
 from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items
+from count.renames import RENAMES, read_renames
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
@@ -692,6 +693,9 @@ class Loop:
                             "built through every step above")
                 + plan_line("re-check", drift + ' <the Gap items>" --session-id <new id>, once',
                             "no Gap left, no Contradicts")
+                + plan_line("names", 'claude -p "{}spec-names {} <base>" --session-id <new '
+                            'id>'.format(PLUGIN, self.spec),
+                            "a Name report recorded, a Renames list, no rename")
                 + plan_line("full-run", "the whole Suite on the newest origin/<target>, with no "
                             "Proofs and no images, once and last"))
 
@@ -939,6 +943,26 @@ class Loop:
 
     # --- the drift check -----------------------------------------------------
 
+    # A judge records its report with the spec and changes nothing, so a tree it left changed stops.
+    def judge(self, named, what, prompt):
+        # The main checkout was never pulled, so only a fresh worktree holds the finished work.
+        self.job_worktree = self.opened(named)
+        if not self.job_worktree:
+            raise stop("FAIL  the {} got no worktree to run in.".format(what))
+
+        ran = self.claude_p(prompt)
+        written(self.log_dir / (named + ".json"), ran.out)
+        written(self.log_dir / (named + ".err"), ran.err)
+        if ran.status != 0:
+            self.say("WARN  {} exited non-zero. See {}".format(
+                what, self.log_dir / (named + ".err")))
+
+        if self.tree_of_job():
+            raise stop("FAIL  {} left uncommitted changes in {}.".format(what, self.job_worktree))
+        if self.worktree("close", named)[0] != 0:
+            raise stop("FAIL  the {}'s worktree at {} would not go.".format(
+                what, self.job_worktree))
+
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
         named = "drift-gaps" if asked else "drift"
@@ -948,25 +972,8 @@ class Loop:
         else:
             self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
                 self.spec_named()))
-
-        # The main checkout was never pulled, so only a fresh worktree holds the finished work.
-        self.job_worktree = self.opened(named)
-        if not self.job_worktree:
-            raise stop("FAIL  the drift check got no worktree to run in.")
-
-        ran = self.claude_p(PLUGIN + "spec-drift {} {}{}".format(
+        self.judge(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
             self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""))
-        written(self.log_dir / (named + ".json"), ran.out)
-        written(self.log_dir / (named + ".err"), ran.err)
-        if ran.status != 0:
-            self.say("WARN  drift check exited non-zero. See {}".format(
-                self.log_dir / (named + ".err")))
-
-        if self.tree_of_job():
-            raise stop("FAIL  drift check left uncommitted changes in {}.".format(
-                self.job_worktree))
-        if self.worktree("close", named)[0] != 0:
-            raise stop("FAIL  the drift worktree at {} would not go.".format(self.job_worktree))
         return self.read_drift_report(named, asked)
 
     # Read back from the Tracker, so a report the Session only said and never recorded is caught.
@@ -1044,6 +1051,38 @@ class Loop:
         self.run_tickets()
         self.check_drift(base, [gap.item.name for gap in gaps])
 
+    # --- the Name check ------------------------------------------------------
+
+    # After the Gap round, so it sees every name the spec brought in, the Gap build's too.
+    def check_names(self, base):
+        self.say("NAMES checking the names spec {} brought in against the glossary.".format(
+            self.spec_named()))
+        self.judge("names", "Name check", PLUGIN + "spec-names {} {}".format(self.spec, base))
+
+        # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
+        report = self.tracker.name_report(self.spec)
+        if not report:
+            raise stop("STOP  the Name check recorded no report on spec {}, so no name was read "
+                       "and the spec stays open.".format(self.spec_named()))
+        held = self.log_dir / "names.md"
+        written(held, report + "\n")
+        self.say("NAMES the report is recorded on spec {}. Read it at {}".format(
+            self.spec_named(), held))
+
+        renames = read_renames(report)
+        if renames is None:
+            raise stop("STOP  the Name report on spec {} holds no {} list, so no rename was read "
+                       "and the spec stays open. Read it at {}".format(
+                           self.spec_named(), RENAMES, held))
+        for said in renames:
+            self.say("NAME  " + said)
+        if renames:
+            raise stop("STOP  the Name check finds {} on spec {}. A rename is owed and not yet "
+                       "built, so this is not a clean finish.\n{}      Read it at {}".format(
+                           how_many(len(renames), "rename", "renames"), self.spec_named(),
+                           "".join("      Rename: {}\n".format(said) for said in renames), held))
+        self.say("NAMES no rename is owed on spec {}".format(self.spec_named()))
+
     # --- the spec's close ---------------------------------------------------
 
     # After the drift check, so no spec is closed before its work was read against it.
@@ -1117,6 +1156,7 @@ class Loop:
         try:
             self.run_tickets()
             self.close_gaps(base)
+            self.check_names(base)
         except Stop as stopped:
             self.run_full(stopped)
             raise

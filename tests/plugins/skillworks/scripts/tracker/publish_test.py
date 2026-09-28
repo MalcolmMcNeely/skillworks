@@ -350,6 +350,59 @@ def test_a_drift_report_for_a_spec_with_no_folder_is_turned_down(writer):
     assert "Spec 9 has no folder on origin/main" in ran.err
 
 
+NAMES = "## Name report\n\n### Renames\n\n- `Batch`: it now holds a whole spec.\n"
+
+
+def test_a_name_report_is_pushed_below_the_drift_report_and_each_reads_back_alone(writer):
+    writer.spec()
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    ran = writer.run("names", "1", writer.written("names.md", NAMES))
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == ".specs/0001-local-tracker/spec.md\n"
+    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
+    assert text == "---\nstatus: open\n---\n\n" + BODY + "\n" + REPORT + "\n" + NAMES
+    assert writer.tracker("1").drift_report("1") == "- Story 1: Done\n- Story 2: Missing"
+    assert writer.tracker("1").name_report("1") == (
+        "### Renames\n\n- `Batch`: it now holds a whole spec.")
+
+
+def test_a_second_name_report_takes_the_place_of_the_first(writer):
+    writer.spec()
+    writer.run("names", "1", writer.written("names.md", NAMES))
+
+    ran = writer.run("names", "1", writer.written("again.md",
+                                                  "## Name report\n\n### Renames\n\n- None\n"))
+
+    assert ran.status == 0, said(ran)
+    assert writer.on_remote(".specs/0001-local-tracker/spec.md").count("## Name report") == 1
+    assert writer.tracker("1").name_report("1") == "### Renames\n\n- None"
+
+
+# A new drift check starts a new round of judging, so the Name report it follows is out of date.
+def test_a_new_drift_report_takes_the_name_report_below_it_away(writer):
+    writer.spec()
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("names", "1", writer.written("names.md", NAMES))
+
+    ran = writer.run("drift", "1", writer.written("again.md", "## Drift report\n\nAll done.\n"))
+
+    assert ran.status == 0, said(ran)
+    assert writer.tracker("1").drift_report("1") == "All done."
+    assert writer.tracker("1").name_report("1") == ""
+
+
+def test_a_name_report_without_its_heading_is_turned_down(writer):
+    writer.spec()
+
+    ran = writer.run("names", "1", writer.written("names.md", "### Renames\n\n- None\n"))
+
+    assert ran.status == 1
+    assert "## Name report" in ran.err
+    assert writer.tracker("1").name_report("1") == ""
+
+
 def test_the_command_runs_from_the_plugins_bin_folder(writer):
     body = Path(writer.written("spec-body.md", BODY))
 

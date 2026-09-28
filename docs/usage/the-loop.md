@@ -21,12 +21,15 @@ flowchart TD
     more -- yes --> ticket
     more -- no --> drift["Drift check<br/>a report kept with the spec"]
     drift --> count{"Every Verdict<br/>Done or In step?"}
-    count -- yes --> full{"Full Suite run, once<br/>on the newest Target branch"}
+    count -- yes --> names["Name check<br/>a Name report kept with the spec"]
     count -- "a Gap" --> gaps["The Gap ticket<br/>filed under the spec, built like any ticket"]
     gaps --> recheck["Drift check again<br/>on the Gap items alone"]
     recheck --> recount{"Every Verdict<br/>Done or In step?"}
-    recount -- yes --> full
+    recount -- yes --> names
     recount -- "no: one round only" --> last
+    names --> renamed{"No rename owed?"}
+    renamed -- yes --> full{"Full Suite run, once<br/>on the newest Target branch"}
+    renamed -- "a rename" --> last
     count -- "a Contradicts" --> last["Full Suite run, once"] --> stop(["The loop stops"])
     full -- red --> stop
     full -- green --> clean["A clean finish<br/>END, and the spec closes with files"]
@@ -511,6 +514,19 @@ STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was b
 The loop built these once and they are still owed, so a second build would most likely miss again.
 Read the report, build what is owed in a ticket of its own or change the spec, and run the loop again.
 
+**A Name report that finds a rename.** After the drift check, the script runs [the Name
+check](#the-name-check). No Name report, a report with no `### Renames` list, or any rename in it
+stops the loop with a `STOP` line, and the spec stays open. The full run still runs first. The line
+names each rename:
+
+```
+STOP  the Name check finds 1 rename on spec #200. A rename is owed and not yet built, so this is not a clean finish.
+      Rename: `Batch`: it now names a whole run of tickets, and the glossary calls that a Job.
+      Read it at .spec-loop/200/names.md
+```
+
+The loop does not build renames yet. Make each rename in a ticket of your own, and run the loop again.
+
 ### Restarting a stopped run: the Keep
 
 To restart, run the same command again: `spec-loop <spec>`.
@@ -554,10 +570,11 @@ A Proof knows only the files in your repo. A change outside it, such as a new SD
 stale. So after each loop run that landed at least one ticket, the script runs the whole Suite once
 more, on the newest Target branch on `origin`, in a worktree of its own.
 
-It runs once, at the end, after the drift check and its count. When the count finds a Gap, it runs
-after [the Gap round](#the-gap-round) too. It is the slowest step, so it runs only on the finished
-spec. It runs when the loop stopped early too, whether at a ticket or at the
-count, because the tickets that landed are on the Target branch all the same.
+It runs once, at the end, after the drift check, its count and [the Name check](#the-name-check).
+When the count finds a Gap, it runs after [the Gap round](#the-gap-round) too. It is the slowest
+step, so it runs only on the finished spec. It runs when the loop stopped early too, whether at a
+ticket, at the count or at the Name check, because the tickets that landed are on the Target branch
+all the same.
 
 The full run trusts no Proof and uses no image, so every check runs on your own machine. A check that
 goes red there loses all its Proofs, so a stale Proof cannot skip it again.
@@ -649,9 +666,10 @@ and so does a re-check that recorded no new report, because the Gap items were n
 ### A clean finish
 
 The script decides a clean finish, and nothing else does. A clean finish is every Verdict Done or In
-step, and [the full run](#the-full-run) green. Only then does the script write its `END` line, and
-with the files Tracker only then does it close the spec. A Gap left after the round, a Contradicts or
-a red full run stops the loop before either. `/skillworks:spec-loop` reads the `END` line and does not judge the report
+step, no rename owed in [the Name report](#the-name-check), and [the full run](#the-full-run) green.
+Only then does the script write its `END` line, and with the files Tracker only then does it close
+the spec. A Gap left after the round, a Contradicts, a rename or a red full run stops the loop before
+either. `/skillworks:spec-loop` reads the `END` line and does not judge the report
 itself, so the skill and the script never disagree. Before it offers to close the spec, it names each
 Unrequested item from the `NOTE` lines.
 
@@ -659,6 +677,56 @@ Closing the spec is where a person says the work is done. With a branch name, a 
 hand after a clean finish. With `spec`, the loop marks the spec's pull request ready for review, and
 the spec closes when a person merges it. With the files Tracker, the loop closes the spec itself on a
 clean finish, and with `spec` it leaves the pull request to you.
+
+## The Name check
+
+The drift check asks whether the work is there. The **Name check** asks one smaller thing: whether
+the names still say what the code means. A small question in a small context misses less.
+
+It runs once, after the drift check and its count, or after [the Gap round](#the-gap-round) when the
+count found a Gap, so it sees every name the spec brought in, the Gap ticket's too. The script opens
+one more worktree and runs `/skillworks:spec-names <spec> <base>` in a fresh Session. It reads two
+things, and nothing else:
+
+- the spec's whole diff from the base commit, on the newest Target branch;
+- the glossary of each context the diff touches, as `CONTEXT-MAP.md` names it, or your one
+  `CONTEXT.md`.
+
+It lists two kinds of finding, and each one is a rename:
+
+- a name whose meaning moved: the code under it now does something else, and the name stayed;
+- a concept two tickets named two ways.
+
+A rename is never "Optional". A name that says the wrong thing is work owed, and nobody is asked
+whether to fix it.
+
+### The Name report
+
+The Session records a **Name report** with the spec, as the drift check records its report. With the
+GitHub Tracker it is a comment on the spec issue. With the files Tracker it goes at the end of
+`spec.md`, below the drift report, through `tracker-publish names`. A new drift report takes an old
+Name report away, because a new drift check starts the judging again.
+
+```markdown
+## Name report
+
+### Renames
+
+- `Batch`: it now names a whole run of tickets, and the glossary calls that a Job.
+```
+
+The report opens with `## Name report`, then a `### Renames` list, one line per finding. Each line
+names the name or the concept and says in one sentence why it must change. With nothing to rename,
+the list says `- None`.
+
+The script reads the report back from the Tracker, so a finding the Session only said and never
+recorded is caught. It keeps a copy at `.spec-loop/<spec>/names.md`, beside `drift.md`, and writes a
+`NAME` line for each rename. No report stops the loop, and so does a report with no `### Renames`
+list.
+
+The loop does not build renames yet. A rename found is not a clean finish: the loop stops and names
+each one, as [When a step fails](#when-a-step-fails) shows. With no rename, the loop goes on to the
+full run.
 
 ## The stage map
 
@@ -693,6 +761,7 @@ use with nobody watching.
 | Landing | `CLAUDE.md` and the rules, in the Session that resolves a conflict | `suite.json`, for the Suite again | The checks in `suite.json`. |
 | The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `surfaces.md` | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
 | The Gap ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of the drift report's Verdicts and reasons. |
+| The Name check | `CLAUDE.md` and the rules | `issue-tracker.md`, `CONTEXT-MAP.md`, your glossary | The glossary, which decides the word a moved name or a concept named two ways should take. |
 | The full run | Nothing. No Session runs. | `suite.json` | The checks in `suite.json`. |
 
 The rules' settings load into every Session, but each one is enforced only once a check exists that
@@ -731,13 +800,16 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
 
-After the last ticket, the drift check adds its own lines, then the full run adds its own:
+After the last ticket, the drift check adds its own lines, then the Name check, then the full run:
 
 ```
 18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift.md
 18:40:12 COUNT the spec holds 21 items, and the drift report gives 21 Verdicts
 18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
-18:40:12 FULL  #202, #203 landed in this run, so the whole Suite runs on the newest origin/master with no Proofs and no images
+18:40:13 NAMES checking the names spec #200 brought in against the glossary.
+18:44:02 NAMES the report is recorded on spec #200. Read it at .spec-loop/200/names.md
+18:44:02 NAMES no rename is owed on spec #200
+18:44:02 FULL  #202, #203 landed in this run, so the whole Suite runs on the newest origin/master with no Proofs and no images
 18:52:30 FULL  run 1 passed
 18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
 18:52:31 END   spec #200 complete. Every ticket is on master.
@@ -762,8 +834,8 @@ then the re-check's:
 19:39:47 COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts
 ```
 
-A `STOP` line names each Gap left after the round and each Contradicts, as [When a step
-fails](#when-a-step-fails) shows. It comes last, after the full run's lines, in place of `END`. `END`
+A `NAME` line names each rename the Name check found. A `STOP` line names each Gap left after the
+round, each Contradicts and each rename, as [When a step fails](#when-a-step-fails) shows. It comes last, after the full run's lines, in place of `END`. `END`
 comes only on [a clean finish](#a-clean-finish).
 
 The position counts closed tickets, so a restarted run starts at its real place. The time left is the
@@ -773,6 +845,6 @@ Expect a long run. A ticket can take from half an hour to a few hours.
 
 `spec-loop <spec> --dry-run` prints the whole plan instead of running it: the `SHAPE` line, every
 ticket, its worktree and Job branch, every step's command and facts, the landing steps, and what comes
-after the last ticket: the drift check, the Gap round and the full run. A spec in
+after the last ticket: the drift check, the Gap round, the Name check and the full run. A spec in
 another shape stops the dry run at its `ABORT` line, as it would stop a run. It starts no Session and
 reaches no remote.

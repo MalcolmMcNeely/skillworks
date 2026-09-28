@@ -9,7 +9,7 @@ from typing import NamedTuple
 
 from fetch_origin import fetch_origin
 from stop import is_a_number, refusal
-from tracker.reading import DRIFT_REPORT, listed
+from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
 SPECS = ".specs"
 SPEC_FILE = "spec.md"
@@ -95,12 +95,14 @@ def with_field(text, key, value):
     return ending.join(lines)
 
 
-def section_in(body, named):
+def section_in(body, named, ends_at=None):
     lines = body.split("\n")
     stripped = [line.strip() for line in lines]
     if named not in stripped:
         return ""
-    return "\n".join(lines[stripped.index(named) + 1:]).strip("\n")
+    start = stripped.index(named) + 1
+    end = stripped.index(ends_at, start) if ends_at in stripped[start:] else len(lines)
+    return "\n".join(lines[start:end]).strip("\n")
 
 
 def closing_note_in(body):
@@ -341,14 +343,21 @@ class Files:
         ref = "origin/" + self.branch_of(spec)
         return closing_note_in(frontmatter(self.shown(ref, found[0].path))[1])
 
-    def drift_report(self, spec):
+    def spec_text(self, spec):
         branch = self.branch_of(spec)
         self.fetched(branch)
         ref = "origin/" + branch
         folder = self.folder_on(ref, spec)
         if not folder:
             return ""
-        return section_in(frontmatter(self.shown(ref, folder + "/" + SPEC_FILE))[1], DRIFT_REPORT)
+        return frontmatter(self.shown(ref, folder + "/" + SPEC_FILE))[1]
+
+    # The Name check runs after the drift check, so its report is the one written below.
+    def drift_report(self, spec):
+        return section_in(self.spec_text(spec), DRIFT_REPORT, NAME_REPORT)
+
+    def name_report(self, spec):
+        return section_in(self.spec_text(spec), NAME_REPORT)
 
     # A ticket closes only in the commit that Lands, so one that failed to Land was never closed.
     def reopen(self, ticket):
