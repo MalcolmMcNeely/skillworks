@@ -9,6 +9,8 @@
 [Oo]bj/
 # The Plugin's commands, which Claude Code puts on PATH. Written by hand, not built.
 !plugins/skillworks/bin/
+# Crash dumps from a test host. Kept for one human to read, never shared.
+[Tt]est[Rr]esults/
 
 # Node.
 node_modules/

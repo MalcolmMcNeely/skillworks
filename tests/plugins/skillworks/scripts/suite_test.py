@@ -316,6 +316,9 @@ ARCHITECTURE_TESTS = "tests/Skillworks.Architecture.Tests"
 
 DOCKER_TESTS = "Skillworks.Studio.slnf"
 
+# The test host has crashed after every test passed, and a crash with no dump cannot say why.
+DOCKER_TESTS_COMMAND = ["dotnet", "test", DOCKER_TESTS, "--blame-crash", "--blame-crash-dump-type", "mini"]
+
 
 # Whether the front end is installed differs between checkouts, so the install is left out.
 # git answers nothing, so no file is copied and no Proof of a made-up pass reaches this clone.
@@ -330,7 +333,7 @@ def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
     assert run_by(runner)[0] == ["docker", "info"]
     assert sorted((" ".join(call.args), call.where) for call in made_by(runner)[1:]
                   if call.args[0] != "docker" and call.args[:2] != ["npm", "ci"]) == [
-        (f"dotnet test {DOCKER_TESTS}", ROOT.as_posix()),
+        (" ".join(DOCKER_TESTS_COMMAND), ROOT.as_posix()),
         (f"dotnet test {ARCHITECTURE_TESTS}", ROOT.as_posix()),
         ("node --test tests/plugins/skillworks/scripts/**/*.test.mjs", ROOT.as_posix()),
         ("npm run lint", web),
@@ -1712,7 +1715,7 @@ def test_only_the_docker_and_script_checks_ignore_anything():
     ignoring = [entry["command"] for entry in this_repo_s_checks() if "ignores" in entry]
 
     assert sorted(ignoring, key=" ".join) == sorted(
-        [["dotnet", "test", DOCKER_TESTS], SCRIPT_TESTS_COMMAND], key=" ".join)
+        [DOCKER_TESTS_COMMAND, SCRIPT_TESTS_COMMAND], key=" ".join)
 
 
 @pytest.mark.this_repo
@@ -1731,7 +1734,7 @@ def test_the_this_repo_tests_run_on_the_host_in_a_check_that_ignores_nothing():
 
 
 def dotnet_checks():
-    return {entry["command"][-1]: entry for entry in this_repo_s_checks() if entry["command"][0] == "dotnet"}
+    return {entry["command"][2]: entry for entry in this_repo_s_checks() if entry["command"][0] == "dotnet"}
 
 
 # The Architecture tests take seconds, so they run alone and never wait on Docker.
@@ -1741,7 +1744,7 @@ def test_this_repo_s_dotnet_tests_are_the_architecture_tests_alone_and_the_docke
     assert sorted(checks) == sorted([ARCHITECTURE_TESTS, DOCKER_TESTS])
     assert checks[ARCHITECTURE_TESTS]["command"] == ["dotnet", "test", ARCHITECTURE_TESTS]
     assert "ready" not in checks[ARCHITECTURE_TESTS]
-    assert checks[DOCKER_TESTS]["command"] == ["dotnet", "test", DOCKER_TESTS]
+    assert checks[DOCKER_TESTS]["command"] == DOCKER_TESTS_COMMAND
     assert checks[DOCKER_TESTS]["ready"]["command"] == ["docker", "info"]
 
 

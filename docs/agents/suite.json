@@ -6,7 +6,8 @@
       "folder": "."
     },
     {
-      "command": ["dotnet", "test", "Skillworks.Studio.slnf"],
+      "command": ["dotnet", "test", "Skillworks.Studio.slnf",
+                  "--blame-crash", "--blame-crash-dump-type", "mini"],
       "folder": ".",
       "ready": {
         "command": ["docker", "info"],

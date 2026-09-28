@@ -123,7 +123,7 @@ they use the local tools and not anything installed globally.
 ```
 dotnet test tests/Skillworks.Architecture.Tests
 
-dotnet test Skillworks.Studio.slnf
+dotnet test Skillworks.Studio.slnf --blame-crash --blame-crash-dump-type mini
 
 uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts -m "not this_repo"
 
@@ -141,7 +141,8 @@ The loop runs the same checks from `docs/agents/suite.json`. A new check goes in
 [docs/usage/suite.md](docs/usage/suite.md) says how the loop runs them. This repo's Suite file sets
 `runs` to 1, because a second run never turned a red Suite green here. The Architecture tests run
 alone, so they never wait on Docker. The Core and API tests run over one solution filter,
-`Skillworks.Studio.slnf`, so they build once. The loop runs the script
+`Skillworks.Studio.slnf`, so they build once. If their test host crashes, it writes a mini dump under
+the test project's `TestResults` folder, so the crash can say why. The loop runs the script
 tests in the Linux image `docs/agents/script-tests.Dockerfile`, because on Windows each git and bash
 process they start is slow to start. Run by hand, the command above runs them on your own machine.
 The tests marked `this_repo` run on the host in a check of their own, because they read the paths
