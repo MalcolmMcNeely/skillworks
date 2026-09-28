@@ -178,6 +178,31 @@ place of your raw test commands.
 Proof, and takes away the Proofs of a check that goes red. Run it when you want to prove the Target
 branch yourself.
 
+## A Trial: some of a check's tests, in its image
+
+A **Trial** runs a command of your own in the image a check names. It is for the few tests your
+change touches, when the check that runs them runs in an image:
+
+```
+skillworks-suite --image docs/agents/scripts.Dockerfile -- pytest scripts/suite_test.py -k proof
+```
+
+The form is `skillworks-suite --image <Dockerfile> -- <command>`. Name the image by the path the
+Suite file gives it. Everything after `--` is the command, one word to an argument.
+
+1. It builds the image, as the check does.
+2. It copies the check's inputs into a new container, the same copy a run of the check makes.
+   Untracked files go in. Paths the check ignores, and tracked files you deleted, do not.
+3. It runs the command from the repo root in the container, prints what the command printed, and
+   exits with its exit code.
+4. It removes the container, however the Trial ends.
+
+A Trial keeps no Proof, reads none and forgets none. Part of a check never stands in for the whole
+check, so the Suite judges the same Proofs after a Trial as it would have judged with no Trial.
+
+A Trial refuses an image that no check in the Suite file names. It needs Docker, and if `docker info`
+fails, it stops with the Suite's own message.
+
 ## A red Suite
 
 A red Suite on every one of its `runs` belongs to the ticket. The loop goes back to the fix step, then

@@ -885,7 +885,10 @@ def test_a_machine_short_of_what_the_suite_needs_fails_the_command_naming_it(
     assert not runner.started("prove")
 
 
-def test_the_command_takes_no_argument_but_fresh(repo, runner, monkeypatch):
+USAGE = "usage: skillworks-suite [--fresh | --image <Dockerfile> -- <command>]\n"
+
+
+def test_the_command_takes_no_argument_but_fresh_or_a_trial(repo, runner, monkeypatch):
     write_suite(repo.work, check("prove"))
     given_every_program_passes(runner)
     monkeypatch.chdir(repo.work)
@@ -894,7 +897,7 @@ def test_the_command_takes_no_argument_but_fresh(repo, runner, monkeypatch):
         ran = suite_command(runner, *args)
 
         assert ran.status == 64, args
-        assert ran.err == "usage: skillworks-suite [--fresh]\n", args
+        assert ran.err == USAGE, args
     assert not runner.started("prove")
 
 
@@ -969,12 +972,15 @@ DOCKERFILE = "docs/agents/tests.Dockerfile"
 
 
 class FakeDocker:
-    def __init__(self, runner, says="", status=0, answers=True, builds=True):
+    def __init__(self, runner, says="", status=0, answers=True, builds=True, creates=True,
+                 copies=True):
         self.runner = runner
         self.says = says
         self.status = status
         self.answers = answers
         self.builds = builds
+        self.creates = creates
+        self.copies = copies
         self.contents = None
         self.copied = None
         self.stage = None
@@ -988,13 +994,13 @@ class FakeDocker:
         if verb == "build":
             return Ran(0, "the-image\n", "") if self.builds else Ran(1, "", "no such base\n")
         if verb == "create":
-            return Ran(0, "the-container\n", "")
+            return Ran(0, "the-container\n", "") if self.creates else Ran(1, "", "no such image\n")
         if verb == "cp":
             self.stage = Path(call.where)
             self.contents = {path.relative_to(self.stage).as_posix(): path.read_text(encoding="utf-8")
                              for path in self.stage.rglob("*") if path.is_file()}
             self.copied = sorted(self.contents)
-            return Ran(0, "", "")
+            return Ran(0, "", "") if self.copies else Ran(1, "", "no space left\n")
         if verb == "start":
             return Ran(self.status, self.says, "")
         return Ran(0, "", "")
@@ -1210,6 +1216,165 @@ def test_an_image_that_is_not_a_file_in_the_repo_makes_the_suite_file_unreadable
     assert run_by(runner) == []
 
 
+# --- a Trial -------------------------------------------------------------------
+
+def trial(runner, repo, *command, image=DOCKERFILE, monkeypatch):
+    monkeypatch.chdir(repo.work)
+    return suite_command(runner, "--image", image, "--", *command)
+
+
+def test_a_trial_builds_the_image_and_runs_its_command_from_the_copy_s_root(
+        repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove", "all", folder="web/app")
+    docker = FakeDocker(runner, says="3 passed\n")
+
+    ran = trial(runner, repo, "prove", "-k", "one case", monkeypatch=monkeypatch)
+
+    dockerfile = repo.work / DOCKERFILE
+    assert docker.calls() == [
+        ["docker", "info"],
+        ["docker", "build", "--quiet", "--file", dockerfile.as_posix(), dockerfile.parent.as_posix()],
+        ["docker", "create", "--workdir", "/repo", "the-image", "prove", "-k", "one case"],
+        ["docker", "cp", "./.", "the-container:/repo"],
+        ["docker", "start", "--attach", "the-container"],
+        ["docker", "rm", "--force", "the-container"],
+    ]
+    assert ran.out == "3 passed\n"
+    assert not runner.started("prove")
+
+
+def test_a_trial_exits_with_the_command_s_exit_code(repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+
+    for status in (0, 1, 5):
+        FakeDocker(runner, says="the run\n", status=status)
+
+        ran = trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+        assert ran.status == status
+        assert ran.out == "the run\n"
+
+
+def test_a_trial_copies_the_inputs_of_the_check_that_names_its_image(repo, runner, monkeypatch):
+    given_a_dockerfile(repo.work)
+    write_suite(repo.work, check("prove", image=DOCKERFILE, ignores=["web"]))
+    writing(repo, ".gitignore", "ignored.txt")
+    committing(repo, "web/page.ts")
+    committing(repo, "gone.txt")
+    (repo.work / "gone.txt").unlink()
+    writing(repo, "ignored.txt")
+    writing(repo, "untracked.txt")
+    writing(repo, "base.txt", "uncommitted")
+    docker = FakeDocker(runner)
+
+    trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+    assert docker.copied == sorted([".gitignore", "base.txt", DOCKERFILE, SUITE_FILE,
+                                    "untracked.txt"])
+    assert docker.contents["base.txt"] == "base\nuncommitted\n"
+
+
+def test_a_trial_refuses_an_image_no_check_names(repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+    (repo.work / "docs/agents/other.Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+    docker = FakeDocker(runner)
+
+    ran = trial(runner, repo, "prove", image="docs/agents/other.Dockerfile",
+                monkeypatch=monkeypatch)
+
+    assert ran.status == 1
+    assert ran.err.startswith("FAIL  ")
+    assert "docs/agents/other.Dockerfile" in ran.err
+    assert docker.calls() == []
+
+
+def test_a_trial_refuses_a_suite_file_it_cannot_read_naming_the_fault(repo, runner, monkeypatch):
+    given_a_dockerfile(repo.work)
+    given_a_suite_file_reading(repo.work, "{ not json")
+    docker = FakeDocker(runner)
+
+    ran = trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+    assert ran.status == 1
+    assert SUITE_FILE in ran.err
+    assert "it is not JSON" in ran.err
+    assert docker.calls() == []
+
+
+def test_a_trial_with_no_command_or_no_separator_is_refused_with_the_usage(
+        repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner)
+    monkeypatch.chdir(repo.work)
+
+    for args in (["--image"], ["--image", DOCKERFILE], ["--image", DOCKERFILE, "--"],
+                 ["--image", DOCKERFILE, "prove"], ["--image", "--", "prove"],
+                 ["--fresh", "--image", DOCKERFILE, "--", "prove"]):
+        ran = suite_command(runner, *args)
+
+        assert ran.status == 64, args
+        assert ran.err == USAGE, args
+    assert docker.calls() == []
+
+
+def test_a_trial_is_refused_with_the_suite_s_message_when_docker_does_not_answer(
+        repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+    docker = FakeDocker(runner, answers=False)
+    said = Suite(runner, repo.work).run().said
+
+    ran = trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+    assert ran.status == 1
+    assert ran.err == "FAIL  " + said
+    assert docker.verbs() == ["info", "info"]
+
+
+def test_a_trial_says_which_step_failed_before_the_command(repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+
+    for failing, says, word in (({"builds": False}, "no such base", "build"),
+                                ({"creates": False}, "no such image", "create"),
+                                ({"copies": False}, "no space left", "copy")):
+        FakeDocker(runner, **failing)
+
+        ran = trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+        assert ran.status != 0, word
+        assert word in ran.err, ran.err
+        assert says in ran.err, ran.err
+
+
+def test_a_trial_removes_its_container_however_it_ends(repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+
+    for ending in ({"status": 1}, {"copies": False}):
+        docker = FakeDocker(runner, **ending)
+        runner.made.clear()
+
+        trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+        assert docker.verbs()[-1] == "rm", ending
+
+
+def test_a_trial_keeps_no_proof_reads_none_and_forgets_none(repo, runner, monkeypatch):
+    given_a_suite_in_an_image(repo.work, "prove")
+    FakeDocker(runner)
+    Suite(runner, repo.work).run()
+    proofs = Path(git(repo.work, "rev-parse", "--path-format=absolute",
+                      "--git-common-dir").strip()) / suite.PROOFS
+    kept = proofs.read_bytes()
+
+    for status in (0, 1):
+        docker = FakeDocker(runner, status=status)
+        runner.made.clear()
+
+        trial(runner, repo, "prove", monkeypatch=monkeypatch)
+
+        assert "start" in docker.verbs(), status
+        assert proofs.read_bytes() == kept, status
+
+
 def test_this_repo_s_suite_file_runs_once():
     assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 1
 
@@ -1249,6 +1414,18 @@ def test_the_suite_page_tells_a_team_how_to_run_the_suite_itself():
     for words in ("`skillworks-suite`", "`skillworks-suite --fresh`", "Proof", "full run",
                   "`image`", "`runs`"):
         assert words in text, words
+
+
+def test_the_suite_page_says_what_a_trial_is_after_running_the_suite_yourself():
+    headings = re.findall(r"^## (.+)$", (ROOT / SUITE_PAGE).read_text(encoding="utf-8"), re.M)
+    at = headings.index("Running the Suite yourself")
+    assert "Trial" in headings[at + 1]
+
+    section = " ".join((ROOT / SUITE_PAGE).read_text(encoding="utf-8")
+                       .split("## " + headings[at + 1])[1].split("\n## ")[0].split())
+    for words in ("`skillworks-suite --image <Dockerfile> -- <command>`", "keeps no Proof",
+                  "no check", "Docker"):
+        assert words in section, words
 
 
 def test_the_seeded_suite_file_shows_the_setting_at_its_default():

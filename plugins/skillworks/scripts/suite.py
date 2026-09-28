@@ -14,6 +14,7 @@
 # Some repos have tests that flake, and only the repo knows, so its file says how often red runs.
 # A check can name an image, for tests that start processes an OS is slow to start.
 # Fresh mode trusts no Proof and no image, so a Proof gone stale outside the repo is caught.
+# A Trial runs part of a check, so it keeps no Proof and reads none: a part never stands for the whole.
 
 import hashlib
 import json
@@ -31,7 +32,7 @@ from typing import NamedTuple
 from runner import Subprocess
 from stop import Stop, misuse, refusal
 
-USAGE = "usage: skillworks-suite [--fresh]\n"
+USAGE = "usage: skillworks-suite [--fresh | --image <Dockerfile> -- <command>]\n"
 SUITE_FILE = "docs/agents/suite.json"
 REPO_IN_IMAGE = "/repo"
 PROOFS = "skillworks/proofs"
@@ -179,6 +180,14 @@ def said_by(check, held, each):
     return held.out + held.err
 
 
+def unreadable(fault):
+    return "the Suite file {} cannot be run, because {}\n".format(SUITE_FILE, fault)
+
+
+def same_path(one, other):
+    return posixpath.normpath(one.replace("\\", "/")) == posixpath.normpath(other.replace("\\", "/"))
+
+
 def utc_now():
     return datetime.now(timezone.utc)
 
@@ -282,21 +291,22 @@ class Suite:
                     ready.message.rstrip("\n"), " ".join(ready.command), asked.out + asked.err)
 
         imaged = [check for check in wanted if check.image]
-        if imaged:
-            asked = self.runner.run(["docker", "info"], self.tree.as_posix())
-            if asked.status != 0:
-                return ("Docker does not answer, and {} runs in the image {}. Start Docker and run "
-                        "this again.\ndocker info said:\n{}").format(
-                    " ".join(imaged[0].command), imaged[0].image, asked.out + asked.err)
-        return ""
+        return self.docker_short_of(imaged[0]) if imaged else ""
+
+    def docker_short_of(self, check):
+        asked = self.runner.run(["docker", "info"], self.tree.as_posix())
+        if asked.status == 0:
+            return ""
+        return ("Docker does not answer, and {} runs in the image {}. Start Docker and run this "
+                "again.\ndocker info said:\n{}").format(
+            " ".join(check.command), check.image, asked.out + asked.err)
 
     def run(self, heard=None):
         try:
             wanted, runs = self.read()
         # A suite that ran nothing cannot pass, so a file that names nothing is never green.
         except Unreadable as fault:
-            return Outcome(False, "the Suite file {} cannot be run, because {}\n".format(
-                SUITE_FILE, fault), ready=False)
+            return Outcome(False, unreadable(fault), ready=False)
 
         proofs = self.proofs()
         keys, found = self.proved(wanted, proofs)
@@ -345,19 +355,41 @@ class Suite:
         return self.run_in_image(check)
 
     def run_in_image(self, check):
+        workdir = posixpath.normpath(posixpath.join(
+            REPO_IN_IMAGE, check.folder.relative_to(self.tree).as_posix()))
+        return self.contained(check, check.command, workdir)[1]
+
+    # A Trial takes its image from the Suite file, so it never runs tests where no check runs them.
+    def trial(self, image, command):
+        try:
+            wanted, _ = self.read()
+        except Unreadable as fault:
+            raise refusal(unreadable(fault).rstrip("\n"))
+        named = [check for check in wanted if check.image and same_path(check.image, image)]
+        if not named:
+            raise refusal("no check in the Suite file {} names the image {}, so a Trial cannot "
+                          "run in it.".format(SUITE_FILE, image))
+        short = self.docker_short_of(named[0])
+        if short:
+            raise refusal(short.rstrip("\n"))
+        failed, ran = self.contained(named[0], command, REPO_IN_IMAGE)
+        if failed:
+            raise refusal("the Trial could not {} for the image {}, so the command never ran.\n"
+                          "docker said:\n{}".format(failed, image, ran.out + ran.err).rstrip("\n"))
+        return ran
+
+    def contained(self, check, command, workdir):
         tree = self.tree.as_posix()
         dockerfile = self.tree / check.image
         built = self.runner.run(["docker", "build", "--quiet", "--file", dockerfile.as_posix(),
                                  dockerfile.parent.as_posix()], tree)
         if built.status != 0:
-            return built
+            return "build the image", built
         # The copy is the Proof's inputs and no more, so what was proved is what was tested.
         listed = self.listed_inputs(check)
         if listed.status != 0:
-            return listed
+            return "list the files to copy", listed
 
-        workdir = posixpath.normpath(posixpath.join(
-            REPO_IN_IMAGE, check.folder.relative_to(self.tree).as_posix()))
         with tempfile.TemporaryDirectory() as stage:
             # A tracked file the worktree deleted is still listed, and the check must not see it.
             for name in {name for name in listed.out.split("\0") if name}:
@@ -365,16 +397,16 @@ class Suite:
                     (Path(stage) / name).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(self.tree / name, Path(stage) / name)
             created = self.runner.run(["docker", "create", "--workdir", workdir,
-                                       built.out.split()[-1], *check.command], tree)
+                                       built.out.split()[-1], *command], tree)
             if created.status != 0:
-                return created
+                return "create the container", created
             container = created.out.split()[-1]
             try:
                 # Run from the copy itself, because docker reads a drive letter's colon as a container.
                 copied = self.runner.run(["docker", "cp", "./.", container + ":" + REPO_IN_IMAGE], stage)
                 if copied.status != 0:
-                    return copied
-                return self.runner.run(["docker", "start", "--attach", container], tree)
+                    return "copy the files into the container", copied
+                return "", self.runner.run(["docker", "start", "--attach", container], tree)
             finally:
                 self.runner.run(["docker", "rm", "--force", container], tree)
 
@@ -389,12 +421,20 @@ def printed(out):
 # The driver reads the Proofs this keeps, so its Suite step never repeats a Session's own run.
 def main(argv, runner, out, err):
     try:
-        if argv not in ([], ["--fresh"]):
+        trying = argv[:1] == ["--image"]
+        if not trying and argv not in ([], ["--fresh"]):
+            raise misuse(USAGE)
+        if trying and (len(argv) < 4 or argv[1] == "--" or argv[2] != "--"):
             raise misuse(USAGE)
         found = runner.run(["git", "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository, so it has no Suite file.".format(
                 Path.cwd().as_posix()))
+        if trying:
+            ran = Suite(runner, found.out.strip()).trial(argv[1], argv[3:])
+            out.write(ran.out)
+            err.write(ran.err)
+            return ran.status
         outcome = Suite(runner, found.out.strip(), fresh=argv == ["--fresh"]).run(printed(out))
         if not outcome.ready:
             raise refusal(outcome.said.rstrip("\n"))
