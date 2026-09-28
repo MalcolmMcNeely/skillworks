@@ -142,6 +142,7 @@ class Tracker:
         # A Name check that found no rename, so only a case about the names reads a stop.
         self.name_report = NO_RENAMES
         self.filed = []
+        self.notes = []
         runner.stub("gh", does=self.answer)
 
     def numbers(self, only_open=False):
@@ -188,6 +189,10 @@ class Tracker:
             return self.ready
         if asked == "issue view {} --json comments --jq .comments[-1].body".format(SPEC):
             return Ran(0, self.newest_comment(), "")
+        # The body file is gone once gh returns, so it is read while the call is made.
+        if asked.startswith("issue comment {} --body-file ".format(SPEC)):
+            self.notes.append(Path(self.runner.calls[-1][-1]).read_text(encoding="utf-8"))
+            return Ran(0, "https://github.com/owner/repo/issues/{}#issuecomment-1\n".format(SPEC), "")
         return Ran(1, "", "the tracker has no answer for: " + asked + "\n")
 
     # Each judge posts its report as it runs, so the newest comment is the last judge's.
@@ -3430,6 +3435,7 @@ def given_a_full_run_that_flakes(loop):
             return Ran(1, "a full run test failed once\n", "")
         return None
     loop.runner.stub("dotnet", says="the solution passed", does=answer)
+    return tracker
 
 
 # 169 is blocked in the first loop alone, so each loop lands one ticket and has a full run.
@@ -3549,6 +3555,74 @@ def test_a_kept_full_run_worktree_that_will_not_go_stops_the_run_naming_it(loop,
             "did not start.".format(full_run_tree(loop))) in said(ran)
     assert [call for call in runner.made[started:]
             if call.args[0] == "dotnet" and call.where == full_run_tree(loop)] == []
+
+
+# --- the spec's note of the run's Flakes -------------------------------------
+
+def note_calls(runner):
+    return [call for call in runner.calls if call[:2] == ["gh", "issue"] and call[2] == "comment"]
+
+
+def test_a_run_with_flakes_in_a_suite_step_and_the_full_run_adds_one_note_naming_each(loop):
+    tracker = given_a_full_run_that_flakes(loop)
+    given_a_suite_red_on_its_first_run_alone(loop.runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    [note] = tracker.notes
+    assert note.startswith("## Flakes\n")
+    [in_suite] = flake_files(loop, "suite")
+    [in_full_run] = full_run_flake_files(loop)
+    assert "- dotnet test Skillworks.slnx, in #168 suite: {}\n".format(in_suite.as_posix()) in note
+    assert "- dotnet test Skillworks.slnx, in the full run: {}\n".format(
+        in_full_run.as_posix()) in note
+    assert "NOTE  spec #158 has a note listing the 2 Flakes of this run" in loop.log()
+
+
+def test_the_note_names_the_full_runs_kept_worktree(loop):
+    tracker = given_a_full_run_that_flakes(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    [note] = tracker.notes
+    assert "The full run's worktree is kept at {}.".format(full_run_tree(loop)) in note
+
+
+def test_a_run_that_stops_early_with_a_flake_still_adds_the_note(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_its_first_run_alone(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    [note] = tracker.notes
+    [kept] = flake_files(loop, "suite")
+    assert "in #168 suite: " + kept.as_posix() in note
+    assert "worktree" not in note
+
+
+def test_a_run_with_no_flake_adds_no_note(loop, runner):
+    tracker = given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert tracker.notes == []
+    assert note_calls(runner) == []
+
+
+def test_a_note_the_tracker_turns_down_is_warned_of_and_ends_nothing(loop, runner):
+    given_a_full_run_that_flakes(loop)
+    runner.refuse("issue comment", "GitHub is down")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert "WARN  the note listing the Flakes of this run did not reach spec #158" in loop.log()
+    assert "END   spec #158 complete" in loop.log()
 
 
 # --- the Target branch ------------------------------------------------------

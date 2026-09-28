@@ -311,6 +311,16 @@ class GitHub:
                               what, spec, (posted.out + posted.err).rstrip("\n")))
         return posted.out.strip()
 
+    # A comment of its own, so a later run's note sits below this one and takes nothing away.
+    def record_flakes(self, spec, note):
+        with tempfile.TemporaryDirectory() as folder:
+            note_file = Path(folder) / "flakes.md"
+            note_file.write_text(note, encoding="utf-8", newline="\n")
+            posted = self.gh("issue", "comment", spec, "--body-file", note_file)
+        if posted.status != 0:
+            raise refusal("GitHub would not post the note on spec #{}. gh said:\n{}".format(
+                spec, (posted.out + posted.err).rstrip("\n")))
+
     def last_comment(self, ticket):
         ran = self.gh("issue", "view", ticket, "--json", "comments", "--jq", ".comments[-1].body")
         return ran.out.rstrip("\n") if ran.status == 0 else None

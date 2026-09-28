@@ -49,7 +49,7 @@ from runner import Subprocess, session_changes
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
-from tracker.reading import listed
+from tracker.reading import FLAKES, listed
 
 USAGE = "usage: spec-loop <spec-issue-number> [--dry-run] [--bypass]\n"
 
@@ -342,6 +342,10 @@ class Loop:
         # The driver read this one, so the finishing Session names it rather than proving it again.
         self.green_suite = None
         self.flakes = []
+
+        # Every step's and not one ticket's, so the note on the spec names each Flake of the run.
+        self.run_flakes = []
+        self.kept_full_run_tree = ""
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -643,13 +647,15 @@ class Loop:
 
     def keep_flake(self, ticket, step, flake):
         return self.keep_flake_output("ticket-{}-{}".format(ticket, step),
-                                      "{} {:<13}".format(self.named(ticket), step), flake)
+                                      "{} {:<13}".format(self.named(ticket), step),
+                                      "{} {}".format(self.named(ticket), step), flake)
 
-    def keep_flake_output(self, named, who, flake):
+    def keep_flake_output(self, named, who, step, flake):
         held = self.stamped("flake-" + named)
         written(held, flake.said)
         self.say("FLAKE {}{} went red and then passed. Its red output is kept at {}".format(
             who, flake.check, held.as_posix()))
+        self.run_flakes.append((flake.check, step, held.as_posix()))
         return held.as_posix()
 
     # Red is handed back rather than raised, so the caller chooses between a circuit and a stop.
@@ -967,11 +973,12 @@ class Loop:
             self.say("FULL  run {} {}".format(run, suite_verdict(outcome, run)))
         outcome = Suite(self.runner, tree, fresh=True).run(heard)
         for flake in outcome.flakes:
-            self.keep_flake_output(FULL_RUN, "{:<18}".format(FULL_RUN), flake)
+            self.keep_flake_output(FULL_RUN, "{:<18}".format(FULL_RUN), "the full run", flake)
 
         # A crash dump or a log a tool wrote there is all a red or a Flake leaves to read.
         kept = outcome.ready and (not outcome.passed or bool(outcome.flakes))
         if kept:
+            self.kept_full_run_tree = tree
             self.say("FULL  its worktree is kept at {}. The next full run of spec {} removes "
                      "it.".format(tree, self.spec_named()))
         stuck = not kept and self.worktree("close", FULL_RUN)[0] != 0
@@ -1201,6 +1208,29 @@ class Loop:
         self.run_tickets()
         self.check_renames(base, ticket, renames)
 
+    # --- the note of the run's Flakes ----------------------------------------
+
+    # A warning and not a stop, so a note that did not reach the spec never hides why the run ended.
+    def note_flakes(self):
+        if not self.run_flakes:
+            return
+        note = ("{}\n\nEach check below went red and then passed, so this run counted it green. "
+                "Its red output is kept in the file named beside it.\n\n{}".format(
+                    FLAKES, "".join("- {}, in {}: {}\n".format(check, step, held)
+                                    for check, step, held in self.run_flakes)))
+        if self.kept_full_run_tree:
+            note += ("\nThe full run's worktree is kept at {}. The next full run of spec {} "
+                     "removes it.\n".format(self.kept_full_run_tree, self.spec_named()))
+        try:
+            self.tracker.record_flakes(self.spec, note)
+        except Stop as refused:
+            self.say("WARN  the note listing the Flakes of this run did not reach spec {}. The "
+                     "FLAKE lines above name each one. {}".format(
+                         self.spec_named(), refused.said.strip()))
+            return
+        self.say("NOTE  spec {} has a note listing the {} of this run".format(
+            self.spec_named(), how_many(len(self.run_flakes), "Flake", "Flakes")))
+
     # --- the spec's close ---------------------------------------------------
 
     # After the drift check, so no spec is closed before its work was read against it.
@@ -1272,13 +1302,16 @@ class Loop:
         # A landed ticket stays when the loop stops, so a stop is followed by the full run too.
         # It runs last and once, so the slowest step proves the finished spec and nothing before it.
         try:
-            self.run_tickets()
-            self.close_gaps(base)
-            self.close_renames(base)
-        except Stop as stopped:
-            self.run_full(stopped)
-            raise
-        self.run_full()
+            try:
+                self.run_tickets()
+                self.close_gaps(base)
+                self.close_renames(base)
+            except Stop as stopped:
+                self.run_full(stopped)
+                raise
+            self.run_full()
+        finally:
+            self.note_flakes()
 
         # Reached only with every Verdict Done or In step, every rename Done and the full run green.
         self.close_spec()

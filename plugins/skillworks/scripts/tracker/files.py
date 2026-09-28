@@ -9,7 +9,7 @@ from typing import NamedTuple
 
 from fetch_origin import fetch_origin
 from stop import is_a_number, refusal
-from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
+from tracker.reading import DRIFT_REPORT, FLAKES, NAME_REPORT, listed
 
 SPECS = ".specs"
 SPEC_FILE = "spec.md"
@@ -25,6 +25,8 @@ EVERY_BRANCH = "*"
 
 # Enough for several loops starting at once, few enough that a remote refusing for another reason cannot spin.
 PUSH_ATTEMPTS = 5
+
+REPORTS = (DRIFT_REPORT, NAME_REPORT)
 
 LOST_RACE = ("[rejected]", "fetch first", "non-fast-forward", "cannot lock ref")
 
@@ -119,6 +121,25 @@ def with_last_section(text, named, section):
         kept.pop()
     added = section.replace("\r\n", "\n").strip("\n").split("\n")
     return ending.join(kept + [""] + added) + ending
+
+
+# Above the reports, because each report runs to the end of the file and a new one cuts what is below it.
+def with_section_above(text, named, section, above):
+    ending = "\r\n" if "\r\n" in text else "\n"
+    lines = text.split(ending)
+    stripped = [line.strip() for line in lines]
+    if named in stripped:
+        start = stripped.index(named)
+        end = next((at for at in range(start + 1, len(lines)) if stripped[at] in above), len(lines))
+        del lines[start:end]
+        del stripped[start:end]
+    at = next((at for at, line in enumerate(stripped) if line in above), len(lines))
+    kept = lines[:at]
+    while kept and kept[-1].strip() == "":
+        kept.pop()
+    added = section.replace("\r\n", "\n").strip("\n").split("\n")
+    below = [""] + lines[at:] if at < len(lines) else [""]
+    return ending.join(kept + [""] + added + below).rstrip(ending) + ending
 
 
 def heading(body, otherwise):
@@ -395,6 +416,24 @@ class Files:
                 return self.git("rev-parse", "--short", commit).out.strip()
         raise refusal("The close of spec {} lost to another push {} times in a row. Set status: "
                       "closed in its spec.md by hand.".format(spec, PUSH_ATTEMPTS))
+
+    # One section and not one per run, so spec.md carries the last run's Flakes and never a pile of them.
+    def record_flakes(self, spec, note):
+        for _ in range(PUSH_ATTEMPTS):
+            branch = self.branch_of(spec)
+            self.fetched(branch)
+            folder = self.folder_on("origin/" + branch, spec)
+            if not folder:
+                raise refusal("Spec {} has no folder on origin/{}, so its note has nowhere to "
+                              "go.".format(spec, branch))
+            if self.pushed_change(
+                    spec, folder + "/" + SPEC_FILE,
+                    lambda text: with_section_above(text, FLAKES, note, REPORTS),
+                    "Note the Flakes of spec {}".format(spec),
+                    "The note on spec {}".format(spec)):
+                return
+        raise refusal("The note on spec {} lost to another push {} times in a row.".format(
+            spec, PUSH_ATTEMPTS))
 
     # The number is read and pushed on one parent, so of two rival filings the remote refuses one.
     def file_ticket(self, spec, title, body):

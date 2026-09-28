@@ -337,8 +337,8 @@ def finishing(runner, trailer=REFERENCE, closes=True):
     return finish
 
 
-def given_sessions_that_finish(driver, **finish):
-    given_a_suite_that_passes(driver)
+def given_sessions_that_finish(driver, runs=None, **finish):
+    given_a_suite_that_passes(driver, runs)
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner, **finish)
     sessions.then["spec-drift"] = drifting(driver)
@@ -583,6 +583,36 @@ def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(dr
     assert ran.status == 1
     assert "STOP  the drift check recorded no report on spec 7" in ran.out
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+
+
+def test_the_flakes_of_a_run_are_noted_in_the_spec_file_above_its_reports(driver):
+    given_sessions_that_finish(driver, runs=2)
+    driver.runner.refuse("dotnet test Skillworks.slnx", "a Span test failed", times=1)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    text = on_remote(driver.repo, FOLDER + "/spec.md")
+    [kept] = sorted((driver.repo.work / ".spec-loop" / SPEC).glob("flake-ticket-1-suite-*.out"))
+    note = text[text.index("## Flakes\n"):text.index(REPORT)]
+    assert "- dotnet test Skillworks.slnx, in 7/1 suite: {}\n".format(kept.as_posix()) in note
+    assert text.endswith(REPORT + "\n" + NAMES)
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+
+
+def test_a_later_note_takes_the_place_of_an_earlier_one_and_leaves_the_reports(driver):
+    driver.push({FOLDER + "/spec.md": spec_file(body=COUNTED + "\n" + REPORT + "\n" + NAMES)})
+    tracker = files_tracker(driver)
+
+    tracker.record_flakes(SPEC, "## Flakes\n\n- the first run's Flake\n")
+    tracker.record_flakes(SPEC, "## Flakes\n\n- the second run's Flake\n")
+
+    text = on_remote(driver.repo, FOLDER + "/spec.md")
+    assert text.count("## Flakes") == 1
+    assert "the first run's Flake" not in text
+    assert text.index("the second run's Flake") < text.index(REPORT)
+    assert tracker.drift_report(SPEC) == VERDICTS.strip("\n")
+    assert tracker.name_report(SPEC) == RENAMES.strip("\n")
 
 
 GAP_TICKET = "02-ticket-build-the-gaps-the-drift-check-found"

@@ -409,6 +409,16 @@ time to the microsecond, so no later run writes over it. A Flake in the Suite a 
 same line and a file named for `land`. The `finish` Session is handed each Flake and its kept file,
 and names both in the ticket's Closing note. The ticket's worktree goes when it lands, Flake or not.
 
+**The spec gets a note of the run's Flakes.** When the loop ends, whether the spec completes or the
+run stops, the script adds one note to the spec under the heading `## Flakes`. It lists each Flake of
+the run: the check, the step it came in, such as `#202 suite` or `the full run`, and the file that
+keeps its red output. When [the full run](#the-full-run) kept its worktree, the note names that path
+too, so a crash dump is found without a search. A run with no Flake adds no note. The note goes the
+way the drift report goes. With the GitHub Tracker it is a new comment on the spec issue. With the
+files Tracker it is a section of `spec.md`, above the drift report, and a later run's note takes its
+place. The log gets a `NOTE` line when the note is recorded. A note the Tracker turns down gets a
+`WARN` line and ends nothing, because the `FLAKE` lines already name each Flake.
+
 ## Rebasing and Landing
 
 A ticket Lands the moment it passes, on its own. So a stopped run leaves every ticket before it
