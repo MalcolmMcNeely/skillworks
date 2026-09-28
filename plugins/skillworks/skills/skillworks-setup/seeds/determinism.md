@@ -2,7 +2,8 @@
 
 An agent is non-deterministic by construction. Each section here names one thing that has to come out
 the same on a busy machine as on a quiet one, so that a test failing means the code is wrong. Time is
-the first section. Ordering, identifiers and culture get sections here when they are settled.
+the first section, and Order of events the second. The order of items, identifiers and culture get
+sections here when they are settled.
 
 The YAML block at the end holds the settings a check reads, once the team adds one.
 
@@ -13,7 +14,8 @@ injected, so a test can supply its own. `clock` names the type.
 
 - Shipping code reads time, waits and delays through the Clock, and never through the machine's.
 - A test never reaches the machine's clock. It holds the Clock still and moves it on purpose.
-- A test waits on a fact, never on a duration.
+- A test waits on a fact, never on a duration. Order of events, below, says what a wait before an act
+  waits on.
 - A support file may reach the machine's clock, because a poll that waits for a container to be ready
   has to live somewhere. The permission follows from being a support file, so no list is kept.
 
@@ -25,9 +27,6 @@ machine cannot run it out:
 ```csharp
 using var spent = new CancellationTokenSource(patience, clock);
 ```
-
-A test that needs the wait to run out waits until the call it holds has been made, and then moves the
-Clock past the wait. The wait is on a fact and the move is a decision, so neither is a race.
 
 ### The reaches, and what to write instead
 
@@ -56,6 +55,34 @@ to a name, and every read through that name is past the seam a test controls.
 A fake is used where the real thing cannot be made to misbehave, or where it forces a race, and not
 otherwise. A real dependency in a container proves the queries and the parsing, and that is the code
 most likely to be wrong.
+
+## Order of events
+
+A test that acts while the code runs first waits on a fact that shows the code is where the act needs
+it. An act is anything a test does to the code while it runs: a close of a request, a cancel, a Clock
+move, a second request, a stop of a test host. The rule covers every act, and not only these.
+
+- A fact is something the test sees at the point the act needs, and it comes from the test host or a
+  stand-in, which is a fake the test writes by hand. The stand-in saying that it holds a call is one.
+- The code's own order is not a fact. A line the code writes after it starts some work does not show
+  that the work reached the stand-in. A line from the code counts only when the line is itself the
+  state the act needs. Shipping code can change its own order for a good reason, and a comment in a
+  test cannot stop it.
+- Where the test host has no fact at the point an act needs, the test adds one to the stand-in.
+  Fakes, above, already allows a stand-in where the real thing forces a race.
+
+No check reads this section, so a green suite does not prove it. A race has no name a check can find.
+The `standards` review judges each change by it.
+
+### What a good act looks like
+
+A test that needs a wait to run out waits until the call it holds has been made, and then moves the
+Clock past the wait. The wait is on a fact and the move is a decision, so neither is a race.
+
+A test that closes a request while a stand-in holds a call waits until the stand-in reports that it
+holds the call, and closes the request only after that. A call the code has not made when its
+request closes may never be made, so a close that comes first leaves the stand-in nothing to hold,
+and a wait for it to let go never ends.
 
 ## What a check reads
 

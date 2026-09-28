@@ -2,8 +2,8 @@
 
 An agent is non-deterministic by construction. Each section here names one thing that has to come out
 the same on a busy machine as on a quiet one, so that a test failing means the code is wrong. Time is
-the first section, and today the only one. Ordering, identifiers and culture get sections here when
-they are settled.
+the first section, and Order of events the second. The order of items, identifiers and culture get
+sections here when they are settled.
 
 The YAML block at the end holds the settings the check reads.
 
@@ -14,7 +14,8 @@ so a test can supply its own. `clock` names the type.
 
 - Shipping code reads time, waits and delays through the Clock, and never through the machine's.
 - A test never reaches the machine's clock. It holds the Clock still and moves it on purpose.
-- A test waits on a fact, never on a duration.
+- A test waits on a fact, never on a duration. Order of events, below, says what a wait before an act
+  waits on.
 - A Support file may reach the machine's clock, because a poll that waits for a container to be ready
   has to live somewhere. The permission follows from being a Support file, so no list is kept.
 
@@ -26,10 +27,6 @@ on the injected Clock, inside the reader that waits, so a busy machine cannot ru
 ```csharp
 using var spent = new CancellationTokenSource(patience, clock);
 ```
-
-A test that needs a Patience to run out waits until the read it holds has been asked for, and then
-moves the Clock past the Patience. The wait is on a fact and the move is a decision, so neither is a
-race.
 
 ### The reaches, and what to write instead
 
@@ -62,6 +59,35 @@ are proved against them, and that is the code most likely to be wrong.
 Where an interface needs faking, `NSubstitute` is the default, so the next agent does not pick a
 different one. The stand-ins written by hand stay that way. They stand in for a store that is down,
 failing or never answers, which a running container cannot be made to be.
+
+## Order of events
+
+A test that acts while the code runs first waits on a fact that shows the code is where the act needs
+it. An act is anything a test does to the code while it runs: a close of a request, a cancel, a Clock
+move, a second request, a stop of a host. The rule covers every act, and not only these.
+
+- A fact is something the test sees at the point the act needs, and it comes from the Harness, such
+  as the stand-in saying that it holds a read.
+- The app's own order is not a fact. A line the app writes after it starts some work does not show
+  that the work reached the stand-in. A line from the app counts only when the line is itself the
+  state the act needs. Shipping code can change its own order for a good reason, and a comment in a
+  test cannot stop it.
+- Where the Harness has no fact at the point an act needs, the test adds one to the stand-in. Fakes,
+  above, already allows a stand-in where the real thing forces a race.
+
+No check reads this section, so a green Suite does not prove it. A race has no name a check can find.
+The `standards` review judges each change by it.
+
+### What a good act looks like
+
+A test that needs a Patience to run out waits until the read it holds has been asked for, and then
+moves the Clock past the Patience. The wait is on a fact and the move is a decision, so neither is a
+race.
+
+A test that closes a request while the store holds a read waits until the stand-in reports that it
+holds the read, and closes the request only after that. A read Studio has not sent when its request
+closes may never be sent, so a close that comes first leaves the stand-in nothing to hold, and a wait
+for it to let go never ends.
 
 ## What the check reads
 
