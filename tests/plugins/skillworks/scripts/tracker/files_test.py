@@ -574,19 +574,6 @@ def test_a_name_check_that_recorded_no_report_stops_and_leaves_the_spec_open(dri
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
 
 
-def test_a_rename_found_leaves_the_spec_open(driver):
-    sessions = given_sessions_that_finish(driver)
-    sessions.then["spec-names"] = naming(
-        driver, "## Name report\n\n### Renames\n\n- `Batch`: it now holds a whole spec.\n")
-
-    ran = driver.run()
-
-    assert ran.status == 1
-    assert "      Rename: `Batch`: it now holds a whole spec.\n" in ran.out
-    assert "CLOSE" not in ran.out
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
-
-
 def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):
     sessions = given_sessions_that_finish(driver)
     del sessions.then["spec-drift"]
@@ -604,24 +591,27 @@ D1_MISSING = "## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Missing. Not 
 
 
 # A file of its own, since the ticket landed before it already holds what every build writes.
-def given_a_gap_round(driver, *reports):
-    sessions = given_sessions_that_finish(driver)
-
+def given_a_filed_ticket_that_lands(driver, sessions, slug):
     def build():
-        (Path(driver.runner.where) / "gaps.txt").write_text("built\n", encoding="utf-8",
-                                                            newline="\n")
+        (Path(driver.runner.where) / "filed.txt").write_text("built\n", encoding="utf-8",
+                                                             newline="\n")
 
     def finish():
         tree = Path(driver.runner.where)
-        held = tree / ticket_path(GAP_TICKET)
+        held = tree / ticket_path(slug)
         held.write_text(held.read_text(encoding="utf-8").replace("status: open", "status: closed")
-                        + "\n## Closing note\n\nBuilt the Gaps.\n", encoding="utf-8", newline="\n")
+                        + "\n## Closing note\n\nBuilt it.\n", encoding="utf-8", newline="\n")
         git(tree, "add", "-A")
-        git(tree, "commit", "--quiet", "-m", "Built the Gaps\n\nTicket: {}/2".format(SPEC))
+        git(tree, "commit", "--quiet", "-m", "Built it\n\nTicket: {}/2".format(SPEC))
 
-    waiting = list(reports)
     sessions.then["implement {}/2 --stop-after-tests".format(SPEC)] = build
     sessions.then["implement {}/2 --finish".format(SPEC)] = finish
+
+
+def given_a_gap_round(driver, *reports):
+    sessions = given_sessions_that_finish(driver)
+    given_a_filed_ticket_that_lands(driver, sessions, GAP_TICKET)
+    waiting = list(reports)
     sessions.then["spec-drift"] = lambda: drifting(driver, waiting.pop(0))()
     return sessions
 
@@ -647,6 +637,45 @@ def test_a_gap_left_after_the_round_leaves_the_spec_open(driver):
 
     assert ran.status == 1
     assert "      Gap: D1 is Missing: Not there.\n" in ran.out
+    assert "CLOSE" not in ran.out
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+
+
+RENAME_TICKET = "02-ticket-make-the-renames-the-name-check-found"
+
+BATCH_MOVED = "## Name report\n\n### Renames\n\n- `Batch`: it now holds a whole spec.\n"
+
+
+def given_a_rename_round(driver, *reports):
+    sessions = given_sessions_that_finish(driver)
+    given_a_filed_ticket_that_lands(driver, sessions, RENAME_TICKET)
+    waiting = list(reports)
+    sessions.then["spec-names"] = lambda: naming(driver, waiting.pop(0))()
+    return sessions
+
+
+def test_a_rename_is_filed_as_a_ticket_file_under_the_spec_and_a_rename_made_closes_it(driver):
+    given_a_rename_round(driver, BATCH_MOVED, "## Name report\n\n### Verdicts\n\n- Batch: Done\n")
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert "FILED {}/2 under spec {} makes 1 rename".format(SPEC, SPEC) in ran.out
+    filed = on_remote(driver.repo, ticket_path(RENAME_TICKET))
+    assert "### Batch\n\n> `Batch`: it now holds a whole spec.\n" in filed
+    assert status_on_remote(driver.repo, ticket_path(RENAME_TICKET)) == "closed"
+    assert "NAMES every rename is made on spec 7" in ran.out
+    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+
+
+def test_a_rename_not_made_leaves_the_spec_open(driver):
+    given_a_rename_round(driver, BATCH_MOVED,
+                         "## Name report\n\n### Verdicts\n\n- Batch: Not done. Still there.\n")
+
+    ran = driver.run()
+
+    assert ran.status == 1
+    assert "      Not made: Batch is Not done: Still there.\n" in ran.out
     assert "CLOSE" not in ran.out
     assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
 

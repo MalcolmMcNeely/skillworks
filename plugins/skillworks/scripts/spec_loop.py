@@ -40,7 +40,9 @@ import ticket_worktree
 from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items
-from count.renames import RENAMES, read_renames
+from count.rename_ticket import rename_ticket
+from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
+                           read_rename_verdicts, read_renames, unmade_said)
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
@@ -326,6 +328,7 @@ class Loop:
         # Read before the first ticket, so the count judges the report by the spec the run began on.
         self.items = None
         self.drift_read = None
+        self.names_read = None
 
         self.job_worktree = ""
         self.ticket_base = ""
@@ -686,6 +689,7 @@ class Loop:
 
     def after_tickets_plan(self):
         drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
+        names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
         return ("  after every ticket is closed\n"
                 + plan_line("drift", drift + '" --session-id <new id>',
                             "a report recorded, a Verdicts list, no Contradicts")
@@ -693,9 +697,12 @@ class Loop:
                             "built through every step above")
                 + plan_line("re-check", drift + ' <the Gap items>" --session-id <new id>, once',
                             "no Gap left, no Contradicts")
-                + plan_line("names", 'claude -p "{}spec-names {} <base>" --session-id <new '
-                            'id>'.format(PLUGIN, self.spec),
-                            "a Name report recorded, a Renames list, no rename")
+                + plan_line("names", names + '" --session-id <new id>',
+                            "a Name report recorded, a Renames list")
+                + plan_line("rename-ticket", "one ticket under the spec when the Name check finds "
+                            "a rename, built through every step above")
+                + plan_line("name-re-check", names + ' <the rename ticket>" --session-id <new id>, '
+                            'once', "a new Name report, a Verdicts list, every rename Done")
                 + plan_line("full-run", "the whole Suite on the newest origin/<target>, with no "
                             "Proofs and no images, once and last"))
 
@@ -1064,6 +1071,7 @@ class Loop:
         if not report:
             raise stop("STOP  the Name check recorded no report on spec {}, so no name was read "
                        "and the spec stays open.".format(self.spec_named()))
+        self.names_read = report
         held = self.log_dir / "names.md"
         written(held, report + "\n")
         self.say("NAMES the report is recorded on spec {}. Read it at {}".format(
@@ -1076,12 +1084,69 @@ class Loop:
                            self.spec_named(), RENAMES, held))
         for said in renames:
             self.say("NAME  " + said)
-        if renames:
-            raise stop("STOP  the Name check finds {} on spec {}. A rename is owed and not yet "
-                       "built, so this is not a clean finish.\n{}      Read it at {}".format(
-                           how_many(len(renames), "rename", "renames"), self.spec_named(),
-                           "".join("      Rename: {}\n".format(said) for said in renames), held))
-        self.say("NAMES no rename is owed on spec {}".format(self.spec_named()))
+        if not renames:
+            self.say("NAMES no rename is owed on spec {}".format(self.spec_named()))
+        return renames
+
+    # --- the rename ticket ---------------------------------------------------
+
+    # A rename is never a question for a person, so every one is built without asking.
+    def file_rename_ticket(self, renames):
+        for said in renames:
+            if has_no_glossary_word(said):
+                self.say("NOTE  {} has no glossary word, so the rename takes the name the code and "
+                         "the spec use most. A person settles the word.".format(name_of(said)))
+        title, body = rename_ticket(renames)
+        ticket = self.tracker.file_ticket(self.spec, title, body)
+        self.ticket_count += 1
+        self.say("FILED {} under spec {} makes {}, so the loop builds it and checks each one".format(
+            self.named(ticket), self.spec_named(), how_many(len(renames), "rename", "renames")))
+        return ticket
+
+    # The rename ticket's diff alone, so the check that each rename was made has a small context.
+    def check_renames(self, base, ticket, renames):
+        self.say("NAMES the rename ticket {} is closed. Checking it made each rename on spec "
+                 "{}.".format(self.named(ticket), self.spec_named()))
+        self.judge("names-renames", "Name re-check", PLUGIN + "spec-names {} {} {}".format(
+            self.spec, base, self.tracker.reference(ticket)))
+
+        # The Tracker hands back the newest report, so a check that recorded none reads the first.
+        report = self.tracker.name_report(self.spec)
+        if not report or report == self.names_read:
+            raise stop("STOP  the Name re-check recorded no new report on spec {}, so no rename was "
+                       "checked and the spec stays open.".format(self.spec_named()))
+        held = self.log_dir / "names-renames.md"
+        written(held, report + "\n")
+        verdicts = read_rename_verdicts(report)
+        if verdicts is None:
+            raise stop("STOP  the Name re-check on spec {} holds no {} list, so no rename was "
+                       "counted and the spec stays open. Read it at {}".format(
+                           self.spec_named(), VERDICTS, held))
+
+        counted = count_renames(renames, verdicts)
+        self.say("COUNT the rename ticket owes {}, and the Name re-check gives {}".format(
+            how_many(len(renames), "rename", "renames"),
+            how_many(counted.verdicts_given, "Verdict", "Verdicts")))
+        for verdict in counted.unknown:
+            self.say("WARN  the Name re-check judges {}, which the rename ticket does not owe, so "
+                     "its Verdict is not counted".format(verdict.item))
+        if counted.unmade:
+            raise stop("STOP  the Name re-check finds {} on spec {} after the rename ticket was "
+                       "built. A person decides.\n{}      Read it at {}".format(
+                           how_many(len(counted.unmade), "rename not made", "renames not made"),
+                           self.spec_named(),
+                           "".join("      Not made: {}\n".format(unmade_said(unmade))
+                                   for unmade in counted.unmade), held))
+        self.say("NAMES every rename is made on spec {}".format(self.spec_named()))
+
+    # Its own ticket after the Gap ticket, so each build has one job and no later build brings a name.
+    def close_renames(self, base):
+        renames = self.check_names(base)
+        if not renames:
+            return
+        ticket = self.file_rename_ticket(renames)
+        self.run_tickets()
+        self.check_renames(base, ticket, renames)
 
     # --- the spec's close ---------------------------------------------------
 
@@ -1156,13 +1221,13 @@ class Loop:
         try:
             self.run_tickets()
             self.close_gaps(base)
-            self.check_names(base)
+            self.close_renames(base)
         except Stop as stopped:
             self.run_full(stopped)
             raise
         self.run_full()
 
-        # Reached only with every Verdict Done or In step and the full run green: a clean finish.
+        # Reached only with every Verdict Done or In step, every rename Done and the full run green.
         self.close_spec()
         if self.spec_mode:
             self.hand_over()

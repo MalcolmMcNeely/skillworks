@@ -1249,8 +1249,9 @@ def test_the_loop_page_says_the_driver_decides_a_clean_finish_after_the_full_run
     page = " ".join((ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8").split())
 
     assert "The script decides a clean finish, and nothing else does." in page
-    assert ("every Verdict Done or In step, no rename owed in [the Name report](#the-name-check), "
-            "and [the full run](#the-full-run) green") in page
+    assert ("every Verdict Done or In step, no rename owed in [the Name report](#the-name-check) "
+            "or every rename Done in [the Name re-check](#the-name-re-check), and [the full "
+            "run](#the-full-run) green") in page
     assert ("It runs once, at the end, after the drift check, its count and [the Name "
             "check](#the-name-check).") in page
 
@@ -1281,7 +1282,23 @@ def test_the_loop_page_describes_the_name_check_and_its_report():
     assert "`.spec-loop/<spec>/names.md`, beside `drift.md`" in page
     assert 'names["Name check' in text
     assert "| The Name check |" in text
-    assert "STOP  the Name check finds 1 rename on spec #200" in text
+    assert "With no rename there is no rename ticket and no Name re-check" in page
+
+
+def test_the_loop_page_describes_the_rename_ticket_and_the_name_re_check():
+    text = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
+    page = " ".join(text.split())
+
+    assert "\n### The rename ticket\n" in text
+    assert "\n### The Name re-check\n" in text
+    assert 'renames["The rename ticket' in text
+    assert "| The rename ticket |" in text
+    assert "The build never edits a glossary." in page
+    assert "/skillworks:spec-names <spec> <base> <rename ticket>" in page
+    assert "`.spec-loop/<spec>/names-renames.md`" in page
+    assert "STOP  the Name re-check finds 1 rename not made on spec #200" in text
+    assert "FILED #211 under spec #200 makes 2 renames" in text
+    assert "NOTE  Gap and Hole has no glossary word" in text
 
 
 def test_the_steering_page_says_the_name_check_reads_the_glossary():

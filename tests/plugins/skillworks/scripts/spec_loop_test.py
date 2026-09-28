@@ -639,7 +639,8 @@ def test_the_dry_run_names_the_gap_round_between_the_drift_check_and_the_full_ru
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0, said(ran)
-    assert planned_steps(ran)[-5:] == ["drift", "gap-ticket", "re-check", "names", "full-run"]
+    assert planned_steps(ran)[-7:-3] == ["drift", "gap-ticket", "re-check", "names"]
+    assert planned_steps(ran)[-1] == "full-run"
     assert '"/skillworks:spec-drift 158 <base>"' in planned_call(ran, "drift")
     assert "one ticket under the spec when the count finds a Gap" in planned_call(ran, "gap-ticket")
     assert '"/skillworks:spec-drift 158 <base> <the Gap items>"' in planned_call(ran, "re-check")
@@ -654,7 +655,21 @@ def test_the_dry_run_names_the_name_check_after_the_gap_round(loop):
 
     assert ran.status == 0, said(ran)
     assert '"/skillworks:spec-names 158 <base>"' in planned_call(ran, "names")
-    assert planned_checks(ran, "names") == "a Name report recorded, a Renames list, no rename"
+    assert planned_checks(ran, "names") == "a Name report recorded, a Renames list"
+
+
+def test_the_dry_run_names_the_rename_steps_between_the_name_check_and_the_full_run(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert planned_steps(ran)[-4:] == ["names", "rename-ticket", "name-re-check", "full-run"]
+    assert ("one ticket under the spec when the Name check finds a rename"
+            in planned_call(ran, "rename-ticket"))
+    assert ('"/skillworks:spec-names 158 <base> <the rename ticket>"'
+            in planned_call(ran, "name-re-check"))
+    assert planned_checks(ran, "name-re-check") == "a new Name report, a Verdicts list, every rename Done"
 
 
 def test_a_closed_ticket_is_listed_and_given_no_plan(loop):
@@ -2267,9 +2282,9 @@ def given_drift_reports(sessions, tracker, *reports):
 
 
 # A file of its own, since a ticket landed before it already holds what every build writes.
-def given_a_gap_ticket_that_lands(loop, tracker, sessions, ticket):
+def given_a_filed_ticket_that_lands(loop, tracker, sessions, ticket):
     def build():
-        (Path(loop.runner.where) / "gaps.txt").write_text("built\n", encoding="utf-8", newline="\n")
+        (Path(loop.runner.where) / "filed.txt").write_text("built\n", encoding="utf-8", newline="\n")
     sessions.then["implement {} --stop-after-tests".format(ticket)] = build
     sessions.then["implement {} --finish".format(ticket)] = all_of(
         committed(loop.runner, ticket), closed(tracker, ticket))
@@ -2278,7 +2293,7 @@ def given_a_gap_ticket_that_lands(loop, tracker, sessions, ticket):
 def drifted_in_a_round(loop, first, second):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
-    given_a_gap_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
     given_drift_reports(sessions, tracker, first, second)
     return loop.run(SPEC)
 
@@ -2451,20 +2466,6 @@ def test_the_name_check_names_the_session_that_started_the_driver(loop, runner, 
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
 
-def test_each_rename_found_is_logged_and_stops_the_loop_before_a_clean_finish(loop):
-    ran = named_back(loop, name_report("`Batch`: it now holds a whole spec.",
-                                       "Gap and Hole: two tickets named one concept two ways."))
-
-    assert ran.status == 1
-    log = loop.log()
-    assert "NAME  `Batch`: it now holds a whole spec.\n" in log
-    assert "NAME  Gap and Hole: two tickets named one concept two ways.\n" in log
-    assert ("STOP  the Name check finds 2 renames on spec #{}. A rename is owed and not yet "
-            "built, so this is not a clean finish.").format(SPEC) in log
-    assert "      Rename: `Batch`: it now holds a whole spec.\n" in log
-    assert "END" not in log
-
-
 def test_a_name_check_that_recorded_no_report_stops_the_loop(loop):
     ran = named_back(loop, "Looks good to me.\n")
 
@@ -2489,6 +2490,152 @@ def test_a_drift_stop_runs_no_name_check(loop, runner):
 
     assert ran.status == 1
     assert prompts_asking(runner, NAME_CHECK) == []
+
+
+def test_no_rename_files_no_rename_ticket_and_runs_no_name_re_check(loop, runner):
+    ran = named_back(loop, NO_RENAMES)
+
+    assert ran.status == 0, said(ran)
+    assert not runner.built("issue create")
+    assert len(prompts_asking(runner, NAME_CHECK)) == 1
+    assert "FILED" not in loop.log()
+
+
+# --- the rename ticket ---------------------------------------------------------
+
+# Numbered after the one closed ticket, and there is no Gap ticket before it.
+RENAME_TICKET = "162"
+
+RENAMED = ("`Batch`: it now holds a whole spec.",
+           "Gap and Hole: two tickets named one concept two ways, and no glossary word.")
+
+
+def rename_verdicts(**given):
+    return "## Name report\n\n### Verdicts\n\n" + "".join(
+        "- {}: {}\n".format(name.replace("_", " "), said) for name, said in given.items())
+
+
+# Each Name check records the next report, so the Name re-check reads its own and not the first.
+def given_name_reports(sessions, tracker, *reports):
+    waiting = list(reports)
+
+    def record():
+        tracker.name_report = waiting.pop(0)
+    sessions.then["spec-names"] = record
+
+
+def renamed_in_a_round(loop, second, first=name_report(*RENAMED)):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, RENAME_TICKET)
+    given_name_reports(sessions, tracker, first, second)
+    return loop.run(SPEC)
+
+
+def test_each_rename_is_logged_and_filed_as_one_rename_ticket(loop, runner):
+    ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    assert "NAME  `Batch`: it now holds a whole spec.\n" in log
+    assert ("FILED #{} under spec #{} makes 2 renames, so the loop builds it and checks each "
+            "one").format(RENAME_TICKET, SPEC) in log
+    created = runner.built("issue create")
+    assert len(created) == 1
+    title = created[0][created[0].index("--title") + 1]
+    body = created[0][created[0].index("--body") + 1]
+    assert title == "TICKET: Make the renames the Name check found"
+    assert "### Batch\n\n> `Batch`: it now holds a whole spec.\n" in body
+    assert "### Gap and Hole\n\n> Gap and Hole: two tickets" in body
+    assert "ready-for-agent" in created[0]
+
+
+def test_a_concept_with_no_glossary_word_gets_a_note(loop):
+    renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
+
+    log = loop.log()
+    assert ("NOTE  Gap and Hole has no glossary word, so the rename takes the name the code and the "
+            "spec use most. A person settles the word.\n") in log
+    assert "NOTE  Batch" not in log
+
+
+def test_the_rename_ticket_is_built_through_every_step_after_the_gap_round(loop, runner):
+    ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
+
+    assert ran.status == 0, said(ran)
+    asked = [call[2].split()[0] for call in step_calls(runner)
+             if call[2].split()[1:2] == [RENAME_TICKET]]
+    assert asked == ["/skillworks:" + name for name in (
+        "implement", "review-standards", "review-spec", "review-architecture", "implement",
+        "implement")]
+    log = loop.log()
+    assert log.index("COUNT") < log.index("FILED") < log.index("DONE  #" + RENAME_TICKET)
+
+
+def test_a_rename_made_is_checked_on_the_rename_ticket_alone_and_ends_the_run(loop, runner):
+    ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, NAME_CHECK) == [
+        "{} {} {}".format(NAME_CHECK, SPEC, base_of(loop)),
+        "{} {} {} {}".format(NAME_CHECK, SPEC, base_of(loop), RENAME_TICKET)]
+    log = loop.log()
+    assert "COUNT the rename ticket owes 2 renames, and the Name re-check gives 2 Verdicts" in log
+    assert "NAMES every rename is made on spec #{}".format(SPEC) in log
+    assert (loop.records() / "names-renames.md").is_file()
+    assert "STOP" not in log
+    assert log.index("NAMES every rename") < log.index("END   spec #{}".format(SPEC))
+
+
+def test_a_rename_not_made_stops_the_loop_naming_it(loop, runner):
+    ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done",
+                                                   Gap_and_Hole="Not done. Hole is in two files."))
+
+    assert ran.status == 1
+    log = loop.log()
+    assert ("STOP  the Name re-check finds 1 rename not made on spec #{} after the rename ticket "
+            "was built. A person decides.").format(SPEC) in log
+    assert "      Not made: Gap and Hole is Not done: Hole is in two files.\n" in log
+    assert "Not made: Batch" not in log
+    assert len(runner.built("issue create")) == 1
+    assert "END" not in log
+
+
+def test_a_rename_the_check_skips_or_judges_twice_is_not_made(loop):
+    ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done") + "- Batch: Done\n")
+
+    assert ran.status == 1
+    log = loop.log()
+    assert "      Not made: Batch has 2 Verdicts: Done, Done\n" in log
+    assert "      Not made: Gap and Hole has no Verdict\n" in log
+
+
+def test_a_verdict_for_a_rename_the_ticket_does_not_owe_is_warned_of_and_stops_nothing(loop):
+    ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done",
+                                                   Stint="Not done. Typo."))
+
+    assert ran.status == 0, said(ran)
+    assert ("WARN  the Name re-check judges Stint, which the rename ticket does not owe, so its "
+            "Verdict is not counted") in loop.log()
+
+
+def test_a_name_re_check_that_recorded_no_new_report_stops_the_loop(loop):
+    report = name_report(*RENAMED)
+    ran = renamed_in_a_round(loop, report, report)
+
+    assert ran.status == 1
+    assert ("STOP  the Name re-check recorded no new report on spec #{}, so no rename was "
+            "checked").format(SPEC) in loop.log()
+    assert "END" not in loop.log()
+
+
+def test_a_name_re_check_with_no_verdicts_list_stops_the_loop(loop):
+    ran = renamed_in_a_round(loop, "## Name report\n\nEvery rename is made.\n")
+
+    assert ran.status == 1
+    assert ("STOP  the Name re-check on spec #{} holds no ### Verdicts list, so no rename was "
+            "counted").format(SPEC) in loop.log()
+    assert "END" not in loop.log()
 
 
 def test_attributes_already_set_are_kept_and_the_parent_is_added(loop, runner, monkeypatch):
@@ -2994,7 +3141,7 @@ def given_a_run_that_lands_and_goes_round(loop, *reports):
     tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
     sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
-    given_a_gap_ticket_that_lands(loop, tracker, sessions, "169")
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "169")
     given_drift_reports(sessions, tracker, *reports)
     return tracker
 
@@ -3045,17 +3192,44 @@ def test_the_full_run_runs_after_the_name_check(loop, runner):
     assert names < full
 
 
-def test_a_rename_found_still_gets_the_full_run_and_writes_no_end(loop):
-    tracker = given_a_run_that_lands(loop)
-    tracker.name_report = name_report("`Batch`: it now holds a whole spec.")
+def given_a_run_that_lands_and_renames(loop, *reports):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "169")
+    given_name_reports(sessions, tracker, *reports)
+    return tracker
+
+
+def test_a_rename_not_made_still_gets_the_full_run_once_and_last_and_writes_no_end(loop, runner):
+    given_a_run_that_lands_and_renames(loop, name_report("`Batch`: it now holds a whole spec."),
+                                       rename_verdicts(Batch="Not done. It is still there."))
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
+    assert full_run_calls(loop, "dotnet") == [["dotnet", "test", "Skillworks.slnx"]]
     log = loop.log()
-    assert "      Rename: `Batch`: it now holds a whole spec.\n" in log
-    assert "FULL  main at" in log
+    assert "      Not made: Batch is Not done: It is still there.\n" in log
+    assert "FULL  #168, #169 landed in this run" in log
     assert "END" not in log
+    name_re_check = max(at for at, call in enumerate(runner.made) if call.args[0] == "claude"
+                       and call.args[2].startswith(NAME_CHECK))
+    full = next(at for at, call in enumerate(runner.made)
+                if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
+    assert name_re_check < full
+
+
+def test_every_rename_made_is_a_clean_finish_after_the_full_run(loop):
+    given_a_run_that_lands_and_renames(loop, name_report("`Batch`: it now holds a whole spec."),
+                                       rename_verdicts(Batch="Done"))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    assert log.index("NAMES every rename is made") < log.index("FULL  #168, #169 landed")
+    assert log.index("FULL  main at") < log.index("END   spec #{}".format(SPEC))
 
 
 def test_a_red_full_run_after_every_verdict_done_writes_no_end(loop):

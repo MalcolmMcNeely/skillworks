@@ -50,19 +50,19 @@ def subsections_of(report):
     return held
 
 
-def word_opening(said):
-    for word in WORDS:
+def word_opening(said, words):
+    for word in words:
         if said.startswith(word) and not said[len(word):len(word) + 1].isalpha():
             return word
     return ""
 
 
 # The first colon that a Verdict word follows, so a Surface name may hold a colon of its own.
-def verdict_in(line):
+def verdict_in(line, words=WORDS):
     at = line.find(SEPARATOR)
     while at != -1:
         rest = line[at + len(SEPARATOR):]
-        word = word_opening(rest)
+        word = word_opening(rest, words)
         if word:
             return Verdict(line[:at].strip(NAME_MARKS), word, rest[len(word):].lstrip(REASON_MARKS))
         at = line.find(SEPARATOR, at + 1)
