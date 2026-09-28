@@ -4,7 +4,7 @@ import pytest
 
 from conftest import SCRIPTS, Ran
 from stop import REFUSED, Stop
-from tracker.github import CLAIM_WAIT, GitHub
+from tracker.github import CLAIM_WAIT, Filing, GitHub, NewTicket
 
 
 def github(runner):
@@ -189,67 +189,215 @@ def test_a_spec_that_names_no_branch_stops_and_says_so(runner):
 # --- filing a ticket under a spec ---------------------------------------------
 
 class Issues:
-    # Holds what was filed, so a filed ticket is read back the way the loop reads every ticket.
-    def __init__(self, runner, fails=""):
+    # Kept across filings, so a second filing reads what the first one left.
+    def __init__(self, runner):
         self.runner = runner
-        self.fails = fails
-        self.filed = {}
-        self.children = []
+        self.issues = {}
+        self.fails = []
+        self.writes = []
         runner.stub("gh", does=self.answer)
+
+    def holds(self, title, parent="", state="open", blocked_by=()):
+        number = str(400 + len(self.issues))
+        self.issues[number] = {"title": title, "body": "", "labels": ["ready-for-agent"],
+                               "state": state, "parent": parent, "blocked_by": list(blocked_by)}
+        return number
+
+    # Only the nth call that starts so fails, so a second filing finds GitHub answering again.
+    def fail(self, start, nth=1):
+        self.fails.append([start, nth])
+
+    def failing(self, asked):
+        for held in self.fails:
+            if asked.startswith(held[0]):
+                held[1] -= 1
+                if held[1] == 0:
+                    return True
+        return False
 
     def answer(self):
         called = self.runner.calls[-1][1:]
         asked = " ".join(called)
-        if self.fails and asked.startswith(self.fails):
+        if self.failing(asked):
             return Ran(1, "", "HTTP 422: refused\n")
         if called[:2] == ["issue", "create"]:
-            number = str(400 + len(self.filed))
-            self.filed[number] = dict(zip(called[2::2], called[3::2]))
+            given = dict(zip(called[2::2], called[3::2]))
+            number = self.holds(given["--title"])
+            self.issues[number].update(body=given["--body"], labels=[given["--label"]])
+            self.writes.append("issue create")
             return Ran(0, "https://github.com/owner/repo/issues/{}\n".format(number), "")
-        if asked.startswith("api repos/owner/repo/issues/") and asked.endswith("--jq .id"):
-            return Ran(0, "9" + asked.split(" ")[1].rsplit("/", 1)[-1] + "\n", "")
-        if asked == "api --method POST repos/owner/repo/issues/158/sub_issues -F sub_issue_id=9400":
-            self.children.append("400")
+        if called[:3] == ["api", "--method", "POST"]:
+            number = called[3].split("/")[4]
+            given = called[-1].split("=", 1)[1][1:]
+            if called[3].endswith("/sub_issues"):
+                self.issues[given]["parent"] = number
+            else:
+                self.issues[number]["blocked_by"].append(given)
+            self.writes.append(asked)
             return Ran(0, "{}\n", "")
-        if 'select(.state=="open")' in asked:
-            return Ran(0, "".join(number + "\n" for number in self.children), "")
+        if called[:2] == ["api", "--paginate"] and called[2].endswith("/sub_issues"):
+            spec = called[2].split("/")[4]
+            children = [(n, i) for n, i in self.issues.items() if i["parent"] == spec]
+            if 'select(.state=="open")' in called[-1]:
+                return Ran(0, "".join(n + "\n" for n, i in children if i["state"] == "open"), "")
+            return Ran(0, "".join("{}\t{}\t{}\n".format(n, i["state"], i["title"])
+                                  for n, i in children), "")
+        if called[:2] == ["api", "--paginate"] and called[2].endswith("/dependencies/blocked_by"):
+            number = called[2].split("/")[4]
+            return Ran(0, "".join(n + "\n" for n in self.issues[number]["blocked_by"]), "")
+        if called[:2] == ["api", "--paginate"] and "labels=ready-for-agent&state=open" in called[2]:
+            return Ran(0, "".join("{}\t{}\n".format(n, i["title"]) for n, i in self.issues.items()
+                                  if i["state"] == "open" and "ready-for-agent" in i["labels"]), "")
+        if asked.endswith("--jq .id"):
+            return Ran(0, "9" + called[1].rsplit("/", 1)[-1] + "\n", "")
+        if asked.endswith('--jq .parent_issue_url // ""'):
+            parent = self.issues[called[1].rsplit("/", 1)[-1]]["parent"]
+            return Ran(0, (parent and "https://api.github.com/repos/owner/repo/issues/" + parent)
+                       + "\n", "")
         return Ran(1, "", "no answer for: " + asked + "\n")
 
 
-def test_a_filed_ticket_is_a_sub_issue_of_the_spec_with_its_title_body_and_label(runner):
+# Numbered blockers first, as to-tickets writes a set.
+A_SET = [NewTicket("TICKET: Read the file", "## What to build\n\nOne.\n"),
+         NewTicket("TICKET: Check the file", "Two.\n"),
+         NewTicket("TICKET: Write the report", "Three.\n",
+                   ("TICKET: Read the file", "TICKET: Check the file"))]
+
+
+def test_a_set_is_filed_in_order_each_a_sub_issue_with_its_label_and_its_blockers(runner):
+    issues = Issues(runner)
+
+    filing = github(runner).file_tickets("158", A_SET)
+
+    assert filing == Filing(["400", "401", "402"], True)
+    assert [(i["title"], i["parent"], i["labels"], i["blocked_by"])
+            for i in issues.issues.values()] == [
+        ("TICKET: Read the file", "158", ["ready-for-agent"], []),
+        ("TICKET: Check the file", "158", ["ready-for-agent"], []),
+        ("TICKET: Write the report", "158", ["ready-for-agent"], ["400", "401"])]
+    assert issues.issues["400"]["body"] == "## What to build\n\nOne.\n"
+
+
+def test_a_second_filing_after_a_full_one_changes_nothing_and_says_so(runner):
+    issues = Issues(runner)
+    tracker = github(runner)
+    tracker.file_tickets("158", A_SET)
+    issues.writes.clear()
+
+    filing = tracker.file_tickets("158", A_SET)
+
+    assert filing == Filing(["400", "401", "402"], False)
+    assert issues.writes == []
+
+
+def test_a_second_filing_after_one_that_failed_halfway_files_and_links_only_what_is_missing(runner):
+    issues = Issues(runner)
+    tracker = github(runner)
+    issues.fail("issue create", nth=2)
+    with pytest.raises(Stop):
+        tracker.file_tickets("158", A_SET)
+    issues.writes.clear()
+
+    filing = tracker.file_tickets("158", A_SET)
+
+    assert filing == Filing(["400", "401", "402"], True)
+    assert issues.writes == [
+        "issue create",
+        "api --method POST repos/owner/repo/issues/158/sub_issues -F sub_issue_id=9401",
+        "issue create",
+        "api --method POST repos/owner/repo/issues/158/sub_issues -F sub_issue_id=9402",
+        "api --method POST repos/owner/repo/issues/402/dependencies/blocked_by -F issue_id=9400",
+        "api --method POST repos/owner/repo/issues/402/dependencies/blocked_by -F issue_id=9401"]
+
+
+def test_a_second_filing_after_an_issue_was_filed_and_not_linked_links_it(runner):
+    issues = Issues(runner)
+    tracker = github(runner)
+    tracker.file_tickets("158", A_SET[:2])
+    issues.holds("TICKET: Write the report", blocked_by=["400"])
+    issues.writes.clear()
+
+    filing = tracker.file_tickets("158", A_SET)
+
+    assert filing == Filing(["400", "401", "402"], True)
+    assert issues.writes == [
+        "api --method POST repos/owner/repo/issues/158/sub_issues -F sub_issue_id=9402",
+        "api --method POST repos/owner/repo/issues/402/dependencies/blocked_by -F issue_id=9401"]
+
+
+def test_an_issue_under_another_spec_or_a_closed_one_is_not_taken_for_the_ticket(runner):
+    issues = Issues(runner)
+    issues.holds("TICKET: Read the file", parent="157")
+    issues.holds("TICKET: Read the file", parent="158", state="closed")
+
+    filing = github(runner).file_tickets("158", A_SET[:1])
+
+    assert filing == Filing(["402"], True)
+    assert issues.issues["402"]["parent"] == "158"
+
+
+@pytest.mark.parametrize("start, nth, reason, done", [
+    ("issue create", 1, "would not file the ticket TICKET: Read the file", "Nothing was filed"),
+    ("issue create", 3, "would not file the ticket TICKET: Write the report",
+     "Already filed: #400, #401"),
+    ("api --method POST repos/owner/repo/issues/158/sub_issues", 2,
+     "would not make #401 a sub-issue of spec #158", "Already filed: #400, #401"),
+    ("api --method POST repos/owner/repo/issues/402/dependencies", 1,
+     "would not mark #402 blocked by #400", "Already filed: #400, #401, #402"),
+    ("api --paginate repos/owner/repo/issues/158/sub_issues", 1,
+     "would not list the tickets of spec #158", "Nothing was filed"),
+])
+def test_a_filing_gh_refuses_stops_and_names_the_tickets_already_filed(runner, start, nth, reason,
+                                                                       done):
+    issues = Issues(runner)
+    issues.fail(start, nth)
+
+    with pytest.raises(Stop) as stopped:
+        github(runner).file_tickets("158", A_SET)
+
+    assert stopped.value.status == REFUSED
+    assert reason in stopped.value.said
+    assert done in stopped.value.said
+    assert "HTTP 422: refused" in stopped.value.said
+    assert "files nothing twice" in stopped.value.said
+
+
+@pytest.mark.parametrize("tickets", [
+    [NewTicket("TICKET: One", ""), NewTicket("TICKET: One", "")],
+    [NewTicket("TICKET: Two", "", ("TICKET: One",)), NewTicket("TICKET: One", "")],
+])
+def test_a_set_with_a_title_twice_or_a_blocker_not_before_it_is_turned_down(runner, tickets):
+    Issues(runner)
+
+    with pytest.raises(Stop) as stopped:
+        github(runner).file_tickets("158", tickets)
+
+    assert stopped.value.status == REFUSED
+    assert runner.calls == []
+
+
+def test_a_ticket_the_driver_files_is_a_set_of_one_under_the_spec(runner):
     issues = Issues(runner)
 
     number = github(runner).file_ticket("158", "TICKET: Build the Gaps", "## What to build\n\nS2.\n")
 
     assert number == "400"
-    assert issues.filed["400"] == {"--title": "TICKET: Build the Gaps",
-                                   "--body": "## What to build\n\nS2.\n",
-                                   "--label": "ready-for-agent"}
-    assert issues.children == ["400"]
+    assert issues.issues["400"]["title"] == "TICKET: Build the Gaps"
+    assert issues.issues["400"]["parent"] == "158"
 
 
-def test_a_filed_ticket_is_listed_among_the_specs_open_tickets(runner):
-    Issues(runner)
+def test_a_ticket_the_driver_files_again_after_a_failure_is_not_filed_twice(runner):
+    issues = Issues(runner)
     tracker = github(runner)
+    issues.fail("api --method POST")
+    with pytest.raises(Stop):
+        tracker.file_ticket("158", "TICKET: Build the Gaps", "S2.\n")
 
     number = tracker.file_ticket("158", "TICKET: Build the Gaps", "S2.\n")
 
-    assert tracker.open_tickets("158") == [number]
-
-
-@pytest.mark.parametrize("fails, reason", [
-    ("issue create", "would not file"),
-    ("api --method POST", "is not a sub-issue of spec #158"),
-])
-def test_a_ticket_github_would_not_file_under_the_spec_stops_and_says_so(runner, fails, reason):
-    Issues(runner, fails=fails)
-
-    with pytest.raises(Stop) as stopped:
-        github(runner).file_ticket("158", "TICKET: Build the Gaps", "S2.\n")
-
-    assert stopped.value.status == REFUSED
-    assert reason in stopped.value.said
-    assert "HTTP 422: refused" in stopped.value.said
+    assert number == "400"
+    assert list(issues.issues) == ["400"]
+    assert tracker.open_tickets("158") == ["400"]
 
 
 # --- only the Tracker asks gh about an issue ---------------------------------

@@ -164,6 +164,9 @@ class Tracker:
             return Ran(0, "9" + asked.split(" ")[1].rsplit("/", 1)[-1] + "\n", "")
         if asked.startswith("api --method POST repos/owner/repo/issues/{}/sub_issues".format(SPEC)):
             return Ran(0, "", "")
+        # Every issue the loop filed was linked as it was filed, so none is left without a spec.
+        if asked.startswith("api --paginate repos/owner/repo/issues?labels=ready-for-agent"):
+            return Ran(0, "", "")
         if "blocked_by" in asked:
             return Ran(0, "0\n", "")
         if "assignees" in asked:

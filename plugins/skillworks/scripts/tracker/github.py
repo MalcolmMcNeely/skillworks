@@ -1,5 +1,8 @@
 # gh 2.92.0 has no dependency flags, so reads go through `gh api`: docs/research/harness/ticket-state-guardrails.md.
 
+from dataclasses import dataclass
+from typing import NamedTuple
+
 from stop import is_a_number, refusal
 from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
@@ -15,6 +18,38 @@ CLAIM_WAIT = 3
 BRANCH_HEADING = "## Branch"
 
 READY = "ready-for-agent"
+
+ROWS = '.[] | "\\(.number)\\t\\(.state)\\t\\(.title)"'
+
+
+def rows(said):
+    return [tuple((line.split("\t") + ["", ""])[:3]) for line in listed(said)]
+
+
+class NewTicket(NamedTuple):
+    title: str
+    body: str
+    blocked_by: tuple = ()
+
+
+@dataclass
+class Filing:
+    numbers: list
+    changed: bool
+
+
+# A ticket is found again by its title, and a blocker by the number it was filed as, before it.
+def checked_set(tickets):
+    seen = set()
+    for ticket in tickets:
+        if ticket.title in seen:
+            raise refusal("Two tickets share the title {}, so a second run could not tell them "
+                          "apart. Nothing was filed.".format(ticket.title))
+        for blocker in ticket.blocked_by:
+            if blocker not in seen:
+                raise refusal("{} is blocked by {}, which is not a ticket before it. Nothing was "
+                              "filed.".format(ticket.title, blocker))
+        seen.add(ticket.title)
 
 
 def spec_branch(spec):
@@ -117,8 +152,7 @@ class GitHub:
         return listed(self.sub_issues(spec, '.[] | select(.state=="open") | .number').out)
 
     def ticket_rows(self, spec):
-        rows = self.sub_issues(spec, '.[] | "\\(.number)\\t\\(.state)\\t\\(.title)"').out
-        return [tuple((line.split("\t") + ["", ""])[:3]) for line in listed(rows)]
+        return rows(self.sub_issues(spec, ROWS).out)
 
     # blocked_by counts OPEN blockers only, and a missing count is not guessed.
     def open_blockers(self, ticket):
@@ -148,21 +182,95 @@ class GitHub:
     def comment(self, ticket, body):
         return self.gh("issue", "comment", ticket, "--body", body).status == 0
 
-    # A sub-issue is attached by the issue's id and not its number, so the id is read between.
     def file_ticket(self, spec, title, body):
-        made = self.gh("issue", "create", "--title", title, "--body", body, "--label", READY)
+        return self.file_tickets(spec, [NewTicket(title, body)]).numbers[0]
+
+    # Matched by title, so a run after a failed one files nothing twice and adds only what is missing.
+    def file_tickets(self, spec, tickets):
+        checked_set(tickets)
+        filing = Filing([], False)
+        numbers = {}
+        # A closed ticket with the title is work already done, so the driver's next Gap ticket is filed anew.
+        linked = {title: number for number, state, title in self.checked_rows(spec, filing)
+                  if state == "open"}
+        loose = None
+        for ticket in tickets:
+            number = linked.get(ticket.title)
+            if not number:
+                if loose is None:
+                    loose = self.unlinked(spec, filing)
+                number = loose.get(ticket.title) or self.filed(spec, ticket, filing)
+                filing.numbers.append(number)
+                self.linked(spec, number, filing)
+            else:
+                filing.numbers.append(number)
+            numbers[ticket.title] = number
+            self.blocked(number, [numbers[title] for title in ticket.blocked_by], filing)
+        return filing
+
+    def checked(self, filing, why, ran):
+        if ran.status != 0:
+            done = ("Already filed: {}.".format(", ".join("#" + n for n in filing.numbers))
+                    if filing.numbers else "Nothing was filed.")
+            raise refusal("GitHub {}. {} Run it again: a second run finds each ticket by title and "
+                          "files nothing twice. gh said:\n{}".format(
+                              why, done, (ran.out + ran.err).rstrip("\n")))
+        return ran.out
+
+    def checked_rows(self, spec, filing):
+        said = self.checked(filing, "would not list the tickets of spec #{}".format(spec),
+                            self.sub_issues(spec, ROWS))
+        return rows(said)
+
+    # An issue filed by a run that failed before it was linked has the label and no parent yet.
+    def unlinked(self, spec, filing):
+        said = self.checked(filing, "would not list the open tickets", self.gh(
+            "api", "--paginate", "repos/{}/issues?labels={}&state=open&per_page=100".format(
+                self.repo, READY),
+            "--jq", '.[] | select(.pull_request == null) | "\\(.number)\\t\\(.title)"'))
+        loose = {}
+        for number, title in (line.split("\t", 1) for line in listed(said) if "\t" in line):
+            if title not in loose and not self.checked(
+                    filing, "would not say which spec #{} is under".format(number),
+                    self.field(number, '.parent_issue_url // ""')).strip():
+                loose[title] = number
+        return loose
+
+    def filed(self, spec, ticket, filing):
+        made = self.gh("issue", "create", "--title", ticket.title, "--body", ticket.body,
+                       "--label", READY)
         number = made.out.strip().rsplit("/", 1)[-1]
-        if made.status != 0 or not is_a_number(number):
-            raise refusal("GitHub would not file the ticket {} under spec #{}. gh said:\n{}".format(
-                title, spec, (made.out + made.err).rstrip("\n")))
-        issue_id = self.field(number, ".id").out.strip()
-        attached = self.gh("api", "--method", "POST", "repos/{}/issues/{}/sub_issues".format(
-            self.repo, spec), "-F", "sub_issue_id=" + issue_id)
-        if attached.status != 0:
-            raise refusal("Ticket #{} was filed, and is not a sub-issue of spec #{}. Add it by hand. "
-                          "gh said:\n{}".format(number, spec,
-                                                (attached.out + attached.err).rstrip("\n")))
+        self.checked(filing, "would not file the ticket {} under spec #{}".format(
+            ticket.title, spec), made if is_a_number(number) else made._replace(status=1))
+        filing.changed = True
         return number
+
+    # Both links take the issue's id and not its number, so the id is read between.
+    def issue_id(self, number, filing):
+        return self.checked(filing, "would not give the id of #{}".format(number),
+                            self.field(number, ".id")).strip()
+
+    def linked(self, spec, number, filing):
+        self.checked(filing, "would not make #{} a sub-issue of spec #{}".format(number, spec),
+                     self.gh("api", "--method", "POST", "repos/{}/issues/{}/sub_issues".format(
+                         self.repo, spec), "-F", "sub_issue_id=" + self.issue_id(number, filing)))
+        filing.changed = True
+
+    def blocked(self, number, blockers, filing):
+        if not blockers:
+            return
+        held = listed(self.checked(filing, "would not list what blocks #{}".format(number), self.gh(
+            "api", "--paginate", "repos/{}/issues/{}/dependencies/blocked_by".format(
+                self.repo, number), "--jq", ".[].number")))
+        for blocker in blockers:
+            if blocker in held:
+                continue
+            self.checked(filing, "would not mark #{} blocked by #{}".format(number, blocker),
+                         self.gh("api", "--method", "POST",
+                                 "repos/{}/issues/{}/dependencies/blocked_by".format(
+                                     self.repo, number),
+                                 "-F", "issue_id=" + self.issue_id(blocker, filing)))
+            filing.changed = True
 
     # Always a new comment, because the loop reads the last one and an old report stays for a person to see.
     def post_report(self, spec, report_file, what):
