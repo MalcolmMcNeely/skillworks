@@ -83,7 +83,7 @@ Fix only what this axis owns. A finding that belongs to Standards or Spec is dro
 
 Run the placement checks again after a fix, and report what they said about the code as it now stands.
 
-A finding you judge not worth fixing is named in the report and left, with the reason. A move that would spread into modules this change never touched is of that kind.
+A hard breach is always fixed and never left. That holds for a breach of a team check marked hard, and for a breach of a rule marked hard. A judgement call may be left, with the reason in the report, and that reason goes on into the Closing note. A move that would spread into modules this change never touched is a judgement call of that kind.
 
 The report names every finding either way, and says which ones you fixed.
 

@@ -84,7 +84,7 @@ Work reaches this section three ways, and it covers all of them:
 
 1. **Fix every finding, from every axis.** Under the spec loop an axis fixes what it finds, so the Edit beside a report says what is already done — read the change before you fix the same thing twice. Under a hand run the axes only report, so nothing is fixed yet.
 2. **Settle a disagreement.** This is the one session holding all three reports at once, so a contradiction between two axes is settled here and nowhere else.
-3. **Leave a finding you judge wrong**, and keep the reason for the Closing note.
+3. **Leave a judgement call you judge wrong**, and keep the reason for the Closing note. A judgement call may be left, with its reason. A hard breach is always fixed and never left, whether it breaches a team check or a rule marked hard, and so is a moved name.
 4. **Fix a failing suite the prompt carries.** The driver ran the whole suite as often as the Suite file asks and read a failure every time, so treat it as the work. Make the suite green. Do not weaken a test to get there, and say so in your report if the failure turns out to be nothing this ticket caused.
 5. **A prompt carrying neither a report nor a failing suite has nothing to fix**, so go straight on.
 

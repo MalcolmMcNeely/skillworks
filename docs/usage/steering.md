@@ -84,6 +84,14 @@ It is yours to add, as a check in your Suite.
 | `loop.json` | The loop's settings. `tracker` names where your specs and tickets live: `github` for GitHub Issues, or `files` for committed files in `.specs/`. `target-branch` names the branch the loop Lands on, or says `spec` to review each spec as one pull request. | Setup, which asks for both and writes them. The preflight and the loop's scripts, through one reader. The skills that read or write a spec or a ticket, to find the Tracker. The grill, `/skillworks:to-spec`, `implement` and the drift check, to find the branch they push to or judge. | `tracker`: `github` or `files`. The Seed sets it to `github`, and setup asks. `target-branch`: a branch name, such as `main` or `master`, or `spec`. The Seed sets it to your remote's default branch. [The loop](the-loop.md#the-tracker) says how to choose each one. |
 | `surfaces.md` | Lists your Surfaces: the places a change can have to reach besides the code that does the work, such as the README or the user docs. [The Surfaces file](#the-surfaces-file) has an example. | The grill, which asks about each Surface a change touches. `/skillworks:to-spec`, which writes each answer into the spec's Surfaces section. The `spec` review and the drift check, which find each Surface the spec names and check it is in step. The Name check does not read it: it reads the diff and the glossary alone. | Every Surface. Add your own, and delete one your repo does not have. |
 
+A hard breach is always fixed and never left. That holds for a check in a review file marked hard,
+and for a breach of a rule marked hard. A judgement call may be left, with the reason in the
+review's report and in the ticket's Closing note.
+
+A check that should also shape the build goes in a rule in `docs/agents/rules/`, and not in a review
+file. A rule loads into every Session, so the build reads it too. A review file is read only by its
+review.
+
 ## The Surfaces file
 
 A change often has to reach more than its code. A new setting needs a line in the user docs. A new

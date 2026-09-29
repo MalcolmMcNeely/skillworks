@@ -62,7 +62,7 @@ This axis edits the worktree, and it should. A finding you can fix, you fix here
 
 Fix only what this axis owns. A finding that belongs to Spec or Architecture is dropped rather than reported here, so it is not yours to fix either.
 
-A finding you judge not worth fixing is named in the report and left, with the reason. A moved name is never one of these. A baseline smell is a judgement call, so leaving one is an ordinary answer and not a failure.
+A hard breach is always fixed and never left. That holds for a breach of a team check marked hard, for a breach of a rule marked hard, and for a moved name. A judgement call may be left, with the reason in the report, and that reason goes on into the Closing note. A baseline smell is a judgement call, so leaving one is an ordinary answer and not a failure.
 
 The report names every finding either way, and says which ones you fixed.
 

@@ -857,6 +857,31 @@ def test_review_standards_renames_a_name_whose_meaning_the_change_moved_in_the_s
     assert "optional" not in text.lower()
 
 
+@pytest.mark.parametrize("skill", ["review-standards", "review-architecture", "review-spec"])
+def test_each_axis_skill_always_fixes_a_hard_breach_and_leaves_a_judgement_call_only_with_its_reason(skill):
+    fixing = section(skill_text(skill), "Fix what you find")
+
+    assert "A hard breach is always fixed and never left" in fixing
+    assert "a team check" in fixing
+    assert "a rule marked hard" in fixing
+    assert "A judgement call may be left, with the reason" in fixing
+
+
+def test_implements_fixing_section_never_leaves_a_hard_breach():
+    fixing = section(skill_text("implement"), "Fixing")
+
+    assert "A hard breach is always fixed and never left" in fixing
+    assert "A judgement call may be left" in fixing
+
+
+@pytest.mark.parametrize("page", [page for seed in REVIEW_FILES for page in (SETUP / "seeds" / seed, ROOT / WHERE[seed])])
+def test_a_review_seed_and_this_repos_copy_say_a_check_that_shapes_the_build_is_a_rule(page):
+    checks = section(page.read_text(encoding="utf-8"), "Checks")
+
+    assert "A check that should also shape the build goes in a rule in `docs/agents/rules/` instead." in checks
+    assert "this file is read only by its review" in checks
+
+
 def ticket_shape(tracker):
     lines = tracker.splitlines()
     assert "## The ticket shape" in lines, "no ticket shape"

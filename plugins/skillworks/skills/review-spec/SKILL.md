@@ -77,7 +77,7 @@ This axis edits the worktree, and it should. A finding you can fix, you fix here
 
 Fix only what this axis owns. A finding that belongs to Standards or Architecture is dropped rather than reported here, so it is not yours to fix either.
 
-A finding you judge not worth fixing is named in the report and left, with the reason. A gap wide enough to be a ticket of its own is of that kind. A breach of a team check marked hard is never of that kind: it is always fixed, and never left.
+A hard breach is always fixed and never left. That holds for a breach of a team check marked hard, and for a breach of a rule marked hard. A judgement call may be left, with the reason in the report, and that reason goes on into the Closing note. A gap wide enough to be a ticket of its own is a judgement call of that kind.
 
 The report names every finding either way, and says which ones you fixed.
 
