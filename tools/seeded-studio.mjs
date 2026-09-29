@@ -110,7 +110,7 @@ const dollarsPerMillionTokens = {
 
 const skills = [
   { name: 'implement', rate: 4.5, turns: [25, 90], models: { [opus]: 1 }, efforts: { xhigh: 3, high: 1 }, triggers: { 'user-slash': 6, 'claude-proactive': 4 } },
-  { name: 'code-review', rate: 3.5, turns: [15, 45], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'claude-proactive': 5, 'nested-skill': 4, 'user-slash': 1 } },
+  { name: 'review-changes', rate: 3.5, turns: [15, 45], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'claude-proactive': 5, 'nested-skill': 4, 'user-slash': 1 } },
   { name: 'comment-sweep', rate: 2.8, turns: [6, 20], models: { [opus]: 2, [sonnet]: 1 }, efforts: { high: 1 }, triggers: { 'nested-skill': 6, 'user-slash': 4 } },
   { name: 'tdd', rate: 2.4, turns: [20, 60], models: { [opus]: 1 }, efforts: { xhigh: 1, high: 1 }, triggers: { 'claude-proactive': 7, 'user-slash': 3 } },
   { name: 'diagnosing-bugs', rate: 1.7, turns: [15, 70], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'claude-proactive': 8, 'user-slash': 2 } },

@@ -17,11 +17,17 @@ Two other axes run beside this one, each in a session of its own. Standards asks
 
 This axis reads outside the change. An import is only wrong against the module graph around it, so read the tree, not just the diff.
 
+## Two modes
+
+**Called by the loop**, the argument is the ticket and the change is the working tree. This axis edits what it finds, as "Fix what you find" says.
+
+**Called by `/skillworks:review-changes`**, the caller hands over the diff command, the `--stat -M` command, the commit list, and the ticket or spec. Read the change from those commands, and not from the working tree. This axis reports what it finds and edits nothing, so skip "Fix what you find". Still run the placement checks, because a check reads the code and changes none of it. Every other section holds in both modes.
+
 ## What to read
 
 ### The change
 
-The loop runs this step before anything is committed, so the change is the working tree. The `-M` matters: it is what turns a rename into a rename rather than a delete and an add.
+Called by `/skillworks:review-changes`, run the commands the caller handed over. Called by the loop, the step runs before anything is committed, so the change is the working tree. The `-M` matters: it is what turns a rename into a rename rather than a delete and an add.
 
 ```bash
 git add -N .
@@ -29,7 +35,7 @@ git diff HEAD
 git diff HEAD --stat -M
 ```
 
-If `git diff HEAD` is empty, stop and report that there is nothing to review.
+If the diff is empty, stop and report that there is nothing to review.
 
 ### The sources, in order of rank
 

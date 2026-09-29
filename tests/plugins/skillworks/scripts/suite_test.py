@@ -1596,7 +1596,7 @@ def test_the_seeded_suite_file_shows_the_setting_at_its_default():
 
 
 REVIEW_SKILLS = (
-    "plugins/skillworks/skills/code-review/SKILL.md",
+    "plugins/skillworks/skills/review-changes/SKILL.md",
     "plugins/skillworks/skills/review-architecture/SKILL.md",
 )
 
@@ -1798,11 +1798,13 @@ def test_claude_md_names_skillworks_suite_in_place_of_the_checks():
         assert " ".join(entry["command"]) not in section.replace('"', ""), entry["command"]
 
 
-def test_the_review_skills_run_the_placement_checks_and_not_the_suite_file():
+def test_the_review_skills_never_name_the_suite_file():
     for skill in REVIEW_SKILLS:
-        text = (ROOT / skill).read_text(encoding="utf-8")
-        assert PLACEMENT_CHECKS in text, skill
-        assert SUITE_FILE not in text, skill
+        assert SUITE_FILE not in (ROOT / skill).read_text(encoding="utf-8"), skill
+
+
+def test_the_architecture_review_runs_the_placement_checks():
+    assert PLACEMENT_CHECKS in (ROOT / "plugins/skillworks/skills/review-architecture/SKILL.md").read_text(encoding="utf-8")
 
 
 def test_the_review_skills_name_no_fact_of_this_repo_s_suite():

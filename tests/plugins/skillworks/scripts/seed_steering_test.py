@@ -831,13 +831,6 @@ def test_this_repos_surfaces_list_the_usage_docs():
     assert "`docs/usage/`" in [where_it_lives(section).strip() for section in held.values()]
 
 
-def test_the_review_skills_read_the_smells_list_from_the_review_standards_file():
-    for skill in ["code-review", "review-standards"]:
-        text = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
-
-        assert "`docs/agents/review-standards.md`" in text, skill
-
-
 def test_no_skill_holds_the_smells():
     pages = sorted(SKILLS.glob("*/SKILL.md"))
     assert pages
@@ -1377,7 +1370,6 @@ STEERING_NAMED = {
     "review-standards": ["review-standards.md"],
     "review-architecture": ["placement-checks.md", "review-architecture.md"],
     "review-spec": ["review-spec.md"],
-    "code-review": ["review-standards.md", "placement-checks.md", "review-architecture.md"],
 }
 
 
@@ -1387,6 +1379,82 @@ def test_the_review_skills_name_each_steering_file_by_its_path_from_the_repo_roo
         for name in names:
             assert "`{}`".format(WHERE[name]) in text, "{} names {}".format(skill, name)
             assert "`{}`](".format(WHERE[name]) not in text, "{} links {}".format(skill, name)
+
+
+def test_code_review_is_renamed_review_changes_which_sends_a_check_on_correctness_to_claude_codes_own():
+    front = skill_text("review-changes").split("---\n")[1]
+
+    assert not (SKILLS / "code-review").exists()
+    assert "name: review-changes\n" in front
+    assert front.rstrip().endswith("Not for a check on correctness alone: that is Claude Code's own /code-review.")
+    assert "disable-model-invocation" not in front
+
+
+def test_review_changes_names_no_steering_file_and_sends_each_sub_agent_to_an_axis_skill():
+    text = skill_text("review-changes")
+
+    for names in STEERING_NAMED.values():
+        for steering in names:
+            assert steering not in text, steering
+    for axis in STEERING_NAMED:
+        assert "`../{}/SKILL.md`".format(axis) in text, axis
+
+
+def test_review_changes_holds_no_brief_or_binding_rule_of_its_own():
+    text = skill_text("review-changes")
+
+    for words in ["The brief", "Cite or drop it", "Diff-introduced only", "The repo overrides", "Skip the axis"]:
+        assert words not in text, words
+
+
+def test_review_changes_finds_the_spec_from_the_ticket_trailer_then_the_argument_then_asks():
+    finding = section(skill_text("review-changes"), "Find the spec")
+
+    assert finding.index("`Ticket:` trailer") < finding.index("argument") < finding.index("ask the user")
+    assert "Closes" not in skill_text("review-changes")
+
+
+@pytest.mark.parametrize("skill", list(STEERING_NAMED))
+def test_each_axis_skill_reports_and_edits_nothing_for_review_changes_and_edits_the_worktree_for_the_loop(skill):
+    modes = section(skill_text(skill), "Two modes")
+
+    assert "/skillworks:review-changes" in modes
+    assert "--stat -M" in modes
+    assert "edits nothing" in modes
+    assert "Called by the loop" in modes
+
+
+def test_implement_reviews_with_review_changes_and_the_ticket_number():
+    reviewing = section(skill_text("implement"), "Reviewing")
+
+    assert "/skillworks:review-changes" in reviewing
+    assert "ticket number" in reviewing
+
+
+def test_what_next_names_review_changes_and_the_three_review_files():
+    text = skill_text("what-next")
+
+    assert "/skillworks:review-changes" in text
+    for names in STEERING_NAMED.values():
+        assert "`{}`".format(WHERE[names[-1]]) in text, names
+
+
+def test_the_licence_notices_name_review_changes_among_the_skills_we_changed():
+    notices = " ".join((ROOT / "THIRD-PARTY-NOTICES.md").read_text(encoding="utf-8").split())
+
+    assert "`implement`, `to-spec`, `to-tickets`, `review-changes`, `wayfinder`" in notices
+    assert "code-review" not in notices
+
+
+def test_no_plugin_file_or_steering_doc_names_the_old_review_skill():
+    pages = [path for folder in (PLUGIN, ROOT / "docs" / "usage", ROOT / "docs" / "agents")
+             for path in folder.rglob("*") if path.is_file() and path.suffix in (".md", ".py", ".mjs", ".json")]
+    assert pages
+
+    for page in pages:
+        text = page.read_text(encoding="utf-8")
+        assert "skillworks:code-review" not in text, page
+        assert "`code-review`" not in text, page
 
 
 def test_spec_loop_says_why_the_script_picks_the_ticket_and_links_no_research_note():

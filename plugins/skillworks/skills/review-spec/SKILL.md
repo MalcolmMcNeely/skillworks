@@ -17,6 +17,12 @@ Two other axes run beside this one, each in a session of its own. Standards asks
 
 Code that follows every rule can still build the wrong thing. That is the failure this axis exists to catch, and it is the one the other two cannot see.
 
+## Two modes
+
+**Called by the loop**, the argument is the ticket and the change is the working tree. This axis edits what it finds, as "Fix what you find" says.
+
+**Called by `/skillworks:review-changes`**, the caller hands over the diff command, the `--stat -M` command, the commit list, and the ticket or spec. Read the change from those commands, and not from the working tree. Where the caller hands over a spec and no ticket, judge the change against the spec. This axis reports what it finds and edits nothing, so skip "Fix what you find". Every other section holds in both modes.
+
 ## What to read
 
 ### The ticket
@@ -38,7 +44,7 @@ If `docs/agents/review-spec.md` is missing, stop. Tell the user that `docs/agent
 
 ### The change
 
-The loop runs this step before anything is committed, so the change is the working tree:
+Called by `/skillworks:review-changes`, run the commands the caller handed over. Called by the loop, the step runs before anything is committed, so the change is the working tree:
 
 ```bash
 git add -N .
@@ -46,7 +52,7 @@ git diff HEAD
 git diff HEAD --stat
 ```
 
-If `git diff HEAD` is empty, stop and report that there is nothing to review.
+If the diff is empty, stop and report that there is nothing to review.
 
 ## What to look for
 

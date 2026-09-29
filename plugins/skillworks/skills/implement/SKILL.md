@@ -68,7 +68,7 @@ With `--stop-after-tests`, leave the change uncommitted and the ticket open, and
 
 ## Reviewing
 
-Run /skillworks:code-review on the uncommitted change, and give it the ticket number. An uncommitted change carries no commit, so the Spec axis has nothing to find the ticket in unless you pass it.
+Run /skillworks:review-changes on the uncommitted change, and give it the ticket number. An uncommitted change carries no `Ticket:` trailer, so the Spec axis has nothing to find the ticket in unless you pass it.
 
 Its fan-out to sub-agents needs a session still awake to read what comes back, so a headless run cannot use it. That is why the spec loop runs the three axes as three steps of its own instead, and why the difference stays.
 

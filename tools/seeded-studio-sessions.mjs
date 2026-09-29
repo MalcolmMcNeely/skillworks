@@ -345,8 +345,8 @@ function review(startMs, price) {
   const run = new Run(startMs, 'malcolm/skillworks', opus, price);
 
   run.titled('Review the retry change');
-  run.prompt('/code-review since main');
-  run.activate('code-review', 'user-slash');
+  run.prompt('/review-changes since main');
+  run.activate('review-changes', 'user-slash');
   run.turn({ read: 20000, written: 22000, output: 900 });
   run.tool('Bash', { command: 'git diff main' }, { ms: 800 });
   run.turn({ output: 2200 });
@@ -354,7 +354,7 @@ function review(startMs, price) {
   run.turn({ output: 700 });
   run.tool('Read', { file_path: 'src/Skillworks.Core/Shared/Stores/EventsStore/EventsStoreReader.cs' }, { ms: 300 });
   run.turn({ output: 500 });
-  run.skill = 'code-review';
+  run.skill = 'review-changes';
   run.turn({ output: 1800 });
   run.answer('No findings. The retry reads its Patience from the Clock, and the tests cover a 503.');
 

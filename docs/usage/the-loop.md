@@ -375,6 +375,12 @@ changed, and `finish` must leave a new commit, a Clean worktree and a closed tic
 review, and the difference is that review's Edit. It goes to the log as an `EDIT` line and into the
 `fix` prompt beside the report. An Edit never stops the loop. It is only never silent.
 
+**The run by hand.** `/skillworks:implement <n>` with no flag runs the same steps in one Session. Its
+review is `/skillworks:review-changes`, which runs the three review skills the loop runs, each in a
+sub-agent of its own. By hand, the reviews report and edit nothing, and `implement` fixes what they
+found. Run `/skillworks:review-changes` on its own to review a branch against a fixed point. For a
+check on correctness alone, run Claude Code's own `/code-review`.
+
 ### The Suite
 
 The Suite is the checks your repo names in `docs/agents/suite.json`. The script runs them itself,
