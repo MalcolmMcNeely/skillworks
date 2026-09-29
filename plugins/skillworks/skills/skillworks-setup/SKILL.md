@@ -213,7 +213,7 @@ Name `/skillworks:architecture-tests` as the next step after setup. It turns the
 Then tell them the loop is ready:
 
 ```
-/skillworks:grill-with-docs  →  /skillworks:spec-loop <spec#>
+/skillworks:grill  →  /skillworks:spec-loop <spec#>
 ```
 
 The grill runs `/skillworks:to-spec` itself once the user confirms the shape it settled, so it hands them a

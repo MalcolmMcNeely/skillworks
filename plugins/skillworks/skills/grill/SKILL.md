@@ -1,10 +1,10 @@
 ---
-name: grill-with-docs
+name: grill
 description: A relentless interview to sharpen a plan or design, writing the glossary and ADRs as it goes and publishing the spec at the end.
 disable-model-invocation: true
 ---
 
-# Grill With Docs
+# Grill
 
 Drive a design from the first question to a published spec.
 
@@ -50,7 +50,8 @@ will be built from.
 
 ### 4. On yes, write the spec
 
-Call the Skill tool with "skillworks:to-spec", and report the spec number it publishes.
+Call the Skill tool with "skillworks:to-spec". Then end with the spec number it publishes and the
+next command, `/skillworks:spec-loop <n>` with that number, and name no other skill.
 
 On no, the frontier was not empty. Take what the developer said as the next round and go back to
 step 1.

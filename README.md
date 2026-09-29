@@ -79,7 +79,7 @@ Open `http://localhost:5173/`. Ctrl+C stops everything.
 The Dev loop has two stages, and one command starts each:
 
 ```
-/skillworks:grill-with-docs      argue the design out, and publish the spec
+/skillworks:grill                argue the design out, and publish the spec
 /skillworks:spec-loop <spec#>    build it, ticket by ticket, while nobody watches
 ```
 

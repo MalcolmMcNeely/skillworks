@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: "Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases. Not for a design that should end in a spec: the user starts that with /skillworks:grill-with-docs, which also writes the glossary and the ADRs."
+description: "Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases. Not for a design that should end in a spec: the user starts that with /skillworks:grill, which also writes the glossary and the ADRs."
 ---
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.

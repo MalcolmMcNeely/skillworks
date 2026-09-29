@@ -1,6 +1,6 @@
-# The loop
+# The Dev loop
 
-How a design becomes code in your repo. Two stages, and one gate between them.
+How a design becomes code in your repo. The Dev loop has two stages, and one gate between them.
 
 Stage one is an interview. You argue the design out with a Session, and the words and decisions are
 written to your repo as they settle. It ends when you confirm the design.
@@ -10,7 +10,7 @@ its own, in a worktree of its own, through a fixed run of Claude Code Sessions. 
 
 ```mermaid
 flowchart TD
-    grill["/skillworks:grill-with-docs<br/>argue the design out"] --> gate{"You confirm?"}
+    grill["/skillworks:grill<br/>argue the design out"] --> gate{"You confirm?"}
     gate -- no --> grill
     gate -- yes --> spec["/skillworks:to-spec<br/>publish the spec"]
     spec --> loop["/skillworks:spec-loop<br/>with the spec's number"]
@@ -226,7 +226,7 @@ a pushed commit, so it holds. And a close goes in the same commit as its code.
 
 ### The grill
 
-`/skillworks:grill-with-docs` asks the questions one at a time. Each one is numbered and carries a
+`/skillworks:grill` asks the questions one at a time. Each one is numbered and carries a
 recommended answer. It asks only what can be answered now: a question that hangs on a decision you
 have not made yet waits for that decision.
 

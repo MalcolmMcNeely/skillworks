@@ -166,7 +166,7 @@ The Seeds judge nothing until your team fills them in. Before the loop can finis
 Then the loop is ready:
 
 ```
-/skillworks:grill-with-docs  →  /skillworks:spec-loop <spec#>
+/skillworks:grill  →  /skillworks:spec-loop <spec#>
 ```
 
 ## Turn the rules into tests

@@ -975,8 +975,45 @@ def grill_steps(grill):
     return re.findall(r"^### \d+\. (.+)$", grill, re.MULTILINE)
 
 
+def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
+    front = skill_text("grill").split("---\n")[1]
+
+    assert "name: grill\n" in front
+    assert "disable-model-invocation: true\n" in front
+
+
+def test_the_grill_ends_by_naming_only_the_spec_loop_as_the_next_command():
+    grill = skill_text("grill")
+    last_step = grill_steps(grill)[-1]
+    end = grill.split(". " + last_step + "\n", 1)[1].split("\n## ", 1)[0]
+    report = end.split('"skillworks:to-spec"', 1)[1]
+
+    assert re.findall(r"/skillworks:[\w-]+", report) == ["/skillworks:spec-loop"]
+    assert "`/skillworks:spec-loop <n>`" in report
+
+
+def test_grilling_sends_a_design_that_ends_in_a_spec_to_the_grill():
+    front = skill_text("grilling").split("---\n")[1]
+
+    assert "Not for a design that should end in a spec: the user starts that with /skillworks:grill," in front
+
+
+OLD_GRILL = "grill" + "-with-docs"
+
+
+def test_no_skill_seed_script_or_user_doc_names_the_grills_old_skill():
+    pages = [path for path in PLUGIN.rglob("*") if path.is_file() and path.suffix in (".md", ".py", ".mjs", ".json")]
+    pages += list((ROOT / "docs" / "usage").glob("*.md"))
+    pages += [ROOT / "docs" / "agents" / "domain.md"]
+    assert {SKILLS / "grill" / "SKILL.md", SETUP / "seeds" / "domain.md", ROOT / "docs" / "usage" / "the-loop.md"} <= set(pages)
+
+    named = [str(path.relative_to(ROOT)) for path in pages if OLD_GRILL in path.read_text(encoding="utf-8")]
+
+    assert named == []
+
+
 def test_the_grill_walks_the_surfaces_after_the_design_questions_and_before_the_sum_up():
-    grill = skill_text("grill-with-docs")
+    grill = skill_text("grill")
     steps = grill_steps(grill)
     walk = [step for step in steps if "Surfaces" in step]
 
@@ -986,7 +1023,7 @@ def test_the_grill_walks_the_surfaces_after_the_design_questions_and_before_the_
 
 
 def test_the_grill_names_the_surfaces_file_and_the_four_rules_for_asking():
-    grill = skill_text("grill-with-docs")
+    grill = skill_text("grill")
     walk = grill.split("Surfaces", 1)[1].split("\n### ", 1)[0]
 
     assert "`{}`".format(WHERE["surfaces.md"]) in walk
@@ -998,7 +1035,7 @@ def test_the_grill_names_the_surfaces_file_and_the_four_rules_for_asking():
 
 
 def test_the_grills_sum_up_lists_each_surfaces_answer():
-    grill = skill_text("grill-with-docs")
+    grill = skill_text("grill")
     sum_up = grill.split("Sum up", 1)[1].split("\n### ", 1)[0]
 
     assert "Surface" in sum_up

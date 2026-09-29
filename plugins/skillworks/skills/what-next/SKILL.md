@@ -21,7 +21,7 @@ Asked what is open, or which ticket is next, read the Tracker. `tracker` in `doc
 
 The route most work travels. You have an idea and want it built.
 
-1. **`/skillworks:grill-with-docs`** — sharpen the idea by interview. Start here whenever you are **working in a working directory**: it's stateful, retaining what it learns in `CONTEXT.md` and ADRs. When the questions run out it sums up the shape it settled and asks you to confirm it. That is the one gate: on your yes it runs **`/skillworks:to-spec`** itself, turning the thread into a spec issue, so a satisfied grill never sits idle waiting for you to remember a command.
+1. **`/skillworks:grill`** — sharpen the idea by interview. Start here whenever you are **working in a working directory**: it's stateful, retaining what it learns in `CONTEXT.md` and ADRs. When the questions run out it sums up the shape it settled and asks you to confirm it. That is the one gate: on your yes it runs **`/skillworks:to-spec`** itself, turning the thread into a spec issue, so a satisfied grill never sits idle waiting for you to remember a command.
 2. **Branch — can you settle every question in conversation?** If a question needs a runnable answer (state, business logic, a UI you have to see), detour through a prototype, bridged by **`/skillworks:handoff`** in both directions (a prototype lives in its own directory, which is exactly what `/skillworks:handoff` is for — see Phase boundaries):
    - **`/skillworks:handoff`** out, then open a fresh session against that file,
    - **`/skillworks:prototype`** to answer the question with throwaway code,
@@ -55,13 +55,13 @@ A starting situation that generates work, then merges onto the main flow.
 
 Not feature work — upkeep.
 
-- **`/skillworks:improve-codebase-architecture`** — run whenever you have a spare moment to keep the codebase good for agents to operate in. It surfaces **deepening opportunities**; picking one _generates an idea_ you can take into the main flow at `/skillworks:grill-with-docs`. It's the survey that finds the candidates; **`/skillworks:codebase-design`** (below) is the bench you design the chosen one on.
+- **`/skillworks:improve-codebase-architecture`** — run whenever you have a spare moment to keep the codebase good for agents to operate in. It surfaces **deepening opportunities**; picking one _generates an idea_ you can take into the main flow at `/skillworks:grill`. It's the survey that finds the candidates; **`/skillworks:codebase-design`** (below) is the bench you design the chosen one on.
 
 ## Vocabulary underneath
 
 Two model-invoked references that run *beneath* the other skills — each the single source of truth for its vocabulary. Reach for them directly when the **words**, not the process, are the problem; or let the skills above pull them in.
 
-- **`/skillworks:domain-modeling`** — sharpen the project's *domain* language: challenge a fuzzy term, resolve an overloaded word ("account" doing three jobs), record a hard-to-reverse decision as an ADR. It's the active discipline `/skillworks:grill-with-docs` drives to keep `CONTEXT.md` a clean glossary.
+- **`/skillworks:domain-modeling`** — sharpen the project's *domain* language: challenge a fuzzy term, resolve an overloaded word ("account" doing three jobs), record a hard-to-reverse decision as an ADR. It's the active discipline `/skillworks:grill` drives to keep `CONTEXT.md` a clean glossary.
 - **`/skillworks:codebase-design`** — the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*: a lot of behaviour behind a small interface at a clean seam. `/skillworks:tdd` and `/skillworks:improve-codebase-architecture` both speak it.
 
 ## Phase boundaries
@@ -87,7 +87,7 @@ Each one runs because another skill reached for it. This map routes you to that 
 
 Off the main flow entirely.
 
-- **`/skillworks:grilling`** — the interview primitive itself: rounds, the frontier, facts are the agent's job and decisions are yours. `/skillworks:grill-with-docs` is the named way in, and `/skillworks:improve-codebase-architecture` runs it internally. Reach for it directly only when you want the interview with no wrapper around it.
+- **`/skillworks:grilling`** — the interview primitive itself: rounds, the frontier, facts are the agent's job and decisions are yours. `/skillworks:grill` is the named way in, and `/skillworks:improve-codebase-architecture` runs it internally. Reach for it directly only when you want the interview with no wrapper around it.
 - **`/skillworks:prototype`** — a small, throwaway program that answers one design question: does this state model feel right, or what should this UI look like. Throwaway is a constraint on how the code is written, not a promise to destroy it: the answer folds into the real code, and the prototype itself is kept as a **primary source** on a `prototype/<name>` branch out of the Target branch, pointed at from the implementation issue. It's the detour in step 2 of the main flow, but reach for it any time a design question is hard to settle on paper.
 - **`/skillworks:unslop`** — cut AI tells from prose a human will read: docs, READMEs, commit messages, issues. Reach for it whenever writing reads as puffed up or padded.
 
