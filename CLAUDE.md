@@ -42,6 +42,13 @@ in a Linux image. `uv` has to be on PATH, because the command is Python.
 
 `docs/CONTRIBUTING.md` has the rest, under Checks.
 
+### After a Plugin change Lands
+
+When a change to the Plugin Lands on `main`, quit and restart every running Claude Code Session
+before you type a Plugin command. A Claude Code process keeps the skill text it loaded when it
+started, so a Session that started before the change serves the old skills. `/clear` is not enough,
+because it does not reload them.
+
 ### The Aspire CLI
 
 Installed, as `aspire.cmd`. Git Bash will not find it from the bare name `aspire` — run it from
