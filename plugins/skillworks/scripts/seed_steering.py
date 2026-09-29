@@ -23,6 +23,7 @@ PLACES = {
     "placement-checks.md": "docs/agents/placement-checks.md",
     "review-standards.md": "docs/agents/review-standards.md",
     "review-architecture.md": "docs/agents/review-architecture.md",
+    "review-spec.md": "docs/agents/review-spec.md",
     "suite.json": "docs/agents/suite.json",
     "loop.json": "docs/agents/loop.json",
     "surfaces.md": "docs/agents/surfaces.md",

@@ -28,6 +28,14 @@ Read the ticket in full, its acceptance criteria included. Read its parent spec 
 - **GitHub**: the ticket issue, and the spec issue its parent names.
 - **Files**: the ticket's file and the `spec.md` of the folder it sits in. The loop runs this step inside the ticket's worktree, so read both there.
 
+### The review file
+
+This axis always reads its review file, `docs/agents/review-spec.md`. Read it yourself. It holds the team's own checks and a "Do not report" list. The team edits that file, so this skill holds no check of its own. It is the only review file this axis reads.
+
+Apply each team check only to the paths it names. A check that names no paths covers the whole change. A team check is a hard breach or a judgement call, as the check says. Skip every path and every kind of finding that "Do not report" names.
+
+If `docs/agents/review-spec.md` is missing, stop. Tell the user that `docs/agents/review-spec.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Spec` heading, so the step fails and the loop stops.
+
 ### The change
 
 The loop runs this step before anything is committed, so the change is the working tree:
@@ -52,6 +60,8 @@ Walk the acceptance criteria one at a time. A criterion with no evidence in the 
 
 Then walk the Surfaces. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each Surface the change touches, with what it has to say once the change Lands. Check the change against each Surface the spec names for this ticket: one the ticket names, or one this ticket's change reaches. Open the Surface at the path the spec gives, or at its "Where it lives" in `docs/agents/surfaces.md`, and read whether it says what this change needs. A Surface left out of step is a Missing or partial finding, and quotes the Surfaces section line it turns on. A spec whose Surfaces section says "None", or that has none, adds nothing here.
 
+Then walk the team checks in `docs/agents/review-spec.md`. A breach of one is a finding. Name the check and quote the hunk it turns on.
+
 Two things are out of scope, because reporting them makes the axis noise:
 
 - **Standing debt.** Report what this change did, not what the file already was.
@@ -67,7 +77,7 @@ This axis edits the worktree, and it should. A finding you can fix, you fix here
 
 Fix only what this axis owns. A finding that belongs to Standards or Architecture is dropped rather than reported here, so it is not yours to fix either.
 
-A finding you judge not worth fixing is named in the report and left, with the reason. A gap wide enough to be a ticket of its own is of that kind.
+A finding you judge not worth fixing is named in the report and left, with the reason. A gap wide enough to be a ticket of its own is of that kind. A breach of a team check marked hard is never of that kind: it is always fixed, and never left.
 
 The report names every finding either way, and says which ones you fixed.
 

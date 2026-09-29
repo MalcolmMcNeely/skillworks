@@ -23,6 +23,7 @@ WHERE = {
     "placement-checks.md": "docs/agents/placement-checks.md",
     "review-standards.md": "docs/agents/review-standards.md",
     "review-architecture.md": "docs/agents/review-architecture.md",
+    "review-spec.md": "docs/agents/review-spec.md",
     "suite.json": "docs/agents/suite.json",
     "loop.json": "docs/agents/loop.json",
     "surfaces.md": "docs/agents/surfaces.md",
@@ -700,7 +701,7 @@ def test_the_review_standards_seed_holds_the_smells_list():
     assert len(re.findall(r"^- \*\*[A-Z][^*]+\*\* — ", smells, re.MULTILINE)) == 16
 
 
-REVIEW_FILES = ["review-standards.md", "review-architecture.md"]
+REVIEW_FILES = ["review-standards.md", "review-architecture.md", "review-spec.md"]
 
 
 def section(text, heading):
@@ -1113,6 +1114,7 @@ def says_stop(text, *names):
 REVIEW_FILE_OF = {
     "review-standards": "review-standards.md",
     "review-architecture": "review-architecture.md",
+    "review-spec": "review-spec.md",
 }
 
 
@@ -1286,7 +1288,7 @@ THIS_REPO = ["Skillworks.", "slnx", "Studio", "Dashboard", "Loki", "Aspire", "do
 
 def test_the_seeds_carry_no_fact_about_this_repo():
     names = sorted(WHERE)
-    assert len(names) == 13
+    assert len(names) == 14
     for name in names:
         text = seeded(name)
         for fact in THIS_REPO:
@@ -1349,6 +1351,7 @@ def test_no_plugin_skill_names_a_rule_under_the_old_rules_folder():
 STEERING_NAMED = {
     "review-standards": ["review-standards.md"],
     "review-architecture": ["placement-checks.md", "review-architecture.md"],
+    "review-spec": ["review-spec.md"],
     "code-review": ["review-standards.md", "placement-checks.md", "review-architecture.md"],
 }
 
