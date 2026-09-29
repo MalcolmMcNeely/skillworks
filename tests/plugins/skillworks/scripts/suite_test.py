@@ -1847,7 +1847,7 @@ def test_claude_md_names_skillworks_suite_in_place_of_the_checks():
         assert " ".join(entry["command"]) not in section.replace('"', ""), entry["command"]
 
 
-def test_the_review_skills_never_name_the_suite_file():
+def test_review_changes_and_its_axis_files_never_name_the_suite_file():
     for page in REVIEW_PAGES:
         assert SUITE_FILE not in (ROOT / page).read_text(encoding="utf-8"), page
 
@@ -1856,7 +1856,7 @@ def test_the_architecture_review_runs_the_placement_checks():
     assert PLACEMENT_CHECKS in (ROOT / "plugins/skillworks/skills/review-changes/architecture.md").read_text(encoding="utf-8")
 
 
-def test_the_review_skills_name_no_fact_of_this_repo_s_suite():
+def test_review_changes_and_its_axis_files_name_no_fact_of_this_repo_s_suite():
     facts = this_repo_s_facts()
     assert {"dotnet", DOCKER_TESTS, "src/Skillworks.Studio.Web"} <= facts
 
