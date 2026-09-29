@@ -697,6 +697,15 @@ so a story done by a hand fix or by another spec counts as Done, and code from a
 what the spec ruled out is Contradicts. Unrequested work and two names for one idea come only from
 the spec's commits, and an item is listed only while it still stands on the Target branch.
 
+When your team has a README Surface, the drift check reads the README on every spec, even a spec with
+no README item. The README Surface is the Surface headed `## The README` in
+`docs/agents/surfaces.md`, and its "Where it lives" gives the README's path. A link, path or command in
+the README that the spec removed, renamed or moved makes the README Out of step, and the reason names
+it. The count treats that Verdict as an item of the spec, so an Out of step README, or a README with
+no Verdict, is a Gap. The Gap ticket fixes only the broken line, within what the Surface's "What to
+capture" allows. With no README Surface, a README Verdict on a spec with no README item gets a `WARN`
+line and counts for nothing, like any other name the spec does not hold.
+
 ### Verdicts
 
 The report opens with a `### Verdicts` list. It gives every item of the spec one **Verdict**, on a

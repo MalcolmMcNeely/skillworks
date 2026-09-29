@@ -58,6 +58,8 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
    A spec whose Surfaces section says "None" has no Surface to judge.
 
+   The README is the one exception. When `docs/agents/surfaces.md` holds a Surface headed `## The README`, outside a code fence, judge the README on every spec, as `The README`, even when the spec names no README item or says "None". Read it on `origin/<target>`, at that Surface's "Where it lives". A link, path or command in the README that the spec's commits removed, renamed or moved makes it Out of step, and the reason names that line. When the spec has a README item, the one Verdict judges that item too. The loop counts this Verdict, so a README you skip is a Gap. Given a list of items without `The README`, do not judge it.
+
 5. List **Unrequested** work: behaviour in the spec's commits that no story and no ticket asked for. Look nowhere else, so another spec's work and a hand commit never show up here. List an item only when it still stands on `origin/<target>`, because a later commit may have taken it out.
 
 6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. Look only in the spec's commits, and name a pair only when both still stand on `origin/<target>`. The project glossary is the arbiter.

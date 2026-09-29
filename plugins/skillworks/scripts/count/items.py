@@ -7,6 +7,8 @@ STORIES = "## User Stories"
 DECISIONS = "## Implementation Decisions"
 SURFACES = "## Surfaces"
 
+README = "The README"
+
 FENCE = "```"
 
 NUMBERED = re.compile(r"(\d+)\. (.*)")
@@ -116,6 +118,17 @@ def surfaced(lines):
             return [], "{} names {} twice".format(SURFACES, name.group(1))
         items.append(Item(name.group(1), text))
     return items, ""
+
+
+# The drift check judges the README on every spec, so a rename the Grill missed still comes back as a Gap.
+def with_readme(items, where):
+    if where is None or README in [item.name for item in items.surfaces]:
+        return items
+    named = " (`{}`)".format(where) if where else ""
+    text = ("**{}**{}: no link, path or command in it names something the spec's change removed, "
+            "renamed or moved. Fix only the broken line, within what the README Surface's \"What to "
+            "capture\" allows.".format(README, named))
+    return items._replace(surfaces=items.surfaces + [Item(README, text)])
 
 
 def read_items(spec):

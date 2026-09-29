@@ -1,7 +1,7 @@
 # The count read from the spec's text and the report's text alone, so each kind of Gap costs two strings.
 
 from count.gaps import count_verdicts, gap_said
-from count.items import read_items
+from count.items import read_items, with_readme
 from count.verdicts import read_verdicts
 
 SPEC = ("## User Stories\n\n1. As a team member, I want a count.\n2. As a team member, I want a stop.\n\n"
@@ -100,3 +100,52 @@ def test_a_count_says_how_many_verdicts_it_read():
     count = counted(*lines_but(), "S1: Done", "S9: Done")
 
     assert count.verdicts_given == 6
+
+
+# --- the README ---------------------------------------------------------------
+
+def counted_with_readme(where, *lines, spec=SPEC):
+    report = "## Drift report\n\n### Verdicts\n\n" + "".join("- {}\n".format(line) for line in lines)
+    return count_verdicts(with_readme(read_items(spec), where), read_verdicts(report).verdicts)
+
+
+def test_with_a_readme_surface_a_readme_verdict_is_counted_on_a_spec_with_no_readme_item():
+    count = counted_with_readme("README.md", *lines_but(), "The README: In step")
+
+    assert count.gaps == []
+    assert count.unknown == []
+
+
+def test_with_a_readme_surface_a_readme_out_of_step_is_a_gap_that_names_what_broke():
+    count = counted_with_readme(
+        "README.md", *lines_but(), "The README: Out of step. It still runs `old-name`.")
+
+    assert gaps(count) == ["The README is Out of step: It still runs `old-name`."]
+
+
+def test_with_a_readme_surface_a_readme_with_no_verdict_is_a_gap():
+    count = counted_with_readme("README.md", *lines_but())
+
+    assert gaps(count) == ["The README has no Verdict"]
+
+
+def test_the_readme_gap_names_the_readme_at_the_path_its_surface_gives():
+    count = counted_with_readme("docs/START.md", *lines_but())
+
+    assert "`docs/START.md`" in count.gaps[0].item.text
+
+
+def test_a_readme_item_the_spec_holds_is_judged_by_the_one_readme_verdict():
+    spec = SPEC + "- **The README** (`README.md`): the step is renamed.\n"
+
+    count = counted_with_readme(
+        "README.md", *lines_but(), "The README: Out of step. It still runs `old-name`.", spec=spec)
+
+    assert gaps(count) == ["The README is Out of step: It still runs `old-name`."]
+
+
+def test_with_no_readme_surface_a_readme_verdict_stays_uncounted():
+    count = counted_with_readme(None, *lines_but(), "The README: Out of step. It is stale.")
+
+    assert count.gaps == []
+    assert [verdict.item for verdict in count.unknown] == ["The README"]

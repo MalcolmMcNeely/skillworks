@@ -72,7 +72,9 @@ COUNTED = ("## Problem Statement\n\nWords.\n\n"
 
 NAMES_ITS_BRANCH = COUNTED + "\n## Branch\n\n`{}`\n".format(SPEC_BRANCH)
 
-ALL_DONE = {"S1": "Done", "S2": "Done", "D1": "Done", "The user docs": "In step"}
+# The Seed's Surfaces hold the README, so the drift check judges it on every spec.
+ALL_DONE = {"S1": "Done", "S2": "Done", "D1": "Done", "The user docs": "In step",
+            "The README": "In step"}
 
 
 def drift_report(*extra, unrequested=(), **given):
@@ -2625,7 +2627,7 @@ def test_every_verdict_done_or_in_step_ends_the_run_and_says_what_was_counted(lo
     ran = drifted(loop, drift_report())
 
     assert ran.status == 0, said(ran)
-    assert "COUNT the spec holds 4 items, and the drift report gives 4 Verdicts" in loop.log()
+    assert "COUNT the spec holds 5 items, and the drift report gives 5 Verdicts" in loop.log()
     assert "STOP" not in loop.log()
     assert "END   spec #{}".format(SPEC) in loop.log()
 
@@ -2747,7 +2749,7 @@ def test_a_missing_a_partial_and_an_item_not_judged_are_filed_as_one_gap_ticket(
 
     assert ran.status == 0, said(ran)
     log = loop.log()
-    assert "COUNT the spec holds 4 items, and the drift report gives 3 Verdicts" in log
+    assert "COUNT the spec holds 5 items, and the drift report gives 4 Verdicts" in log
     assert "GAP   S2 is Missing: No code stops.\n" in log
     assert "GAP   D1 is Partial: Half of it.\n" in log
     assert "GAP   The user docs has no Verdict\n" in log
@@ -2771,6 +2773,30 @@ def test_the_gap_ticket_quotes_each_items_spec_text_its_verdict_and_the_reason(l
             "The drift check did not judge this exactly once. Check it, and build it if it is not "
             "there.\n") in body
     assert "- [ ] S2: As a team member, I want a run.\n" in body
+
+
+def test_a_readme_the_spec_broke_is_filed_as_a_gap_ticket_that_names_the_readme(loop):
+    ran = drifted_in_a_round(
+        loop, drift_report(The_README="Out of step. It still runs `old-name`."),
+        verdicts_alone(The_README="In step"))
+
+    assert ran.status == 0, said(ran)
+    assert "GAP   The README is Out of step: It still runs `old-name`.\n" in loop.log()
+    created = loop.runner.built("issue create")[0]
+    assert ("### The README\n\n> **The README** (`README.md`): "
+            in created[created.index("--body") + 1])
+
+
+def test_a_team_with_no_readme_surface_has_a_readme_verdict_warned_of_and_not_counted(loop):
+    surfaces = loop.repo.work / "docs" / "agents" / "surfaces.md"
+    surfaces.write_text(surfaces.read_text(encoding="utf-8").replace("## The README", "## The Readme"),
+                        encoding="utf-8", newline="\n")
+
+    ran = drifted(loop, drift_report(The_README="Out of step. It is stale."))
+
+    assert ran.status == 0, said(ran)
+    assert ("WARN  the drift report judges The README, which spec #{} does not hold, so its "
+            "Verdict is not counted").format(SPEC) in loop.log()
 
 
 def test_an_item_judged_twice_reaches_the_gap_ticket_as_a_check_before_a_build(loop):
@@ -3683,7 +3709,7 @@ def test_a_red_full_run_after_every_verdict_done_writes_no_end(loop):
 
     assert ran.status == 1
     log = loop.log()
-    assert "COUNT the spec holds 4 items, and the drift report gives 4 Verdicts" in log
+    assert "COUNT the spec holds 5 items, and the drift report gives 5 Verdicts" in log
     assert "RED   the full run of the Suite went red" in log
     assert "END" not in log
 

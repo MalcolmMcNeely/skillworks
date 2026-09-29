@@ -39,7 +39,7 @@ import land_ticket
 import ticket_worktree
 from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
-from count.items import read_items
+from count.items import read_items, with_readme
 from count.rename_ticket import rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
@@ -47,6 +47,7 @@ from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from runner import Subprocess, session_changes
 from seed_steering import missing_steering
+from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
@@ -1137,7 +1138,8 @@ class Loop:
             raise stop("STOP  the drift report on spec {} holds no {} list, so nothing was "
                        "counted and the spec stays open. Read it at {}".format(
                            self.spec_named(), VERDICTS, held))
-        items = self.items.only(asked) if asked else self.items
+        every = with_readme(self.items, readme_surface_of(self.root))
+        items = every.only(asked) if asked else every
         counted = count_verdicts(items, report.verdicts)
         self.say("COUNT {} {}, and the drift report gives {}".format(
             "the re-check was asked about" if asked else "the spec holds",

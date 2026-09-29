@@ -522,7 +522,8 @@ def test_in_spec_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_bran
     assert "mark it ready for review" in last
 
 
-VERDICTS = "### Verdicts\n\n- S1: Done\n- D1: Done\n"
+# The Seed's Surfaces hold the README, so the drift check judges it on every spec.
+VERDICTS = "### Verdicts\n\n- S1: Done\n- D1: Done\n- The README: In step\n"
 
 REPORT = "## Drift report\n\n" + VERDICTS
 
@@ -561,7 +562,7 @@ def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
     held = driver.repo.work / ".spec-loop" / SPEC / "drift.md"
     assert held.read_text(encoding="utf-8") == VERDICTS
     assert "DRIFT the report is recorded on spec 7" in ran.out
-    assert "COUNT the spec holds 2 items, and the drift report gives 2 Verdicts" in ran.out
+    assert "COUNT the spec holds 3 items, and the drift report gives 3 Verdicts" in ran.out
 
 
 def test_the_loop_reads_back_the_name_report_recorded_below_the_drift_report(driver):
@@ -630,7 +631,8 @@ def test_a_later_note_takes_the_place_of_an_earlier_one_and_leaves_the_reports(d
 
 GAP_TICKET = "02-ticket-build-the-gaps-the-drift-check-found"
 
-D1_MISSING = "## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Missing. Not there.\n"
+D1_MISSING = ("## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Missing. Not there.\n"
+              "- The README: In step\n")
 
 
 # A file of its own, since the ticket landed before it already holds what every build writes.
