@@ -981,8 +981,8 @@ def test_to_tickets_publishes_to_the_files_tracker_and_no_scratch_folder():
 def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_spec_mode():
     to_spec = skill_text("to-spec")
 
-    assert "tracker-publish spec <slug> <file>" in to_spec
-    assert "tracker-publish spec <slug> <file> spec/<slug>" in to_spec
+    assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md" in to_spec
+    assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md spec/<slug>" in to_spec
     assert "`.specs/`" in to_spec
 
 
@@ -1108,12 +1108,13 @@ def test_the_walk_for_skill_tool_calls_finds_the_grills_call_to_to_spec():
     assert ("grill/SKILL.md", "to-spec") in skill_tool_calls()
 
 
-# The loop runs these in `acceptEdits`, where a write outside the checkout is a Denial nobody is there to lift.
-@pytest.mark.parametrize("skill", ["to-tickets", "spec-drift", "spec-names"])
-def test_a_skill_the_loop_runs_writes_what_it_publishes_in_the_ignored_loop_folder(skill):
+# In the loop's `acceptEdits` a write outside the checkout is a Denial nobody is there to lift, and one rule
+# for every skill that publishes keeps a temp folder from being copied back into the loop's own skills.
+@pytest.mark.parametrize("skill", ["to-spec", "to-tickets", "spec-drift", "spec-names"])
+def test_a_skill_that_publishes_writes_its_file_in_the_ignored_loop_folder(skill):
     text = skill_text(skill)
 
-    assert "`.spec-loop/<spec>/" in text and "mktemp" not in text and "outside the repo" not in text
+    assert "`.spec-loop/" in text and "mktemp" not in text and "outside the repo" not in text
 
 
 def test_the_spec_loop_skill_leaves_cutting_the_tickets_to_the_driver():

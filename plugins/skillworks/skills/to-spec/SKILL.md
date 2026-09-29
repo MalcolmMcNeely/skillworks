@@ -40,12 +40,12 @@ An item runs over several lines when its later lines are indented, so a nested l
 
 `tracker-publish` writes the spec with either Tracker, from one file and one command.
 
-1. Write the spec to a file outside the repo, such as in `$(mktemp -d)`. Its first line is `# SPEC: <title>`, and the template's sections follow. Leave out the `## Branch` section and any frontmatter, because the command writes them.
-2. Publish it. The slug is short and in kebab case. In `spec` mode, name the spec's branch last:
+1. Write the spec with the Write tool to `.spec-loop/drafts/<slug>.md` in this checkout. The slug is short and in kebab case. Its first line is `# SPEC: <title>`, and the template's sections follow. Leave out the `## Branch` section and any frontmatter, because the command writes them. Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder, so no skill that publishes asks for a permission the loop cannot give.
+2. Publish it. In `spec` mode, name the spec's branch last:
 
    ```bash
-   tracker-publish spec <slug> <file>                 # target-branch names a branch
-   tracker-publish spec <slug> <file> spec/<slug>     # target-branch says spec
+   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md                 # target-branch names a branch
+   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md spec/<slug>     # target-branch says spec
    ```
 
 3. It prints the number, a tab, and then the issue's URL with `github` or the folder with `files`, such as `8	.specs/0008-local-tracker`. With `files`, pull the branch, so the checkout holds the folder too.
