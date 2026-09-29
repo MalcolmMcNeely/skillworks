@@ -1,42 +1,17 @@
-import { useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
+import { useState, type PointerEvent, type Ref } from 'react';
 import type { Spell } from '../../lib/timeline/view';
 import { describeLit, type Highlight } from '../../lib/timeline/highlight';
 import type { Band } from '../../lib/timeline/conversation';
 import { describeLength } from '../../../shared/figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
+import { gutter as left, useWidth } from './frame';
 import { Lanes } from './Lanes';
 import { Overview } from './Overview';
-
-// Both strips are given the same gutter, so the lane names stand in one column down the whole instrument.
-const left = 116;
-
-const leastWidth = 360;
 
 interface Pointed {
   mark: Mark;
   x: number;
   y: number;
-}
-
-function useWidth<T extends Element>() {
-  const frame = useRef<T>(null);
-  const [width, setWidth] = useState(leastWidth);
-
-  useLayoutEffect(() => {
-    const node = frame.current;
-
-    if (node === null) {
-      return;
-    }
-
-    const watching = new ResizeObserver(([entry]) => setWidth(Math.max(leastWidth, Math.round(entry.contentRect.width))));
-
-    watching.observe(node);
-
-    return () => watching.disconnect();
-  }, []);
-
-  return [frame, width] as const;
 }
 
 // Beside the cursor, so reading what a mark was never moves the run out from under the reader.

@@ -228,6 +228,7 @@ export function Session() {
               skills={skills}
               cost={viewCost}
               tools={tools}
+              drawn={drawn}
               view={view}
               subagentOpen={subagentOpen}
               selected={where.step}

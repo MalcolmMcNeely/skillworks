@@ -4,16 +4,19 @@ import type { Highlight } from '../../../lib/timeline/highlight';
 import type { Level } from '../../../lib/timeline/context';
 import type { SkillRow } from '../../../lib/timeline/skills';
 import type { ToolRow } from '../../../lib/timeline/tools';
+import type { Mark } from '../../../lib/steps';
 import { ContextTab } from './ContextTab';
+import { CostTab } from './CostTab';
 import { SkillsTab } from './SkillsTab';
 import { ToolsTab } from './ToolsTab';
 
-type TabKey = 'context' | 'skills' | 'tools';
+type TabKey = 'context' | 'skills' | 'tools' | 'cost';
 
 const tabs: readonly { key: TabKey; label: string }[] = [
   { key: 'context', label: 'Context' },
   { key: 'skills', label: 'Skills' },
   { key: 'tools', label: 'Tools' },
+  { key: 'cost', label: 'Cost' },
 ];
 
 export function TimelineTabs({
@@ -22,6 +25,7 @@ export function TimelineTabs({
   skills,
   cost,
   tools,
+  drawn,
   view,
   subagentOpen,
   selected,
@@ -34,6 +38,7 @@ export function TimelineTabs({
   skills: readonly SkillRow[];
   cost: number;
   tools: readonly ToolRow[];
+  drawn: readonly Mark[];
   view: Spell | null;
   subagentOpen: boolean;
   selected: string | null;
@@ -76,8 +81,10 @@ export function TimelineTabs({
             highlight={highlight}
             onPick={onHighlight}
           />
-        ) : (
+        ) : shown === 'tools' ? (
           <ToolsTab rows={tools} inView={view !== null} highlight={highlight} onPick={onHighlight} />
+        ) : (
+          <CostTab marks={drawn} view={view} />
         )}
       </div>
     </section>
