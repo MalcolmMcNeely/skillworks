@@ -155,7 +155,7 @@ is planned to finish its work inside it.
 _Avoid_: Context budget, token limit, sharp window
 
 **Steering**:
-What a repo tells the loop about itself: its rules, its tracker docs, its review baselines and its
+What a repo tells the loop about itself: its rules, its tracker docs, its review files and its
 Suite. Setup copies a starting version into the repo as files, and the team owns them from then on.
 A skill reads a fact about one repo from its Steering and never carries it.
 _Avoid_: Config, guidance, policy
