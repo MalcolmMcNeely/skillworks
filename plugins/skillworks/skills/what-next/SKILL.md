@@ -15,7 +15,7 @@ The **Dev loop** is two commands, one for each stage. It takes an idea to work t
 1. **`/skillworks:grill`**
 2. **`/skillworks:spec-loop <n>`**
 
-Each stage names only the next one. Every other skill is either a step the Dev loop runs for you or a tool for any time, both below.
+Each stage names only the next one. Every other skill is either a step the Dev loop runs for you or a skill for any time, both below.
 
 **`/skillworks:grill`** sharpens the idea with questions. Start here whenever you are **working in a working directory**: it's stateful, retaining what it learns in `CONTEXT.md` and ADRs. When the questions run out it sums up the shape it settled and asks you to confirm it. That is the one gate: on your yes it writes the spec itself and gives you its number `<n>`, so a satisfied Grill never sits idle waiting for you to remember a command.
 
@@ -56,7 +56,7 @@ The Dev loop runs each of these itself. A developer may type one for a reason th
 - **`/skillworks:spec-names`** — the Name check, which reads the whole diff against the glossary after the drift check.
 - **`/skillworks:resolve-conflict`** — resolves the conflict a ticket's rebase onto its Target branch hits, in the session that built the ticket, against **the other side** the driver hands it. The landing script runs it when its rebase conflicts.
 
-## Tools for any time
+## Skills for any time
 
 Reach for these whenever they fit. The Dev loop never asks for them, and they never stand in for it.
 

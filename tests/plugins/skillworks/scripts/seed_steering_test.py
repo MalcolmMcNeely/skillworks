@@ -1014,8 +1014,8 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
 
 HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop")
 
-TOOLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
-         "diagnosing-bugs", "prototype", "unslop", "architecture-tests")
+VISIBLE_SKILLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
+                  "diagnosing-bugs", "prototype", "unslop", "architecture-tests")
 
 
 def front_matter(skill):
@@ -1036,8 +1036,8 @@ def test_every_hidden_skill_carries_the_flag():
     assert [skill for skill in HIDDEN_SKILLS if not hidden(skill)] == []
 
 
-def test_every_tool_can_be_invoked_by_claude():
-    assert [skill for skill in TOOLS if hidden(skill)] == []
+def test_every_visible_skill_can_be_invoked_by_claude():
+    assert [skill for skill in VISIBLE_SKILLS if hidden(skill)] == []
 
 
 # The Grill calls to-spec through the Skill tool, which refuses a hidden skill.
