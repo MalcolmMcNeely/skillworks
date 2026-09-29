@@ -1,4 +1,5 @@
 using Skillworks.Core.Sessions.Agents;
+using Skillworks.Core.Sessions.Details;
 using Skillworks.Core.Sessions.TimeBreakdown;
 using Skillworks.Core.Sessions.Steps;
 using Skillworks.Core.Shared.Stores.EventsStore;
@@ -7,14 +8,6 @@ namespace Skillworks.Core.Sessions.Queries;
 
 public sealed partial class StepQueries
 {
-    // An older Claude Code names no source on a Turn, and a Turn that names none is the main agent's.
-    private const string MainAgent = "main";
-
-    // Claude Code writes the output style after it, as in `:outputStyle:custom`, so only the start is matched.
-    private const string InteractiveMainAgent = "repl_main_thread";
-
-    private const string HeadlessMainAgent = "sdk";
-
     public static TimeBreakdownPage TimeBreakdown(OpenedRun opened, OpenedSpans traced, IReadOnlyList<Subagent> ran)
     {
         if (opened.Run is null)
@@ -90,10 +83,7 @@ public sealed partial class StepQueries
     private static PartSpell Spelled(Part part, Spell spell) => new(part, spell.AtUtc, spell.LengthMs);
 
     private static bool Aside(EventLine line) =>
-        line.Attribute(EventAttributes.QuerySource) is { Length: > 0 } source
-        && source != MainAgent
-        && source != HeadlessMainAgent
-        && !source.StartsWith(InteractiveMainAgent, StringComparison.Ordinal);
+        PurposeOf(line.Attribute(EventAttributes.QuerySource)) == Purpose.Side;
 
     private static IReadOnlyList<PartSpell> Idle(OpenedRun opened, IReadOnlyList<PartSpell> worked)
     {

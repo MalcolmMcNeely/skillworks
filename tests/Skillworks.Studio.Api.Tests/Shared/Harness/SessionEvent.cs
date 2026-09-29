@@ -44,6 +44,8 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? CostUsd { get; init; }
 
+    public string? OutputTokens { get; init; }
+
     public string? ToolInput { get; init; }
 
     public string? ToolUseId { get; init; }
@@ -71,6 +73,7 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("duration_ms", DurationMs),
         ("model", Model),
         ("cost_usd", CostUsd),
+        ("output_tokens", OutputTokens),
         ("tool_input", ToolInput),
         ("tool_use_id", ToolUseId),
         ("request_id", RequestId),

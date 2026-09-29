@@ -1,4 +1,5 @@
 import type { Gap, StoresEnd } from '../../shared/gaps/lib/gaps';
+import type { DetailsPage, TurnDetails } from './details';
 import type { Spell } from './timeline/view';
 import type { FindingsPage } from './verdict/findings';
 import type { Activation, ActivationsPage } from './timeline/activations';
@@ -56,6 +57,7 @@ export type SessionLine =
   | TracePage
   | TimeBreakdownPage
   | FindingsPage
+  | DetailsPage
   | StoresEnd;
 
 export interface SessionAnswer {
@@ -76,6 +78,8 @@ export interface SessionAnswer {
   timeBreakdown: TimeBreakdownPage | null;
   // Null until the spans land, as a run that crossed no bar and one nobody has read yet mean different things.
   findings: FindingsPage | null;
+  // Null until the details land, so a row keeps the words its Step carries until then.
+  turns: Record<string, TurnDetails> | null;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -99,6 +103,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       subagents: [],
       timeBreakdown: null,
       findings: null,
+      turns: null,
       landed: false,
       arriving: true,
       events: null,
@@ -140,6 +145,10 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
 
   if (line.kind === 'findings') {
     return { ...answer, findings: line };
+  }
+
+  if (line.kind === 'details') {
+    return { ...answer, turns: line.turns };
   }
 
   return { ...answer, steps: line.steps, landed: true };

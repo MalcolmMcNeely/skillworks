@@ -88,6 +88,16 @@ describe('foldSessionLine', () => {
     expect(answer.arriving).toBe(true);
   });
 
+  it('holds no details until their line arrives, so a row shows what it shows today', () => {
+    expect(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }).turns).toBeNull();
+  });
+
+  it('takes the details of the turns when their line arrives', () => {
+    const turns = { '7': { purpose: 'work' as const, side: null, sentAs: 'sdk', outputTokens: 120, cost: 0.01 } };
+
+    expect(foldSessionLine(opened, { kind: 'details', turns }).turns).toEqual(turns);
+  });
+
   it('marks a run with no steps landed too, so an empty timeline is told apart from one still to come', () => {
     expect(foldSessionLine(opened, { kind: 'steps', steps: [] }).landed).toBe(true);
   });

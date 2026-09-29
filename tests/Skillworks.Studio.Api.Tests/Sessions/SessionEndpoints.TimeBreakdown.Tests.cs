@@ -26,7 +26,7 @@ public sealed partial class SessionEndpointsTests
         var lines = await studio.StepLines(Morning);
 
         Assert.Equal(
-            ["head", "exchanges", "activations", "context", "findings", "steps", "trace", "agents", "exchanges", "timeBreakdown", "findings", "end"],
+            ["head", "exchanges", "activations", "context", "findings", "steps", "trace", "agents", "exchanges", "timeBreakdown", "findings", "details", "end"],
             lines.Select(StudioHost.KindOf));
     }
 
@@ -244,6 +244,21 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal(5_000, breakdown["side"]);
         Assert.False(breakdown.ContainsKey("model"));
+    }
+
+    [Fact]
+    public async Task Gives_a_subagents_turn_in_a_thin_run_to_model_thinking_and_not_to_side_requests()
+    {
+        using var studio = new StudioHost();
+
+        await studio.Push(
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Find the leak"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, source: "agent:custom"),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Found."));
+
+        var breakdown = Totals(await studio.PartsIn(Morning));
+
+        Assert.Equal(5_000, breakdown["model"]);
     }
 
     [Theory]

@@ -68,6 +68,9 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
         // Again, now the three bars only a Span can measure have something to measure against.
         yield return StepQueries.Found(opened, breakdown, ran);
 
+        // Last, as a long run's details can run to megabytes and the timeline has drawn without them.
+        yield return StepQueries.Details(opened);
+
         yield return new StoresEnd(
             gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst(), opened.PromptsWithheld),
             gaps.InSpans(traced.Read));

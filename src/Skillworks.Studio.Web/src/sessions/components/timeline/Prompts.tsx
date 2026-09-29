@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { describeCount, describeLength, describeMoney } from '../../../shared/figures/lib/figures';
+import { rowLineOf, type TurnDetails } from '../../lib/details';
 import { ranBy, type Subagent } from '../../lib/timeline/agents';
 import type { Band } from '../../lib/timeline/conversation';
 import {
@@ -58,16 +59,19 @@ function StepLine({
   row,
   traced,
   agents,
+  turns,
   onStep,
 }: {
   row: StepRow;
   traced: boolean;
   agents: Record<string, string>;
+  turns: Record<string, TurnDetails> | null;
   onStep: (step: string) => void;
 }) {
   const { mark } = row;
   const { step } = mark;
   const note = noteOf(step);
+  const line = rowLineOf(step, turns);
 
   return (
     <li data-step={step.id} className={classOf(row)}>
@@ -81,7 +85,7 @@ function StepLine({
             {note === null ? null : <span className="step-note">{note}</span>}
           </span>
           {row.agent === null ? null : <span className="micro prompts-step-agent">{row.agent}</span>}
-          {step.words === null ? null : <span className="prompts-step-words">{step.words}</span>}
+          {line === null ? null : <span className="prompts-step-words">{line}</span>}
         </button>
       )}
     </li>
@@ -111,6 +115,7 @@ function Row({
   opened,
   traced,
   agents,
+  turns,
   onExchange,
   onStep,
 }: {
@@ -119,6 +124,7 @@ function Row({
   opened: Mark | null;
   traced: boolean;
   agents: Record<string, string>;
+  turns: Record<string, TurnDetails> | null;
   onExchange: (band: Band) => void;
   onStep: (step: string) => void;
 }) {
@@ -129,7 +135,14 @@ function Row({
     steps.length === 0 ? null : (
       <ol className="prompts-steps">
         {steps.map((each) => (
-          <StepLine key={each.mark.step.id} row={each} traced={traced} agents={agents} onStep={onStep} />
+          <StepLine
+            key={each.mark.step.id}
+            row={each}
+            traced={traced}
+            agents={agents}
+            turns={turns}
+            onStep={onStep}
+          />
         ))}
       </ol>
     );
@@ -187,6 +200,7 @@ export function Prompts({
   subagents,
   traced,
   agents,
+  turns,
   onExchange,
   onStep,
   onOpen,
@@ -203,6 +217,7 @@ export function Prompts({
   subagents: readonly Subagent[];
   traced: boolean;
   agents: Record<string, string>;
+  turns: Record<string, TurnDetails> | null;
   onExchange: (band: Band) => void;
   onStep: (step: string) => void;
   onOpen: () => void;
@@ -287,6 +302,7 @@ export function Prompts({
                 opened={opened}
                 traced={traced}
                 agents={agents}
+                turns={turns}
                 onExchange={onExchange}
                 onStep={onStep}
               />

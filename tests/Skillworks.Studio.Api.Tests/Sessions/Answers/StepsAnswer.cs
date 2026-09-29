@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using Skillworks.Studio.Api.Tests.Shared.Gaps;
 using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Sessions.Rows;
+using Skillworks.Studio.Api.Tests.Sessions.Rows.Details;
 
 namespace Skillworks.Studio.Api.Tests.Sessions.Answers;
 
@@ -20,6 +21,7 @@ public sealed record StepsAnswer(
     IReadOnlyList<PartSpellRow> Parts,
     IReadOnlyList<PartSpellRow> Kinds,
     IReadOnlyList<FindingRow> Findings,
+    IReadOnlyDictionary<string, TurnDetailsRow> Turns,
     GapRow Events,
     GapRow Traces)
 {
@@ -27,6 +29,7 @@ public sealed record StepsAnswer(
     {
         var spans = Line(lines, "agents");
         var tree = Line(lines, "trace");
+        var details = Line(lines, "details");
         var said = lines.LastOrDefault(line => StudioHost.KindOf(line) == "exchanges");
 
         return new StepsAnswer(
@@ -48,6 +51,9 @@ public sealed record StepsAnswer(
             Held<PartSpellRow>(lines, "timeBreakdown", "parts"),
             Held<PartSpellRow>(lines, "timeBreakdown", "kinds"),
             Latest<FindingRow>(lines, "findings"),
+            details is null
+                ? new Dictionary<string, TurnDetailsRow>()
+                : StudioHost.Read<Dictionary<string, TurnDetailsRow>>(details["turns"]),
             Store(lines, "events"),
             Store(lines, "traces"));
     }
