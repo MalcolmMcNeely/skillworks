@@ -19,7 +19,7 @@ If `docs/agents/rules/testing.md` is missing, stop. Tell the user that the testi
 
 Tests verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't. A test that doesn't care about internal structure survives refactors.
 
-See [tests.md](tests.md) for examples of each anti-pattern and [mocking.md](mocking.md) for making a boundary swappable.
+See [tests.md](tests.md) for examples of each anti-pattern and [swappable-boundaries.md](swappable-boundaries.md) for making a boundary swappable.
 
 ## Seams — where tests go
 
