@@ -982,10 +982,10 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
     assert "disable-model-invocation: true\n" in front
 
 
-ENTRY_POINTS = ("implement", "to-tickets", "grill", "spec-loop")
+HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop")
 
-ENGINES = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
-           "diagnosing-bugs", "prototype", "unslop", "architecture-tests")
+TOOLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
+         "diagnosing-bugs", "prototype", "unslop", "architecture-tests")
 
 
 def front_matter(skill):
@@ -996,12 +996,12 @@ def hidden(skill):
     return "disable-model-invocation: true\n" in front_matter(skill)
 
 
-def test_every_entry_point_is_hidden_from_claude():
-    assert [skill for skill in ENTRY_POINTS if not hidden(skill)] == []
+def test_every_hidden_skill_carries_the_flag():
+    assert [skill for skill in HIDDEN_SKILLS if not hidden(skill)] == []
 
 
-def test_every_engine_can_be_invoked_by_claude():
-    assert [skill for skill in ENGINES if hidden(skill)] == []
+def test_every_tool_can_be_invoked_by_claude():
+    assert [skill for skill in TOOLS if hidden(skill)] == []
 
 
 # The Grill calls to-spec through the Skill tool, which refuses a hidden skill.
