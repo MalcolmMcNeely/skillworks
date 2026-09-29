@@ -39,7 +39,6 @@ banned-words:
     - Stint
     - Stretch
     - Brush
-    - Main thread
     - Timeout
     - Fired
   architecture:

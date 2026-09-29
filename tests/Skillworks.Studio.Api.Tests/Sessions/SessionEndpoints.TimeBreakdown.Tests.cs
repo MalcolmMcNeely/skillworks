@@ -246,6 +246,23 @@ public sealed partial class SessionEndpointsTests
         Assert.False(breakdown.ContainsKey("model"));
     }
 
+    [Theory]
+    [InlineData("repl_main_thread:outputStyle:custom")]
+    [InlineData("sdk")]
+    public async Task Gives_the_main_agents_own_turn_to_model_thinking_in_an_interactive_or_a_headless_run(string source)
+    {
+        using var studio = new StudioHost();
+
+        await studio.Push(
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, source: source),
+            SessionEvent.Answered(Morning, At(Yesterday, "09:00:10.000"), "Built."));
+
+        var breakdown = Totals(await studio.PartsIn(Morning));
+
+        Assert.Equal(5_000, breakdown["model"]);
+    }
+
     [Fact]
     public async Task Counts_the_spell_between_one_exchange_and_the_next_as_the_readers_own_turn()
     {
