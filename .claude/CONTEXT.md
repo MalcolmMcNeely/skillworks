@@ -20,6 +20,12 @@ conflict reads it back. On GitHub it is the comment the ticket closes with, and 
 section of the ticket's own file, so one word serves both Trackers.
 _Avoid_: Closing comment, close comment, resolution
 
+**Cut**:
+The step the driver takes before the first ticket, when a spec has none: a Session that breaks the
+spec into tickets. It runs once for a spec and never for a ticket, so it is not one of the steps a
+ticket takes.
+_Avoid_: Ticket step, tickets step, breakdown
+
 **Denial**:
 A tool call Claude Code turned down because the session had no permission for it: a write to a
 protected path, or a command no allow rule names. A session with no human cannot be asked, so a
