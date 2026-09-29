@@ -15,14 +15,14 @@ import { CostBreakdown } from '../components/verdict/CostBreakdown';
 import { Findings } from '../components/verdict/Findings';
 import { Headlines } from '../components/verdict/Headlines';
 import { TimeBreakdown } from '../components/verdict/TimeBreakdown';
-import { readView, widened, withView, type Spell } from '../lib/timeline/view';
+import { readView, withView, type Spell } from '../lib/timeline/view';
 import { type Named } from '../lib/verdict/findings';
 import { highlightKey, highlightOf, litBy, readHighlight, toggled, withHighlight, type Highlight } from '../lib/timeline/highlight';
 import { activationSpellsOf } from '../lib/timeline/activations';
 import { ranByOne } from '../lib/timeline/agents';
 import { levelsOf, levelsRanByOne } from '../lib/timeline/context';
 import { bandsOf, type Band, type Exchange } from '../lib/timeline/conversation';
-import { closedPrompts } from '../lib/timeline/prompts';
+import { closedPrompts, openedExchange } from '../lib/timeline/prompts';
 import { costIn, skillRowsOf } from '../lib/timeline/skills';
 import { toolRowsOf } from '../lib/timeline/tools';
 import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
@@ -137,8 +137,7 @@ export function Session() {
 
   const open = (step: string | null) => write(withWhere(params, { ...where, step }));
 
-  const onExchange = (band: Band) =>
-    whole === null ? undefined : show(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index });
+  const onExchange = (band: Band) => (whole === null ? undefined : write(openedExchange(params, band, whole)));
 
   // Lights the lanes and nothing more, so the View and every figure stay where the reader left them.
   const onHighlight = (picked: Highlight | null) =>
@@ -241,8 +240,10 @@ export function Session() {
               step={where.step}
               exchange={where.exchange}
               prompts={where.prompts}
+              view={shownView}
               traced={landed.traced}
               agents={landed.agents}
+              onExchange={onExchange}
               onOpen={onOpenPrompts}
               onClose={onClosePrompts}
             />

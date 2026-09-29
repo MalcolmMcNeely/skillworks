@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { bandsOf, type Exchange } from './conversation';
 import { readHighlight } from './highlight';
-import { closedPrompts, describeUnsaid, exchangeOf, promptsOf, type Opened, type PromptRow } from './prompts';
-import { readView } from './view';
+import {
+  closedPrompts,
+  describeUnsaid,
+  exchangeOf,
+  exchangeOpenedBy,
+  openedExchange,
+  promptsOf,
+  type Opened,
+  type PromptRow,
+} from './prompts';
+import { readView, type Spell } from './view';
 import { marksOf, type Step } from '../steps';
 
 function exchange(index: number, atUtc: string): Exchange {
@@ -71,13 +80,32 @@ describe('promptsOf', () => {
   it('lists a run with Steps before the first Prompt with a Before the first Prompt row at the top', () => {
     const marks = marksOf([step('40', '2026-09-14T08:59:00.000Z'), step('41', '2026-09-14T09:01:00.000Z')]);
 
-    expect(keysOf(promptsOf(marks, bands, nothingOpened))).toEqual(['before', '0', '1']);
+    expect(keysOf(promptsOf(marks, bands, nothingOpened, null))).toEqual(['before', '0', '1']);
   });
 
   it('lists a run with no Steps before the first Prompt with one row per Exchange and nothing more', () => {
     const marks = marksOf([step('41', '2026-09-14T09:01:00.000Z')]);
 
-    expect(keysOf(promptsOf(marks, bands, nothingOpened))).toEqual(['0', '1']);
+    expect(keysOf(promptsOf(marks, bands, nothingOpened, null))).toEqual(['0', '1']);
+  });
+});
+
+describe('the list in a View', () => {
+  const marks = marksOf([step('40', '2026-09-14T08:59:00.000Z'), step('41', '2026-09-14T09:06:00.000Z')]);
+  const secondExchange: Spell = [Date.parse('2026-09-14T09:05:10.000Z'), Date.parse('2026-09-14T09:05:50.000Z')];
+
+  it('keeps every Exchange while a View is set', () => {
+    expect(keysOf(promptsOf(marks, bands, nothingOpened, secondExchange))).toEqual(['before', '0', '1']);
+  });
+
+  it('marks the rows outside the View as out of view', () => {
+    const rows = promptsOf(marks, bands, nothingOpened, secondExchange);
+
+    expect(keysOf(rows.filter((row) => !row.inView))).toEqual(['before', '0']);
+  });
+
+  it('holds every row in view while no View is set', () => {
+    expect(promptsOf(marks, bands, nothingOpened, null).every((row) => row.inView)).toBe(true);
   });
 });
 
@@ -85,7 +113,7 @@ describe('the open row', () => {
   const marks = marksOf([step('40', '2026-09-14T08:59:00.000Z'), step('41', '2026-09-14T09:06:00.000Z')]);
 
   function openOf(opened: Opened): string[] {
-    return keysOf(promptsOf(marks, bands, opened).filter((row) => row.open));
+    return keysOf(promptsOf(marks, bands, opened, null).filter((row) => row.open));
   }
 
   it('is the Exchange a named Step sits in', () => {
@@ -106,6 +134,42 @@ describe('the open row', () => {
 
   it('is none where nothing is named', () => {
     expect(openOf(nothingOpened)).toEqual([]);
+  });
+});
+
+describe('exchangeOpenedBy', () => {
+  it('opens the Exchange a Prompt mark starts', () => {
+    const [prompt] = marksOf([{ ...step('41', '2026-09-14T09:05:00.000Z'), kind: 'prompt', tool: null }]);
+
+    expect(exchangeOpenedBy(prompt, bands)?.exchange.index).toBe(1);
+  });
+
+  it('opens no Exchange for any other Step, which opens itself', () => {
+    expect(exchangeOpenedBy(markAt('2026-09-14T09:05:00.000Z'), bands)).toBeNull();
+  });
+});
+
+describe('openedExchange', () => {
+  const whole: Spell = [Date.parse('2026-09-14T08:00:00.000Z'), Date.parse('2026-09-14T10:00:00.000Z')];
+  const address = new URLSearchParams('lit=tool%3ABash&step=41&exchange=0');
+
+  it('names the Exchange', () => {
+    expect(openedExchange(address, bands[1], whole).get('exchange')).toBe('1');
+  });
+
+  it('clears the named Step, so the open row is the Exchange clicked', () => {
+    expect(openedExchange(address, bands[1], whole).has('step')).toBe(false);
+  });
+
+  it('moves the View to the Exchange, widened a little', () => {
+    expect(readView(openedExchange(address, bands[1], whole))).toEqual([
+      Date.parse('2026-09-14T09:04:40.000Z'),
+      Date.parse('2026-09-14T09:06:20.000Z'),
+    ]);
+  });
+
+  it('keeps the Highlight', () => {
+    expect(readHighlight(openedExchange(address, bands[1], whole))).toEqual({ kind: 'tool', name: 'Bash' });
   });
 });
 

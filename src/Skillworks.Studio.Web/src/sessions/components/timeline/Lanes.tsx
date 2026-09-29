@@ -1,6 +1,7 @@
 import { useMemo, type PointerEvent } from 'react';
 import { inSpell, type Spell } from '../../lib/timeline/view';
 import type { Band } from '../../lib/timeline/conversation';
+import { exchangeOpenedBy } from '../../lib/timeline/prompts';
 import { foldScale, ticksOf } from '../../lib/fold';
 import { describeLength } from '../../../shared/figures/lib/figures';
 import { describeClock, lanes, lanesOf, toneOf, type Lane, type Mark } from '../../lib/steps';
@@ -145,7 +146,15 @@ export function Lanes({
           className={`timeline-mark is-${toneOf(mark.step)}${mark.step.id === selected ? ' is-open' : ''}${litClass(lit, mark)}`}
           onPointerEnter={(event) => onHover(mark, event)}
           onPointerLeave={(event) => onHover(null, event)}
-          onClick={() => onOpen(mark.step.id)}
+          onClick={() => {
+            const band = exchangeOpenedBy(mark, bands);
+
+            if (band === null) {
+              onOpen(mark.step.id);
+            } else {
+              onExchange(band);
+            }
+          }}
         />
       ))}
     </svg>
