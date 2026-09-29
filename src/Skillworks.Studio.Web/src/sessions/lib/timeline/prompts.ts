@@ -1,15 +1,16 @@
 import { describeCount } from '../../../shared/figures/lib/figures';
 import { readWhere, withWhere, type Where } from '../../../shared/session/lib/where';
 import type { Mark } from '../steps';
+import type { Subagent } from './agents';
 import type { Band } from './conversation';
 import { holds, widened, withView, type Spell } from './view';
 
 // A Step answers the last Prompt typed before it, so one after the last Exchange ended still belongs to it.
-export function exchangeOf(mark: Mark, bands: readonly Band[]): Band | null {
+export function exchangeOf(started: { startMs: number }, bands: readonly Band[]): Band | null {
   let found: Band | null = null;
 
   for (const band of bands) {
-    if (band.startMs <= mark.startMs) {
+    if (band.startMs <= started.startMs) {
       found = band;
     }
   }
@@ -26,6 +27,7 @@ export interface PromptRow {
   band: Band | null;
   open: boolean;
   inView: boolean;
+  started: boolean;
 }
 
 export type Opened = Pick<Where, 'step' | 'exchange'>;
@@ -36,9 +38,16 @@ export function promptsOf(
   bands: readonly Band[],
   opened: Opened,
   view: Spell | null,
+  subagent: Subagent | null,
 ): PromptRow[] {
   const open = openOf(marks, bands, opened);
-  const rows = bands.map((band) => ({ band, open: open === band, inView: holds(view, band.startMs, band.endMs) }));
+  const startedIn = subagent === null ? undefined : exchangeOf({ startMs: Date.parse(subagent.atUtc) }, bands);
+  const rows = bands.map((band) => ({
+    band,
+    open: open === band,
+    inView: holds(view, band.startMs, band.endMs),
+    started: startedIn === band,
+  }));
   const before = marks.filter((mark) => exchangeOf(mark, bands) === null);
 
   if (before.length === 0) {
@@ -47,7 +56,7 @@ export function promptsOf(
 
   const inView = before.some((mark) => holds(view, mark.startMs, mark.endMs));
 
-  return [{ band: null, open: open === null, inView }, ...rows];
+  return [{ band: null, open: open === null, inView, started: startedIn === null }, ...rows];
 }
 
 export function describeUnsaid(words: string | null, length: number): string | null {

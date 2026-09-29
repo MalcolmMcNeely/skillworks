@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Subagent } from './agents';
 import { bandsOf, type Exchange } from './conversation';
 import { readHighlight } from './highlight';
 import {
@@ -46,6 +47,21 @@ function step(id: string, atUtc: string): Step {
   };
 }
 
+function subagentAt(atUtc: string): Subagent {
+  return {
+    id: 'agent-a',
+    name: 'Explore',
+    type: null,
+    atUtc,
+    lengthMs: 60_000,
+    toolCalls: 0,
+    cost: 0,
+    faults: 0,
+    brief: 'Find the tests',
+    report: null,
+  };
+}
+
 const bands = bandsOf([exchange(0, '2026-09-14T09:00:00.000Z'), exchange(1, '2026-09-14T09:05:00.000Z')]);
 
 function markAt(atUtc: string) {
@@ -80,13 +96,13 @@ describe('promptsOf', () => {
   it('lists a run with Steps before the first Prompt with a Before the first Prompt row at the top', () => {
     const marks = marksOf([step('40', '2026-09-14T08:59:00.000Z'), step('41', '2026-09-14T09:01:00.000Z')]);
 
-    expect(keysOf(promptsOf(marks, bands, nothingOpened, null))).toEqual(['before', '0', '1']);
+    expect(keysOf(promptsOf(marks, bands, nothingOpened, null, null))).toEqual(['before', '0', '1']);
   });
 
   it('lists a run with no Steps before the first Prompt with one row per Exchange and nothing more', () => {
     const marks = marksOf([step('41', '2026-09-14T09:01:00.000Z')]);
 
-    expect(keysOf(promptsOf(marks, bands, nothingOpened, null))).toEqual(['0', '1']);
+    expect(keysOf(promptsOf(marks, bands, nothingOpened, null, null))).toEqual(['0', '1']);
   });
 });
 
@@ -95,17 +111,17 @@ describe('the list in a View', () => {
   const secondExchange: Spell = [Date.parse('2026-09-14T09:05:10.000Z'), Date.parse('2026-09-14T09:05:50.000Z')];
 
   it('keeps every Exchange while a View is set', () => {
-    expect(keysOf(promptsOf(marks, bands, nothingOpened, secondExchange))).toEqual(['before', '0', '1']);
+    expect(keysOf(promptsOf(marks, bands, nothingOpened, secondExchange, null))).toEqual(['before', '0', '1']);
   });
 
   it('marks the rows outside the View as out of view', () => {
-    const rows = promptsOf(marks, bands, nothingOpened, secondExchange);
+    const rows = promptsOf(marks, bands, nothingOpened, secondExchange, null);
 
     expect(keysOf(rows.filter((row) => !row.inView))).toEqual(['before', '0']);
   });
 
   it('holds every row in view while no View is set', () => {
-    expect(promptsOf(marks, bands, nothingOpened, null).every((row) => row.inView)).toBe(true);
+    expect(promptsOf(marks, bands, nothingOpened, null, null).every((row) => row.inView)).toBe(true);
   });
 });
 
@@ -113,7 +129,7 @@ describe('the open row', () => {
   const marks = marksOf([step('40', '2026-09-14T08:59:00.000Z'), step('41', '2026-09-14T09:06:00.000Z')]);
 
   function openOf(opened: Opened): string[] {
-    return keysOf(promptsOf(marks, bands, opened, null).filter((row) => row.open));
+    return keysOf(promptsOf(marks, bands, opened, null, null).filter((row) => row.open));
   }
 
   it('is the Exchange a named Step sits in', () => {
@@ -134,6 +150,26 @@ describe('the open row', () => {
 
   it('is none where nothing is named', () => {
     expect(openOf(nothingOpened)).toEqual([]);
+  });
+});
+
+describe('the Subagent mark', () => {
+  const marks = marksOf([step('40', '2026-09-14T08:59:00.000Z'), step('41', '2026-09-14T09:06:00.000Z')]);
+
+  function startedOf(subagent: Subagent | null): string[] {
+    return keysOf(promptsOf(marks, bands, nothingOpened, null, subagent).filter((row) => row.started));
+  }
+
+  it('is on the Exchange the open Subagent started in', () => {
+    expect(startedOf(subagentAt('2026-09-14T09:02:00.000Z'))).toEqual(['0']);
+  });
+
+  it('is on the Before the first Prompt row for a Subagent started before the first Prompt', () => {
+    expect(startedOf(subagentAt('2026-09-14T08:59:30.000Z'))).toEqual(['before']);
+  });
+
+  it('is on no row while no Subagent is open', () => {
+    expect(startedOf(null)).toEqual([]);
   });
 });
 

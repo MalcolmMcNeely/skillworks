@@ -1942,6 +1942,26 @@ a.home-panel-face:hover::before {
   opacity: 0.45;
 }
 
+.prompts-list > li.is-started {
+  border-left-color: var(--live);
+}
+
+.prompts-started {
+  color: var(--live);
+}
+
+.prompts-subagent {
+  border: 1px solid var(--live);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.prompts-subagent .micro {
+  color: var(--live);
+}
+
 .prompts-pick {
   background: none;
   border: none;

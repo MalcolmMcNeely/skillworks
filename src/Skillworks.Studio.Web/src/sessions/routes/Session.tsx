@@ -126,8 +126,9 @@ export function Session() {
 
   const verdict = useMemo(() => (answer === null ? null : verdictOf(answer)), [answer]);
   const subagents = answer?.subagents;
-  const openAgent =
-    where.agent === null ? null : (subagents?.find((subagent) => subagent.id === where.agent)?.name ?? where.agent);
+  const openSubagent =
+    where.agent === null ? null : (subagents?.find((subagent) => subagent.id === where.agent) ?? null);
+  const openAgent = where.agent === null ? null : (openSubagent?.name ?? where.agent);
 
   // Replaced, not pushed, so setting four Views does not cost four presses of the back button.
   const write = (written: URLSearchParams) => setParams(written, { replace: true });
@@ -241,6 +242,7 @@ export function Session() {
               exchange={where.exchange}
               prompts={where.prompts}
               view={shownView}
+              subagent={openSubagent}
               traced={landed.traced}
               agents={landed.agents}
               onExchange={onExchange}

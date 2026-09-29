@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { describeCount, describeLength, describeMoney } from '../../../shared/figures/lib/figures';
-import { ranBy } from '../../lib/timeline/agents';
+import { ranBy, type Subagent } from '../../lib/timeline/agents';
 import type { Band } from '../../lib/timeline/conversation';
 import { describeUnsaid, promptsOf, type Opened, type PromptRow } from '../../lib/timeline/prompts';
 import type { Spell } from '../../lib/timeline/view';
@@ -11,7 +11,9 @@ function keyOf(row: PromptRow): string {
 }
 
 function classOf(row: PromptRow): string | undefined {
-  const names = [row.open ? 'is-open' : null, row.inView ? null : 'is-out'].filter((name) => name !== null);
+  const names = [row.open ? 'is-open' : null, row.inView ? null : 'is-out', row.started ? 'is-started' : null].filter(
+    (name) => name !== null,
+  );
 
   return names.length === 0 ? undefined : names.join(' ');
 }
@@ -45,6 +47,23 @@ function OpenedStep({ mark, traced, agents }: { mark: Mark; traced: boolean; age
   );
 }
 
+function OpenSubagent({ subagent }: { subagent: Subagent }) {
+  return (
+    <div className="prompts-subagent">
+      <p className="micro">Subagent · {subagent.name}</p>
+      {subagent.brief === null || subagent.brief === '' ? (
+        <p className="prompts-unsaid">No brief was recorded.</p>
+      ) : (
+        <p className="prompts-words">{subagent.brief}</p>
+      )}
+    </div>
+  );
+}
+
+function Started() {
+  return <span className="micro prompts-started">The open Subagent started here</span>;
+}
+
 function Row({
   row,
   opened,
@@ -64,6 +83,7 @@ function Row({
     return (
       <>
         <p className="micro prompts-row-head">Before the first Prompt</p>
+        {row.started ? <Started /> : null}
         {step}
       </>
     );
@@ -81,6 +101,7 @@ function Row({
           {exchange.index + 1} · {describeClock(startMs, true)} · {describeLength(exchange.lengthMs)} ·{' '}
           {describeMoney(exchange.cost)}
         </span>
+        {row.started ? <Started /> : null}
         {row.open ? null : prompt}
       </button>
       {row.open ? prompt : null}
@@ -105,6 +126,7 @@ export function Prompts({
   exchange,
   prompts,
   view,
+  subagent,
   traced,
   agents,
   onExchange,
@@ -118,6 +140,7 @@ export function Prompts({
   exchange: number | null;
   prompts: boolean;
   view: Spell | null;
+  subagent: Subagent | null;
   traced: boolean;
   agents: Record<string, string>;
   onExchange: (band: Band) => void;
@@ -134,7 +157,7 @@ export function Prompts({
     setHeld({ step, exchange });
   }
 
-  const rows = useMemo(() => promptsOf(marks, bands, held, view), [marks, bands, held, view]);
+  const rows = useMemo(() => promptsOf(marks, bands, held, view, subagent), [marks, bands, held, view, subagent]);
   const opened = held.step === null ? null : (marks.find((mark) => mark.step.id === held.step) ?? null);
   const openRow = rows.find((row) => row.open);
   const openKey = openRow === undefined ? null : keyOf(openRow);
@@ -175,6 +198,7 @@ export function Prompts({
             Close · Esc
           </button>
         </header>
+        {subagent === null ? null : <OpenSubagent subagent={subagent} />}
         {bands.length === 0 ? <p className="prompts-unsaid">No Prompt was recorded for this run.</p> : null}
         <ol className="prompts-list" ref={list}>
           {rows.map((row) => (
