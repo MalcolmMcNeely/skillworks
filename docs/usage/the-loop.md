@@ -643,18 +643,19 @@ recorded no report:
 
 ```
       Denial: Write {"file_path": ".claude/settings.json", ...
-      If one of these Denials stopped the step, rerun with spec-loop 200 --bypass
+      If one of these Denials stopped the loop, rerun with spec-loop 200 --bypass
 ```
 
 The default mode is `acceptEdits`. `spec-loop <spec> --bypass` runs every Session of the run in
-`bypassPermissions`, the landing too. Use it only when a Denial stopped the step. A stop with no
+`bypassPermissions`, the landing too. Use it only when a Denial stopped the loop. A stop with no
 Denials gives no hint, because its cause lies somewhere else. The `LOOP` line at the top of the log
 names the mode the run is in.
 
 The drift check and the Name check read the spec's commits through `spec-commits`, and record their
 reports through `tracker-publish`. With no `Bash(spec-commits:*)` or no `Bash(tracker-publish:*)`
-rule in your allowlist, that command is a Denial, and the loop stops at the check. Add the rules,
-with `allow-commands`. Do not rerun with `--bypass`, because the next run meets the same Denial.
+rule in your allowlist, that command is a Denial, and the loop stops at the check. Its `STOP` line
+names the Denial, and a rerun with `--bypass` gets that one run past it. Add the rules with
+`allow-commands` too, because every run after it in the default mode meets the same Denial.
 
 ## The full run
 

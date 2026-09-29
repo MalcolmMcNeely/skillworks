@@ -1108,8 +1108,7 @@ def test_the_walk_for_skill_tool_calls_finds_the_grills_call_to_to_spec():
     assert ("grill/SKILL.md", "to-spec") in skill_tool_calls()
 
 
-# In the loop's `acceptEdits` a write outside the checkout is a Denial nobody is there to lift, and one rule
-# for every skill that publishes keeps a temp folder from being copied back into the loop's own skills.
+# A loop Session may not write outside its checkout, and one rule for all four stops a copy bringing it back.
 @pytest.mark.parametrize("skill", ["to-spec", "to-tickets", "spec-drift", "spec-names"])
 def test_a_skill_that_publishes_writes_its_file_in_the_ignored_loop_folder(skill):
     text = skill_text(skill)

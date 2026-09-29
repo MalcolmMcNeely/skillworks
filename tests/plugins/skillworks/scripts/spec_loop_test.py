@@ -854,7 +854,7 @@ def test_a_spec_still_without_tickets_after_the_cut_stops_the_loop(loop, runner)
 
 def test_a_cut_that_filed_no_tickets_after_denials_gives_the_way_past_them(loop):
     given_the_tracker_holds(loop, ())
-    given_sessions_that_report(loop).denials["to-tickets"] = [A_DENIED_WRITE]
+    given_a_session_that_was_denied(given_sessions_that_report(loop), "to-tickets", A_DENIED_WRITE)
 
     ran = loop.run(SPEC)
 
@@ -2416,9 +2416,13 @@ A_DENIED_COMMAND = {"tool_name": "Bash", "tool_use_id": "toolu_2",
                      "tool_input": {"command": "rm -rf .claude/worktrees"}}
 
 
+def given_a_session_that_was_denied(sessions, step, *denials):
+    sessions.denials[step] = list(denials)
+
+
 # The finishing Session never commits here, so every case stops at the finishing step.
 def given_a_finish_that_was_denied(sessions, *denials):
-    sessions.denials["implement"] = list(denials)
+    given_a_session_that_was_denied(sessions, "implement", *denials)
 
 
 def test_a_stop_after_denials_gives_the_way_past_them(loop):
@@ -2628,9 +2632,7 @@ def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runn
 
 def drifted(loop, report, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    sessions = given_sessions_that_report(loop)
-    if denials:
-        sessions.denials["spec-drift"] = list(denials)
+    given_a_session_that_was_denied(given_sessions_that_report(loop), "spec-drift", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = report
     return loop.run(SPEC)
@@ -2756,9 +2758,10 @@ def given_a_filed_ticket_that_lands(loop, tracker, sessions, ticket):
         committed(loop.runner, ticket), closed(tracker, ticket))
 
 
-def drifted_in_a_round(loop, first, second):
+def drifted_in_a_round(loop, first, second, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
+    given_a_session_that_was_denied(sessions, "spec-drift", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     given_a_filed_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
     given_drift_reports(sessions, tracker, first, second)
@@ -2894,6 +2897,15 @@ def test_a_re_check_that_recorded_no_new_report_stops_the_loop_saying_so(loop):
     assert "END" not in log
 
 
+def test_a_re_check_that_recorded_no_new_report_after_denials_gives_the_way_past_them(loop):
+    report = drift_report(S2="Missing")
+    ran = drifted_in_a_round(loop, report, report, A_DENIED_WRITE)
+
+    assert ran.status == 1
+    assert 'Denial: Write {"file_path": ".claude/rules/words.md"' in loop.log()
+    assert BYPASS in loop.log()
+
+
 def test_an_item_the_re_check_skips_is_a_gap_left_after_the_round(loop):
     ran = drifted_in_a_round(loop, drift_report(S2="Missing", D1="Missing"),
                              verdicts_alone(S2="Done"))
@@ -2923,9 +2935,7 @@ def test_a_contradicts_in_the_re_check_stops_the_loop(loop):
 
 def named_back(loop, report, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    sessions = given_sessions_that_report(loop)
-    if denials:
-        sessions.denials["spec-names"] = list(denials)
+    given_a_session_that_was_denied(given_sessions_that_report(loop), "spec-names", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.name_report = report
     return loop.run(SPEC)
@@ -3026,9 +3036,10 @@ def given_name_reports(sessions, tracker, *reports):
     sessions.then["spec-names"] = record
 
 
-def renamed_in_a_round(loop, second, first=name_report(*RENAMED)):
+def renamed_in_a_round(loop, second, first=name_report(*RENAMED), *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
+    given_a_session_that_was_denied(sessions, "spec-names", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     given_a_filed_ticket_that_lands(loop, tracker, sessions, RENAME_TICKET)
     given_name_reports(sessions, tracker, first, second)
@@ -3130,6 +3141,15 @@ def test_a_name_re_check_that_recorded_no_new_report_stops_the_loop(loop):
     assert ("STOP  the Name re-check recorded no new report on spec #{}, so no rename was "
             "checked").format(SPEC) in loop.log()
     assert "END" not in loop.log()
+
+
+def test_a_name_re_check_that_recorded_no_new_report_after_denials_gives_the_way_past_them(loop):
+    report = name_report(*RENAMED)
+    ran = renamed_in_a_round(loop, report, report, A_DENIED_COMMAND)
+
+    assert ran.status == 1
+    assert 'Denial: Bash {"command": "rm -rf .claude/worktrees"}' in loop.log()
+    assert BYPASS in loop.log()
 
 
 def test_a_name_re_check_with_no_verdicts_list_stops_the_loop(loop):

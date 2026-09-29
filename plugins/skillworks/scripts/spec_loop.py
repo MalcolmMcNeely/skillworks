@@ -580,19 +580,19 @@ class Loop:
                      .format(self.named(ticket)))
 
     # The hint only where a Denial was listed, since a stop with another cause needs another fix.
-    def stop_denied(self, said, result):
+    def stop_naming_denials(self, said, result):
         named = denials(result) if result is not None else []
         if not named:
             return stop(said)
         for denial in named:
             said += "\n      Denial: " + denial
         # The flag and not the env var, because the allow rule `Bash(spec-loop:*)` matches only the flag.
-        return stop(said + "\n      If one of these Denials stopped the step, rerun with "
+        return stop(said + "\n      If one of these Denials stopped the loop, rerun with "
                     "spec-loop {} --bypass".format(self.spec))
 
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
-        return self.stop_denied("FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
+        return self.stop_naming_denials("FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
             self.named(ticket), step, reason, self.job_worktree, see), result)
 
     def run_step(self, ticket, step, *rest):
@@ -765,7 +765,7 @@ class Loop:
             self.wrote(shown + "\n")
         self.ticket_count = len(self.tracker.tickets(self.spec))
         if self.ticket_count == 0:
-            raise self.stop_denied("STOP  spec {} still has no tickets after the Cut, so "
+            raise self.stop_naming_denials("STOP  spec {} still has no tickets after the Cut, so "
                                    "nothing was built. See {}".format(
                                        self.spec_named(), self.log_dir / "cut.err"), result)
 
@@ -1072,7 +1072,7 @@ class Loop:
     # --- the drift check -----------------------------------------------------
 
     # The Session records its work with the spec and changes nothing, so a tree it left changed stops.
-    # It hands back the Session's result, whose Denials say why a record may be missing.
+    # Returned so the caller's stop can name the Denials that may be why nothing was recorded.
     def run_clean_session(self, named, what, prompt):
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened(named)
@@ -1124,12 +1124,12 @@ class Loop:
     def read_drift_report(self, named, asked, result):
         report = self.tracker.drift_report(self.spec)
         if not report:
-            raise self.stop_denied("STOP  the drift check recorded no report on spec {}, so nothing "
+            raise self.stop_naming_denials("STOP  the drift check recorded no report on spec {}, so nothing "
                                    "was counted and the spec stays open.".format(
                                        self.spec_named()), result)
         # The Tracker hands back the newest report, so a re-check that recorded none reads the first.
         if asked and report == self.drift_read:
-            raise self.stop_denied("STOP  the re-check recorded no new report on spec {}, so the Gap "
+            raise self.stop_naming_denials("STOP  the re-check recorded no new report on spec {}, so the Gap "
                                    "items were not judged again and the spec stays open.".format(
                                        self.spec_named()), result)
         self.drift_read = report
@@ -1211,7 +1211,7 @@ class Loop:
         # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
         report = self.tracker.name_report(self.spec)
         if not report:
-            raise self.stop_denied("STOP  the Name check recorded no report on spec {}, so no name "
+            raise self.stop_naming_denials("STOP  the Name check recorded no report on spec {}, so no name "
                                    "was read and the spec stays open.".format(
                                        self.spec_named()), result)
         self.names_read = report
@@ -1257,7 +1257,7 @@ class Loop:
         # The Tracker hands back the newest report, so a check that recorded none reads the first.
         report = self.tracker.name_report(self.spec)
         if not report or report == self.names_read:
-            raise self.stop_denied("STOP  the Name re-check recorded no new report on spec {}, so no "
+            raise self.stop_naming_denials("STOP  the Name re-check recorded no new report on spec {}, so no "
                                    "rename was checked and the spec stays open.".format(
                                        self.spec_named()), result)
         held = self.log_dir / "names-renames.md"
