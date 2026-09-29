@@ -2105,7 +2105,8 @@ a.home-panel-face:hover::before {
 }
 
 .skill-row,
-.tool-row {
+.tool-row,
+.cost-turn-row {
   background: none;
   border: 0;
   border-bottom: 1px solid var(--rule);
@@ -2135,8 +2136,14 @@ a.home-panel-face:hover::before {
   display: block;
 }
 
+.cost-turn-row,
+.cost-turn-heads {
+  grid-template-columns: 5rem 4.5rem minmax(0, 1fr) 4.5rem 4.5rem;
+}
+
 .skill-heads,
-.tool-heads {
+.tool-heads,
+.cost-turn-heads {
   display: grid;
   gap: 0.6rem;
   margin: 0;
@@ -2158,9 +2165,17 @@ a.home-panel-face:hover::before {
 .skill-row.is-lit,
 .tool-row:hover,
 .tool-row:focus-visible,
-.tool-row.is-lit {
+.tool-row.is-lit,
+.cost-turn-row:hover,
+.cost-turn-row:focus-visible,
+.cost-turn-row.is-open {
   background: var(--panel);
   color: var(--ink);
+}
+
+/* Barred rather than ringed, so an opened Turn never looks like a lit row in the other tabs. */
+.cost-turn-row.is-open {
+  box-shadow: inset 2px 0 0 var(--hud);
 }
 
 /* Ringed like a lit mark in the lanes, so a Highlight never looks like an opened Step. */
@@ -2648,6 +2663,25 @@ button.cost-fill:focus-visible {
 .context-turn.is-rebuilt .context-fill {
   background: repeating-linear-gradient(135deg, var(--warned) 0 1px, var(--void) 1px 4px);
   box-shadow: inset 0 0 0 1px var(--warned);
+}
+
+.panel-switch {
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  margin-left: auto;
+  padding: 0.05rem 0.4rem;
+  text-transform: uppercase;
+}
+
+.panel-switch:hover,
+.panel-switch:focus-visible,
+.panel-switch[aria-pressed='true'] {
+  border-color: var(--hud);
+  color: var(--ink);
 }
 
 /* The tip is placed from the cursor, so the frame it is placed in must be the thing it is measured against. */

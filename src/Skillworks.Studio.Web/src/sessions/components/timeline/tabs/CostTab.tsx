@@ -5,6 +5,7 @@ import { moneyTicksOf, nearestTurnOf, skillWordsOf, turnsOf, type CostTurn } fro
 import { clamp, inSpell, type Spell } from '../../../lib/timeline/view';
 import { describeClock, type Mark } from '../../../lib/steps';
 import { gutter as left, useWidth } from '../frame';
+import { CostTable } from './CostTable';
 
 const height = 230;
 
@@ -51,6 +52,8 @@ export function CostTab({
 }) {
   const [frame, width] = useWidth<HTMLDivElement>();
   const [pointed, setPointed] = useState<Pointed | null>(null);
+  // Held here and never in the address, the same as which tab is shown.
+  const [asTable, setAsTable] = useState(false);
   const turns = useMemo(() => turnsOf(marks, view), [marks, view]);
   const madeNone = useMemo(() => turnsOf(marks, null).length === 0, [marks]);
 
@@ -92,11 +95,16 @@ export function CostTab({
           {describeCount(turns.length)} turns · {describeMoney(total)}
           {view === null ? '' : ' in view'}
         </p>
+        <button type="button" className="panel-switch" aria-pressed={asTable} onClick={() => setAsTable(!asTable)}>
+          Show as a table
+        </button>
       </header>
 
       <div className="cost-frame" ref={frame}>
         {turns.length === 0 ? (
           <p className="session-word">{madeNone ? 'This run made no turn.' : 'No turn in view.'}</p>
+        ) : asTable ? (
+          <CostTable turns={turns} selected={selected} onOpen={onOpen} />
         ) : (
           <svg
             width={width}
@@ -147,7 +155,7 @@ export function CostTab({
             )}
           </svg>
         )}
-        {pointed === null ? null : <Tip pointed={pointed} />}
+        {pointed === null || asTable ? null : <Tip pointed={pointed} />}
       </div>
     </>
   );
