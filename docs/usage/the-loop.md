@@ -295,12 +295,12 @@ That number is what you give to `/skillworks:spec-loop`.
 the background, and tells you where its log is. The script does the rest. The skill never cuts a
 ticket or builds one itself.
 
-The script cuts the tickets as its first step, after it checks the spec's shape and before the first
-ticket, and only when the spec has none. The step starts a Session that types
+The script cuts the tickets as its first step, the **Cut**, after it checks the spec's shape and
+before the first ticket, and only when the spec has none. The Cut starts a Session that types
 `/skillworks:to-tickets <spec>` and tells it to skip its approval questions, because nobody is at the
 terminal to answer them. The slices it shows are written to the loop log, so you can read them while
-the work runs. A spec that still has no tickets after the step stops the loop with a `STOP` line. A
-spec that already has tickets, such as one a restarted run meets, skips the step.
+the work runs. A spec that still has no tickets after the Cut stops the loop with a `STOP` line. A
+spec that already has tickets, such as one a restarted run meets, skips the Cut.
 
 Each ticket is a thin slice through every layer, small enough for one fresh Session, and it names the
 tickets that must land before it. With `github`, each one is published as a **sub-issue of the
@@ -947,14 +947,16 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
 
-A spec with no tickets gets a `CUT` line after it. The slices the `tickets` step showed follow it, as
-that Session wrote them, and then the first `START` line:
+A spec with no tickets gets a `CUT` line after it. The slices the Cut showed follow it, as that
+Session wrote them, and then the first `START` line:
 
 ```
 15:55:21 CUT   spec #200 has no tickets, so a Session cuts them first
 1. **Title**: Preflight checks for uv
    **Blocked by**: none
 ```
+
+The Cut's result and error output sit beside the log as `cut.json` and `cut.err`.
 
 A check that flakes in a ticket's `suite` step, or in its landing, adds a `FLAKE` line that names
 the check and the file that keeps its red output:
@@ -1050,5 +1052,6 @@ re-check and the full run. A spec in another shape stops the dry run at its `ABO
 stop a run. It starts no Session and reaches no remote.
 
 A dry run on a spec with no tickets still checks the shape first. Then it says that a Session would
-cut the tickets first, and prints the `tickets` step. It prints the steps each ticket will take, with
-`<ticket>` where the number goes, then the landing steps and what comes after the last ticket.
+cut the tickets first, and prints the Cut as the `cut` step. It prints the steps each ticket will
+take, with `<ticket>` where the number goes, then the landing steps and what comes after the last
+ticket.

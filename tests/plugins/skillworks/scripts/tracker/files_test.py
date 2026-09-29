@@ -845,7 +845,7 @@ def test_the_dry_run_names_every_ticket_by_the_files_trackers_names(driver):
     assert not speaks_github(log_of(driver)), log_of(driver)
 
 
-def test_a_spec_still_without_tickets_after_the_tickets_step_stops_in_the_files_trackers_words(driver):
+def test_a_spec_still_without_tickets_after_the_cut_stops_in_the_files_trackers_words(driver):
     driver.push({FOLDER + "/spec.md": spec_file()})
 
     ran = driver.run()

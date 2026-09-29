@@ -747,7 +747,7 @@ class Loop:
                                   how_many(len(items.decisions), "decision", "decisions"),
                                   how_many(len(items.surfaces), "Surface", "Surfaces")))
 
-    # --- the step that cuts a spec's tickets ---------------------------------
+    # --- the Cut -------------------------------------------------------------
 
     # Typed and not called through the Skill tool, because the Skill tool refuses a hidden skill.
     def cut_asks(self):
@@ -756,15 +756,15 @@ class Loop:
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
-        self.run_clean_session("tickets", "tickets step", self.cut_asks() + CUT_UNATTENDED)
-        shown = str(field(self.log_dir / "tickets.json", "result")).rstrip("\n")
+        self.run_clean_session("cut", "Cut", self.cut_asks() + CUT_UNATTENDED)
+        shown = str(field(self.log_dir / "cut.json", "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
         self.ticket_count = len(self.tracker.tickets(self.spec))
         if self.ticket_count == 0:
-            raise stop("STOP  spec {} still has no tickets after the step that cuts them, so "
+            raise stop("STOP  spec {} still has no tickets after the Cut, so "
                        "nothing was built. See {}".format(
-                           self.spec_named(), self.log_dir / "tickets.err"))
+                           self.spec_named(), self.log_dir / "cut.err"))
 
     # --- the dry run ---------------------------------------------------------
 
@@ -839,9 +839,9 @@ class Loop:
             self.say("DRY   spec {} has no tickets, so a Session would cut them first".format(
                 self.spec_named()))
             plan += "  before the first ticket\n" + plan_line(
-                "tickets", 'claude -p "{}" --session-id <new id>'.format(self.cut_asks()),
+                "cut", 'claude -p "{}" --session-id <new id>'.format(self.cut_asks()),
                 "nothing left uncommitted, at least one ticket under the spec")
-            plan += "  each ticket the step cuts\n" + self.ticket_plan(UNCUT_NUMBER, landing)
+            plan += "  each ticket the Cut makes\n" + self.ticket_plan(UNCUT_NUMBER, landing)
         for number, state, title in self.tracker.ticket_rows(self.spec):
             plan += "  {} [{}] {}\n".format(self.named(number), state, title)
             if state == "open":
@@ -851,7 +851,7 @@ class Loop:
         # Asked the way the run asks, so the ticket named is the one a run would claim first.
         chosen = self.next_ticket(self.tracker.open_tickets(self.spec))
         if self.ticket_count == 0:
-            self.say("DRY   the next ticket is the first one the step cuts")
+            self.say("DRY   the next ticket is the first one the Cut makes")
         elif chosen:
             self.say("DRY   the next ticket is {}".format(self.named(chosen)))
         else:
@@ -1371,7 +1371,7 @@ class Loop:
         self.say("LOOP  spec {} from {} ({}) in {} mode".format(
             self.spec_named(), base, self.tracker.repo, self.permission_mode))
 
-        # After the shape, so a spec the drift check could never count costs no `tickets` step.
+        # After the shape, so a spec the drift check could never count costs no Cut.
         if self.ticket_count == 0:
             self.cut_tickets()
 
