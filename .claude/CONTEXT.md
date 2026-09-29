@@ -215,3 +215,9 @@ Contradicts for a story or a decision, In step or Out of step for a Surface, and
 a rename. The judge makes the call and the driver only counts, so an item with no Verdict is a Gap
 and never a pass.
 _Avoid_: Mark, grade, status
+
+**Visible skill**:
+A skill Claude sees, so it can suggest it and start it through the Skill tool. The opposite of a
+Hidden skill, and it says nothing about what the skill does: a step of the Dev loop can be visible,
+as `to-spec` is, because another skill calls it.
+_Avoid_: Engine, tool, model-invocable skill
