@@ -439,3 +439,9 @@ The Steps of one skill or one tool that a reader picked beneath the timeline, li
 dim. A skill's Steps are the Turns attributed to it and the Tool calls they asked for. A Highlight
 narrows nothing: every figure still reads the View.
 _Avoid_: Filter, focus, selection
+
+**Prompts**:
+The list of every Prompt in a Session, in a drawer beside the timeline. It always holds the whole
+run, so a reader can move from one Exchange to the next, and it dims the Exchanges outside the View.
+A click on a Step opens it at the Exchange the Step sits in.
+_Avoid_: Conversation, transcript, chat
