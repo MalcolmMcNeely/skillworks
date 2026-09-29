@@ -116,8 +116,8 @@ Review these before you commit them.
 | `docs/agents/issue-tracker.md` | How the skills read and write each Tracker: the `gh` calls for `github`, and the `.specs/` files for `files`. The ticket shape, and the two conventions the loop leans on. |
 | `docs/agents/domain.md` | Where your glossary and your ADRs live. |
 | `docs/agents/placement-checks.md` | The commands that prove placement. It starts with none. |
-| `docs/agents/smell-baseline.md` | The code smells the `standards` review looks for. |
-| `docs/agents/arrangement-baseline.md` | The failures of placement the `architecture` review looks for. |
+| `docs/agents/review-standards.md` | What the `standards` review checks: the code smells, and your team's own checks. It starts with no check of your own. |
+| `docs/agents/review-architecture.md` | What the `architecture` review checks: the failures of placement, and your team's own checks. It starts with no check of your own. |
 | `docs/agents/suite.json` | Your Suite. It starts with no checks, and the loop stops until you add one. |
 | `docs/agents/loop.json` | The loop's settings. `tracker` holds your answer, `github` or `files`. `target-branch` starts as your remote's default branch. |
 | `docs/agents/surfaces.md` | The places a change can have to reach besides its code. It starts with the README and the user docs. |

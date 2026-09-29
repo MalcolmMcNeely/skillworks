@@ -28,7 +28,7 @@ The first runs `Skillworks.Architecture` over the whole tree. The second runs de
 
 ## The two bends
 
-Holding the author and the reviewer to one document is the point of the Architecture axis, so two items of the arrangement baseline in [`arrangement-baseline.md`](arrangement-baseline.md) bend wherever the repo has written the rule down:
+Holding the author and the reviewer to one document is the point of the Architecture axis, so two items of the arrangement baseline in [`review-architecture.md`](review-architecture.md) bend wherever the repo has written the rule down:
 
 - **A shared folder with a written door is not grab-bag growth.** The baseline item is about a folder nobody decided on. Judge against the door the repo wrote, not against the name.
 - **Duplication across a boundary can be correct.** Where the repo says two modules may hold one name, the merge is the defect, not the duplication.

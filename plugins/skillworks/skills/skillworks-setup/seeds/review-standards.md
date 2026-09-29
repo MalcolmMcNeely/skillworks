@@ -32,3 +32,21 @@ The items above judge code. A test carries them and four of its own, under one q
 - **Untriggered Fixture** — the input holds nothing the behaviour under test acts on, so the assertion would still hold with that behaviour deleted. → Put the trigger in the fixture, and settle it by deleting the behaviour and watching the test go red.
 - **Unguarded Enumeration** — a test walks files, rows or elements and judges what it found without proving it found any, so an empty walk passes. → Pin the count the walk is expected to reach.
 - **Stub Echo** — a stub is handed a value and the assertion only checks that value came back, so it measures the stub. → Assert on what the code made of the value, not on the value.
+
+## Checks
+
+Your team's own checks for the `standards` review go here, one bullet for each. A check says what to look for, and whether a breach of it is a hard breach or a judgement call. A hard breach is always fixed and never left. A judgement call may be left, with the reason. A check that covers only some of the code names the paths it covers. A check with no paths covers the whole change.
+
+```markdown
+- Every message handler is idempotent. A hard breach. Paths: `src/handlers/`.
+```
+
+A check that should also shape the build goes in a rule in `docs/agents/rules/` instead. A rule loads into every session, and this file is read only by its review.
+
+This list holds no check yet.
+
+## Do not report
+
+The paths and the kinds of finding the `standards` review skips go here, one bullet for each, such as generated code or what a linter already enforces.
+
+This list is empty.

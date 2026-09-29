@@ -21,8 +21,8 @@ WHERE = {
     "issue-tracker.md": "docs/agents/issue-tracker.md",
     "domain.md": "docs/agents/domain.md",
     "placement-checks.md": "docs/agents/placement-checks.md",
-    "smell-baseline.md": "docs/agents/smell-baseline.md",
-    "arrangement-baseline.md": "docs/agents/arrangement-baseline.md",
+    "review-standards.md": "docs/agents/review-standards.md",
+    "review-architecture.md": "docs/agents/review-architecture.md",
     "suite.json": "docs/agents/suite.json",
     "loop.json": "docs/agents/loop.json",
     "surfaces.md": "docs/agents/surfaces.md",
@@ -61,6 +61,18 @@ def test_an_empty_repo_gets_every_seed(repo, runner):
     for seed, place in WHERE.items():
         assert (repo.work / place).read_text(encoding="utf-8") == seeded_for(seed, "main"), place
         assert "wrote {}\n".format(place) in ran.out
+
+
+OLD_BASELINES = ["smell-baseline.md", "arrangement-baseline.md"]
+
+
+def test_an_empty_repo_gets_no_file_under_an_old_baseline_name(repo, runner):
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    for old in OLD_BASELINES:
+        assert not (repo.work / "docs" / "agents" / old).exists(), old
+        assert old not in ran.out, old
 
 
 BASES = "docs/agents/.seeds"
@@ -678,14 +690,86 @@ def test_the_comment_sweep_reads_its_table_from_the_comments_rule():
     assert "What a sweep keeps and cuts" in sweep
 
 
-def test_the_smell_baseline_seed_holds_the_smells_list():
-    smells = seeded("smell-baseline.md")
+def test_the_review_standards_seed_holds_the_smells_list():
+    smells = seeded("review-standards.md")
 
     assert "## The twelve" in smells
     assert "- **Feature Envy** — a method that reaches into another object's data more than its own." in smells
     assert "## The four" in smells
     assert "- **Stub Echo** — a stub is handed a value" in smells
     assert len(re.findall(r"^- \*\*[A-Z][^*]+\*\* — ", smells, re.MULTILINE)) == 16
+
+
+REVIEW_FILES = ["review-standards.md", "review-architecture.md"]
+
+
+def section(text, heading):
+    assert "\n## {}\n".format(heading) in text, heading
+    return text.split("\n## {}\n".format(heading), 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_review_architecture_seed_holds_the_nine_failures_and_their_weighting():
+    failures = seeded("review-architecture.md")
+
+    assert "- **Wrong-way dependency** — a module now imports from one that ought to depend on *it*" in failures
+    assert "## Weighting" in failures
+    nine = section(failures, "The nine")
+    assert len(re.findall(r"^- \*\*[A-Z][^*]+\*\* — ", nine, re.MULTILINE)) == 9
+
+
+def outside_fences(text):
+    return re.sub(r"^```.*?^```", "", text, flags=re.MULTILINE | re.DOTALL)
+
+
+def items(text):
+    return re.findall(r"^\s*[-*] ", outside_fences(text), re.MULTILINE)
+
+
+@pytest.mark.parametrize("seed", REVIEW_FILES)
+def test_a_review_seed_explains_the_shape_of_a_check_and_holds_no_check(seed):
+    checks = section(seeded(seed), "Checks")
+
+    for part in ("what to look for", "hard breach", "judgement call", "paths"):
+        assert part in checks, part
+    assert items(checks) == []
+
+
+@pytest.mark.parametrize("seed", REVIEW_FILES)
+def test_a_review_seed_holds_an_empty_do_not_report_list(seed):
+    assert items(section(seeded(seed), "Do not report")) == []
+
+
+def test_an_item_in_a_list_is_counted_and_one_inside_a_fence_is_not():
+    text = "Before.\n\n```markdown\n- **Handlers** — idempotent.\n```\n\n- `generated/`\n"
+
+    assert len(items(text)) == 1
+
+
+def above_the_checks(text):
+    return text.split("\n## Checks\n", 1)[0]
+
+
+@pytest.mark.parametrize("seed", REVIEW_FILES)
+def test_this_repos_review_files_hold_the_seeds_lists_and_both_team_lists(seed):
+    ours = (ROOT / WHERE[seed]).read_text(encoding="utf-8")
+
+    assert above_the_checks(ours) == above_the_checks(seeded(seed))
+    for heading in ("Checks", "Do not report"):
+        assert "\n## {}\n".format(heading) in ours, heading
+
+
+def test_this_repo_holds_no_file_under_an_old_baseline_name():
+    for old in OLD_BASELINES:
+        assert not (ROOT / "docs" / "agents" / old).exists(), old
+
+
+@pytest.mark.parametrize("page", [SETUP / "seeds" / "placement-checks.md", ROOT / WHERE["placement-checks.md"]])
+def test_the_placement_checks_name_the_review_architecture_file(page):
+    text = page.read_text(encoding="utf-8")
+
+    assert "[`review-architecture.md`](review-architecture.md)" in text
+    for old in OLD_BASELINES:
+        assert old not in text, old
 
 
 WHERE_IT_LIVES = "**Where it lives:**"
@@ -746,13 +830,22 @@ def test_this_repos_surfaces_list_the_usage_docs():
     assert "`docs/usage/`" in [where_it_lives(section).strip() for section in held.values()]
 
 
-def test_the_review_skills_read_the_smells_list_from_the_smell_baseline():
+def test_the_review_skills_read_the_smells_list_from_the_review_standards_file():
     for skill in ["code-review", "review-standards"]:
         text = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
 
-        assert "`docs/agents/smell-baseline.md`" in text, skill
-        assert "Feature Envy" not in text, skill
-        assert "twelve" not in text.lower(), skill
+        assert "`docs/agents/review-standards.md`" in text, skill
+
+
+def test_no_skill_holds_the_smells():
+    pages = sorted(SKILLS.glob("*/SKILL.md"))
+    assert pages
+
+    for page in pages:
+        text = page.read_text(encoding="utf-8")
+        assert "Feature Envy" not in text, page
+        assert "Stub Echo" not in text, page
+        assert "twelve" not in text.lower(), page
 
 
 def test_review_standards_renames_a_name_whose_meaning_the_change_moved_in_the_same_ticket():
@@ -1017,9 +1110,15 @@ def says_stop(text, *names):
     )
 
 
-def test_the_review_skills_stop_when_the_smell_baseline_is_missing():
-    for skill in ["code-review", "review-standards"]:
-        assert stops(skill, "`docs/agents/smell-baseline.md`"), skill
+REVIEW_FILE_OF = {
+    "review-standards": "review-standards.md",
+    "review-architecture": "review-architecture.md",
+}
+
+
+def test_each_axis_skill_stops_when_its_review_file_is_missing():
+    for skill, name in REVIEW_FILE_OF.items():
+        assert stops(skill, "`{}`".format(WHERE[name])), skill
 
 
 def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing():
@@ -1248,9 +1347,9 @@ def test_no_plugin_skill_names_a_rule_under_the_old_rules_folder():
 
 
 STEERING_NAMED = {
-    "review-standards": ["smell-baseline.md"],
-    "review-architecture": ["placement-checks.md", "arrangement-baseline.md"],
-    "code-review": ["smell-baseline.md", "placement-checks.md", "arrangement-baseline.md"],
+    "review-standards": ["review-standards.md"],
+    "review-architecture": ["placement-checks.md", "review-architecture.md"],
+    "code-review": ["review-standards.md", "placement-checks.md", "review-architecture.md"],
 }
 
 

@@ -45,15 +45,19 @@ Run the placement checks, and only those. `docs/agents/placement-checks.md` name
 
 Each names the rule, the path and what to do. Quote a breach as it came. Say which commands you ran and what each said. Where the placement-checks file names no command, or no command checks the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
 
-### The baseline
+### The review file
 
-On top of what the repo has, this axis always carries the arrangement baseline in `docs/agents/arrangement-baseline.md`. Read it yourself, and read the two bends that sit beneath the check table in `docs/agents/placement-checks.md` with it.
+On top of what the repo has, this axis always reads its review file, `docs/agents/review-architecture.md`. Read it yourself. It holds the arrangement baseline and its weighting, the team's own checks, and a "Do not report" list. Read the two bends that sit beneath the check table in `docs/agents/placement-checks.md` with it. It is the only review file this axis reads.
+
+Apply each team check only to the paths it names. A check that names no paths covers the whole change. A team check is a hard breach or a judgement call, as the check says. Skip every path and every kind of finding that "Do not report" names.
+
+If `docs/agents/review-architecture.md` is missing, stop. Tell the user that `docs/agents/review-architecture.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Architecture` heading, so the step fails and the loop stops.
 
 ## The three binding rules
 
 - **The repo overrides.** A documented rule or a recorded decision wins. Do not re-litigate an ADR. If the change contradicts one, that is the finding. If the ADR itself looks wrong, say so once and move on.
 - **Diff-introduced only.** Standing debt is not a finding. Report what this change introduced, or made materially worse. An axis that re-reports the same architecture every run gets skimmed, and then skipped.
-- **Cite or drop it.** Every finding names the rule it breaches or the baseline item it matches, and quotes the line, usually a single import. Judgement without evidence is taste, and it is the failure this axis is most prone to.
+- **Cite or drop it.** Every finding names the rule it breaches, the baseline item it matches or the team check it breaches, and quotes the line, usually a single import. Judgement without evidence is taste, and it is the failure this axis is most prone to.
 
 ## What to look for
 
@@ -63,6 +67,7 @@ Run the placement checks first, and report what each one said. Then, for every m
 2. Is every added or moved file in the module its dependencies say it belongs to, and in the place the placement rules give it?
 3. Does the change introduce a cycle?
 4. Does any folder the change creates breach a written placement rule?
+5. Does anything the change added breach a team check?
 
 Keep the whole report under 400 words.
 

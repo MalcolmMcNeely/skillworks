@@ -518,12 +518,12 @@ def test_a_rule_with_no_import_stops_the_dry_run_naming_the_rule_and_the_line_to
 
 def test_a_missing_steering_file_stops_the_dry_run_naming_the_file_and_setup(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    (loop.repo.work / "docs" / "agents" / "smell-baseline.md").unlink()
+    (loop.repo.work / "docs" / "agents" / "review-standards.md").unlink()
 
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
-    assert ("ABORT docs/agents/smell-baseline.md is missing, and setup seeds it. "
+    assert ("ABORT docs/agents/review-standards.md is missing, and setup seeds it. "
             "Run /skillworks:skillworks-setup to write it again.") in said(ran)
     assert "DRY" not in ran.out
 

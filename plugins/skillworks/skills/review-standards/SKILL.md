@@ -1,6 +1,6 @@
 ---
 name: review-standards
-description: Review a ticket's change against this repo's documented coding standards and the smell baseline, and report under a Standards heading.
+description: Review a ticket's change against this repo's documented coding standards and its review file, and report under a Standards heading.
 disable-model-invocation: true
 ---
 
@@ -35,11 +35,13 @@ Read every file in `docs/agents/rules/`. The agent wrote this code under those r
 
 Then read the glossary that claims the changed files. `CONTEXT-MAP.md` says which one, and a word the glossary rejects is a finding on this axis.
 
-## The smell baseline
+## The review file
 
-On top of what the repo writes down, this axis always carries the smell baseline in `docs/agents/smell-baseline.md`. Read it yourself. It holds the smells list and the rules that bind it. The team edits that list, so this skill holds none of its own.
+On top of what the repo writes down, this axis always reads its review file, `docs/agents/review-standards.md`. Read it yourself. It holds the smells list and the rules that bind it, the team's own checks, and a "Do not report" list. The team edits that file, so this skill holds none of its own. It is the only review file this axis reads.
 
-If `docs/agents/smell-baseline.md` is missing, stop. Tell the user that `docs/agents/smell-baseline.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Standards` heading, so the step fails and the loop stops.
+Apply each team check only to the paths it names. A check that names no paths covers the whole change. Skip every path and every kind of finding that "Do not report" names.
+
+If `docs/agents/review-standards.md` is missing, stop. Tell the user that `docs/agents/review-standards.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Standards` heading, so the step fails and the loop stops.
 
 ## What to report
 
@@ -47,9 +49,10 @@ Report per file and hunk where that helps:
 
 1. Every place the change breaches a documented standard. Cite the standard by file and rule, and quote the line it turns on.
 2. Every baseline smell. Name the item and quote the hunk.
-3. Every existing name whose meaning the change moved. A name that no longer says what its code does misleads the next reader, so rename it in the same ticket. The sign to look for is a comment edited above a declaration whose name did not change: the comment moved with the code, and the name was left behind.
+3. Every breach of a team check. Name the check and quote the hunk.
+4. Every existing name whose meaning the change moved. A name that no longer says what its code does misleads the next reader, so rename it in the same ticket. The sign to look for is a comment edited above a declaration whose name did not change: the comment moved with the code, and the name was left behind.
 
-Mark each finding as a hard breach or a judgement call. A documented standard can be a hard breach. A baseline smell never is. A moved name is always owed: it is fixed like a hard breach, and never left as a nice-to-have.
+Mark each finding as a hard breach or a judgement call. A documented standard can be a hard breach. A baseline smell never is. A team check is what the check says it is. A moved name is always owed: it is fixed like a hard breach, and never left as a nice-to-have.
 
 Keep the whole report under 400 words.
 

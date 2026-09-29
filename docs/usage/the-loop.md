@@ -535,7 +535,7 @@ middle of a ticket, so the loop stops first. The `ABORT` line names the file and
 which writes the file again:
 
 ```
-ABORT docs/agents/smell-baseline.md is missing, and setup seeds it. Run /skillworks:skillworks-setup to write it again.
+ABORT docs/agents/review-standards.md is missing, and setup seeds it. Run /skillworks:skillworks-setup to write it again.
 ```
 
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
@@ -849,9 +849,9 @@ use with nobody watching.
 | The spec | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `docs/adr/`, `surfaces.md` | The glossary and the ADRs, which give the spec its words and its decisions. The Surfaces in `surfaces.md`, which name the Surfaces section of the spec. |
 | The tickets | `CLAUDE.md` and the rules | `issue-tracker.md` | "The ticket shape" in `issue-tracker.md`: the size of a ticket, its title and its sections. |
 | `build` | `CLAUDE.md` and the rules | `domain.md`, your glossary, and `suite.json` when it runs `skillworks-suite` | The rules the change must meet, and the checks in `suite.json`. |
-| `standards` | `CLAUDE.md` and the rules | `smell-baseline.md`, your glossary | The rules, and the smells in `smell-baseline.md`. |
+| `standards` | `CLAUDE.md` and the rules | `review-standards.md`, your glossary | The rules, and the smells, your checks and "Do not report" in `review-standards.md`. |
 | `spec` | `CLAUDE.md` and the rules | `issue-tracker.md`, `surfaces.md` | "The ticket shape" in `issue-tracker.md`, because the review judges the change by the ticket. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
-| `architecture` | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `arrangement-baseline.md`, `placement-checks.md` | `file-placement.md`, the failures in `arrangement-baseline.md`, and the commands in `placement-checks.md`. |
+| `architecture` | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `review-architecture.md`, `placement-checks.md` | `file-placement.md`, the failures, your checks and "Do not report" in `review-architecture.md`, and the commands in `placement-checks.md`. |
 | `fix` | `CLAUDE.md` and the rules | Nothing more. It acts on the three reports. | The rules the fix must meet. |
 | `sweep` | `CLAUDE.md` and the rules | Nothing more. `comments.md` is already loaded. | The keep and cut table in `comments.md`, and `doc-comments`. |
 | `suite` | Nothing. No Session runs. | `suite.json`, and each Dockerfile a check names as its `image` | Every check, its `ready`, its `ignores`, its `image`, and `runs`. |

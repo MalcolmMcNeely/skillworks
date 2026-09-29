@@ -27,3 +27,21 @@ Three rules bind every item, and they are what keep the axis from degenerating i
 The first three are usually the real findings, because they are checkable from an import line and they compound: a wrong-way dependency admitted once becomes the precedent for the next. The last three are judgement calls more often than not — say so when reporting them, the way the smell baseline labels its own.
 
 A finding you cannot express as "this import/path, against this rule" is not ready to report.
+
+## Checks
+
+Your team's own checks for the `architecture` review go here, one bullet for each. A check says what to look for, and whether a breach of it is a hard breach or a judgement call. A hard breach is always fixed and never left. A judgement call may be left, with the reason. A check that covers only some of the code names the paths it covers. A check with no paths covers the whole change.
+
+```markdown
+- A message handler never reads the database directly, only through a repository. A hard breach. Paths: `src/handlers/`.
+```
+
+A check that should also shape the build goes in a rule in `docs/agents/rules/` instead. A rule loads into every session, and this file is read only by its review.
+
+This list holds no check yet.
+
+## Do not report
+
+The paths and the kinds of finding the `architecture` review skips go here, one bullet for each, such as generated code or what a boundary tool already enforces.
+
+This list is empty.

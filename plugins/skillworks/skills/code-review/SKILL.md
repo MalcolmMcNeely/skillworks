@@ -42,9 +42,9 @@ Anything in the repo that documents how code should be written, such as `CODING_
 
 Always include the Claude rules files: every file in `docs/agents/rules/`. Claude wrote the code under those rules, so the review holds it to the same ones.
 
-On top of whatever the repo documents, the Standards axis always carries the **smell baseline** in `docs/agents/smell-baseline.md`. It holds the smells list, which applies even when a repo documents nothing, and the rules that bind it. The team edits that list, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
+On top of whatever the repo documents, the Standards axis always carries its review file, `docs/agents/review-standards.md`. It holds the smells list, which applies even when a repo documents nothing, the rules that bind it, the team's own checks and what not to report. The team edits that file, so read it there. It sits outside this skill because `/skillworks:review-standards` reads the same text; pass the path, don't paste the contents.
 
-If `docs/agents/smell-baseline.md` is missing, stop before any axis runs. Tell the user that `docs/agents/smell-baseline.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed.
+If `docs/agents/review-standards.md` is missing, stop before any axis runs. Tell the user that `docs/agents/review-standards.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed.
 
 ### 4. Identify the architecture sources
 
@@ -70,7 +70,7 @@ In this repo that file is `docs/agents/rules/file-placement.md`, and its placeme
 
 Where a check of the repo's own reads the rules files, the last two kinds are one thing: the file is the text and the check is the run. Each placement check names the rule, the path and what to do about it, so quote a breach as it came.
 
-On top of whatever the repo has, the Architecture axis always carries the **arrangement baseline** in `docs/agents/arrangement-baseline.md` — nine failures of placement and direction that apply even when a repo documents nothing, in the same *what it is* → *how to fix* shape as the smell baseline. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
+On top of whatever the repo has, the Architecture axis always carries its review file, `docs/agents/review-architecture.md` — the arrangement baseline of placement and direction failures that apply even when a repo documents nothing, the team's own checks and what not to report. It sits outside this skill because `/skillworks:review-architecture` reads the same text; pass the path, don't paste the contents.
 
 Three rules bind the axis, and the third is the one that decides whether anyone keeps reading its reports:
 
@@ -85,7 +85,7 @@ Three rules bind the axis, and the third is the one that decides whether anyone 
 **Standards sub-agent prompt** — include:
 
 - The full diff command and commit list.
-- The list of standards-source files you found in step 3, **plus the path to `docs/agents/smell-baseline.md`** — the sub-agent reads that itself.
+- The list of standards-source files you found in step 3, **plus the path to `docs/agents/review-standards.md`** — the sub-agent reads that itself.
 - The brief: "Report — per file/hunk where relevant — (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls — documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
 
 **Spec sub-agent prompt** — include:
@@ -99,7 +99,7 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 **Architecture sub-agent prompt** — include:
 
 - The diff command, the `--stat -M` command, and the commit list.
-- The architecture sources from step 4: the documented files by path, the placement rules file and the context map by path, and the paths to `docs/agents/arrangement-baseline.md` and `docs/agents/placement-checks.md` — the sub-agent reads those itself.
+- The architecture sources from step 4: the documented files by path, the placement rules file and the context map by path, and the paths to `docs/agents/review-architecture.md` and `docs/agents/placement-checks.md` — the sub-agent reads those itself.
 - The three binding rules from step 4, verbatim, and a line saying the two baseline bends sit beneath the check table in `docs/agents/placement-checks.md`.
 - The brief: "First run the commands the placement-checks file names, each in its folder, and report what each one says. Then read the placement rules file, because it is the document the code was written under, and the context map, because it says which code those rules reach. Then, for **every module the diff touches**: (a) does anything the diff added point the wrong way, cross a seam it shouldn't, or reach past a module's public entry point; (b) is every added or moved file in the module its dependencies say it belongs to, and in the place the placement rules give it; (c) does the change introduce a cycle; (d) does any folder the diff creates breach a written placement rule. Cite the written rule by its name, or name the baseline item, for every finding, and quote the import or path it turns on. A finding with neither a rule nor a baseline item behind it is taste, so drop it. Report only what this diff introduced or worsened — standing debt is out of scope. Under 400 words."
 
