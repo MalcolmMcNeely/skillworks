@@ -1125,6 +1125,21 @@ def test_the_resolving_session_gets_the_environment_every_driver_session_gets(
         "team=studio,skillworks.parent.session.id=parent-session")
 
 
+def test_the_resolving_session_is_handed_the_trailer_of_the_ticket_it_lands(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    stub_session(repo, runner, staging(repo, "start\ntheir line\nmy line\n"))
+    given_a_project(repo)
+    given_a_conflict(repo, 166, 164)
+
+    ran = run_land(runner, repo.work, 166, "session-abc")
+
+    assert ran.status == 0
+    resolving = [call for call in runner.made if call.args[0] == "claude"]
+    # The Plugin's hook reads this name, so it is written out here and not imported.
+    assert [call.env.get("SKILLWORKS_TICKET") for call in resolving] == ["#166"]
+
+
 def test_a_refusal_stops_the_run_and_names_the_rule_that_fired(repo, runner):
     given_the_suite_passes(runner)
     given_the_tracker_answers(runner)

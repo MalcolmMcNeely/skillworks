@@ -374,7 +374,7 @@ Every step but `suite` is a Session of its own, run inside the ticket's worktree
 | `fix` | Reads all three reports at once, settles any disagreement, and fixes what is left. |
 | `sweep` | Cuts the comments back to what your rules keep. |
 | `suite` | The script runs your Suite. No Session is asked. |
-| `finish` | Commits the change with the ticket named in the message, and closes the ticket. It never pushes. |
+| `finish` | Commits the change, and closes the ticket. The Plugin's hook adds the `Ticket` trailer to every commit a loop Session makes. It never pushes. |
 
 The three reviews start cold. A review that resumed the build Session would mark its own work. `fix`
 and `finish` resume the build Session, because they act on the code it wrote.
@@ -388,7 +388,9 @@ Surface, the README is any other file.
 
 The script reads a fact after each step, because a Session can end cleanly and still do nothing. It
 reads the step's result, git and the ticket's state. For example, `build` must leave the worktree
-changed, and `finish` must leave a new commit, a Clean worktree and a closed ticket.
+changed, and `finish` must leave a new commit whose `Ticket` trailer git reads, a Clean worktree and a
+closed ticket. The hook adds that trailer to every commit a loop Session makes, so the check is a net
+for a commit the hook never saw.
 
 **An Edit.** A review can change the code. So the script reads the worktree before and after each
 review, and the difference is that review's Edit. It goes to the log as an `EDIT` line and into the

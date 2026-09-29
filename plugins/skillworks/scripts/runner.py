@@ -36,15 +36,20 @@ PARENT_KEY = "skillworks.parent.session.id"
 # Under `claude -p` a background command dies with the Session, so the slowest check must fit in the foreground.
 BASH_LIMIT_MS = str(45 * 60 * 1000)
 
+# The Plugin's commit hook reads it, and adds its value to each commit as the Ticket trailer.
+TICKET_VARIABLE = "SKILLWORKS_TICKET"
+
 
 # Here and not in the driver, because the driver imports the landing script and it starts a Session too.
 # Only a Session sets this ID and a Child inherits the attribute, so all below name the first Parent.
-def session_changes():
+def session_changes(trailer=None):
     # Claude Code sets this, and the session must not read as nested in this one.
     changes = {
         "CLAUDECODE": None,
         "BASH_DEFAULT_TIMEOUT_MS": BASH_LIMIT_MS,
         "BASH_MAX_TIMEOUT_MS": BASH_LIMIT_MS,
+        # Taken away when there is none, so a Session not started for a ticket never inherits one.
+        TICKET_VARIABLE: trailer,
     }
     parent = os.environ.get("CLAUDE_CODE_SESSION_ID")
     if not parent:

@@ -2556,6 +2556,76 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
 
+# --- the Ticket trailer each Session is handed -------------------------------
+
+# The Plugin's hook reads this name, so it is written out here and not imported from the driver.
+TICKET_VARIABLE = "SKILLWORKS_TICKET"
+
+
+def trailers_handed(runner, mark):
+    return [(call.env or {}).get(TICKET_VARIABLE, "unset") for call in runner.made
+            if call.args[0] == "claude" and call.args[2].startswith(mark)]
+
+
+def trailers_handed_for(runner, ticket):
+    return [(call.env or {}).get(TICKET_VARIABLE) for call in runner.made
+            if call.args[0] == "claude" and call.args[2].split()[1:2] == [ticket]]
+
+
+# The one a developer's shell set is taken away and not left, so a Session names no ticket by accident.
+def handed_no_trailer(runner, mark):
+    handed = trailers_handed(runner, mark)
+    return bool(handed) and all(trailer is None for trailer in handed)
+
+
+def test_every_step_session_is_handed_its_ticket_trailer(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    handed = trailers_handed(runner, "/")
+    assert len(handed) == 7
+    assert set(handed) == {"#168"}
+
+
+def test_every_nudge_is_handed_the_trailer_of_the_ticket_it_works_on(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "spec")
+
+    loop.run(SPEC)
+
+    nudged = [(call.env or {}).get(TICKET_VARIABLE) for call in runner.made
+              if call.args[0] == "claude" and not call.args[2].startswith("/")]
+    assert nudged
+    assert set(nudged) == {"#168"}
+
+
+def test_the_cut_is_handed_no_ticket_trailer(loop, runner, monkeypatch):
+    monkeypatch.setenv(TICKET_VARIABLE, "#1")
+    tracker = given_the_tracker_holds(loop, ())
+    given_a_cut_that_files(given_sessions_that_report(loop), tracker, ONE_OPEN_TICKET)
+
+    loop.run(SPEC)
+
+    assert handed_no_trailer(runner, CUT_TICKETS)
+
+
+def test_the_drift_check_is_handed_no_ticket_trailer(loop, runner, monkeypatch):
+    monkeypatch.setenv(TICKET_VARIABLE, "#1")
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
+
+    assert ran.status == 0, said(ran)
+    assert handed_no_trailer(runner, "/skillworks:spec-drift")
+
+
+def test_the_gap_ticket_s_sessions_are_handed_its_trailer(loop, runner):
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
+
+    assert ran.status == 0, said(ran)
+    assert set(trailers_handed_for(runner, GAP_TICKET)) == {"#" + GAP_TICKET}
+
+
 # --- the spec's commits --------------------------------------------------------
 
 # A run resumed after its one ticket Landed, so the checks find a commit of the spec to read.
@@ -2970,6 +3040,13 @@ def test_the_name_check_names_the_session_that_started_the_driver(loop, runner, 
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
 
+def test_the_name_check_is_handed_no_ticket_trailer(loop, runner, monkeypatch):
+    monkeypatch.setenv(TICKET_VARIABLE, "#1")
+    named_back(loop, NO_RENAMES)
+
+    assert handed_no_trailer(runner, NAME_CHECK)
+
+
 def test_a_name_check_that_recorded_no_report_stops_the_loop(loop):
     ran = named_back(loop, "Looks good to me.\n")
 
@@ -3084,6 +3161,13 @@ def test_the_rename_ticket_is_built_through_every_step_after_the_gap_round(loop,
         "implement")]
     log = loop.log()
     assert log.index("COUNT") < log.index("FILED") < log.index("DONE  #" + RENAME_TICKET)
+
+
+def test_the_rename_ticket_s_sessions_are_handed_its_trailer(loop, runner):
+    ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
+
+    assert ran.status == 0, said(ran)
+    assert set(trailers_handed_for(runner, RENAME_TICKET)) == {"#" + RENAME_TICKET}
 
 
 def test_a_rename_made_is_checked_on_the_rename_ticket_alone_and_ends_the_run(loop, runner):

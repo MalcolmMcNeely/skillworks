@@ -290,7 +290,7 @@ class Landing:
             ["claude", "-p", prompt, "--resume", self.session,
              "--permission-mode", self.permission_mode],
             self.worktree,
-            session_changes())
+            session_changes(self.tracker.trailer(self.ticket)))
 
     def resolve_conflict(self, base, refused):
         conflicted = self.unmerged()

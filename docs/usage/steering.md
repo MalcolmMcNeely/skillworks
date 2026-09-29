@@ -152,7 +152,7 @@ Plugin, and no team edits them. There is no file for them, so do not look for on
   anti-patterns. Your taste in tests is not fixed. It is the testing rule, `testing.md`.
 - The deep-module view in `codebase-design`.
 - The plain writing in `unslop`, and the output style the Plugin forces on every Session.
-- The Session trailer on every commit.
+- The trailers on every commit: the Session trailer always, and the `Ticket` trailer in the loop.
 - The skills, the scripts they drive and the hooks: the steps of the loop, their order, the Nudge, the
   Keep, the Turn, and the round a red Suite goes.
 

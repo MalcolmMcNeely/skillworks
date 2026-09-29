@@ -408,6 +408,19 @@ def test_each_session_is_handed_the_ticket_by_its_spec_and_its_number(driver):
     assert "/skillworks:implement 7/1 --finish" in commands
 
 
+def test_each_session_started_for_the_ticket_is_handed_its_trailer_by_spec_and_number(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    # The Plugin's hook reads this name, so it is written out here and not imported.
+    handed = [(call.env or {}).get("SKILLWORKS_TICKET") for call in driver.runner.made
+              if call.args[0] == "claude" and REFERENCE in call.args[2].split("\n", 1)[0]]
+    assert handed
+    assert set(handed) == {REFERENCE}
+
+
 def test_the_landed_commit_names_the_spec_and_the_ticket_in_its_trailer(driver):
     given_sessions_that_finish(driver)
 

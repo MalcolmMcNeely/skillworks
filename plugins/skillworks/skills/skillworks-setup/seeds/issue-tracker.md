@@ -78,7 +78,7 @@ Sub-issues carry **no** blocking semantics. A spec with open children is not rep
 
 These are load-bearing. The loop lands each ticket on its Target branch the moment it finishes, and it finds the ticket a commit belongs to, and the reason behind it, from these two alone.
 
-- **A commit names its ticket.** Put `Ticket: #<n>` in the message's trailer block — the last paragraph, held off the body by one blank line. Any other trailer sits beside it inside that same block with no blank line between them. Git reads the last paragraph and no earlier one, so a trailer stranded above a blank line is not a trailer.
+- **A commit names its ticket.** In the loop, the Plugin's `PreToolUse` hook adds the `Ticket` trailer to every commit a loop Session makes, from the ticket the loop handed that Session, so no model types it. A hand commit still types it: put `Ticket: #<n>` in the message's trailer block — the last paragraph, held off the body by one blank line. Any other trailer sits beside it inside that same block with no blank line between them. Git reads the last paragraph and no earlier one, so a trailer stranded above a blank line is not a trailer.
   - **Read it back**: `git log -1 <commit> --format='%(trailers:key=Ticket,valueonly)'`. That is the whole lookup — no tracker call, no search.
   - **It scopes a spec's checks.** The drift check and the Name check read only the commits whose `Ticket:` trailer names one of the spec's tickets, and never a commit with no trailer. A hand fix that should count for a spec carries `Ticket: #<n>` for one of its tickets.
   - Never use `Closes #<n>`, `Fixes #<n>` or `Resolves #<n>`. Those close the issue the moment the commit lands on the Target branch, and an auto-closed issue carries no Closing note.

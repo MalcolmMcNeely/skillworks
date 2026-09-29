@@ -335,7 +335,6 @@ class Loop:
         self.err = err
         self.wait = wait
         self.permission_mode = permission_mode
-        self.session_changes = session_changes()
         self.log_dir = Path(".spec-loop") / spec
         self.log = self.log_dir / "loop.log"
 
@@ -406,13 +405,14 @@ class Loop:
         appended(Path(found.out.strip()) / ticket_worktree.SESSIONS_RECORD, session + "\n")
         return ["--session-id", session]
 
-    def claude_p(self, prompt, *rest):
+    # Only a Session started for a ticket names one, so the hook tags no commit of the Cut or a check.
+    def claude_p(self, prompt, *rest, ticket=None):
         rest = [str(a) for a in rest] or self.new_session()
         return self.runner.run(
             ["claude", "-p", prompt] + rest
             + ["--permission-mode", self.permission_mode, "--output-format", "json"],
             self.job_worktree,
-            self.session_changes)
+            session_changes(self.tracker.trailer(ticket) if ticket else None))
 
     # A path comes back on stdout, so a reason takes stderr, and the log too for a background run.
     def worktree(self, command, job=""):
@@ -618,7 +618,7 @@ class Loop:
 
     # A Nudge resumes the Session the step's result names, so a finish is not sent to the build's.
     def run_sessions(self, ticket, step, prompt, rest, held, reasons):
-        ran = self.claude_p(prompt, *rest)
+        ran = self.claude_p(prompt, *rest, ticket=ticket)
         written(reasons, ran.err)
         nudge = 0
         while True:
@@ -638,7 +638,7 @@ class Loop:
                 self.named(ticket), step.name, nudge, NUDGES, " ".join(failed)))
             ran = self.claude_p("".join(owed(self.tracker, ticket, step, check)
                                         for check in failed) + NUDGE_TAIL,
-                                "--resume", field(held, "session_id"))
+                                "--resume", field(held, "session_id"), ticket=ticket)
             appended(reasons, ran.err)
 
     # Every check runs every time, since a Nudge that mends one thing can break another.
