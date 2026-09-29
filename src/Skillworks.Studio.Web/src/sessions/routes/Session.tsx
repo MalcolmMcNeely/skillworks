@@ -8,7 +8,7 @@ import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../shared/pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { DepthWord } from '../components/DepthWord';
-import { OpenedStep } from '../components/timeline/OpenedStep';
+import { PromptPrototype } from '../components/promptPrototype/PromptPrototype';
 import { Timeline } from '../components/timeline/Timeline';
 import { TimelineTabs } from '../components/timeline/tabs/TimelineTabs';
 import { CostBreakdown } from '../components/verdict/CostBreakdown';
@@ -137,7 +137,9 @@ export function Session() {
   const open = (step: string | null) => write(withWhere(params, { ...where, step }));
 
   const onExchange = (band: Band) =>
-    whole === null ? undefined : show(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index });
+    whole === null
+      ? undefined
+      : show(widened([band.startMs, band.endMs], whole), { exchange: band.exchange.index, step: null });
 
   // Lights the lanes and nothing more, so the View and every figure stay where the reader left them.
   const onHighlight = (picked: Highlight | null) =>
@@ -217,12 +219,19 @@ export function Session() {
               onAllAgents={() => write(withWhere(params, { ...where, agent: null }))}
               onClearHighlight={() => onHighlight(null)}
             />
-            <OpenedStep
+            {/* PROTOTYPE — throwaway: stands in for OpenedStep while the Prompt drawer is judged. */}
+            <PromptPrototype
+              bands={bands}
               marks={drawn}
+              step={where.step}
+              exchange={where.exchange}
+              highlight={highlight}
+              lit={lit}
               traced={landed.traced}
               agents={landed.agents}
-              selected={where.step}
-              onClose={() => open(null)}
+              onOpen={open}
+              onExchange={onExchange}
+              onClose={() => write(withHighlight(withWhere(params, { ...where, step: null, exchange: null }), null))}
             />
             <TimelineTabs
               levels={shownLevels}
