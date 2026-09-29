@@ -1,7 +1,7 @@
 import { describeCount } from '../../../shared/figures/lib/figures';
 import { readWhere, withWhere, type Where } from '../../../shared/session/lib/where';
-import type { Mark } from '../steps';
-import type { Subagent } from './agents';
+import type { Mark, StepKind } from '../steps';
+import { ranByOne, type Subagent } from './agents';
 import type { Band } from './conversation';
 import { holds, widened, withView, type Spell } from './view';
 
@@ -57,6 +57,58 @@ export function promptsOf(
   const inView = before.some((mark) => holds(view, mark.startMs, mark.endMs));
 
   return [{ band: null, open: open === null, inView, started: startedIn === null }, ...rows];
+}
+
+export interface StepRow {
+  mark: Mark;
+  open: boolean;
+  inView: boolean;
+  // Null while a Subagent is open, as the drawer names it already.
+  agent: string | null;
+}
+
+export interface OpenExchange {
+  band: Band | null;
+  step: string | null;
+  view: Spell | null;
+}
+
+export interface Agents {
+  agents: Record<string, string>;
+  subagents: readonly Subagent[];
+  subagent: Subagent | null;
+}
+
+// The Prompt heads the block and the Answer ends it already, so neither takes a row of its own.
+const rowKinds: ReadonlySet<StepKind> = new Set(['turn', 'tool', 'refused', 'fault']);
+
+export function stepRowsOf(
+  marks: readonly Mark[],
+  bands: readonly Band[],
+  open: OpenExchange,
+  who: Agents,
+): StepRow[] {
+  // The Steps the lanes draw, so the drawer never lists what the timeline beside it has left out.
+  return ranByOne(marks, who.agents, who.subagent?.id ?? null)
+    .filter((mark) => rowKinds.has(mark.step.kind) && exchangeOf(mark, bands) === open.band)
+    .toSorted((one, other) => one.startMs - other.startMs)
+    .map((mark) => ({
+      mark,
+      open: mark.step.id === open.step,
+      inView: holds(open.view, mark.startMs, mark.endMs),
+      agent: who.subagent === null ? agentOf(mark, who) : null,
+    }));
+}
+
+// Only a Span names an agent, so a Step no Span placed in a Subagent names none rather than the main agent.
+function agentOf(mark: Mark, who: Agents): string | null {
+  const id = who.agents[mark.step.id];
+
+  if (id === undefined) {
+    return null;
+  }
+
+  return who.subagents.find((subagent) => subagent.id === id)?.name ?? id;
 }
 
 export function describeUnsaid(words: string | null, length: number): string | null {

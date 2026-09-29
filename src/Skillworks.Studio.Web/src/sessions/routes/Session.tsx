@@ -244,9 +244,11 @@ export function Session() {
               prompts={where.prompts}
               view={shownView}
               subagent={openSubagent}
+              subagents={landed.subagents}
               traced={landed.traced}
               agents={landed.agents}
               onExchange={onExchange}
+              onStep={open}
               onOpen={onOpenPrompts}
               onClose={onClosePrompts}
             />

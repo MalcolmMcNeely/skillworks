@@ -9,8 +9,10 @@ import {
   exchangeOpenedBy,
   openedExchange,
   promptsOf,
+  stepRowsOf,
   type Opened,
   type PromptRow,
+  type StepRow,
 } from './prompts';
 import { readView, type Spell } from './view';
 import { marksOf, type Step } from '../steps';
@@ -170,6 +172,92 @@ describe('the Subagent mark', () => {
 
   it('is on no row while no Subagent is open', () => {
     expect(startedOf(null)).toEqual([]);
+  });
+});
+
+function idsOf(rows: readonly StepRow[]): string[] {
+  return rows.map((row) => row.mark.step.id);
+}
+
+describe('stepRowsOf', () => {
+  const noAgents = { agents: {}, subagents: [], subagent: null };
+
+  it('lists the Turns, Tool calls, refused Tool calls and Faults of the Exchange in start order, and no Prompt or Answer', () => {
+    const marks = marksOf([
+      { ...step('p', '2026-09-14T09:05:00.000Z'), kind: 'prompt', tool: null },
+      { ...step('fault', '2026-09-14T09:05:40.000Z'), kind: 'fault', tool: null },
+      { ...step('turn', '2026-09-14T09:05:01.000Z'), kind: 'turn', tool: null },
+      step('tool', '2026-09-14T09:05:10.000Z'),
+      { ...step('refused', '2026-09-14T09:05:20.000Z'), kind: 'refused' },
+      { ...step('answer', '2026-09-14T09:05:50.000Z'), kind: 'answer', tool: null },
+    ]);
+
+    expect(idsOf(stepRowsOf(marks, bands, { band: bands[1], step: null, view: null }, noAgents))).toEqual([
+      'turn',
+      'tool',
+      'refused',
+      'fault',
+    ]);
+  });
+
+  it('lists a Step that started after the Answer and before the next Prompt under the earlier Exchange', () => {
+    const marks = marksOf([
+      { ...step('answer', '2026-09-14T09:00:50.000Z'), kind: 'answer', tool: null },
+      { ...step('recap', '2026-09-14T09:03:00.000Z'), kind: 'turn', tool: null },
+    ]);
+
+    expect(idsOf(stepRowsOf(marks, bands, { band: bands[0], step: null, view: null }, noAgents))).toEqual(['recap']);
+  });
+
+  it('keeps every row in a View and marks the rows outside it as out of view', () => {
+    const marks = marksOf([
+      step('early', '2026-09-14T09:05:05.000Z'),
+      step('late', '2026-09-14T09:05:30.000Z'),
+      step('later', '2026-09-14T09:05:50.000Z'),
+    ]);
+    const view: Spell = [Date.parse('2026-09-14T09:05:20.000Z'), Date.parse('2026-09-14T09:05:40.000Z')];
+    const rows = stepRowsOf(marks, bands, { band: bands[1], step: null, view }, noAgents);
+
+    expect(rows.map((row) => [row.mark.step.id, row.inView])).toEqual([
+      ['early', false],
+      ['late', true],
+      ['later', false],
+    ]);
+  });
+
+  it('opens the row of the Step the address names, and no other', () => {
+    const marks = marksOf([step('one', '2026-09-14T09:05:05.000Z'), step('two', '2026-09-14T09:05:10.000Z')]);
+    const rows = stepRowsOf(marks, bands, { band: bands[1], step: 'two', view: null }, noAgents);
+
+    expect(rows.filter((row) => row.open).map((row) => row.mark.step.id)).toEqual(['two']);
+  });
+
+  describe('with Subagents', () => {
+    const marks = marksOf([step('main', '2026-09-14T09:05:05.000Z'), step('theirs', '2026-09-14T09:05:10.000Z')]);
+    const explore = subagentAt('2026-09-14T09:05:08.000Z');
+    const agents = { theirs: explore.id };
+    const open = { band: bands[1], step: null, view: null };
+
+    it('holds the open Subagent\'s Steps alone', () => {
+      expect(idsOf(stepRowsOf(marks, bands, open, { agents, subagents: [explore], subagent: explore }))).toEqual([
+        'theirs',
+      ]);
+    });
+
+    it('names the Subagent on its row while no Subagent is open, and no agent on the main agent\'s row', () => {
+      const rows = stepRowsOf(marks, bands, open, { agents, subagents: [explore], subagent: null });
+
+      expect(rows.map((row) => [row.mark.step.id, row.agent])).toEqual([
+        ['main', null],
+        ['theirs', 'Explore'],
+      ]);
+    });
+
+    it('names a Subagent by its id where no Subagent under that id was listed', () => {
+      const rows = stepRowsOf(marks, bands, open, { agents, subagents: [], subagent: null });
+
+      expect(rows[1].agent).toBe('agent-a');
+    });
   });
 });
 

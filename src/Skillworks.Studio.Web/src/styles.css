@@ -2037,6 +2037,61 @@ a.home-panel-face:hover::before {
   font-family: var(--mono);
 }
 
+.prompts-steps {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.prompts-steps > li.is-out {
+  opacity: 0.45;
+}
+
+.prompts-steps > li.is-open {
+  margin: 0.2rem 0;
+}
+
+/* One line a Step, however long its words, so an Exchange of hundreds of Steps can still be scanned. */
+.prompts-step-pick {
+  align-items: baseline;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  text-align: left;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.prompts-step-pick:hover .prompts-step-kind,
+.prompts-step-pick:focus-visible .prompts-step-kind {
+  color: var(--hud);
+}
+
+.prompts-step-kind {
+  color: var(--ink);
+  flex: none;
+  font-family: var(--mono);
+}
+
+.prompts-step-agent {
+  color: var(--live);
+  flex: none;
+}
+
+.prompts-step-words {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .prompts-reply {
   border-top: 1px dashed var(--rule);
   color: var(--ink-soft);

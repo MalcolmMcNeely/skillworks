@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { describeCount, describeLength, describeMoney } from '../../../shared/figures/lib/figures';
 import { ranBy, type Subagent } from '../../lib/timeline/agents';
 import type { Band } from '../../lib/timeline/conversation';
-import { describeUnsaid, promptsOf, type Opened, type PromptRow } from '../../lib/timeline/prompts';
+import {
+  describeUnsaid,
+  promptsOf,
+  stepRowsOf,
+  type Opened,
+  type PromptRow,
+  type StepRow,
+} from '../../lib/timeline/prompts';
 import type { Spell } from '../../lib/timeline/view';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 
@@ -10,8 +17,8 @@ function keyOf(row: PromptRow): string {
   return row.band === null ? 'before' : String(row.band.exchange.index);
 }
 
-function classOf(row: PromptRow): string | undefined {
-  const names = [row.open ? 'is-open' : null, row.inView ? null : 'is-out', row.started ? 'is-started' : null].filter(
+function classOf(row: { open: boolean; inView: boolean; started?: boolean }): string | undefined {
+  const names = [row.open ? 'is-open' : null, row.inView ? null : 'is-out', row.started === true ? 'is-started' : null].filter(
     (name) => name !== null,
   );
 
@@ -47,6 +54,40 @@ function OpenedStep({ mark, traced, agents }: { mark: Mark; traced: boolean; age
   );
 }
 
+function StepLine({
+  row,
+  traced,
+  agents,
+  onStep,
+}: {
+  row: StepRow;
+  traced: boolean;
+  agents: Record<string, string>;
+  onStep: (step: string) => void;
+}) {
+  const { mark } = row;
+  const { step } = mark;
+  const note = noteOf(step);
+
+  return (
+    <li data-step={step.id} className={classOf(row)}>
+      {row.open ? (
+        <OpenedStep mark={mark} traced={traced} agents={agents} />
+      ) : (
+        <button type="button" className="prompts-step-pick" onClick={() => onStep(step.id)}>
+          <span className="micro">{describeClock(mark.startMs, true)}</span>
+          <span className="prompts-step-kind">
+            {titleOf(step)}
+            {note === null ? null : <span className="step-note">{note}</span>}
+          </span>
+          {row.agent === null ? null : <span className="micro prompts-step-agent">{row.agent}</span>}
+          {step.words === null ? null : <span className="prompts-step-words">{step.words}</span>}
+        </button>
+      )}
+    </li>
+  );
+}
+
 function OpenSubagent({ subagent }: { subagent: Subagent }) {
   return (
     <div className="prompts-subagent">
@@ -66,18 +107,32 @@ function Started() {
 
 function Row({
   row,
+  steps,
   opened,
   traced,
   agents,
   onExchange,
+  onStep,
 }: {
   row: PromptRow;
+  steps: readonly StepRow[];
   opened: Mark | null;
   traced: boolean;
   agents: Record<string, string>;
   onExchange: (band: Band) => void;
+  onStep: (step: string) => void;
 }) {
-  const step = row.open && opened !== null ? <OpenedStep mark={opened} traced={traced} agents={agents} /> : null;
+  // An Answer, or a Step the lanes have left out, has no row to open in, so it keeps a card of its own.
+  const alone = row.open && opened !== null && !steps.some((each) => each.open);
+  const step = alone ? <OpenedStep mark={opened} traced={traced} agents={agents} /> : null;
+  const list =
+    steps.length === 0 ? null : (
+      <ol className="prompts-steps">
+        {steps.map((each) => (
+          <StepLine key={each.mark.step.id} row={each} traced={traced} agents={agents} onStep={onStep} />
+        ))}
+      </ol>
+    );
 
   if (row.band === null) {
     return (
@@ -85,6 +140,7 @@ function Row({
         <p className="micro prompts-row-head">Before the first Prompt</p>
         {row.started ? <Started /> : null}
         {step}
+        {list}
       </>
     );
   }
@@ -106,6 +162,7 @@ function Row({
       </button>
       {row.open ? prompt : null}
       {step}
+      {list}
       {row.open ? (
         <div className="prompts-reply">
           <p className="micro">
@@ -127,9 +184,11 @@ export function Prompts({
   prompts,
   view,
   subagent,
+  subagents,
   traced,
   agents,
   onExchange,
+  onStep,
   onOpen,
   onClose,
 }: {
@@ -141,9 +200,11 @@ export function Prompts({
   prompts: boolean;
   view: Spell | null;
   subagent: Subagent | null;
+  subagents: readonly Subagent[];
   traced: boolean;
   agents: Record<string, string>;
   onExchange: (band: Band) => void;
+  onStep: (step: string) => void;
   onOpen: () => void;
   onClose: () => void;
 }) {
@@ -161,6 +222,15 @@ export function Prompts({
   const opened = held.step === null ? null : (marks.find((mark) => mark.step.id === held.step) ?? null);
   const openRow = rows.find((row) => row.open);
   const openKey = openRow === undefined ? null : keyOf(openRow);
+  const openBand = openRow?.band;
+  const steps = useMemo(
+    () =>
+      openBand === undefined
+        ? []
+        : stepRowsOf(marks, bands, { band: openBand, step: held.step, view }, { agents, subagents, subagent }),
+    [marks, bands, openBand, held.step, view, agents, subagents, subagent],
+  );
+  const openStep = steps.find((each) => each.open)?.mark.step.id ?? null;
 
   useEffect(() => {
     if (!open) {
@@ -179,10 +249,18 @@ export function Prompts({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (open && openKey !== null) {
-      list.current?.querySelector(`[data-row="${openKey}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!open || openKey === null) {
+      return;
     }
-  }, [open, openKey]);
+
+    if (openStep === null) {
+      list.current?.querySelector(`[data-row="${openKey}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      list.current
+        ?.querySelector(`[data-step="${CSS.escape(openStep)}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [open, openKey, openStep]);
 
   return (
     <>
@@ -203,7 +281,15 @@ export function Prompts({
         <ol className="prompts-list" ref={list}>
           {rows.map((row) => (
             <li key={keyOf(row)} data-row={keyOf(row)} className={classOf(row)}>
-              <Row row={row} opened={opened} traced={traced} agents={agents} onExchange={onExchange} />
+              <Row
+                row={row}
+                steps={row.open ? steps : []}
+                opened={opened}
+                traced={traced}
+                agents={agents}
+                onExchange={onExchange}
+                onStep={onStep}
+              />
             </li>
           ))}
         </ol>
