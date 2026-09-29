@@ -58,5 +58,8 @@
   },
   "autoMemoryEnabled": false,
   "promptCacheTtl": "1h",
-  "subagentPromptCacheTtl": "1h"
+  "subagentPromptCacheTtl": "1h",
+  "attribution": {
+    "commit": ""
+  }
 }
