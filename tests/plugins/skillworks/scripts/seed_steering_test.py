@@ -841,8 +841,8 @@ def test_this_repos_surfaces_list_the_usage_docs():
 
 
 def test_no_skill_holds_the_smells():
-    pages = sorted(SKILLS.glob("*/SKILL.md"))
-    assert pages
+    pages = sorted([*SKILLS.glob("*/SKILL.md"), *SKILLS.glob("review-changes/*.md")])
+    assert SKILLS / "review-changes" / "standards.md" in pages
 
     for page in pages:
         text = page.read_text(encoding="utf-8")
@@ -852,7 +852,7 @@ def test_no_skill_holds_the_smells():
 
 
 def test_review_standards_renames_a_name_whose_meaning_the_change_moved_in_the_same_ticket():
-    text = skill_text("review-standards")
+    text = axis_text("review-standards")
 
     assert "rename it in the same ticket" in text
     assert "a comment edited above a declaration whose name did not change" in text
@@ -860,8 +860,8 @@ def test_review_standards_renames_a_name_whose_meaning_the_change_moved_in_the_s
 
 
 @pytest.mark.parametrize("skill", ["review-standards", "review-architecture", "review-spec"])
-def test_each_axis_skill_always_fixes_a_hard_breach_and_leaves_a_judgement_call_only_with_its_reason(skill):
-    fixing = section(skill_text(skill), "Fix what you find")
+def test_each_axis_always_fixes_a_hard_breach_and_leaves_a_judgement_call_only_with_its_reason(skill):
+    fixing = section(axis_text(skill), "Fix what you find")
 
     assert "A hard breach is always fixed and never left" in fixing
     assert "a team check" in fixing
@@ -946,6 +946,21 @@ def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
 
 def skill_text(skill):
     return (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+
+
+AXIS_FILE_OF = {
+    "review-standards": "standards.md",
+    "review-architecture": "architecture.md",
+    "review-spec": "spec.md",
+}
+
+
+def axis_page(skill):
+    return SKILLS / "review-changes" / AXIS_FILE_OF[skill]
+
+
+def axis_text(skill):
+    return axis_page(skill).read_text(encoding="utf-8")
 
 
 def test_to_tickets_publishes_to_the_files_tracker_and_no_scratch_folder():
@@ -1053,6 +1068,36 @@ def test_no_skill_calls_a_hidden_skill_through_the_skill_tool():
     assert [call for call in skill_tool_calls() if hidden(call[1])] == []
 
 
+# `.spec-loop/` is a working folder and `spec-loop/<n>` is a branch, so neither points into a skill's folder.
+def paths_into(skill, text):
+    return re.findall(r"(?:\.\./|skills/){0}/|(?<![\w.-]){0}/[\w./-]*\w\.\w+".format(re.escape(skill)), text)
+
+
+def hidden_skills():
+    return sorted(folder.name for folder in SKILLS.iterdir() if (folder / "SKILL.md").exists() and hidden(folder.name))
+
+
+# A skill that reads a hidden skill's file follows it by other means, which the Skill tool's refusal forbids.
+def test_no_skill_names_a_path_into_a_hidden_skills_folder():
+    assert set(AXIS_FILE_OF) <= set(hidden_skills())
+    named = [(page.relative_to(SKILLS).as_posix(), skill)
+             for page in sorted(SKILLS.rglob("*.md")) for skill in hidden_skills()
+             if paths_into(skill, page.read_text(encoding="utf-8"))]
+
+    assert named == []
+
+
+@pytest.mark.parametrize("text", ["`../review-spec/SKILL.md`", "plugins/skillworks/skills/review-spec/", "review-spec/notes.md"])
+def test_a_path_into_a_skills_folder_is_caught(text):
+    assert paths_into("review-spec", text)
+
+
+@pytest.mark.parametrize("text", ["`.spec-loop/<spec>/base.sha`", "`spec-loop/<spec-number>/ticket-<n>-kept-<k>`",
+                                  "`/skillworks:spec-loop 42`"])
+def test_a_working_folder_or_a_branch_is_not_a_path_into_a_skills_folder(text):
+    assert paths_into("spec-loop", text) == []
+
+
 def test_the_walk_for_skill_tool_calls_finds_the_grills_call_to_to_spec():
     assert ("grill/SKILL.md", "to-spec") in skill_tool_calls()
 
@@ -1144,7 +1189,7 @@ def test_the_tickets_keep_each_surface_inside_the_ticket_that_needs_it():
 
 
 def test_the_spec_review_checks_each_surface_the_spec_names_for_the_ticket():
-    review = skill_text("review-spec")
+    review = axis_text("review-spec")
 
     assert "Surfaces section" in review
     assert "Surface the spec names" in review
@@ -1176,9 +1221,11 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
     assert "`{}`".format(NAME_REPORT) in files
 
 
-@pytest.mark.parametrize("skill", ["what-next", "review-spec", "spec-drift", "spec-names"])
-def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(skill):
-    text = skill_text(skill)
+@pytest.mark.parametrize("page", [SKILLS / "what-next" / "SKILL.md", SKILLS / "review-changes" / "spec.md",
+                                  SKILLS / "spec-drift" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md"],
+                         ids=lambda page: page.relative_to(SKILLS).as_posix())
+def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(page):
+    text = page.read_text(encoding="utf-8")
 
     assert "docs/agents/issue-tracker.md" in text
     assert "docs/agents/loop.json" in text
@@ -1188,9 +1235,11 @@ def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(skill)
 GITHUB_ONLY_NAMES = ("the ticket's issue number", "the spec's issue number", "sub-issues of the spec")
 
 
-@pytest.mark.parametrize("skill", ["review-standards", "review-architecture", "spec-loop", "what-next"])
-def test_a_skill_names_a_spec_or_a_ticket_in_words_that_fit_either_tracker(skill):
-    text = skill_text(skill)
+@pytest.mark.parametrize("page", [SKILLS / "review-changes" / "standards.md", SKILLS / "review-changes" / "architecture.md",
+                                  SKILLS / "spec-loop" / "SKILL.md", SKILLS / "what-next" / "SKILL.md"],
+                         ids=lambda page: page.relative_to(SKILLS).as_posix())
+def test_a_skill_names_a_spec_or_a_ticket_in_words_that_fit_either_tracker(page):
+    text = page.read_text(encoding="utf-8")
 
     assert "docs/agents/issue-tracker.md" in text
     assert [name for name in GITHUB_ONLY_NAMES if name in text] == []
@@ -1205,7 +1254,7 @@ def test_what_next_lists_open_specs_and_startable_tickets_from_the_files_tracker
 
 
 def test_review_spec_reads_a_files_ticket_from_its_folder_in_the_worktree():
-    review_spec = skill_text("review-spec")
+    review_spec = axis_text("review-spec")
 
     assert "`<spec>/<ticket>`" in review_spec
     assert "`spec.md`" in review_spec
@@ -1267,9 +1316,9 @@ REVIEW_FILE_OF = {
 }
 
 
-def test_each_axis_skill_stops_when_its_review_file_is_missing():
+def test_each_axis_stops_when_its_review_file_is_missing():
     for skill, name in REVIEW_FILE_OF.items():
-        assert stops(skill, "`{}`".format(WHERE[name])), skill
+        assert says_stop(axis_text(skill), "`{}`".format(WHERE[name])), skill
 
 
 def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing():
@@ -1510,9 +1559,9 @@ STEERING_NAMED = {
 }
 
 
-def test_the_review_skills_name_each_steering_file_by_its_path_from_the_repo_root():
+def test_the_axis_files_name_each_steering_file_by_its_path_from_the_repo_root():
     for skill, names in STEERING_NAMED.items():
-        text = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+        text = axis_text(skill)
         for name in names:
             assert "`{}`".format(WHERE[name]) in text, "{} names {}".format(skill, name)
             assert "`{}`](".format(WHERE[name]) not in text, "{} links {}".format(skill, name)
@@ -1527,14 +1576,39 @@ def test_code_review_is_renamed_review_changes_which_sends_a_check_on_correctnes
     assert "disable-model-invocation" not in front
 
 
-def test_review_changes_names_no_steering_file_and_sends_each_sub_agent_to_an_axis_skill():
+def test_review_changes_names_no_steering_file():
     text = skill_text("review-changes")
 
     for names in STEERING_NAMED.values():
         for steering in names:
             assert steering not in text, steering
-    for axis in STEERING_NAMED:
-        assert "`../{}/SKILL.md`".format(axis) in text, axis
+
+
+def test_review_changes_sends_each_sub_agent_to_its_axis_file_in_report_only_mode():
+    text = skill_text("review-changes")
+
+    assert "follow it in report-only mode" in text
+    for skill in AXIS_FILE_OF:
+        assert "`{}`".format(AXIS_FILE_OF[skill]) in text, skill
+
+
+@pytest.mark.parametrize("skill", list(AXIS_FILE_OF))
+def test_each_axis_skill_follows_its_axis_file_in_loop_mode(skill):
+    text = skill_text(skill)
+
+    assert "`../review-changes/{}`".format(AXIS_FILE_OF[skill]) in text
+    assert "follow it in loop mode" in text
+
+
+@pytest.mark.parametrize("skill", list(AXIS_FILE_OF))
+def test_each_axis_skill_stays_hidden_and_holds_none_of_the_axis_steps(skill):
+    assert hidden(skill)
+    assert "## " not in skill_text(skill)
+
+
+@pytest.mark.parametrize("skill", list(AXIS_FILE_OF))
+def test_each_axis_file_is_a_plain_file_and_no_skill(skill):
+    assert not axis_text(skill).startswith("---")
 
 
 def test_review_changes_holds_no_brief_or_binding_rule_of_its_own():
@@ -1552,13 +1626,14 @@ def test_review_changes_finds_the_spec_from_the_ticket_trailer_then_the_argument
 
 
 @pytest.mark.parametrize("skill", list(STEERING_NAMED))
-def test_each_axis_skill_reports_and_edits_nothing_for_review_changes_and_edits_the_worktree_for_the_loop(skill):
-    modes = section(skill_text(skill), "Two modes")
+def test_each_axis_reports_and_edits_nothing_for_review_changes_and_edits_the_worktree_for_the_loop(skill):
+    modes = section(axis_text(skill), "Two modes")
 
-    assert "/skillworks:review-changes" in modes
+    assert "**Report-only mode** is how `/skillworks:review-changes` runs this axis" in modes
     assert "--stat -M" in modes
     assert "edits nothing" in modes
-    assert "Called by the loop" in modes
+    assert "**Loop mode** is how the loop's review step runs this axis, through `/skillworks:{}`".format(skill) in modes
+    assert "This axis edits what it finds" in modes
 
 
 def test_implement_reviews_with_review_changes_and_the_ticket_number():

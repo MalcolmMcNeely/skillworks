@@ -5,8 +5,9 @@ description: >
   change, along three axes — Standards (does the code follow this repo's documented coding
   standards?), Spec (does the code match what the originating ticket or spec asked for?) and
   Architecture (is it in the right module, pointing the right way?). Runs each axis in a parallel
-  sub-agent that follows the loop's own review skill, and reports them side by side. Use when the
-  user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
+  sub-agent that follows the same axis steps as the loop's review, and reports them side by side.
+  Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review
+  since X".
   Not for a check on correctness alone: that is Claude Code's own /code-review.
 ---
 
@@ -18,13 +19,13 @@ Three-axis review of a change:
 
 Each axis runs as a **parallel sub-agent** so they don't pollute each other's context, then this skill sets their reports side by side.
 
-This skill holds no review of its own. Each sub-agent follows the axis skill the spec loop runs, so a review by hand checks what the loop checks. The axis skills sit beside this skill's folder in the Plugin:
+Each axis keeps its steps in an axis file in this skill's folder. The spec loop's review step follows the same files, so a review by hand checks what the loop checks:
 
-| Axis | Skill file, from this skill's base directory |
+| Axis | Axis file, from this skill's base directory |
 |---|---|
-| Standards | `../review-standards/SKILL.md` |
-| Spec | `../review-spec/SKILL.md` |
-| Architecture | `../review-architecture/SKILL.md` |
+| Standards | `standards.md` |
+| Spec | `spec.md` |
+| Architecture | `architecture.md` |
 
 The issue tracker should have been provided to you. If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`.
 
@@ -50,7 +51,7 @@ Look for the ticket or spec the change was built for, in this order:
 
 Give each sub-agent the same four things, and let it read the rest itself:
 
-- The path to its axis skill file, from the table above, resolved against this skill's base directory. Tell it to read that file and follow it in its report-only mode.
+- The path to its axis file, from the table above, resolved against this skill's base directory. Tell it to read that file and follow it in report-only mode.
 - The diff command and the `--stat -M` command.
 - The commit list, or a line saying the change is uncommitted.
 - The ticket or spec: its number and Tracker, or the fetched contents.

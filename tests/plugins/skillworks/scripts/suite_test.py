@@ -1601,9 +1601,11 @@ def test_the_seeded_suite_file_shows_the_setting_at_its_default():
     assert json.loads(seed.read_text(encoding="utf-8"))["runs"] == 1
 
 
-REVIEW_SKILLS = (
+REVIEW_PAGES = (
     "plugins/skillworks/skills/review-changes/SKILL.md",
-    "plugins/skillworks/skills/review-architecture/SKILL.md",
+    "plugins/skillworks/skills/review-changes/standards.md",
+    "plugins/skillworks/skills/review-changes/spec.md",
+    "plugins/skillworks/skills/review-changes/architecture.md",
 )
 
 PLACEMENT_CHECKS = "docs/agents/placement-checks.md"
@@ -1846,21 +1848,21 @@ def test_claude_md_names_skillworks_suite_in_place_of_the_checks():
 
 
 def test_the_review_skills_never_name_the_suite_file():
-    for skill in REVIEW_SKILLS:
-        assert SUITE_FILE not in (ROOT / skill).read_text(encoding="utf-8"), skill
+    for page in REVIEW_PAGES:
+        assert SUITE_FILE not in (ROOT / page).read_text(encoding="utf-8"), page
 
 
 def test_the_architecture_review_runs_the_placement_checks():
-    assert PLACEMENT_CHECKS in (ROOT / "plugins/skillworks/skills/review-architecture/SKILL.md").read_text(encoding="utf-8")
+    assert PLACEMENT_CHECKS in (ROOT / "plugins/skillworks/skills/review-changes/architecture.md").read_text(encoding="utf-8")
 
 
 def test_the_review_skills_name_no_fact_of_this_repo_s_suite():
     facts = this_repo_s_facts()
     assert {"dotnet", DOCKER_TESTS, "src/Skillworks.Studio.Web"} <= facts
 
-    for skill in REVIEW_SKILLS:
-        text = (ROOT / skill).read_text(encoding="utf-8")
-        assert [fact for fact in sorted(facts) if fact in text] == [], skill
+    for page in REVIEW_PAGES:
+        text = (ROOT / page).read_text(encoding="utf-8")
+        assert [fact for fact in sorted(facts) if fact in text] == [], page
 
 
 def placement_commands(path):

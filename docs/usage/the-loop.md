@@ -385,10 +385,11 @@ review, and the difference is that review's Edit. It goes to the log as an `EDIT
 `fix` prompt beside the report. An Edit never stops the loop. It is only never silent.
 
 **The run by hand.** `/skillworks:implement <n>` with no flag runs the same steps in one Session. Its
-review is `/skillworks:review-changes`, which runs the three review skills the loop runs, each in a
-sub-agent of its own. By hand, the reviews report and edit nothing, and `implement` fixes what they
-found. Run `/skillworks:review-changes` on its own to review a branch against a fixed point. For a
-check on correctness alone, run Claude Code's own `/code-review`.
+review is `/skillworks:review-changes`, which runs each axis in a sub-agent of its own. Each
+sub-agent follows the same axis steps as the loop's review step, and only reports. By hand, the
+reviews edit nothing, and `implement` fixes what they found. Run `/skillworks:review-changes` on
+its own to review a branch against a fixed point. For a check on correctness alone, run Claude
+Code's own `/code-review`.
 
 ### The Suite
 

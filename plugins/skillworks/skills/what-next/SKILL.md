@@ -61,7 +61,7 @@ The Dev loop runs each of these itself. A developer may type one for a reason th
 Reach for these whenever they fit. The Dev loop never asks for them, and they never stand in for it.
 
 - **`/skillworks:tdd`** — build a concrete behaviour test-first, without a full spec. `implement` calls it for every change that has behaviour to test.
-- **`/skillworks:review-changes`** — review a branch or PR against a fixed point. It follows the same three axis skills the loop runs, and reports without editing. Reach for Claude Code's own `/code-review` when you want a check on correctness alone.
+- **`/skillworks:review-changes`** — review a branch or PR against a fixed point. It follows the same axis steps as the loop's review step, and reports without editing. Reach for Claude Code's own `/code-review` when you want a check on correctness alone.
 - **`/skillworks:grilling`** — the interview primitive itself: rounds, the frontier, facts are the agent's job and decisions are yours. `/skillworks:grill` is the named way in, and `/skillworks:improve-codebase-architecture` runs it internally. Reach for it directly only when you want the interview with no wrapper around it.
 - **`/skillworks:domain-modeling`** — sharpen the project's *domain* language: challenge a fuzzy term, resolve an overloaded word ("account" doing three jobs), record a hard-to-reverse decision as an ADR. It's the active discipline `/skillworks:grill` drives to keep `CONTEXT.md` a clean glossary.
 - **`/skillworks:codebase-design`** — the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*: a lot of behaviour behind a small interface at a clean seam. `/skillworks:tdd` and `/skillworks:improve-codebase-architecture` both speak it.
