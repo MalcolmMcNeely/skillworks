@@ -31,4 +31,8 @@ public sealed record TurnDetailsRow
     public required string? Words { get; init; }
 
     public required int? WordsLength { get; init; }
+
+    public required string? StopReason { get; init; }
+
+    public required int? Attempt { get; init; }
 }

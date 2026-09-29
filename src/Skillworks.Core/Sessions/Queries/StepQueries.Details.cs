@@ -3,6 +3,7 @@ using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Details;
 using Skillworks.Core.Sessions.Steps;
 using Skillworks.Core.Shared.Stores.EventsStore;
+using Skillworks.Core.Shared.Stores.TraceStore;
 
 namespace Skillworks.Core.Sessions.Queries;
 
@@ -15,6 +16,10 @@ public sealed partial class StepQueries
     private const string EffortAttribute = "effort";
 
     private const string SpeedAttribute = "speed";
+
+    private const string StopReasonAttribute = "stop_reason";
+
+    private const string AttemptAttribute = "attempt";
 
     // An older Claude Code names no source on a Turn, and a Turn that names none is the main agent's.
     private const string MainAgent = "main";
@@ -38,8 +43,13 @@ public sealed partial class StepQueries
         ["web_search_tool"] = SideRequest.WebSearch,
     };
 
-    public static DetailsPage Details(OpenedRun opened)
+    public static DetailsPage Details(OpenedRun opened, OpenedSpans traced)
     {
+        var requests = traced.Read.Spans
+            .Where(span => span.Name == StepKey.TurnSpan && span.Attributes.GetValueOrDefault(StepKey.Request) is { Length: > 0 })
+            .GroupBy(span => span.Attributes[StepKey.Request], StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
+
         // Read from every line and not the drawn Steps, as the title's Answer draws no Step and still has a Turn.
         var answers = opened.Read.Lines
             .Where(line => Named(AnswerEvent)(line) && line.Attribute(StepKey.Request) is not null)
@@ -48,14 +58,19 @@ public sealed partial class StepQueries
 
         return new(opened.Drawn
             .Where(each => each.Step.Kind == StepKind.Turn)
-            .ToDictionary(each => each.Step.Id, each => TurnDetailsOf(each.Line, answers), StringComparer.Ordinal));
+            .ToDictionary(each => each.Step.Id, each => TurnDetailsOf(each.Line, answers, requests), StringComparer.Ordinal));
     }
 
-    private static TurnDetails TurnDetailsOf(EventLine line, IReadOnlyDictionary<string, EventLine> answers)
+    private static TurnDetails TurnDetailsOf(
+        EventLine line,
+        IReadOnlyDictionary<string, EventLine> answers,
+        IReadOnlyDictionary<string, Span> requests)
     {
         var sentAs = line.Attribute(EventAttributes.QuerySource);
         var purpose = PurposeOf(sentAs);
-        var answer = line.Attribute(StepKey.Request) is { } request ? answers.GetValueOrDefault(request) : null;
+        var request = line.Attribute(StepKey.Request);
+        var answer = request is null ? null : answers.GetValueOrDefault(request);
+        var asked = request is null ? null : requests.GetValueOrDefault(request);
 
         return new TurnDetails(
             purpose,
@@ -74,7 +89,11 @@ public sealed partial class StepQueries
             (long)Number(line, InputAttribute),
             (long)Number(line, OutputAttribute),
             answer is null ? null : Recorded(answer, EventAttributes.Response),
-            answer is null ? null : Length(answer, EventAttributes.ResponseLength, EventAttributes.Response));
+            answer is null ? null : Length(answer, EventAttributes.ResponseLength, EventAttributes.Response),
+            asked?.Attributes.GetValueOrDefault(StopReasonAttribute) is { Length: > 0 } stopped ? stopped : null,
+            int.TryParse(asked?.Attributes.GetValueOrDefault(AttemptAttribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out var attempt)
+                ? attempt
+                : null);
     }
 
     // The Time breakdown sets Side requests apart by this too, so the two never disagree.

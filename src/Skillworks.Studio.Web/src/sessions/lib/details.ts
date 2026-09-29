@@ -31,6 +31,9 @@ export interface TurnDetails {
   outputTokens: number;
   words: string | null;
   wordsLength: number | null;
+  // Both null where no Span landed for the Turn, as no event carries them.
+  stopReason: string | null;
+  attempt: number | null;
 }
 
 export type TokenPart = 'cacheRead' | 'cacheWrite' | 'input' | 'output';
@@ -78,6 +81,25 @@ export function describeModel(turn: TurnDetails): string {
   const speed = turn.speed === null || turn.speed === 'normal' ? '' : ` · ${turn.speed}`;
 
   return `${turn.model}${effort}${speed}`;
+}
+
+const stopWords: Record<string, string> = {
+  end_turn: 'Finished its reply',
+  tool_use: 'Asked for a tool',
+  max_tokens: 'Cut off at the output limit',
+  refusal: 'Refused',
+};
+
+export function describeStop(turn: TurnDetails): string {
+  if (turn.stopReason === null) {
+    return notKnown;
+  }
+
+  return Object.hasOwn(stopWords, turn.stopReason) ? stopWords[turn.stopReason] : turn.stopReason;
+}
+
+export function describeAttempt(turn: TurnDetails): string {
+  return turn.attempt === null ? notKnown : `Attempt ${turn.attempt}`;
 }
 
 export function tokenPartsOf(turn: TurnDetails): { part: TokenPart; word: string; tokens: number }[] {

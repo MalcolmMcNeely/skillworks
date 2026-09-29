@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeAttempt,
   describeModel,
   describePurpose,
+  describeStop,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
@@ -27,6 +29,8 @@ function turn(details: Partial<TurnDetails> = {}): TurnDetails {
     outputTokens: 0,
     words: null,
     wordsLength: null,
+    stopReason: null,
+    attempt: null,
     ...details,
   };
 }
@@ -136,5 +140,34 @@ describe('timePartsOf', () => {
 
   it('leaves both not known where claude code gave no wait', () => {
     expect(timePartsOf(turn({ lengthMs: 5_000 })).map((part) => part.ms)).toEqual([null, null]);
+  });
+});
+
+describe('describeStop', () => {
+  it.each([
+    ['end_turn', 'Finished its reply'],
+    ['tool_use', 'Asked for a tool'],
+    ['max_tokens', 'Cut off at the output limit'],
+    ['refusal', 'Refused'],
+  ])('says a turn that stopped for %s in words', (stopReason, words) => {
+    expect(describeStop(turn({ stopReason }))).toBe(words);
+  });
+
+  it('gives any other reason as claude code sent it', () => {
+    expect(describeStop(turn({ stopReason: 'pause_turn' }))).toBe('pause_turn');
+  });
+
+  it('says why a turn with no span stopped is not known', () => {
+    expect(describeStop(turn())).toBe('Not known');
+  });
+});
+
+describe('describeAttempt', () => {
+  it('says which attempt a retried turn was', () => {
+    expect(describeAttempt(turn({ attempt: 3 }))).toBe('Attempt 3');
+  });
+
+  it('says the attempt of a turn with no span is not known', () => {
+    expect(describeAttempt(turn())).toBe('Not known');
   });
 });

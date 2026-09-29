@@ -330,6 +330,8 @@ function turn(words: string | null, wordsLength: number | null): TurnDetails {
     outputTokens: 0,
     words,
     wordsLength,
+    stopReason: null,
+    attempt: null,
   };
 }
 

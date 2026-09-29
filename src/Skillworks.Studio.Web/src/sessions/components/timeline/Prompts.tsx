@@ -7,8 +7,10 @@ import {
   describeTokens,
 } from '../../../shared/figures/lib/figures';
 import {
+  describeAttempt,
   describeModel,
   describePurpose,
+  describeStop,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
@@ -125,6 +127,10 @@ function OpenedTurn({ turn }: { turn: TurnDetails }) {
           }))}
         />
       </dd>
+      <dt className="micro">Why it stopped</dt>
+      <dd>{describeStop(turn)}</dd>
+      <dt className="micro">Attempt</dt>
+      <dd>{describeAttempt(turn)}</dd>
       {turn.wordsLength === null ? null : (
         <>
           <dt className="micro">Its words</dt>

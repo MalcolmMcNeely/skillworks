@@ -69,7 +69,7 @@ public sealed class StepReport(StepQueries steps, AgentQueries agents, GapReport
         yield return StepQueries.Found(opened, breakdown, ran);
 
         // Last, as a long run's details can run to megabytes and the timeline has drawn without them.
-        yield return StepQueries.Details(opened);
+        yield return StepQueries.Details(opened, traced);
 
         yield return new StoresEnd(
             gaps.InLines(opened.Read, opened.Read.Unreachable is null ? [] : span.NewestFirst(), opened.PromptsWithheld),

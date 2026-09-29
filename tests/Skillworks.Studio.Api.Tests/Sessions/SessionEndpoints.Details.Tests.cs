@@ -1,3 +1,4 @@
+using Skillworks.Core.Tests.Shared.Stores.TraceStore;
 using Skillworks.Studio.Api.Tests.Shared.Harness;
 using Skillworks.Studio.Api.Tests.Sessions.Rows.Details;
 
@@ -211,6 +212,53 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal((null, null), (turn.Words, turn.WordsLength));
     }
+
+    [Fact]
+    public async Task Gives_a_turn_why_it_stopped_from_its_span()
+    {
+        using var studio = new StudioHost();
+
+        await studio.Push(
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, request: "req_1"));
+        await studio.PushSpans(Morning, MainTrace, Stopped("req_1", "tool_use", "1"));
+
+        var turn = await OnlyTurnIn(studio);
+
+        Assert.Equal("tool_use", turn.StopReason);
+    }
+
+    [Fact]
+    public async Task Gives_a_retried_turn_its_attempt_from_its_span()
+    {
+        using var studio = new StudioHost();
+
+        await studio.Push(
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, request: "req_1"));
+        await studio.PushSpans(Morning, MainTrace, Stopped("req_1", "end_turn", "3"));
+
+        var turn = await OnlyTurnIn(studio);
+
+        Assert.Equal(3, turn.Attempt);
+    }
+
+    [Fact]
+    public async Task Leaves_why_a_turn_stopped_and_its_attempt_not_known_in_a_session_with_no_spans()
+    {
+        using var studio = new StudioHost();
+
+        await studio.Push(
+            SessionEvent.Prompted(Morning, At(Yesterday, "09:00:00.000"), "Fix the build"),
+            SessionEvent.Turned(Morning, At(Yesterday, "09:00:05.000"), 5_000, request: "req_1"));
+
+        var turn = await OnlyTurnIn(studio);
+
+        Assert.Equal((null, null), (turn.StopReason, turn.Attempt));
+    }
+
+    private static RecordedSpan Stopped(string request, string stopReason, string attempt) =>
+        new("claude_code.llm_request", At(Yesterday, "09:00:05"), At(Yesterday, "09:00:10"), TurnSpan, Request: request, StopReason: stopReason, Attempt: attempt);
 
     private static Task TurnedFor(StudioHost studio, string? sentAs) =>
         studio.Push(

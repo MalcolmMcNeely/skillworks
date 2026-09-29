@@ -12,7 +12,7 @@ public sealed record StepKey(string Step, string Key)
 
     private const string ToolSpan = "claude_code.tool";
 
-    private const string TurnSpan = "claude_code.llm_request";
+    public const string TurnSpan = "claude_code.llm_request";
 
     // Spans beneath a Subagent repeat the tool use id of the call that started it, so only its own Span answers.
     public static string? Of(Span span) => span.Name switch

@@ -17,4 +17,7 @@ public sealed record TurnDetails(
     long InputTokens,
     long OutputTokens,
     string? Words,
-    int? WordsLength);
+    int? WordsLength,
+    // Both null where no Span landed for the Turn, as no event carries them.
+    string? StopReason,
+    int? Attempt);

@@ -110,6 +110,8 @@ describe('foldSessionLine', () => {
         outputTokens: 120,
         words: null,
         wordsLength: null,
+        stopReason: 'end_turn',
+        attempt: 1,
       },
     };
 
