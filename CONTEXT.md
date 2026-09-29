@@ -254,6 +254,17 @@ How hard the model was asked to think on a Turn. It moves the cost without movin
 is reported beside it.
 _Avoid_: Reasoning level, thinking budget
 
+**Purpose**:
+Why a Turn was sent: for the work of a Prompt, for a Subagent's work, or as a Side request. A reader
+meets it as **why it ran**.
+_Avoid_: Source, query source, reason
+
+**Side request**:
+A Turn Claude Code sends for itself and not for the work a person asked for: a recap, a session
+title, a next-prompt suggestion, a compaction, a Subagent's summary, a web page read or a web search.
+Its Cost counts like any other Turn's.
+_Avoid_: Upkeep, background request, overhead
+
 **Filter**:
 The one way every list narrows: a span of days, a Repository and a Skill. The span is
 counted in whole UTC days and takes both ends in. With no span, a list covers the **lookback**, the
