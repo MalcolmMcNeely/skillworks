@@ -82,6 +82,12 @@ needs their clone of Skillworks at the same path.
 7. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
+The allowlist holds two read rules as well. `Read(~/.claude/plugins/**)` opens an installed Plugin's
+folder to reading. When the Marketplace folder sits outside your repo, setup adds a read rule for
+that folder too, such as `Read(//c/tools/skillworks/plugins/**)`. A skill must read its own files,
+such as the guides `tdd` reads. In the loop's `acceptEdits` mode a read outside the repo is a Denial
+unless a rule allows it, and the loop cannot ask you.
+
 Expect a permission prompt on a first run, at the seeding and at the preflight. The allowlist that clears it is written
 in step 6.
 
@@ -125,7 +131,7 @@ Review these before you commit them.
 | `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. Setup also creates `.handoff/`, where `handoff` saves. |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
-| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. With `hide`, an `attribution` block too. On a second run, setup adds a cache key that is missing and keeps one your team set. |
+| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. With `hide`, an `attribution` block too. On a second run, setup adds a cache key that is missing and keeps one your team set. |
 
 Setup writes nothing under `~/.claude`, and it leaves `.claude/settings.local.json` alone.
 

@@ -30,7 +30,8 @@
       "Bash(land-ticket:*)",
       "Bash(ticket-worktree:*)",
       "Bash(skillworks-suite:*)",
-      "Bash(tracker-publish:*)"
+      "Bash(tracker-publish:*)",
+      "Read(~/.claude/plugins/**)"
     ]
   },
   "extraKnownMarketplaces": {

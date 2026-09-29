@@ -28,7 +28,7 @@ The outputs:
 | `.gitignore` lines | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. They are per machine and never shared. Setup also creates `.handoff/`, where `handoff` saves. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
-| The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of a `spec` Target branch among them. It names no tool the Suite runs: those are the team's to add. |
+| The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of a `spec` Target branch among them. It lets a skill read its own files, with `Read(~/.claude/plugins/**)` and, when the Marketplace folder sits outside the repo, a read rule for that folder, because a read outside the repo is a Denial and the loop cannot ask. It names no tool the Suite runs: those are the team's to add. |
 | An `attribution` block in `.claude/settings.json`, when the team hides the credit | Claude Code credits Claude on each commit and pull request unless `attribution` says otherwise. The choice is the team's, so it goes in the file the team commits, and every developer and every loop Session follows it. |
 | `"promptCacheTtl": "1h"` and `"subagentPromptCacheTtl": "1h"` in `.claude/settings.json` | A loop Session waits on the Suite and on its sub-agents for longer than the default five minutes of prompt cache. With one hour, each ticket reads its prompt from a warm cache and does not pay for a cold one. |
 | `"autoMemoryEnabled": false` in `.claude/settings.json` | Every Load comes from the repository. Claude Code keeps memory files under `~/.claude`, on the machine and outside the repository, and loads them into every session. With memory on, one commit steers two machines differently, and a run cannot be read back from what the repository holds. With it off, one commit steers every machine the same way. The memory files stay on disk, so removing the line brings them back. |
@@ -165,6 +165,8 @@ If it fails, stop and report. Every step below assumes the remote works, and wit
 
 Copy [settings.json](./settings.json) to `.claude/settings.json`. The Marketplace `path` in it is a placeholder. Write the folder that holds this Plugin's `.claude-plugin/marketplace.json`, which is three folders above this skill's base directory. Write it relative to the repo root, starting `./`, when it sits inside the repo, and in full otherwise.
 
+When the Marketplace folder sits outside the repo, add a read rule for it to `permissions.allow`: `Read(//<the folder in full>/**)`. Write the folder with forward slashes, and on Windows write its drive as a folder, so `C:\tools\skillworks\plugins` becomes `Read(//c/tools/skillworks/plugins/**)`. A skill reads its own files from the Plugin's folder, and in the loop's `acceptEdits` mode a read outside the repo is a Denial unless a rule allows it. `Read(~/.claude/plugins/**)` in the file already opens an installed Plugin's folder. The loop cannot ask, so without these rules `tdd` never reads its guides.
+
 If the file exists, merge:
 
 - Keep `$schema` as the file has it, and add it where missing.
@@ -189,7 +191,7 @@ An `attribution` block already in the file is the team's earlier answer. `set-at
 
 Settle `attribution` with `set-attribution` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
 
-Read the allowlist out loud to the user before writing, and read the memory line and the attribution answer out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all three knowingly, in this one pass, with no second prompt. Then write the file, and run `set-attribution` with the answer.
+Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the attribution answer out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all three knowingly, in this one pass, with no second prompt. Then write the file, and run `set-attribution` with the answer.
 
 Leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
 

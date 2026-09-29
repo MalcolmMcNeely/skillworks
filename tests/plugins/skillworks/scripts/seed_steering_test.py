@@ -1270,9 +1270,15 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     assert "Bash(git push:*)" in allowed
     assert "Bash(gh issue:*)" in allowed
     assert "Bash(gh api:*)" in allowed
-    for entry in allowed:
+    for entry in [entry for entry in allowed if entry.startswith("Bash(")]:
         tool = entry[len("Bash("):].split(" ")[0].split(":")[0]
         assert tool in ["gh", "git"] + commands, entry
+
+
+def test_the_allowlist_lets_a_skill_read_the_files_of_an_installed_plugin():
+    allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
+
+    assert "Read(~/.claude/plugins/**)" in allowed
 
 
 def test_the_allowlist_names_the_pull_request_commands_of_a_spec_target_branch():
