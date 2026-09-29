@@ -52,6 +52,15 @@ KEEP = "--keep <file>:<overlap>=yours|seed for each overlap"
 SETTLE = "--settled <file> for each file that differs from its seed"
 
 
+# Beside PLACES, so a new Seed is checked the day it is seeded and the loop never stops in the middle of a ticket for it.
+def missing_steering(top):
+    for place in PLACES.values():
+        if not (Path(top) / place).is_file():
+            return ("{} is missing, and setup seeds it. "
+                    "Run /skillworks:skillworks-setup to write it again.".format(place))
+    return None
+
+
 class Outcome:
     def __init__(self, done, would=None, shown=(), writes=(), asks=None, used=(), makes=()):
         self.done = done

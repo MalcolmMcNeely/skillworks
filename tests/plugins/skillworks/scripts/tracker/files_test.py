@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import spec_loop
-from conftest import Ran, RecordingRunner, Repo, git
+from conftest import Ran, RecordingRunner, Repo, git, write_steering
 from spec_loop_test import Sessions, given_a_suite_that_passes
 from steering.target_branch import LOOP_FILE
 from stop import REFUSED, Stop
@@ -94,6 +94,7 @@ class Racing(RecordingRunner):
 def run_loop(runner, checkout, *flags):
     if "claude" not in runner.stubs:
         runner.stub("claude")
+    write_steering(checkout)
     out, err = io.StringIO(), io.StringIO()
     with contextlib.chdir(checkout):
         status = spec_loop.main([SPEC, *flags], runner, out, err, lambda seconds: None)

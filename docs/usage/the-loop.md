@@ -528,6 +528,16 @@ rule and the line to add. It is the same check, and the same words, as setup's p
 ABORT docs/agents/rules/words.md has no import in CLAUDE.md, so it does not load into a session. Add this line to CLAUDE.md: @docs/agents/rules/words.md
 ```
 
+**A missing Steering file.** Before any ticket, and before a dry run prints its plan, the script checks
+that each file setup seeds is in the repo. It reads the same list of files that setup writes from, so
+a Seed that a newer Plugin adds is checked too. A step that needs a missing file would stop in the
+middle of a ticket, so the loop stops first. The `ABORT` line names the file and says to run setup,
+which writes the file again:
+
+```
+ABORT docs/agents/smell-baseline.md is missing, and setup seeds it. Run /skillworks:skillworks-setup to write it again.
+```
+
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
 check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
 stops the loop with a `STOP` line, and the spec stays open. A Gap does not stop it at once: the loop

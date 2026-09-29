@@ -15,6 +15,13 @@ somewhere else, because a tool or a design puts them there. They are at the end 
 Each file below says what it does, which part of the loop reads it, and what your team can change in
 it. [The loop](the-loop.md) has the steps these parts name.
 
+## Every Steering file always exists
+
+Each step of the loop leans on its Steering file, so every file setup seeds always exists. To want
+less of a file, empty it down rather than delete it. Setup writes a missing file again, even one your
+team deleted. The loop stops before any ticket runs when a file is missing, and its `ABORT` line names
+the file and says to run setup.
+
 ## What always loads
 
 Some Steering has to be in every Session from the start. The rules are that kind. `CLAUDE.md` loads

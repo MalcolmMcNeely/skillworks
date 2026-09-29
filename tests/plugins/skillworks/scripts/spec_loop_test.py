@@ -11,10 +11,11 @@ from pathlib import Path
 import pytest
 
 import land_ticket
+import seed_steering
 import spec_loop
 import ticket_worktree
 from conftest import (ROOT, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
-                      project_suite, write_loop, write_suite)
+                      project_suite, write_loop, write_steering, write_suite)
 from runner import Subprocess
 from suite import Suite
 
@@ -121,6 +122,7 @@ def driver_in(repo, runner, monkeypatch):
     # A loop started from a bypass run inherits its mode, so a case sets the one it means.
     monkeypatch.delenv("SPEC_LOOP_PERMISSION_MODE", raising=False)
     write_loop(repo.work, repo.target)
+    write_steering(repo.work)
     return Driver(repo, runner)
 
 
@@ -503,15 +505,46 @@ def test_a_spec_with_no_tickets_is_refused_naming_it_by_issue_number(loop):
 
 def test_a_rule_with_no_import_stops_the_dry_run_naming_the_rule_and_the_line_to_add(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    rules = loop.repo.work / "docs" / "agents" / "rules"
-    rules.mkdir(parents=True)
-    (rules / "words.md").write_text("# A rule\n", encoding="utf-8", newline="\n")
+    claude = loop.repo.work / "CLAUDE.md"
+    imports = claude.read_text(encoding="utf-8").replace("@docs/agents/rules/words.md\n", "")
+    claude.write_text(imports, encoding="utf-8", newline="\n")
 
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
     assert ("ABORT docs/agents/rules/words.md has no import in CLAUDE.md, so it does not load into a session. "
             "Add this line to CLAUDE.md: @docs/agents/rules/words.md") in said(ran)
+
+
+def test_a_missing_steering_file_stops_the_dry_run_naming_the_file_and_setup(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    (loop.repo.work / "docs" / "agents" / "smell-baseline.md").unlink()
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert ("ABORT docs/agents/smell-baseline.md is missing, and setup seeds it. "
+            "Run /skillworks:skillworks-setup to write it again.") in said(ran)
+    assert "DRY" not in ran.out
+
+
+def test_a_repo_holding_every_seeded_file_passes_the_steering_check(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert "is missing, and setup seeds it" not in said(ran)
+
+
+def test_a_seed_added_to_setup_s_list_is_checked_with_no_other_change(loop, monkeypatch):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    monkeypatch.setitem(seed_steering.PLACES, "new-seed.md", "docs/agents/new-seed.md")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert "ABORT docs/agents/new-seed.md is missing, and setup seeds it." in said(ran)
 
 
 def test_the_dry_run_prints_the_worktree_and_the_branch(loop):

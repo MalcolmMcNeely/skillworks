@@ -21,6 +21,8 @@ SCRIPTS = PLUGIN / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from runner import Ran, Subprocess
+from seed_steering import PLACES, SEEDS
+from steering.rule_imports import RULES_FOLDER
 from steering.target_branch import LOOP_FILE
 from suite import SUITE_FILE
 
@@ -136,6 +138,20 @@ def write_loop(top, target):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"tracker": "github", "target-branch": target}, indent=2),
                     encoding="utf-8", newline="\n")
+
+
+# The loop stops before any ticket in a repo setup has not seeded, so a case starts in one it has.
+def write_steering(top):
+    for name, place in PLACES.items():
+        path = Path(top) / place
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text((SEEDS / name).read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+    claude = Path(top) / "CLAUDE.md"
+    if not claude.exists():
+        rules = sorted(path.name for path in (Path(top) / RULES_FOLDER).glob("*.md"))
+        claude.write_text("# Repo\n\n" + "".join("@{}/{}\n".format(RULES_FOLDER, rule) for rule in rules),
+                          encoding="utf-8", newline="\n")
 
 
 def check(*command, folder=".", ready=None, message="", unless=None, ignores=None, image=None):
