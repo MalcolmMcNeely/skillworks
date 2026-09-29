@@ -21,7 +21,7 @@ def given_every_program_passes(runner):
 
 
 def given_this_repo_s_programs_pass(runner):
-    for name in ("dotnet", "uv", "node", "npm"):
+    for name in ("dotnet", "uv", "node", "npm", "claude"):
         runner.stub(name)
     # One answer serves every docker verb, because these cases read the commands and not a container.
     runner.stub("docker", says="an-id\n")
@@ -319,6 +319,11 @@ DOCKER_TESTS = "Skillworks.Studio.slnf"
 # The test host has crashed after every test passed, and a crash with no dump cannot say why.
 DOCKER_TESTS_COMMAND = ["dotnet", "test", DOCKER_TESTS, "--blame-crash", "--blame-crash-dump-type", "mini"]
 
+PLUGIN = "plugins/skillworks"
+
+# Claude Code drops a skill whose frontmatter does not parse, and only its own parser says so.
+PLUGIN_CHECK_COMMAND = ["claude", "plugin", "validate", PLUGIN]
+
 
 # Whether the front end is installed differs between checkouts, so the install is left out.
 # git answers nothing, so no file is copied and no Proof of a made-up pass reaches this clone.
@@ -333,6 +338,7 @@ def test_this_repo_s_suite_file_runs_the_checks_the_contributing_page_names(runn
     assert run_by(runner)[0] == ["docker", "info"]
     assert sorted((" ".join(call.args), call.where) for call in made_by(runner)[1:]
                   if call.args[0] != "docker" and call.args[:2] != ["npm", "ci"]) == [
+        (" ".join(PLUGIN_CHECK_COMMAND), ROOT.as_posix()),
         (" ".join(DOCKER_TESTS_COMMAND), ROOT.as_posix()),
         (f"dotnet test {ARCHITECTURE_TESTS}", ROOT.as_posix()),
         ("node --test tests/plugins/skillworks/scripts/**/*.test.mjs", ROOT.as_posix()),
@@ -1692,6 +1698,27 @@ DOCKER_TESTS_IGNORE = {
 }
 
 
+# claude plugin validate reads the Plugin's folder alone.
+PLUGIN_CHECK_IGNORE = {
+    ".claude": "the Plugin is not read from the team settings",
+    "docs": "the Plugin holds no doc of the repo's",
+    "src": "Studio is no part of the Plugin",
+    "tests": "the Plugin holds no test",
+    "tools": "the seeded Studio is no part of the Plugin",
+    "README.md": "prose",
+    "CLAUDE.md": "prose",
+    "CONTEXT.md": "prose",
+    "CONTEXT-MAP.md": "prose",
+    "LICENSE": "prose",
+    "NOTICE": "prose",
+    "THIRD-PARTY-NOTICES.md": "prose",
+    "aspire.config.json": "only the Aspire CLI reads it",
+    "Skillworks.slnx": "the Plugin builds no C#",
+    "Skillworks.Studio.slnf": "the Plugin builds no C#",
+    "plugins/.claude-plugin": "the Marketplace sits beside the Plugin's folder, not in it",
+}
+
+
 def ignored_by(checks):
     assert len(checks) == 1
     return checks[0].get("ignores", [])
@@ -1713,16 +1740,36 @@ def test_what_the_docker_tests_ignore_leaves_the_files_they_read():
         assert not any(read == path or read.startswith(path + "/") for path in DOCKER_TESTS_IGNORE), read
 
 
-def test_only_the_docker_and_script_checks_ignore_anything():
+def plugin_checks():
+    return [entry for entry in this_repo_s_checks() if entry["command"] == PLUGIN_CHECK_COMMAND]
+
+
+def test_this_repo_s_suite_validates_the_plugin_with_claude_code_on_the_host():
+    checks = plugin_checks()
+
+    assert len(checks) == 1
+    assert checks[0]["folder"] == "."
+    assert "image" not in checks[0]
+
+
+def test_this_repo_s_plugin_check_ignores_only_what_it_cannot_read():
+    assert sorted(ignored_by(plugin_checks())) == sorted(PLUGIN_CHECK_IGNORE)
+
+
+def test_what_the_plugin_check_ignores_leaves_the_plugin():
+    assert not any(PLUGIN == path or PLUGIN.startswith(path + "/") for path in PLUGIN_CHECK_IGNORE)
+
+
+def test_only_the_docker_script_and_plugin_checks_ignore_anything():
     ignoring = [entry["command"] for entry in this_repo_s_checks() if "ignores" in entry]
 
     assert sorted(ignoring, key=" ".join) == sorted(
-        [DOCKER_TESTS_COMMAND, SCRIPT_TESTS_COMMAND], key=" ".join)
+        [DOCKER_TESTS_COMMAND, SCRIPT_TESTS_COMMAND, PLUGIN_CHECK_COMMAND], key=" ".join)
 
 
 @pytest.mark.this_repo
 def test_every_path_this_repo_s_suite_ignores_is_there():
-    for path in [*SCRIPT_TESTS_IGNORE, *DOCKER_TESTS_IGNORE]:
+    for path in [*SCRIPT_TESTS_IGNORE, *DOCKER_TESTS_IGNORE, *PLUGIN_CHECK_IGNORE]:
         if "*" not in path:
             assert (ROOT / path).exists(), path
 
@@ -1781,7 +1828,7 @@ def checks_section(doc, heading):
 
 
 def test_the_contributing_page_lists_every_check_of_this_repo_s_suite():
-    assert len(this_repo_s_checks()) == 8
+    assert len(this_repo_s_checks()) == 9
     checks = checks_section("docs/CONTRIBUTING.md", "## Checks").split("```")[1].replace('"', "")
 
     for entry in this_repo_s_checks():

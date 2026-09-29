@@ -26,6 +26,8 @@ uv run --with pytest pytest tests/plugins/skillworks/scripts/suite_test.py -m th
 
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
+claude plugin validate plugins/skillworks
+
 cd src/Skillworks.Studio.Web
 npm run typecheck
 npm run lint
@@ -41,6 +43,9 @@ tests in the Linux image `docs/agents/script-tests.Dockerfile`, because on Windo
 process they start is slow to start. Run by hand, the command above runs them on your own machine.
 The tests marked `this_repo` run on the host in a check of their own, because they read the paths
 the script tests ignore, and the image gets no copy of those.
+`claude plugin validate` reads each skill's frontmatter with the parser Claude Code uses at runtime.
+Claude Code drops a skill whose frontmatter does not parse, so this check goes red on it. A Plugin
+with only warnings, such as no version or no author, leaves it green.
 
 ### The script tests
 

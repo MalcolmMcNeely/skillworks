@@ -1001,6 +1001,12 @@ def front_matter(skill):
     return skill_text(skill).split("---\n")[1]
 
 
+# A folded description runs over the indented lines below its key, up to the next key.
+def description(skill):
+    folded = re.split(r"\n\S", front_matter(skill).split("description:", 1)[1])[0]
+    return " ".join(folded.split()).removeprefix("> ")
+
+
 def hidden(skill):
     return "disable-model-invocation: true\n" in front_matter(skill)
 
@@ -1019,9 +1025,7 @@ def test_to_spec_can_be_invoked_by_claude():
 
 
 def test_to_spec_points_a_plain_talk_at_the_grill():
-    description = front_matter("to-spec").split("description:", 1)[1].split("\n")[0].strip()
-
-    assert description.endswith(
+    assert description("to-spec").endswith(
         "Not for turning a plain talk into a spec: the developer starts the Dev loop with "
         "/skillworks:grill, which runs this skill at its end.")
 
@@ -1057,7 +1061,7 @@ def test_the_spec_loop_skill_leaves_cutting_the_tickets_to_the_driver():
     spec_loop = skill_text("spec-loop")
 
     assert "to-tickets" not in spec_loop
-    assert "into tickets" not in front_matter("spec-loop").split("description:", 1)[1].split("\n")[0]
+    assert "into tickets" not in description("spec-loop")
 
 
 def test_the_grill_ends_by_naming_only_the_spec_loop_as_the_next_command():

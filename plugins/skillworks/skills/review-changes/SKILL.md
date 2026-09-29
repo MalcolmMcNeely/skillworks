@@ -1,6 +1,13 @@
 ---
 name: review-changes
-description: Review the changes since a fixed point (commit, branch, tag, or merge-base), or an uncommitted change, along three axes — Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating ticket or spec asked for?) and Architecture (is it in the right module, pointing the right way?). Runs each axis in a parallel sub-agent that follows the loop's own review skill, and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X". Not for a check on correctness alone: that is Claude Code's own /code-review.
+description: >
+  Review the changes since a fixed point (commit, branch, tag, or merge-base), or an uncommitted
+  change, along three axes — Standards (does the code follow this repo's documented coding
+  standards?), Spec (does the code match what the originating ticket or spec asked for?) and
+  Architecture (is it in the right module, pointing the right way?). Runs each axis in a parallel
+  sub-agent that follows the loop's own review skill, and reports them side by side. Use when the
+  user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
+  Not for a check on correctness alone: that is Claude Code's own /code-review.
 ---
 
 Three-axis review of a change:

@@ -75,6 +75,28 @@
       "folder": "."
     },
     {
+      "command": ["claude", "plugin", "validate", "plugins/skillworks"],
+      "folder": ".",
+      "ignores": [
+        ".claude",
+        "docs",
+        "src",
+        "tests",
+        "tools",
+        "README.md",
+        "CLAUDE.md",
+        "CONTEXT.md",
+        "CONTEXT-MAP.md",
+        "LICENSE",
+        "NOTICE",
+        "THIRD-PARTY-NOTICES.md",
+        "aspire.config.json",
+        "Skillworks.slnx",
+        "Skillworks.Studio.slnf",
+        "plugins/.claude-plugin"
+      ]
+    },
+    {
       "command": ["npm", "run", "typecheck"],
       "folder": "src/Skillworks.Studio.Web",
       "ready": {
