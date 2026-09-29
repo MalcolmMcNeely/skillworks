@@ -1473,6 +1473,8 @@ a.home-panel-face:hover::before {
 
 .sessions,
 .session {
+  --prompts-width: 32rem;
+
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1888,13 +1890,28 @@ a.home-panel-face:hover::before {
   transition:
     transform 200ms ease,
     box-shadow 200ms ease;
-  width: min(32rem, 92vw);
+  width: min(var(--prompts-width), 92vw);
   z-index: 40;
 }
 
 .prompts.is-open {
   box-shadow: -16px 0 40px rgb(0 0 0 / 55%);
   transform: none;
+}
+
+/* 928px fits the 32rem drawer, the 360px a timeline needs to be read, the page padding and a 17px scrollbar. */
+@media (min-width: 928px) {
+  .session {
+    transition: padding-right 200ms ease;
+  }
+
+  .session:has(> .prompts.is-open) {
+    padding-right: calc(var(--prompts-width) + clamp(0.75rem, 2vw, 1.5rem));
+  }
+
+  .prompts.is-open {
+    box-shadow: none;
+  }
 }
 
 .prompts p {
@@ -2667,6 +2684,7 @@ button.cost-fill:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .page,
   .page *,
   .page *::before,
   .page *::after {

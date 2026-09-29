@@ -118,7 +118,7 @@ function Row({
   );
 }
 
-// Over the page from the right, so a Step clicked anywhere on the timeline shows the Prompt it answered.
+// In from the right, so a Step clicked anywhere on the timeline shows the Prompt it answered.
 export function Prompts({
   marks,
   bands,
