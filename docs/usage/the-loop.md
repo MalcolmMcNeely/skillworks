@@ -245,6 +245,11 @@ time, and skips a Surface the change does not touch. Each answer becomes a requi
 carries. A file with no Surface in it skips this step. [Steering](steering.md#the-surfaces-file) says
 how to write the file.
 
+With a README Surface, the grill asks about the README only as its Surface asks. A change that
+deserves new README text, beyond what the Surface allows, is named at the gate and goes into the
+spec's Out of Scope as "the README: a focused session". Nothing in the loop builds it, and no issue
+is filed for it. The spec names the README only in its Surfaces section.
+
 ### The gate
 
 When no question is left, the Session sums up the problem, the design, each Surface's answer, the

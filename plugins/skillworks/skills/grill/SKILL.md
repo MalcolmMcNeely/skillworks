@@ -32,6 +32,12 @@ The design is settled now, so each question can fit it. Walk the Surfaces by fou
 
 An answer that reopens the design goes back to step 1 as the next round.
 
+The README Surface is the Surface whose heading is `## The README`, outside a code fence. When the
+team has one, ask its question as any other. When the answer is that the change deserves README text
+beyond what its "What to capture" allows, capture only what the limit allows, and keep the rest for
+the gate: it goes into the spec's Out of Scope as "the README: a focused session". Nothing in the loop
+builds that session, so file no issue for it.
+
 ### 3. Sum up
 
 Sum up the shape that was settled:
@@ -41,6 +47,8 @@ Sum up the shape that was settled:
 - Each Surface the change touches, with the requirement its answer captured.
 - The words and the ADRs written along the way, each one already pushed.
 - What the session ruled out, and why.
+- When the change deserves README text the README Surface's limit does not allow, that it goes into
+  the spec's Out of Scope as "the README: a focused session", and that nothing builds it.
 
 Then ask the developer to confirm that this is the design.
 

@@ -146,6 +146,8 @@ For each Surface in `docs/agents/surfaces.md` the change touches, one list item 
 - **The user docs** (`docs/usage/`): the accounts page says how old a balance can be before it is marked.
 </surface-example>
 
+When `docs/agents/surfaces.md` holds a Surface headed `## The README`, outside a code fence, name the README here and nowhere else in the spec: never in a user story, an implementation decision or a testing decision. Its item is the only route by which the loop changes the README, so a README named anywhere else becomes an edit nobody asked for. With no README Surface, the README is any other file.
+
 ## Testing Decisions
 
 A list of testing decisions that were made. Include:
@@ -157,6 +159,8 @@ A list of testing decisions that were made. Include:
 ## Out of Scope
 
 A description of the things that are out of scope for this spec.
+
+When the grill found that the change deserves README text the README Surface's limit does not allow, list it here as "the README: a focused session". Nothing builds it, and no issue is filed for it.
 
 ## Further Notes
 
