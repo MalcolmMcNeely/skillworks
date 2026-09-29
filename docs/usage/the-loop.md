@@ -626,10 +626,10 @@ The default mode is `acceptEdits`. `spec-loop <spec> --bypass` runs every Sessio
 Denials gives no hint, because its cause lies somewhere else. The `LOOP` line at the top of the log
 names the mode the run is in.
 
-The drift check and the Name check record their reports through `tracker-publish`. With no
-`Bash(tracker-publish:*)` rule in your allowlist, that command is a Denial, and the loop stops at the
-check. Add the rule, with `allow-commands`. Do not rerun with `--bypass`, because the next run meets
-the same Denial.
+The drift check and the Name check read the spec's commits through `spec-commits`, and record their
+reports through `tracker-publish`. With no `Bash(spec-commits:*)` or no `Bash(tracker-publish:*)`
+rule in your allowlist, that command is a Denial, and the loop stops at the check. Add the rules,
+with `allow-commands`. Do not rerun with `--bypass`, because the next run meets the same Denial.
 
 ## The full run
 

@@ -107,7 +107,7 @@ whole of its wait. The basic prompt reads the empty input and exits at once.
 | `plugins/` | The local Marketplace. It holds the one Plugin, `skillworks`, and this repo loads its skills from there. Studio reads it by default. |
 | `plugins/skillworks/scripts/` | The loop's scripts: the driver, the landing, the worktrees, the Suite, the preflight, and the hook scripts. They read the repo from the git top level of the folder they start in, never from where the Plugin sits. |
 | `plugins/skillworks/hooks/` | The Plugin's hooks. On `SessionStart` and `InstructionsLoaded` they record what the Session was given, when telemetry is on. On `PreToolUse` they name the Session in each commit Claude makes, always. |
-| `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree`, `skillworks-preflight`, `seed-steering`, `set-attribution`, `allow-commands`, `skillworks-suite` and `tracker-publish`. Each runs its script from the Plugin. |
+| `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree`, `skillworks-preflight`, `seed-steering`, `set-attribution`, `allow-commands`, `skillworks-suite`, `tracker-publish` and `spec-commits`. Each runs its script from the Plugin. |
 | `.claude/skills/` | The skills that are not in the Plugin. Dev tooling for this repo, mostly vendored. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
 | `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |

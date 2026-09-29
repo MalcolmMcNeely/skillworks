@@ -53,7 +53,7 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 
 ## Spec loop operations
 
-Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift`, `/skillworks:spec-names` and the `spec-loop` command.
+Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift`, `/skillworks:spec-names`, the `spec-loop` command and the `spec-commits` command.
 
 A **spec** issue is the parent. Its **tickets** are GitHub sub-issues of it. That parentage scopes the loop: a driver reads one spec's children and nothing else, so two people running the loop on two specs cannot take each other's tickets.
 

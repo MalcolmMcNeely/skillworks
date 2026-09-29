@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+plugin="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Git Bash spells a folder /c/..., which a Windows Python cannot open, and pwd -W gives C:/... there.
+here="$(pwd -W 2>/dev/null || pwd)"
+# python -m finds the module only from the scripts folder, so the caller's folder goes in first.
+cd "$plugin/scripts"
+exec uv run --no-project --quiet python -m tracker.spec_commits "$here" "$@"
