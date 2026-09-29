@@ -1,10 +1,12 @@
-// Git places a --trailer in the message's own trailer block, and its default for an existing trailer adds no line equal to its neighbour.
+// Git places a --trailer in the message's own trailer block, even when a model left a line stranded above a blank one.
 
 import { text } from "node:stream/consumers";
 import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE } from "./git-grammar.mjs";
 import { powerShellCommits } from "./powershell-commits.mjs";
 
 const KEY = "Skillworks-Session";
+
+const TICKET = "SKILLWORKS_TICKET";
 
 const PLAIN =
   "Run `git commit` as a plain command of its own, not inside a shell string, eval, backticks or another program, " +
@@ -31,30 +33,42 @@ function answer(output) {
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", ...output } }));
 }
 
-function judge(source, tool, sessionId) {
+function judge(source, tool, sessionId, ticket) {
   const powerShell = tool === "PowerShell";
-  const { ends, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
+  const { commits, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
   if (hidden) return { deny: powerShell ? PLAIN_POWERSHELL : PLAIN };
-  if (ends.length === 0) return {};
+  if (commits.length === 0) return {};
   if (typeof sessionId !== "string" || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
     return { deny: `The hook was handed no Session id it can write, so it cannot add the ${KEY} trailer.` };
   }
-  const trailer = powerShell ? `'${KEY}: ${sessionId}'` : `"${KEY}: ${sessionId}"`;
+  if (!/^[A-Za-z0-9#/._-]*$/.test(ticket)) {
+    return { deny: `The ${TICKET} variable holds a value the hook cannot write, so it cannot add the Ticket trailer.` };
+  }
+  const quote = (value) => (powerShell ? `'${value}'` : `"${value}"`);
+  // With git's default rule, a Ticket replaced on an amend moves between two Session lines and lets the second double.
+  const rules = [`-c trailer.${KEY}.ifExists=addIfDifferent`];
+  const trailers = [`--trailer ${quote(`${KEY}: ${sessionId}`)}`];
+  if (ticket) {
+    rules.push("-c trailer.Ticket.ifExists=replace");
+    trailers.unshift(`--trailer ${quote(`Ticket: ${ticket}`)}`);
+  }
   let rewritten = source;
-  for (const end of ends.sort((a, b) => b - a)) {
-    rewritten = `${rewritten.slice(0, end)} --trailer ${trailer}${rewritten.slice(end)}`;
+  for (const { start, end } of commits.sort((a, b) => b.start - a.start)) {
+    rewritten =
+      `${rewritten.slice(0, start)}${rules.join(" ")} ${rewritten.slice(start, end)} ` +
+      `${trailers.join(" ")}${rewritten.slice(end)}`;
   }
   return { command: rewritten };
 }
 
 function bashCommits(source) {
-  const ends = [];
+  const commits = [];
   for (const words of allCommands(new Scanner(source).list(false))) {
     const at = commitWord(words);
-    if (at) ends.push(at.end);
-    else if (hidesCommit(words)) return { ends, hidden: true };
+    if (at) commits.push(at);
+    else if (hidesCommit(words)) return { commits, hidden: true };
   }
-  return { ends, hidden: false };
+  return { commits, hidden: false };
 }
 
 function allCommands(commands) {
@@ -271,7 +285,7 @@ if (typeof command !== "string") process.exit(0);
 
 let verdict;
 try {
-  verdict = judge(command, payload.tool_name, payload.session_id);
+  verdict = judge(command, payload.tool_name, payload.session_id, process.env[TICKET] ?? "");
 } catch {
   // An unreadable command may still hold a commit, and a commit without the trailer is the miss this hook prevents.
   verdict = COMMIT_IN_TEXT.test(command) ? { deny: PLAIN } : {};

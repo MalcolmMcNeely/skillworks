@@ -19,7 +19,7 @@ const STOPPED = { stopped: true };
 
 export function powerShellCommits(source) {
   const scanner = new Scanner(source);
-  const ends = [];
+  const commits = [];
   let hidden = false;
   let runsAnother = false;
   const walk = (pipelines, inScriptBlock) => {
@@ -29,7 +29,7 @@ export function powerShellCommits(source) {
         if (runs(words)) runsAnother = true;
         const at = commitWord(words);
         if (at === STOPPED || (at && inScriptBlock)) hidden = true;
-        else if (at) ends.push(at.end);
+        else if (at) commits.push(at);
         for (const word of words) walk(word.inner, inScriptBlock || word.scriptBlock);
       }
     }
@@ -37,7 +37,7 @@ export function powerShellCommits(source) {
   walk(scanner.list(undefined), false);
   // A string reaches such a program through a variable as easily as in place, so one puts every string in doubt.
   if (runsAnother && scanner.strings.some((text) => COMMIT_IN_TEXT.test(unquoted(text)))) hidden = true;
-  return { ends, hidden };
+  return { commits, hidden };
 }
 
 function commitWord(words) {

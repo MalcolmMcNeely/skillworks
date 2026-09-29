@@ -19,7 +19,13 @@ const TRAILER = `--trailer "Skillworks-Session: ${SESSION}"`;
 
 const PS_TRAILER = `--trailer 'Skillworks-Session: ${SESSION}'`;
 
-const READ_BACK = "--format=%(trailers:key=Skillworks-Session,valueonly)";
+const RULE = "-c trailer.Skillworks-Session.ifExists=addIfDifferent";
+
+const COMMIT = `${RULE} commit ${TRAILER}`;
+
+const PS_COMMIT = `${RULE} commit ${PS_TRAILER}`;
+
+const TICKET_KEY = "SKILLWORKS_TICKET";
 
 let temp;
 
@@ -58,15 +64,16 @@ function hook(payload, extra = {}) {
   });
 }
 
-async function answerTo(command, session, tool) {
-  const ran = await hook(input(command, session, tool));
+// The Session running these tests may have been handed a ticket, and a test sets its own or none.
+async function answerTo(command, session, tool, ticket = "") {
+  const ran = await hook(input(command, session, tool), { [TICKET_KEY]: ticket });
   assert.equal(ran.status, 0, ran.err);
   assert.equal(ran.err, "");
   return ran.out === "" ? undefined : JSON.parse(ran.out).hookSpecificOutput;
 }
 
-async function rewritten(command, session, tool) {
-  const answer = await answerTo(command, session, tool);
+async function rewritten(command, session, tool, ticket) {
+  const answer = await answerTo(command, session, tool, ticket);
   assert.ok(answer?.updatedInput, `the hook handed back no command for: ${command}`);
   assert.equal(answer.hookEventName, "PreToolUse");
   assert.equal(answer.permissionDecision, undefined, "a rewrite leaves the decision to the user's permissions");
@@ -116,8 +123,16 @@ async function repository() {
   return { dir: dir.replaceAll("\\", "/"), run, runPowerShell, git };
 }
 
+function trailerValues(repo, key) {
+  return repo.git("log", "-1", `--format=%(trailers:key=${key},valueonly)`).trim().split("\n").filter(Boolean);
+}
+
 function sessions(repo) {
-  return repo.git("log", "-1", READ_BACK).trim().split("\n").filter(Boolean);
+  return trailerValues(repo, "Skillworks-Session");
+}
+
+function tickets(repo) {
+  return trailerValues(repo, "Ticket");
 }
 
 test("the Plugin runs this script before the Bash and PowerShell tools, from the Plugin root", async () => {
@@ -156,30 +171,30 @@ for (const command of [
 }
 
 for (const [form, command, expected] of [
-  ["-m", 'git commit -m "Fix the thing"', `git commit ${TRAILER} -m "Fix the thing"`],
-  ["-F", "git commit -F message.txt", `git commit ${TRAILER} -F message.txt`],
+  ["-m", 'git commit -m "Fix the thing"', `git ${COMMIT} -m "Fix the thing"`],
+  ["-F", "git commit -F message.txt", `git ${COMMIT} -F message.txt`],
   [
     "a heredoc message",
     "git commit -F - <<'EOF'\nFix (the) thing\n\nTicket: #254\nEOF",
-    `git commit ${TRAILER} -F - <<'EOF'\nFix (the) thing\n\nTicket: #254\nEOF`,
+    `git ${COMMIT} -F - <<'EOF'\nFix (the) thing\n\nTicket: #254\nEOF`,
   ],
   [
     "a heredoc in a substitution",
     "git commit -m \"$(cat <<'EOF'\nFix it) and git commit again\nEOF\n)\"",
-    `git commit ${TRAILER} -m "$(cat <<'EOF'\nFix it) and git commit again\nEOF\n)"`,
+    `git ${COMMIT} -m "$(cat <<'EOF'\nFix it) and git commit again\nEOF\n)"`,
   ],
-  ["an && chain", 'git add -A && git commit -m "x"', `git add -A && git commit ${TRAILER} -m "x"`],
-  ["an || chain", 'git diff --quiet || git commit -am "x"', `git diff --quiet || git commit ${TRAILER} -am "x"`],
-  ["a ; chain", 'git add -A; git commit -m "x"; git log -1', `git add -A; git commit ${TRAILER} -m "x"; git log -1`],
-  ["-C", 'git -C "C:/work tree" commit -m x', `git -C "C:/work tree" commit ${TRAILER} -m x`],
-  ["-c", "git -c user.name=Bot commit -m x", `git -c user.name=Bot commit ${TRAILER} -m x`],
-  ["--amend", "git commit --amend --no-edit", `git commit ${TRAILER} --amend --no-edit`],
-  ["an environment before git", "GIT_AUTHOR_NAME=Bot git commit -m x", `GIT_AUTHOR_NAME=Bot git commit ${TRAILER} -m x`],
-  ["a subshell", '(cd sub && git commit -m "x")', `(cd sub && git commit ${TRAILER} -m "x")`],
+  ["an && chain", 'git add -A && git commit -m "x"', `git add -A && git ${COMMIT} -m "x"`],
+  ["an || chain", 'git diff --quiet || git commit -am "x"', `git diff --quiet || git ${COMMIT} -am "x"`],
+  ["a ; chain", 'git add -A; git commit -m "x"; git log -1', `git add -A; git ${COMMIT} -m "x"; git log -1`],
+  ["-C", 'git -C "C:/work tree" commit -m x', `git -C "C:/work tree" ${COMMIT} -m x`],
+  ["-c", "git -c user.name=Bot commit -m x", `git -c user.name=Bot ${COMMIT} -m x`],
+  ["--amend", "git commit --amend --no-edit", `git ${COMMIT} --amend --no-edit`],
+  ["an environment before git", "GIT_AUTHOR_NAME=Bot git commit -m x", `GIT_AUTHOR_NAME=Bot git ${COMMIT} -m x`],
+  ["a subshell", '(cd sub && git commit -m "x")', `(cd sub && git ${COMMIT} -m "x")`],
   [
     "two commits",
     "git commit -m a && git commit --allow-empty -m b",
-    `git commit ${TRAILER} -m a && git commit ${TRAILER} --allow-empty -m b`,
+    `git ${COMMIT} -m a && git ${COMMIT} --allow-empty -m b`,
   ],
 ]) {
   test(`a commit given ${form} gets the trailer right after commit`, async () => {
@@ -196,7 +211,7 @@ test("a rewrite keeps every other field of the tool input", async () => {
   const answer = await answerTo("git commit -m x");
 
   // Assert
-  assert.deepEqual(answer.updatedInput, { ...input("").tool_input, command: `git commit ${TRAILER} -m x` });
+  assert.deepEqual(answer.updatedInput, { ...input("").tool_input, command: `git ${COMMIT} -m x` });
 });
 
 for (const [state, extra] of [
@@ -209,7 +224,7 @@ for (const [state, extra] of [
 
     // Assert
     assert.equal(ran.status, 0, ran.err);
-    assert.equal(JSON.parse(ran.out).hookSpecificOutput.updatedInput.command, `git commit ${TRAILER} -m x`);
+    assert.equal(JSON.parse(ran.out).hookSpecificOutput.updatedInput.command, `git ${COMMIT} -m x`);
   });
 }
 
@@ -303,6 +318,92 @@ test("an amend by the same Session adds no second line, and one by a second Sess
   assert.deepEqual(afterSecond, [SESSION, SECOND_SESSION]);
 });
 
+for (const ticket of ["#254", "7/2"]) {
+  test(`git reads the Ticket ${ticket} the Session was handed from a Bash commit`, async () => {
+    // Arrange
+    const repo = await repository();
+    const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", ticket);
+
+    // Act
+    repo.run(command);
+
+    // Assert
+    assert.deepEqual(tickets(repo), [ticket]);
+  });
+}
+
+test("a commit by a Session handed no ticket carries no Ticket from the hook", async () => {
+  // Arrange
+  const repo = await repository();
+  const command = await rewritten('git add -A && git commit -m "Fix the thing"');
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(tickets(repo), []);
+});
+
+test("a Ticket typed in the trailer block is replaced by the one the Session was handed", async () => {
+  // Arrange
+  const repo = await repository();
+  const message = "Fix the thing\n\nThe body.\n\nTicket: #1\nCo-Authored-By: Ada <ada@example.invalid>\n";
+  await writeFile(join(repo.dir, "message.txt"), message);
+  const command = await rewritten("git add work.txt && git commit -F message.txt", SESSION, "Bash", "#254");
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(tickets(repo), ["#254"]);
+});
+
+test("a Ticket stranded above a blank line still leaves a Ticket git reads", async () => {
+  // Arrange
+  const repo = await repository();
+  const message = "Fix the thing\n\nTicket: #254\n\nCo-Authored-By: Ada <ada@example.invalid>\n";
+  await writeFile(join(repo.dir, "message.txt"), message);
+  const command = await rewritten("git add work.txt && git commit -F message.txt", SESSION, "Bash", "#254");
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(tickets(repo), ["#254"]);
+});
+
+test("an amend by the same Session handed a ticket adds no second Session line", async () => {
+  // Arrange
+  const repo = await repository();
+  repo.run(await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "#254"));
+
+  // Act
+  repo.run(await rewritten("git commit --amend --no-edit", SESSION, "Bash", "#254"));
+
+  // Assert
+  assert.deepEqual(sessions(repo), [SESSION]);
+});
+
+test("an amend by a second Session handed a ticket adds its line beside the first", async () => {
+  // Arrange
+  const repo = await repository();
+  repo.run(await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "#254"));
+
+  // Act
+  repo.run(await rewritten("git commit --amend --no-edit", SECOND_SESSION, "Bash", "#254"));
+
+  // Assert
+  assert.deepEqual(sessions(repo), [SESSION, SECOND_SESSION]);
+});
+
+test("a ticket the hook cannot write safely into a command is denied", async () => {
+  // Act
+  const answer = await answerTo("git commit -m x", SESSION, "Bash", '#1"; rm -rf ~; "');
+
+  // Assert
+  assert.equal(answer.permissionDecision, "deny");
+});
+
 for (const command of [
   "Get-ChildItem",
   "git status",
@@ -327,37 +428,37 @@ for (const command of [
 }
 
 for (const [form, command, expected] of [
-  ["-m", 'git commit -m "Fix the thing"', `git commit ${PS_TRAILER} -m "Fix the thing"`],
-  ["-F", "git commit -F message.txt", `git commit ${PS_TRAILER} -F message.txt`],
+  ["-m", 'git commit -m "Fix the thing"', `git ${PS_COMMIT} -m "Fix the thing"`],
+  ["-F", "git commit -F message.txt", `git ${PS_COMMIT} -F message.txt`],
   [
     "a here-string message",
     "git commit -m @'\nFix (the) thing; and git commit again\n\nTicket: #254\n'@",
-    `git commit ${PS_TRAILER} -m @'\nFix (the) thing; and git commit again\n\nTicket: #254\n'@`,
+    `git ${PS_COMMIT} -m @'\nFix (the) thing; and git commit again\n\nTicket: #254\n'@`,
   ],
-  ["a here-string piped in", '@"\nFix it\n"@ | git commit -F -', `@"\nFix it\n"@ | git commit ${PS_TRAILER} -F -`],
-  ["an && chain", 'git add -A && git commit -m "x"', `git add -A && git commit ${PS_TRAILER} -m "x"`],
-  ["an || chain", "git diff --quiet || git commit -am 'x'", `git diff --quiet || git commit ${PS_TRAILER} -am 'x'`],
-  ["a ; chain", 'git add -A; git commit -m "x"; git log -1', `git add -A; git commit ${PS_TRAILER} -m "x"; git log -1`],
-  ["-C", 'git -C "C:/work tree" commit -m x', `git -C "C:/work tree" commit ${PS_TRAILER} -m x`],
-  ["-c", "git -c user.name=Bot commit -m x", `git -c user.name=Bot commit ${PS_TRAILER} -m x`],
-  ["--amend", "git commit --amend --no-edit", `git commit ${PS_TRAILER} --amend --no-edit`],
-  ["the call operator", "& git commit -m x", `& git commit ${PS_TRAILER} -m x`],
+  ["a here-string piped in", '@"\nFix it\n"@ | git commit -F -', `@"\nFix it\n"@ | git ${PS_COMMIT} -F -`],
+  ["an && chain", 'git add -A && git commit -m "x"', `git add -A && git ${PS_COMMIT} -m "x"`],
+  ["an || chain", "git diff --quiet || git commit -am 'x'", `git diff --quiet || git ${PS_COMMIT} -am 'x'`],
+  ["a ; chain", 'git add -A; git commit -m "x"; git log -1', `git add -A; git ${PS_COMMIT} -m "x"; git log -1`],
+  ["-C", 'git -C "C:/work tree" commit -m x', `git -C "C:/work tree" ${PS_COMMIT} -m x`],
+  ["-c", "git -c user.name=Bot commit -m x", `git -c user.name=Bot ${PS_COMMIT} -m x`],
+  ["--amend", "git commit --amend --no-edit", `git ${PS_COMMIT} --amend --no-edit`],
+  ["the call operator", "& git commit -m x", `& git ${PS_COMMIT} -m x`],
   [
     "a quoted path to git.exe",
     "& 'C:\\Program Files\\Git\\cmd\\git.exe' commit -m x",
-    `& 'C:\\Program Files\\Git\\cmd\\git.exe' commit ${PS_TRAILER} -m x`,
+    `& 'C:\\Program Files\\Git\\cmd\\git.exe' ${PS_COMMIT} -m x`,
   ],
-  ["an assignment", "$out = git commit -m x", `$out = git commit ${PS_TRAILER} -m x`],
+  ["an assignment", "$out = git commit -m x", `$out = git ${PS_COMMIT} -m x`],
   [
     "an if block",
     "if ($LASTEXITCODE -eq 0) { git commit -m x } else { Write-Output no }",
-    `if ($LASTEXITCODE -eq 0) { git commit ${PS_TRAILER} -m x } else { Write-Output no }`,
+    `if ($LASTEXITCODE -eq 0) { git ${PS_COMMIT} -m x } else { Write-Output no }`,
   ],
-  ["a line continued", "git `\n  commit -m x", `git \`\n  commit ${PS_TRAILER} -m x`],
+  ["a line continued", "git `\n  commit -m x", `git \`\n  ${PS_COMMIT} -m x`],
   [
     "two commits",
     "git commit -m a; git commit --allow-empty -m b",
-    `git commit ${PS_TRAILER} -m a; git commit ${PS_TRAILER} --allow-empty -m b`,
+    `git ${PS_COMMIT} -m a; git ${PS_COMMIT} --allow-empty -m b`,
   ],
 ]) {
   test(`a PowerShell commit given ${form} gets the trailer right after commit`, async () => {
@@ -424,4 +525,18 @@ for (const [form, commandIn] of [
       assert.deepEqual(sessions(repo), [SESSION]);
     },
   );
+}
+
+for (const ticket of ["#254", "7/2"]) {
+  test(`git reads the Ticket ${ticket} the Session was handed from a PowerShell commit`, { skip: NO_PWSH }, async () => {
+    // Arrange
+    const repo = await repository();
+    const command = await rewritten("git add -A; git commit -m 'Fix the thing'", SESSION, "PowerShell", ticket);
+
+    // Act
+    await repo.runPowerShell(command);
+
+    // Assert
+    assert.deepEqual(tickets(repo), [ticket]);
+  });
 }
