@@ -7,9 +7,11 @@ export interface Where {
   activation: string | null;
   step: string | null;
   agent: string | null;
+  // Only the edge tab sets it, as a named Step or Exchange opens the Prompts drawer on its own.
+  prompts: boolean;
 }
 
-export const nowhere: Where = { exchange: null, activation: null, step: null, agent: null };
+export const nowhere: Where = { exchange: null, activation: null, step: null, agent: null, prompts: false };
 
 export function readWhere(params: URLSearchParams): Where {
   const exchange = Number(params.get('exchange'));
@@ -20,6 +22,7 @@ export function readWhere(params: URLSearchParams): Where {
     activation: params.get('activation'),
     step: params.get('step'),
     agent: params.get('agent'),
+    prompts: params.get('prompts') === 'open',
   };
 }
 
@@ -30,6 +33,7 @@ export function withWhere(params: URLSearchParams, where: Where): URLSearchParam
   write(written, 'activation', where.activation);
   write(written, 'step', where.step);
   write(written, 'agent', where.agent);
+  write(written, 'prompts', where.prompts ? 'open' : null);
 
   return written;
 }

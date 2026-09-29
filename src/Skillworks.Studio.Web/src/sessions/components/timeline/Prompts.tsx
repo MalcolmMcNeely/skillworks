@@ -87,8 +87,10 @@ export function Prompts({
   bands,
   step,
   exchange,
+  prompts,
   traced,
   agents,
+  onOpen,
   onClose,
 }: {
   // Every Step of the run, as the list holds the whole run even with one Subagent open.
@@ -96,11 +98,14 @@ export function Prompts({
   bands: readonly Band[];
   step: string | null;
   exchange: number | null;
+  prompts: boolean;
   traced: boolean;
   agents: Record<string, string>;
+  onOpen: () => void;
   onClose: () => void;
 }) {
-  const open = step !== null || exchange !== null;
+  const open = step !== null || exchange !== null || prompts;
+  const title = `Prompts · ${describeCount(bands.length)}`;
   // What was open last, so the drawer keeps its content while it slides out rather than going blank.
   const [held, setHeld] = useState<Opened>({ step, exchange });
   const list = useRef<HTMLOListElement>(null);
@@ -137,20 +142,28 @@ export function Prompts({
   }, [open, openKey]);
 
   return (
-    <aside className={`prompts${open ? ' is-open' : ''}`} aria-label="Prompts" aria-hidden={!open} inert={!open}>
-      <header className="prompts-head">
-        <h2 className="prompts-title">Prompts · {describeCount(bands.length)}</h2>
-        <button type="button" className="prompts-close" onClick={onClose}>
-          Close · Esc
+    <>
+      {open ? null : (
+        <button type="button" className="prompts-tab" onClick={onOpen}>
+          {title}
         </button>
-      </header>
-      <ol className="prompts-list" ref={list}>
-        {rows.map((row) => (
-          <li key={keyOf(row)} data-row={keyOf(row)} className={row.open ? 'is-open' : undefined}>
-            <Row row={row} opened={opened} traced={traced} agents={agents} />
-          </li>
-        ))}
-      </ol>
-    </aside>
+      )}
+      <aside className={`prompts${open ? ' is-open' : ''}`} aria-label="Prompts" aria-hidden={!open} inert={!open}>
+        <header className="prompts-head">
+          <h2 className="prompts-title">{title}</h2>
+          <button type="button" className="prompts-close" onClick={onClose}>
+            Close · Esc
+          </button>
+        </header>
+        {bands.length === 0 ? <p className="prompts-unsaid">No Prompt was recorded for this run.</p> : null}
+        <ol className="prompts-list" ref={list}>
+          {rows.map((row) => (
+            <li key={keyOf(row)} data-row={keyOf(row)} className={row.open ? 'is-open' : undefined}>
+              <Row row={row} opened={opened} traced={traced} agents={agents} />
+            </li>
+          ))}
+        </ol>
+      </aside>
+    </>
   );
 }

@@ -38,9 +38,9 @@ export function describeUnsaid(words: string | null, length: number): string | n
   return length === 0 ? 'Nothing was recorded' : `Withheld · ${describeCount(length)} characters`;
 }
 
-// One write for both, so the drawer never opens again at the Exchange left behind once the Step goes.
+// One write for all three, as any one left behind opens the drawer again on a reload.
 export function closedPrompts(params: URLSearchParams): URLSearchParams {
-  return withWhere(params, { ...readWhere(params), step: null, exchange: null });
+  return withWhere(params, { ...readWhere(params), step: null, exchange: null, prompts: false });
 }
 
 // Undefined where no row is open, as null is the row for the Steps from before the first Prompt.

@@ -124,12 +124,12 @@ describe('describeUnsaid', () => {
 });
 
 describe('closedPrompts', () => {
-  const address = new URLSearchParams('at=1000&until=2000&lit=tool%3ABash&step=41&exchange=1');
+  const address = new URLSearchParams('at=1000&until=2000&lit=tool%3ABash&step=41&exchange=1&prompts=open');
 
-  it('clears the named Step and the named Exchange', () => {
+  it('clears the named Step, the named Exchange and the open drawer', () => {
     const closed = closedPrompts(address);
 
-    expect([closed.has('step'), closed.has('exchange')]).toEqual([false, false]);
+    expect([closed.has('step'), closed.has('exchange'), closed.has('prompts')]).toEqual([false, false, false]);
   });
 
   it('keeps the View and the Highlight', () => {

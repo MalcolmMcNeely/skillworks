@@ -164,6 +164,8 @@ export function Session() {
     }
   };
 
+  const onOpenPrompts = () => write(withWhere(params, { ...where, prompts: true }));
+
   const onClosePrompts = () => write(closedPrompts(params));
 
   const onSubagent = (agent: string) => {
@@ -238,8 +240,10 @@ export function Session() {
               bands={bands}
               step={where.step}
               exchange={where.exchange}
+              prompts={where.prompts}
               traced={landed.traced}
               agents={landed.agents}
+              onOpen={onOpenPrompts}
               onClose={onClosePrompts}
             />
           </>
