@@ -11,8 +11,8 @@ The YAML block at the end is empty, because the rule has no settings.
 Tests are integration style. A test drives the code through a real interface, and never through
 mocks of its internal parts.
 
-- Test at the highest seam that works, and at the fewest seams. A test at a high seam survives a
-  refactor beneath it.
+- Test at the highest seam that works, and at the fewest seams, ideally one. A test at a high seam
+  survives a refactor beneath it.
 - Prefer a seam the code already has to one made for the test.
 - A test checks what a caller sees through the interface, and never reaches past it, such as by
   querying the database the code just wrote to.
