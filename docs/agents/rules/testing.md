@@ -32,6 +32,11 @@ Never mock:
 - An internal collaborator.
 - Anything else the team controls.
 
+Code that calls an external service gives each operation a function of its own, such as
+`getUser` and `getOrders`, and not one generic `fetch` that takes the endpoint. A mock of one
+operation then returns one shape and holds no conditional logic, and a test shows which
+operations it uses.
+
 Where an interface needs faking, `NSubstitute` is the default, so the next agent does not pick a
 different one.
 
