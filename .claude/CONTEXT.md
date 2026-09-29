@@ -34,10 +34,11 @@ open to a developer who types it, and the Dev loop never asks for one.
 _Avoid_: Rail, main flow, happy path
 
 **Drift check**:
-The judge that reads a spec's whole diff against the spec once every ticket has Landed, and gives
-each story, decision and Surface a Verdict. It judges against the spec and not the tickets, because a
-ticket that drifted still passed its own criteria. It fixes nothing: the loop builds the Gaps it
-finds.
+The judge that gives each story, decision and Surface of a spec a Verdict once every ticket has
+Landed. A Verdict judges the Target branch as it stands, so work that reached it by any way counts.
+What nobody asked for is looked for only in the commits the spec's tickets Landed. It judges
+against the spec and not the tickets, because a ticket that drifted still passed its own criteria.
+It fixes nothing: the loop builds the Gaps it finds.
 _Avoid_: Audit, acceptance check, final review
 
 **Dumb zone**:
@@ -108,9 +109,10 @@ style. It runs from the Plugin, so every repo runs the same code and one update 
 _Avoid_: Engine, tooling, framework
 
 **Name check**:
-The judge that reads a spec's whole diff against the glossary once the Gaps are built, and lists each
-name whose meaning moved and each concept that two tickets named two ways. The loop makes every
-rename it lists, in a ticket of its own, and never asks whether to.
+The judge that reads the commits a spec's tickets Landed against the glossary once the Gaps are
+built, and lists each name whose meaning moved and each concept that two tickets named two ways. A
+name that another spec or a person brought in is not its to judge. The loop makes every rename it
+lists, in a ticket of its own, and never asks whether to.
 _Avoid_: Rename check, naming review, lint
 
 **Nudge**:
