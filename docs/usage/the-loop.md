@@ -834,8 +834,8 @@ change what the stage does. [Steering](steering.md) has the detail on each file.
 Two kinds of load:
 
 - **Always** means the file is in the Session from its start. `CLAUDE.md` loads, and it imports the
-  four rules in `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md` and
-  `words.md`. The map calls these "`CLAUDE.md` and the rules".
+  five rules in `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md`,
+  `testing.md` and `words.md`. The map calls these "`CLAUDE.md` and the rules".
 - **On demand** means a skill reads the file only when that stage needs it.
 
 `.claude/settings.json` applies to every Session too. Its allowlist decides which tools a Session can
@@ -875,6 +875,7 @@ adds those checks.
 | `determinism.md` | `clock`, `contexts` |
 | `words.md` | `banned-words`, `skip-folders` |
 | `comments.md` | `doc-comments` |
+| `testing.md` | None. No check reads it, so the `standards` review is its only judge. |
 
 The steps, their order and what each one does are Machinery. They are the same in every repo, and no
 file changes them. So this map lives here only, and setup copies no map into your repo.

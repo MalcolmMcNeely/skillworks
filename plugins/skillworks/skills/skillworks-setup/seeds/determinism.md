@@ -50,12 +50,6 @@ TimeProvider clock = TimeProvider.System;
 The first line hands the Clock over, and a test host replaces what it registered. The second binds it
 to a name, and every read through that name is past the seam a test controls.
 
-### Fakes
-
-A fake is used where the real thing cannot be made to misbehave, or where it forces a race, and not
-otherwise. A real dependency in a container proves the queries and the parsing, and that is the code
-most likely to be wrong.
-
 ## Order of events
 
 A test that acts while the code runs first waits on a fact that shows the code is where the act needs
@@ -69,7 +63,8 @@ move, a second request, a stop of a test host. The rule covers every act, and no
   state the act needs. Shipping code can change its own order for a good reason, and a comment in a
   test cannot stop it.
 - Where the test host has no fact at the point an act needs, the test adds one to the stand-in.
-  Fakes, above, already allows a stand-in where the real thing forces a race.
+  The testing rule, `docs/agents/rules/testing.md`, already allows a stand-in where the real thing
+  forces a race.
 
 No check reads this section, so a green suite does not prove it. A race has no name a check can find.
 The `standards` review judges each change by it.

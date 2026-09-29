@@ -16,6 +16,7 @@ PLACES = {
     "comments.md": "docs/agents/rules/comments.md",
     "determinism.md": "docs/agents/rules/determinism.md",
     "file-placement.md": "docs/agents/rules/file-placement.md",
+    "testing.md": "docs/agents/rules/testing.md",
     "words.md": "docs/agents/rules/words.md",
     "issue-tracker.md": "docs/agents/issue-tracker.md",
     "domain.md": "docs/agents/domain.md",

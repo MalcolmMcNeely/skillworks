@@ -18,6 +18,7 @@ The rules load into every session through these imports. Each one lives in `docs
 @docs/agents/rules/comments.md
 @docs/agents/rules/determinism.md
 @docs/agents/rules/file-placement.md
+@docs/agents/rules/testing.md
 @docs/agents/rules/words.md
 
 ## Working in this repo

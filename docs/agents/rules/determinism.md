@@ -50,16 +50,6 @@ TimeProvider clock = TimeProvider.System;
 The first line hands the Clock over, and a Harness replaces what it registered. The second binds it
 to a name, and every read through that name is past the seam a test controls.
 
-### Fakes
-
-A fake is used where the real thing cannot be made to misbehave, or where it forces a race, and not
-otherwise. Real store containers stay: the queries, the day-by-day windowing and the answer parsing
-are proved against them, and that is the code most likely to be wrong.
-
-Where an interface needs faking, `NSubstitute` is the default, so the next agent does not pick a
-different one. The stand-ins written by hand stay that way. They stand in for a store that is down,
-failing or never answers, which a running container cannot be made to be.
-
 ## Order of events
 
 A test that acts while the code runs first waits on a fact that shows the code is where the act needs
@@ -72,8 +62,9 @@ move, a second request, a stop of a host. The rule covers every act, and not onl
   that the work reached the stand-in. A line from the app counts only when the line is itself the
   state the act needs. Shipping code can change its own order for a good reason, and a comment in a
   test cannot stop it.
-- Where the Harness has no fact at the point an act needs, the test adds one to the stand-in. Fakes,
-  above, already allows a stand-in where the real thing forces a race.
+- Where the Harness has no fact at the point an act needs, the test adds one to the stand-in. The
+  testing rule, `docs/agents/rules/testing.md`, already allows a stand-in where the real thing forces
+  a race.
 
 No check reads this section, so a green Suite does not prove it. A race has no name a check can find.
 The `standards` review judges each change by it.

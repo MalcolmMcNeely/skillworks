@@ -68,7 +68,8 @@ needs their clone of Skillworks at the same path.
 3. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `spec`. It
    writes your answer into `target-branch` in `docs/agents/loop.json`.
 4. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your Tracker,
-   your tracker docs and your domain docs, and imports each rule.
+   your tracker docs and your domain docs, and imports the five rules: comments, determinism, file
+   placement, testing and words.
 5. **Preflight.** `skillworks-preflight` checks the tools, the remote, the Target branch
    `docs/agents/loop.json` names, and that `CLAUDE.md` imports each rule. With `github`, it checks the
    `gh` login too, and then creates the `ready-for-agent` label on GitHub. With `files`, it needs no
@@ -110,6 +111,7 @@ Review these before you commit them.
 | `docs/agents/rules/comments.md` | The comments rule. `doc-comments` ships as `false`. |
 | `docs/agents/rules/determinism.md` | The determinism rule. `contexts` starts empty. `clock` ships as `TimeProvider`. |
 | `docs/agents/rules/file-placement.md` | The file placement rule. `slices`, `concerns` and `test-roots` start empty. `max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names` and `name-map` ship with a default. |
+| `docs/agents/rules/testing.md` | The testing rule: your team's taste in tests. It has no settings. |
 | `docs/agents/rules/words.md` | The words rule. `banned-words` and `skip-folders` start empty. |
 | `docs/agents/issue-tracker.md` | How the skills read and write each Tracker: the `gh` calls for `github`, and the `.specs/` files for `files`. The ticket shape, and the two conventions the loop leans on. |
 | `docs/agents/domain.md` | Where your glossary and your ADRs live. |

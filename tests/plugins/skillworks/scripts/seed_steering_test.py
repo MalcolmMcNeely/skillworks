@@ -16,6 +16,7 @@ WHERE = {
     "comments.md": "docs/agents/rules/comments.md",
     "determinism.md": "docs/agents/rules/determinism.md",
     "file-placement.md": "docs/agents/rules/file-placement.md",
+    "testing.md": "docs/agents/rules/testing.md",
     "words.md": "docs/agents/rules/words.md",
     "issue-tracker.md": "docs/agents/issue-tracker.md",
     "domain.md": "docs/agents/domain.md",
@@ -29,7 +30,7 @@ WHERE = {
 
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
 
-RULES = ["comments.md", "determinism.md", "file-placement.md", "words.md"]
+RULES = ["comments.md", "determinism.md", "file-placement.md", "testing.md", "words.md"]
 
 
 def run_seed(runner, where, *flags):
@@ -1177,12 +1178,12 @@ def test_setup_writes_no_output_style(repo, runner):
 
 # Each is a name only this repository uses, so finding one means a seed was copied, not written.
 THIS_REPO = ["Skillworks.", "slnx", "Studio", "Dashboard", "Loki", "Aspire", "dotnet", "npm",
-             "dependency-cruiser", "ADR 00", "../adr/", "tests/plugins"]
+             "dependency-cruiser", "ADR 00", "../adr/", "tests/plugins", "NSubstitute"]
 
 
 def test_the_seeds_carry_no_fact_about_this_repo():
     names = sorted(WHERE)
-    assert len(names) == 12
+    assert len(names) == 13
     for name in names:
         text = seeded(name)
         for fact in THIS_REPO:
@@ -1678,9 +1679,7 @@ def architecture_reference():
 
 def setting_keys(text):
     settings = re.findall(r"```yaml\n(.*?)```", text, re.DOTALL)[0]
-    keys = re.findall(r"^\"?([a-z][a-z-]*)\"?:", settings, re.MULTILINE)
-    assert keys, "expected the settings block to name a setting"
-    return keys
+    return re.findall(r"^\"?([a-z][a-z-]*)\"?:", settings, re.MULTILINE)
 
 
 def seed_rules(text):
@@ -1701,10 +1700,18 @@ def unmapped(seed, text, reference):
     return [rule for rule in seed_rules(text) if not any(rule in first for first in firsts)]
 
 
+# A rule with no setting has nothing a check could read, so architecture-tests has nothing to map for it.
+CHECKED_RULES = [rule for rule in RULES if setting_keys(seeded(rule))]
+
+
+def test_every_rule_seed_but_testing_names_a_setting_a_check_reads():
+    assert CHECKED_RULES == ["comments.md", "determinism.md", "file-placement.md", "words.md"]
+
+
 def test_the_architecture_tests_reference_maps_every_rule_in_the_seeds():
     reference = architecture_reference()
 
-    for rule in RULES:
+    for rule in CHECKED_RULES:
         assert seed_rules(seeded(rule)), rule
         assert unmapped(rule, seeded(rule), reference) == [], rule
 
@@ -1721,7 +1728,7 @@ def test_a_rule_added_to_a_seed_without_a_line_in_the_reference_is_caught():
 def test_every_line_of_the_reference_names_a_tool_or_a_starter_test():
     reference = architecture_reference()
 
-    for rule in RULES:
+    for rule in CHECKED_RULES:
         rows = reference_rows(reference, rule)
         assert rows, rule
         for row in rows:
@@ -1787,8 +1794,34 @@ def test_each_rule_seed_names_every_setting_enforced_only_once_a_check_exists():
         text = seeded(rule)
         paragraph = enforcement_paragraph(text)
 
-        assert "`/skillworks:architecture-tests`" in paragraph, rule
         assert unnamed(setting_keys(text), paragraph) == [], rule
+        if rule in CHECKED_RULES:
+            assert "`/skillworks:architecture-tests`" in paragraph, rule
+
+
+def test_the_testing_seed_holds_no_setting_and_says_the_standards_review_is_its_only_judge():
+    paragraph = enforcement_paragraph(seeded("testing.md"))
+
+    assert settings_block(SETUP / "seeds" / "testing.md") == []
+    assert "No check reads this rule" in paragraph
+    assert "`standards` review" in paragraph
+
+
+def test_the_determinism_rule_leaves_its_fakes_to_the_testing_rule():
+    for text in (seeded("determinism.md"), (ROOT / WHERE["determinism.md"]).read_text(encoding="utf-8")):
+        order = text.split("\n## Order of events\n", 1)[1].split("\n## ", 1)[0]
+
+        assert "Fakes" not in text
+        assert "`{}`".format(WHERE["testing.md"]) in order
+    assert "\n## Fakes\n" in seeded("testing.md")
+
+
+def test_this_repo_imports_its_testing_rule_with_its_own_fake_library():
+    rule = ROOT / WHERE["testing.md"]
+
+    assert "@{}".format(WHERE["testing.md"]) in (ROOT / "CLAUDE.md").read_text(encoding="utf-8").splitlines()
+    assert "`NSubstitute`" in rule.read_text(encoding="utf-8")
+    assert settings_block(rule) == []
 
 
 def test_a_setting_added_to_a_seed_without_being_named_as_enforced_is_caught():
@@ -1814,6 +1847,7 @@ def test_the_stage_map_names_every_setting_enforced_only_once_a_check_exists():
     assert "`/skillworks:architecture-tests`" in section
     for rule in RULES:
         assert unnamed(setting_keys(seeded(rule)), enforced_row(section, rule)) == [], rule
+    assert "`standards` review" in enforced_row(section, "testing.md")
 
 
 def usage_section(heading):

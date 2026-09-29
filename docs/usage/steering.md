@@ -31,11 +31,12 @@ each one with an `@` import:
 @docs/agents/rules/comments.md
 @docs/agents/rules/determinism.md
 @docs/agents/rules/file-placement.md
+@docs/agents/rules/testing.md
 @docs/agents/rules/words.md
 ```
 
-So `comments.md`, `determinism.md`, `file-placement.md` and `words.md` load into every Session, and
-into every step of the loop. Keep them short, because every Session pays for each line.
+So `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md` load into every
+Session, and into every step of the loop. Keep them short, because every Session pays for each line.
 
 The preflight checks that each rule in `docs/agents/rules/` still has its import. Without that check,
 one deleted line would turn a rule off without a word. A new rule you add to the folder needs a new
@@ -63,6 +64,7 @@ them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the 
 | `comments.md` | Says which comments earn their place, and where doc comments may go. Its keep and cut table is your team's taste in comments. | Every Session. The `sweep` step judges each comment by its table. The `standards` review reads it too. | The table, the prose, and `doc-comments`: `true` lets code files carry doc comments, `false` lets no file carry them. |
 | `determinism.md` | Says how code reads time, and how a test keeps the order of events: before it acts while the code runs, it waits on a fact that shows the code is ready. So a test that fails means the code is wrong. | Every Session. The `standards` review judges the change by it. No check reads the Order of events section, so only the `standards` review judges it. | The prose, `clock` (the type your code reads time through), and `contexts` (which parts of the code the rule judges). |
 | `file-placement.md` | Says where each file goes: folder shape, file names, where tests sit, and how many types a folder holds. | Every Session. The `architecture` review judges the change by it. | Every setting: the Slices, the folder size, the name map, the test file patterns, the folders to skip and the banned folder names. |
+| `testing.md` | Holds your team's taste in tests: what to mock and what not to, the fake library your tests use, when a stand-in written by hand is right, one logical assertion per test, test names that say what and not how, and how high and how few the seams are. It has no settings. | Every Session, and `tdd` when it writes a test. The `standards` review is its only judge, because no check reads it. | All of its prose. |
 | `words.md` | Lists the words that lost against a glossary word, one list per context. No source file uses a word that lost. | Every Session. The `standards` review judges the change by it. | The lists. A word joins a list when your glossary settles it and the code reaches for the loser again. |
 
 A check can read a rule's YAML block and fail the Suite on a breach. The Plugin ships no such check.
@@ -130,7 +132,8 @@ Plugin, and no team edits them. There is no file for them, so do not look for on
 
 - The three review axes: Standards, Spec and Architecture. Each review must cite a line or drop the
   finding.
-- The test-first loop in `tdd`.
+- The test-first method in `tdd`: red before green, vertical slices, and tests at seams. Your taste
+  in tests is not fixed. It is `testing.md`.
 - The deep-module view in `codebase-design`.
 - The plain writing in `unslop`, and the output style the Plugin forces on every Session.
 - The Session trailer on every commit.
