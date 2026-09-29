@@ -55,6 +55,8 @@ Walk the acceptance criteria one at a time. A criterion with no evidence in the 
 
 Then walk the Surfaces. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each Surface the change touches, with what it has to say once the change Lands. Check the change against each Surface the spec names for this ticket: one the ticket names, or one this ticket's change reaches. Open the Surface at the path the spec gives, or at its "Where it lives" in `docs/agents/surfaces.md`, and read whether it says what this change needs. A Surface left out of step is a Missing or partial finding, and quotes the Surfaces section line it turns on. A spec whose Surfaces section says "None", or that has none, adds nothing here.
 
+Then walk the README, when the team has a README Surface: the Surface in `docs/agents/surfaces.md` whose heading is `## The README`, outside a code fence. Its "Where it lives" gives the README's path. The loop changes the README only as it is asked, so every README edit in the change must be one that the spec's README item asks of this ticket, or that the ticket itself asks for. A Gap ticket and a rename ticket each ask for their own README edits, so their edits stand. Any other README edit is a Not asked for finding, and quotes the README line it adds or changes. In loop mode, remove it, and put the README back as it was at `HEAD` for that edit. Without a README Surface, the README is any other file, and this walk adds nothing.
+
 Then walk the team checks in `docs/agents/review-spec.md`. A breach of one is a finding. Name the check and quote the hunk it turns on.
 
 Two things are out of scope, because reporting them makes the axis noise:

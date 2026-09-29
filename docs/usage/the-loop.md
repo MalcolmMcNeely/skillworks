@@ -379,6 +379,11 @@ Every step but `suite` is a Session of its own, run inside the ticket's worktree
 The three reviews start cold. A review that resumed the build Session would mark its own work. `fix`
 and `finish` resume the build Session, because they act on the code it wrote.
 
+With a README Surface, `spec` removes any README edit the README item does not ask for. An edit
+stays only when the spec's README item asks it of this ticket, or the ticket itself asks for it, as
+a Gap ticket and a rename ticket do. So a build cannot add to the README on its own. With no README
+Surface, the README is any other file.
+
 `sweep` comes after `fix`, because every step that writes could put back a comment the sweep cut.
 
 The script reads a fact after each step, because a Session can end cleanly and still do nothing. It
