@@ -137,10 +137,10 @@ def example_report(at=0):
     return textwrap.dedent(found[at])
 
 
-def test_spec_names_reads_the_diff_and_the_glossary_and_nothing_else():
+def test_spec_names_reads_the_spec_commits_and_the_glossary_and_nothing_else():
     text = skill_text()
 
-    assert "git diff <base>..origin/<target>" in text
+    assert "spec-commits <spec> <base>" in text
     assert "`CONTEXT-MAP.md`" in text
     assert "Read nothing else" in text
 

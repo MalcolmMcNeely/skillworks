@@ -18,9 +18,11 @@ A list of items can follow the base commit, separated by commas. The loop gives 
 
 `/skillworks:spec-drift 42 a1b2c3d S2, D1, The user docs`
 
-Given a list, judge only those items, and write Verdicts for those alone. Every other step runs as usual. The loop counts only the items it asked about, so a Verdict for any other item counts for nothing.
+Given a list, judge only those items, and write Verdicts for those alone. Every other step runs as usual, and reads the same commits as the first check. The loop counts only the items it asked about, so a Verdict for any other item counts for nothing.
 
-Every ticket Lands straight on the Target branch, and its Job branch goes when it passes, so no branch is left to diff. The base commit is the only thing that says where the work began. The loop stores it in `.spec-loop/<spec>/base.sha` and passes it in. If it was not passed, read that file. If that is missing too, stop and ask — do not guess a base.
+Every ticket Lands straight on the Target branch, and its Job branch goes when it passes, so no branch is left to diff. The base commit is the only thing that says where the work began, and it bounds the search for the spec's commits. The loop stores it in `.spec-loop/<spec>/base.sha` and passes it in. If it was not passed, read that file. If that is missing too, stop and ask — do not guess a base.
+
+The **spec's commits** are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. A commit with no `Ticket:` trailer is never one of them, whoever made it, and neither is a commit that names another spec's ticket. Other loops and hand commits Land on the same Target branch, so the range from the base commit holds work that is not this spec's.
 
 The Target branch is `target-branch` in `docs/agents/loop.json`. When that says `spec`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
 
@@ -30,19 +32,22 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
    - **GitHub**: the spec issue, then its sub-issues with their Closing notes.
    - **Files**: `spec.md` in the spec's folder on `origin/<target>`, then each file in its `tickets/` folder there, with its `## Closing note`. The remote is where the tickets Landed, and this checkout may not hold them.
 
-2. Get the accumulated diff. The tickets Landed on the remote, so read `origin/<target>`, and not the branch this checkout holds:
+2. Get the spec's commits. This one command prints them, oldest first, each with its patch and its `Ticket:` trailer. It fetches the Target branch and reads `origin/<target>`, and not the branch this checkout holds, because the tickets Landed on the remote:
 
    ```bash
-   git diff <base>..origin/<target>
-   git log --oneline <base>..origin/<target>
+   spec-commits <spec> <base>
    ```
+
+   Build no search of your own, such as a `git log` over the range. The command is how the loop, the re-check and a hand run all read the same commits.
 
 3. Give every user story and implementation decision in the spec one Verdict. A story is `S<n>` and a decision is `D<n>`, by its number in the spec's list:
 
-   - **Done** — the diff delivers it
+   - **Done** — the Target branch delivers it
    - **Partial** — started, not finished
    - **Missing** — no code for it
    - **Contradicts** — the code does something the spec ruled out
+
+   Judge the Target branch as it stands, on `origin/<target>`. The spec's commits show where the work is, and the files on the Target branch decide the Verdict. Work that reached the Target branch another way, by a hand fix or by another spec, counts toward Done. Code from any source that does what the spec ruled out is Contradicts.
 
    Judge against the **spec**, not against the tickets. A ticket that drifted still passed its own criteria, which is exactly why this step exists. Testing Decisions get no Verdict, because the Suite already proves them.
 
@@ -53,9 +58,9 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
    A spec whose Surfaces section says "None" has no Surface to judge.
 
-5. List **Unrequested** work: behaviour in the diff that no story and no ticket asked for.
+5. List **Unrequested** work: behaviour in the spec's commits that no story and no ticket asked for. Look nowhere else, so another spec's work and a hand commit never show up here. List an item only when it still stands on `origin/<target>`, because a later commit may have taken it out.
 
-6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. The project glossary is the arbiter.
+6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. Look only in the spec's commits, and name a pair only when both still stand on `origin/<target>`. The project glossary is the arbiter.
 
 7. Write the report. The loop reads its lists, so their shape is fixed:
 

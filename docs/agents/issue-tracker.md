@@ -80,6 +80,7 @@ These are load-bearing, and [ADR 0021](../adr/0021-the-loop-lands-each-ticket-as
 
 - **A commit names its ticket.** Put `Ticket: #<n>` in the message's trailer block — the last paragraph, held off the body by one blank line. Any other trailer sits beside it inside that same block with no blank line between them. Git reads the last paragraph and no earlier one, so a trailer stranded above a blank line is not a trailer.
   - **Read it back**: `git log -1 <commit> --format='%(trailers:key=Ticket,valueonly)'`. That is the whole lookup — no tracker call, no search.
+  - **It scopes a spec's checks.** The drift check and the Name check read only the commits whose `Ticket:` trailer names one of the spec's tickets, and never a commit with no trailer. A hand fix that should count for a spec carries `Ticket: #<n>` for one of its tickets.
   - Never use `Closes #<n>`, `Fixes #<n>` or `Resolves #<n>`. Those close the issue the moment the commit lands on the Target branch, and an auto-closed issue carries no Closing note.
 - **A ticket is closed with a comment.** `gh issue close <n> --comment "..." --reason completed`. The comment names the commit, what was done and which tests prove it. It is the richest source of intention in this repository, and skills read it back.
 
@@ -138,7 +139,7 @@ A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<t
 
 These stand in for the two above.
 
-- **A commit names its spec and its ticket.** Put `Ticket: <spec>/<ticket>` in the message's trailer block, such as `Ticket: 7/2`, in the same trailer block as any other. Read it back the same way: `git log -1 <commit> --format='%(trailers:key=Ticket,valueonly)'`.
+- **A commit names its spec and its ticket.** Put `Ticket: <spec>/<ticket>` in the message's trailer block, such as `Ticket: 7/2`, in the same trailer block as any other. Read it back the same way: `git log -1 <commit> --format='%(trailers:key=Ticket,valueonly)'`. A spec's checks read only the commits whose trailer names one of its tickets, and never a commit with no trailer, so a hand fix that should count for a spec carries `Ticket: <spec>/<ticket>` for one of its tickets.
 - **A ticket is closed in the commit that holds its code.** Before you commit, set `status: closed` in the ticket's frontmatter, and add a `## Closing note` section at the end of its file. The note holds what the Closing note holds on GitHub, where it is the comment the ticket closes with: what was done, which tests prove it, which checks did not run, and any finding left unfixed with the reason. It cannot name its own commit, and it has no need to. Commit the note with the code, and push nothing. The close reaches the remote only as the ticket Lands, so a ticket whose Land fails is never closed there. Skills read the note back.
 - **A spec is closed by its loop.** After the last ticket and the drift check, the loop sets `status: closed` in `spec.md` on the Target branch. Never close it by hand while a loop runs on it.
 

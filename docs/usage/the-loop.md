@@ -685,6 +685,17 @@ below it. With the files Tracker there is no issue, so the report goes at the en
 The script then reads the report back from the Tracker and keeps a copy at
 `.spec-loop/<spec>/drift.md`.
 
+The drift check reads the spec's commits through `spec-commits`: the commits after the base commit
+that the spec's tickets Landed, the Gap ticket's among them. A commit is the spec's only when its
+`Ticket:` trailer names one of the spec's tickets, so a commit with no `Ticket:` trailer is not read,
+and neither is another spec's work. A hand fix that should count for the spec carries the trailer of
+one of its tickets, such as `Ticket: #<n>`, or `Ticket: <spec>/<n>` with the files Tracker.
+
+The spec's commits show where the work is. The Verdict judges the newest Target branch as it stands,
+so a story done by a hand fix or by another spec counts as Done, and code from any source that does
+what the spec ruled out is Contradicts. Unrequested work and two names for one idea come only from
+the spec's commits, and an item is listed only while it still stands on the Target branch.
+
 ### Verdicts
 
 The report opens with a `### Verdicts` list. It gives every item of the spec one **Verdict**, on a
@@ -744,7 +755,8 @@ ask for a ticket.
 2. **The build.** The loop reads the open tickets again, finds the Gap ticket, and builds it through
    [the same steps](#the-steps-of-one-ticket) as every other ticket, then Lands it.
 3. **The re-check.** The script runs the drift check again, on the Gap items alone:
-   `/skillworks:spec-drift <spec> <base> S4, The user docs`. A small context misses less. The
+   `/skillworks:spec-drift <spec> <base> S4, The user docs`. It reads the same spec's commits as the
+   first drift check, the Gap ticket's now among them. A small context misses less. The
    report is kept at `.spec-loop/<spec>/drift-gaps.md`, and the script counts it against those items
    only.
 
@@ -778,14 +790,20 @@ count found a Gap, so it sees every name the spec brought in, the Gap ticket's t
 one more worktree and runs `/skillworks:spec-names <spec> <base>` in a fresh Session. It reads two
 things, and nothing else:
 
-- the spec's whole diff from the base commit, on the newest Target branch;
-- the glossary of each context the diff touches, as `CONTEXT-MAP.md` names it, or your one
+- the commits the spec's tickets Landed after the base commit, through `spec-commits`, in place of
+  the spec's whole diff. A commit with no `Ticket:` trailer is not read, and neither is another
+  spec's work;
+- the glossary of each context those commits touch, as `CONTEXT-MAP.md` names it, or your one
   `CONTEXT.md`.
 
 It lists two kinds of finding, and each one is a rename:
 
 - a name whose meaning moved: the code under it now does something else, and the name stayed;
 - a concept two tickets named two ways.
+
+A name is a finding only while it still stands on the Target branch. The check searches the Target
+branch before it lists a name, so a name a later commit renamed or removed never becomes a rename
+ticket with nothing to change.
 
 A rename is never "Optional". A name that says the wrong thing is work owed, and nobody is asked
 whether to fix it.

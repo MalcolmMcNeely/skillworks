@@ -675,6 +675,15 @@ def test_the_issue_tracker_seed_holds_the_two_conventions():
     assert "gh issue close <n> --comment" in tracker
 
 
+def test_the_issue_tracker_seed_says_a_specs_checks_read_only_commits_that_name_its_tickets():
+    tracker = seeded("issue-tracker.md")
+
+    assert ("read only the commits whose `Ticket:` trailer names one of the spec's tickets, and never "
+            "a commit with no trailer") in tracker
+    assert ("A spec's checks read only the commits whose trailer names one of its tickets, and never "
+            "a commit with no trailer") in tracker
+
+
 def test_the_comments_rule_seed_holds_the_keep_and_cut_table():
     comments = seeded("comments.md")
 
@@ -1207,11 +1216,23 @@ def test_spec_drift_records_its_report_with_the_spec_under_the_heading_the_loop_
     assert "`spec.md`" in spec_drift
 
 
-def test_spec_names_reads_only_the_diff_and_the_glossary_and_records_a_name_report():
+def test_spec_drift_reads_the_spec_commits_and_judges_the_target_branch_as_it_stands():
+    spec_drift = skill_text("spec-drift")
+
+    assert "spec-commits <spec> <base>" in spec_drift
+    assert "git diff <base>..origin/<target>" not in spec_drift
+    assert "Judge the Target branch as it stands" in spec_drift
+    assert "behaviour in the spec's commits that no story and no ticket asked for" in spec_drift
+    assert "only when it still stands on `origin/<target>`" in spec_drift
+
+
+def test_spec_names_reads_only_the_spec_commits_and_the_glossary_and_records_a_name_report():
     spec_names = skill_text("spec-names")
 
-    assert "git diff <base>..origin/<target>" in spec_names
-    assert "**The glossary of each context the diff touches.**" in spec_names
+    assert "spec-commits <spec> <base>" in spec_names
+    assert "git diff <base>..origin/<target>" not in spec_names
+    assert "**The glossary of each context the spec's commits touch.**" in spec_names
+    assert "**List a name only when it still stands on the Target branch.**" in spec_names
     assert "Read nothing else: not the spec, not its tickets, not the drift report" in spec_names
     assert "**A name whose meaning moved.**" in spec_names
     assert "**A concept two tickets named two ways.**" in spec_names
@@ -1624,7 +1645,8 @@ def test_the_loop_page_describes_the_name_check_and_its_report():
     assert "\n## The Name check\n" in text
     assert "\n### The Name report\n" in text
     assert "/skillworks:spec-names <spec> <base>" in page
-    assert "the spec's whole diff from the base commit" in page
+    assert "the commits the spec's tickets Landed after the base commit, through `spec-commits`" in page
+    assert "A name is a finding only while it still stands on the Target branch." in page
     assert "A rename is never \"Optional\"." in page
     assert "`.spec-loop/<spec>/names.md`, beside `drift.md`" in page
     assert 'names["Name check' in text

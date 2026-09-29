@@ -1,6 +1,6 @@
 ---
 name: spec-names
-description: Read a spec's whole diff against the glossary, list every name whose meaning moved and every concept two tickets named two ways, and record the Name report with the spec.
+description: Read a spec's own commits against the glossary, list every name whose meaning moved and every concept two tickets named two ways, and record the Name report with the spec.
 disable-model-invocation: true
 ---
 
@@ -12,7 +12,7 @@ Two arguments: the spec's number, then the commit the loop started from. The num
 
 `/skillworks:spec-names 42 a1b2c3d`
 
-If the base commit was not passed, read `.spec-loop/<spec>/base.sha`. If that is missing too, stop and ask. Do not guess a base.
+The base commit bounds the search for the spec's commits. If it was not passed, read `.spec-loop/<spec>/base.sha`. If that is missing too, stop and ask. Do not guess a base.
 
 A third argument, the rename ticket, makes this the Name re-check: see [The Name re-check](#the-name-re-check). Without one, do everything down to it and stop there.
 
@@ -22,25 +22,36 @@ A third argument, the rename ticket, makes this the Name re-check: see [The Name
 
 Two things, and nothing else. A small context keeps the judge sharp, and one finding is all this step owes.
 
-1. **The spec's whole diff.** The tickets Landed on the remote, so read `origin/<target>`, and not the branch this checkout holds. The log with each commit's patch shows which ticket brought each name in, by the `Ticket:` trailer on its commit:
+1. **The spec's commits.** They are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. A commit with no `Ticket:` trailer is never one of them, and neither is a commit that names another spec's ticket, so a name another spec or a person brought in is never yours to judge. This one command prints them, oldest first, each with its patch and its trailer, so the trailer shows which ticket brought each name in. It fetches the Target branch and reads `origin/<target>`, because the tickets Landed on the remote:
 
    ```bash
-   git diff <base>..origin/<target>
-   git log -p --reverse <base>..origin/<target>
+   spec-commits <spec> <base>
    ```
 
-2. **The glossary of each context the diff touches.** `CONTEXT-MAP.md` at the repo root names each context, the paths it owns and its glossary. A repo with one context has one `CONTEXT.md` at its root. Read each glossary on `origin/<target>`.
+   Do not read the range from the base commit, and build no search of your own over it. Other loops and hand commits Land on the same Target branch, and their names are not this spec's.
 
-Read nothing else: not the spec, not its tickets, not the drift report, and not the code outside the diff. A name is judged by what the diff makes it mean and by what the glossary says it means.
+2. **The glossary of each context the spec's commits touch.** `CONTEXT-MAP.md` at the repo root names each context, the paths it owns and its glossary. A repo with one context has one `CONTEXT.md` at its root. Read each glossary on `origin/<target>`.
+
+Read nothing else: not the spec, not its tickets, not the drift report, and not the code outside the spec's commits. A name is judged by what the spec's commits make it mean and by what the glossary says it means. The one read beyond them is the check in [What you list](#what-you-list) that a name still stands.
 
 ## What you list
 
 Every finding is a rename. A rename is never "Optional", and never a matter of taste: a name that says something the code no longer does is a defect, and so is one concept under two names. The loop treats every rename you list as work owed, and asks no one whether to make it, so list only what must change.
 
-1. **A name whose meaning moved.** The diff changed what a type, function, field, file or glossary word does, and the name stayed. A comment edited above a declaration whose name did not change is the sign to look for. Name the old name and say what it now means.
-2. **A concept two tickets named two ways.** Two commits with two `Ticket:` trailers brought in two names for one thing. Name both, and say which one the glossary uses. When the glossary has no word for it, write `no glossary word` on the line, and name the one the code and the spec use most. The loop reads those words and tells a person the word needs settling.
+1. **A name whose meaning moved.** The spec's commits changed what a type, function, field, file or glossary word does, and the name stayed. A comment edited above a declaration whose name did not change is the sign to look for. Name the old name and say what it now means.
+2. **A concept two tickets named two ways.** Two of the spec's commits with two `Ticket:` trailers brought in two names for one thing. Name both, and say which one the glossary uses. When the glossary has no word for it, write `no glossary word` on the line, and name the one the code and the spec use most. The loop reads those words and tells a person the word needs settling.
 
-A name the glossary lists under _Avoid_ is a finding too, when the diff brought it in.
+A name the glossary lists under _Avoid_ is a finding too, when the spec's commits brought it in.
+
+**List a name only when it still stands on the Target branch.** The patches show each commit as it was, so a name one commit brought in may be one a later commit renamed or removed. Before you list a name, confirm it is still there, such as with a search of `origin/<target>`:
+
+```bash
+git -C . grep -n -w "<name>" origin/<target>
+```
+
+The search starts with `git -C`, because a loop Session's allowlist holds that rule and no rule for a bare `git grep`.
+
+A name that no longer stands is not a finding. For a concept two tickets named two ways, both names have to stand. With one of them gone, the rename is already made.
 
 ## The report
 
