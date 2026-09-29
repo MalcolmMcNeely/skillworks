@@ -2,9 +2,34 @@
 
 ## Good Tests
 
-**Integration-style**: Test through real interfaces, not mocks of internal parts.
+Characteristics:
+
+- Deterministic
+- Before it acts while the code runs, it waits on a fact the test sees
+- Uses public API only
+- Survives internal refactors
+
+## Bad Tests
+
+Red flags:
+
+- Undeterministic
+- Acts while the code runs, and trusts that the code got there first
+- Mocking internal collaborators
+- Testing private methods
+- Test breaks when refactoring without behavior change
+- Verifying through external means instead of interface
+
+**Implementation-coupled tests**: Coupled to internal structure.
 
 ```typescript
+// BAD: Mocks an internal collaborator
+test("checkout calls paymentService.process", async () => {
+  const mockPayment = jest.mock(paymentService);
+  await checkout(cart, payment);
+  expect(mockPayment.process).toHaveBeenCalledWith(cart.total);
+});
+
 // GOOD: Tests observable behavior
 test("user can checkout with valid cart", async () => {
   const cart = createCart();
@@ -13,42 +38,6 @@ test("user can checkout with valid cart", async () => {
   expect(result.status).toBe("confirmed");
 });
 ```
-
-Characteristics:
-
-- Deterministic
-- Before it acts while the code runs, it waits on a fact the test sees
-- Tests behavior users/callers care about
-- Uses public API only
-- Survives internal refactors
-- Describes WHAT, not HOW
-- One logical assertion per test
-
-Where appropriate, tests edge cases concerning concurrency, we often work on cloud based system which has at least 2 replicas active.
-
-## Bad Tests
-
-**Implementation-detail tests**: Coupled to internal structure.
-
-```typescript
-// BAD: Tests implementation details
-test("checkout calls paymentService.process", async () => {
-  const mockPayment = jest.mock(paymentService);
-  await checkout(cart, payment);
-  expect(mockPayment.process).toHaveBeenCalledWith(cart.total);
-});
-```
-
-Red flags:
-
-- Undeterministic
-- Acts while the code runs, and trusts that the code got there first
-- Mocking internal collaborators
-- Testing private methods
-- Asserting on call counts/order
-- Test breaks when refactoring without behavior change
-- Test name describes HOW not WHAT
-- Verifying through external means instead of interface
 
 ```typescript
 // BAD: Bypasses interface to verify

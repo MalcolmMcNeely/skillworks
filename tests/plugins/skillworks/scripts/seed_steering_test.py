@@ -1026,6 +1026,10 @@ def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing()
     assert stops("to-tickets", "`docs/agents/issue-tracker.md`", '"The ticket shape"')
 
 
+def test_tdd_stops_when_the_testing_rule_is_missing():
+    assert stops("tdd", "`docs/agents/rules/testing.md`")
+
+
 def test_a_missing_lever_that_only_sends_the_user_to_setup_is_caught():
     tells = "If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`."
 

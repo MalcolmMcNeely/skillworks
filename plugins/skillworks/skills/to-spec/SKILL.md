@@ -11,7 +11,7 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
 
-2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one. Write them into the spec's Testing Decisions.
+2. Sketch out the seams at which you're going to test the feature. Pick them by the team's testing rule, `docs/agents/rules/testing.md`, which says how high and how few they are. Write them into the spec's Testing Decisions.
 
 3. Read `tracker` and `target-branch` in `docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `spec` means the spec gets a branch of its own; see [The spec's branch](#the-specs-branch) and do its first part now.
 

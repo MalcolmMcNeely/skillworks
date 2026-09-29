@@ -48,7 +48,7 @@ Say the same in your report, so it reaches the driver's log as well.
 
 ## Building
 
-Use /skillworks:tdd where possible, at pre-agreed seams.
+For every change that has behaviour to test, call the Skill tool with "skillworks:tdd".
 
 Run typechecking and single test files regularly.
 

@@ -132,8 +132,8 @@ Plugin, and no team edits them. There is no file for them, so do not look for on
 
 - The three review axes: Standards, Spec and Architecture. Each review must cite a line or drop the
   finding.
-- The test-first method in `tdd`: red before green, vertical slices, and tests at seams. Your taste
-  in tests is not fixed. It is `testing.md`.
+- The test-first method in `tdd`: red before green, vertical slices, tests at seams, and the
+  anti-patterns. Your taste in tests is not fixed. It is the testing rule, `testing.md`.
 - The deep-module view in `codebase-design`.
 - The plain writing in `unslop`, and the output style the Plugin forces on every Session.
 - The Session trailer on every commit.
