@@ -84,7 +84,7 @@ export function TimelineTabs({
         ) : shown === 'tools' ? (
           <ToolsTab rows={tools} inView={view !== null} highlight={highlight} onPick={onHighlight} />
         ) : (
-          <CostTab marks={drawn} view={view} />
+          <CostTab marks={drawn} view={view} selected={selected} onOpen={onOpen} />
         )}
       </div>
     </section>

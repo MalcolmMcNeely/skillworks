@@ -17,7 +17,7 @@ export interface SkillRow {
   lengthMs: number;
 }
 
-function keyOf(step: Step): SkillKey {
+export function skillKeyOf(step: Step): SkillKey {
   if (step.unnamed) {
     return { kind: 'unnamed' };
   }
@@ -50,7 +50,7 @@ export function skillRowsOf(
       continue;
     }
 
-    const key = keyOf(step);
+    const key = skillKeyOf(step);
     const heldAs = highlightKey(key);
     const row = rows.get(heldAs) ?? {
       key,

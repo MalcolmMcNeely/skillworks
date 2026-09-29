@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type PointerEvent } from 'react';
 import { describeCount, describeMoney } from '../../../../shared/figures/lib/figures';
 import { foldScale, ticksOf } from '../../../lib/fold';
-import { moneyTicksOf, turnsOf } from '../../../lib/timeline/cost';
+import { moneyTicksOf, nearestTurnOf, skillWordsOf, turnsOf, type CostTurn } from '../../../lib/timeline/cost';
 import { clamp, inSpell, type Spell } from '../../../lib/timeline/view';
 import { describeClock, type Mark } from '../../../lib/steps';
 import { gutter as left, useWidth } from '../frame';
@@ -12,13 +12,45 @@ const top = 14;
 
 const axis = 34;
 
+interface Pointed {
+  turn: CostTurn;
+  x: number;
+  y: number;
+}
+
 function clip(view: Spell | null, ms: number): number {
   return view === null ? ms : clamp(ms, view[0], view[1]);
 }
 
+// The Cost so far leads, as that is the figure the reader pointed at the line to learn.
+function Tip({ pointed }: { pointed: Pointed }) {
+  const { turn } = pointed;
+
+  return (
+    <div className="timeline-tip" style={{ left: pointed.x, top: pointed.y }} role="status">
+      <p className="timeline-tip-head">{describeMoney(turn.soFar)} so far</p>
+      <p className="micro">
+        This turn {describeMoney(turn.mark.step.cost)} · ended {describeClock(turn.mark.endMs, true)}
+      </p>
+      <p className="timeline-tip-words">{skillWordsOf(turn.mark.step)}</p>
+    </div>
+  );
+}
+
 // Every figure here reads the View alone, and a Highlight is no input, so lighting a skill never moves the line.
-export function CostTab({ marks, view }: { marks: readonly Mark[]; view: Spell | null }) {
+export function CostTab({
+  marks,
+  view,
+  selected,
+  onOpen,
+}: {
+  marks: readonly Mark[];
+  view: Spell | null;
+  selected: string | null;
+  onOpen: (step: string) => void;
+}) {
   const [frame, width] = useWidth<HTMLDivElement>();
+  const [pointed, setPointed] = useState<Pointed | null>(null);
   const turns = useMemo(() => turnsOf(marks, view), [marks, view]);
   const madeNone = useMemo(() => turnsOf(marks, null).length === 0, [marks]);
 
@@ -34,14 +66,24 @@ export function CostTab({ marks, view }: { marks: readonly Mark[]; view: Spell |
     [marks, view, right],
   );
 
+  const xOf = (ms: number) => scale.map(clip(view, ms));
   const y = (money: number) => baseY - ((baseY - top) * money) / roof;
-  const startX = scale.map(clip(view, Math.min(...turns.map((turn) => turn.mark.startMs))));
+  const startX = xOf(Math.min(...turns.map((turn) => turn.mark.startMs)));
   const line = [
     `M ${startX} ${y(0)}`,
-    ...turns.flatMap((turn) => [`H ${scale.map(clip(view, turn.mark.endMs))}`, `V ${y(turn.soFar)}`]),
+    ...turns.flatMap((turn) => [`H ${xOf(turn.mark.endMs)}`, `V ${y(turn.soFar)}`]),
     `H ${right}`,
   ].join(' ');
   const wash = `${line} V ${baseY} H ${startX} Z`;
+  const open = inSpell(marks, view).find((mark) => mark.step.id === selected) ?? null;
+
+  const point = (event: PointerEvent<SVGSVGElement>) => {
+    const box = frame.current?.getBoundingClientRect();
+    const x = event.clientX - (box?.left ?? 0);
+    const turn = nearestTurnOf(turns, scale.invert(x));
+
+    setPointed(turn === null ? null : { turn, x: x + 14, y: event.clientY - (box?.top ?? 0) + 14 });
+  };
 
   return (
     <>
@@ -62,6 +104,9 @@ export function CostTab({ marks, view }: { marks: readonly Mark[]; view: Spell |
             className="cost-plot"
             role="img"
             aria-label={`The Cost ${view === null ? 'of the whole run' : 'in view'} as it built up, to ${describeMoney(total)}`}
+            onPointerMove={point}
+            onPointerLeave={() => setPointed(null)}
+            onClick={() => (pointed === null ? undefined : onOpen(pointed.turn.mark.step.id))}
           >
             {moneyTicks.map((money) => (
               <g key={money}>
@@ -89,8 +134,20 @@ export function CostTab({ marks, view }: { marks: readonly Mark[]; view: Spell |
             <text x={right} y={y(total) - 10} textAnchor="end" className="cost-end">
               {describeMoney(total)}
             </text>
+
+            {open === null ? null : (
+              <line x1={xOf(open.startMs)} x2={xOf(open.startMs)} y1={top} y2={baseY} className="cost-open" />
+            )}
+
+            {pointed === null ? null : (
+              <g className="cost-cross">
+                <line x1={xOf(pointed.turn.mark.endMs)} x2={xOf(pointed.turn.mark.endMs)} y1={top} y2={baseY} />
+                <circle cx={xOf(pointed.turn.mark.endMs)} cy={y(pointed.turn.soFar)} r={3.5} />
+              </g>
+            )}
           </svg>
         )}
+        {pointed === null ? null : <Tip pointed={pointed} />}
       </div>
     </>
   );

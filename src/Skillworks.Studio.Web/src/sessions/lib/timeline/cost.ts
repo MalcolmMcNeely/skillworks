@@ -1,4 +1,6 @@
-import type { Mark } from '../steps';
+import type { Mark, Step } from '../steps';
+import { skillLabelOf } from './highlight';
+import { skillKeyOf } from './skills';
 import { inSpell, type Spell } from './view';
 
 export interface CostTurn {
@@ -13,6 +15,19 @@ export function turnsOf(marks: readonly Mark[], view: Spell | null): CostTurn[] 
     .filter((mark) => mark.step.kind === 'turn')
     .toSorted((one, other) => one.endMs - other.endMs)
     .reduce<CostTurn[]>((counted, mark) => [...counted, { mark, soFar: (counted.at(-1)?.soFar ?? 0) + mark.step.cost }], []);
+}
+
+// By its end, where the line rises, so the crosshair lands on the step the reader is pointing at.
+export function nearestTurnOf(turns: readonly CostTurn[], ms: number): CostTurn | null {
+  return turns.reduce<CostTurn | null>(
+    (nearest, turn) =>
+      nearest === null || Math.abs(turn.mark.endMs - ms) < Math.abs(nearest.mark.endMs - ms) ? turn : nearest,
+    null,
+  );
+}
+
+export function skillWordsOf(step: Step): string {
+  return skillLabelOf(skillKeyOf(step));
 }
 
 // About four round ticks a twentieth past the total, so the line never touches the top and every label reads as money.

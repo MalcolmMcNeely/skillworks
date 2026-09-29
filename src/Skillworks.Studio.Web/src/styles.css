@@ -2650,12 +2650,32 @@ button.cost-fill:focus-visible {
   box-shadow: inset 0 0 0 1px var(--warned);
 }
 
+/* The tip is placed from the cursor, so the frame it is placed in must be the thing it is measured against. */
 .cost-frame {
+  position: relative;
   width: 100%;
 }
 
 .cost-plot {
+  cursor: pointer;
   display: block;
+}
+
+.cost-cross line {
+  stroke: var(--ink-soft);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+}
+
+.cost-cross circle {
+  fill: var(--hud);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+
+.cost-open {
+  stroke: var(--ink);
+  stroke-width: 1.5;
 }
 
 .cost-grid {

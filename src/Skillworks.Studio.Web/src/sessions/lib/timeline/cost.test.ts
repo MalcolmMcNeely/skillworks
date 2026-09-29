@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { marksOf, type Step } from '../steps';
 import { ranByOne } from './agents';
-import { moneyTicksOf, turnsOf } from './cost';
+import { moneyTicksOf, nearestTurnOf, skillWordsOf, turnsOf } from './cost';
 import type { Spell } from './view';
 
 function step(id: string, clock: string, fields: Partial<Step> = {}): Step {
@@ -79,6 +79,30 @@ describe('turnsOf', () => {
       ['sub-1', 0.5],
       ['sub-2', 0.75],
     ]);
+  });
+});
+
+describe('nearestTurnOf', () => {
+  it('finds the Turn whose end lies nearest a point, not the one whose start does', () => {
+    const turns = turnsOf(
+      marksOf([
+        step('long', '09:00:00', { lengthMs: 50_000, cost: 1 }),
+        step('short', '09:01:00', { lengthMs: 10_000, cost: 1 }),
+      ]),
+      null,
+    );
+
+    expect(nearestTurnOf(turns, at('09:00:45'))?.mark.step.id).toBe('long');
+  });
+});
+
+describe('skillWordsOf', () => {
+  it('words a Turn of Unnamed spend as the Skills tab does', () => {
+    expect(skillWordsOf(step('turn', '09:00:00', { skill: 'grill', unnamed: true }))).toBe('Unnamed spend');
+  });
+
+  it('words a Turn of No skill as the Skills tab does', () => {
+    expect(skillWordsOf(step('turn', '09:00:00'))).toBe('No skill');
   });
 });
 
