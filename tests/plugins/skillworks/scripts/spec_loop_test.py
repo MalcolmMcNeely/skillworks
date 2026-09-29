@@ -1,6 +1,7 @@
 #
 # The spec loop's plan and its steps, read against a throwaway repository.
 
+import ast
 import io
 import json
 import re
@@ -14,7 +15,7 @@ import land_ticket
 import seed_steering
 import spec_loop
 import ticket_worktree
-from conftest import (ROOT, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
+from conftest import (ROOT, SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
                       project_suite, write_loop, write_steering, write_suite)
 from runner import Subprocess
 from suite import Suite
@@ -904,6 +905,44 @@ def test_a_dry_run_on_a_spec_with_no_tickets_in_another_shape_is_refused_before_
     assert ran.status == 1
     assert "ABORT spec #158 is not in the shape the loop counts" in said(ran)
     assert "ticket-<ticket>" not in said(ran)
+
+
+def test_the_stop_for_a_spec_in_another_shape_says_the_grill_writes_the_counted_shape(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    tracker.body = SKIPS_A_STORY
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert "/skillworks:grill writes a spec in the shape the loop counts" in said(ran)
+
+
+MESSAGE_CALLS = {"stop", "refusal", "say", "write"}
+
+
+def said_by(call):
+    name = call.func.attr if isinstance(call.func, ast.Attribute) else getattr(call.func, "id", "")
+    return name in MESSAGE_CALLS
+
+
+def messages():
+    found = []
+    for script in [SCRIPTS / "spec_loop.py", SCRIPTS / "land_ticket.py",
+                   *sorted((SCRIPTS / "tracker").glob("*.py"))]:
+        for call in ast.walk(ast.parse(script.read_text(encoding="utf-8"))):
+            if isinstance(call, ast.Call) and said_by(call):
+                found += [(script.name, text.value) for argument in call.args
+                          for text in ast.walk(argument)
+                          if isinstance(text, ast.Constant) and isinstance(text.value, str)]
+    return found
+
+
+def test_no_driver_or_tracker_message_names_a_step_the_dev_loop_runs_for_you():
+    assert [(script, text) for script, text in messages()
+            if "to-tickets" in text or "to-spec" in text] == []
+
+
+def test_the_walk_for_messages_finds_the_stop_for_a_spec_in_another_shape():
+    assert any("is not in the shape the loop counts" in text for _, text in messages())
 
 
 # --- a restart over what a stopped run left behind ---------------------------
@@ -3910,6 +3949,15 @@ def test_in_spec_mode_a_spec_that_names_no_branch_stops_before_a_ticket_is_claim
     assert ran.status == 1
     assert "names no branch under ## Branch" in spec_mode.log()
     assert not runner.built("issue edit")
+
+
+def test_in_spec_mode_the_stop_for_a_spec_that_names_no_branch_says_the_grill_writes_it(spec_mode):
+    tracker = given_the_tracker_holds(spec_mode, ONE_OPEN_TICKET)
+    tracker.body = COUNTED
+
+    spec_mode.run(SPEC)
+
+    assert "/skillworks:grill writes it" in spec_mode.log()
 
 
 def test_with_a_branch_name_the_driver_touches_no_pull_request(loop, runner):

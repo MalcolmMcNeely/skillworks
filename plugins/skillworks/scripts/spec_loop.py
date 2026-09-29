@@ -719,8 +719,8 @@ class Loop:
         items = read_items(self.tracker.spec_body(self.spec))
         if items.faults:
             raise stop("ABORT spec {} is not in the shape the loop counts, so no ticket was "
-                       "started.\n{}      Write it in the shape /skillworks:to-spec writes, and run "
-                       "the loop again.".format(
+                       "started.\n{}      /skillworks:grill writes a spec in the shape the loop counts. "
+                       "Write it in that shape, and run the loop again.".format(
                            self.spec_named(),
                            "".join("      Fault: {}\n".format(fault) for fault in items.faults)))
         self.items = items

@@ -982,7 +982,7 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
     assert "disable-model-invocation: true\n" in front
 
 
-HIDDEN_FROM_CLAUDE = ("to-tickets", "grill", "spec-loop")
+HIDDEN_FROM_CLAUDE = ("implement", "to-tickets", "grill", "spec-loop")
 
 TOOLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
          "diagnosing-bugs", "prototype", "unslop", "architecture-tests")
@@ -1002,6 +1002,27 @@ def test_the_dev_loop_steps_the_driver_types_are_hidden_from_claude():
 
 def test_every_tool_can_be_invoked_by_claude():
     assert [skill for skill in TOOLS if hidden(skill)] == []
+
+
+# The Grill calls to-spec through the Skill tool, which refuses a hidden skill.
+def test_to_spec_can_be_invoked_by_claude():
+    assert not hidden("to-spec")
+
+
+def test_to_spec_points_a_plain_talk_at_the_grill():
+    description = front_matter("to-spec").split("description:", 1)[1].split("\n")[0].strip()
+
+    assert description.endswith(
+        "Not for turning a plain talk into a spec: the developer starts the Dev loop with "
+        "/skillworks:grill, which runs this skill at its end.")
+
+
+def test_to_spec_reports_the_spec_loop_as_the_next_step_and_no_other_skill():
+    [report] = re.findall(r"^\d+\. Report .*$", skill_text("to-spec"), re.MULTILINE)
+
+    skills = {folder.name for folder in SKILLS.iterdir() if (folder / "SKILL.md").exists()}
+
+    assert set(re.findall(r"[\w-]+", report)) & skills == {"spec-loop"}
 
 
 def skill_tool_calls():

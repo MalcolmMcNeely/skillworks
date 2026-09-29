@@ -531,7 +531,7 @@ again:
 ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
       Fault: ## User Stories skips 3: it goes from 2 to 4
       Fault: a Surface item under ## Surfaces opens with no bold name: - The README: says so.
-      Write it in the shape /skillworks:to-spec writes, and run the loop again.
+      /skillworks:grill writes a spec in the shape the loop counts. Write it in that shape, and run the loop again.
 ```
 
 **A rule with no import.** Before any ticket, and before a dry run prints its plan, the script checks

@@ -183,7 +183,7 @@ def test_a_spec_that_names_no_branch_stops_and_says_so(runner):
 
     assert stopped.value.status == REFUSED
     assert "## Branch" in stopped.value.said
-    assert "to-spec" in stopped.value.said
+    assert "/skillworks:grill writes it" in stopped.value.said
 
 
 # --- filing a ticket under a spec ---------------------------------------------

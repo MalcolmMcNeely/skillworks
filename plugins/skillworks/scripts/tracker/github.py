@@ -61,7 +61,7 @@ def spec_branch(spec):
         named = next((line for line in below if line), "").strip("`")
         if named and not named.startswith("#"):
             return named
-    raise refusal("The spec names no branch under {}. Run to-spec, which writes it, or add it by hand.".format(BRANCH_HEADING))
+    raise refusal("The spec names no branch under {}. /skillworks:grill writes it, or add it by hand.".format(BRANCH_HEADING))
 
 
 class GitHub:

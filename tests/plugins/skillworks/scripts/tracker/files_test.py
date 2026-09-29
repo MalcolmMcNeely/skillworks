@@ -313,6 +313,18 @@ def test_in_spec_mode_a_spec_that_names_no_branch_stops_the_dry_run(driver):
     assert "branch in its spec.md frontmatter" in said(ran)
 
 
+def test_in_spec_mode_the_stop_for_a_spec_that_names_no_branch_says_the_grill_writes_it(driver):
+    write_loop(driver.repo.work, "spec")
+    driver.push({
+        FOLDER + "/spec.md": spec_file(),
+        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
+    }, branch=SPEC_BRANCH)
+
+    ran = driver.dry_run()
+
+    assert "/skillworks:grill writes it" in said(ran)
+
+
 # --- a close, in the commit that Lands ---------------------------------------
 
 REFERENCE = "7/1"

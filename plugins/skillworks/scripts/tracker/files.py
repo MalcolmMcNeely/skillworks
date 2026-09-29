@@ -231,8 +231,8 @@ class Files:
             return found[0]
         if not found:
             raise refusal("No branch on origin holds the folder of spec {} with that branch named "
-                          "as branch in its spec.md frontmatter. Run to-spec, which writes it, or "
-                          "add it by hand.".format(spec))
+                          "as branch in its spec.md frontmatter. /skillworks:grill writes "
+                          "it, or add it by hand.".format(spec))
         raise refusal("Spec {} names its own branch on more than one branch of origin: {}. Keep "
                       "it on one.".format(spec, ", ".join(found)))
 
