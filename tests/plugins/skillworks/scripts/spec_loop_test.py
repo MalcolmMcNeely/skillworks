@@ -813,7 +813,7 @@ def test_every_shape_fault_reaches_the_stop_line(loop):
 CUT_TICKETS = "/skillworks:to-tickets"
 
 
-def given_a_ticket_step_that_files(sessions, tracker, tickets):
+def given_a_tickets_step_that_files(sessions, tracker, tickets):
     def cut():
         tracker.tickets = tickets
     sessions.then[CUT_TICKETS] = cut
@@ -822,7 +822,7 @@ def given_a_ticket_step_that_files(sessions, tracker, tickets):
 def test_a_spec_with_no_tickets_has_them_cut_before_the_first_ticket(loop, runner):
     tracker = given_the_tracker_holds(loop, ())
     sessions = given_sessions_that_report(loop)
-    given_a_ticket_step_that_files(sessions, tracker, ONE_OPEN_TICKET)
+    given_a_tickets_step_that_files(sessions, tracker, ONE_OPEN_TICKET)
 
     loop.run(SPEC)
 
@@ -850,10 +850,10 @@ def test_a_spec_still_without_tickets_after_the_step_stops_the_loop(loop, runner
     assert call_asking(runner, "/skillworks:implement") is None
 
 
-def test_the_slices_the_ticket_step_shows_are_in_the_loop_log(loop):
+def test_the_slices_the_tickets_step_shows_are_in_the_loop_log(loop):
     tracker = given_the_tracker_holds(loop, ())
     sessions = given_sessions_that_report(loop)
-    given_a_ticket_step_that_files(sessions, tracker, ONE_OPEN_TICKET)
+    given_a_tickets_step_that_files(sessions, tracker, ONE_OPEN_TICKET)
     sessions.says["to-tickets"] = "1. **Title**: The dry run prints the plan\n   **Blocked by**: none"
 
     loop.run(SPEC)
