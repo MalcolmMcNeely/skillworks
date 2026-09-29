@@ -122,6 +122,13 @@ section for each other place your team keeps in step. A team that keeps a sample
 
 A file with no Surface in it costs nothing: the grill skips the step.
 
+The README Surface is the one Surface the loop treats in a special way, because each ticket that adds
+a sentence to a README makes it longer for every newcomer. The loop changes the README only as the
+spec's README item says. The item's limit is the Surface's "What to capture", which your team owns.
+The Seed's default is a changed line and one new setup or run step. The heading must stay
+`## The README`, so that the loop can find it. A repo with no README Surface gets no README rules, and
+the loop treats its README as any other file.
+
 ## The Steering outside `docs/agents/`
 
 These files stay where a tool or a design places them.

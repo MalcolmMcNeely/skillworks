@@ -25,6 +25,17 @@ A Surface you add reads like this one:
   example, or a change to one already there.
 ```
 
+## The README
+
+- **Where it lives:** `README.md`
+- **The question:** Does this change rename, move or add something the README names: a command, a
+  path, a setup or run step, or a doc the README links to?
+- **What to capture:** The exact line that changes, and what it says after. A change may alter a
+  line, or add one new item to the setup or run steps. It never adds a sentence, a paragraph or a
+  section.
+
+Keep the heading `## The README` as it is, so that the loop can find this Surface.
+
 ## The user docs
 
 - **Where it lives:** `docs/usage/`

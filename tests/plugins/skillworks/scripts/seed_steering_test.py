@@ -840,6 +840,12 @@ def test_this_repos_surfaces_list_the_usage_docs():
     assert "`docs/usage/`" in [where_it_lives(section).strip() for section in held.values()]
 
 
+def test_this_repos_surfaces_hold_the_seeds_readme_surface():
+    ours = surfaces((ROOT / "docs" / "agents" / "surfaces.md").read_text(encoding="utf-8"))
+
+    assert ours.get("The README") == surfaces(seeded("surfaces.md"))["The README"]
+
+
 def test_no_skill_holds_the_smells():
     pages = sorted([*SKILLS.glob("*/SKILL.md"), *SKILLS.glob("review-changes/*.md")])
     assert SKILLS / "review-changes" / "standards.md" in pages
