@@ -8,7 +8,7 @@ import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page, tabTitleOf } from '../../shared/pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { DepthWord } from '../components/DepthWord';
-import { OpenedStep } from '../components/timeline/OpenedStep';
+import { Prompts } from '../components/timeline/Prompts';
 import { Timeline } from '../components/timeline/Timeline';
 import { TimelineTabs } from '../components/timeline/tabs/TimelineTabs';
 import { CostBreakdown } from '../components/verdict/CostBreakdown';
@@ -22,6 +22,7 @@ import { activationSpellsOf } from '../lib/timeline/activations';
 import { ranByOne } from '../lib/timeline/agents';
 import { levelsOf, levelsRanByOne } from '../lib/timeline/context';
 import { bandsOf, type Band, type Exchange } from '../lib/timeline/conversation';
+import { closedPrompts } from '../lib/timeline/prompts';
 import { costIn, skillRowsOf } from '../lib/timeline/skills';
 import { toolRowsOf } from '../lib/timeline/tools';
 import { describeStarted, listFilter, noRepository, notKnown } from '../lib/sessions';
@@ -163,6 +164,8 @@ export function Session() {
     }
   };
 
+  const onClosePrompts = () => write(closedPrompts(params));
+
   const onSubagent = (agent: string) => {
     write(withWhere(params, { ...where, agent }));
     toTimeline();
@@ -217,13 +220,6 @@ export function Session() {
               onAllAgents={() => write(withWhere(params, { ...where, agent: null }))}
               onClearHighlight={() => onHighlight(null)}
             />
-            <OpenedStep
-              marks={drawn}
-              traced={landed.traced}
-              agents={landed.agents}
-              selected={where.step}
-              onClose={() => open(null)}
-            />
             <TimelineTabs
               levels={shownLevels}
               limitTokens={landed.limitTokens}
@@ -236,6 +232,15 @@ export function Session() {
               highlight={highlight}
               onOpen={open}
               onHighlight={onHighlight}
+            />
+            <Prompts
+              marks={marks}
+              bands={bands}
+              step={where.step}
+              exchange={where.exchange}
+              traced={landed.traced}
+              agents={landed.agents}
+              onClose={onClosePrompts}
             />
           </>
         )}

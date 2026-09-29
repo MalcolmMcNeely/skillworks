@@ -1871,26 +1871,126 @@ a.home-panel-face:hover::before {
   margin: 0;
 }
 
-.step-open {
+/* Held off-screen rather than taken out, so it slides out with the content it had. */
+.prompts {
   background: var(--panel);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1rem 1.1rem 4rem;
+  position: fixed;
+  right: 0;
+  top: 0;
+  transform: translateX(100%);
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+  width: min(32rem, 92vw);
+  z-index: 40;
+}
+
+.prompts.is-open {
+  box-shadow: -16px 0 40px rgb(0 0 0 / 55%);
+  transform: none;
+}
+
+.prompts p {
+  margin: 0;
+}
+
+.prompts-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.prompts-title {
+  color: var(--hud);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.prompts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.prompts-list > li {
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.prompts-list > li.is-open {
+  background: var(--void);
+  border-color: var(--line);
+}
+
+.prompts-row-head {
+  color: var(--ink-soft);
+}
+
+.prompts-words {
+  border-left: 2px solid var(--hud);
+  color: var(--ink);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  padding: 0.35rem 0 0.35rem 0.75rem;
+  white-space: pre-wrap;
+}
+
+.prompts-words.is-clamped {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  overflow: hidden;
+}
+
+.prompts-unsaid {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.prompts-step {
   border: 1px solid var(--rule);
   font-size: 0.75rem;
   padding: 0.4rem 0.6rem;
 }
 
-.step-open p {
-  margin: 0;
-}
-
-.step-open-head {
-  align-items: baseline;
+.prompts-step-head {
   color: var(--ink);
-  display: flex;
   font-family: var(--mono);
-  gap: 0.5rem;
 }
 
-.step-close {
+.prompts-reply {
+  border-top: 1px dashed var(--rule);
+  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  gap: 0.3rem;
+  padding-top: 0.5rem;
+}
+
+.prompts-reply .prompts-words {
+  border-left-color: var(--ink-faint);
+  color: var(--ink-soft);
+}
+
+.prompts-close {
   background: none;
   border: 1px solid var(--rule);
   color: var(--ink-soft);
@@ -1903,8 +2003,8 @@ a.home-panel-face:hover::before {
   text-transform: uppercase;
 }
 
-.step-close:hover,
-.step-close:focus-visible {
+.prompts-close:hover,
+.prompts-close:focus-visible {
   border-color: var(--hud);
   color: var(--ink);
 }
