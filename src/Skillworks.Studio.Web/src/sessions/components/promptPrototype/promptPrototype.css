@@ -623,3 +623,115 @@
   margin-top: 0.3rem;
   padding-top: 0.3rem;
 }
+
+/* The Cost tab. */
+.pp-cost-head {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.pp-cost-frame {
+  position: relative;
+  width: 100%;
+}
+
+.pp-cost-plot {
+  cursor: crosshair;
+  display: block;
+}
+
+.pp-cost-grid {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+
+.pp-cost-line {
+  fill: none;
+  stroke: var(--hud);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.pp-cost-wash {
+  fill: var(--hud);
+  opacity: 0.1;
+}
+
+.pp-cost-dot {
+  fill: var(--hud);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+
+.pp-cost-end {
+  fill: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.pp-cost-cross {
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+}
+
+.pp-cost-opened {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.pp-cost-tip {
+  pointer-events: none;
+  position: absolute;
+  width: 15rem;
+}
+
+.pp-cost-tip-value {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.pp-cost-table {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  width: 100%;
+}
+
+.pp-cost-table th {
+  color: var(--hud);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.pp-cost-table td {
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  padding: 0.25rem 0.5rem;
+}
+
+.pp-cost-table tr.is-open td {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.pp-cost-open {
+  background: none;
+  border: none;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.pp-cost-open:hover {
+  color: var(--hud);
+}
