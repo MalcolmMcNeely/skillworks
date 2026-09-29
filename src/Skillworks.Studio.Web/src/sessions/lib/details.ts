@@ -1,4 +1,5 @@
 import { describeMoney, describeTokens } from '../../shared/figures/lib/figures';
+import { notKnown } from './sessions';
 
 export type Purpose = 'work' | 'subagent' | 'side';
 
@@ -17,9 +18,24 @@ export interface TurnDetails {
   side: SideRequest | null;
   // Claude Code's own value, so a Side request Studio has no name for still says what it was.
   sentAs: string | null;
-  outputTokens: number;
+  model: string | null;
+  effort: string | null;
+  speed: string | null;
   cost: number;
+  lengthMs: number;
+  // Null where Claude Code gave no wait, as nought would read as an instant start.
+  firstWordMs: number | null;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  words: string | null;
+  wordsLength: number | null;
 }
+
+export type TokenPart = 'cacheRead' | 'cacheWrite' | 'input' | 'output';
+
+export type TimePart = 'wait' | 'writing';
 
 export interface DetailsPage {
   kind: 'details';
@@ -51,6 +67,36 @@ export function describePurpose(turn: TurnDetails): string {
   }
 
   return sideWords[turn.side];
+}
+
+export function describeModel(turn: TurnDetails): string {
+  if (turn.model === null) {
+    return notKnown;
+  }
+
+  const effort = turn.effort === null ? '' : ` · ${turn.effort} effort`;
+  const speed = turn.speed === null || turn.speed === 'normal' ? '' : ` · ${turn.speed}`;
+
+  return `${turn.model}${effort}${speed}`;
+}
+
+export function tokenPartsOf(turn: TurnDetails): { part: TokenPart; word: string; tokens: number }[] {
+  return [
+    { part: 'cacheRead', word: 'Read from cache', tokens: turn.cacheReadTokens },
+    { part: 'cacheWrite', word: 'Written to cache', tokens: turn.cacheWriteTokens },
+    { part: 'input', word: 'New input', tokens: turn.inputTokens },
+    { part: 'output', word: 'Output', tokens: turn.outputTokens },
+  ];
+}
+
+// With no wait known, the writing is not known either, as the whole length would read as all writing.
+export function timePartsOf(turn: TurnDetails): { part: TimePart; word: string; ms: number | null }[] {
+  const wait = turn.firstWordMs;
+
+  return [
+    { part: 'wait', word: 'Wait for the first word', ms: wait },
+    { part: 'writing', word: 'Writing', ms: wait === null ? null : Math.max(0, turn.lengthMs - wait) },
+  ];
 }
 
 // Null details are a line not yet arrived, so a row keeps the words its Step carries until then.

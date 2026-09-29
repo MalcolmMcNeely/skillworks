@@ -5,5 +5,16 @@ public sealed record TurnDetails(
     Purpose Purpose,
     SideRequest? Side,
     string? SentAs,
+    string? Model,
+    string? Effort,
+    string? Speed,
+    decimal Cost,
+    long LengthMs,
+    // Null where Claude Code gave no wait, as an older one sends none and nought would read as an instant start.
+    long? FirstWordMs,
+    long CacheReadTokens,
+    long CacheWriteTokens,
+    long InputTokens,
     long OutputTokens,
-    decimal Cost);
+    string? Words,
+    int? WordsLength);

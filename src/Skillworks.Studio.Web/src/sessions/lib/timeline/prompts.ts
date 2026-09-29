@@ -1,5 +1,6 @@
 import { describeCount } from '../../../shared/figures/lib/figures';
 import { readWhere, withWhere, type Where } from '../../../shared/session/lib/where';
+import type { TurnDetails } from '../details';
 import type { Mark, StepKind } from '../steps';
 import { ranByOne, type Subagent } from './agents';
 import type { Band } from './conversation';
@@ -117,6 +118,10 @@ export function describeUnsaid(words: string | null, length: number): string | n
   }
 
   return length === 0 ? 'Nothing was recorded' : `Withheld · ${describeCount(length)} characters`;
+}
+
+export function unsaidOf(turn: TurnDetails): string | null {
+  return turn.wordsLength === null ? null : describeUnsaid(turn.words, turn.wordsLength);
 }
 
 // A named Step wins the open row over a named Exchange, so a Step left behind would hold the old row open.

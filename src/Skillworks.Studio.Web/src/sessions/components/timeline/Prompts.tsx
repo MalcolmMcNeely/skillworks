@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { describeCount, describeLength, describeMoney } from '../../../shared/figures/lib/figures';
-import { rowLineOf, type TurnDetails } from '../../lib/details';
+import {
+  describeCount,
+  describeLength,
+  describeMoney,
+  describeShare,
+  describeTokens,
+} from '../../../shared/figures/lib/figures';
+import {
+  describeModel,
+  describePurpose,
+  rowLineOf,
+  timePartsOf,
+  tokenPartsOf,
+  type TurnDetails,
+} from '../../lib/details';
+import { notKnown } from '../../lib/sessions';
 import { ranBy, type Subagent } from '../../lib/timeline/agents';
 import type { Band } from '../../lib/timeline/conversation';
 import {
   describeUnsaid,
   promptsOf,
   stepRowsOf,
+  unsaidOf,
   type Opened,
   type PromptRow,
   type StepRow,
@@ -37,9 +52,103 @@ function Words({ words, length, whole }: { words: string | null; length: number;
   return <span className={`prompts-words${whole ? '' : ' is-clamped'}`}>{words}</span>;
 }
 
-function OpenedStep({ mark, traced, agents }: { mark: Mark; traced: boolean; agents: Record<string, string> }) {
+function Shares({
+  label,
+  parts,
+}: {
+  label: string;
+  parts: { part: string; word: string; value: number | null; figure: string }[];
+}) {
+  const whole = parts.reduce((sum, each) => sum + (each.value ?? 0), 0);
+
+  return (
+    <>
+      {whole > 0 ? (
+        <div className="breakdown-bar" role="img" aria-label={label}>
+          {parts
+            .filter((each) => each.value !== null && each.value > 0)
+            .map((each) => (
+              <span
+                key={each.part}
+                className={`breakdown-fill is-${each.part}`}
+                style={{ width: `${((each.value ?? 0) / whole) * 100}%` }}
+                title={`${each.word} · ${each.figure}`}
+              />
+            ))}
+        </div>
+      ) : null}
+      <ul className="breakdown-legend">
+        {parts.map((each) => (
+          <li key={each.part} className={`breakdown-key${each.value === null ? ' is-unknown' : ''}`}>
+            <span className={`breakdown-dot is-${each.part}`} aria-hidden="true" />
+            <span className="breakdown-word">{each.word}</span>
+            <span className="breakdown-figure">{each.figure}</span>
+            <span className="breakdown-share">
+              {each.value === null || whole === 0 ? '' : describeShare(each.value / whole)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function OpenedTurn({ turn }: { turn: TurnDetails }) {
+  const unsaid = unsaidOf(turn);
+
+  return (
+    <dl className="prompts-turn">
+      <dt className="micro">Why it ran</dt>
+      <dd>
+        {describePurpose(turn)}
+        {turn.sentAs === null ? null : <code className="prompts-turn-raw">{turn.sentAs}</code>}
+      </dd>
+      <dt className="micro">Model</dt>
+      <dd>{describeModel(turn)}</dd>
+      <dt className="micro">Cost</dt>
+      <dd>{describeMoney(turn.cost)}</dd>
+      <dt className="micro">Tokens</dt>
+      <dd>
+        <Shares
+          label="Where the Turn's tokens went"
+          parts={tokenPartsOf(turn).map((each) => ({ ...each, value: each.tokens, figure: describeTokens(each.tokens) }))}
+        />
+      </dd>
+      <dt className="micro">Time</dt>
+      <dd>
+        <Shares
+          label="Where the Turn's time went"
+          parts={timePartsOf(turn).map((each) => ({
+            ...each,
+            value: each.ms,
+            figure: each.ms === null ? notKnown : describeLength(each.ms),
+          }))}
+        />
+      </dd>
+      {turn.wordsLength === null ? null : (
+        <>
+          <dt className="micro">Its words</dt>
+          <dd>{unsaid === null ? <p className="step-words">{turn.words}</p> : <p className="prompts-unsaid">{unsaid}</p>}</dd>
+        </>
+      )}
+    </dl>
+  );
+}
+
+function OpenedStep({
+  mark,
+  traced,
+  agents,
+  turns,
+}: {
+  mark: Mark;
+  traced: boolean;
+  agents: Record<string, string>;
+  turns: Record<string, TurnDetails> | null;
+}) {
   const { step } = mark;
   const note = noteOf(step);
+  const turn = step.kind === 'turn' ? turns?.[step.id] : undefined;
 
   return (
     <div className="prompts-step">
@@ -50,7 +159,11 @@ function OpenedStep({ mark, traced, agents }: { mark: Mark; traced: boolean; age
       <p className="micro">
         {describeClock(mark.startMs, true)} · {describeLength(step.lengthMs)} · ran by {ranBy(traced, agents, step.id)}
       </p>
-      {step.words === null ? null : <p className="step-words">{step.words}</p>}
+      {turn === undefined ? (
+        step.words === null ? null : <p className="step-words">{step.words}</p>
+      ) : (
+        <OpenedTurn turn={turn} />
+      )}
     </div>
   );
 }
@@ -76,7 +189,7 @@ function StepLine({
   return (
     <li data-step={step.id} className={classOf(row)}>
       {row.open ? (
-        <OpenedStep mark={mark} traced={traced} agents={agents} />
+        <OpenedStep mark={mark} traced={traced} agents={agents} turns={turns} />
       ) : (
         <button type="button" className="prompts-step-pick" onClick={() => onStep(step.id)}>
           <span className="micro">{describeClock(mark.startMs, true)}</span>
@@ -130,7 +243,7 @@ function Row({
 }) {
   // An Answer, or a Step the lanes have left out, has no row to open in, so it keeps a card of its own.
   const alone = row.open && opened !== null && !steps.some((each) => each.open);
-  const step = alone ? <OpenedStep mark={opened} traced={traced} agents={agents} /> : null;
+  const step = alone ? <OpenedStep mark={opened} traced={traced} agents={agents} turns={turns} /> : null;
   const list =
     steps.length === 0 ? null : (
       <ol className="prompts-steps">

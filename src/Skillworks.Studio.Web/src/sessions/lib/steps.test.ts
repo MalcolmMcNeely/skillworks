@@ -93,7 +93,25 @@ describe('foldSessionLine', () => {
   });
 
   it('takes the details of the turns when their line arrives', () => {
-    const turns = { '7': { purpose: 'work' as const, side: null, sentAs: 'sdk', outputTokens: 120, cost: 0.01 } };
+    const turns = {
+      '7': {
+        purpose: 'work' as const,
+        side: null,
+        sentAs: 'sdk',
+        model: 'claude-opus-5',
+        effort: 'high',
+        speed: 'normal',
+        cost: 0.01,
+        lengthMs: 2_000,
+        firstWordMs: 400,
+        cacheReadTokens: 9_000,
+        cacheWriteTokens: 300,
+        inputTokens: 4,
+        outputTokens: 120,
+        words: null,
+        wordsLength: null,
+      },
+    };
 
     expect(foldSessionLine(opened, { kind: 'details', turns }).turns).toEqual(turns);
   });

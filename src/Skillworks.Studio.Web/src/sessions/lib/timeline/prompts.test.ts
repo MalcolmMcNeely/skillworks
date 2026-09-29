@@ -10,11 +10,13 @@ import {
   openedExchange,
   promptsOf,
   stepRowsOf,
+  unsaidOf,
   type Opened,
   type PromptRow,
   type StepRow,
 } from './prompts';
 import { readView, type Spell } from './view';
+import type { TurnDetails } from '../details';
 import { marksOf, type Step } from '../steps';
 
 function exchange(index: number, atUtc: string): Exchange {
@@ -308,6 +310,40 @@ describe('describeUnsaid', () => {
 
   it('says nothing where the words are there to read', () => {
     expect(describeUnsaid('Fix the build', 13)).toBeNull();
+  });
+});
+
+function turn(words: string | null, wordsLength: number | null): TurnDetails {
+  return {
+    purpose: 'side',
+    side: 'awaySummary',
+    sentAs: 'away_summary',
+    model: 'claude-opus-5',
+    effort: null,
+    speed: null,
+    cost: 0,
+    lengthMs: 0,
+    firstWordMs: null,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    words,
+    wordsLength,
+  };
+}
+
+describe('unsaidOf', () => {
+  it('reads the words a turn kept back as withheld with their size', () => {
+    expect(unsaidOf(turn(null, 1_234))).toBe('Withheld · 1,234 characters');
+  });
+
+  it('says nothing of words the turn wrote out', () => {
+    expect(unsaidOf(turn('You were fixing the build.', 26))).toBeNull();
+  });
+
+  it('says nothing of a turn no answer carries', () => {
+    expect(unsaidOf(turn(null, null))).toBeNull();
   });
 });
 

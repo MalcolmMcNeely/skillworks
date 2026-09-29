@@ -46,6 +46,18 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? OutputTokens { get; init; }
 
+    public string? InputTokens { get; init; }
+
+    public string? CacheReadTokens { get; init; }
+
+    public string? CacheCreationTokens { get; init; }
+
+    public string? Effort { get; init; }
+
+    public string? Speed { get; init; }
+
+    public string? FirstWordMs { get; init; }
+
     public string? ToolInput { get; init; }
 
     public string? ToolUseId { get; init; }
@@ -74,6 +86,12 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("model", Model),
         ("cost_usd", CostUsd),
         ("output_tokens", OutputTokens),
+        ("input_tokens", InputTokens),
+        ("cache_read_tokens", CacheReadTokens),
+        ("cache_creation_tokens", CacheCreationTokens),
+        ("effort", Effort),
+        ("speed", Speed),
+        ("ttft_ms", FirstWordMs),
         ("tool_input", ToolInput),
         ("tool_use_id", ToolUseId),
         ("request_id", RequestId),

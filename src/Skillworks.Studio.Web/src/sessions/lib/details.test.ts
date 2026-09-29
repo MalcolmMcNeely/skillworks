@@ -1,9 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { describePurpose, rowLineOf, type SideRequest, type TurnDetails } from './details';
+import {
+  describeModel,
+  describePurpose,
+  rowLineOf,
+  timePartsOf,
+  tokenPartsOf,
+  type SideRequest,
+  type TurnDetails,
+} from './details';
 import type { Step } from './steps';
 
 function turn(details: Partial<TurnDetails> = {}): TurnDetails {
-  return { purpose: 'work', side: null, sentAs: null, outputTokens: 0, cost: 0, ...details };
+  return {
+    purpose: 'work',
+    side: null,
+    sentAs: null,
+    model: 'claude-opus-5',
+    effort: null,
+    speed: null,
+    cost: 0,
+    lengthMs: 0,
+    firstWordMs: null,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    words: null,
+    wordsLength: null,
+    ...details,
+  };
 }
 
 function step(kind: Step['kind'], words: string | null): Step {
@@ -69,5 +94,47 @@ describe('rowLineOf', () => {
 
   it('leaves a tool call with its own words', () => {
     expect(rowLineOf(step('tool', 'ShellError'), { '7': turn() })).toBe('ShellError');
+  });
+});
+
+describe('describeModel', () => {
+  it('gives the model and its effort', () => {
+    expect(describeModel(turn({ effort: 'high', speed: 'normal' }))).toBe('claude-opus-5 · high effort');
+  });
+
+  it('adds the speed when it was not the normal one', () => {
+    expect(describeModel(turn({ effort: 'high', speed: 'fast' }))).toBe('claude-opus-5 · high effort · fast');
+  });
+
+  it('says a model claude code did not name is not known', () => {
+    expect(describeModel(turn({ model: null }))).toBe('Not known');
+  });
+});
+
+describe('tokenPartsOf', () => {
+  it('splits the tokens into read from cache, written to cache, new input and output', () => {
+    const parts = tokenPartsOf(turn({ cacheReadTokens: 40_000, cacheWriteTokens: 3_000, inputTokens: 12, outputTokens: 800 }));
+
+    expect(parts.map((part) => [part.word, part.tokens])).toEqual([
+      ['Read from cache', 40_000],
+      ['Written to cache', 3_000],
+      ['New input', 12],
+      ['Output', 800],
+    ]);
+  });
+});
+
+describe('timePartsOf', () => {
+  it('sets the wait for the first word against the time spent writing', () => {
+    const parts = timePartsOf(turn({ lengthMs: 5_000, firstWordMs: 1_400 }));
+
+    expect(parts.map((part) => [part.word, part.ms])).toEqual([
+      ['Wait for the first word', 1_400],
+      ['Writing', 3_600],
+    ]);
+  });
+
+  it('leaves both not known where claude code gave no wait', () => {
+    expect(timePartsOf(turn({ lengthMs: 5_000 })).map((part) => part.ms)).toEqual([null, null]);
   });
 });

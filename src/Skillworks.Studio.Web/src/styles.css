@@ -2037,6 +2037,54 @@ a.home-panel-face:hover::before {
   font-family: var(--mono);
 }
 
+.prompts-turn {
+  display: grid;
+  gap: 0.3rem 0.8rem;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  margin: 0.4rem 0 0;
+}
+
+.prompts-turn dd {
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.prompts-turn-raw {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+}
+
+/* The key names each part beside its colour, so no part is told by colour alone. */
+.breakdown-fill.is-cacheRead,
+.breakdown-dot.is-cacheRead {
+  background: var(--ink-faint);
+}
+
+.breakdown-fill.is-cacheWrite,
+.breakdown-dot.is-cacheWrite {
+  background: var(--unnamed);
+}
+
+.breakdown-fill.is-input,
+.breakdown-dot.is-input {
+  background: var(--line);
+}
+
+.breakdown-fill.is-output,
+.breakdown-dot.is-output,
+.breakdown-fill.is-writing,
+.breakdown-dot.is-writing {
+  background: var(--hud);
+}
+
+.breakdown-fill.is-wait,
+.breakdown-dot.is-wait {
+  background: var(--warned);
+}
+
 .prompts-steps {
   display: flex;
   flex-direction: column;
