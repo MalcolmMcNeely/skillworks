@@ -494,15 +494,6 @@ def test_the_dry_run_names_the_spec_and_its_tickets_by_issue_number(loop):
     assert "DRY   the next ticket is #168" in ran.out
 
 
-def test_a_spec_with_no_tickets_is_refused_naming_it_by_issue_number(loop):
-    given_the_tracker_holds(loop, ())
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert ran.status == 1
-    assert "ABORT spec #158 has no tickets" in said(ran)
-
-
 def test_a_rule_with_no_import_stops_the_dry_run_naming_the_rule_and_the_line_to_add(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     claude = loop.repo.work / "CLAUDE.md"
@@ -814,6 +805,59 @@ def test_every_shape_fault_reaches_the_stop_line(loop):
     assert ran.status == 1
     assert "## User Stories skips 2: it goes from 1 to 3" in loop.log()
     assert "the spec has no ## Implementation Decisions heading" in loop.log()
+
+
+# --- the step that cuts a spec's tickets ---------------------------------------
+
+CUT_TICKETS = "/skillworks:to-tickets"
+
+
+def given_a_ticket_step_that_files(sessions, tracker, tickets):
+    def cut():
+        tracker.tickets = tickets
+    sessions.then[CUT_TICKETS] = cut
+
+
+def test_a_spec_with_no_tickets_has_them_cut_before_the_first_ticket(loop, runner):
+    tracker = given_the_tracker_holds(loop, ())
+    sessions = given_sessions_that_report(loop)
+    given_a_ticket_step_that_files(sessions, tracker, ONE_OPEN_TICKET)
+
+    loop.run(SPEC)
+
+    assert [call[2].split()[0:2] for call in step_calls(runner)[:2]] == [
+        [CUT_TICKETS, SPEC], ["/skillworks:implement", "168"]]
+
+
+def test_a_spec_with_tickets_has_none_cut(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert call_asking(runner, CUT_TICKETS) is None
+
+
+def test_a_spec_still_without_tickets_after_the_step_stops_the_loop(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "STOP  spec #158 still has no tickets" in loop.log()
+    assert call_asking(runner, "/skillworks:implement") is None
+
+
+def test_the_slices_the_ticket_step_shows_are_in_the_loop_log(loop):
+    tracker = given_the_tracker_holds(loop, ())
+    sessions = given_sessions_that_report(loop)
+    given_a_ticket_step_that_files(sessions, tracker, ONE_OPEN_TICKET)
+    sessions.says["to-tickets"] = "1. **Title**: The dry run prints the plan\n   **Blocked by**: none"
+
+    loop.run(SPEC)
+
+    assert "1. **Title**: The dry run prints the plan\n   **Blocked by**: none" in loop.log()
 
 
 # --- a restart over what a stopped run left behind ---------------------------

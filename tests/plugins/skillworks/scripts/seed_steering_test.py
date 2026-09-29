@@ -982,6 +982,54 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
     assert "disable-model-invocation: true\n" in front
 
 
+HIDDEN_FROM_CLAUDE = ("to-tickets", "grill", "spec-loop")
+
+TOOLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
+         "diagnosing-bugs", "prototype", "unslop", "architecture-tests")
+
+
+def front_matter(skill):
+    return skill_text(skill).split("---\n")[1]
+
+
+def hidden(skill):
+    return "disable-model-invocation: true\n" in front_matter(skill)
+
+
+def test_the_dev_loop_steps_the_driver_types_are_hidden_from_claude():
+    assert [skill for skill in HIDDEN_FROM_CLAUDE if not hidden(skill)] == []
+
+
+def test_every_tool_can_be_invoked_by_claude():
+    assert [skill for skill in TOOLS if hidden(skill)] == []
+
+
+def skill_tool_calls():
+    calls = []
+    for page in sorted(SKILLS.rglob("*.md")):
+        for line in page.read_text(encoding="utf-8").split("\n"):
+            if "Skill tool" in line:
+                calls += [(page.relative_to(SKILLS).as_posix(), called)
+                          for called in re.findall(r'"skillworks:([\w-]+)"', line)]
+    return calls
+
+
+# The Skill tool refuses a skill that sets the flag, so such a call would fail in every Session.
+def test_no_skill_calls_a_hidden_skill_through_the_skill_tool():
+    assert [call for call in skill_tool_calls() if hidden(call[1])] == []
+
+
+def test_the_walk_for_skill_tool_calls_finds_the_grills_call_to_to_spec():
+    assert ("grill/SKILL.md", "to-spec") in skill_tool_calls()
+
+
+def test_the_spec_loop_skill_leaves_cutting_the_tickets_to_the_driver():
+    spec_loop = skill_text("spec-loop")
+
+    assert "to-tickets" not in spec_loop
+    assert "into tickets" not in front_matter("spec-loop").split("description:", 1)[1].split("\n")[0]
+
+
 def test_the_grill_ends_by_naming_only_the_spec_loop_as_the_next_command():
     grill = skill_text("grill")
     last_step = grill_steps(grill)[-1]

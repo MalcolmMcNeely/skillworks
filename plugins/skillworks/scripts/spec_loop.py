@@ -113,6 +113,11 @@ SUITE_BY_COMMAND = (
     "commands the Suite file names. In this loop the driver runs the whole Suite as a step of its "
     "own.")
 
+# Nobody is at a terminal to approve the slices, and the log holds only the Session's last message.
+CUT_UNATTENDED = (
+    "\n\nSkip the approval questions. End with the breakdown you showed, as your last message, "
+    "so the loop log holds it.")
+
 # A Surface is named in words with spaces between, so a space alone cannot part two items.
 ITEM_SEPARATOR = ", "
 
@@ -705,9 +710,6 @@ class Loop:
             raise stop("ABORT spec {} is {}. The loop needs it open.".format(self.spec_named(), state))
 
         self.ticket_count = len(self.tracker.tickets(self.spec))
-        if self.ticket_count == 0:
-            raise stop("ABORT spec {} has no tickets. Run /skillworks:to-tickets first.".format(
-                self.spec_named()))
 
     # Before the first ticket, so a spec whose Verdicts could never be counted costs no build.
     def read_shape(self):
@@ -724,6 +726,23 @@ class Loop:
                                   how_many(len(items.stories), "story", "stories"),
                                   how_many(len(items.decisions), "decision", "decisions"),
                                   how_many(len(items.surfaces), "Surface", "Surfaces")))
+
+    # --- the step that cuts a spec's tickets ---------------------------------
+
+    # Typed and not called through the Skill tool, because the Skill tool refuses a hidden skill.
+    def cut_tickets(self):
+        self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
+            self.spec_named()))
+        self.judge("tickets", "ticket step", PLUGIN + "to-tickets {}{}".format(
+            self.spec, CUT_UNATTENDED))
+        shown = str(field(self.log_dir / "tickets.json", "result")).rstrip("\n")
+        if shown:
+            self.wrote(shown + "\n")
+        self.ticket_count = len(self.tracker.tickets(self.spec))
+        if self.ticket_count == 0:
+            raise stop("STOP  spec {} still has no tickets after the step that cuts them, so "
+                       "nothing was built. See {}".format(
+                           self.spec_named(), self.log_dir / "tickets.err"))
 
     # --- the dry run ---------------------------------------------------------
 
@@ -1303,6 +1322,10 @@ class Loop:
 
         self.say("LOOP  spec {} from {} ({}) in {} mode".format(
             self.spec_named(), base, self.tracker.repo, self.permission_mode))
+
+        # After the shape, so a spec the drift check could never count costs no ticket step.
+        if self.ticket_count == 0:
+            self.cut_tickets()
 
         # A landed ticket stays when the loop stops, so a stop is followed by the full run too.
         # It runs last and once, so the slowest step proves the finished spec and nothing before it.

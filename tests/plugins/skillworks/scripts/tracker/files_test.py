@@ -833,13 +833,13 @@ def test_the_dry_run_names_every_ticket_by_the_files_trackers_names(driver):
     assert not speaks_github(log_of(driver)), log_of(driver)
 
 
-def test_a_spec_with_no_tickets_is_refused_in_the_files_trackers_words(driver):
+def test_a_spec_still_without_tickets_after_the_ticket_step_stops_in_the_files_trackers_words(driver):
     driver.push({FOLDER + "/spec.md": spec_file()})
 
-    ran = driver.dry_run()
+    ran = driver.run()
 
     assert ran.status == 1
-    assert "ABORT spec 7 has no tickets" in said(ran)
+    assert "STOP  spec 7 still has no tickets" in said(ran)
     assert not speaks_github(said(ran)), said(ran)
 
 

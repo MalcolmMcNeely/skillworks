@@ -1,6 +1,6 @@
 ---
 name: spec-loop
-description: Turn a published spec into tickets, then drive those tickets to done one at a time, each in its own fresh session.
+description: Drive a published spec to done, one ticket at a time, each in its own fresh session.
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,7 @@ Take a spec that is already published on the tracker and run it to completion.
 
 The argument is the spec's number: its issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, such as `7` for `0007-local-tracker`, with the files Tracker. `tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to read each one. If no number was given, list the open specs and ask which one.
 
-Once the spec is known, typing the command is the whole of the user's consent. Ask nothing else until step 4, and there only the close offer, which a spec reviewed as a pull request never gets.
+Once the spec is known, typing the command is the whole of the user's consent. Ask nothing else until step 3, and there only the close offer, which a spec reviewed as a pull request never gets.
 
 ## Process
 
@@ -18,15 +18,9 @@ Once the spec is known, typing the command is the whole of the user's consent. A
 
 Read the spec in full: the issue and its comments on GitHub, or `spec.md` on the remote's Target branch with the files Tracker. It must be **open** — the loop needs it open as the parent of its tickets. If it is closed, stop and say so.
 
-If it already has tickets, as sub-issues or as files in its `tickets/` folder, the breakdown has happened. Skip to step 3.
+Cut no tickets yourself. A spec with no tickets has them cut by the driver, as its first step.
 
-### 2. Break it into tickets
-
-Call the Skill tool with "skillworks:to-tickets", passing the spec's number from the argument and telling it to skip its approval questions.
-
-Let it finish. Every ticket must come back as a **sub-issue of the spec**, or with the files Tracker as a file in the spec's own `tickets/` folder — that parentage is what stops one person's loop picking up another person's tickets.
-
-### 3. Hand over to the driver
+### 2. Hand over to the driver
 
 Run, in the background:
 
@@ -38,7 +32,7 @@ Tell the user the log path: `.spec-loop/<spec-number>/loop.log`.
 
 **Do not implement any ticket yourself.** The script owns the loop. It picks the next unblocked ticket and starts a fresh `claude -p` session for each one. If you pick instead, the choice moves back inside a model, which is the one thing this design exists to avoid. A script reads the blocking edges and picks the same ticket every time. A model can skip a blocker, lose its place as its context fills, and still sound sure.
 
-### 4. Report
+### 3. Report
 
 When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which tickets closed.
 

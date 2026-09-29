@@ -1,6 +1,7 @@
 ---
 name: to-tickets
 description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker with one tracker-publish command — edges in each ticket file's frontmatter, which become native blocking links on GitHub.
+disable-model-invocation: true
 ---
 
 # To Tickets

@@ -14,8 +14,10 @@ flowchart TD
     gate -- no --> grill
     gate -- yes --> spec["/skillworks:to-spec<br/>publish the spec"]
     spec --> loop["/skillworks:spec-loop<br/>with the spec's number"]
-    loop --> tickets["/skillworks:to-tickets<br/>cut the spec into tickets"]
-    tickets --> ticket["Build one ticket"]
+    loop --> any{"The spec has tickets?"}
+    any -- yes --> ticket["Build one ticket"]
+    any -- no --> tickets["/skillworks:to-tickets<br/>the driver cuts the spec into tickets"]
+    tickets --> ticket
     ticket --> land["Land it on the Target branch"]
     land --> more{"Another open ticket?"}
     more -- yes --> ticket
@@ -289,21 +291,28 @@ That number is what you give to `/skillworks:spec-loop`.
 
 ### The tickets
 
-`/skillworks:spec-loop <spec>` checks that the spec is open, then runs `/skillworks:to-tickets`. That
-cuts the spec into tickets. Each ticket is a thin slice through every layer, small enough for one
-fresh Session, and it names the tickets that must land before it. With `github`, each one is published
-as a **sub-issue of the spec**. With `files`, each one is a file in the spec's `tickets/` folder.
+`/skillworks:spec-loop <spec>` checks that the spec is open, then starts the `spec-loop` script in
+the background, and tells you where its log is. The script does the rest. The skill never cuts a
+ticket or builds one itself.
+
+The script cuts the tickets as its first step, after it checks the spec's shape and before the first
+ticket, and only when the spec has none. The step starts a Session that types
+`/skillworks:to-tickets <spec>` and tells it to skip its approval questions, because nobody is at the
+terminal to answer them. The slices it shows are written to the loop log, so you can read them while
+the work runs. A spec that still has no tickets after the step stops the loop with a `STOP` line. A
+spec that already has tickets, such as one a restarted run meets, skips the step.
+
+Each ticket is a thin slice through every layer, small enough for one fresh Session, and it names the
+tickets that must land before it. With `github`, each one is published as a **sub-issue of the
+spec**. With `files`, each one is a file in the spec's `tickets/` folder.
 Either way, a ticket belongs to one spec, and that is what stops two people's loops from taking each
 other's work.
 
 Each Surface in the spec's Surfaces section goes into the ticket whose change needs it. No ticket only
 updates a Surface, so every ticket that Lands leaves each Surface in step.
 
-Then the skill starts the `spec-loop` script in the background, and tells you where its log is. The
-script does the rest. The skill never builds a ticket itself.
-
-Before the script starts work, it checks that `claude` is on `PATH`, and that the spec is open and has
-tickets. With `github`, it checks that `gh` is logged in. With `files`, it checks that git has a
+Before the script starts work, it checks that `claude` is on `PATH`, and that the spec is open.
+With `github`, it checks that `gh` is logged in. With `files`, it checks that git has a
 `user.email`, because it claims each ticket in that name. It records where the Target branch stood on `origin` in
 `.spec-loop/<spec>/base.sha`.
 That file is written once, so a restarted run still measures from where the first run began.
@@ -905,6 +914,15 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
+
+A spec with no tickets gets a `CUT` line after it. The slices the ticket step showed follow it, as
+that Session wrote them, and then the first `START` line:
+
+```
+15:55:21 CUT   spec #200 has no tickets, so a Session cuts them first
+1. **Title**: Preflight checks for uv
+   **Blocked by**: none
+```
 
 A check that flakes in a ticket's `suite` step, or in its landing, adds a `FLAKE` line that names
 the check and the file that keeps its red output:

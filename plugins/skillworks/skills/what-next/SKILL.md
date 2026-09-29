@@ -80,7 +80,7 @@ Read [PHASE-BOUNDARIES.md](PHASE-BOUNDARIES.md) for the ordered tree — the fiv
 
 Each one runs because another skill reached for it. This map routes you to that caller, never to the skill inside, so read these as parts rather than as steps.
 
-- **`/skillworks:to-tickets`** — cuts a spec into **tracer-bullet tickets** and works out the blocking edges between them. `/skillworks:spec-loop` reaches for it, at step 3 above.
+- **`/skillworks:to-tickets`** — cuts a spec into **tracer-bullet tickets** and works out the blocking edges between them. The driver `/skillworks:spec-loop` starts reaches for it, at step 3 above, when a spec has no tickets.
 - **`/skillworks:resolve-conflict`** — resolves the conflict a ticket's rebase onto its Target branch hits, in the session that built the ticket, against **the other side** the driver hands it. The landing script reaches for it when its rebase onto the Target branch conflicts.
 
 ## Standalone
