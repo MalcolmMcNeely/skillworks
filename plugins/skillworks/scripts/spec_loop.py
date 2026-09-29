@@ -739,7 +739,7 @@ class Loop:
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
-        self.judge("tickets", "ticket step", self.cut_asks() + CUT_UNATTENDED)
+        self.run_clean_session("tickets", "tickets step", self.cut_asks() + CUT_UNATTENDED)
         shown = str(field(self.log_dir / "tickets.json", "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
@@ -1051,8 +1051,8 @@ class Loop:
 
     # --- the drift check -----------------------------------------------------
 
-    # A judge records its report with the spec and changes nothing, so a tree it left changed stops.
-    def judge(self, named, what, prompt):
+    # The Session records its work with the spec and changes nothing, so a tree it left changed stops.
+    def run_clean_session(self, named, what, prompt):
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened(named)
         if not self.job_worktree:
@@ -1080,7 +1080,7 @@ class Loop:
         else:
             self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
                 self.spec_named()))
-        self.judge(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
+        self.run_clean_session(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
             self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""))
         return self.read_drift_report(named, asked)
 
@@ -1165,7 +1165,7 @@ class Loop:
     def check_names(self, base):
         self.say("NAMES checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
-        self.judge("names", "Name check", PLUGIN + "spec-names {} {}".format(self.spec, base))
+        self.run_clean_session("names", "Name check", PLUGIN + "spec-names {} {}".format(self.spec, base))
 
         # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
         report = self.tracker.name_report(self.spec)
@@ -1208,7 +1208,7 @@ class Loop:
     def check_renames(self, base, ticket, renames):
         self.say("NAMES the rename ticket {} is closed. Checking it made each rename on spec "
                  "{}.".format(self.named(ticket), self.spec_named()))
-        self.judge("names-renames", "Name re-check", PLUGIN + "spec-names {} {} {}".format(
+        self.run_clean_session("names-renames", "Name re-check", PLUGIN + "spec-names {} {} {}".format(
             self.spec, base, self.tracker.reference(ticket)))
 
         # The Tracker hands back the newest report, so a check that recorded none reads the first.
@@ -1340,7 +1340,7 @@ class Loop:
         self.say("LOOP  spec {} from {} ({}) in {} mode".format(
             self.spec_named(), base, self.tracker.repo, self.permission_mode))
 
-        # After the shape, so a spec the drift check could never count costs no ticket step.
+        # After the shape, so a spec the drift check could never count costs no `tickets` step.
         if self.ticket_count == 0:
             self.cut_tickets()
 

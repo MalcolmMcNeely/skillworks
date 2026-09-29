@@ -915,7 +915,7 @@ The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output si
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
 
-A spec with no tickets gets a `CUT` line after it. The slices the ticket step showed follow it, as
+A spec with no tickets gets a `CUT` line after it. The slices the `tickets` step showed follow it, as
 that Session wrote them, and then the first `START` line:
 
 ```
