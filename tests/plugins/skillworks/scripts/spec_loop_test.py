@@ -965,6 +965,7 @@ def refuse_keeping(loop, job):
 
 def test_a_restart_over_a_leftover_holding_work_carries_on(loop):
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_the_closed_ticket_landed_after_the_base(loop)
     given_a_leftover_worktree(loop, "ticket-164")
     (leftover(loop) / "loose.txt").write_text("half done\n", encoding="utf-8", newline="\n")
 
@@ -979,6 +980,7 @@ def test_a_restart_over_a_leftover_holding_work_carries_on(loop):
 
 def test_a_restart_over_a_leftover_holding_nothing_carries_on(loop):
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_the_closed_ticket_landed_after_the_base(loop)
     given_a_leftover_worktree(loop, "ticket-164")
 
     ran = loop.run(SPEC)
@@ -992,6 +994,7 @@ def test_a_restart_over_a_leftover_holding_nothing_carries_on(loop):
 
 def test_the_log_names_the_job_and_the_branch_a_leftover_was_kept_on(loop):
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_the_closed_ticket_landed_after_the_base(loop)
     given_a_leftover_worktree(loop, "ticket-164")
 
     ran = loop.run(SPEC)
@@ -1043,6 +1046,7 @@ def test_the_log_holds_the_reason_a_keep_failed(loop):
 
 def test_a_keep_that_succeeded_says_what_it_left_alone(loop):
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_the_closed_ticket_landed_after_the_base(loop)
     stray = loop.repo.group(SPEC) / "stray"
     stray.mkdir(parents=True)
     (stray / "notes.txt").write_text("notes\n", encoding="utf-8", newline="\n")
@@ -1056,6 +1060,7 @@ def test_a_keep_that_succeeded_says_what_it_left_alone(loop):
 
 def test_a_keep_that_left_nothing_alone_says_nothing(loop):
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_the_closed_ticket_landed_after_the_base(loop)
     given_a_leftover_worktree(loop, "ticket-164")
 
     ran = loop.run(SPEC)
@@ -2516,6 +2521,7 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
 
     loop.run(SPEC)
 
@@ -2523,9 +2529,68 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
 
+# --- the spec's commits --------------------------------------------------------
+
+# A run resumed after its one ticket Landed, so the checks find a commit of the spec to read.
+def given_the_closed_ticket_landed_after_the_base(loop):
+    held = loop.records() / "base.sha"
+    held.parent.mkdir(parents=True, exist_ok=True)
+    held.write_text(git(loop.repo.work, "rev-parse", "origin/" + loop.repo.target),
+                    encoding="utf-8", newline="\n")
+    loop.repo.push_from_elsewhere("landed.txt", "landed",
+                                  "Already done\n\nTicket: #" + ONE_CLOSED_TICKET[0][0])
+
+
+def given_a_hand_commit_while_168_is_reviewed(loop, sessions):
+    sessions.then["review-standards 168"] = lambda: loop.repo.push_from_elsewhere(
+        "hand.txt", "hand", "A hand fix with no trailer")
+
+
+def test_the_log_says_how_many_commits_the_drift_check_reads_and_leaves_out(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "168")
+    given_a_hand_commit_while_168_is_reviewed(loop, sessions)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    line = ("SCOPE the drift check reads 1 commit of spec #{}, and leaves out 1 other commit after "
+            "the base commit\n").format(SPEC)
+    assert line in log
+    assert log.index(line) < log.index("DRIFT all tickets closed")
+
+
+def test_the_re_check_and_the_name_check_each_say_they_read_the_gap_ticket_s_commit_too(loop):
+    ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    scope = ("SCOPE the {} reads {} of spec #" + SPEC + ", and leaves out 0 other commits after the "
+             "base commit\n")
+    assert log.index(scope.format("drift re-check", "2 commits")) < log.index(
+        "DRIFT the Gap ticket is closed")
+    assert log.index(scope.format("Name check", "2 commits")) < log.index("NAMES checking")
+
+
+def test_a_spec_with_no_commit_after_the_base_stops_before_any_check_and_stays_open(loop, runner):
+    given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert ("STOP  spec #{} has no commit after the base commit {} whose Ticket: trailer names one "
+            "of its tickets").format(SPEC, base_of(loop)) in loop.log()
+    assert [call for call in session_calls(runner) if call[2].startswith(JUDGES)] == []
+    assert "END" not in loop.log()
+
+
 def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runner):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = drift_report()
 
     ran = loop.run(SPEC)
@@ -2541,6 +2606,7 @@ def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runn
 def drifted(loop, report):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = report
     return loop.run(SPEC)
 
@@ -2653,6 +2719,7 @@ def given_a_filed_ticket_that_lands(loop, tracker, sessions, ticket):
 def drifted_in_a_round(loop, first, second):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
     given_a_filed_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
     given_drift_reports(sessions, tracker, first, second)
     return loop.run(SPEC)
@@ -2793,6 +2860,7 @@ def test_a_contradicts_in_the_re_check_stops_the_loop(loop):
 def named_back(loop, report):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
     tracker.name_report = report
     return loop.run(SPEC)
 
@@ -2887,6 +2955,7 @@ def given_name_reports(sessions, tracker, *reports):
 def renamed_in_a_round(loop, second, first=name_report(*RENAMED)):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
     given_a_filed_ticket_that_lands(loop, tracker, sessions, RENAME_TICKET)
     given_name_reports(sessions, tracker, first, second)
     return loop.run(SPEC)

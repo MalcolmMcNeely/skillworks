@@ -55,8 +55,8 @@ def after(tracker, base, branch):
 
 
 # Kept apart from main so the driver can count what a check reads and what it leaves out.
-def spec_commits(tracker, spec, base, wait):
-    branch = branch_read(tracker, spec)
+def spec_commits(tracker, spec, base, wait, branch=None):
+    branch = branch or branch_read(tracker, spec)
     fetched(tracker, branch, wait)
     base = checked_base(tracker, base)
     named = {tracker.trailer(ticket) for ticket in tracker.tickets(spec)}

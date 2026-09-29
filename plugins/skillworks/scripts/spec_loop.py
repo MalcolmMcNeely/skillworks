@@ -52,6 +52,7 @@ from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 from tracker.reading import FLAKES, listed
+from tracker.spec_commits import spec_commits
 
 USAGE = "usage: spec-loop <spec-issue-number> [--dry-run] [--bypass]\n"
 
@@ -1087,9 +1088,22 @@ class Loop:
             raise stop("FAIL  the {}'s worktree at {} would not go.".format(
                 what, self.job_worktree))
 
+    # The same lookup the check makes, so the log shows its scope and a broken one never reads as clean.
+    def say_scope(self, what, base):
+        kept, left = spec_commits(self.tracker, self.spec, base, self.wait, self.target)
+        if not kept:
+            raise stop("STOP  spec {} has no commit after the base commit {} whose Ticket: trailer "
+                       "names one of its tickets. Every Landed ticket's commit names it, so the "
+                       "lookup broke. The {} did not run and the spec stays open.".format(
+                           self.spec_named(), base, what))
+        self.say("SCOPE the {} reads {} of spec {}, and leaves out {} after the base commit".format(
+            what, how_many(len(kept), "commit", "commits"), self.spec_named(),
+            how_many(len(left), "other commit", "other commits")))
+
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
         named = "drift-gaps" if asked else "drift"
+        self.say_scope("drift re-check" if asked else "drift check", base)
         if asked:
             self.say("DRIFT the Gap ticket is closed. Checking {} against spec {} again.".format(
                 ", ".join(asked), self.spec_named()))
@@ -1179,6 +1193,7 @@ class Loop:
 
     # After the Gap round, so it sees every name the spec brought in, the Gap build's too.
     def check_names(self, base):
+        self.say_scope("Name check", base)
         self.say("NAMES checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
         self.run_clean_session("names", "Name check", PLUGIN + "spec-names {} {}".format(self.spec, base))

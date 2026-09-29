@@ -553,6 +553,19 @@ which writes the file again:
 ABORT docs/agents/review-standards.md is missing, and setup seeds it. Run /skillworks:skillworks-setup to write it again.
 ```
 
+**A spec with no commit to read.** Before the drift check, the drift re-check and the Name check, the
+script looks up the spec's commits the way `spec-commits` does. Every Landed ticket's commit names its
+ticket in a `Ticket:` trailer, so a spec with no such commit after the base commit means the lookup
+broke. The loop stops with a `STOP` line and runs no check, so a broken lookup never reads as a clean
+report. The spec stays open, and the full run still runs first:
+
+```
+STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2c3e8a5d6f1b4 whose Ticket: trailer names one of its tickets. Every Landed ticket's commit names it, so the lookup broke. The drift check did not run and the spec stays open.
+```
+
+Check that `git log` on the Target branch shows each Landed ticket's `Ticket:` trailer, and run the
+loop again.
+
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
 check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
 stops the loop with a `STOP` line, and the spec stays open. A Gap does not stop it at once: the loop
@@ -934,9 +947,12 @@ the check and the file that keeps its red output:
 After the last ticket, the drift check adds its own lines, then the Name check, then the full run:
 
 ```
+18:31:40 SCOPE the drift check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
+18:31:40 DRIFT all tickets closed. Checking the result against spec #200.
 18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift.md
 18:40:12 COUNT the spec holds 21 items, and the drift report gives 21 Verdicts
 18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
+18:40:13 SCOPE the Name check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 18:40:13 NAMES checking the names spec #200 brought in against the glossary.
 18:44:02 NAMES the report is recorded on spec #200. Read it at .spec-loop/200/names.md
 18:44:02 NAMES no rename is owed on spec #200
@@ -956,6 +972,12 @@ leaves:
 18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
 ```
 
+A `SCOPE` line comes before the drift check, the drift re-check and the Name check. It says how many
+of the spec's commits the check reads, and how many other commits after the base commit it leaves
+out: a hand commit with no `Ticket:` trailer, or another spec's ticket. The script judges nothing
+here. It prints the counts, and the check judges. A spec with no commit to read gets a `STOP` line
+in place of the `SCOPE` line, as [When a step fails](#when-a-step-fails) shows.
+
 The `COUNT` line says how many items the spec holds and how many Verdicts the report gave. A `NOTE`
 line names each Unrequested item. A `WARN` line names a Verdict for an item the spec does not hold.
 
@@ -970,6 +992,7 @@ then the re-check's:
 18:40:14 FILED #210 under spec #200 builds 2 Gaps, so the loop goes round once
 18:40:15 START #210 TICKET: Build the Gaps the drift check found
 19:31:02 DONE  #210  9e3a1f0
+19:31:03 SCOPE the drift re-check reads 24 commits of spec #200, and leaves out 4 other commits after the base commit
 19:31:03 DRIFT the Gap ticket is closed. Checking S4, The user docs against spec #200 again.
 19:39:47 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift-gaps.md
 19:39:47 COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts
@@ -992,9 +1015,9 @@ re-check's:
 19:24:10 NAMES every rename is made on spec #200
 ```
 
-A `STOP` line names each Gap left after the round, each Contradicts and each rename not made, as
-[When a step fails](#when-a-step-fails) shows. It comes last, after the full run's lines, in place
-of `END`. `END` comes only on [a clean finish](#a-clean-finish).
+A `STOP` line names each Gap left after the round, each Contradicts, each rename not made and a spec
+with no commit to read, as [When a step fails](#when-a-step-fails) shows. It comes last, after the
+full run's lines, in place of `END`. `END` comes only on [a clean finish](#a-clean-finish).
 
 The position counts closed tickets, so a restarted run starts at its real place. The time left is the
 mean of the tickets this run has finished, with the one now running counted as still to do.
