@@ -1,6 +1,6 @@
 ---
 name: skillworks-setup
-description: Configure a repo for the Skillworks dev loop — the Tracker, GitHub labels with the github Tracker, the Steering the skills read (rules, tracker docs, review baselines, a starting Suite file), the CLAUDE.md pointer, the Plugin and the permission allowlist the loop needs to run unattended, and auto-memory off. Run once per repo.
+description: Configure a repo for the Skillworks dev loop — the Tracker, GitHub labels with the github Tracker, the Steering the skills read (rules, tracker docs, review files, a starting Suite file), the CLAUDE.md pointer, the Plugin and the permission allowlist the loop needs to run unattended, and auto-memory off. Run once per repo.
 disable-model-invocation: true
 ---
 
@@ -21,7 +21,7 @@ The outputs:
 | The `ready-for-agent` label, with `github` only | `/skillworks:to-spec` and `/skillworks:to-tickets` apply it, and `gh issue create` fails on a label that does not exist. Nothing in the loop reads it. |
 | `docs/agents/rules/*.md` | The five rules: comments, determinism, file placement, testing and words. The review axes read them. The testing rule holds the team's taste in tests and has no settings. The settings that name what a rule judges start empty, so nothing is judged until the team fills them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the words rule's `skip-folders`. The others ship with a default the team can change: `doc-comments`, `clock`, `max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`, `banned-folder-names` and `name-map`. |
 | `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. |
-| `docs/agents/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the Plugin's own list for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no list of the Plugin's. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
+| `docs/agents/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the baseline for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no baseline. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
 | `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. |
 | `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
@@ -124,7 +124,7 @@ Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/
 
 ### Steering
 
-The rules in `docs/agents/rules/`, the review baselines in `docs/agents/`, and the Suite in `docs/agents/suite.json`. The team owns them.
+The rules in `docs/agents/rules/`, the review files in `docs/agents/`, and the Suite in `docs/agents/suite.json`. The team owns them.
 
 ### Rules
 

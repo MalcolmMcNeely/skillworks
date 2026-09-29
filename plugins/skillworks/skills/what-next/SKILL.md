@@ -93,6 +93,6 @@ Off the main flow entirely.
 
 ## Precondition
 
-**`/skillworks:skillworks-setup`** — run once per repo before your first engineering flow. It asks which Tracker the team uses, `github` or `files`, and seeds the Steering the other skills read: the rules, the tracker and domain docs, the review baselines and a starting Suite file. With `github` it creates the `ready-for-agent` label. The repo needs a remote with either Tracker.
+**`/skillworks:skillworks-setup`** — run once per repo before your first engineering flow. It asks which Tracker the team uses, `github` or `files`, and seeds the Steering the other skills read: the rules, the tracker and domain docs, the review files and a starting Suite file. With `github` it creates the `ready-for-agent` label. The repo needs a remote with either Tracker.
 
 **`/skillworks:architecture-tests`** — the step after setup. It turns the rules in `docs/agents/rules/` into architecture tests the team owns, and wires each one into the Suite.

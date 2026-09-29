@@ -6,8 +6,8 @@ change, reviews it, runs your Suite, and pushes it to your Target branch: a bran
 branch per spec that your team reviews as one pull request. GitHub Issues is the Tracker, so the spec
 and its tickets are issues any teammate can read.
 
-Your repo tells the loop about itself through its Steering: its rules, its tracker docs, its review
-baselines and its Suite. Setup copies a Seed of each into your repo, and your team owns them from then
+Your repo tells the loop about itself through its Steering: its rules, its tracker docs, its review files
+and its Suite. Setup copies a Seed of each into your repo, and your team owns them from then
 on. The skills, the scripts and the hooks are the Machinery. They run from the Plugin, and no team
 edits them.
 
