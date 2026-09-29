@@ -84,6 +84,12 @@ Job branch before the worktree goes, so Held says the Job branch carries work th
 commit of the job's own. Held is the case a Keep exists for, and Clean is the other one.
 _Avoid_: Dirty, unsaved
 
+**Hidden skill**:
+A skill Claude never sees, so it never suggests it and cannot start it through the Skill tool. A
+developer or the driver types it. The two stages of the Dev loop are hidden, and so are the steps the
+driver types, so Claude can never send a developer off the Dev loop.
+_Avoid_: Entry point, manual skill
+
 **Keep**:
 What the loop does to the worktree group a stopped run left behind. Each job's uncommitted work is
 committed, its Job branch is renamed out of the way so the job can be opened again, and the worktree
