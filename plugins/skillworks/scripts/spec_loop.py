@@ -93,11 +93,12 @@ STEPS = (
        Step("suite", "the whole suite, as the Suite file names it",
             "suite-can-run suite-green", False, session=False),
        Step("finish", PLUGIN + "implement {} --finish",
-            "no-error command-loaded new-commit tree-clean ticket-closed", True))
+            "no-error command-loaded new-commit ticket-trailer tree-clean ticket-closed", True))
 )
 
 # A check that proves the work was done. One that proves the Session could run never earns a Nudge.
-NUDGED_BY = ("axis-reported", "tree-changed", "new-commit", "tree-clean", "ticket-closed")
+NUDGED_BY = ("axis-reported", "tree-changed", "new-commit", "ticket-trailer", "tree-clean",
+             "ticket-closed")
 
 # Enough for a Session that stopped short, and few enough that a stuck one stops where it can be read.
 NUDGES = 2
@@ -146,6 +147,11 @@ def owed(tracker, ticket, step, check):
     if check == "new-commit":
         return ("You have not committed the work. Commit it, with Ticket: {} in the message's "
                 "trailer.\n".format(tracker.trailer(ticket)))
+    if check == "ticket-trailer":
+        return ("Git reads no Ticket: {0} trailer in a commit you made. Git reads trailers only "
+                "from the last paragraph of the message, so put Ticket: {0} in that paragraph, "
+                "with no blank line between it and the other trailers, and amend the commit.\n"
+                .format(tracker.trailer(ticket)))
     if check == "tree-clean":
         return ("The worktree still holds uncommitted changes. Commit them or remove them, so "
                 "the tree is clean.\n")
@@ -525,7 +531,17 @@ class Loop:
         if check == "new-commit":
             head = self.git(self.job_worktree, "rev-parse", "HEAD").out.strip()
             return head != self.ticket_base, ""
+        if check == "ticket-trailer":
+            return self.commits_carry_the_trailer(ticket), ""
         return False, "no check is named {}\n".format(check)
+
+    # Land turns down a commit whose trailer git cannot read, and by then no Session is left to mend it.
+    def commits_carry_the_trailer(self, ticket):
+        said = self.git(self.job_worktree, "log", "--format=%(trailers:key=Ticket,valueonly)%x00",
+                        self.ticket_base + "..HEAD").out
+        return all("".join(c for c in named.strip().split("\n")[0] if not c.isspace())
+                   == self.tracker.trailer(ticket)
+                   for named in said.split("\0")[:-1])
 
     # --- the Edit an axis made -----------------------------------------------
 

@@ -588,7 +588,7 @@ def test_the_dry_run_still_prints_the_sessions_it_would_start(loop):
         "/skillworks:comment-sweep",
         "/skillworks:implement 168 --finish",
         "checks: no-error command-loaded ticket-open tree-changed",
-        "checks: no-error command-loaded new-commit tree-clean ticket-closed",
+        "checks: no-error command-loaded new-commit ticket-trailer tree-clean ticket-closed",
     ):
         assert line in said(ran)
 
@@ -674,7 +674,7 @@ def test_the_dry_run_names_the_steps_that_can_be_nudged_and_no_others(loop):
     for axis in ("standards", "spec", "architecture"):
         assert planned_nudges(ran, axis) == "up to 2, on axis-reported"
     assert planned_nudges(ran, "build") == "up to 2, on tree-changed"
-    assert planned_nudges(ran, "finish") == "up to 2, on new-commit tree-clean ticket-closed"
+    assert planned_nudges(ran, "finish") == "up to 2, on new-commit ticket-trailer tree-clean ticket-closed"
     for step in ("fix", "sweep", "suite"):
         assert planned_nudges(ran, step) == ""
 
@@ -1673,6 +1673,42 @@ def test_a_finish_that_did_not_commit_is_nudged(loop, runner):
 
     assert "step finish failed" not in said(ran)
     assert failed_in(loop, "finish") == ["new-commit tree-clean"]
+
+
+# A trailer above a blank line is body text to git, so Land could never trace the commit back.
+def committed_with_a_stranded_trailer(runner):
+    def commit():
+        git(runner.where, "add", "-A")
+        git(runner.where, "commit", "--quiet", "-m",
+            "Built\n\nTicket: #168\n\nCo-Authored-By: A <a@example.com>")
+    return commit
+
+
+def trailer_mended(runner):
+    return lambda: git(runner.where, "commit", "--amend", "--quiet", "-m",
+                       "Built\n\nTicket: #168\nCo-Authored-By: A <a@example.com>")
+
+
+def test_a_finish_whose_commit_git_reads_no_ticket_trailer_in_is_nudged(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed_with_a_stranded_trailer(runner), closed(tracker))
+    sessions.when_nudged[FINISH] = trailer_mended(runner)
+
+    ran = loop.run(SPEC)
+
+    assert "step finish failed" not in said(ran)
+    assert failed_in(loop, "finish") == ["ticket-trailer"]
+
+
+def test_a_ticket_trailer_nudge_says_git_reads_only_the_last_paragraph(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed_with_a_stranded_trailer(runner), closed(tracker))
+
+    loop.run(SPEC)
+
+    assert "last paragraph" in nudge_calls(runner)[0][2].split("\n")[0]
 
 
 def test_a_finish_that_left_the_tree_unclean_is_nudged(loop, runner):

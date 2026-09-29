@@ -425,7 +425,7 @@ def test_a_commit_naming_the_ticket_alone_is_not_landed(driver):
     ran = driver.run()
 
     assert ran.status == 1
-    assert "names ticket #1, and this is 7/1" in said(ran)
+    assert "step finish failed check ticket-trailer" in said(ran)
     assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "open"
 
 

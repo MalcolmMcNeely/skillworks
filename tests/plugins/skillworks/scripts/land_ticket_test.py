@@ -640,6 +640,17 @@ def test_a_commit_that_names_no_ticket_is_refused(repo, runner):
     assert target_of(repo) == base
 
 
+def test_a_commit_that_names_another_ticket_is_refused(repo, runner):
+    commit_for_ticket(repo, 164)
+    base = target_of(repo)
+
+    ran = run_land(runner, repo.work, 163)
+
+    assert ran.status == 1
+    assert "names ticket #164, and this is #163" in report(ran)
+    assert target_of(repo) == base
+
+
 def test_a_first_commit_that_names_no_ticket_is_refused(repo, runner):
     commit_naming_nothing(repo)
     first = git(repo.work, "rev-parse", "--short", "HEAD").strip()
