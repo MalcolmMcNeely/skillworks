@@ -1006,3 +1006,7 @@ ticket, its worktree and Job branch, every step's command and facts, the landing
 after the last ticket: the drift check, the Gap round, the Name check, the rename ticket, the Name
 re-check and the full run. A spec in another shape stops the dry run at its `ABORT` line, as it would
 stop a run. It starts no Session and reaches no remote.
+
+A dry run on a spec with no tickets still checks the shape first. Then it says that a Session would
+cut the tickets first, and prints the `tickets` step. It prints the steps each ticket will take, with
+`<ticket>` where the number goes, then the landing steps and what comes after the last ticket.

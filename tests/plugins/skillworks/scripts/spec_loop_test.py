@@ -860,6 +860,52 @@ def test_the_slices_the_ticket_step_shows_are_in_the_loop_log(loop):
     assert "1. **Title**: The dry run prints the plan\n   **Blocked by**: none" in loop.log()
 
 
+def test_a_dry_run_on_a_spec_with_no_tickets_says_a_session_would_cut_them_first(loop):
+    given_the_tracker_holds(loop, ())
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert "DRY   spec #158 has no tickets, so a Session would cut them first" in ran.out
+    assert '"/skillworks:to-tickets 158' in planned_call(ran, "tickets")
+
+
+def test_a_dry_run_on_a_spec_with_no_tickets_prints_each_ticket_s_steps_with_a_place_for_its_number(loop):
+    given_the_tracker_holds(loop, ())
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert planned_steps(ran)[:9] == [
+        "tickets", "build", "standards", "spec", "architecture", "fix", "sweep", "suite", "finish"]
+    assert "/skillworks:implement <ticket> --stop-after-tests" in planned_call(ran, "build")
+    assert "spec-loop/158/ticket-<ticket>" in said(ran)
+    assert planned_steps(ran)[-1] == "full-run"
+
+
+def test_a_dry_run_on_a_spec_with_no_tickets_starts_no_session_and_reaches_no_remote(loop, runner):
+    given_the_tracker_holds(loop, ())
+    base = git(loop.repo.origin, "rev-parse", "main").strip()
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    assert not runner.started("claude")
+    assert git(loop.repo.origin, "rev-parse", "main").strip() == base
+    assert not (loop.repo.work / ".claude" / "worktrees").exists()
+
+
+def test_a_dry_run_on_a_spec_with_no_tickets_in_another_shape_is_refused_before_any_step(loop):
+    tracker = given_the_tracker_holds(loop, ())
+    tracker.body = SKIPS_A_STORY
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert "ABORT spec #158 is not in the shape the loop counts" in said(ran)
+    assert "ticket-<ticket>" not in said(ran)
+
+
 # --- a restart over what a stopped run left behind ---------------------------
 
 # One closed ticket takes the run past the loop body, so the restart is what these cases read.

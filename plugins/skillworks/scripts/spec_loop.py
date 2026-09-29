@@ -118,6 +118,9 @@ CUT_UNATTENDED = (
     "\n\nSkip the approval questions. End with the breakdown you showed, as your last message, "
     "so the loop log holds it.")
 
+UNCUT_NUMBER = "<ticket>"
+UNCUT_JOB_NUMBER = "UNCUT"
+
 # A Surface is named in words with spaces between, so a space alone cannot part two items.
 ITEM_SEPARATOR = ", "
 
@@ -730,11 +733,13 @@ class Loop:
     # --- the step that cuts a spec's tickets ---------------------------------
 
     # Typed and not called through the Skill tool, because the Skill tool refuses a hidden skill.
+    def cut_asks(self):
+        return PLUGIN + "to-tickets {}".format(self.spec)
+
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
-        self.judge("tickets", "ticket step", PLUGIN + "to-tickets {}{}".format(
-            self.spec, CUT_UNATTENDED))
+        self.judge("tickets", "ticket step", self.cut_asks() + CUT_UNATTENDED)
         shown = str(field(self.log_dir / "tickets.json", "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
@@ -770,6 +775,36 @@ class Loop:
                 + plan_line("full-run", "the whole Suite on the newest origin/<target>, with no "
                             "Proofs and no images, once and last"))
 
+    def ticket_plan(self, number, landing):
+        # A job name takes letters only, so the place for a number is asked for in letters.
+        job = "ticket-" + (UNCUT_JOB_NUMBER if number == UNCUT_NUMBER else number)
+        status, said, _ = self.worktree("plan", job)
+        told = said.strip().replace(job, "ticket-" + number).split("\t")
+        if status != 0 or len(told) != 2:
+            raise stop("ABORT {} could not be told where it would be built.".format(
+                self.named(number)))
+        plan = plan_line("worktree", told[0]) + plan_line("branch", told[1])
+
+        for step in STEPS:
+            if not step.session:
+                plan += plan_line(step.name, step.asks, step.checks)
+                continue
+            call = 'claude -p "{}"'.format(self.asks(step, number))
+            if step.resumes:
+                call += " --resume <build session>"
+            else:
+                call += " --session-id <new id>"
+            plan += plan_line(step.name, call, step.checks)
+            nudged = nudged_on(step)
+            if nudged:
+                plan += "                   nudges: up to {}, on {}\n".format(
+                    NUDGES, " ".join(nudged))
+
+        for step in landing:
+            named, what, checks = columns(step)
+            plan += plan_line(named, what, checks)
+        return plan
+
     def dry_run(self):
         self.say("DRY   repo={}  me={}".format(self.tracker.repo, self.tracker.me))
         self.say("DRY   spec {}: {}".format(self.spec_named(), self.spec_title))
@@ -783,42 +818,24 @@ class Loop:
 
         # Gathered whole and printed once, so a step that cannot be planned can still stop the run.
         plan = ""
+        if self.ticket_count == 0:
+            self.say("DRY   spec {} has no tickets, so a Session would cut them first".format(
+                self.spec_named()))
+            plan += "  before the first ticket\n" + plan_line(
+                "tickets", 'claude -p "{}" --session-id <new id>'.format(self.cut_asks()),
+                "nothing left uncommitted, at least one ticket under the spec")
+            plan += "  each ticket the step cuts\n" + self.ticket_plan(UNCUT_NUMBER, landing)
         for number, state, title in self.tracker.ticket_rows(self.spec):
             plan += "  {} [{}] {}\n".format(self.named(number), state, title)
-            if state != "open":
-                continue
-
-            status, said, _ = self.worktree("plan", "ticket-" + number)
-            told = said.strip().split("\t")
-            if status != 0 or len(told) != 2:
-                raise stop("ABORT {} could not be told where it would be built.".format(
-                    self.named(number)))
-            plan += plan_line("worktree", told[0])
-            plan += plan_line("branch", told[1])
-
-            for step in STEPS:
-                if not step.session:
-                    plan += plan_line(step.name, step.asks, step.checks)
-                    continue
-                call = 'claude -p "{}"'.format(self.asks(step, number))
-                if step.resumes:
-                    call += " --resume <build session>"
-                else:
-                    call += " --session-id <new id>"
-                plan += plan_line(step.name, call, step.checks)
-                nudged = nudged_on(step)
-                if nudged:
-                    plan += "                   nudges: up to {}, on {}\n".format(
-                        NUDGES, " ".join(nudged))
-
-            for step in landing:
-                named, what, checks = columns(step)
-                plan += plan_line(named, what, checks)
+            if state == "open":
+                plan += self.ticket_plan(number, landing)
 
         self.wrote(plan + self.after_tickets_plan())
         # Asked the way the run asks, so the ticket named is the one a run would claim first.
         chosen = self.next_ticket(self.tracker.open_tickets(self.spec))
-        if chosen:
+        if self.ticket_count == 0:
+            self.say("DRY   the next ticket is the first one the step cuts")
+        elif chosen:
             self.say("DRY   the next ticket is {}".format(self.named(chosen)))
         else:
             self.say("DRY   no ticket is startable")
