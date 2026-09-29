@@ -9,6 +9,9 @@ shows which skills Claude uses and what they cost, and what each Session did, st
 Then the loop builds it, ticket by ticket, while nobody watches. It builds each ticket test-first,
 reviews it three ways and runs your own checks on it before it lands.
 
+> After you turn telemetry on in Studio, restart Claude Code. Claude Code reads its settings only when
+> a Session starts, so a Session that was already running sends Studio nothing.
+
 ## Studio
 
 ### The Dashboard
