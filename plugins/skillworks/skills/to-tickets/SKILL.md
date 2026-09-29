@@ -65,11 +65,13 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets to the configured tracker
 
-Publish the tickets you showed, with the same files and the same command for both Trackers. Write one file per ticket to a folder outside the repo, such as `$(mktemp -d)`, named `<NN>-<slug>.md` and numbered from `01` in dependency order, blockers first. Each file opens with the frontmatter the tracker docs show: `status: open`, `blocked-by` listing the numbers of the tickets that block it, such as `blocked-by: [1, 2]`, and `claimed-by` left empty, because the loop sets it. The ticket shape's title and body follow, the title as a `# ` heading. Then publish every file in one call:
+Publish the tickets you showed, with the same files and the same command for both Trackers. Write one file per ticket with the Write tool, to the folder `.spec-loop/<spec>/tickets/` in this checkout, named `<NN>-<slug>.md` and numbered from `01` in dependency order, blockers first. Each file opens with the frontmatter the tracker docs show: `status: open`, `blocked-by` listing the numbers of the tickets that block it, such as `blocked-by: [1, 2]`, and `claimed-by` left empty, because the loop sets it. The ticket shape's title and body follow, the title as a `# ` heading. Then publish every file in one call:
 
 ```bash
 tracker-publish tickets <spec> <file>...
 ```
+
+Git ignores `.spec-loop/`, so the files leave the checkout clean. Write nowhere outside the checkout, and make no temp folder: the loop's Cut runs this skill in a Session that has no permission for either, and nobody is there to give it.
 
 Before it writes anything, it turns down a set the loop could not follow: a file with no number, two files with one number, a ticket not `open`, a `claimed-by` already set, a blocker that is not a ticket before it, or two tickets with one title.
 

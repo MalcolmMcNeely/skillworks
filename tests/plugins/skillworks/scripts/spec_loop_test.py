@@ -852,6 +852,17 @@ def test_a_spec_still_without_tickets_after_the_cut_stops_the_loop(loop, runner)
     assert call_asking(runner, "/skillworks:implement") is None
 
 
+def test_a_cut_that_filed_no_tickets_after_denials_gives_the_way_past_them(loop):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop).denials["to-tickets"] = [A_DENIED_WRITE]
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert 'Denial: Write {"file_path": ".claude/rules/words.md"' in loop.log()
+    assert BYPASS in loop.log()
+
+
 def test_the_slices_the_cut_shows_are_in_the_loop_log(loop):
     tracker = given_the_tracker_holds(loop, ())
     sessions = given_sessions_that_report(loop)
@@ -2615,9 +2626,11 @@ def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runn
 
 # --- the count ---------------------------------------------------------------
 
-def drifted(loop, report):
+def drifted(loop, report, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    given_sessions_that_report(loop)
+    sessions = given_sessions_that_report(loop)
+    if denials:
+        sessions.denials["spec-drift"] = list(denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = report
     return loop.run(SPEC)
@@ -2659,6 +2672,21 @@ def test_a_spec_whose_last_comment_is_no_drift_report_stops_the_loop(loop):
             .format(SPEC)) in loop.log()
     assert not (loop.records() / "drift.md").exists()
     assert "END" not in loop.log()
+
+
+def test_a_drift_check_that_recorded_no_report_after_denials_gives_the_way_past_them(loop):
+    ran = drifted(loop, "Looks good to me.\n", A_DENIED_WRITE)
+
+    assert ran.status == 1
+    assert 'Denial: Write {"file_path": ".claude/rules/words.md"' in loop.log()
+    assert BYPASS in loop.log()
+
+
+def test_a_drift_check_that_recorded_no_report_with_no_denials_gives_no_way_past_them(loop):
+    ran = drifted(loop, "Looks good to me.\n")
+
+    assert ran.status == 1
+    assert BYPASS not in said(ran) + loop.log()
 
 
 def test_a_contradicts_stops_the_loop_naming_it_and_every_gap_beside_it(loop):
@@ -2893,9 +2921,11 @@ def test_a_contradicts_in_the_re_check_stops_the_loop(loop):
 
 # --- the Name check ------------------------------------------------------------
 
-def named_back(loop, report):
+def named_back(loop, report, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    given_sessions_that_report(loop)
+    sessions = given_sessions_that_report(loop)
+    if denials:
+        sessions.denials["spec-names"] = list(denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.name_report = report
     return loop.run(SPEC)
@@ -2938,6 +2968,14 @@ def test_a_name_check_that_recorded_no_report_stops_the_loop(loop):
             "spec stays open.").format(SPEC) in loop.log()
     assert not (loop.records() / "names.md").exists()
     assert "END" not in loop.log()
+
+
+def test_a_name_check_that_recorded_no_report_after_denials_gives_the_way_past_them(loop):
+    ran = named_back(loop, "Looks good to me.\n", A_DENIED_COMMAND)
+
+    assert ran.status == 1
+    assert 'Denial: Bash {"command": "rm -rf .claude/worktrees"}' in loop.log()
+    assert BYPASS in loop.log()
 
 
 def test_a_name_report_with_no_renames_list_stops_the_loop(loop):

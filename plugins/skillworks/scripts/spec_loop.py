@@ -580,10 +580,7 @@ class Loop:
                      .format(self.named(ticket)))
 
     # The hint only where a Denial was listed, since a stop with another cause needs another fix.
-    def stop_step(self, ticket, step, reason, see, result=None):
-        self.reopen(ticket)
-        said = "FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
-            self.named(ticket), step, reason, self.job_worktree, see)
+    def stop_denied(self, said, result):
         named = denials(result) if result is not None else []
         if not named:
             return stop(said)
@@ -592,6 +589,11 @@ class Loop:
         # The flag and not the env var, because the allow rule `Bash(spec-loop:*)` matches only the flag.
         return stop(said + "\n      If one of these Denials stopped the step, rerun with "
                     "spec-loop {} --bypass".format(self.spec))
+
+    def stop_step(self, ticket, step, reason, see, result=None):
+        self.reopen(ticket)
+        return self.stop_denied("FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
+            self.named(ticket), step, reason, self.job_worktree, see), result)
 
     def run_step(self, ticket, step, *rest):
         held = self.step_file(ticket, step.name, "json")
@@ -757,15 +759,15 @@ class Loop:
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
-        self.run_clean_session("cut", "Cut", self.cut_asks() + CUT_UNATTENDED)
-        shown = str(field(self.log_dir / "cut.json", "result")).rstrip("\n")
+        result = self.run_clean_session("cut", "Cut", self.cut_asks() + CUT_UNATTENDED)
+        shown = str(field(result, "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
         self.ticket_count = len(self.tracker.tickets(self.spec))
         if self.ticket_count == 0:
-            raise stop("STOP  spec {} still has no tickets after the Cut, so "
-                       "nothing was built. See {}".format(
-                           self.spec_named(), self.log_dir / "cut.err"))
+            raise self.stop_denied("STOP  spec {} still has no tickets after the Cut, so "
+                                   "nothing was built. See {}".format(
+                                       self.spec_named(), self.log_dir / "cut.err"), result)
 
     # --- the dry run ---------------------------------------------------------
 
@@ -1070,6 +1072,7 @@ class Loop:
     # --- the drift check -----------------------------------------------------
 
     # The Session records its work with the spec and changes nothing, so a tree it left changed stops.
+    # It hands back the Session's result, whose Denials say why a record may be missing.
     def run_clean_session(self, named, what, prompt):
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened(named)
@@ -1077,7 +1080,8 @@ class Loop:
             raise stop("FAIL  the {} got no worktree to run in.".format(what))
 
         ran = self.claude_p(prompt)
-        written(self.log_dir / (named + ".json"), ran.out)
+        result = self.log_dir / (named + ".json")
+        written(result, ran.out)
         written(self.log_dir / (named + ".err"), ran.err)
         if ran.status != 0:
             self.say("WARN  {} exited non-zero. See {}".format(
@@ -1088,6 +1092,7 @@ class Loop:
         if self.worktree("close", named)[0] != 0:
             raise stop("FAIL  the {}'s worktree at {} would not go.".format(
                 what, self.job_worktree))
+        return result
 
     # The same lookup the check makes, so the log shows its scope and a broken one never reads as clean.
     def say_scope(self, what, base):
@@ -1111,20 +1116,22 @@ class Loop:
         else:
             self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
                 self.spec_named()))
-        self.run_clean_session(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
+        result = self.run_clean_session(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
             self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""))
-        return self.read_drift_report(named, asked)
+        return self.read_drift_report(named, asked, result)
 
     # Read back from the Tracker, so a report the Session only said and never recorded is caught.
-    def read_drift_report(self, named, asked):
+    def read_drift_report(self, named, asked, result):
         report = self.tracker.drift_report(self.spec)
         if not report:
-            raise stop("STOP  the drift check recorded no report on spec {}, so nothing was "
-                       "counted and the spec stays open.".format(self.spec_named()))
+            raise self.stop_denied("STOP  the drift check recorded no report on spec {}, so nothing "
+                                   "was counted and the spec stays open.".format(
+                                       self.spec_named()), result)
         # The Tracker hands back the newest report, so a re-check that recorded none reads the first.
         if asked and report == self.drift_read:
-            raise stop("STOP  the re-check recorded no new report on spec {}, so the Gap items were "
-                       "not judged again and the spec stays open.".format(self.spec_named()))
+            raise self.stop_denied("STOP  the re-check recorded no new report on spec {}, so the Gap "
+                                   "items were not judged again and the spec stays open.".format(
+                                       self.spec_named()), result)
         self.drift_read = report
         held = self.log_dir / (named + ".md")
         written(held, report + "\n")
@@ -1198,13 +1205,15 @@ class Loop:
         self.say_scope("Name check", base)
         self.say("NAMES checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
-        self.run_clean_session("names", "Name check", PLUGIN + "spec-names {} {}".format(self.spec, base))
+        result = self.run_clean_session("names", "Name check", PLUGIN + "spec-names {} {}".format(
+            self.spec, base))
 
         # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
         report = self.tracker.name_report(self.spec)
         if not report:
-            raise stop("STOP  the Name check recorded no report on spec {}, so no name was read "
-                       "and the spec stays open.".format(self.spec_named()))
+            raise self.stop_denied("STOP  the Name check recorded no report on spec {}, so no name "
+                                   "was read and the spec stays open.".format(
+                                       self.spec_named()), result)
         self.names_read = report
         held = self.log_dir / "names.md"
         written(held, report + "\n")
@@ -1241,14 +1250,16 @@ class Loop:
     def check_renames(self, base, ticket, renames):
         self.say("NAMES the rename ticket {} is closed. Checking it made each rename on spec "
                  "{}.".format(self.named(ticket), self.spec_named()))
-        self.run_clean_session("names-renames", "Name re-check", PLUGIN + "spec-names {} {} {}".format(
-            self.spec, base, self.tracker.reference(ticket)))
+        result = self.run_clean_session(
+            "names-renames", "Name re-check", PLUGIN + "spec-names {} {} {}".format(
+                self.spec, base, self.tracker.reference(ticket)))
 
         # The Tracker hands back the newest report, so a check that recorded none reads the first.
         report = self.tracker.name_report(self.spec)
         if not report or report == self.names_read:
-            raise stop("STOP  the Name re-check recorded no new report on spec {}, so no rename was "
-                       "checked and the spec stays open.".format(self.spec_named()))
+            raise self.stop_denied("STOP  the Name re-check recorded no new report on spec {}, so no "
+                                   "rename was checked and the spec stays open.".format(
+                                       self.spec_named()), result)
         held = self.log_dir / "names-renames.md"
         written(held, report + "\n")
         verdicts = read_rename_verdicts(report)

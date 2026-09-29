@@ -638,7 +638,8 @@ you, so a Denial is final. A write under `.claude/` is always turned down in the
 your allow rules say.
 
 Many Denials are worked around. When a step stops and its result lists Denials, the `FAIL` line names
-each one and adds a hint:
+each one and adds a hint. So does the `STOP` line of a Cut that filed no tickets, and of a check that
+recorded no report:
 
 ```
       Denial: Write {"file_path": ".claude/settings.json", ...

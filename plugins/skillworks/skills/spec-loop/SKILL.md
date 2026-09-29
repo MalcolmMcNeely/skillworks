@@ -50,7 +50,7 @@ Unrequested work never stops the loop, and the driver writes a `NOTE  Unrequeste
 
 Re-running the same command is a **real run**, every time. It first Keeps each leftover worktree: it commits what the worktree held, removes the worktree, and renames its branch to `spec-loop/<spec-number>/ticket-<n>-kept-<k>`, naming each branch in a `KEPT` line of the log. Then it starts the first open ticket again from the Target branch, with a fresh build. A Kept build stays on its branch and the rerun never reads it, so a rerun after a long build pays for that build again.
 
-**A stop that names Denials gets one rerun in bypass mode.** A Denial is a tool call Claude Code turned down because the Session had no permission for it, such as a write under `.claude/`. The `FAIL` line names each one on a `Denial:` line. When it names at least one, run, in the background:
+**A stop that names Denials gets one rerun in bypass mode.** A Denial is a tool call Claude Code turned down because the Session had no permission for it, such as a write under `.claude/`. The stop names each one on a `Denial:` line: the `FAIL` line of a step, or the `STOP` line of a Cut or a check that recorded nothing. When it names at least one, run, in the background:
 
 ```bash
 spec-loop <spec-number> --bypass
@@ -61,6 +61,6 @@ Run it once, and never again for the same stop. Stop and tell the user, naming e
 - the bypass rerun stops too, or
 - Claude Code will not start in bypass mode, because bypass mode is turned off here.
 
-A stop whose `FAIL` line names no Denial never gets a `--bypass` rerun. Its cause lies somewhere else, and bypass mode does not fix it.
+A stop that names no Denial never gets a `--bypass` rerun. Its cause lies somewhere else, and bypass mode does not fix it.
 
 To see what a run would do, read `spec_loop.py` and run `spec-loop <spec-number> --dry-run`, which starts no session and Keeps nothing. Start a real run only to finish the spec, in the background and with no time limit: a limit that ends the driver mid-step leaves a half-built attempt for the next run to Keep.

@@ -94,11 +94,13 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
    - A helper that trims the log's lines to 80 characters.
    ```
 
-8. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back. Write it to a file outside the repo, such as in `$(mktemp -d)`, and record it with this one command, whichever the Tracker:
+8. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back. Write it with the Write tool to `.spec-loop/<spec>/drift-report.md` in this checkout, and record it with this one command, whichever the Tracker:
 
    ```bash
-   tracker-publish drift <spec> <file>
+   tracker-publish drift <spec> .spec-loop/<spec>/drift-report.md
    ```
+
+   Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.
 
    - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. A second run adds a second comment, and the loop reads the last one.
    - **Files**: the command pushes the report to the end of the spec's `spec.md` on the remote, and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.

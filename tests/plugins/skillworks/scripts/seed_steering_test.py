@@ -1108,6 +1108,14 @@ def test_the_walk_for_skill_tool_calls_finds_the_grills_call_to_to_spec():
     assert ("grill/SKILL.md", "to-spec") in skill_tool_calls()
 
 
+# The loop runs these in `acceptEdits`, where a write outside the checkout is a Denial nobody is there to lift.
+@pytest.mark.parametrize("skill", ["to-tickets", "spec-drift", "spec-names"])
+def test_a_skill_the_loop_runs_writes_what_it_publishes_in_the_ignored_loop_folder(skill):
+    text = skill_text(skill)
+
+    assert "`.spec-loop/<spec>/" in text and "mktemp" not in text and "outside the repo" not in text
+
+
 def test_the_spec_loop_skill_leaves_cutting_the_tickets_to_the_driver():
     spec_loop = skill_text("spec-loop")
 
@@ -1270,7 +1278,7 @@ def test_review_spec_reads_a_files_ticket_from_its_folder_in_the_worktree():
 def test_spec_drift_records_its_report_with_the_spec_under_the_heading_the_loop_reads():
     spec_drift = skill_text("spec-drift")
 
-    assert "tracker-publish drift <spec> <file>" in spec_drift
+    assert "tracker-publish drift <spec> .spec-loop/<spec>/drift-report.md" in spec_drift
     assert "`{}`".format(DRIFT_REPORT) in spec_drift
     assert "`spec.md`" in spec_drift
 
@@ -1298,7 +1306,7 @@ def test_spec_names_reads_only_the_spec_commits_and_the_glossary_and_records_a_n
     assert 'A rename is never "Optional"' in spec_names
     assert "The first line is `{}`.".format(NAME_REPORT) in spec_names
     assert "The `### Renames` list comes next." in spec_names
-    assert "tracker-publish names <spec> <file>" in spec_names
+    assert "tracker-publish names <spec> .spec-loop/<spec>/names-report.md" in spec_names
 
 
 def stops(skill, *names):

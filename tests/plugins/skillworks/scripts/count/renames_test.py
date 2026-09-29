@@ -158,7 +158,7 @@ def test_spec_names_records_the_report_with_the_spec_under_the_heading_the_loop_
 
     assert "`{}`".format(NAME_REPORT) in text
     assert "`### Renames`" in text
-    assert "tracker-publish names <spec> <file>" in text
+    assert "tracker-publish names <spec> .spec-loop/<spec>/names-report.md" in text
     assert "comment on the spec issue" in text
 
 

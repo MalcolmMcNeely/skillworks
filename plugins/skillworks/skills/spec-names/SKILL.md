@@ -75,11 +75,13 @@ The loop reads its list, so its shape is fixed:
 
 Record the report with the spec. Its first line is `## Name report`, with either Tracker, because the loop finds the report by that heading and reads it back. A finding you only say in this Session is lost.
 
-Write it to a file outside the repo, such as in `$(mktemp -d)`, and record it with this one command, whichever the Tracker:
+Write it with the Write tool to `.spec-loop/<spec>/names-report.md` in this checkout, and record it with this one command, whichever the Tracker:
 
 ```bash
-tracker-publish names <spec> <file>
+tracker-publish names <spec> .spec-loop/<spec>/names-report.md
 ```
+
+Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.
 
 - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. Post nothing on the spec after it, because the loop reads the last comment.
 - **Files**: the command pushes the report to the end of the spec's `spec.md`, below the drift report, and takes the place of any earlier Name report. It writes through an index of its own, so the checkout stays clean. The loop turns down a Name check that leaves the checkout changed.
