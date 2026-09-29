@@ -1,54 +1,40 @@
 # Skillworks
 
-Skillworks is an app an organisation runs to manage the Claude Code skills its developers use.
+Skillworks is two tools for a team that builds with Claude Code.
 
-The app is called Studio. It has four jobs, in this order:
+**Studio** is an app you run on your own machine. It reads your team's Claude Code telemetry. It
+shows which skills Claude uses and what they cost, and what each Session did, step by step.
 
-1. **Dashboard.** Read the organisation's Claude Code telemetry. See which skills fire, how often, in
-   which repositories, and what they cost.
-2. **Author.** Write a skill and its evals.
-3. **Test.** Run the evals before anyone else gets the skill.
-4. **Publish.** Ship the skills to the organisation as a Claude Code plugin.
+**The Plugin** is a Claude Code plugin that runs the Dev loop. You argue a design out with Claude.
+Then the loop builds it, ticket by ticket, while nobody watches. It builds each ticket test-first,
+reviews it three ways and runs your own checks on it before it lands.
 
-Then it goes round again. Once the plugin is out, the telemetry shows whether its skills fire.
+## Studio
 
-Beside the four jobs, **Sessions** shows each run of Claude Code: what it was given, and what it did,
-step by step.
+### The Dashboard
 
-| Job | Built? |
-|---|---|
-| Dashboard | Yes. The Dashboard lists every skill with its Activations, Cost, Tokens, Models, Efforts and Repositories. |
-| Sessions | Yes. Sessions lists each Session, and opens one to show its Exchanges, Steps and Findings. |
-| Author | Not yet. |
-| Test | Not yet. |
-| Publish | Not yet. |
+![The Dashboard as its days arrive](docs/assets/dashboard-arriving.gif)
 
-The words this README uses, such as Activation and Events store, are defined in
-[CONTEXT.md](CONTEXT.md). The decisions so far are in [docs/adr/](docs/adr/), and the research
-behind them is in [docs/research/](docs/research/).
+The Dashboard draws your skills as Tiles, sized by their Cost or by their Activations. It shows each
+skill's Activations, Cost, Tokens, Models, Efforts and Repositories, for the last day, week or month.
+A skill in your plugins that nobody used still shows, at zero, so you can see which skills earn their
+place.
 
-## What each job will do
+The answers arrive a day at a time, so the page is useful before the last day lands.
 
-**Author.** Studio writes a skill's folder and its evals to disk, as plugin files Claude Code can
-load.
+### Sessions
 
-**Test.** Studio runs two kinds of eval. An Activation eval checks that a skill fires on the prompts
-it should, and stays quiet on the rest. It is cheap, and every skill Claude picks up on its own gets
-one. An Outcome eval checks what a skill produces after it fires. It costs more, so only a skill
-that promises something a test can check gets one.
+![The timeline of one Session](docs/assets/session-timeline.png)
 
-**Publish.** A Claude Code plugin marketplace is a git repository. Studio puts the tested plugin in
-the organisation's marketplace, and each developer's Claude Code installs it from there.
+Sessions lists each run of Claude Code. Open one to see what it was given and what it did: every
+Prompt, model turn and Tool call on one timeline, with its Subagents, Faults and Friction. Studio
+names the Findings worth your attention, and a click takes you to the moment each one happened.
 
-## Why Studio runs on your machine
+With the Plugin on, every commit Claude makes names its Session, so a commit leads back to the run
+that wrote it. [Studio's telemetry](docs/studio/telemetry.md#which-session-made-a-commit) says how
+to read it back.
 
-Authoring writes files, and an eval starts `claude`. A hosted service can do neither, so each
-developer runs their own Studio.
-
-The numbers still come from one place. Studio reads them from the organisation's Events store, not
-from the machine it runs on, so every developer's Studio shows the same numbers.
-
-## Running Studio
+## Run Studio
 
 You need these on your machine:
 
@@ -63,221 +49,93 @@ Then, from the repo root:
 aspire run
 ```
 
-In Git Bash, type `aspire.cmd run`. Git Bash does not find the bare name `aspire`.
+In Git Bash, type `aspire.cmd run`. Open the `web` resource in the Aspire dashboard it prints.
 
-That starts the API, the front end, an OpenTelemetry Collector and Loki. It prints the address of
-Aspire's own dashboard, and the front end is the `web` resource there. The Collector and Loki run
-as Docker containers. Aspire runs `npm install` and `npm run dev` for the front end, and hands it
-the API's address, so there is no port to look up.
+Claude Code sends nothing until telemetry is on. Turn it on with the Telemetry switch on the
+Dashboard's rail, then restart any Claude Code Session that is already running. The switch records
+what you type and what Claude Code answers. [Studio's telemetry](docs/studio/telemetry.md) says what
+it records.
 
-### Turn telemetry on
+Out of the box, Studio reads the stores that `aspire run` starts, so it shows only your own machine.
+Point it at your team's stores, and every developer sees the same numbers.
+[Running Studio](docs/studio/running.md) has the settings.
 
-Studio reads its numbers from Loki, and Claude Code sends nothing until telemetry is on. Use the
-Telemetry switch on the rail of Studio's first page. It writes eleven variables to the `env` block
-of `~/.claude/settings.json`. Restart any Claude Code session that is already running.
+### Try it on a seeded month
 
-The switch records what you type and what Claude Code answers.
-[docs/studio/telemetry.md](docs/studio/telemetry.md) lists each variable, says what telemetry
-cannot tell you, and says how the Plugin's hooks record each Session.
-
-### Settings
-
-Studio finds the Events store and the Marketplace through these settings:
-
-| Setting | What it does | Default |
-|---|---|---|
-| `Loki__Address` | Where Studio reads Loki. The AppHost sets it to its own Loki. | `http://localhost:3100` |
-| `Loki__Tenant` | Sent as `X-Scope-OrgID`, for a Loki with several tenants. | Not sent |
-| `Loki__PatienceSeconds` | How long Studio waits on Loki before it shows a Gap. | `5` |
-| `Loki__LookbackDays` | The lookback: how many days a list covers when the Filter has no start day. | `7` |
-| `Loki__MaxQueryDays` | The most days one Loki query may cover. Studio splits a longer span. | `30` |
-| `Marketplace__Path` | The Marketplace folder. Studio reads the skill names of every plugin in it, so a skill that never fired still shows, with zero Activations. The AppHost sets it to `plugins/` in this repo. | `plugins` |
-
-### Studio on a seeded month
-
-To judge a screen at real volume without your own telemetry, run Studio against a throwaway Loki and
-Trace store. Docker must be running. Run `npm install` in `src/Skillworks.Studio.Web` once first.
-Then, from the repo root:
+To see Studio full of data before you have any, run it on a made-up month. Docker must be running.
+Run `npm install` in `src/Skillworks.Studio.Web` once first. Then, from the repo root:
 
 ```
 node tools/seeded-studio.mjs
 ```
 
-Open `http://localhost:5173/`. The tool fills a Loki container, `skillworks-seeded-loki`, on port
-3101 with a made-up month of telemetry that ends now. It also writes five whole Sessions from the
-last six hours, with Prompts, Tool calls, Faults, Friction, hooks and Subagents, and puts their
-Spans in a Tempo container, `skillworks-seeded-tempo`, on port 3201. Between them the five Sessions
-cross every Bar, and two name a model that states its window. The tool prints a link to each one.
-It runs the API on port 5199. Ctrl+C stops everything and removes both containers. The AppHost's
-stores are not touched.
+Open `http://localhost:5173/`. Ctrl+C stops everything.
 
-To seed the stores and nothing else, add `--seed-only`. The containers keep running after the tool
-exits. Remove them with `docker rm -f skillworks-seeded-loki skillworks-seeded-tempo`.
+## The Dev loop
 
-### Check the Sessions list on your own data
-
-With Aspire running, this loads the Sessions list 15 times, one load after another. It counts the
-loads that end in "No signal", and then reads Loki's query log to find how long the parts of those
-loads waited in Loki's queue. From the repo root:
+The Dev loop has two stages, and one command starts each:
 
 ```
-node tools/no-signal-check.mjs
+/skillworks:grill-with-docs      argue the design out, and publish the spec
+/skillworks:spec-loop <spec#>    build it, ticket by ticket, while nobody watches
 ```
 
-It exits with 1 when a load ended in "No signal". Add `--api <address>` when the API is not on
-`http://localhost:5222`, `--loads <n>` for another number of loads, and `--loki <name>` when more than
-one container is named `loki-*`. The check is not in the Suite, because it needs your own data and a
-running app.
+**The Grill.** Claude asks you about the design one question at a time, each with the answer it
+recommends. It looks up facts in the code itself, so you only make decisions. Claude writes each
+word and decision to your repo as soon as it settles. When no question is left, Claude sums up the
+design and asks you to confirm. Your yes publishes the spec. After it, nothing asks you anything unless the
+loop stops.
 
-The AppHost's Loki is a persistent container, and it keeps the flags it was made with. The check
-stops when the container lacks a flag from `src/Skillworks.AppHost/LokiFlags.cs`, and names the
-container. Stop Aspire, remove the container with `docker rm -f <name>`, and start Aspire again. The
-data stays in its volume.
+**The spec loop.** `/skillworks:spec-loop` cuts the spec into tickets. Then a script builds each
+ticket in a worktree of its own:
 
-### Checks
+1. A Session builds the change, test-first.
+2. Three fresh Sessions review it, and each fixes what it finds: against your rules, against the
+   spec, and for where the code sits.
+3. A Session reads all three reports and fixes what is left. Then a Session cuts the comments back
+   to what your rules keep.
+4. The script runs your Suite, the checks that decide green for your repo. A red Suite goes back to
+   the fix once. A second red stops the loop.
+5. The loop commits the ticket, closes it, and lands it on your Target branch.
 
-Docker must be running, because the API tests start Loki in a container. `uv` must be on PATH,
-because the script tests are Python. Run the front-end checks from `src/Skillworks.Studio.Web`, so
-they use the local tools and not anything installed globally.
+When the last ticket lands, a drift check reads the whole spec against what was built. The loop
+builds any Gap it finds as one more ticket. Then the whole Suite runs once more. You come back to a
+finished spec, or to a log that says where the loop stopped and why.
 
-```
-dotnet test tests/Skillworks.Architecture.Tests
+The Target branch is a branch you push to, such as `main`. Or it is a branch for each spec, and your
+team reviews the spec as one pull request. The specs and tickets live in GitHub Issues, or in Markdown
+files committed to your repo.
 
-dotnet test Skillworks.Studio.slnf --blame-crash --blame-crash-dump-type mini
+Skillworks is built this way. Its specs and tickets are its
+[GitHub issues](https://github.com/MalcolmMcNeely/skillworks/issues).
 
-uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts -m "not this_repo"
+### Set up the Plugin
 
-uv run --with pytest pytest tests/plugins/skillworks/scripts/suite_test.py -m this_repo
-
-node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
-
-cd src/Skillworks.Studio.Web
-npm run typecheck
-npm run lint
-npm test
-```
-
-The loop runs the same checks from `docs/agents/suite.json`. A new check goes in both places.
-[docs/usage/suite.md](docs/usage/suite.md) says how the loop runs them. This repo's Suite file sets
-`runs` to 2, so that a check that goes red and then passes shows as a Flake. The Architecture tests run
-alone, so they never wait on Docker. The Core and API tests run over one solution filter,
-`Skillworks.Studio.slnf`, so they build once. The loop runs the script
-tests in the Linux image `docs/agents/script-tests.Dockerfile`, because on Windows each git and bash
-process they start is slow to start. Run by hand, the command above runs them on your own machine.
-The tests marked `this_repo` run on the host in a check of their own, because they read the paths
-the script tests ignore, and the image gets no copy of those.
-
-#### The script tests
-
-The loop's scripts live in the Plugin, at `plugins/skillworks/scripts/`, and their tests sit at the
-same path under `tests/`. The script tests build a throwaway repository in a temporary directory and
-touch nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest,
-and `filelock` for the landing lock, are asked for on the command line, because the scripts carry no
-project file. The hook scripts are node, and their tests sit beside the script tests and use the
-test runner built into node, so they add no dependency. node expands the quoted pattern itself.
-
-The script tests come in two sets, told apart by one flag on the same path. The commands above run
-the fast set, which answers for `gh` and `claude` through the Runner, so it needs neither installed
-and starts no model session. It is the set a landing runs, so landing is never gated on a login.
-
-The other set starts the real `gh` and the real `claude`, far enough to prove each one accepts the
-argument lines the driver builds for it and no further. It also starts `claude` with the Plugin, to
-prove the Plugin forces its output style and resolves a `skillworks:` skill. That session asks for a
-model the API does not offer, so no model answers. One more session, on Haiku, makes a commit in a
-throwaway repository, to prove the Plugin's hook names the Session in it. That is the one model
-session the set starts. It needs both programs on PATH. It changes no issue, and it takes under a
-minute:
+You need `git`, `claude` and `uv` on your `PATH`, and `gh` logged in if your specs live in GitHub
+Issues. Your repo needs an `origin` remote. Clone Skillworks once, anywhere on your machine:
 
 ```
-uv run --with pytest --with filelock pytest tests/plugins/skillworks/scripts --real-binaries
+git clone https://github.com/MalcolmMcNeely/skillworks.git
 ```
 
-#### The ten-minute wait
-
-A session waits ten minutes on a command before it gives up, rather than the two minutes it would
-otherwise. `.claude/settings.json` sets that. The script suite took 184, 299, 321 and 413 seconds
-across four runs of the same tests on this machine, and the spread is machine load, so two minutes
-loses the result and a session has to run the suite in the background and poll it instead. The wait
-is a ceiling and never a delay, so a run that takes three minutes still answers in three.
-
-Every Session the loop starts gets a Bash limit of 45 minutes, by default and at most, beside the
-ten minutes the settings file sets for a session at the keyboard. Under `claude -p` a command moved to
-the background dies with the Session's last turn, so a long check has to finish in the foreground.
-[ADR 0033](docs/adr/0033-a-session-that-stops-short-is-nudged-by-the-driver.md) records why.
-
-This does not reach the loop itself, which runs for hours and still has to be started in the
-background.
-
-#### A Python with nothing to run
-
-`.claude/settings.json` also sets `PYTHON_BASIC_REPL=1`. On Windows, Python 3.13 handed an empty
-script, such as `python - <<'EOF'` with nothing before the `EOF`, opens its new prompt. That prompt
-fails to read the console, starts again, and never stops, so the command holds a session for the
-whole of its wait. The basic prompt reads the empty input and exits at once.
-
-## Repo layout
-
-| Path | What it is |
-|---|---|
-| `src/Skillworks.Core/` | The domain. No HTTP. The API is a thin shell over it. |
-| `src/Skillworks.Studio.Api/` | The ASP.NET Core shell. HTTP and nothing else. |
-| `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped. Any rule of its own lives in a `lib` folder, such as `src/dashboard/lib/`, with a test beside it. |
-| `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
-| `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service discovery setup. |
-| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `docs/agents/rules/` and lists the places the code breaks them. |
-| `tests/Skillworks.Core.Tests/` | The stores Studio reads, tested against real containers, and the stand-ins for a store that stalls. |
-| `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
-| `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
-| `tests/plugins/skillworks/scripts/` | The Plugin's scripts, run against a throwaway repository. |
-| `plugins/` | The local Marketplace. It holds the one Plugin, `skillworks`, and this repo loads its skills from there. Studio reads it by default. |
-| `plugins/skillworks/scripts/` | The loop's scripts: the driver, the landing, the worktrees, the Suite, the preflight, and the hook scripts. They read the repo from the git top level of the folder they start in, never from where the Plugin sits. |
-| `plugins/skillworks/hooks/` | The Plugin's hooks. On `SessionStart` and `InstructionsLoaded` they record what the Session was given, when telemetry is on. On `PreToolUse` they name the Session in each commit Claude makes, always. |
-| `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree`, `skillworks-preflight`, `seed-steering`, `set-attribution`, `allow-commands`, `skillworks-suite` and `tracker-publish`. Each runs its script from the Plugin. |
-| `.claude/skills/` | The skills that are not in the Plugin. Dev tooling for this repo, mostly vendored. |
-| `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
-| `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |
-| `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
-| `docs/usage/` | How a team uses Skillworks, and how the loop works, for a human reading it rather than a skill. |
-| `docs/studio/` | How Studio gets its telemetry. |
-
-The top folder under a code root is a Slice, named for a job Studio does, with `Shared` beside the
-Slices for the code no one job owns. `docs/agents/rules/file-placement.md` holds the rules.
-
-## Working on Skillworks
-
-### Setup
-
-You need three things on your machine:
-
-- `gh`, logged in. Check with `gh auth status`.
-- `claude` on your `PATH`
-- an `origin` remote pointing at GitHub
-
-Then, in Claude Code:
+Then open Claude Code in your repo, and run:
 
 ```
+/plugin marketplace add <your clone>/plugins
+/plugin install skillworks@skillworks
 /skillworks:skillworks-setup
 ```
 
-Run it once per repo. Run it again at any time to repair.
-
-It creates the `ready-for-agent` label, seeds the Steering (the rules, `docs/agents/` and a starting
-Suite file) where it is missing, points `CLAUDE.md` at it, enables the Plugin, and installs the
-permission allowlist the loop needs to run unattended. A second run brings in a newer Seed. It
-merges the Seed's change into a file you have edited, and asks you where the two touch the same lines.
-
-### The dev loop
-
-Two stages, and two commands. A human drives the first. A script drives the second.
-
-```
-/skillworks:grill-with-docs        argue the design out, and publish the spec
-/skillworks:spec-loop <spec#>      build it, ticket by ticket, unattended
-```
-
-[docs/usage/](docs/usage/) explains what each one does.
+Setup copies the Steering into your repo: the files that tell the loop about your repo, such as the
+rules the reviews hold your code to and the Suite file that names your checks. Your team owns them
+from then on. Run setup once per repo, and again at any time to repair it.
 
 Lost? `/skillworks:what-next` looks at where you are and tells you which skill fits.
+[Using Skillworks](docs/usage/README.md) says how each part works.
+
+## Working on Skillworks
+
+[Working on Skillworks](docs/CONTRIBUTING.md) has the checks and the repo layout.
 
 ## Licence
 

@@ -21,9 +21,9 @@ that. Studio shows that spend as one amount, Unnamed spend, and never splits it 
 
 ## The Telemetry switch
 
-Claude Code sends nothing until telemetry is on. The Telemetry switch, on the rail of Studio's first
-page, turns it on for this machine. Before it acts it says in plain words what will be recorded: what
-you type, what Claude Code writes back, what every tool was handed and what it returned, and how long
+Claude Code sends nothing until telemetry is on. The Telemetry switch, on the Dashboard's rail,
+turns it on for this machine. Before it acts it says in plain words what will be recorded: what you
+type, what Claude Code writes back, what every tool was handed and what it returned, and how long
 each step took. Everyone who can read the organisation's stores can read all of it. The switch writes
 only when you say so.
 

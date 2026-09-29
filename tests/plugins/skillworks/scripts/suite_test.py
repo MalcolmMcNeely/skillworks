@@ -322,7 +322,7 @@ DOCKER_TESTS_COMMAND = ["dotnet", "test", DOCKER_TESTS, "--blame-crash", "--blam
 
 # Whether the front end is installed differs between checkouts, so the install is left out.
 # git answers nothing, so no file is copied and no Proof of a made-up pass reaches this clone.
-def test_this_repo_s_suite_file_runs_the_checks_the_readme_names(runner):
+def test_this_repo_s_suite_file_runs_the_checks_the_contributing_page_names(runner):
     given_this_repo_s_programs_pass(runner)
     runner.stub("git")
 
@@ -1648,6 +1648,8 @@ SCRIPT_TESTS_IGNORE = {
     "tools": "the seeded Studio is a Studio tool",
     "docs/adr": "no test reads a decision record",
     "docs/studio": "no test reads Studio's own docs",
+    "docs/assets": "no test reads a picture",
+    "README.md": "no test reads the README",
     "src/*.cs": "the tests check that the projects exist, and never read their code",
     "src/Skillworks.AppHost": "the AppHost is in no solution filter the tests read",
     "src/Skillworks.Studio.Web/src": "of the front end the tests read only package.json",
@@ -1773,14 +1775,14 @@ def test_no_api_test_reads_the_plugin_s_skill_folders():
         assert not ("RepositoryRoot()" in text and '"skills"' in text), code
 
 
-def checks_section(doc):
+def checks_section(doc, heading):
     text = (ROOT / doc).read_text(encoding="utf-8")
-    return text[text.index("### Checks"):]
+    return text[text.index(heading + "\n"):]
 
 
-def test_the_readme_lists_every_check_of_this_repo_s_suite():
+def test_the_contributing_page_lists_every_check_of_this_repo_s_suite():
     assert len(this_repo_s_checks()) == 8
-    checks = checks_section("README.md").split("```")[1].replace('"', "")
+    checks = checks_section("docs/CONTRIBUTING.md", "## Checks").split("```")[1].replace('"', "")
 
     for entry in this_repo_s_checks():
         assert " ".join(entry["command"]) in checks, entry["command"]
@@ -1788,7 +1790,7 @@ def test_the_readme_lists_every_check_of_this_repo_s_suite():
 
 # An agent reads CLAUDE.md, and a raw command there is one it would run in place of the cheap one.
 def test_claude_md_names_skillworks_suite_in_place_of_the_checks():
-    section = checks_section("CLAUDE.md").split("\n### ")[0]
+    section = checks_section("CLAUDE.md", "### Checks").split("\n### ")[0]
 
     assert section.split("```")[1].strip() == "skillworks-suite"
     assert "In a loop the driver runs the Suite" in section
@@ -1835,8 +1837,8 @@ def test_the_placement_checks_install_the_front_end_before_its_lint():
     assert "| `npm run lint` | `src/Skillworks.Studio.Web` | `npm ci`, unless `node_modules` is there |" in text
 
 
-def test_the_readme_names_every_command_the_plugin_puts_on_path():
-    text = (ROOT / "README.md").read_text(encoding="utf-8")
+def test_the_contributing_page_names_every_command_the_plugin_puts_on_path():
+    text = (ROOT / "docs/CONTRIBUTING.md").read_text(encoding="utf-8")
     row = next(line for line in text.splitlines() if line.startswith("| `plugins/skillworks/bin/` |"))
 
     for command in (ROOT / "plugins/skillworks/bin").iterdir():

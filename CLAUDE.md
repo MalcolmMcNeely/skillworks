@@ -39,7 +39,7 @@ In a loop the driver runs the Suite as a step of its own, and it reads the Proof
 Docker has to be running, because the API tests start Loki in a container and the script tests run
 in a Linux image. `uv` has to be on PATH, because the command is Python.
 
-`README.md` has the rest, under Checks.
+`docs/CONTRIBUTING.md` has the rest, under Checks.
 
 ### The Aspire CLI
 
