@@ -39,6 +39,22 @@ public sealed partial class StepQueries
 
     private const string CommandField = "command";
 
+    private const string ToolSpan = "claude_code.tool";
+
+    private const string WaitSpan = "claude_code.tool.blocked_on_user";
+
+    private const string RunSpan = "claude_code.tool.execution";
+
+    // Sent only with the tool content setting on, and never on an Agent call.
+    private const string OutputEvent = "tool.output";
+
+    private const string OutputField = "output";
+
+    // A Read's output is the file it read, and an edit's is its diff.
+    private const string ContentField = "content";
+
+    private const string DiffField = "diff";
+
     private const string DescriptionField = "description";
 
     // An older Claude Code names no source on a Turn, and a Turn that names none is the main agent's.
@@ -76,17 +92,35 @@ public sealed partial class StepQueries
             .GroupBy(line => line.Attribute(StepKey.Request)!, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
 
+        var uses = traced.Read.Spans
+            .Where(span => span.Name == ToolSpan && span.Attributes.GetValueOrDefault(StepKey.ToolUse) is { Length: > 0 })
+            .GroupBy(span => span.Attributes[StepKey.ToolUse], StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
+
+        // A Subagent's Spans repeat its Agent call's tool use id, so a wait and a run are matched by their parent Span.
+        var within = traced.Read.Spans
+            .Where(span => span.ParentSpanId is not null)
+            .ToLookup(span => (span.TraceId, span.ParentSpanId!));
+
         return new(
             opened.Drawn
                 .Where(each => each.Step.Kind == StepKind.Turn)
                 .ToDictionary(each => each.Step.Id, each => TurnDetailsOf(each.Line, answers, requests), StringComparer.Ordinal),
             opened.Drawn
                 .Where(each => each.Step.Kind == StepKind.Tool)
-                .ToDictionary(each => each.Step.Id, each => ToolDetailsOf(each.Line), StringComparer.Ordinal));
+                .ToDictionary(each => each.Step.Id, each => ToolDetailsOf(each.Line, uses, within), StringComparer.Ordinal));
     }
 
-    private static ToolDetails ToolDetailsOf(EventLine line)
+    private static ToolDetails ToolDetailsOf(
+        EventLine line,
+        IReadOnlyDictionary<string, Span> uses,
+        ILookup<(string, string), Span> within)
     {
+        var use = line.Attribute(StepKey.ToolUse);
+        var span = use is null ? null : uses.GetValueOrDefault(use);
+        var said = span?.Events.LastOrDefault(each => each.Name == OutputEvent)?.Attributes;
+        var inside = span is null ? [] : within[(span.TraceId, span.SpanId)];
+
         var input = Recorded(line, EventAttributes.ToolInput);
         var parameters = Recorded(line, ParametersAttribute);
         var asked = ToolInput.Fields(input);
@@ -102,8 +136,21 @@ public sealed partial class StepQueries
             ToolInput.Text(named, FullCommandField) ?? ToolInput.Text(asked, CommandField),
             ToolInput.Text(named, DescriptionField) ?? ToolInput.Text(asked, DescriptionField),
             Bytes(line, ResultBytesAttribute),
-            line.Attribute(AllowedByAttribute));
+            line.Attribute(AllowedByAttribute),
+            span is not null,
+            Said(said, OutputField) ?? Said(said, ContentField),
+            Said(said, DiffField),
+            LengthOf(inside, WaitSpan),
+            LengthOf(inside, RunSpan));
     }
+
+    private static string? Said(IReadOnlyDictionary<string, string>? said, string field) =>
+        said?.GetValueOrDefault(field) is { } text && text != EventAttributes.Withheld ? text : null;
+
+    private static long? LengthOf(IEnumerable<Span> inside, string name) =>
+        inside.LastOrDefault(span => span.Name == name) is { } found
+            ? (long)(found.Ended - found.Started).TotalMilliseconds
+            : null;
 
     private static long? Bytes(EventLine line, string attribute) =>
         long.TryParse(line.Attribute(attribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out var bytes)

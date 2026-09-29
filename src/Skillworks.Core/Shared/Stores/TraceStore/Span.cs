@@ -7,4 +7,5 @@ public sealed record Span(
     string Name,
     DateTimeOffset Started,
     DateTimeOffset Ended,
-    IReadOnlyDictionary<string, string> Attributes);
+    IReadOnlyDictionary<string, string> Attributes,
+    IReadOnlyList<SpanEvent> Events);

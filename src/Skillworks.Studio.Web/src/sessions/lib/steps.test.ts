@@ -131,6 +131,11 @@ describe('foldSessionLine', () => {
         description: null,
         resultBytes: 1_024,
         allowedBy: 'config',
+        traced: true,
+        output: 'Build succeeded.',
+        diff: null,
+        waitedMs: null,
+        ranMs: 4_000,
       },
     };
 

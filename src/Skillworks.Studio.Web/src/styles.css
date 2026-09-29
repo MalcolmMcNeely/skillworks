@@ -2066,6 +2066,15 @@ a.home-panel-face:hover::before {
   word-break: break-word;
 }
 
+/* Every colour on the page already means one thing, so a diff's lines are told apart by their marks and weight. */
+.prompts-diff-line.is-added {
+  font-weight: 600;
+}
+
+.prompts-diff-line.is-removed {
+  color: var(--ink-faint);
+}
+
 /* The key names each part beside its colour, so no part is told by colour alone. */
 .breakdown-fill.is-cacheRead,
 .breakdown-dot.is-cacheRead {

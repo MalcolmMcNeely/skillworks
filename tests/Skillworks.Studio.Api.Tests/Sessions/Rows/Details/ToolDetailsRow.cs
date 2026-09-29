@@ -21,4 +21,14 @@ public sealed record ToolDetailsRow
     public required long? ResultBytes { get; init; }
 
     public required string? AllowedBy { get; init; }
+
+    public required bool Traced { get; init; }
+
+    public required string? Output { get; init; }
+
+    public required string? Diff { get; init; }
+
+    public required long? WaitedMs { get; init; }
+
+    public required long? RanMs { get; init; }
 }

@@ -11,10 +11,14 @@ import {
   describeAttempt,
   describeModel,
   describeOutcome,
+  describeOutputNote,
   describePurpose,
+  describeRan,
   describeStop,
+  describeWaited,
   describeWithheld,
   fileOf,
+  outputOf,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
@@ -168,7 +172,7 @@ function Asked({ call }: { call: ToolDetails }) {
     );
   }
 
-  if (call.tool === 'Read') {
+  if (call.tool === 'Read' || changes(call)) {
     const file = fileOf(call);
 
     if (file !== null) {
@@ -179,7 +183,73 @@ function Asked({ call }: { call: ToolDetails }) {
   return call.input === null ? <Withheld call={call} /> : <pre className="prompts-code">{call.input}</pre>;
 }
 
+const changingTools = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit']);
+
+function changes(call: ToolDetails): boolean {
+  return call.tool !== null && changingTools.has(call.tool);
+}
+
+function lineClassOf(line: string): string {
+  if (line.startsWith('+') && !line.startsWith('+++')) {
+    return 'prompts-diff-line is-added';
+  }
+
+  if (line.startsWith('-') && !line.startsWith('---')) {
+    return 'prompts-diff-line is-removed';
+  }
+
+  return 'prompts-diff-line';
+}
+
+// A diff repeats lines, so each line is keyed by where it starts in the text.
+function linesOf(text: string): { at: number; line: string }[] {
+  let at = 0;
+
+  return text.split('\n').map((line) => {
+    const start = at;
+
+    at += line.length + 1;
+
+    return { at: start, line };
+  });
+}
+
+function Diff({ diff }: { diff: string }) {
+  return (
+    <pre className="prompts-code">
+      {linesOf(diff).map(({ at, line }) => (
+        <span key={at} className={lineClassOf(line)}>
+          {line}
+          {'\n'}
+        </span>
+      ))}
+    </pre>
+  );
+}
+
+function Output({ call }: { call: ToolDetails }) {
+  const note = describeOutputNote(call);
+  const shown = outputOf(call);
+
+  return (
+    <>
+      {note === null ? null : <p className="prompts-unsaid">{note}</p>}
+      {shown === null ? null : call.diff === null ? <pre className="prompts-code">{shown}</pre> : <Diff diff={call.diff} />}
+    </>
+  );
+}
+
+function askedWord(call: ToolDetails): string {
+  if (call.tool === 'Read') {
+    return 'The file it read';
+  }
+
+  return changes(call) ? 'The file it changed' : 'What it ran';
+}
+
 function OpenedTool({ call }: { call: ToolDetails }) {
+  const waited = describeWaited(call);
+
   return (
     <dl className="prompts-turn">
       <dt className="micro">Result</dt>
@@ -187,12 +257,24 @@ function OpenedTool({ call }: { call: ToolDetails }) {
         {describeOutcome(call)}
         {call.error === null ? null : <pre className="prompts-code">{call.error}</pre>}
       </dd>
-      <dt className="micro">{call.tool === 'Read' ? 'The file it read' : 'What it ran'}</dt>
+      <dt className="micro">{askedWord(call)}</dt>
       <dd>
         <Asked call={call} />
       </dd>
+      <dt className="micro">{changes(call) ? 'The change' : 'What came back'}</dt>
+      <dd>
+        <Output call={call} />
+      </dd>
       <dt className="micro">Who allowed it</dt>
       <dd>{describeAllowedBy(call)}</dd>
+      {waited === null ? null : (
+        <>
+          <dt className="micro">Wait for your OK</dt>
+          <dd>{waited}</dd>
+        </>
+      )}
+      <dt className="micro">Running</dt>
+      <dd>{describeRan(call)}</dd>
     </dl>
   );
 }

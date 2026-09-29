@@ -14,7 +14,8 @@ public sealed record RecordedSpan(
     string? ToolUse = null,
     string? Request = null,
     string? StopReason = null,
-    string? Attempt = null)
+    string? Attempt = null,
+    IReadOnlyDictionary<string, string>? Output = null)
 {
     internal JsonObject Record(string trace, string session)
     {
@@ -35,20 +36,34 @@ public sealed record RecordedSpan(
             span["parentSpanId"] = Parent;
         }
 
+        if (Output is not null)
+        {
+            span["events"] = new JsonArray(
+                new JsonObject
+                {
+                    ["timeUnixNano"] = Nanoseconds(Until),
+                    ["name"] = "tool.output",
+                    ["attributes"] = Pairs(Output.Select(pair => (pair.Key, (string?)pair.Value))),
+                });
+        }
+
         return span;
     }
 
     private JsonArray Attributes(string session) =>
+        Pairs(
+        [
+            ("session.id", session),
+            ("agent_id", Agent),
+            ("tool_use_id", ToolUse),
+            ("request_id", Request),
+            ("stop_reason", StopReason),
+            ("attempt", Attempt),
+        ]);
+
+    private static JsonArray Pairs(IEnumerable<(string Key, string? Value)> pairs) =>
     [
-        .. new (string Key, string? Value)[]
-            {
-                ("session.id", session),
-                ("agent_id", Agent),
-                ("tool_use_id", ToolUse),
-                ("request_id", Request),
-                ("stop_reason", StopReason),
-                ("attempt", Attempt),
-            }
+        .. pairs
             .Where(attribute => attribute.Value is not null)
             .Select(attribute => new JsonObject
             {

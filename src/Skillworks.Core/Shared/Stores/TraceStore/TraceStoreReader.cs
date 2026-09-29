@@ -295,8 +295,17 @@ public sealed partial class TraceStoreReader(IHttpClientFactory clients, IOption
         Text(span, "name") is { } name &&
         Moment(span, "startTimeUnixNano") is { } started &&
         Moment(span, "endTimeUnixNano") is { } ended
-            ? new Span(traceId, spanId, Identifier(span, "parentSpanId"), name, started, ended, Attributes(span))
+            ? new Span(traceId, spanId, Identifier(span, "parentSpanId"), name, started, ended, Attributes(span), Events(span))
             : null;
+
+    // A Tool call's output rides on an event of its Span and not on the Span's own attributes.
+    private static IReadOnlyList<SpanEvent> Events(JsonElement span) =>
+    [
+        .. from said in Items(span, "events")
+           let name = Text(said, "name")
+           where name is not null
+           select new SpanEvent(name, Attributes(said))
+    ];
 
     // Tempo writes a span's ids as base64, where OTLP's own JSON asks for hex, and a hex id is itself
     // valid base64, so only a decode of the length an id really is may be believed.
@@ -319,11 +328,11 @@ public sealed partial class TraceStoreReader(IHttpClientFactory clients, IOption
             ? DateTimeOffset.FromUnixTimeMilliseconds(nanoseconds / 1_000_000)
             : null;
 
-    private static IReadOnlyDictionary<string, string> Attributes(JsonElement span)
+    private static IReadOnlyDictionary<string, string> Attributes(JsonElement held)
     {
         var attributes = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var attribute in Items(span, "attributes"))
+        foreach (var attribute in Items(held, "attributes"))
         {
             if (Text(attribute, "key") is { } key &&
                 attribute.TryGetProperty("value", out var value) &&

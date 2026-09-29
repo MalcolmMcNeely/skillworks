@@ -11,4 +11,10 @@ public sealed record ToolDetails(
     string? Command,
     string? Description,
     long? ResultBytes,
-    string? AllowedBy);
+    string? AllowedBy,
+    // Without a Span the output and timings are not known, not empty; with one, no output means Claude Code kept it back.
+    bool Traced,
+    string? Output,
+    string? Diff,
+    long? WaitedMs,
+    long? RanMs);

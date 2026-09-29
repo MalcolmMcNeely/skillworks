@@ -1,4 +1,4 @@
-import { describeCount, describeMoney, describeTokens } from '../../shared/figures/lib/figures';
+import { describeCount, describeLength, describeMoney, describeTokens } from '../../shared/figures/lib/figures';
 import { notKnown } from './sessions';
 
 export type Purpose = 'work' | 'subagent' | 'side';
@@ -48,6 +48,12 @@ export interface ToolDetails {
   description: string | null;
   resultBytes: number | null;
   allowedBy: string | null;
+  // False where no Span landed for the call, so its output, wait and running time are not known rather than empty.
+  traced: boolean;
+  output: string | null;
+  diff: string | null;
+  waitedMs: number | null;
+  ranMs: number | null;
 }
 
 export type TokenPart = 'cacheRead' | 'cacheWrite' | 'input' | 'output';
@@ -155,8 +161,52 @@ export function describeOutcome(call: ToolDetails): string {
   return call.passed ? 'Passed' : 'Failed';
 }
 
+function withheldOf(bytes: number | null): string {
+  return bytes === null ? 'Withheld' : `Withheld · ${describeCount(bytes)} bytes`;
+}
+
 export function describeWithheld(call: ToolDetails): string {
-  return call.inputBytes === null ? 'Withheld' : `Withheld · ${describeCount(call.inputBytes)} bytes`;
+  return withheldOf(call.inputBytes);
+}
+
+export function outputOf(call: ToolDetails): string | null {
+  return call.diff ?? call.output;
+}
+
+// Claude Code sends no more than this of an output, and Studio adds no cap of its own.
+const sentOfOutput = 2_048;
+
+// Claude Code never sends the output of a Subagent call, so its absence says nothing was kept back.
+const unsentOutput = new Set(['Agent', 'Task']);
+
+export function describeOutputNote(call: ToolDetails): string | null {
+  const shown = outputOf(call);
+
+  if (!call.traced || (shown === null && call.tool !== null && unsentOutput.has(call.tool))) {
+    return notKnown;
+  }
+
+  if (shown === null) {
+    return withheldOf(call.resultBytes);
+  }
+
+  if (shown.length >= sentOfOutput && call.resultBytes !== null && call.resultBytes > shown.length) {
+    return `The first ${describeCount(sentOfOutput)} characters of ${describeCount(call.resultBytes)} bytes`;
+  }
+
+  return null;
+}
+
+export function describeWaited(call: ToolDetails): string | null {
+  if (!call.traced) {
+    return notKnown;
+  }
+
+  return call.waitedMs === null ? null : describeLength(call.waitedMs);
+}
+
+export function describeRan(call: ToolDetails): string {
+  return !call.traced || call.ranMs === null ? notKnown : describeLength(call.ranMs);
 }
 
 // Claude Code cuts each value of the input at 512 characters and the whole near 4K, so the JSON may not close.

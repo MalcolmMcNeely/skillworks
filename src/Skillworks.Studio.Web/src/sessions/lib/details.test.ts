@@ -4,10 +4,14 @@ import {
   describeAttempt,
   describeModel,
   describeOutcome,
+  describeOutputNote,
   describePurpose,
+  describeRan,
   describeStop,
+  describeWaited,
   describeWithheld,
   fileOf,
+  outputOf,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
@@ -53,6 +57,11 @@ function tool(details: Partial<ToolDetails> = {}): ToolDetails {
     description: null,
     resultBytes: null,
     allowedBy: 'config',
+    traced: true,
+    output: null,
+    diff: null,
+    waitedMs: null,
+    ranMs: null,
     ...details,
   };
 }
@@ -221,6 +230,80 @@ describe('describeWithheld', () => {
 
   it('says withheld alone where claude code gave no size', () => {
     expect(describeWithheld(tool())).toBe('Withheld');
+  });
+});
+
+describe('outputOf', () => {
+  it("gives an edit's diff", () => {
+    expect(outputOf(tool({ tool: 'Edit', diff: '-a\n+b' }))).toBe('-a\n+b');
+  });
+
+  it("gives any other call's output", () => {
+    expect(outputOf(tool({ output: 'Build succeeded.' }))).toBe('Build succeeded.');
+  });
+});
+
+describe('describeOutputNote', () => {
+  const cut = 'x'.repeat(2_048);
+
+  it('says an output Claude Code cut short is the first 2,048 characters, and gives the whole size', () => {
+    expect(describeOutputNote(tool({ output: cut, resultBytes: 48_213 }))).toBe(
+      'The first 2,048 characters of 48,213 bytes',
+    );
+  });
+
+  it('says a diff Claude Code cut short is the first 2,048 characters too', () => {
+    expect(describeOutputNote(tool({ tool: 'Edit', diff: cut, resultBytes: 9_000 }))).toBe(
+      'The first 2,048 characters of 9,000 bytes',
+    );
+  });
+
+  it('says nothing of an output of 2,048 characters that is the whole result', () => {
+    expect(describeOutputNote(tool({ output: cut, resultBytes: 2_048 }))).toBeNull();
+  });
+
+  it('says nothing of a short output', () => {
+    expect(describeOutputNote(tool({ output: 'ok', resultBytes: 48_213 }))).toBeNull();
+  });
+
+  it('reads Withheld with its size where Claude Code kept the output back', () => {
+    expect(describeOutputNote(tool({ resultBytes: 512 }))).toBe('Withheld · 512 bytes');
+  });
+
+  it('reads Withheld alone where Claude Code kept the output back and gave no size', () => {
+    expect(describeOutputNote(tool())).toBe('Withheld');
+  });
+
+  it('reads not known where no Span landed for the call', () => {
+    expect(describeOutputNote(tool({ traced: false, resultBytes: 512 }))).toBe('Not known');
+  });
+
+  it('reads not known for a Subagent call, as Claude Code never sends its output', () => {
+    expect(describeOutputNote(tool({ tool: 'Agent', resultBytes: 512 }))).toBe('Not known');
+  });
+});
+
+describe('describeWaited', () => {
+  it('gives how long the call waited for approval', () => {
+    expect(describeWaited(tool({ waitedMs: 12_000 }))).toBe('12 s');
+  });
+
+  it('gives nothing for a call that asked no one', () => {
+    expect(describeWaited(tool())).toBeNull();
+  });
+
+  it('reads not known where no Span landed for the call', () => {
+    expect(describeWaited(tool({ traced: false }))).toBe('Not known');
+  });
+});
+
+describe('describeRan', () => {
+  it('gives how long the call ran', () => {
+    expect(describeRan(tool({ ranMs: 4_000 }))).toBe('4.0 s');
+  });
+
+  it('reads not known where no Span landed for the call', () => {
+    expect(describeRan(tool({ traced: false, ranMs: null }))).toBe('Not known');
   });
 });
 
