@@ -209,7 +209,7 @@ tell your edits from the Plugin's. It says what it did to each file in one line:
 
 | Outcome | When | What setup does |
 |---|---|---|
-| `wrote` | The Seed is new to your repo. | Writes the file and its base copy. |
+| `wrote` | The Seed is new to your repo, or the file is missing. | Writes the file and its base copy. |
 | `updated` | You never edited the file, and the Seed moved on. | Replaces the file and its base copy with the new Seed, and shows the change. |
 | `kept ..., which you edited` | You edited the file, and the Seed did not move. | Nothing. |
 | `kept ..., the same as the seed` | Your file and its base copy are the same as the Seed. | Nothing. |
@@ -217,7 +217,6 @@ tell your edits from the Plugin's. It says what it did to each file in one line:
 | `kept ..., the same as the seed, and wrote its base copy` | Your file is the same as the Seed, and has no base copy. | Writes the base copy. |
 | `merged` | You edited the file, and the Seed moved on in other lines. | Applies the Seed's change, keeps your edit, and shows the change. |
 | `asks` | Your edit and the Seed's change touch the same lines. | Shows both sides and asks which to keep. |
-| `left out` | You deleted the file. | Nothing. It stays deleted. |
 | `kept ..., which differs from the seed` | The file has no base copy, because your repo was set up before base copies existed. | Shows the difference, and asks which lines to take. |
 | `kept ..., as you settled it` | You decided on a file with no base copy. | Keeps the file as you left it, and writes its base copy. |
 
@@ -228,6 +227,9 @@ The labels on a shown change say what each side holds:
 | `updated` | `old-seed/`: the old Seed, which you never edited | `new-seed/`: the new Seed |
 | `merged` | `yours/`: your file | `merged/`: your file with the Seed's change applied |
 | `kept ..., which differs from the seed` | `yours/`: your file | `seed/`: the current Seed |
+
+Setup writes a deleted Steering file again. Every step of the loop needs its file, so a file never
+stays deleted. To use less of a file, empty it down, and keep the file.
 
 Setup changes no file until you have answered every question. A file with no base copy is a question too,
 so while one waits, setup changes no other file either. Then it writes the files you decided on and

@@ -478,7 +478,7 @@ def test_a_file_whose_base_copy_was_brought_up_is_updated_when_the_seed_moves_ag
 
 
 @pytest.mark.parametrize("seed", sorted(OLDER))
-def test_a_file_the_team_deleted_stays_deleted_and_is_said_to_be_left_out(repo, runner, seed):
+def test_a_file_the_team_deleted_is_written_again_and_its_base_copy_brought_up(repo, runner, seed):
     seeded_by_an_older_plugin(repo, runner, seed)
     place = WHERE[seed]
     (repo.work / place).unlink()
@@ -486,10 +486,10 @@ def test_a_file_the_team_deleted_stays_deleted_and_is_said_to_be_left_out(repo, 
     ran = run_seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
-    assert not (repo.work / place).exists()
-    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == OLDER[seed]
-    assert "left out {}, which you deleted\n".format(place) in ran.out
-    assert "wrote {}\n".format(place) not in ran.out
+    assert (repo.work / place).read_text(encoding="utf-8") == seeded(seed)
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
+    assert "wrote {}\n".format(place) in ran.out
+    assert "left out" not in ran.out
 
 
 @pytest.mark.parametrize("seed", sorted(OLDER))
@@ -1547,7 +1547,7 @@ SETUP_PAGE = ROOT / "docs" / "usage" / "setup.md"
 
 OUTCOMES = ["`wrote`", "`updated`", "`kept ..., which you edited`", "`kept ..., the same as the seed`",
             "`kept ..., the same as the seed, and brought its base copy up to the seed`",
-            "`kept ..., the same as the seed, and wrote its base copy`", "`merged`", "`asks`", "`left out`",
+            "`kept ..., the same as the seed, and wrote its base copy`", "`merged`", "`asks`",
             "`kept ..., which differs from the seed`", "`kept ..., as you settled it`"]
 
 
@@ -1577,6 +1577,16 @@ def test_the_setup_page_explains_each_outcome_of_a_second_run():
         assert "| {} |".format(outcome) in again, outcome
     assert "`docs/agents/.seeds/`" in again
     assert "before you commit" in again
+
+
+def test_the_seed_step_and_the_setup_page_say_a_deleted_file_is_written_again():
+    step = setup_section("### 1. Seed the Steering")
+    again = SETUP_PAGE.read_text(encoding="utf-8").split("## Run setup again", 1)[1]
+
+    for text in (step, again):
+        assert "`left out`" not in text
+    assert "The seed is new, or the file is missing, even one the team deleted." in step
+    assert "Setup writes a deleted Steering file again." in again
 
 
 DIFF_LABELS = ["`old-seed/`", "`new-seed/`", "`yours/`", "`merged/`", "`seed/`"]

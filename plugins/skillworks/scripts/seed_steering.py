@@ -160,9 +160,8 @@ def weigh(top, default, name, place, choices, settled):
     target = top / place
     base = top / BASES / name
     was = base.read_text(encoding="utf-8") if base.exists() else None
+    # Every step of the loop leans on its Steering file, so a file the team deleted is written again.
     if not target.exists():
-        if was is not None:
-            return Outcome("left out {}, which you deleted\n".format(place))
         return Outcome("wrote {}\n".format(place), "would write {}\n".format(place),
                        writes=[(target, wanted), (base, wanted)])
 
