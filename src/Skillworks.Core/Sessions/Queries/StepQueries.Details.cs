@@ -21,6 +21,26 @@ public sealed partial class StepQueries
 
     private const string AttemptAttribute = "attempt";
 
+    // Sent only with the tool details setting on, as is the input.
+    private const string ParametersAttribute = "tool_parameters";
+
+    // Sent whatever the settings, so a kept-back input still has a size.
+    private const string InputBytesAttribute = "tool_input_size_bytes";
+
+    private const string ResultBytesAttribute = "tool_result_size_bytes";
+
+    private const string AllowedByAttribute = "decision_source";
+
+    // The whole message, sent only with the tool details setting on, where error_type is the kind alone.
+    private const string ErrorTextAttribute = "error";
+
+    // The parameters hold the command whole, where the input cuts each value at 512 characters.
+    private const string FullCommandField = "full_command";
+
+    private const string CommandField = "command";
+
+    private const string DescriptionField = "description";
+
     // An older Claude Code names no source on a Turn, and a Turn that names none is the main agent's.
     private const string MainAgent = "main";
 
@@ -56,10 +76,39 @@ public sealed partial class StepQueries
             .GroupBy(line => line.Attribute(StepKey.Request)!, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
 
-        return new(opened.Drawn
-            .Where(each => each.Step.Kind == StepKind.Turn)
-            .ToDictionary(each => each.Step.Id, each => TurnDetailsOf(each.Line, answers, requests), StringComparer.Ordinal));
+        return new(
+            opened.Drawn
+                .Where(each => each.Step.Kind == StepKind.Turn)
+                .ToDictionary(each => each.Step.Id, each => TurnDetailsOf(each.Line, answers, requests), StringComparer.Ordinal),
+            opened.Drawn
+                .Where(each => each.Step.Kind == StepKind.Tool)
+                .ToDictionary(each => each.Step.Id, each => ToolDetailsOf(each.Line), StringComparer.Ordinal));
     }
+
+    private static ToolDetails ToolDetailsOf(EventLine line)
+    {
+        var input = Recorded(line, EventAttributes.ToolInput);
+        var parameters = Recorded(line, ParametersAttribute);
+        var asked = ToolInput.Fields(input);
+        var named = ToolInput.Fields(parameters);
+
+        return new ToolDetails(
+            line.Attribute(ToolAttribute),
+            !Failed(line),
+            Failed(line) ? line.Attribute(ErrorTextAttribute) ?? line.Attribute(ErrorAttribute) : null,
+            input,
+            Bytes(line, InputBytesAttribute),
+            parameters,
+            ToolInput.Text(named, FullCommandField) ?? ToolInput.Text(asked, CommandField),
+            ToolInput.Text(named, DescriptionField) ?? ToolInput.Text(asked, DescriptionField),
+            Bytes(line, ResultBytesAttribute),
+            line.Attribute(AllowedByAttribute));
+    }
+
+    private static long? Bytes(EventLine line, string attribute) =>
+        long.TryParse(line.Attribute(attribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out var bytes)
+            ? bytes
+            : null;
 
     private static TurnDetails TurnDetailsOf(
         EventLine line,

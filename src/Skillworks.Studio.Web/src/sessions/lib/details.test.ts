@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeAllowedBy,
   describeAttempt,
   describeModel,
+  describeOutcome,
   describePurpose,
   describeStop,
+  describeWithheld,
+  fileOf,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
+  whatItDid,
   type SideRequest,
+  type ToolDetails,
   type TurnDetails,
 } from './details';
 import type { Step } from './steps';
@@ -31,6 +37,22 @@ function turn(details: Partial<TurnDetails> = {}): TurnDetails {
     wordsLength: null,
     stopReason: null,
     attempt: null,
+    ...details,
+  };
+}
+
+function tool(details: Partial<ToolDetails> = {}): ToolDetails {
+  return {
+    tool: 'Bash',
+    passed: true,
+    error: null,
+    input: null,
+    inputBytes: null,
+    parameters: null,
+    command: null,
+    description: null,
+    resultBytes: null,
+    allowedBy: 'config',
     ...details,
   };
 }
@@ -83,21 +105,132 @@ describe('rowLineOf', () => {
   it('reads a turn as its purpose, its output tokens and its cost', () => {
     const turns = { '7': turn({ outputTokens: 1_200, cost: 0.42 }) };
 
-    expect(rowLineOf(step('turn', 'claude-opus-5'), turns)).toBe('Work on the Prompt · 1.2K output tokens · $0.42');
+    expect(rowLineOf(step('turn', 'claude-opus-5'), turns, null)).toBe('Work on the Prompt · 1.2K output tokens · $0.42');
   });
 
   it('starts a side requests row with its purpose', () => {
     const turns = { '7': turn({ purpose: 'side', side: 'awaySummary', outputTokens: 80, cost: 0.01 }) };
 
-    expect(rowLineOf(step('turn', 'claude-opus-5'), turns)).toMatch(/^Recap while you were away · /);
+    expect(rowLineOf(step('turn', 'claude-opus-5'), turns, null)).toMatch(/^Recap while you were away · /);
   });
 
   it('shows what a turn shows today until the details arrive', () => {
-    expect(rowLineOf(step('turn', 'claude-opus-5'), null)).toBe('claude-opus-5');
+    expect(rowLineOf(step('turn', 'claude-opus-5'), null, null)).toBe('claude-opus-5');
   });
 
-  it('leaves a tool call with its own words', () => {
-    expect(rowLineOf(step('tool', 'ShellError'), { '7': turn() })).toBe('ShellError');
+  it('shows what a tool call shows today until the details arrive', () => {
+    expect(rowLineOf(step('tool', 'ShellError'), { '7': turn() }, null)).toBe('ShellError');
+  });
+
+  it('reads a tool call as what it did', () => {
+    const tools = { '7': tool({ description: 'Build the solution' }) };
+
+    expect(rowLineOf(step('tool', null), null, tools)).toBe('Build the solution');
+  });
+});
+
+describe('whatItDid', () => {
+  it('reads a bash call as its description', () => {
+    expect(whatItDid(tool({ command: 'dotnet build', description: 'Build the solution' }))).toBe('Build the solution');
+  });
+
+  it('reads a bash call with no description as its command', () => {
+    expect(whatItDid(tool({ command: 'dotnet build' }))).toBe('dotnet build');
+  });
+
+  it('reads a bash call whose command was kept back as withheld with its size', () => {
+    expect(whatItDid(tool({ inputBytes: 812 }))).toBe('Withheld · 812 bytes');
+  });
+
+  it.each(['Edit', 'Write', 'Read', 'MultiEdit', 'NotebookEdit'])('reads a call of %s as the file it touched', (name) => {
+    expect(whatItDid(tool({ tool: name, input: '{"file_path":"src/Clock.cs","old_string":"a"}' }))).toBe('src/Clock.cs');
+  });
+
+  it('reads a notebook edit as the notebook it touched', () => {
+    expect(whatItDid(tool({ tool: 'NotebookEdit', input: '{"notebook_path":"study.ipynb"}' }))).toBe('study.ipynb');
+  });
+
+  it('reads a call of Skill as the skill it started', () => {
+    expect(whatItDid(tool({ tool: 'Skill', input: '{"skill":"skillworks:tdd","args":"494"}' }))).toBe('skillworks:tdd');
+  });
+
+  it('reads a call of Skill with no input as the skill its parameters named', () => {
+    expect(whatItDid(tool({ tool: 'Skill', parameters: '{"skill_name":"skillworks:tdd"}' }))).toBe('skillworks:tdd');
+  });
+
+  it.each(['Grep', 'Glob'])('reads a call of %s as the pattern it searched', (name) => {
+    expect(whatItDid(tool({ tool: name, input: '{"pattern":"TimeProvider","path":"src"}' }))).toBe('TimeProvider');
+  });
+
+  it.each(['Agent', 'Task'])('reads a call of %s as the description of its subagent', (name) => {
+    expect(whatItDid(tool({ tool: name, input: '{"description":"Find the clock reads","prompt":"Look"}' }))).toBe(
+      'Find the clock reads',
+    );
+  });
+
+  it('reads a call of any other tool as the start of its input', () => {
+    const input = `{"url":"https://example.com/${'a'.repeat(200)}"}`;
+
+    expect(whatItDid(tool({ tool: 'WebFetch', input }))).toBe(`{"url":"https://example.com/${'a'.repeat(52)}…`);
+  });
+
+  it('reads a short input of any other tool whole', () => {
+    expect(whatItDid(tool({ tool: 'WebSearch', input: '{"query":"loki"}' }))).toBe('{"query":"loki"}');
+  });
+
+  it('says a failed call failed', () => {
+    expect(whatItDid(tool({ passed: false, error: 'Exit code 1', description: 'Build the solution' }))).toBe(
+      'Failed · Build the solution',
+    );
+  });
+});
+
+describe('describeAllowedBy', () => {
+  it.each([
+    ['config', 'Allowed by your settings'],
+    ['user_temporary', 'You allowed it, this once'],
+    ['user_permanent', 'You allowed it, from now on'],
+    ['hook', 'A hook allowed it'],
+  ])('says a call allowed by %s in words', (allowedBy, words) => {
+    expect(describeAllowedBy(tool({ allowedBy }))).toBe(words);
+  });
+
+  it('gives any other value as claude code sent it', () => {
+    expect(describeAllowedBy(tool({ allowedBy: 'mode' }))).toBe('mode');
+  });
+
+  it('says who allowed a call claude code did not name is not known', () => {
+    expect(describeAllowedBy(tool({ allowedBy: null }))).toBe('Not known');
+  });
+});
+
+describe('describeOutcome', () => {
+  it('says a call that passed passed', () => {
+    expect(describeOutcome(tool())).toBe('Passed');
+  });
+
+  it('says a call that failed failed', () => {
+    expect(describeOutcome(tool({ passed: false, error: 'Exit code 1' }))).toBe('Failed');
+  });
+});
+
+describe('describeWithheld', () => {
+  it('gives the size of an input claude code kept back', () => {
+    expect(describeWithheld(tool({ inputBytes: 4_096 }))).toBe('Withheld · 4,096 bytes');
+  });
+
+  it('says withheld alone where claude code gave no size', () => {
+    expect(describeWithheld(tool())).toBe('Withheld');
+  });
+});
+
+describe('fileOf', () => {
+  it('gives the file a read read', () => {
+    expect(fileOf(tool({ tool: 'Read', input: '{"file_path":"src/Clock.cs"}' }))).toBe('src/Clock.cs');
+  });
+
+  it('gives no file where the input was kept back', () => {
+    expect(fileOf(tool({ tool: 'Read', inputBytes: 30 }))).toBeNull();
   });
 });
 

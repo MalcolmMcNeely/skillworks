@@ -60,6 +60,16 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? ToolInput { get; init; }
 
+    public string? ToolParameters { get; init; }
+
+    public string? InputBytes { get; init; }
+
+    public string? ResultBytes { get; init; }
+
+    public string? AllowedBy { get; init; }
+
+    public string? Error { get; init; }
+
     public string? ToolUseId { get; init; }
 
     public string? RequestId { get; init; }
@@ -93,6 +103,11 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("speed", Speed),
         ("ttft_ms", FirstWordMs),
         ("tool_input", ToolInput),
+        ("tool_parameters", ToolParameters),
+        ("tool_input_size_bytes", InputBytes),
+        ("tool_result_size_bytes", ResultBytes),
+        ("decision_source", AllowedBy),
+        ("error", Error),
         ("tool_use_id", ToolUseId),
         ("request_id", RequestId),
         ("vcs.owner.name", Owner),

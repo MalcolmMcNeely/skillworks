@@ -1,5 +1,5 @@
 import type { Gap, StoresEnd } from '../../shared/gaps/lib/gaps';
-import type { DetailsPage, TurnDetails } from './details';
+import type { DetailsPage, ToolDetails, TurnDetails } from './details';
 import type { Spell } from './timeline/view';
 import type { FindingsPage } from './verdict/findings';
 import type { Activation, ActivationsPage } from './timeline/activations';
@@ -80,6 +80,7 @@ export interface SessionAnswer {
   findings: FindingsPage | null;
   // Null until the details land, so a row keeps the words its Step carries until then.
   turns: Record<string, TurnDetails> | null;
+  tools: Record<string, ToolDetails> | null;
   // No steps yet is not the same as a run with none, so the timeline waits for this rather than for the answer to end.
   landed: boolean;
   arriving: boolean;
@@ -104,6 +105,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
       timeBreakdown: null,
       findings: null,
       turns: null,
+      tools: null,
       landed: false,
       arriving: true,
       events: null,
@@ -148,7 +150,7 @@ export function foldSessionLine(answer: SessionAnswer | null, line: SessionLine)
   }
 
   if (line.kind === 'details') {
-    return { ...answer, turns: line.turns };
+    return { ...answer, turns: line.turns, tools: line.tools };
   }
 
   return { ...answer, steps: line.steps, landed: true };

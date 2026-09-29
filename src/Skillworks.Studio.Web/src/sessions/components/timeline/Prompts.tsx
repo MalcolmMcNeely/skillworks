@@ -7,13 +7,18 @@ import {
   describeTokens,
 } from '../../../shared/figures/lib/figures';
 import {
+  describeAllowedBy,
   describeAttempt,
   describeModel,
+  describeOutcome,
   describePurpose,
   describeStop,
+  describeWithheld,
+  fileOf,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
+  type ToolDetails,
   type TurnDetails,
 } from '../../lib/details';
 import { notKnown } from '../../lib/sessions';
@@ -141,20 +146,82 @@ function OpenedTurn({ turn }: { turn: TurnDetails }) {
   );
 }
 
+function Withheld({ call }: { call: ToolDetails }) {
+  return <p className="prompts-unsaid">{describeWithheld(call)}</p>;
+}
+
+function Asked({ call }: { call: ToolDetails }) {
+  if (call.tool === 'Bash') {
+    return (
+      <>
+        {call.description === null ? null : <p>{call.description}</p>}
+        {call.command === null ? (
+          call.input === null ? (
+            <Withheld call={call} />
+          ) : (
+            <pre className="prompts-code">{call.input}</pre>
+          )
+        ) : (
+          <pre className="prompts-code">{call.command}</pre>
+        )}
+      </>
+    );
+  }
+
+  if (call.tool === 'Read') {
+    const file = fileOf(call);
+
+    if (file !== null) {
+      return <code>{file}</code>;
+    }
+  }
+
+  return call.input === null ? <Withheld call={call} /> : <pre className="prompts-code">{call.input}</pre>;
+}
+
+function OpenedTool({ call }: { call: ToolDetails }) {
+  return (
+    <dl className="prompts-turn">
+      <dt className="micro">Result</dt>
+      <dd>
+        {describeOutcome(call)}
+        {call.error === null ? null : <pre className="prompts-code">{call.error}</pre>}
+      </dd>
+      <dt className="micro">{call.tool === 'Read' ? 'The file it read' : 'What it ran'}</dt>
+      <dd>
+        <Asked call={call} />
+      </dd>
+      <dt className="micro">Who allowed it</dt>
+      <dd>{describeAllowedBy(call)}</dd>
+    </dl>
+  );
+}
+
 function OpenedStep({
   mark,
   traced,
   agents,
   turns,
+  tools,
 }: {
   mark: Mark;
   traced: boolean;
   agents: Record<string, string>;
   turns: Record<string, TurnDetails> | null;
+  tools: Record<string, ToolDetails> | null;
 }) {
   const { step } = mark;
   const note = noteOf(step);
   const turn = step.kind === 'turn' ? turns?.[step.id] : undefined;
+  const call = step.kind === 'tool' ? tools?.[step.id] : undefined;
+  const opened =
+    turn !== undefined ? (
+      <OpenedTurn turn={turn} />
+    ) : call !== undefined ? (
+      <OpenedTool call={call} />
+    ) : step.words === null ? null : (
+      <p className="step-words">{step.words}</p>
+    );
 
   return (
     <div className="prompts-step">
@@ -165,11 +232,7 @@ function OpenedStep({
       <p className="micro">
         {describeClock(mark.startMs, true)} · {describeLength(step.lengthMs)} · ran by {ranBy(traced, agents, step.id)}
       </p>
-      {turn === undefined ? (
-        step.words === null ? null : <p className="step-words">{step.words}</p>
-      ) : (
-        <OpenedTurn turn={turn} />
-      )}
+      {opened}
     </div>
   );
 }
@@ -179,23 +242,25 @@ function StepLine({
   traced,
   agents,
   turns,
+  tools,
   onStep,
 }: {
   row: StepRow;
   traced: boolean;
   agents: Record<string, string>;
   turns: Record<string, TurnDetails> | null;
+  tools: Record<string, ToolDetails> | null;
   onStep: (step: string) => void;
 }) {
   const { mark } = row;
   const { step } = mark;
   const note = noteOf(step);
-  const line = rowLineOf(step, turns);
+  const line = rowLineOf(step, turns, tools);
 
   return (
     <li data-step={step.id} className={classOf(row)}>
       {row.open ? (
-        <OpenedStep mark={mark} traced={traced} agents={agents} turns={turns} />
+        <OpenedStep mark={mark} traced={traced} agents={agents} turns={turns} tools={tools} />
       ) : (
         <button type="button" className="prompts-step-pick" onClick={() => onStep(step.id)}>
           <span className="micro">{describeClock(mark.startMs, true)}</span>
@@ -235,6 +300,7 @@ function Row({
   traced,
   agents,
   turns,
+  tools,
   onExchange,
   onStep,
 }: {
@@ -244,12 +310,13 @@ function Row({
   traced: boolean;
   agents: Record<string, string>;
   turns: Record<string, TurnDetails> | null;
+  tools: Record<string, ToolDetails> | null;
   onExchange: (band: Band) => void;
   onStep: (step: string) => void;
 }) {
   // An Answer, or a Step the lanes have left out, has no row to open in, so it keeps a card of its own.
   const alone = row.open && opened !== null && !steps.some((each) => each.open);
-  const step = alone ? <OpenedStep mark={opened} traced={traced} agents={agents} turns={turns} /> : null;
+  const step = alone ? <OpenedStep mark={opened} traced={traced} agents={agents} turns={turns} tools={tools} /> : null;
   const list =
     steps.length === 0 ? null : (
       <ol className="prompts-steps">
@@ -260,6 +327,7 @@ function Row({
             traced={traced}
             agents={agents}
             turns={turns}
+            tools={tools}
             onStep={onStep}
           />
         ))}
@@ -320,6 +388,7 @@ export function Prompts({
   traced,
   agents,
   turns,
+  tools,
   onExchange,
   onStep,
   onOpen,
@@ -337,6 +406,7 @@ export function Prompts({
   traced: boolean;
   agents: Record<string, string>;
   turns: Record<string, TurnDetails> | null;
+  tools: Record<string, ToolDetails> | null;
   onExchange: (band: Band) => void;
   onStep: (step: string) => void;
   onOpen: () => void;
@@ -422,6 +492,7 @@ export function Prompts({
                 traced={traced}
                 agents={agents}
                 turns={turns}
+                tools={tools}
                 onExchange={onExchange}
                 onStep={onStep}
               />

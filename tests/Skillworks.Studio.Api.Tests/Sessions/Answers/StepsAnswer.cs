@@ -22,6 +22,7 @@ public sealed record StepsAnswer(
     IReadOnlyList<PartSpellRow> Kinds,
     IReadOnlyList<FindingRow> Findings,
     IReadOnlyDictionary<string, TurnDetailsRow> Turns,
+    IReadOnlyDictionary<string, ToolDetailsRow> Tools,
     GapRow Events,
     GapRow Traces)
 {
@@ -54,6 +55,9 @@ public sealed record StepsAnswer(
             details is null
                 ? new Dictionary<string, TurnDetailsRow>()
                 : StudioHost.Read<Dictionary<string, TurnDetailsRow>>(details["turns"]),
+            details is null
+                ? new Dictionary<string, ToolDetailsRow>()
+                : StudioHost.Read<Dictionary<string, ToolDetailsRow>>(details["tools"]),
             Store(lines, "events"),
             Store(lines, "traces"));
     }

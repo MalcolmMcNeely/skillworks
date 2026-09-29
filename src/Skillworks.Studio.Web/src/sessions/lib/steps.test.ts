@@ -115,7 +115,30 @@ describe('foldSessionLine', () => {
       },
     };
 
-    expect(foldSessionLine(opened, { kind: 'details', turns }).turns).toEqual(turns);
+    expect(foldSessionLine(opened, { kind: 'details', turns, tools: {} }).turns).toEqual(turns);
+  });
+
+  it('takes the details of the tool calls when their line arrives', () => {
+    const tools = {
+      '8': {
+        tool: 'Bash',
+        passed: true,
+        error: null,
+        input: '{"command":"dotnet build"}',
+        inputBytes: 26,
+        parameters: null,
+        command: 'dotnet build',
+        description: null,
+        resultBytes: 1_024,
+        allowedBy: 'config',
+      },
+    };
+
+    expect(foldSessionLine(opened, { kind: 'details', turns: {}, tools }).tools).toEqual(tools);
+  });
+
+  it('holds no tool details until their line arrives', () => {
+    expect(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }).tools).toBeNull();
   });
 
   it('marks a run with no steps landed too, so an empty timeline is told apart from one still to come', () => {
