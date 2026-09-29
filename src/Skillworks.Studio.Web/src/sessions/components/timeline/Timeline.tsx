@@ -4,6 +4,7 @@ import { describeLit, type Highlight } from '../../lib/timeline/highlight';
 import type { Band } from '../../lib/timeline/conversation';
 import { describeLength } from '../../../shared/figures/lib/figures';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
+import { PrototypeTip } from '../promptPrototype/VariantAtMark';
 import { Lanes } from './Lanes';
 import { Overview } from './Overview';
 
@@ -54,6 +55,8 @@ function Tip({ pointed }: { pointed: Pointed }) {
         {describeClock(pointed.mark.startMs, true)} · {describeLength(step.lengthMs)}
       </p>
       {step.words === null ? null : <p className="timeline-tip-words">{step.words}</p>}
+      {/* PROTOTYPE — throwaway: variant C of the Step detail prototype adds its lines here. */}
+      <PrototypeTip mark={pointed.mark} />
     </div>
   );
 }

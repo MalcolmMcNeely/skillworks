@@ -9,6 +9,7 @@ import { sessions as page, tabTitleOf } from '../../shared/pages/lib/pages';
 import { fetchSession } from '../api/sessions';
 import { DepthWord } from '../components/DepthWord';
 import { PromptPrototype } from '../components/promptPrototype/PromptPrototype';
+import { DetailsContext, useStepDetails } from '../components/promptPrototype/stepDetails';
 import { Timeline } from '../components/timeline/Timeline';
 import { TimelineTabs } from '../components/timeline/tabs/TimelineTabs';
 import { CostBreakdown } from '../components/verdict/CostBreakdown';
@@ -94,6 +95,8 @@ export function Session() {
   const activations = answer?.activations;
   const context = answer?.context;
   const marks = useMemo(() => marksOf(steps ?? []), [steps]);
+  // PROTOTYPE — throwaway: the Step detail prototype reads Loki and Tempo itself.
+  const details = useStepDetails(id, marks);
   const bands = useMemo(() => bandsOf(exchanges ?? []), [exchanges]);
   const activationSpells = useMemo(() => activationSpellsOf(activations ?? []), [activations]);
   const levels = useMemo(() => levelsOf(context ?? []), [context]);
@@ -174,6 +177,7 @@ export function Session() {
   const table = filterParams(listFilter(filter)).toString();
 
   return (
+    <DetailsContext value={details}>
     <main className="page session">
       <header className="sessions-head">
         <UpButton parent={page} query={table} />
@@ -225,8 +229,6 @@ export function Session() {
               marks={drawn}
               step={where.step}
               exchange={where.exchange}
-              highlight={highlight}
-              lit={lit}
               traced={landed.traced}
               agents={landed.agents}
               onOpen={open}
@@ -250,6 +252,7 @@ export function Session() {
         )}
       />
     </main>
+    </DetailsContext>
   );
 }
 

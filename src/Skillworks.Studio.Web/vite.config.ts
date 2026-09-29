@@ -12,9 +12,20 @@ if (!apiAddress && !process.env.VITEST) {
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: apiAddress
-      ? { '/api': { target: apiAddress, changeOrigin: true, secure: false } }
-      : undefined,
+    proxy: {
+      ...(apiAddress ? { '/api': { target: apiAddress, changeOrigin: true, secure: false } } : {}),
+      // PROTOTYPE — throwaway: the Step detail prototype reads Loki and Tempo straight from the browser.
+      '/pp-loki': {
+        target: process.env.PP_LOKI ?? 'http://127.0.0.1:3100',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pp-loki/, ''),
+      },
+      '/pp-tempo': {
+        target: process.env.PP_TEMPO ?? 'http://127.0.0.1:3200',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pp-tempo/, ''),
+      },
+    },
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
