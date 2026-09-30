@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { platform, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
@@ -37,11 +37,11 @@ afterEach(async () => {
   await rm(temp, { recursive: true, force: true });
 });
 
-function input(command, session = SESSION, tool = "Bash") {
+function input(command, session = SESSION, tool = "Bash", cwd = "/home/dev/work") {
   return {
     session_id: session,
     transcript_path: "/home/dev/.claude/projects/work/3f2a9c1e.jsonl",
-    cwd: "/home/dev/work",
+    cwd,
     permission_mode: "default",
     hook_event_name: "PreToolUse",
     tool_name: tool,
@@ -65,15 +65,15 @@ function hook(payload, extra = {}) {
 }
 
 // The Session running these tests may have been handed a ticket, and a test sets its own or none.
-async function answerTo(command, session, tool, ticket = "") {
-  const ran = await hook(input(command, session, tool), { [TICKET_KEY]: ticket });
+async function answerTo(command, session, tool, ticket = "", cwd = undefined) {
+  const ran = await hook(input(command, session, tool, cwd), { [TICKET_KEY]: ticket });
   assert.equal(ran.status, 0, ran.err);
   assert.equal(ran.err, "");
   return ran.out === "" ? undefined : JSON.parse(ran.out).hookSpecificOutput;
 }
 
-async function rewritten(command, session, tool, ticket) {
-  const answer = await answerTo(command, session, tool, ticket);
+async function rewritten(command, session, tool, ticket, cwd) {
+  const answer = await answerTo(command, session, tool, ticket, cwd);
   assert.ok(answer?.updatedInput, `the hook handed back no command for: ${command}`);
   assert.equal(answer.hookEventName, "PreToolUse");
   assert.equal(answer.permissionDecision, undefined, "a rewrite leaves the decision to the user's permissions");
@@ -121,6 +121,19 @@ async function repository() {
     return execFileSync(PWSH, ["-NoProfile", "-NonInteractive", "-File", script], { cwd: dir, env, encoding: "utf8" });
   };
   return { dir: dir.replaceAll("\\", "/"), run, runPowerShell, git };
+}
+
+async function creditRepository(answer) {
+  const repo = await repository();
+  await mkdir(join(repo.dir, "docs", "agents"), { recursive: true });
+  const settings = { tracker: "github", "target-branch": "main" };
+  if (answer) settings["co-authored-by"] = answer;
+  await writeFile(join(repo.dir, "docs", "agents", "loop.json"), JSON.stringify(settings));
+  return repo;
+}
+
+function credits(repo) {
+  return trailerValues(repo, "Co-Authored-By");
 }
 
 function trailerValues(repo, key) {
@@ -281,7 +294,7 @@ for (const [form, commandIn] of [
   });
 }
 
-// The team's attribution setting decides whether Claude Code writes a co-author line.
+// The hook never reads a message file, so a credit line typed there reaches the commit.
 for (const [form, trailers] of [
   ["Ticket alone", ["Ticket: #254"]],
   ["Ticket and Co-Authored-By", ["Ticket: #254", "Co-Authored-By: Claude <noreply@anthropic.com>"]],
@@ -402,6 +415,131 @@ test("a ticket the hook cannot write safely into a command is denied", async () 
 
   // Assert
   assert.equal(answer.permissionDecision, "deny");
+});
+
+const CREDIT = "Claude <noreply@anthropic.com>";
+
+test("git reads Claude's credit from a Bash commit when the team chose to show it", async () => {
+  // Arrange
+  const repo = await creditRepository("show");
+  const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(credits(repo), [CREDIT]);
+});
+
+for (const [state, answer] of [
+  ["chose to hide it", "hide"],
+  ["gave no answer", undefined],
+]) {
+  test(`a commit carries no credit from the hook when the team ${state}`, async () => {
+    // Arrange
+    const repo = await creditRepository(answer);
+    const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+
+    // Act
+    repo.run(command);
+
+    // Assert
+    assert.deepEqual(credits(repo), []);
+  });
+}
+
+test("a commit in a repository with no loop.json carries no credit from the hook", async () => {
+  // Arrange
+  const repo = await repository();
+  const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(credits(repo), []);
+});
+
+test("an amend by the same Session with the credit shown adds no second credit line", async () => {
+  // Arrange
+  const repo = await creditRepository("show");
+  repo.run(await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir));
+
+  // Act
+  repo.run(await rewritten("git commit --amend --no-edit", SESSION, "Bash", "", repo.dir));
+
+  // Assert
+  assert.deepEqual(credits(repo), [CREDIT]);
+});
+
+for (const answer of ["show", "hide", undefined]) {
+  test(`a person's Co-Authored-By line stays on the commit with ${answer ?? "no answer"}`, async () => {
+    // Arrange
+    const repo = await creditRepository(answer);
+    const typed = 'git add -A && git commit -m "Fix the thing" -m "Co-Authored-By: Ada <ada@example.invalid>"';
+    const command = await rewritten(typed, SESSION, "Bash", "", repo.dir);
+
+    // Act
+    repo.run(command);
+
+    // Assert
+    assert.ok(credits(repo).includes("Ada <ada@example.invalid>"), credits(repo).join("\n"));
+  });
+}
+
+const TYPED_CREDITS = [
+  [
+    "Bash",
+    "a heredoc",
+    'git commit -m "$(cat <<\'EOF\'\nFix the thing\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nEOF\n)"',
+  ],
+  ["Bash", "a lower-case key", 'git commit -m "Fix the thing\n\nco-authored-by: Claude <noreply@anthropic.com>"'],
+  ["Bash", "a message of its own", 'git commit -m "Fix the thing" -m "Co-Authored-By: Claude <noreply@anthropic.com>"'],
+  ["Bash", "an ANSI-C string", "git commit -m $'Fix the thing\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>'"],
+  ["PowerShell", "an upper-case key", "git commit -m @'\nFix the thing\n\nCO-AUTHORED-BY: Claude <noreply@anthropic.com>\n'@"],
+  ["PowerShell", "an escaped new line", 'git commit -m "Fix the thing`n`nCo-Authored-By: Claude <noreply@anthropic.com>"'],
+];
+
+for (const answer of ["show", "hide"]) {
+  for (const [tool, form, command] of TYPED_CREDITS) {
+    test(`a ${tool} commit holding a typed Claude credit line in ${form} is denied with ${answer}`, async () => {
+      // Arrange
+      const repo = await creditRepository(answer);
+
+      // Act
+      const got = await answerTo(command, SESSION, tool, "", repo.dir);
+
+      // Assert
+      assert.equal(got.permissionDecision, "deny");
+      assert.match(got.permissionDecisionReason, /loop\.json/);
+      assert.match(got.permissionDecisionReason, /remove the line and run the commit again/i);
+      assert.equal(got.updatedInput, undefined);
+    });
+  }
+}
+
+for (const [tool, form, command] of TYPED_CREDITS) {
+  test(`a ${tool} commit holding a typed Claude credit line in ${form} passes with no answer`, async () => {
+    // Arrange
+    const repo = await creditRepository(undefined);
+
+    // Act
+    const got = await answerTo(command, SESSION, tool, "", repo.dir);
+
+    // Assert
+    assert.ok(got.updatedInput);
+  });
+}
+
+test("a typed Claude credit line in a command with no commit passes unchanged", async () => {
+  // Arrange
+  const repo = await creditRepository("show");
+
+  // Act
+  const got = await answerTo('echo "Co-Authored-By: Claude <noreply@anthropic.com>"', SESSION, "Bash", "", repo.dir);
+
+  // Assert
+  assert.equal(got, undefined);
 });
 
 for (const command of [
@@ -540,3 +678,15 @@ for (const ticket of ["#254", "7/2"]) {
     assert.deepEqual(tickets(repo), [ticket]);
   });
 }
+
+test("git reads Claude's credit from a PowerShell commit when the team chose to show it", { skip: NO_PWSH }, async () => {
+  // Arrange
+  const repo = await creditRepository("show");
+  const command = await rewritten("git add -A; git commit -m 'Fix the thing'", SESSION, "PowerShell", "", repo.dir);
+
+  // Act
+  await repo.runPowerShell(command);
+
+  // Assert
+  assert.deepEqual(credits(repo), [CREDIT]);
+});

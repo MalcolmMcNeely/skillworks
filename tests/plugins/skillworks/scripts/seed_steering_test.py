@@ -1892,8 +1892,8 @@ def test_no_plugin_skill_says_a_habit_of_this_repo():
             assert habit not in text, "{} says {}".format(page, habit)
 
 
-# The team's attribution setting decides the line, so a skill or a seed that names it would overrule the team.
-CO_AUTHOR = re.compile(r"co[-_ ]?author", re.IGNORECASE)
+# The hook adds the line as the team chose and refuses one a model typed, so a skill or a seed that shows it invites a refusal.
+CO_AUTHOR = re.compile(r"co[-_ ]?authored[-_ ]?by\s*:|noreply@anthropic\.com", re.IGNORECASE)
 
 
 def test_no_plugin_skill_or_seed_names_a_co_author_line():
@@ -1906,9 +1906,14 @@ def test_no_plugin_skill_or_seed_names_a_co_author_line():
     assert named == []
 
 
-@pytest.mark.parametrize("line", ["Co-Authored-By: Claude", "a co-author line", "the coauthor", "Co_Authored_By"])
+@pytest.mark.parametrize("line", ["Co-Authored-By: Claude", "co-authored-by:", "noreply@anthropic.com"])
 def test_a_co_author_line_is_caught(line):
     assert CO_AUTHOR.search(line)
+
+
+@pytest.mark.parametrize("line", ["`co-authored-by` says `show`", "set-co-authored-by hide", "the credit line"])
+def test_the_key_and_the_command_are_free(line):
+    assert not CO_AUTHOR.search(line)
 
 
 def test_no_seed_promises_a_check_the_team_has_not_added():

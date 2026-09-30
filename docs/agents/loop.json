@@ -1,4 +1,5 @@
 {
   "tracker": "github",
-  "target-branch": "main"
+  "target-branch": "main",
+  "co-authored-by": "show"
 }

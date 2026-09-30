@@ -1,5 +1,7 @@
 // Git places a --trailer in the message's own trailer block, even when a model left a line stranded above a blank one.
 
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { text } from "node:stream/consumers";
 import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE } from "./git-grammar.mjs";
 import { powerShellCommits } from "./powershell-commits.mjs";
@@ -7,6 +9,19 @@ import { powerShellCommits } from "./powershell-commits.mjs";
 const KEY = "Skillworks-Session";
 
 const TICKET = "SKILLWORKS_TICKET";
+
+const CREDIT_KEY = "Co-Authored-By";
+
+// Fixed, because the hook is never told the model, and the Session trailer leads to the Session that records it.
+const CREDIT = `${CREDIT_KEY}: Claude <noreply@anthropic.com>`;
+
+// A message line can open after a quote, as in its own -m, or after a \n that Bash's $'...' turns into a newline.
+const TYPED_CREDIT = /(?:^|['"]|\\n|`n)[ \t]*co-authored-by:[^\n]*noreply@anthropic\.com/im;
+
+// Refused and not edited out: the line sits inside shell quoting, where an edit can break the message or the command.
+const NO_TYPED_CREDIT =
+  `The Plugin adds the Claude ${CREDIT_KEY} line to each commit itself, as the team chose in co-authored-by in ` +
+  "docs/agents/loop.json. Remove the line and run the commit again.";
 
 const PLAIN =
   "Run `git commit` as a plain command of its own, not inside a shell string, eval, backticks or another program, " +
@@ -33,11 +48,26 @@ function answer(output) {
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", ...output } }));
 }
 
-function judge(source, tool, sessionId, ticket) {
+function creditAnswer(cwd) {
+  let dir = resolve(cwd);
+  while (!existsSync(join(dir, ".git"))) {
+    if (dirname(dir) === dir) return undefined;
+    dir = dirname(dir);
+  }
+  try {
+    const chosen = JSON.parse(readFileSync(join(dir, "docs", "agents", "loop.json"), "utf8"))["co-authored-by"];
+    return chosen === "show" || chosen === "hide" ? chosen : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function judge(source, tool, sessionId, ticket, credit) {
   const powerShell = tool === "PowerShell";
   const { commits, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
   if (hidden) return { deny: powerShell ? PLAIN_POWERSHELL : PLAIN };
   if (commits.length === 0) return {};
+  if (credit && TYPED_CREDIT.test(source)) return { deny: NO_TYPED_CREDIT };
   if (typeof sessionId !== "string" || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
     return { deny: `The hook was handed no Session id it can write, so it cannot add the ${KEY} trailer.` };
   }
@@ -48,6 +78,10 @@ function judge(source, tool, sessionId, ticket) {
   // With git's default rule, a Ticket replaced on an amend moves between two Session lines and lets the second double.
   const rules = [`-c trailer.${KEY}.ifExists=addIfDifferent`];
   const trailers = [`--trailer ${quote(`${KEY}: ${sessionId}`)}`];
+  if (credit === "show") {
+    rules.push(`-c trailer.${CREDIT_KEY}.ifExists=addIfDifferent`);
+    trailers.unshift(`--trailer ${quote(CREDIT)}`);
+  }
   if (ticket) {
     rules.push("-c trailer.Ticket.ifExists=replace");
     trailers.unshift(`--trailer ${quote(`Ticket: ${ticket}`)}`);
@@ -285,7 +319,8 @@ if (typeof command !== "string") process.exit(0);
 
 let verdict;
 try {
-  verdict = judge(command, payload.tool_name, payload.session_id, process.env[TICKET] ?? "");
+  const credit = creditAnswer(typeof payload.cwd === "string" ? payload.cwd : process.cwd());
+  verdict = judge(command, payload.tool_name, payload.session_id, process.env[TICKET] ?? "", credit);
 } catch {
   // An unreadable command may still hold a commit, and a commit without the trailer is the miss this hook prevents.
   verdict = COMMIT_IN_TEXT.test(command) ? { deny: PLAIN } : {};
