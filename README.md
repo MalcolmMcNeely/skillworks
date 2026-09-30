@@ -27,11 +27,13 @@ The answers arrive a day at a time, so the page is useful before the last day la
 
 ### Sessions
 
-![The timeline of one Session](docs/assets/session-timeline.png)
+![The Findings of one Session, then its timeline and the four tabs beneath it](docs/assets/session-findings.gif)
 
 Sessions lists each run of Claude Code. Open one to see what it was given and what it did: every
 Prompt, model turn and Tool call on one timeline, with its Subagents, Faults and Friction. Studio
 names the Findings worth your attention, and a click takes you to the moment each one happened.
+
+![A Prompt opened from the timeline, with the model turns and Tool calls that answered it](docs/assets/session-steps.gif)
 
 With the Plugin on, every commit Claude makes names its Session, so a commit leads back to the run
 that wrote it. [Studio's telemetry](docs/studio/telemetry.md#which-session-made-a-commit) says how
