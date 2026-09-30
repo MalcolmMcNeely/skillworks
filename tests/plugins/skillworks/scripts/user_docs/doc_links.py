@@ -1,7 +1,7 @@
 import re
 
 USER_DOCS = "docs/usage"
-LOOP_PAGE = "the-loop.md"
+LOOP_OVERVIEW = "the-loop.md"
 
 LINK = re.compile(r"\]\(([^)\s]+)")
 HEADING = re.compile(r"^ {0,3}#{1,6}\s+(.*?)(?:\s+#+)?\s*$", re.MULTILINE)
@@ -65,7 +65,7 @@ def broken_links(root):
             if not lands(linked, heading):
                 broken.append("{} links {}".format(page.relative_to(root).as_posix(), target))
 
-    loop = docs / LOOP_PAGE
+    loop = docs / LOOP_OVERVIEW
     folder = loop.with_suffix("")
     linked = {path for _, path, _ in links(loop)} if loop.is_file() else set()
     for page in sorted(folder.rglob("*.md")):

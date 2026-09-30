@@ -3378,7 +3378,7 @@ def test_an_unknown_argument_still_prints_the_usage(loop, flags):
     assert ran.err == spec_loop.USAGE
 
 
-LOOP_PAGE = "docs/usage/the-loop.md"
+LOOP_OVERVIEW = "docs/usage/the-loop.md"
 
 
 def test_the_stops_page_names_the_bypass_flag():
@@ -3480,13 +3480,13 @@ def test_the_stage_map_page_holds_the_stage_map():
 
 
 def test_the_overview_holds_only_its_text_its_chart_and_its_table():
-    headings = [line for line in page_text(LOOP_PAGE).split("\n") if line.startswith("#")]
+    headings = [line for line in page_text(LOOP_OVERVIEW).split("\n") if line.startswith("#")]
 
     assert headings == ["# The Dev loop", "## The pages of the loop"]
 
 
 def overview_charts():
-    opening = (ROOT / LOOP_PAGE).read_text(encoding="utf-8").split("\n## ", 1)[0]
+    opening = (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8").split("\n## ", 1)[0]
     return re.findall(r"```mermaid\n(.*?)```", opening, re.DOTALL)
 
 
@@ -3499,7 +3499,7 @@ def test_the_overview_holds_one_small_chart_of_the_loop():
 
 
 def test_the_overview_no_longer_holds_the_large_chart():
-    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    text = (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")
 
     for node in ['drift["Drift check', 'names["Name check', 'renames["The rename ticket',
                  'clean["A clean finish']:
@@ -3541,7 +3541,7 @@ def test_the_steps_page_holds_the_steps_an_edit_the_run_by_hand_and_the_suite():
     assert "**The run by hand.**" in page
     assert "[The Suite](../suite.md) has the whole file." in page
     assert "When [the full run](full-run.md) left its worktree in place" in page
-    overview = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    overview = (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")
     assert "### The steps of one ticket" not in overview
     assert "### The Suite" not in overview
 
@@ -3561,7 +3561,7 @@ def test_the_landing_page_holds_rebasing_and_landing_with_the_push_race_and_the_
     assert "\n## The push race and the Turn\n" in text
     assert "Nothing is pushed unless every step passes." in page
     assert "The **Turn** is the right to push" in page
-    assert "## Rebasing and Landing" not in (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    assert "## Rebasing and Landing" not in (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")
 
 
 def test_the_stops_page_links_the_round_a_red_suite_goes_on_the_steps_page():
@@ -3571,7 +3571,7 @@ def test_the_stops_page_links_the_round_a_red_suite_goes_on_the_steps_page():
 
 
 def loop_pages():
-    return [ROOT / LOOP_PAGE] + loop_folder_pages()
+    return [ROOT / LOOP_OVERVIEW] + loop_folder_pages()
 
 
 def session_of_each_call():
@@ -3621,7 +3621,7 @@ def test_the_grill_page_holds_stage_one_the_grill_the_gate_and_the_spec():
     assert text.startswith("# Stage one: settle the design\n")
     for heading in ["\n## The grill\n", "\n## The gate\n", "\n## The spec\n"]:
         assert heading in text, heading
-    assert "## Stage one" not in (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    assert "## Stage one" not in (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")
 
 
 def test_the_tickets_page_holds_the_cut_picking_claiming_and_the_worktrees():
@@ -3634,13 +3634,13 @@ def test_the_tickets_page_holds_the_cut_picking_claiming_and_the_worktrees():
     assert "**Picking a ticket** is a query, not a judgement." in page
     assert "as [the Tracker](tracker.md#a-claim-and-a-close) says." in page
     assert "| The Job branch | `spec-loop/<spec>/ticket-<n>` |" in text
-    overview = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    overview = (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")
     assert "### The tickets" not in overview
     assert "### Worktrees and Job branches" not in overview
 
 
 def overview_table_links():
-    table = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The pages of the loop")
+    table = page_section((ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8"), "## The pages of the loop")
     return re.findall(r"^\| \[[^\]]+\]\(([^)]+)\) \|", table, re.MULTILINE)
 
 
@@ -3758,7 +3758,7 @@ def test_the_landing_chart_names_the_target_branch_and_never_main():
 
 
 def test_the_loop_page_never_names_main():
-    assert re.search(r"\bmain\b", (ROOT / LOOP_PAGE).read_text(encoding="utf-8")) is None
+    assert re.search(r"\bmain\b", (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")) is None
 
 
 def test_no_page_in_the_loop_folder_but_the_target_branch_page_names_main():
