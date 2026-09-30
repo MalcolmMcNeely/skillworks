@@ -31,4 +31,8 @@ public sealed record ToolDetailsRow
     public required long? WaitedMs { get; init; }
 
     public required long? RanMs { get; init; }
+
+    public required HookRunRow? HooksBefore { get; init; }
+
+    public required HookRunRow? HooksAfter { get; init; }
 }

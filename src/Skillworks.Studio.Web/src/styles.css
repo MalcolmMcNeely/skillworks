@@ -2103,6 +2103,19 @@ a.home-panel-face:hover::before {
   background: var(--warned);
 }
 
+/* A Tool call's parts take the colours the Time breakdown gives hooks, waiting and tools. */
+.breakdown-fill.is-hooksBefore,
+.breakdown-dot.is-hooksBefore,
+.breakdown-fill.is-hooksAfter,
+.breakdown-dot.is-hooksAfter {
+  background: var(--unnamed);
+}
+
+.breakdown-fill.is-running,
+.breakdown-dot.is-running {
+  background: var(--line);
+}
+
 .prompts-steps {
   display: flex;
   flex-direction: column;

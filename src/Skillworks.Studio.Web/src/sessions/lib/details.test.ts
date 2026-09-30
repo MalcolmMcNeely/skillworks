@@ -6,15 +6,14 @@ import {
   describeOutcome,
   describeOutputNote,
   describePurpose,
-  describeRan,
   describeStop,
-  describeWaited,
   describeWithheld,
   fileOf,
   outputOf,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
+  toolTimePartsOf,
   whatItDid,
   type SideRequest,
   type ToolDetails,
@@ -62,6 +61,8 @@ function tool(details: Partial<ToolDetails> = {}): ToolDetails {
     diff: null,
     waitedMs: null,
     ranMs: null,
+    hooksBefore: null,
+    hooksAfter: null,
     ...details,
   };
 }
@@ -283,27 +284,47 @@ describe('describeOutputNote', () => {
   });
 });
 
-describe('describeWaited', () => {
-  it('gives how long the call waited for approval', () => {
-    expect(describeWaited(tool({ waitedMs: 12_000 }))).toBe('12 s');
+describe('toolTimePartsOf', () => {
+  it('splits the call into hooks before, waiting for approval, running and hooks after', () => {
+    const parts = toolTimePartsOf(
+      tool({
+        hooksBefore: { count: 2, lengthMs: 850 },
+        waitedMs: 12_000,
+        ranMs: 4_000,
+        hooksAfter: { count: 1, lengthMs: 1_200 },
+      }),
+    );
+
+    expect(parts.map((part) => [part.word, part.ms])).toEqual([
+      ['Hooks before', 850],
+      ['Waiting for approval', 12_000],
+      ['Running', 4_000],
+      ['Hooks after', 1_200],
+    ]);
   });
 
-  it('gives nothing for a call that asked no one', () => {
-    expect(describeWaited(tool())).toBeNull();
+  it('gives each hook part its length and how many hooks ran', () => {
+    const parts = toolTimePartsOf(
+      tool({ hooksBefore: { count: 2, lengthMs: 850 }, hooksAfter: { count: 1, lengthMs: 1_200 } }),
+    );
+
+    expect([parts[0].figure, parts[3].figure]).toEqual(['850 ms · 2 hooks', '1.2 s · 1 hook']);
   });
 
-  it('reads not known where no Span landed for the call', () => {
-    expect(describeWaited(tool({ traced: false }))).toBe('Not known');
-  });
-});
+  it('gives a side where no hook ran no time', () => {
+    const before = toolTimePartsOf(tool())[0];
 
-describe('describeRan', () => {
-  it('gives how long the call ran', () => {
-    expect(describeRan(tool({ ranMs: 4_000 }))).toBe('4.0 s');
+    expect([before.ms, before.figure]).toEqual([0, 'No hooks']);
   });
 
-  it('reads not known where no Span landed for the call', () => {
-    expect(describeRan(tool({ traced: false, ranMs: null }))).toBe('Not known');
+  it('gives a call that asked no one no wait for approval', () => {
+    expect(toolTimePartsOf(tool({ ranMs: 4_000 }))[1].ms).toBe(0);
+  });
+
+  it('leaves the wait and the running not known where no Span landed for the call', () => {
+    const parts = toolTimePartsOf(tool({ traced: false }));
+
+    expect(parts.map((part) => part.figure)).toEqual(['No hooks', 'Not known', 'Not known', 'No hooks']);
   });
 });
 

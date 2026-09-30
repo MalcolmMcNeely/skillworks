@@ -136,6 +136,8 @@ describe('foldSessionLine', () => {
         diff: null,
         waitedMs: null,
         ranMs: 4_000,
+        hooksBefore: { count: 1, lengthMs: 120 },
+        hooksAfter: null,
       },
     };
 

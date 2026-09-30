@@ -47,7 +47,7 @@ public static class TestLoki
         PushAsync(
             tenant,
             events.Select(recorded =>
-                LogRecord(recorded.EventName, recorded.Moment, recorded.Session, recorded.Person, recorded.Attributes)));
+                LogRecord(recorded.EventName, recorded.Moment, recorded.Session, recorded.Person, recorded.Attributes, recorded.Sequence)));
 
     public static Task PushAsync(string tenant, IReadOnlyList<HookRecord> records) =>
         PushAsync(
@@ -117,7 +117,8 @@ public static class TestLoki
         DateTimeOffset at,
         string session,
         string? person,
-        IEnumerable<(string Key, string? Value)> attributes) =>
+        IEnumerable<(string Key, string? Value)> attributes,
+        string? sequence = null) =>
         LogRecordOf(at, eventName, Attributes(
             [
                 ("user.id", "a68801ea0000400080000000000000001"),
@@ -129,7 +130,7 @@ public static class TestLoki
                 ("terminal.type", "windows-terminal"),
                 ("event.name", eventName),
                 ("event.timestamp", at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture)),
-                ("event.sequence", Interlocked.Increment(ref _sequence).ToString(CultureInfo.InvariantCulture)),
+                ("event.sequence", sequence ?? Interlocked.Increment(ref _sequence).ToString(CultureInfo.InvariantCulture)),
                 ("prompt.id", "3b0537fa-0000-4000-8000-000000000001"),
                 .. attributes,
             ]));

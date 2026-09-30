@@ -17,4 +17,6 @@ public sealed record ToolDetails(
     string? Output,
     string? Diff,
     long? WaitedMs,
-    long? RanMs);
+    long? RanMs,
+    HookRun? HooksBefore,
+    HookRun? HooksAfter);

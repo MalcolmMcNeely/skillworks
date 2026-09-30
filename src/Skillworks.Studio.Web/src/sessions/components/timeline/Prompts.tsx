@@ -13,15 +13,14 @@ import {
   describeOutcome,
   describeOutputNote,
   describePurpose,
-  describeRan,
   describeStop,
-  describeWaited,
   describeWithheld,
   fileOf,
   outputOf,
   rowLineOf,
   timePartsOf,
   tokenPartsOf,
+  toolTimePartsOf,
   type ToolDetails,
   type TurnDetails,
 } from '../../lib/details';
@@ -248,8 +247,6 @@ function askedWord(call: ToolDetails): string {
 }
 
 function OpenedTool({ call }: { call: ToolDetails }) {
-  const waited = describeWaited(call);
-
   return (
     <dl className="prompts-turn">
       <dt className="micro">Result</dt>
@@ -267,14 +264,13 @@ function OpenedTool({ call }: { call: ToolDetails }) {
       </dd>
       <dt className="micro">Who allowed it</dt>
       <dd>{describeAllowedBy(call)}</dd>
-      {waited === null ? null : (
-        <>
-          <dt className="micro">Wait for your OK</dt>
-          <dd>{waited}</dd>
-        </>
-      )}
-      <dt className="micro">Running</dt>
-      <dd>{describeRan(call)}</dd>
+      <dt className="micro">Time</dt>
+      <dd>
+        <Shares
+          label="Where the Tool call's time went"
+          parts={toolTimePartsOf(call).map((each) => ({ ...each, value: each.ms }))}
+        />
+      </dd>
     </dl>
   );
 }

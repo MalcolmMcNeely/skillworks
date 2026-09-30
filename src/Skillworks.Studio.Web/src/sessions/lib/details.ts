@@ -54,7 +54,17 @@ export interface ToolDetails {
   diff: string | null;
   waitedMs: number | null;
   ranMs: number | null;
+  // Read from events and not Spans, so null means no hook ran rather than not known.
+  hooksBefore: HookRun | null;
+  hooksAfter: HookRun | null;
 }
+
+export interface HookRun {
+  count: number;
+  lengthMs: number;
+}
+
+export type ToolTimePart = 'hooksBefore' | 'waiting' | 'running' | 'hooksAfter';
 
 export type TokenPart = 'cacheRead' | 'cacheWrite' | 'input' | 'output';
 
@@ -197,16 +207,30 @@ export function describeOutputNote(call: ToolDetails): string | null {
   return null;
 }
 
-export function describeWaited(call: ToolDetails): string | null {
-  if (!call.traced) {
-    return notKnown;
+function hookPartOf(part: ToolTimePart, word: string, run: HookRun | null) {
+  if (run === null) {
+    return { part, word, ms: 0, figure: 'No hooks' };
   }
 
-  return call.waitedMs === null ? null : describeLength(call.waitedMs);
+  return {
+    part,
+    word,
+    ms: run.lengthMs,
+    figure: `${describeLength(run.lengthMs)} · ${run.count} ${run.count === 1 ? 'hook' : 'hooks'}`,
+  };
 }
 
-export function describeRan(call: ToolDetails): string {
-  return !call.traced || call.ranMs === null ? notKnown : describeLength(call.ranMs);
+function spanPartOf(part: ToolTimePart, word: string, ms: number | null) {
+  return { part, word, ms, figure: ms === null ? notKnown : describeLength(ms) };
+}
+
+export function toolTimePartsOf(call: ToolDetails): { part: ToolTimePart; word: string; ms: number | null; figure: string }[] {
+  return [
+    hookPartOf('hooksBefore', 'Hooks before', call.hooksBefore),
+    spanPartOf('waiting', 'Waiting for approval', call.traced ? (call.waitedMs ?? 0) : null),
+    spanPartOf('running', 'Running', call.traced ? call.ranMs : null),
+    hookPartOf('hooksAfter', 'Hooks after', call.hooksAfter),
+  ];
 }
 
 // Claude Code cuts each value of the input at 512 characters and the whole near 4K, so the JSON may not close.

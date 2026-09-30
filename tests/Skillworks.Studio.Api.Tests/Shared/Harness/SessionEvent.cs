@@ -78,6 +78,17 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? Skill { get; init; }
 
+    public string? HookEvent { get; init; }
+
+    public string? HookName { get; init; }
+
+    public string? HookCount { get; init; }
+
+    public string? HooksMs { get; init; }
+
+    // Null takes the next number, and a number set here stands for a Claude Code that restarted its count.
+    public string? Sequence { get; init; }
+
     internal DateTimeOffset Moment => DateTimeOffset.Parse(At, CultureInfo.InvariantCulture);
 
     internal (string Key, string? Value)[] Attributes =>
@@ -114,6 +125,10 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("vcs.repository.name", RepositoryName),
         ("skillworks.parent.session.id", Parent),
         ("skill.name", Skill),
+        ("hook_event", HookEvent),
+        ("hook_name", HookName),
+        ("num_hooks", HookCount),
+        ("total_duration_ms", HooksMs),
     ];
 
     // Claude Code counts the characters on the event whether or not the switch lets the words through.
@@ -199,6 +214,15 @@ public sealed record SessionEvent(string Session, string EventName, string At)
             ["subagent_type"] = type,
             ["prompt"] = brief,
         }.ToJsonString();
+
+    internal static SessionEvent HooksRan(string session, string at, string hookEvent, string tool, int hooks, int lengthMs) =>
+        new(session, "hook_execution_complete", at)
+        {
+            HookEvent = hookEvent,
+            HookName = $"{hookEvent}:{tool}",
+            HookCount = Figure(hooks),
+            HooksMs = Figure(lengthMs),
+        };
 
     internal static SessionEvent ModelFailed(string session, string at) =>
         new(session, "api_error", at) { ErrorType = "RateLimited" };
