@@ -95,7 +95,7 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
             // Only where a row was left a dash, as a store that fell short but named every row lost nothing.
             depths is not null && depths.Depths.Count < read.Rows.Count ? gaps.InDepths(depths.Traced) : NothingMissing);
 
-        yield return new SessionsEnd(gap, read.OldestLatestUtc, read.QuietSinceUtc);
+        yield return new SessionsEnd(gap, read.OldestLatestUtc, read.LookedBackToUtc);
     }
 
     // They land in no order of their own, so the sentence would name them differently run to run.

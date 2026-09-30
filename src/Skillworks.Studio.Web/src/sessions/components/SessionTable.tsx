@@ -115,7 +115,7 @@ function Rows({ rows, filter }: { rows: readonly DrawnSession[]; filter: Filter 
 const reading = 'Reading the runs…';
 
 // An answer that ended with no rows to stand found a store down, which the Signal word in the head names.
-function waiting(answer: SessionsAnswer | null): string {
+function noRowsWord(answer: SessionsAnswer | null): string {
   return answer !== null && !answer.arriving ? notKnown : reading;
 }
 
@@ -140,13 +140,13 @@ export function SessionTable({
   }
 
   if (answer === null || !answer.landed) {
-    return <p className="session-word">{waiting(answer)}</p>;
+    return <p className="session-word">{noRowsWord(answer)}</p>;
   }
 
   // A Lookup answer is the one row it found, so there is nothing to narrow and no further read to offer.
   if (lookingUp) {
     return answer.rows.length === 0 ? (
-      <p className="session-word">{describeNoRun(answer) ?? waiting(answer)}</p>
+      <p className="session-word">{describeNoRun(answer) ?? noRowsWord(answer)}</p>
     ) : (
       <Rows rows={answer.rows} filter={filter} />
     );

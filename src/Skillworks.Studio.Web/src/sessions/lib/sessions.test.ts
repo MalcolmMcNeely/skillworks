@@ -52,7 +52,7 @@ function withRows(...sessions: SessionRow[]): SessionsAnswer {
 }
 
 function endOn(latest: string | null): SessionsLine {
-  return { kind: 'end', gap: complete, oldestLatestUtc: latest, quietSinceUtc: null };
+  return { kind: 'end', gap: complete, oldestLatestUtc: latest, lookedBackToUtc: null };
 }
 
 function cell(answer: SessionsAnswer, measure: MeasureName, id: string = run.id) {
@@ -81,7 +81,7 @@ describe('foldSessionsLine', () => {
       arriving: true,
       gap: null,
       oldestLatestUtc: null,
-      quietSinceUtc: null,
+      lookedBackToUtc: null,
       held: 0,
     });
   });
@@ -180,7 +180,7 @@ describe('the Measures on a folded answer', () => {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
       oldestLatestUtc: oldestLatest,
-      quietSinceUtc: null,
+      lookedBackToUtc: null,
     });
 
     expect(cell(answer, 'toolCalls')).toEqual({ state: 'fellShort' });
@@ -193,7 +193,7 @@ describe('the Measures on a folded answer', () => {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
       oldestLatestUtc: oldestLatest,
-      quietSinceUtc: null,
+      lookedBackToUtc: null,
     });
 
     expect(cell(answer, 'cost')).toEqual({ state: 'landed', value: 0 });
@@ -288,7 +288,7 @@ describe('a later read folded into the rows held', () => {
       kind: 'end',
       gap: unreachable,
       oldestLatestUtc: null,
-      quietSinceUtc: null,
+      lookedBackToUtc: null,
     });
 
     expect(failed.rows.map((row) => row.session)).toEqual([run]);
@@ -299,7 +299,7 @@ describe('a later read folded into the rows held', () => {
   });
 
   it('puts no shortfall under the rows for a first read, as the head already names it', () => {
-    const failed = foldSessionsLine(withRows(run), { kind: 'end', gap: unreachable, oldestLatestUtc: oldestLatest, quietSinceUtc: null });
+    const failed = foldSessionsLine(withRows(run), { kind: 'end', gap: unreachable, oldestLatestUtc: oldestLatest, lookedBackToUtc: null });
 
     expect(laterShortfall(failed)).toBeNull();
   });
@@ -331,14 +331,14 @@ describe('loadMore', () => {
 });
 
 describe('a read that ends on a quiet 30 days', () => {
-  const quietSince = '2026-08-16T12:00:00+00:00';
+  const lookedBackTo = '2026-08-16T12:00:00+00:00';
 
   function quiet(answer: SessionsAnswer): SessionsAnswer {
-    return foldSessionsLine(answer, { kind: 'end', gap: complete, oldestLatestUtc: null, quietSinceUtc: quietSince });
+    return foldSessionsLine(answer, { kind: 'end', gap: complete, oldestLatestUtc: null, lookedBackToUtc: lookedBackTo });
   }
 
   it('keeps the quiet date the end names', () => {
-    expect(quiet(withRows(run)).quietSinceUtc).toBe(quietSince);
+    expect(quiet(withRows(run)).lookedBackToUtc).toBe(lookedBackTo);
   });
 
   it('says there are no older Prompts back to that date, never that the store holds no more', () => {
@@ -361,7 +361,7 @@ describe('a read that ends on a quiet 30 days', () => {
   });
 
   it('starts the further read from the quiet date, on the same as-of instant', () => {
-    expect(nextRead(quiet(withRows(run)))).toEqual({ asOfUtc: head.asOfUtc, latestBeforeUtc: quietSince });
+    expect(nextRead(quiet(withRows(run)))).toEqual({ asOfUtc: head.asOfUtc, latestBeforeUtc: lookedBackTo });
   });
 
   it('lets either button read on once the read has ended, and neither while it is in flight', () => {
@@ -390,10 +390,10 @@ describe('a read that ends on a quiet 30 days', () => {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'The events store answered 503.' },
       oldestLatestUtc: null,
-      quietSinceUtc: null,
+      lookedBackToUtc: null,
     });
 
-    expect(failed.quietSinceUtc).toBe(quietSince);
+    expect(failed.lookedBackToUtc).toBe(lookedBackTo);
     expect(lookFurtherBack(failed)).toBe('ready');
     expect(loadMore(failed)).toBe('hidden');
   });
@@ -415,7 +415,7 @@ describe('a read that ends on a quiet 30 days', () => {
       kind: 'end',
       gap: { kind: 'unreachable', missing: 'Tool calls' },
       oldestLatestUtc: null,
-      quietSinceUtc: quietSince,
+      lookedBackToUtc: lookedBackTo,
     });
 
     expect(lookFurtherBack(answer)).toBe('ready');
@@ -496,8 +496,8 @@ describe('the words for what a row does not carry', () => {
 });
 
 describe('describeNoSessions', () => {
-  function quietBackTo(answer: SessionsAnswer, quietSinceUtc: string): SessionsAnswer {
-    return foldSessionsLine(answer, { kind: 'end', gap: complete, oldestLatestUtc: null, quietSinceUtc });
+  function quietBackTo(answer: SessionsAnswer, lookedBackToUtc: string): SessionsAnswer {
+    return foldSessionsLine(answer, { kind: 'end', gap: complete, oldestLatestUtc: null, lookedBackToUtc });
   }
 
   const empty = quietBackTo(withRows(), '2026-08-16T12:00:00+00:00');

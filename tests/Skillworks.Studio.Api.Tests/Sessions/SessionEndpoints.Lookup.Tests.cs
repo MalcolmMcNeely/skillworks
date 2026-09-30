@@ -56,7 +56,7 @@ public sealed partial class SessionEndpointsTests
         var answer = await studio.LookupAnswer(Morning);
 
         Assert.Empty(answer.Sessions);
-        Assert.Equal(answer.Head.AsOfUtc - TimeSpan.FromDays(10), answer.QuietSinceUtc);
+        Assert.Equal(answer.Head.AsOfUtc - TimeSpan.FromDays(10), answer.LookedBackToUtc);
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public sealed partial class SessionEndpointsTests
 
         // The page says how far back the Lookup looked from these, without knowing the setting, and offers no Load more.
         Assert.Null(answer.OldestLatestUtc);
-        Assert.Equal(answer.Head.AsOfUtc - LookupReach, answer.QuietSinceUtc);
+        Assert.Equal(answer.Head.AsOfUtc - LookupReach, answer.LookedBackToUtc);
     }
 
     [Fact]

@@ -38,7 +38,7 @@ public sealed partial class SessionQueries
             newest.Lines.Count,
             new HashSet<string>(StringComparer.Ordinal),
             oldestLatest: null,
-            quietSince: since,
+            lookedBackTo: since,
             cancellationToken);
     }
 

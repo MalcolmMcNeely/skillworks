@@ -14,13 +14,13 @@ public sealed record SessionsRead(
     long LinesRead,
     // At most one of the two, as a read either stopped at a Latest or ran out of lines at the end of its 30 days or its reach.
     DateTimeOffset? OldestLatestUtc,
-    DateTimeOffset? QuietSinceUtc)
+    DateTimeOffset? LookedBackToUtc)
 {
     public static SessionsRead Failed(string unreachable, long linesRead) =>
         new(unreachable, [], AsyncEnumerable.Empty<MeasureLanding>(), Unread, linesRead, null, null);
 
-    public static SessionsRead Empty(long linesRead, DateTimeOffset? quietSinceUtc) =>
-        new(null, [], AsyncEnumerable.Empty<MeasureLanding>(), Unread, linesRead, null, quietSinceUtc);
+    public static SessionsRead Empty(long linesRead, DateTimeOffset? lookedBackToUtc) =>
+        new(null, [], AsyncEnumerable.Empty<MeasureLanding>(), Unread, linesRead, null, lookedBackToUtc);
 
     private static Task<DepthLanding?> Unread => Task.FromResult<DepthLanding?>(null);
 }

@@ -36,8 +36,8 @@ function ids(answer: SessionsAnswer): string[] {
 
 const complete = { kind: 'complete', missing: null } as const;
 
-function endOn(latest: string | null, quietSince: string | null = null): SessionsLine {
-  return { kind: 'end', gap: complete, oldestLatestUtc: latest, quietSinceUtc: quietSince };
+function endOn(latest: string | null, lookedBackTo: string | null = null): SessionsLine {
+  return { kind: 'end', gap: complete, oldestLatestUtc: latest, lookedBackToUtc: lookedBackTo };
 }
 
 describe('narrowByLookup', () => {
@@ -72,7 +72,7 @@ describe('narrowByLookup', () => {
 
     expect(narrowed.rows).toEqual([]);
     expect(lookFurtherBack(narrowed)).toBe('ready');
-    expect(narrowed.quietSinceUtc).toBe('2026-08-16T12:00:00+00:00');
+    expect(narrowed.lookedBackToUtc).toBe('2026-08-16T12:00:00+00:00');
   });
 
   it('narrows the rows a later read adds too, so a match that lands on Load more shows up', () => {
@@ -138,7 +138,7 @@ describe('describeNoRun', () => {
   });
 
   it('says nothing when the answer ended without saying how far it looked, as a read that broke off found no run either way', () => {
-    const broke = foldSessionsLine(withRows(), { kind: 'end', gap: { kind: 'unreachable', missing: 'The events store answered 503.' }, oldestLatestUtc: null, quietSinceUtc: null });
+    const broke = foldSessionsLine(withRows(), { kind: 'end', gap: { kind: 'unreachable', missing: 'The events store answered 503.' }, oldestLatestUtc: null, lookedBackToUtc: null });
 
     expect(describeNoRun(broke)).toBeNull();
   });

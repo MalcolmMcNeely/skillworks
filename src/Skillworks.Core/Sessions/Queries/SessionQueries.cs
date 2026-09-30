@@ -50,7 +50,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         var heard = await HeardAsync(start, asOf, latestBefore, filter, cancellationToken);
 
         // Only a read that ran out of lines saw the rest of its 30 days quiet, as one that stopped at fifty never looked.
-        var quietSince = heard.ReadToItsEnd ? start - Reach : (DateTimeOffset?)null;
+        var lookedBackTo = heard.ReadToItsEnd ? start - Reach : (DateTimeOffset?)null;
 
         if (heard.Unreachable is { } unheard)
         {
@@ -68,7 +68,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
                 return SessionsRead.Failed(unasked, 0);
             }
 
-            return SessionsRead.Empty(linesRead, quietSince);
+            return SessionsRead.Empty(linesRead, lookedBackTo);
         }
 
         var from = heard.Works.Min(work => work.Latest) - ParentReach;
@@ -95,7 +95,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         // Children left past the fifty sit between the Latest and the quiet date, so the next read starts from the Latest.
         if (unfolded.Length > works.Length)
         {
-            quietSince = null;
+            lookedBackTo = null;
         }
 
         return await ReadAsync(
@@ -104,8 +104,8 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             asOf,
             heard.LinesRead,
             heard.Withheld,
-            quietSince is null ? works[^1].Latest : null,
-            quietSince,
+            lookedBackTo is null ? works[^1].Latest : null,
+            lookedBackTo,
             cancellationToken);
     }
 
@@ -116,7 +116,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         long linesRead,
         IReadOnlySet<string> heardWithheld,
         DateTimeOffset? oldestLatest,
-        DateTimeOffset? quietSince,
+        DateTimeOffset? lookedBackTo,
         CancellationToken cancellationToken)
     {
         string[] ids = [.. works.Select(work => work.Id)];
@@ -169,7 +169,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             DepthsAsync(tracing, works, rows, withheld),
             linesRead,
             oldestLatest,
-            quietSince);
+            lookedBackTo);
     }
 
     // A later read takes only work older than the Latest it starts from, so work sharing the fiftieth Latest comes along.

@@ -96,8 +96,8 @@ export interface SessionsDepths {
 export interface SessionsEnd extends GapEnd {
   // So the next read starts where this one stopped.
   oldestLatestUtc: string | null;
-  // How far back a quiet 30 days reached, so a quiet month is never read as the start of the store.
-  quietSinceUtc: string | null;
+  // How far back a quiet 30 days or a Lookup's reach looked, so a quiet month is never read as the start of the store.
+  lookedBackToUtc: string | null;
 }
 
 export type SessionsLine = SessionsHead | SessionsPage | SessionsMeasure | SessionsDepths | SessionsEnd;
@@ -112,7 +112,7 @@ export interface SessionsAnswer {
   gap: Gap | null;
   // While a later read is in flight, the Latest it started from, so a read that fails can be asked again.
   oldestLatestUtc: string | null;
-  quietSinceUtc: string | null;
+  lookedBackToUtc: string | null;
   held: number;
 }
 
@@ -144,7 +144,7 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
           arriving: true,
           gap: null,
           oldestLatestUtc: null,
-          quietSinceUtc: null,
+          lookedBackToUtc: null,
           held: 0,
         }
       : { ...answer, asOfUtc: line.asOfUtc, arriving: true, gap: null, held: answer.rows.length };
@@ -174,10 +174,10 @@ export function foldSessionsLine(answer: SessionsAnswer | null, line: SessionsLi
   }
 
   // A store that did not answer brought no Latest, so the one the read started from stays for the next click.
-  const ended = line.oldestLatestUtc !== null || line.quietSinceUtc !== null || line.gap.kind !== 'unreachable';
-  const { oldestLatestUtc, quietSinceUtc } = ended ? line : answer;
+  const ended = line.oldestLatestUtc !== null || line.lookedBackToUtc !== null || line.gap.kind !== 'unreachable';
+  const { oldestLatestUtc, lookedBackToUtc } = ended ? line : answer;
 
-  return { ...answer, arriving: false, gap: line.gap, oldestLatestUtc, quietSinceUtc, rows: inRead(answer, settled) };
+  return { ...answer, arriving: false, gap: line.gap, oldestLatestUtc, lookedBackToUtc, rows: inRead(answer, settled) };
 }
 
 export function failSessionsRead(answer: SessionsAnswer, reason: string): SessionsAnswer {
@@ -190,11 +190,11 @@ export function loadMore(answer: SessionsAnswer): ReadOnState {
 }
 
 export function lookFurtherBack(answer: SessionsAnswer): ReadOnState {
-  return offered(answer, answer.quietSinceUtc);
+  return offered(answer, answer.lookedBackToUtc);
 }
 
 export function readOn(answer: SessionsAnswer): ReadOnState {
-  return offered(answer, answer.oldestLatestUtc ?? answer.quietSinceUtc);
+  return offered(answer, answer.oldestLatestUtc ?? answer.lookedBackToUtc);
 }
 
 function offered(answer: SessionsAnswer, from: string | null): ReadOnState {
@@ -206,16 +206,16 @@ function offered(answer: SessionsAnswer, from: string | null): ReadOnState {
 }
 
 export function nextRead(answer: SessionsAnswer): LaterRead | null {
-  const latestBeforeUtc = answer.oldestLatestUtc ?? answer.quietSinceUtc;
+  const latestBeforeUtc = answer.oldestLatestUtc ?? answer.lookedBackToUtc;
 
   return latestBeforeUtc === null ? null : { asOfUtc: answer.asOfUtc, latestBeforeUtc };
 }
 
 // Said only once the read has ended, as a further read in flight may yet find work past the date.
 export function describeQuiet(answer: SessionsAnswer): string | null {
-  return answer.arriving || answer.quietSinceUtc === null
+  return answer.arriving || answer.lookedBackToUtc === null
     ? null
-    : `No older Prompts back to ${answer.quietSinceUtc.slice(0, 10)}.`;
+    : `No older Prompts back to ${answer.lookedBackToUtc.slice(0, 10)}.`;
 }
 
 // Only a later read's shortfall goes under the rows, as the first read's already stands in the head.
@@ -299,9 +299,9 @@ const reach = 30;
 
 // Counted from the answer's own instants, so the page never knows how far a read is set to look.
 export function daysLookedBack(answer: SessionsAnswer): number | null {
-  return answer.quietSinceUtc === null
+  return answer.lookedBackToUtc === null
     ? null
-    : Math.round((Date.parse(answer.asOfUtc) - Date.parse(answer.quietSinceUtc)) / day);
+    : Math.round((Date.parse(answer.asOfUtc) - Date.parse(answer.lookedBackToUtc)) / day);
 }
 
 // Each Look further back reaches another 30 days, so an empty list with nothing narrowed says how far it has looked.

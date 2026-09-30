@@ -17,7 +17,7 @@ public sealed partial class SessionEndpointsTests
 
         Assert.Equal([Morning], answer.Sessions.Select(session => session.Id));
         Assert.Null(answer.OldestLatestUtc);
-        Assert.Equal(answer.Head.AsOfUtc - Reach, answer.QuietSinceUtc);
+        Assert.Equal(answer.Head.AsOfUtc - Reach, answer.LookedBackToUtc);
     }
 
     [Fact]
@@ -28,7 +28,7 @@ public sealed partial class SessionEndpointsTests
         var answer = await studio.SessionAnswer();
 
         Assert.Empty(answer.Sessions);
-        Assert.Equal(answer.Head.AsOfUtc - Reach, answer.QuietSinceUtc);
+        Assert.Equal(answer.Head.AsOfUtc - Reach, answer.LookedBackToUtc);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed partial class SessionEndpointsTests
         var answer = await studio.SessionAnswer();
 
         Assert.NotNull(answer.OldestLatestUtc);
-        Assert.Null(answer.QuietSinceUtc);
+        Assert.Null(answer.LookedBackToUtc);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed partial class SessionEndpointsTests
         var furthest = await studio.FurtherBackSessionAnswer(further);
 
         Assert.Equal([Afternoon], further.Sessions.Select(session => session.Id));
-        Assert.Equal(first.Head.AsOfUtc - (Reach * 2), further.QuietSinceUtc);
+        Assert.Equal(first.Head.AsOfUtc - (Reach * 2), further.LookedBackToUtc);
         Assert.Equal([Evening], furthest.Sessions.Select(session => session.Id));
     }
 
