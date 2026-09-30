@@ -64,11 +64,11 @@ export interface HookRun {
   lengthMs: number;
 }
 
-export type ToolTimePart = 'hooksBefore' | 'waiting' | 'running' | 'hooksAfter';
+export type ToolTimeShare = 'hooksBefore' | 'waiting' | 'running' | 'hooksAfter';
 
-export type TokenPart = 'cacheRead' | 'cacheWrite' | 'input' | 'output';
+export type TokenShare = 'cacheRead' | 'cacheWrite' | 'input' | 'output';
 
-export type TimePart = 'wait' | 'writing';
+export type TimeShare = 'wait' | 'writing';
 
 // The same fields a Tool call asks with, so a refused call reads what it wanted to do by the same rule.
 export interface RefusalDetails {
@@ -120,28 +120,28 @@ const sideWords: Record<Exclude<SideRequest, 'other'>, string> = {
   webSearch: 'Web search',
 };
 
-export function describePurpose(turn: Pick<TurnDetails, 'purpose' | 'side' | 'sentAs'>): string {
-  if (turn.purpose !== 'side') {
-    return purposeWords[turn.purpose];
+export function describePurpose(step: Pick<TurnDetails, 'purpose' | 'side' | 'sentAs'>): string {
+  if (step.purpose !== 'side') {
+    return purposeWords[step.purpose];
   }
 
-  if (turn.side === null || turn.side === 'other') {
-    return turn.sentAs === null ? 'Side request' : `Side request: ${turn.sentAs}`;
+  if (step.side === null || step.side === 'other') {
+    return step.sentAs === null ? 'Side request' : `Side request: ${step.sentAs}`;
   }
 
-  return sideWords[turn.side];
+  return sideWords[step.side];
 }
 
 // A Fault carries no speed, so it reads as the normal one.
-export function describeModel(turn: Pick<TurnDetails, 'model' | 'effort'> & { speed?: string | null }): string {
-  if (turn.model === null) {
+export function describeModel(step: Pick<TurnDetails, 'model' | 'effort'> & { speed?: string | null }): string {
+  if (step.model === null) {
     return notKnown;
   }
 
-  const effort = turn.effort === null ? '' : ` · ${turn.effort} effort`;
-  const speed = turn.speed === undefined || turn.speed === null || turn.speed === 'normal' ? '' : ` · ${turn.speed}`;
+  const effort = step.effort === null ? '' : ` · ${step.effort} effort`;
+  const speed = step.speed === undefined || step.speed === null || step.speed === 'normal' ? '' : ` · ${step.speed}`;
 
-  return `${turn.model}${effort}${speed}`;
+  return `${step.model}${effort}${speed}`;
 }
 
 const stopWords: Record<string, string> = {
@@ -159,26 +159,26 @@ export function describeStop(turn: TurnDetails): string {
   return Object.hasOwn(stopWords, turn.stopReason) ? stopWords[turn.stopReason] : turn.stopReason;
 }
 
-export function describeAttempt(turn: { attempt: number | null }): string {
-  return turn.attempt === null ? notKnown : `Attempt ${turn.attempt}`;
+export function describeAttempt(step: { attempt: number | null }): string {
+  return step.attempt === null ? notKnown : `Attempt ${step.attempt}`;
 }
 
-export function tokenPartsOf(turn: TurnDetails): { part: TokenPart; word: string; tokens: number }[] {
+export function tokenSharesOf(turn: TurnDetails): { share: TokenShare; word: string; tokens: number }[] {
   return [
-    { part: 'cacheRead', word: 'Read from cache', tokens: turn.cacheReadTokens },
-    { part: 'cacheWrite', word: 'Written to cache', tokens: turn.cacheWriteTokens },
-    { part: 'input', word: 'New input', tokens: turn.inputTokens },
-    { part: 'output', word: 'Output', tokens: turn.outputTokens },
+    { share: 'cacheRead', word: 'Read from cache', tokens: turn.cacheReadTokens },
+    { share: 'cacheWrite', word: 'Written to cache', tokens: turn.cacheWriteTokens },
+    { share: 'input', word: 'New input', tokens: turn.inputTokens },
+    { share: 'output', word: 'Output', tokens: turn.outputTokens },
   ];
 }
 
 // With no wait known, the writing is not known either, as the whole length would read as all writing.
-export function timePartsOf(turn: TurnDetails): { part: TimePart; word: string; ms: number | null }[] {
+export function timeSharesOf(turn: TurnDetails): { share: TimeShare; word: string; ms: number | null }[] {
   const wait = turn.firstWordMs;
 
   return [
-    { part: 'wait', word: 'Wait for the first word', ms: wait },
-    { part: 'writing', word: 'Writing', ms: wait === null ? null : Math.max(0, turn.lengthMs - wait) },
+    { share: 'wait', word: 'Wait for the first word', ms: wait },
+    { share: 'writing', word: 'Writing', ms: wait === null ? null : Math.max(0, turn.lengthMs - wait) },
   ];
 }
 
@@ -256,29 +256,29 @@ export function describeOutputNote(call: ToolDetails): string | null {
   return null;
 }
 
-function hookPartOf(part: ToolTimePart, word: string, run: HookRun | null) {
+function hookShareOf(share: ToolTimeShare, word: string, run: HookRun | null) {
   if (run === null) {
-    return { part, word, ms: 0, figure: 'No hooks' };
+    return { share, word, ms: 0, figure: 'No hooks' };
   }
 
   return {
-    part,
+    share,
     word,
     ms: run.lengthMs,
     figure: `${describeLength(run.lengthMs)} · ${run.count} ${run.count === 1 ? 'hook' : 'hooks'}`,
   };
 }
 
-function spanPartOf(part: ToolTimePart, word: string, ms: number | null) {
-  return { part, word, ms, figure: ms === null ? notKnown : describeLength(ms) };
+function spanShareOf(share: ToolTimeShare, word: string, ms: number | null) {
+  return { share, word, ms, figure: ms === null ? notKnown : describeLength(ms) };
 }
 
-export function toolTimePartsOf(call: ToolDetails): { part: ToolTimePart; word: string; ms: number | null; figure: string }[] {
+export function toolTimeSharesOf(call: ToolDetails): { share: ToolTimeShare; word: string; ms: number | null; figure: string }[] {
   return [
-    hookPartOf('hooksBefore', 'Hooks before', call.hooksBefore),
-    spanPartOf('waiting', 'Waiting for approval', call.traced ? (call.waitedMs ?? 0) : null),
-    spanPartOf('running', 'Running', call.traced ? call.ranMs : null),
-    hookPartOf('hooksAfter', 'Hooks after', call.hooksAfter),
+    hookShareOf('hooksBefore', 'Hooks before', call.hooksBefore),
+    spanShareOf('waiting', 'Waiting for your OK', call.traced ? (call.waitedMs ?? 0) : null),
+    spanShareOf('running', 'Running', call.traced ? call.ranMs : null),
+    hookShareOf('hooksAfter', 'Hooks after', call.hooksAfter),
   ];
 }
 

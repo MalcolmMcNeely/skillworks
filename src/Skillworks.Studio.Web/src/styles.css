@@ -2037,14 +2037,14 @@ a.home-panel-face:hover::before {
   font-family: var(--mono);
 }
 
-.prompts-turn {
+.prompts-opened {
   display: grid;
   gap: 0.3rem 0.8rem;
   grid-template-columns: 6rem minmax(0, 1fr);
   margin: 0.4rem 0 0;
 }
 
-.prompts-turn dd {
+.prompts-opened dd {
   color: var(--ink);
   display: flex;
   flex-direction: column;
@@ -2052,7 +2052,7 @@ a.home-panel-face:hover::before {
   margin: 0;
 }
 
-.prompts-turn-raw {
+.prompts-opened-raw {
   color: var(--ink-faint);
   font-family: var(--mono);
 }

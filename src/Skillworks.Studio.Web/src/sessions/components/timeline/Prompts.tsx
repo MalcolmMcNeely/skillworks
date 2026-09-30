@@ -20,9 +20,9 @@ import {
   fileOf,
   outputOf,
   rowLineOf,
-  timePartsOf,
-  tokenPartsOf,
-  toolTimePartsOf,
+  timeSharesOf,
+  tokenSharesOf,
+  toolTimeSharesOf,
   type AskedWith,
   type FaultDetails,
   type RefusalDetails,
@@ -70,23 +70,23 @@ function Words({ words, length, whole }: { words: string | null; length: number;
 
 function Shares({
   label,
-  parts,
+  shares,
 }: {
   label: string;
-  parts: { part: string; word: string; value: number | null; figure: string }[];
+  shares: { share: string; word: string; value: number | null; figure: string }[];
 }) {
-  const whole = parts.reduce((sum, each) => sum + (each.value ?? 0), 0);
+  const whole = shares.reduce((sum, each) => sum + (each.value ?? 0), 0);
 
   return (
     <>
       {whole > 0 ? (
         <div className="breakdown-bar" role="img" aria-label={label}>
-          {parts
+          {shares
             .filter((each) => each.value !== null && each.value > 0)
             .map((each) => (
               <span
-                key={each.part}
-                className={`breakdown-fill is-${each.part}`}
+                key={each.share}
+                className={`breakdown-fill is-${each.share}`}
                 style={{ width: `${((each.value ?? 0) / whole) * 100}%` }}
                 title={`${each.word} · ${each.figure}`}
               />
@@ -94,9 +94,9 @@ function Shares({
         </div>
       ) : null}
       <ul className="breakdown-legend">
-        {parts.map((each) => (
-          <li key={each.part} className={`breakdown-key${each.value === null ? ' is-unknown' : ''}`}>
-            <span className={`breakdown-dot is-${each.part}`} aria-hidden="true" />
+        {shares.map((each) => (
+          <li key={each.share} className={`breakdown-key${each.value === null ? ' is-unknown' : ''}`}>
+            <span className={`breakdown-dot is-${each.share}`} aria-hidden="true" />
             <span className="breakdown-word">{each.word}</span>
             <span className="breakdown-figure">{each.figure}</span>
             <span className="breakdown-share">
@@ -113,11 +113,11 @@ function OpenedTurn({ turn }: { turn: TurnDetails }) {
   const unsaid = unsaidOf(turn);
 
   return (
-    <dl className="prompts-turn">
+    <dl className="prompts-opened">
       <dt className="micro">Why it ran</dt>
       <dd>
         {describePurpose(turn)}
-        {turn.sentAs === null ? null : <code className="prompts-turn-raw">{turn.sentAs}</code>}
+        {turn.sentAs === null ? null : <code className="prompts-opened-raw">{turn.sentAs}</code>}
       </dd>
       <dt className="micro">Model</dt>
       <dd>{describeModel(turn)}</dd>
@@ -127,14 +127,14 @@ function OpenedTurn({ turn }: { turn: TurnDetails }) {
       <dd>
         <Shares
           label="Where the Turn's tokens went"
-          parts={tokenPartsOf(turn).map((each) => ({ ...each, value: each.tokens, figure: describeTokens(each.tokens) }))}
+          shares={tokenSharesOf(turn).map((each) => ({ ...each, value: each.tokens, figure: describeTokens(each.tokens) }))}
         />
       </dd>
       <dt className="micro">Time</dt>
       <dd>
         <Shares
           label="Where the Turn's time went"
-          parts={timePartsOf(turn).map((each) => ({
+          shares={timeSharesOf(turn).map((each) => ({
             ...each,
             value: each.ms,
             figure: each.ms === null ? notKnown : describeLength(each.ms),
@@ -254,7 +254,7 @@ function askedWord(call: ToolDetails): string {
 
 function OpenedTool({ call }: { call: ToolDetails }) {
   return (
-    <dl className="prompts-turn">
+    <dl className="prompts-opened">
       <dt className="micro">Result</dt>
       <dd>
         {describeOutcome(call)}
@@ -274,7 +274,7 @@ function OpenedTool({ call }: { call: ToolDetails }) {
       <dd>
         <Shares
           label="Where the Tool call's time went"
-          parts={toolTimePartsOf(call).map((each) => ({ ...each, value: each.ms }))}
+          shares={toolTimeSharesOf(call).map((each) => ({ ...each, value: each.ms }))}
         />
       </dd>
     </dl>
@@ -283,7 +283,7 @@ function OpenedTool({ call }: { call: ToolDetails }) {
 
 function OpenedRefusal({ refusal }: { refusal: RefusalDetails }) {
   return (
-    <dl className="prompts-turn">
+    <dl className="prompts-opened">
       <dt className="micro">What it wanted to do</dt>
       <dd>
         <Asked call={refusal} />
@@ -296,7 +296,7 @@ function OpenedRefusal({ refusal }: { refusal: RefusalDetails }) {
 
 function OpenedFault({ fault }: { fault: FaultDetails }) {
   return (
-    <dl className="prompts-turn">
+    <dl className="prompts-opened">
       <dt className="micro">Error</dt>
       <dd>{fault.error === null ? notKnown : <pre className="prompts-code">{fault.error}</pre>}</dd>
       <dt className="micro">Status code</dt>
@@ -308,7 +308,7 @@ function OpenedFault({ fault }: { fault: FaultDetails }) {
       <dt className="micro">Why it ran</dt>
       <dd>
         {describePurpose(fault)}
-        {fault.sentAs === null ? null : <code className="prompts-turn-raw">{fault.sentAs}</code>}
+        {fault.sentAs === null ? null : <code className="prompts-opened-raw">{fault.sentAs}</code>}
       </dd>
     </dl>
   );

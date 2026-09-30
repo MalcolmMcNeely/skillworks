@@ -13,10 +13,10 @@ import {
   fileOf,
   outputOf,
   rowLineOf,
-  timePartsOf,
+  timeSharesOf,
   tipLineOf,
-  tokenPartsOf,
-  toolTimePartsOf,
+  tokenSharesOf,
+  toolTimeSharesOf,
   whatItDid,
   type FaultDetails,
   type RefusalDetails,
@@ -420,9 +420,9 @@ describe('describeOutputNote', () => {
   });
 });
 
-describe('toolTimePartsOf', () => {
-  it('splits the call into hooks before, waiting for approval, running and hooks after', () => {
-    const parts = toolTimePartsOf(
+describe('toolTimeSharesOf', () => {
+  it('splits the call into hooks before, waiting for your OK, running and hooks after', () => {
+    const shares = toolTimeSharesOf(
       tool({
         hooksBefore: { count: 2, lengthMs: 850 },
         waitedMs: 12_000,
@@ -431,36 +431,36 @@ describe('toolTimePartsOf', () => {
       }),
     );
 
-    expect(parts.map((part) => [part.word, part.ms])).toEqual([
+    expect(shares.map((share) => [share.word, share.ms])).toEqual([
       ['Hooks before', 850],
-      ['Waiting for approval', 12_000],
+      ['Waiting for your OK', 12_000],
       ['Running', 4_000],
       ['Hooks after', 1_200],
     ]);
   });
 
-  it('gives each hook part its length and how many hooks ran', () => {
-    const parts = toolTimePartsOf(
+  it('gives each hook share its length and how many hooks ran', () => {
+    const shares = toolTimeSharesOf(
       tool({ hooksBefore: { count: 2, lengthMs: 850 }, hooksAfter: { count: 1, lengthMs: 1_200 } }),
     );
 
-    expect([parts[0].figure, parts[3].figure]).toEqual(['850 ms · 2 hooks', '1.2 s · 1 hook']);
+    expect([shares[0].figure, shares[3].figure]).toEqual(['850 ms · 2 hooks', '1.2 s · 1 hook']);
   });
 
   it('gives a side where no hook ran no time', () => {
-    const before = toolTimePartsOf(tool())[0];
+    const before = toolTimeSharesOf(tool())[0];
 
     expect([before.ms, before.figure]).toEqual([0, 'No hooks']);
   });
 
-  it('gives a call that asked no one no wait for approval', () => {
-    expect(toolTimePartsOf(tool({ ranMs: 4_000 }))[1].ms).toBe(0);
+  it('gives a call that asked no one no wait for your OK', () => {
+    expect(toolTimeSharesOf(tool({ ranMs: 4_000 }))[1].ms).toBe(0);
   });
 
   it('leaves the wait and the running not known where no Span landed for the call', () => {
-    const parts = toolTimePartsOf(tool({ traced: false }));
+    const shares = toolTimeSharesOf(tool({ traced: false }));
 
-    expect(parts.map((part) => part.figure)).toEqual(['No hooks', 'Not known', 'Not known', 'No hooks']);
+    expect(shares.map((share) => share.figure)).toEqual(['No hooks', 'Not known', 'Not known', 'No hooks']);
   });
 });
 
@@ -488,11 +488,11 @@ describe('describeModel', () => {
   });
 });
 
-describe('tokenPartsOf', () => {
+describe('tokenSharesOf', () => {
   it('splits the tokens into read from cache, written to cache, new input and output', () => {
-    const parts = tokenPartsOf(turn({ cacheReadTokens: 40_000, cacheWriteTokens: 3_000, inputTokens: 12, outputTokens: 800 }));
+    const shares = tokenSharesOf(turn({ cacheReadTokens: 40_000, cacheWriteTokens: 3_000, inputTokens: 12, outputTokens: 800 }));
 
-    expect(parts.map((part) => [part.word, part.tokens])).toEqual([
+    expect(shares.map((share) => [share.word, share.tokens])).toEqual([
       ['Read from cache', 40_000],
       ['Written to cache', 3_000],
       ['New input', 12],
@@ -501,18 +501,18 @@ describe('tokenPartsOf', () => {
   });
 });
 
-describe('timePartsOf', () => {
+describe('timeSharesOf', () => {
   it('sets the wait for the first word against the time spent writing', () => {
-    const parts = timePartsOf(turn({ lengthMs: 5_000, firstWordMs: 1_400 }));
+    const shares = timeSharesOf(turn({ lengthMs: 5_000, firstWordMs: 1_400 }));
 
-    expect(parts.map((part) => [part.word, part.ms])).toEqual([
+    expect(shares.map((share) => [share.word, share.ms])).toEqual([
       ['Wait for the first word', 1_400],
       ['Writing', 3_600],
     ]);
   });
 
   it('leaves both not known where claude code gave no wait', () => {
-    expect(timePartsOf(turn({ lengthMs: 5_000 })).map((part) => part.ms)).toEqual([null, null]);
+    expect(timeSharesOf(turn({ lengthMs: 5_000 })).map((share) => share.ms)).toEqual([null, null]);
   });
 });
 
