@@ -274,6 +274,14 @@ zero says the description may be broken; a filter that asks what happened in a c
 Repository leaves it out, because it did not happen there.
 _Avoid_: Query, search, scope
 
+**Lookup**:
+The box on the Sessions list that takes a Session's id. While the text is part of an id, it keeps
+only the rows already read whose id starts with it. A whole id that no row holds is asked of the
+stores, so a run from long ago is one paste away. The reader opens a run by picking its row, so an id
+that names no run never opens a page. It is not part of the Filter: it names one run, and a reload
+clears it.
+_Avoid_: Search, find, jump
+
 **Activation eval**:
 A test of whether a skill activates on the prompts it should, and stays quiet on the ones it should
 not. Cheap. Applies to every engine.
