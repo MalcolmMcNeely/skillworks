@@ -1,0 +1,57 @@
+# Rebasing and Landing
+
+Part of [the Dev loop](../the-loop.md).
+
+A ticket Lands the moment it passes, on its own. So a stopped run leaves every ticket before it
+already on the Target branch.
+
+```mermaid
+flowchart TD
+    verify["verify<br/>Clean, every commit names the ticket"] --> fetch["fetch origin"]
+    fetch --> moved{"Target branch moved?"}
+    moved -- no --> turn["take the Turn"]
+    moved -- yes --> rebase["rebase onto the Target branch"]
+    rebase --> conflict{"conflict?"}
+    conflict -- yes --> resolve["resolve<br/>resume the build Session"]
+    conflict -- no --> suite2["Suite again<br/>only checks with no Proof"]
+    resolve --> suite2
+    suite2 --> turn
+    turn --> push{"push wins?"}
+    push -- yes --> done(["Landed"])
+    push -- "lost the race" --> hold["keep the Turn"] --> fetch
+```
+
+1. **Verify.** The worktree is Clean, and every commit carries a `Ticket:` trailer, so it can be
+   traced back. With `github` it says `Ticket: #<n>`. With `files` it names the spec and the ticket,
+   such as `Ticket: 7/2`.
+2. **Fetch** `origin`.
+3. **Rebase** onto the newest Target branch, only when it moved. Then the script checks that no commit
+   and no file was lost.
+4. **Resolve**, only when the rebase conflicts. The build Session is resumed to fix it. It is told
+   that it wrote one side and the other side is a stranger's, so it argues for the other side before
+   it drops a line of it. It gets the commits that landed meanwhile, and the ticket behind each one.
+5. **The Suite again**, on the new base. Only the checks with no Proof for the rebased files run, so
+   most landings run nothing. An unmoved base skips this, because the `suite` step already answers
+   for it.
+6. **Push** to the Target branch.
+
+Nothing is pushed unless every step passes.
+
+## The push race and the Turn
+
+Two loops in one clone can finish at the same time. Both push, and one loses: its push is turned down
+because the Target branch moved. That is a lost push race, and it is expected.
+
+The **Turn** is the right to push, held by one loop at a time in one clone. A loop takes the Turn only
+for its push. A loop that lost a race takes the Turn and keeps it from its next fetch until it Lands,
+so the loops beside it cannot beat it again. It goes back to fetch, rebases, runs the Suite, and
+pushes again, with no cap on tries.
+
+A loop that waits says so in the log, and names who holds the Turn:
+
+```
+note  #203 waits for the Turn, which spec #200 ticket #199 holds
+```
+
+The Turn orders the loops of one clone only. A push from another machine can still win, and the loop
+tries again. Any push failure that is not a lost race stops the landing with git's message.

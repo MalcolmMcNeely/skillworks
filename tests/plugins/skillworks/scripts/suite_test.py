@@ -1537,8 +1537,13 @@ def test_this_repo_s_suite_file_runs_a_red_suite_twice():
     assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 2
 
 
+STEPS_PAGE = "docs/usage/the-loop/steps.md"
+
+LANDING_PAGE = "docs/usage/the-loop/landing.md"
+
+
 def test_the_loop_docs_say_the_checks_run_together():
-    for doc in ("docs/usage/the-loop.md", "docs/usage/suite.md"):
+    for doc in (STEPS_PAGE, "docs/usage/suite.md"):
         text = " ".join((ROOT / doc).read_text(encoding="utf-8").split())
         assert "the checks run together" in text, doc
 
@@ -1547,7 +1552,7 @@ SUITE_PAGE = "docs/usage/suite.md"
 
 
 def test_the_loop_docs_and_the_setup_docs_say_a_check_names_what_it_ignores():
-    for doc in ("docs/usage/the-loop.md", SUITE_PAGE,
+    for doc in (STEPS_PAGE, SUITE_PAGE,
                 "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
         text = (ROOT / doc).read_text(encoding="utf-8")
         assert "`ignores`" in text, doc
@@ -1561,7 +1566,7 @@ LOOP_PAGES = ["docs/usage/the-loop.md"] + sorted(
 def test_the_loop_s_pages_are_the_overview_and_each_page_in_its_folder():
     assert {"docs/usage/the-loop.md", "docs/usage/the-loop/target-branch.md",
             "docs/usage/the-loop/tracker.md", "docs/usage/the-loop/the-grill.md",
-            "docs/usage/the-loop/tickets.md"} <= set(LOOP_PAGES)
+            "docs/usage/the-loop/tickets.md", STEPS_PAGE, LANDING_PAGE} <= set(LOOP_PAGES)
 
 
 @pytest.mark.parametrize("doc", LOOP_PAGES)

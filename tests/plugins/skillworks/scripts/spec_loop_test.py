@@ -3410,6 +3410,10 @@ GRILL_PAGE = LOOP_FOLDER + "/the-grill.md"
 
 TICKETS_PAGE = LOOP_FOLDER + "/tickets.md"
 
+STEPS_PAGE = LOOP_FOLDER + "/steps.md"
+
+LANDING_PAGE = LOOP_FOLDER + "/landing.md"
+
 
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
@@ -3417,7 +3421,58 @@ def loop_folder_pages():
 
 def test_the_loop_folder_holds_the_pages_split_from_the_loop_page():
     assert {ROOT / TARGET_BRANCH_PAGE, ROOT / TRACKER_PAGE, ROOT / GRILL_PAGE,
-            ROOT / TICKETS_PAGE} <= set(loop_folder_pages())
+            ROOT / TICKETS_PAGE, ROOT / STEPS_PAGE, ROOT / LANDING_PAGE} <= set(loop_folder_pages())
+
+
+def test_the_steps_page_holds_the_steps_an_edit_the_run_by_hand_and_the_suite():
+    text = (ROOT / STEPS_PAGE).read_text(encoding="utf-8")
+    page = " ".join(text.split())
+
+    assert text.startswith("# The steps of one ticket\n")
+    assert "\n## The Suite\n" in text
+    assert "**An Edit.**" in page
+    assert "**The run by hand.**" in page
+    assert "[The Suite](../suite.md) has the whole file." in page
+    assert "When [the full run](../the-loop.md#the-full-run) left its worktree in place" in page
+    overview = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    assert "### The steps of one ticket" not in overview
+    assert "### The Suite" not in overview
+
+
+def test_the_steps_page_says_the_reviews_start_fresh_and_fix_and_finish_resume():
+    page = " ".join((ROOT / STEPS_PAGE).read_text(encoding="utf-8").split())
+
+    assert ("The three reviews start Fresh. A review that resumed the build Session would mark its "
+            "own work. `fix` and `finish` resume the build Session") in page
+
+
+def test_the_landing_page_holds_rebasing_and_landing_with_the_push_race_and_the_turn():
+    text = (ROOT / LANDING_PAGE).read_text(encoding="utf-8")
+    page = " ".join(text.split())
+
+    assert text.startswith("# Rebasing and Landing\n")
+    assert "\n## The push race and the Turn\n" in text
+    assert "Nothing is pushed unless every step passes." in page
+    assert "The **Turn** is the right to push" in page
+    assert "## Rebasing and Landing" not in (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+
+
+def test_the_overview_links_the_round_a_red_suite_goes_on_the_steps_page():
+    stopping = " ".join(page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"),
+                                     "## When a step fails").split())
+
+    assert "the round a red Suite goes, in [the Suite](the-loop/steps.md#the-suite)." in stopping
+
+
+def loop_pages():
+    return [ROOT / LOOP_PAGE] + loop_folder_pages()
+
+
+def test_no_page_of_the_loop_says_cold_of_a_session():
+    saying = [page.name for page in loop_pages()
+              if re.search(r"\bcold\b", page.read_text(encoding="utf-8"), re.IGNORECASE)]
+
+    assert saying == []
 
 
 def test_the_grill_page_holds_stage_one_the_grill_the_gate_and_the_spec():
@@ -3451,7 +3506,8 @@ def overview_table_links():
 
 def test_the_overview_s_table_lists_the_pages_in_run_order():
     assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
-                                      "the-loop/the-grill.md", "the-loop/tickets.md"]
+                                      "the-loop/the-grill.md", "the-loop/tickets.md",
+                                      "the-loop/steps.md", "the-loop/landing.md"]
 
 
 def test_each_page_in_the_loop_folder_opens_with_a_link_back_to_the_overview():
@@ -3543,7 +3599,7 @@ def test_the_index_of_the_user_docs_has_one_row_for_the_loop_saying_the_overview
 
 
 def test_the_landing_chart_names_the_target_branch_and_never_main():
-    landing = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## Rebasing and Landing")
+    landing = (ROOT / LANDING_PAGE).read_text(encoding="utf-8")
     chart = landing.split("```mermaid\n", 1)[1].split("```", 1)[0]
 
     assert "Target branch" in chart
@@ -4377,7 +4433,7 @@ def test_a_ticket_is_claimed_and_read_back_after_a_wait(loop, runner):
 
 # An ADR records what was decided on a day, so it keeps its old list and is not held here.
 LIVE_DOCUMENTS = (
-    LOOP_PAGE,
+    STEPS_PAGE,
     "plugins/skillworks/skills/what-next/SKILL.md",
 )
 
@@ -4433,6 +4489,14 @@ def test_the_prose_around_the_marked_line_is_never_read():
     reworded = given_a_document_marked_with(the_step_list())
 
     assert marked_line(reworded) == the_step_list()
+
+
+def test_the_step_list_is_marked_in_the_user_docs_on_the_steps_page_alone():
+    marking = [page.relative_to(ROOT).as_posix()
+               for page in sorted((ROOT / "docs" / "usage").rglob("*.md"))
+               if STEP_MARK in page.read_text(encoding="utf-8")]
+
+    assert marking == [STEPS_PAGE]
 
 
 # --- the stage map held to the step list ---------------------------------------
