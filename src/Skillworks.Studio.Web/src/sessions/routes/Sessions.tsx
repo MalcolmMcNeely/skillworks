@@ -8,21 +8,75 @@ import { describeFetchFailure } from '../../shared/wire/lib/errors';
 import { UpButton } from '../../shared/pages/components/UpButton';
 import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page } from '../../shared/pages/lib/pages';
-import { fetchSessions } from '../api/sessions';
+import { fetchLookup, fetchSessions } from '../api/sessions';
 import { Lookup } from '../components/Lookup';
 import { SessionTable } from '../components/SessionTable';
-import { failSessionsRead, foldSessionsLine, listFilter, nextRead, readOn, type SessionsAnswer } from '../lib/sessions';
+import { idToSend } from '../lib/lookup';
+import {
+  failSessionsRead,
+  foldSessionsLine,
+  listFilter,
+  nextRead,
+  readOn,
+  type SessionsAnswer,
+  type SessionsLine,
+} from '../lib/sessions';
 
 interface Reading {
-  // The filter the answer was asked for, as text, so the page can tell an answer for an older ask.
+  // What the answer was asked for, as text, so the page can tell an answer for an older ask.
   asked: string;
   answer: SessionsAnswer | null;
   failure: string | null;
 }
 
+interface Shown {
+  answer: SessionsAnswer | null;
+  failure: string | null;
+}
+
+function follow(
+  ask: string,
+  lines: AsyncGenerator<SessionsLine>,
+  from: SessionsAnswer | null,
+  abort: AbortController,
+  set: (reading: Reading) => void,
+) {
+  let answer = from;
+
+  const fold = async () => {
+    for await (const line of lines) {
+      answer = foldSessionsLine(answer, line);
+      set({ asked: ask, answer, failure: null });
+    }
+  };
+
+  fold().catch((failure: unknown) => {
+    // An abort is the page tidying up after itself, not a failure worth showing.
+    if (abort.signal.aborted) {
+      return;
+    }
+
+    const reason = describeFetchFailure(failure);
+
+    set(
+      answer === null
+        ? { asked: ask, answer: null, failure: reason }
+        : { asked: ask, answer: failSessionsRead(answer, reason), failure: null },
+    );
+  });
+}
+
+// An answer to an older ask would draw its rows under the wrong list.
+function shown(reading: Reading | null, ask: string): Shown {
+  return reading === null || reading.asked !== ask ? { answer: null, failure: null } : reading;
+}
+
 // The newest work first, with nothing asked for, so a reader sees what is happening now the moment the page opens.
 export function Sessions() {
   const [reading, setReading] = useState<Reading | null>(null);
+
+  // Kept apart from the list's answer, so clearing the Lookup brings back every row already read.
+  const [found, setFound] = useState<Reading | null>(null);
 
   // Page state and not the address bar, so a link to the list stays a link to the list and a reload clears it.
   const [lookup, setLookup] = useState('');
@@ -43,34 +97,13 @@ export function Sessions() {
     inFlight.current?.abort();
 
     const abort = new AbortController();
-    let answer = from;
 
     inFlight.current = abort;
 
     const later = from === null ? null : nextRead(from);
 
-    const lines = async () => {
-      // Read back out of the text, so the read depends only on what it is keyed on.
-      for await (const line of fetchSessions(readFilter(new URLSearchParams(ask)), abort.signal, later)) {
-        answer = foldSessionsLine(answer, line);
-        setReading({ asked: ask, answer, failure: null });
-      }
-    };
-
-    lines().catch((failure: unknown) => {
-      // An abort is the page tidying up after itself, not a failure worth showing.
-      if (abort.signal.aborted) {
-        return;
-      }
-
-      const reason = describeFetchFailure(failure);
-
-      setReading(
-        answer === null
-          ? { asked: ask, answer: null, failure: reason }
-          : { asked: ask, answer: failSessionsRead(answer, reason), failure: null },
-      );
-    });
+    // Read back out of the text, so the read depends only on what it is keyed on.
+    follow(ask, fetchSessions(readFilter(new URLSearchParams(ask)), abort.signal, later), from, abort, setReading);
 
     return abort;
   }, []);
@@ -82,9 +115,26 @@ export function Sessions() {
     return () => abort.abort();
   }, [asked, read]);
 
-  const forOlderAsk = reading !== null && reading.asked !== asked;
-  const answer = forOlderAsk ? null : (reading?.answer ?? null);
-  const failure = forOlderAsk ? null : (reading?.failure ?? null);
+  const list = shown(reading, asked);
+
+  // Text or null, so a row landing on the list starts no read unless it changes the decision.
+  const id = idToSend(list.answer, lookup);
+
+  useEffect(() => {
+    if (id === null) {
+      return;
+    }
+
+    const abort = new AbortController();
+
+    follow(id, fetchLookup(id, abort.signal), null, abort, setFound);
+
+    // A cleared or changed id stops the read, so its row never lands under another id.
+    return () => abort.abort();
+  }, [id]);
+
+  const lookingUp = id !== null;
+  const { answer, failure } = lookingUp ? shown(found, id) : list;
 
   // Replaced, not pushed, so trying four narrowings does not cost four presses of the back button.
   const show = (narrowing: Filter) => setParams(filterParams(narrowing), { replace: true });
@@ -114,9 +164,10 @@ export function Sessions() {
         failure={failure}
         filter={filter}
         lookup={lookup}
+        lookingUp={lookingUp}
         onReadOn={() => {
-          if (answer !== null && readOn(answer) === 'ready') {
-            read(asked, answer);
+          if (list.answer !== null && readOn(list.answer) === 'ready') {
+            read(asked, list.answer);
           }
         }}
       />

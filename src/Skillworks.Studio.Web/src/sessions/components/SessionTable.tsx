@@ -3,7 +3,7 @@ import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
 import type { Filter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { nowhere, sessionAddress } from '../../shared/session/lib/where';
-import { describeNoMatch, narrowByLookup } from '../lib/lookup';
+import { describeNoMatch, describeNoRun, narrowByLookup } from '../lib/lookup';
 import {
   describeNoSessions,
   describeQuiet,
@@ -90,18 +90,49 @@ function More({ answer, onReadOn }: { answer: SessionsAnswer; onReadOn: () => vo
   );
 }
 
+function Rows({ rows, filter }: { rows: readonly DrawnSession[]; filter: Filter }) {
+  return (
+    <table className="sessions-table">
+      <caption className="visually-hidden">Sessions, the newest work first</caption>
+      <thead>
+        <tr>
+          {sessionHeadings.map((heading) => (
+            <th key={heading} scope="col">
+              {heading}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <Row key={row.session.id} row={row} filter={filter} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+const reading = 'Reading the runs…';
+
+// An answer that ended with no rows to stand found a store down, which the Signal word in the head names.
+function waiting(answer: SessionsAnswer | null): string {
+  return answer !== null && !answer.arriving ? notKnown : reading;
+}
+
 // The rows draw as soon as they land, and the head above says whether the answer has ended.
 export function SessionTable({
   answer,
   failure,
   filter,
   lookup,
+  lookingUp,
   onReadOn,
 }: {
   answer: SessionsAnswer | null;
   failure: string | null;
   filter: Filter;
   lookup: string;
+  lookingUp: boolean;
   onReadOn: () => void;
 }) {
   if (failure !== null) {
@@ -109,7 +140,16 @@ export function SessionTable({
   }
 
   if (answer === null || !answer.landed) {
-    return <p className="session-word">Reading the runs…</p>;
+    return <p className="session-word">{waiting(answer)}</p>;
+  }
+
+  // A Lookup answer is the one row it found, so there is nothing to narrow and no further read to offer.
+  if (lookingUp) {
+    return answer.rows.length === 0 ? (
+      <p className="session-word">{describeNoRun(answer) ?? waiting(answer)}</p>
+    ) : (
+      <Rows rows={answer.rows} filter={filter} />
+    );
   }
 
   // More reads on from the whole answer and not this one, so the rows a further read adds are narrowed as they land.
@@ -127,23 +167,7 @@ export function SessionTable({
 
   return (
     <>
-      <table className="sessions-table">
-        <caption className="visually-hidden">Sessions, the newest work first</caption>
-        <thead>
-          <tr>
-            {sessionHeadings.map((heading) => (
-              <th key={heading} scope="col">
-                {heading}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {shown.rows.map((row) => (
-            <Row key={row.session.id} row={row} filter={filter} />
-          ))}
-        </tbody>
-      </table>
+      <Rows rows={shown.rows} filter={filter} />
       <More answer={answer} onReadOn={onReadOn} />
     </>
   );

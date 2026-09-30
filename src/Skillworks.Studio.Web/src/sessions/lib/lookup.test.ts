@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeNoMatch, narrowByLookup } from './lookup';
+import { describeNoMatch, describeNoRun, idToSend, narrowByLookup } from './lookup';
 import {
   foldSessionsLine,
   lookFurtherBack,
@@ -80,6 +80,67 @@ describe('narrowByLookup', () => {
     const later = foldSessionsLine(foldSessionsLine(first, head), { kind: 'sessions', sessions: [other] });
 
     expect(ids(narrowByLookup(later, 'c3d2'))).toEqual([other.id]);
+  });
+});
+
+describe('idToSend', () => {
+  const unread = 'c3d2e1f0-0000-4000-8000-000000000009';
+
+  it('sends a whole id that no row read so far holds, so a run older than the rows is asked of the stores', () => {
+    expect(idToSend(withRows(run, other), unread)).toBe(unread);
+  });
+
+  it('never sends part of an id, as typing must never start a slow read', () => {
+    expect(idToSend(withRows(run, other), 'c3d2e1f0-0000-4000-8000-00000000000')).toBeNull();
+    expect(idToSend(withRows(run, other), 'c3d2')).toBeNull();
+    expect(idToSend(withRows(run, other), '')).toBeNull();
+  });
+
+  it('never sends a whole id a row read so far holds, as the narrowing already shows that row', () => {
+    expect(idToSend(withRows(run, other), other.id)).toBeNull();
+  });
+
+  it('tells a row holds the id whatever the letter case, so an id copied in upper case is not asked for twice', () => {
+    expect(idToSend(withRows(run, other), other.id.toUpperCase())).toBeNull();
+  });
+
+  it('ignores the spaces around a pasted id, so a careless copy still finds its run', () => {
+    expect(idToSend(withRows(run, other), `  ${unread} `)).toBe(unread);
+    expect(idToSend(withRows(run, other), ` ${other.id} `)).toBeNull();
+  });
+
+  it('sends the id in lower case, as the store matches it exactly and Claude Code writes them in lower case', () => {
+    expect(idToSend(withRows(run, other), unread.toUpperCase())).toBe(unread);
+  });
+
+  it('sends a whole id while no row has been read yet, as no row holds it', () => {
+    expect(idToSend(null, unread)).toBe(unread);
+    expect(idToSend(withRows(), unread)).toBe(unread);
+  });
+
+  it('never sends text of the same length that is not in the shape of an id', () => {
+    expect(idToSend(withRows(run, other), 'c3d2e1f0-0000-4000-8000-00000000000g')).toBeNull();
+    expect(idToSend(withRows(run, other), 'c3d2e1f0000040008000000000000009xxxx')).toBeNull();
+  });
+});
+
+describe('describeNoRun', () => {
+  it('says how far back the Lookup looked, counted from the answer, so the page never knows the setting', () => {
+    const ninety = foldSessionsLine(withRows(), endOn(null, '2026-06-17T12:00:00+00:00'));
+    const ten = foldSessionsLine(withRows(), endOn(null, '2026-09-05T12:00:00+00:00'));
+
+    expect(describeNoRun(ninety)).toBe('No run with that id in the last 90 days.');
+    expect(describeNoRun(ten)).toBe('No run with that id in the last 10 days.');
+  });
+
+  it('says nothing while the answer is arriving, as only its end says how far the Lookup looked', () => {
+    expect(describeNoRun(withRows())).toBeNull();
+  });
+
+  it('says nothing when the answer ended without saying how far it looked, as a read that broke off found no run either way', () => {
+    const broke = foldSessionsLine(withRows(), { kind: 'end', gap: { kind: 'unreachable', missing: 'The events store answered 503.' }, oldestLatestUtc: null, quietSinceUtc: null });
+
+    expect(describeNoRun(broke)).toBeNull();
   });
 });
 

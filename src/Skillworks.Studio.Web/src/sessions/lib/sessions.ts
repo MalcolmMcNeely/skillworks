@@ -297,16 +297,18 @@ const day = 24 * hour;
 
 const reach = 30;
 
+// Counted from the answer's own instants, so the page never knows how far a read is set to look.
+export function daysLookedBack(answer: SessionsAnswer): number | null {
+  return answer.quietSinceUtc === null
+    ? null
+    : Math.round((Date.parse(answer.asOfUtc) - Date.parse(answer.quietSinceUtc)) / day);
+}
+
 // Each Look further back reaches another 30 days, so an empty list with nothing narrowed says how far it has looked.
 export function describeNoSessions(filter: Filter, answer: SessionsAnswer): string {
   if (filter.repository !== '' || filter.skill !== '') {
     return 'No runs match this filter.';
   }
 
-  const days =
-    answer.quietSinceUtc === null
-      ? reach
-      : Math.round((Date.parse(answer.asOfUtc) - Date.parse(answer.quietSinceUtc)) / day);
-
-  return `No runs in the last ${days} days.`;
+  return `No runs in the last ${daysLookedBack(answer) ?? reach} days.`;
 }
