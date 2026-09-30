@@ -75,7 +75,7 @@ def test_the_real_user_docs_hold_loop_pages_for_the_link_check_to_walk():
             folder / "tickets.md", folder / "steps.md",
             folder / "landing.md", folder / "drift-check.md",
             folder / "name-check.md", folder / "full-run.md", folder / "stops.md",
-            folder / "reading-a-run.md", folder / "stage-map.md"} <= set(folder.glob("*.md"))
+            folder / "reading-a-run.md", folder / "stage-map.md", folder / "sessions.md"} <= set(folder.glob("*.md"))
 
 
 def test_every_link_in_the_user_docs_has_a_target():

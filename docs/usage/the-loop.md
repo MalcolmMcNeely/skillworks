@@ -42,3 +42,4 @@ Each page below holds one part of the loop, in the order a run takes them.
 | [When a step fails](the-loop/stops.md) | What stops the loop and what each stop line says, how to restart with the Keep, and when to rerun with `--bypass`. |
 | [Reading a run](the-loop/reading-a-run.md) | What each line of the log says, and what a dry run prints. |
 | [The stage map](the-loop/stage-map.md) | Which Steering files each stage loads, and where your team can change what the stage does. |
+| [Sessions](the-loop/sessions.md) | Which calls start a Fresh Session and which resume the build Session, and what carries from one Session to the next. |

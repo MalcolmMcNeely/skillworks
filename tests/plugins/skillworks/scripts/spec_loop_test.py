@@ -3426,6 +3426,8 @@ READING_A_RUN_PAGE = LOOP_FOLDER + "/reading-a-run.md"
 
 STAGE_MAP_PAGE = LOOP_FOLDER + "/stage-map.md"
 
+SESSIONS_PAGE = LOOP_FOLDER + "/sessions.md"
+
 
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
@@ -3436,7 +3438,7 @@ def test_the_loop_folder_holds_the_pages_split_from_the_loop_page():
             ROOT / TICKETS_PAGE, ROOT / STEPS_PAGE, ROOT / LANDING_PAGE,
             ROOT / DRIFT_CHECK_PAGE, ROOT / NAME_CHECK_PAGE,
             ROOT / FULL_RUN_PAGE, ROOT / STOPS_PAGE, ROOT / READING_A_RUN_PAGE,
-            ROOT / STAGE_MAP_PAGE} <= set(loop_folder_pages())
+            ROOT / STAGE_MAP_PAGE, ROOT / SESSIONS_PAGE} <= set(loop_folder_pages())
 
 
 def page_text(page):
@@ -3572,6 +3574,33 @@ def loop_pages():
     return [ROOT / LOOP_PAGE] + loop_folder_pages()
 
 
+def session_of_each_call():
+    table = page_section(page_text(SESSIONS_PAGE), "## Every call in a run")
+    return dict(re.findall(r"^\| `([^`]+)` \| ([^|]+?) \|", table, re.MULTILINE))
+
+
+def session_the_driver_gives(step):
+    if not step.session:
+        return "No Session"
+    return "Resumed" if step.resumes else "Fresh"
+
+
+def test_the_sessions_page_says_resumed_exactly_where_the_driver_resumes():
+    said = session_of_each_call()
+
+    assert {step.name: said.get(step.name) for step in spec_loop.STEPS} == {
+        step.name: session_the_driver_gives(step) for step in spec_loop.STEPS}
+
+
+def test_the_sessions_page_holds_a_sequence_chart_the_two_call_shapes_and_the_word_fresh():
+    text = page_text(SESSIONS_PAGE)
+
+    assert "```mermaid\nsequenceDiagram\n" in text
+    assert '`claude -p "<prompt>" --session-id <new id>`' in text
+    assert '`claude -p "<prompt>" --resume <build session>`' in text
+    assert re.search(r"\bFresh\b", text)
+
+
 def test_no_page_of_the_loop_says_cold_of_a_session():
     saying = [page.name for page in loop_pages()
               if re.search(r"\bcold\b", page.read_text(encoding="utf-8"), re.IGNORECASE)]
@@ -3614,7 +3643,8 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
                                       "the-loop/full-run.md", "the-loop/stops.md",
-                                      "the-loop/reading-a-run.md", "the-loop/stage-map.md"]
+                                      "the-loop/reading-a-run.md", "the-loop/stage-map.md",
+                                      "the-loop/sessions.md"]
 
 
 def test_each_page_in_the_loop_folder_opens_with_a_link_back_to_the_overview():
