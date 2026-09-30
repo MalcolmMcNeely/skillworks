@@ -1,7 +1,8 @@
 import { useMemo, useState, type PointerEvent } from 'react';
 import { describeCount, describeMoney } from '../../../../shared/figures/lib/figures';
 import { foldScale, ticksOf } from '../../../lib/fold';
-import { moneyTicksOf, nearestTurnOf, skillWordsOf, turnsOf, type CostTurn } from '../../../lib/timeline/cost';
+import type { StepDetails } from '../../../lib/details';
+import { moneyTicksOf, nearestTurnOf, purposeWordsOf, skillWordsOf, turnsOf, type CostTurn } from '../../../lib/timeline/cost';
 import { clamp, inSpell, type Spell } from '../../../lib/timeline/view';
 import { describeClock, type Mark } from '../../../lib/steps';
 import { gutter as left, useWidth } from '../frame';
@@ -24,8 +25,9 @@ function clip(view: Spell | null, ms: number): number {
 }
 
 // The Cost so far leads, as that is the figure the reader pointed at the line to learn.
-function Tip({ pointed }: { pointed: Pointed }) {
+function Tip({ pointed, details }: { pointed: Pointed; details: StepDetails | null }) {
   const { turn } = pointed;
+  const purpose = purposeWordsOf(turn.mark.step, details);
 
   return (
     <div className="timeline-tip" style={{ left: pointed.x, top: pointed.y }} role="status">
@@ -34,6 +36,7 @@ function Tip({ pointed }: { pointed: Pointed }) {
         This turn {describeMoney(turn.mark.step.cost)} · ended {describeClock(turn.mark.endMs, true)}
       </p>
       <p className="timeline-tip-words">{skillWordsOf(turn.mark.step)}</p>
+      {purpose === null ? null : <p className="timeline-tip-words">{purpose}</p>}
     </div>
   );
 }
@@ -43,11 +46,13 @@ export function CostTab({
   marks,
   view,
   selected,
+  details,
   onOpen,
 }: {
   marks: readonly Mark[];
   view: Spell | null;
   selected: string | null;
+  details: StepDetails | null;
   onOpen: (step: string) => void;
 }) {
   const [frame, width] = useWidth<HTMLDivElement>();
@@ -155,7 +160,7 @@ export function CostTab({
             )}
           </svg>
         )}
-        {pointed === null || asTable ? null : <Tip pointed={pointed} />}
+        {pointed === null || asTable ? null : <Tip pointed={pointed} details={details} />}
       </div>
     </>
   );

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { marksOf, type Step } from '../steps';
 import { ranByOne } from './agents';
-import { moneyTicksOf, nearestTurnOf, skillWordsOf, turnsOf } from './cost';
+import type { StepDetails, TurnDetails } from '../details';
+import { moneyTicksOf, nearestTurnOf, purposeWordsOf, skillWordsOf, turnsOf } from './cost';
 import type { Spell } from './view';
 
 function step(id: string, clock: string, fields: Partial<Step> = {}): Step {
@@ -18,6 +19,36 @@ function step(id: string, clock: string, fields: Partial<Step> = {}): Step {
     skillKnown: true,
     cost: 0,
     ...fields,
+  };
+}
+
+function turned(turn: Partial<TurnDetails>): StepDetails {
+  return {
+    turns: {
+      '1': {
+        purpose: 'work',
+        side: null,
+        sentAs: null,
+        model: 'claude-opus-5',
+        effort: null,
+        speed: null,
+        cost: 0,
+        lengthMs: 0,
+        firstWordMs: null,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        words: null,
+        wordsLength: null,
+        stopReason: null,
+        attempt: null,
+        ...turn,
+      },
+    },
+    tools: {},
+    refusals: {},
+    faults: {},
   };
 }
 
@@ -103,6 +134,22 @@ describe('skillWordsOf', () => {
 
   it('words a Turn of No skill as the Skills tab does', () => {
     expect(skillWordsOf(step('turn', '09:00:00'))).toBe('No skill');
+  });
+});
+
+describe('purposeWordsOf', () => {
+  it('says a Turn sent for the Prompt was work on it', () => {
+    expect(purposeWordsOf(step('1', '09:00:00'), turned({}))).toBe('Why it ran: Work on the Prompt');
+  });
+
+  it('names a Side request in words', () => {
+    expect(purposeWordsOf(step('1', '09:00:00'), turned({ purpose: 'side', side: 'awaySummary' }))).toBe(
+      'Why it ran: Recap while you were away',
+    );
+  });
+
+  it('says nothing more until the details arrive', () => {
+    expect(purposeWordsOf(step('1', '09:00:00'), null)).toBeNull();
   });
 });
 

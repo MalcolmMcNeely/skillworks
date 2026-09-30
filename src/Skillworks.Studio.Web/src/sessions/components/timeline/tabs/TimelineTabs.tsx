@@ -5,6 +5,7 @@ import type { Level } from '../../../lib/timeline/context';
 import type { SkillRow } from '../../../lib/timeline/skills';
 import type { ToolRow } from '../../../lib/timeline/tools';
 import type { Mark } from '../../../lib/steps';
+import type { StepDetails } from '../../../lib/details';
 import { ContextTab } from './ContextTab';
 import { CostTab } from './CostTab';
 import { SkillsTab } from './SkillsTab';
@@ -30,6 +31,7 @@ export function TimelineTabs({
   subagentOpen,
   selected,
   highlight,
+  details,
   onOpen,
   onHighlight,
 }: {
@@ -43,6 +45,7 @@ export function TimelineTabs({
   subagentOpen: boolean;
   selected: string | null;
   highlight: Highlight | null;
+  details: StepDetails | null;
   onOpen: (step: string) => void;
   onHighlight: (picked: Highlight) => void;
 }) {
@@ -84,7 +87,7 @@ export function TimelineTabs({
         ) : shown === 'tools' ? (
           <ToolsTab rows={tools} inView={view !== null} highlight={highlight} onPick={onHighlight} />
         ) : (
-          <CostTab marks={drawn} view={view} selected={selected} onOpen={onOpen} />
+          <CostTab marks={drawn} view={view} selected={selected} details={details} onOpen={onOpen} />
         )}
       </div>
     </section>

@@ -1,3 +1,4 @@
+import { describePurpose, type StepDetails } from '../details';
 import type { Mark, Step } from '../steps';
 import { skillLabelOf } from './highlight';
 import { skillKeyOf } from './skills';
@@ -28,6 +29,13 @@ export function nearestTurnOf(turns: readonly CostTurn[], ms: number): CostTurn 
 
 export function skillWordsOf(step: Step): string {
   return skillLabelOf(skillKeyOf(step));
+}
+
+// Null until the details land, so the tooltip shows what it showed before them.
+export function purposeWordsOf(step: Step, details: StepDetails | null): string | null {
+  const turn = details?.turns[step.id];
+
+  return turn === undefined ? null : `Why it ran: ${describePurpose(turn)}`;
 }
 
 // About four round ticks a twentieth past the total, so the line never touches the top and every label reads as money.

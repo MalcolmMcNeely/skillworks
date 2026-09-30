@@ -3,6 +3,7 @@ import type { Spell } from '../../lib/timeline/view';
 import { describeLit, type Highlight } from '../../lib/timeline/highlight';
 import type { Band } from '../../lib/timeline/conversation';
 import { describeLength } from '../../../shared/figures/lib/figures';
+import { tipLineOf, type StepDetails } from '../../lib/details';
 import { describeClock, noteOf, titleOf, type Mark } from '../../lib/steps';
 import { gutter as left, useWidth } from './frame';
 import { Lanes } from './Lanes';
@@ -15,9 +16,10 @@ interface Pointed {
 }
 
 // Beside the cursor, so reading what a mark was never moves the run out from under the reader.
-function Tip({ pointed }: { pointed: Pointed }) {
+function Tip({ pointed, details }: { pointed: Pointed; details: StepDetails | null }) {
   const { step } = pointed.mark;
   const note = noteOf(step);
+  const line = tipLineOf(step, details);
 
   return (
     <div className="timeline-tip" style={{ left: pointed.x, top: pointed.y }} role="status">
@@ -29,6 +31,7 @@ function Tip({ pointed }: { pointed: Pointed }) {
         {describeClock(pointed.mark.startMs, true)} · {describeLength(step.lengthMs)}
       </p>
       {step.words === null ? null : <p className="timeline-tip-words">{step.words}</p>}
+      {line === null ? null : <p className="timeline-tip-words">{line}</p>}
     </div>
   );
 }
@@ -44,6 +47,7 @@ export function Timeline({
   agent,
   highlight,
   lit,
+  details,
   onView,
   onOpen,
   onExchange,
@@ -61,6 +65,7 @@ export function Timeline({
   agent: string | null;
   highlight: Highlight | null;
   lit: ReadonlySet<string> | null;
+  details: StepDetails | null;
   onView: (view: Spell | null) => void;
   onOpen: (step: string | null) => void;
   onExchange: (band: Band) => void;
@@ -128,7 +133,7 @@ export function Timeline({
           onExchange={onExchange}
           onHover={hover}
         />
-        {pointed === null ? null : <Tip pointed={pointed} />}
+        {pointed === null ? null : <Tip pointed={pointed} details={details} />}
       </div>
     </section>
   );

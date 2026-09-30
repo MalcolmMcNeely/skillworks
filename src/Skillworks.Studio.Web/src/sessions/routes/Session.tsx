@@ -216,6 +216,7 @@ export function Session() {
               agent={openAgent}
               highlight={highlight}
               lit={lit}
+              details={landed.details}
               onView={(shown) => show(shown, shown === null ? { exchange: null, activation: null, agent: null } : {})}
               onOpen={open}
               onExchange={onExchange}
@@ -233,6 +234,7 @@ export function Session() {
               subagentOpen={subagentOpen}
               selected={where.step}
               highlight={highlight}
+              details={landed.details}
               onOpen={open}
               onHighlight={onHighlight}
             />

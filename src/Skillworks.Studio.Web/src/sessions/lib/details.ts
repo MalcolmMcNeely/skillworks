@@ -352,6 +352,11 @@ export function whatItDid(call: ToolDetails): string {
 
 // Null details are a line not yet arrived, so a row keeps the words its Step carries until then.
 export function rowLineOf(step: { id: string; kind: string; words: string | null }, details: StepDetails | null): string | null {
+  return tipLineOf(step, details) ?? step.words;
+}
+
+// The tip already shows the words a Step carries, so without its details the row line would say them twice.
+export function tipLineOf(step: { id: string; kind: string }, details: StepDetails | null): string | null {
   const call = step.kind === 'tool' ? details?.tools[step.id] : undefined;
 
   if (call !== undefined) {
@@ -373,7 +378,7 @@ export function rowLineOf(step: { id: string; kind: string; words: string | null
   const turn = step.kind === 'turn' ? details?.turns[step.id] : undefined;
 
   if (turn === undefined) {
-    return step.words;
+    return null;
   }
 
   return `${describePurpose(turn)} · ${describeTokens(turn.outputTokens)} output tokens · ${describeMoney(turn.cost)}`;

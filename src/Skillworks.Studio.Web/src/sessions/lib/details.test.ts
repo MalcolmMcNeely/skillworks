@@ -14,6 +14,7 @@ import {
   outputOf,
   rowLineOf,
   timePartsOf,
+  tipLineOf,
   tokenPartsOf,
   toolTimePartsOf,
   whatItDid,
@@ -206,6 +207,42 @@ describe('rowLineOf', () => {
 
   it('shows what a fault shows today until the details arrive', () => {
     expect(rowLineOf(step('fault', 'RateLimited'), null)).toBe('RateLimited');
+  });
+});
+
+describe('tipLineOf', () => {
+  it('gives a turn the line its row shows', () => {
+    const turns = { '7': turn({ purpose: 'side', side: 'promptSuggestion', outputTokens: 40, cost: 0.01 }) };
+
+    expect(tipLineOf(step('turn', 'claude-opus-5'), page({ turns }))).toBe(
+      'Next-prompt suggestion · 40 output tokens · $0.01',
+    );
+  });
+
+  it('gives a tool call the line its row shows', () => {
+    const tools = { '7': tool({ passed: false, description: 'Run the tests' }) };
+
+    expect(tipLineOf(step('tool', null), page({ tools }))).toBe('Failed · Run the tests');
+  });
+
+  it('gives a refused tool call the line its row shows', () => {
+    const refusals = { '7': refusal({ description: 'Clear the build output' }) };
+
+    expect(tipLineOf(step('refused', 'user_reject'), page({ refusals }))).toBe('Clear the build output');
+  });
+
+  it('gives a fault the line its row shows', () => {
+    const faults = { '7': fault({ error: 'Overloaded: the API is busy' }) };
+
+    expect(tipLineOf(step('fault', 'RateLimited'), page({ faults }))).toBe('Overloaded: the API is busy');
+  });
+
+  it('adds no line to a step the details do not hold', () => {
+    expect(tipLineOf(step('tool', 'ShellError'), page({ turns: { '7': turn() } }))).toBeNull();
+  });
+
+  it('adds no line to what the tip shows today until the details arrive', () => {
+    expect(tipLineOf(step('turn', 'claude-opus-5'), null)).toBeNull();
   });
 });
 
