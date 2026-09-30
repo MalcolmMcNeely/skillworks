@@ -3406,13 +3406,52 @@ TARGET_BRANCH_PAGE = LOOP_FOLDER + "/target-branch.md"
 
 TRACKER_PAGE = LOOP_FOLDER + "/tracker.md"
 
+GRILL_PAGE = LOOP_FOLDER + "/the-grill.md"
+
+TICKETS_PAGE = LOOP_FOLDER + "/tickets.md"
+
 
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
 
 
-def test_the_loop_folder_holds_the_target_branch_page_and_the_tracker_page():
-    assert {ROOT / TARGET_BRANCH_PAGE, ROOT / TRACKER_PAGE} <= set(loop_folder_pages())
+def test_the_loop_folder_holds_the_pages_split_from_the_loop_page():
+    assert {ROOT / TARGET_BRANCH_PAGE, ROOT / TRACKER_PAGE, ROOT / GRILL_PAGE,
+            ROOT / TICKETS_PAGE} <= set(loop_folder_pages())
+
+
+def test_the_grill_page_holds_stage_one_the_grill_the_gate_and_the_spec():
+    text = (ROOT / GRILL_PAGE).read_text(encoding="utf-8")
+
+    assert text.startswith("# Stage one: settle the design\n")
+    for heading in ["\n## The grill\n", "\n## The gate\n", "\n## The spec\n"]:
+        assert heading in text, heading
+    assert "## Stage one" not in (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+
+
+def test_the_tickets_page_holds_the_cut_picking_claiming_and_the_worktrees():
+    text = (ROOT / TICKETS_PAGE).read_text(encoding="utf-8")
+    page = " ".join(text.split())
+
+    assert text.startswith("# The tickets\n")
+    assert "\n## Worktrees and Job branches\n" in text
+    assert "the **Cut**" in page
+    assert "**Picking a ticket** is a query, not a judgement." in page
+    assert "as [the Tracker](tracker.md#a-claim-and-a-close) says." in page
+    assert "| The Job branch | `spec-loop/<spec>/ticket-<n>` |" in text
+    overview = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    assert "### The tickets" not in overview
+    assert "### Worktrees and Job branches" not in overview
+
+
+def overview_table_links():
+    table = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The pages of the loop")
+    return re.findall(r"^\| \[[^\]]+\]\(([^)]+)\) \|", table, re.MULTILINE)
+
+
+def test_the_overview_s_table_lists_the_pages_in_run_order():
+    assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
+                                      "the-loop/the-grill.md", "the-loop/tickets.md"]
 
 
 def test_each_page_in_the_loop_folder_opens_with_a_link_back_to_the_overview():
@@ -3444,16 +3483,22 @@ def test_the_tracker_page_explains_the_files_tracker_beside_github():
     assert "Pick `files` when" in text
 
 
-def test_the_loop_page_gives_the_counted_shape_and_the_stop_for_a_spec_in_another_shape():
-    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
-    the_spec = " ".join(page_section(text, "### The spec").split())
+def test_the_grill_page_gives_the_counted_shape():
+    the_spec = " ".join(page_section((ROOT / GRILL_PAGE).read_text(encoding="utf-8"),
+                                     "## The spec").split())
 
     for named in ["**User Stories**", "**Implementation Decisions**", "**Surfaces**", "`S1`", "`D1`",
                   "starts at 1", "in bold", '"None"', "Testing Decisions are not counted",
                   "turned down"]:
         assert named in the_spec, named
-    assert "ABORT spec #200 is not in the shape the loop counts" in page_section(
-        text, "## When a step fails")
+
+
+def test_the_loop_page_gives_the_stop_for_a_spec_in_another_shape():
+    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+
+    stopping = " ".join(page_section(text, "## When a step fails").split())
+    assert "the spec's [counted shape](the-loop/the-grill.md#the-spec)" in stopping
+    assert "ABORT spec #200 is not in the shape the loop counts" in stopping
     reading = page_section(text, "## Reading a run")
     assert "SHAPE spec #200 holds" in reading
     assert "`ABORT` line" in reading

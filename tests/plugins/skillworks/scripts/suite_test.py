@@ -1560,7 +1560,8 @@ LOOP_PAGES = ["docs/usage/the-loop.md"] + sorted(
 
 def test_the_loop_s_pages_are_the_overview_and_each_page_in_its_folder():
     assert {"docs/usage/the-loop.md", "docs/usage/the-loop/target-branch.md",
-            "docs/usage/the-loop/tracker.md"} <= set(LOOP_PAGES)
+            "docs/usage/the-loop/tracker.md", "docs/usage/the-loop/the-grill.md",
+            "docs/usage/the-loop/tickets.md"} <= set(LOOP_PAGES)
 
 
 @pytest.mark.parametrize("doc", LOOP_PAGES)

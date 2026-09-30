@@ -71,7 +71,8 @@ def test_a_link_from_a_top_level_page_into_the_user_docs_is_checked(tmp_path):
 def test_the_real_user_docs_hold_loop_pages_for_the_link_check_to_walk():
     folder = ROOT / "docs" / "usage" / "the-loop"
 
-    assert {folder / "target-branch.md", folder / "tracker.md"} <= set(folder.glob("*.md"))
+    assert {folder / "target-branch.md", folder / "tracker.md", folder / "the-grill.md",
+            folder / "tickets.md"} <= set(folder.glob("*.md"))
 
 
 def test_every_link_in_the_user_docs_has_a_target():
