@@ -110,9 +110,9 @@ async function writeRules(cwd) {
 
 function judge(source, tool, sessionId, ticket, credit) {
   const powerShell = tool === "PowerShell";
-  const { commits, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
+  const { places, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
   if (hidden) return { deny: powerShell ? PLAIN_POWERSHELL : PLAIN };
-  if (commits.length === 0) return {};
+  if (places.length === 0) return {};
   if (credit && TYPED_CREDIT.test(source)) return { deny: NO_TYPED_CREDIT };
   if (typeof sessionId !== "string" || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
     return { deny: `The hook was handed no Session id it can write, so it cannot add the ${SESSION_KEY} trailer.` };
@@ -126,7 +126,7 @@ function judge(source, tool, sessionId, ticket, credit) {
   if (ticket) trailers.unshift(`--trailer ${quote(`Ticket: ${ticket}`)}`);
   const added = trailers.join(" ");
   let rewritten = source;
-  for (const { at, beforeEndOfOptions } of commits.sort((a, b) => b.at - a.at)) {
+  for (const { at, beforeEndOfOptions } of places.sort((a, b) => b.at - a.at)) {
     const insert = beforeEndOfOptions ? `${added} ` : ` ${added}`;
     rewritten = `${rewritten.slice(0, at)}${insert}${rewritten.slice(at)}`;
   }
@@ -134,13 +134,13 @@ function judge(source, tool, sessionId, ticket, credit) {
 }
 
 function bashCommits(source) {
-  const commits = [];
+  const places = [];
   for (const words of allCommands(new Scanner(source).list(false))) {
-    const at = trailerPlace(words);
-    if (at) commits.push(at);
-    else if (hidesCommit(words)) return { commits, hidden: true };
+    const place = trailerPlace(words);
+    if (place) places.push(place);
+    else if (hidesCommit(words)) return { places, hidden: true };
   }
-  return { commits, hidden: false };
+  return { places, hidden: false };
 }
 
 function allCommands(commands) {
