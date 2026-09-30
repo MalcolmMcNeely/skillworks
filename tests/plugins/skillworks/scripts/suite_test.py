@@ -1554,10 +1554,26 @@ def test_the_loop_docs_and_the_setup_docs_say_a_check_names_what_it_ignores():
         assert '"when"' not in text, doc
 
 
+LOOP_PAGES = ["docs/usage/the-loop.md"] + sorted(
+    page.relative_to(ROOT).as_posix() for page in (ROOT / "docs" / "usage" / "the-loop").glob("*.md"))
+
+
+def test_the_loop_s_pages_are_the_overview_and_each_page_in_its_folder():
+    assert {"docs/usage/the-loop.md", "docs/usage/the-loop/target-branch.md",
+            "docs/usage/the-loop/tracker.md"} <= set(LOOP_PAGES)
+
+
+@pytest.mark.parametrize("doc", LOOP_PAGES)
+def test_no_page_of_the_loop_names_the_suite_setting_when(doc):
+    text = (ROOT / doc).read_text(encoding="utf-8")
+
+    assert "`when`" not in text
+    assert '"when"' not in text
+
+
 def test_only_the_suite_page_names_when_and_only_to_say_it_is_turned_down():
-    for doc in ("docs/usage/the-loop.md",
-                "plugins/skillworks/skills/skillworks-setup/SKILL.md"):
-        assert "`when`" not in (ROOT / doc).read_text(encoding="utf-8"), doc
+    assert "`when`" not in (ROOT / "plugins/skillworks/skills/skillworks-setup/SKILL.md").read_text(
+        encoding="utf-8")
 
     paragraphs = (ROOT / SUITE_PAGE).read_text(encoding="utf-8").split("\n\n")
     naming = [paragraph for paragraph in paragraphs if "`when`" in paragraph]

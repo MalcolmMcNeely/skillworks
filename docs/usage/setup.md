@@ -27,8 +27,8 @@ Your repo needs these:
 - Or, if your default branch is protected, the Target branch `spec`. Each spec then gets a branch of
   its own, and your team reviews it as one pull request to the default branch.
 
-[The loop](the-loop.md#the-tracker) says how to choose a Tracker, and
-[the Target branch](the-loop.md#the-target-branch) how to choose a Target branch.
+[The loop](the-loop/tracker.md) says how to choose a Tracker, and
+[the Target branch](the-loop/target-branch.md) how to choose a Target branch.
 
 ## Install the Plugin
 

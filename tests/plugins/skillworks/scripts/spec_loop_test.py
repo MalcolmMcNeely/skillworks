@@ -3400,23 +3400,48 @@ def page_section(text, heading):
     return "\n".join(held)
 
 
-def test_the_loop_page_explains_both_kinds_of_target_branch():
-    section = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The Target branch")
+LOOP_FOLDER = "docs/usage/the-loop"
 
+TARGET_BRANCH_PAGE = LOOP_FOLDER + "/target-branch.md"
+
+TRACKER_PAGE = LOOP_FOLDER + "/tracker.md"
+
+
+def loop_folder_pages():
+    return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
+
+
+def test_the_loop_folder_holds_the_target_branch_page_and_the_tracker_page():
+    assert {ROOT / TARGET_BRANCH_PAGE, ROOT / TRACKER_PAGE} <= set(loop_folder_pages())
+
+
+def test_each_page_in_the_loop_folder_opens_with_a_link_back_to_the_overview():
+    for page in loop_folder_pages():
+        lines = [line for line in page.read_text(encoding="utf-8").split("\n") if line.strip()]
+
+        assert lines[0].startswith("# "), page.name
+        assert "](../the-loop.md)" in lines[1], page.name
+
+
+def test_the_target_branch_page_explains_both_kinds_of_target_branch():
+    text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
+
+    assert text.startswith("# The Target branch\n")
     for named in ["`docs/agents/loop.json`", "`target-branch`", "`spec`", "`spec/<slug>`"]:
-        assert named in section, named
-    assert "Pick a branch name when" in section
-    assert "Pick `spec` when" in section
+        assert named in text, named
+    assert "Pick a branch name when" in text
+    assert "Pick `spec` when" in text
 
 
-def test_the_loop_page_explains_the_files_tracker_beside_github():
-    section = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The Tracker")
+def test_the_tracker_page_explains_the_files_tracker_beside_github():
+    text = (ROOT / TRACKER_PAGE).read_text(encoding="utf-8")
 
+    assert text.startswith("# The Tracker\n")
     for named in ["`docs/agents/loop.json`", "`tracker`", "`github`", "`files`", "`.specs/`",
                   "status: open", "blocked-by:", "claimed-by:", "gitignored", "## Closing note"]:
-        assert named in section, named
-    assert "Pick `github` when" in section
-    assert "Pick `files` when" in section
+        assert named in text, named
+    assert "Pick `github` when" in text
+    assert "Pick `files` when" in text
 
 
 def test_the_loop_page_gives_the_counted_shape_and_the_stop_for_a_spec_in_another_shape():
@@ -3434,9 +3459,9 @@ def test_the_loop_page_gives_the_counted_shape_and_the_stop_for_a_spec_in_anothe
     assert "`ABORT` line" in reading
 
 
-def test_the_loop_page_shows_a_spec_file_and_a_ticket_file():
-    section = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## The Tracker")
-    shown = re.findall(r"```markdown\n(.*?)```", section, re.DOTALL)
+def test_the_tracker_page_shows_a_spec_file_and_a_ticket_file():
+    text = (ROOT / TRACKER_PAGE).read_text(encoding="utf-8")
+    shown = re.findall(r"```markdown\n(.*?)```", text, re.DOTALL)
 
     assert any(block.startswith("---\n") and "# SPEC:" in block for block in shown)
     assert any(block.startswith("---\n") and "# TICKET:" in block for block in shown)
@@ -3450,6 +3475,28 @@ def test_the_setup_and_steering_pages_describe_the_tracker_setting(page):
         assert named in text, named
 
 
+def test_the_setup_page_links_the_tracker_page_and_the_target_branch_page():
+    text = (ROOT / "docs/usage/setup.md").read_text(encoding="utf-8")
+
+    assert "[The loop](the-loop/tracker.md) says how to choose a Tracker" in text
+    assert "[the Target branch](the-loop/target-branch.md) how to choose a Target branch" in text
+
+
+def test_the_steering_page_links_the_tracker_page():
+    text = (ROOT / "docs/usage/steering.md").read_text(encoding="utf-8")
+
+    assert "(the-loop/tracker.md) says how to choose each one." in text
+
+
+def test_the_index_of_the_user_docs_has_one_row_for_the_loop_saying_the_overview_links_each_part():
+    rows = [line for line in (ROOT / "docs/usage/README.md").read_text(encoding="utf-8").split("\n")
+            if "the-loop" in line]
+
+    assert len(rows) == 1
+    assert rows[0].startswith("| [The loop](the-loop.md) |")
+    assert "links each part" in rows[0]
+
+
 def test_the_landing_chart_names_the_target_branch_and_never_main():
     landing = page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"), "## Rebasing and Landing")
     chart = landing.split("```mermaid\n", 1)[1].split("```", 1)[0]
@@ -3458,11 +3505,25 @@ def test_the_landing_chart_names_the_target_branch_and_never_main():
     assert re.search(r"\bmain\b", chart) is None
 
 
-def test_the_loop_page_names_main_only_as_an_example_of_a_target_branch():
-    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
-    outside = text.replace(page_section(text, "## The Target branch"), "")
+def test_the_loop_page_never_names_main():
+    assert re.search(r"\bmain\b", (ROOT / LOOP_PAGE).read_text(encoding="utf-8")) is None
 
-    assert re.search(r"\bmain\b", outside) is None
+
+def test_no_page_in_the_loop_folder_but_the_target_branch_page_names_main():
+    naming = [page.name for page in loop_folder_pages()
+              if re.search(r"\bmain\b", page.read_text(encoding="utf-8"))]
+
+    assert naming == ["target-branch.md"]
+
+
+def test_the_target_branch_page_names_main_only_as_an_example_of_a_target_branch():
+    paragraphs = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8").split("\n\n")
+    naming = [paragraph for paragraph in paragraphs if re.search(r"\bmain\b", paragraph)]
+
+    assert [paragraph.split("\n")[0] for paragraph in naming] == [
+        "**A branch name**, such as `main`, `master` or `develop`. That branch is the Target branch for every",
+        "```json"]
+    assert '{ "target-branch": "main" }' in naming[1]
 
 
 # --- what the landing says, and when ----------------------------------------
