@@ -1819,6 +1819,16 @@ def test_the_outputs_name_both_prompt_cache_keys():
     assert '`"subagentPromptCacheTtl"' in rows[0]
 
 
+def test_the_outputs_say_the_attribution_block_is_rewritten_from_the_answer_on_every_run():
+    outputs = (SETUP / "SKILL.md").read_text(encoding="utf-8").split("## Process", 1)[0]
+    rows = [line for line in outputs.split("\n") if line.startswith("| An `attribution` block")]
+
+    assert len(rows) == 1
+    assert "when the team hides" not in rows[0]
+    assert "`co-authored-by`" in rows[0]
+    assert "every time" in rows[0]
+
+
 def settings_row(page):
     rows = [line for line in (ROOT / "docs" / "usage" / page).read_text(encoding="utf-8").split("\n")
             if line.startswith("| `.claude/settings.json` |")]
