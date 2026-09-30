@@ -24,7 +24,7 @@
       "Bash(git push:*)",
       "Bash(skillworks-preflight:*)",
       "Bash(seed-steering:*)",
-      "Bash(set-attribution:*)",
+      "Bash(set-co-authored-by:*)",
       "Bash(allow-commands:*)",
       "Bash(spec-loop:*)",
       "Bash(land-ticket:*)",

@@ -23,7 +23,7 @@ The outputs:
 | `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. |
 | `docs/agents/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the baseline for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no baseline. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
-| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. |
+| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. |
 | `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
 | `.gitignore` lines | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. They are per machine and never shared. Setup also creates `.handoff/`, where `handoff` saves. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
@@ -182,16 +182,16 @@ If the file exists, merge:
 | `false` | Nothing. |
 | `true` | Show the user the key and what it costs: memory files on each machine steer the loop, so it runs differently from one machine to the next. Ask which to keep. Never change it without asking. |
 
-Ask the team one question: should commits and pull requests credit Claude? Offer two answers, and suggest `hide`, so the common answer is one keypress:
+Ask the team one question: should commits and pull requests credit Claude? The one answer covers both. Offer two answers. On a first run, suggest `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/agents/loop.json` already names an answer, a team's answer from an earlier run, suggest that one instead.
 
-- `hide`: `set-attribution hide` writes an `attribution` block with empty strings for `commit` and `pr`, so Claude Code adds no credit.
-- `show`: `set-attribution show` writes no `attribution` block, so Claude Code's own default applies.
+- `hide`: `set-co-authored-by hide`. No commit and no pull request credits Claude.
+- `show`: `set-co-authored-by show`. The Plugin's hook adds the credit line to each commit Claude makes, and Claude Code's own pull request credit applies.
 
-An `attribution` block already in the file is the team's earlier answer. `set-attribution` keeps it, whatever the answer, and says so. Tell the user it was kept.
+The command writes the answer into `co-authored-by` in `docs/agents/loop.json`, and rewrites the `attribution` block of `.claude/settings.json` from the answer every time it runs. Claude Code's commit credit is always off, because the hook adds the line itself. A block someone edited by hand comes back into step.
 
-Settle `attribution` with `set-attribution` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
+Settle `co-authored-by` and `attribution` with `set-co-authored-by` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
 
-Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the attribution answer out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all three knowingly, in this one pass, with no second prompt. Then write the file, and run `set-attribution` with the answer.
+Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the credit answer out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all three knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
 
 Leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
 
@@ -204,7 +204,7 @@ Say what was written and what was kept. Say where each Steering file lives:
 - `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
 - `docs/agents/`: `issue-tracker.md`, `domain.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
 
-Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude, or that an earlier `attribution` block was kept. Then tell them what the team fills in before the loop can finish a ticket:
+Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude. Then tell them what the team fills in before the loop can finish a ticket:
 
 - `docs/agents/suite.json`: the checks that prove their code, each with a command, the folder it runs in, and optionally a readiness command with its message. A check that passes keeps a Proof of its inputs, and does not run again until one of them changes. A check may also name the paths it cannot be changed by, as `"ignores": ["docs", "web"]`: each is a git pathspec from the repo root. A path left off only costs a run, so a slow check is the one to give `ignores`. A check may name an `image`, a Dockerfile in `docs/agents/`, to run in a container. A check that did not run says so in the Suite output, and names its Proof. `runs` says how many times a red Suite runs before the loop believes it. It starts at 1, and a team with tests that flake raises it. Until it names a check, the loop stops with the Suite not ready.
 - The allowlist: each tool the Suite runs, such as a build or a test runner, so the loop can run it without a prompt.

@@ -250,7 +250,7 @@ def test_the_loop_file_names_the_remotes_default_branch_as_the_target_branch(rep
 
     assert ran.status == 0, ran.err
     loop = json.loads((repo.work / "docs" / "agents" / "loop.json").read_text(encoding="utf-8"))
-    assert loop == {"tracker": "github", "target-branch": "master"}
+    assert loop == {"tracker": "github", "target-branch": "master", "co-authored-by": "hide"}
 
 
 def test_a_loop_file_already_there_is_kept_and_its_difference_shown(repo, runner):
@@ -265,7 +265,7 @@ def test_a_loop_file_already_there_is_kept_and_its_difference_shown(repo, runner
     assert held.read_text(encoding="utf-8") == '{\n  "target-branch": "spec"\n}\n'
     assert "kept docs/agents/loop.json, which differs from the seed:\n" in ran.out
     assert '-  "target-branch": "spec"\n' in ran.out
-    assert '+  "target-branch": "master"\n' in ran.out
+    assert '+  "target-branch": "master",\n' in ran.out
 
 
 def test_a_repo_with_no_origin_stops_before_anything_is_written(repo, runner):
@@ -1893,7 +1893,7 @@ def test_no_plugin_skill_says_a_habit_of_this_repo():
 
 
 # The hook adds the line as the team chose and refuses one a model typed, so a skill or a seed that shows it invites a refusal.
-CO_AUTHOR = re.compile(r"co[-_ ]?authored[-_ ]?by\s*:|noreply@anthropic\.com", re.IGNORECASE)
+CO_AUTHOR = re.compile(r"(?<!-)co[-_ ]?authored[-_ ]?by\s*:|noreply@anthropic\.com", re.IGNORECASE)
 
 
 def test_no_plugin_skill_or_seed_names_a_co_author_line():
@@ -1906,12 +1906,14 @@ def test_no_plugin_skill_or_seed_names_a_co_author_line():
     assert named == []
 
 
-@pytest.mark.parametrize("line", ["Co-Authored-By: Claude", "co-authored-by:", "noreply@anthropic.com"])
+@pytest.mark.parametrize("line", ["Co-Authored-By: Claude", "co-authored-by:", "noreply@anthropic.com",
+                                  'git commit -m "Fix\\n\\nCo-Authored-By: A Person"'])
 def test_a_co_author_line_is_caught(line):
     assert CO_AUTHOR.search(line)
 
 
-@pytest.mark.parametrize("line", ["`co-authored-by` says `show`", "set-co-authored-by hide", "the credit line"])
+@pytest.mark.parametrize("line", ["`co-authored-by` says `show`", "set-co-authored-by hide", "the credit line",
+                                  '"Bash(set-co-authored-by:*)",'])
 def test_the_key_and_the_command_are_free(line):
     assert not CO_AUTHOR.search(line)
 
@@ -2061,6 +2063,13 @@ def test_the_steering_page_describes_the_loop_file():
     assert "`spec`" in rows[0]
 
 
+def test_the_steering_page_names_the_credit_answer_in_the_loop_file():
+    page = (ROOT / "docs" / "usage" / "steering.md").read_text(encoding="utf-8")
+    row = [line for line in page.splitlines() if line.startswith("| `loop.json` |")][0]
+
+    assert "`co-authored-by`: `show` or `hide`. The Seed sets it to `hide`, and setup asks." in row
+
+
 def test_the_setup_page_names_every_file_setup_writes():
     page = SETUP_PAGE.read_text(encoding="utf-8")
 
@@ -2072,11 +2081,22 @@ def test_setup_asks_whether_commits_credit_claude_and_suggests_hide():
     step = setup_section("### 6. Write the settings")
 
     assert "should commits and pull requests credit Claude?" in step
-    assert "suggest `hide`" in step
-    assert "`set-attribution hide`" in step
-    assert "`set-attribution show`" in step
-    assert "read the memory line and the attribution answer out with it" in step
+    assert "On a first run, suggest `hide`" in step
+    assert "If `co-authored-by` in `docs/agents/loop.json` already names an answer" in step
+    assert "`set-co-authored-by hide`" in step
+    assert "`set-co-authored-by show`" in step
+    assert "rewrites the `attribution` block of `.claude/settings.json` from the answer every time it runs" in step
+    assert "read the memory line and the credit answer out with it" in step
     assert "Never write `\"attribution\": false`" in step
+
+
+def test_no_skill_seed_or_allowlist_names_the_old_credit_command():
+    pages = sorted(path for path in SKILLS.rglob("*") if path.is_file() and "__pycache__" not in path.parts)
+
+    named = [page.relative_to(SKILLS).as_posix() for page in pages
+             if "set-attribution" in page.read_text(encoding="utf-8", errors="replace")]
+
+    assert SETUP / "settings.json" in pages and named == []
 
 
 def test_setup_writes_no_attribution_false_and_no_local_settings():
@@ -2094,11 +2114,27 @@ def test_the_setup_page_explains_the_credit_question_and_both_answers():
     page = SETUP_PAGE.read_text(encoding="utf-8")
     credit = page.split("## Credit for Claude", 1)[1].split("\n## ", 1)[0]
 
-    assert "| `hide`, the default | An `attribution` block with empty strings for `commit` and `pr`." in credit
-    assert "| `show` | No `attribution` block, so Claude Code's own default applies." in credit
-    assert "A block already there is kept." in credit
+    assert "`set-co-authored-by` writes it to `co-authored-by` in `docs/agents/loop.json`" in credit
+    assert "**Claude Code's commit credit is always off.**" in credit
+    assert "| `show` | The Plugin's hook adds the credit line to each commit Claude makes." in credit
+    assert "Pull requests follow the same answer through Claude Code" in credit
+    assert "The hook refuses a Claude credit line the model typed" in credit
+    assert "never touches a line that credits a person" in credit
+    assert "A repo with no answer keeps Claude Code's own credit." in credit
+    assert "Setup rewrites the block from your answer each time it runs." in credit
     assert "Setup never writes `\"attribution\": false`." in credit
     assert "Setup never writes `.claude/settings.local.json`." in credit
+
+
+def test_the_setup_page_says_setup_writes_the_credit_answer_and_rewrites_the_block_from_it():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+    question = [line for line in page.splitlines() if line.startswith("| Should commits and pull requests credit Claude? |")]
+    files = [line for line in page.splitlines() if line.startswith("| `docs/agents/loop.json` |")]
+    second_run = page.split("### The other outputs", 1)[1]
+
+    assert len(question) == 1 and "`co-authored-by`" in question[0] and "suggests that one" in question[0]
+    assert "`co-authored-by` holds your answer on the credit for Claude" in files[0]
+    assert "rewrites the `attribution` block from `co-authored-by` in `docs/agents/loop.json`" in second_run
 
 
 ARCHITECTURE_TESTS = SKILLS / "architecture-tests"

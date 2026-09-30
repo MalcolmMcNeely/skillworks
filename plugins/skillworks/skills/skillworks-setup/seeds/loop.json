@@ -1,4 +1,5 @@
 {
   "tracker": "github",
-  "target-branch": "<default-branch>"
+  "target-branch": "<default-branch>",
+  "co-authored-by": "hide"
 }

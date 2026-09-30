@@ -77,7 +77,8 @@ needs their clone of Skillworks at the same path.
    is safe to leave: fix the fault and run setup again.
 6. **Write the settings.** Setup writes the Marketplace, the Plugin, the allowlist,
    `"autoMemoryEnabled": false` and the prompt cache keys into `.claude/settings.json`. Then
-   `set-attribution` writes your answer on the credit for Claude, as
+   `set-co-authored-by` writes your answer on the credit for Claude into `co-authored-by` in
+   `docs/agents/loop.json`, and rewrites the `attribution` block from it, as
    [Credit for Claude](#credit-for-claude) says.
 7. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
@@ -101,7 +102,7 @@ own.
 |---|---|
 | Which Tracker does your team use? | Always. Setup suggests `github` when `origin` names `github.com`, and `files` otherwise, so the common answer is one keypress. If `tracker` in `docs/agents/loop.json` already names another answer, setup suggests that one. |
 | Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `spec` for one pull request per spec. If `docs/agents/loop.json` already names another answer, setup suggests that one. |
-| Show the `Co-Authored-By: Claude` line on commits and pull requests? | Always. Setup suggests `hide`, so the common answer is one keypress. [Credit for Claude](#credit-for-claude) says what each answer does. |
+| Should commits and pull requests credit Claude? | Always. On a first run setup suggests `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/agents/loop.json` already names an answer, setup suggests that one. [Credit for Claude](#credit-for-claude) says what each answer does. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push`, `gh issue close` and `tracker-publish` with no prompt. That is the point, and also the risk. |
 | Which side of this overlap do you keep, yours or the Seed's? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and asks once for each overlap. |
 | Which lines of the newer Seed do you want? | When a Steering file differs from its Seed and has no base copy, because your repo was set up before base copies existed. Setup shows the difference and changes the file only by the lines you pick. |
@@ -126,12 +127,12 @@ Review these before you commit them.
 | `docs/agents/review-architecture.md` | What the `architecture` review checks: the failures of placement, and your team's own checks. It starts with no check of your own. |
 | `docs/agents/review-spec.md` | What the `spec` review checks beyond the ticket: your team's own checks. It starts with no check. |
 | `docs/agents/suite.json` | Your Suite. It starts with no checks, and the loop stops until you add one. |
-| `docs/agents/loop.json` | The loop's settings. `tracker` holds your answer, `github` or `files`. `target-branch` starts as your remote's default branch. |
+| `docs/agents/loop.json` | The loop's settings. `tracker` holds your answer, `github` or `files`. `target-branch` starts as your remote's default branch. `co-authored-by` holds your answer on the credit for Claude, `show` or `hide`, and starts as `hide`. |
 | `docs/agents/surfaces.md` | The places a change can have to reach besides its code. It starts with the README and the user docs. |
 | `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. Setup also creates `.handoff/`, where `handoff` saves. |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
-| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. With `hide`, an `attribution` block too. On a second run, setup adds a cache key that is missing and keeps one your team set. |
+| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. An `attribution` block, which setup rewrites from `co-authored-by` each time it runs. On a second run, setup adds a cache key that is missing and keeps one your team set. |
 
 Setup writes nothing under `~/.claude`, and it leaves `.claude/settings.local.json` alone.
 
@@ -139,18 +140,27 @@ Setup writes nothing under `~/.claude`, and it leaves `.claude/settings.local.js
 
 ## Credit for Claude
 
-Claude Code adds a `Co-Authored-By: Claude` line to each commit it makes, and a line that credits
-Claude to each pull request it opens. Claude Code's `attribution` setting turns them off. Setup asks
-your team one question: show the line, or hide it? The answer goes in `.claude/settings.json`, which
-your team commits, so every developer and every loop Session follows it.
+Setup asks your team one question: should commits and pull requests credit Claude? The one answer,
+`show` or `hide`, covers both. `set-co-authored-by` writes it to `co-authored-by` in `docs/agents/loop.json`,
+which your team commits, so every developer and every loop Session follows it. Then it writes
+Claude Code's `attribution` block in `.claude/settings.json` from the answer.
 
-| Answer | What setup writes |
+| Answer | What happens |
 |---|---|
-| `hide`, the default | An `attribution` block with empty strings for `commit` and `pr`. Commits and pull requests carry no credit. |
-| `show` | No `attribution` block, so Claude Code's own default applies. Commits and pull requests credit Claude. |
+| `hide`, the default | No commit and no pull request credits Claude. The `attribution` block holds empty strings for `commit` and `pr`. |
+| `show` | The Plugin's hook adds the credit line to each commit Claude makes. The line is always `Co-Authored-By: Claude <noreply@anthropic.com>`. The `attribution` block holds an empty string for `commit` and no `pr`, so Claude Code's own pull request credit applies. |
 
-- **A block already there is kept.** It is your team's earlier answer, whatever you answer now, and
-  setup says it kept it. Edit the block or remove it by hand to change your mind.
+- **Claude Code's commit credit is always off.** Left on, it tells the model to type a credit line,
+  and a typed line can push the `Ticket` trailer out of the lines git reads as trailers. The hook
+  adds the line instead, in the right place.
+- **Pull requests follow the same answer through Claude Code**, by its own `attribution.pr`.
+- **The hook refuses a Claude credit line the model typed**, with `show` and with `hide`. The
+  Session removes the line and commits again. The hook never touches a line that credits a person.
+- **A repo with no answer keeps Claude Code's own credit.** With no `co-authored-by`, the hook adds
+  no credit line and refuses none.
+- **Setup rewrites the block from your answer each time it runs.** A block someone edited by hand
+  comes back into step. To change your mind, run setup again, or run `set-co-authored-by show` or
+  `set-co-authored-by hide`.
 - **Setup never writes `"attribution": false`.** Claude Code before v2.1.281 rejects it and skips the
   whole file, which drops the allowlist and the Plugin too. Empty strings hide the line on every
   version.
@@ -256,6 +266,6 @@ Setup commits nothing. Review each changed file before you commit.
 - **`CLAUDE.md`.** Setup updates the `## Agent skills` block in place. It never adds a second copy,
   and it leaves every other section alone.
 - **`.claude/settings.json`.** Setup adds the allowlist entries that are missing and removes none. It
-  keeps an `attribution` block that is there. It adds `promptCacheTtl` or `subagentPromptCacheTtl`
+  rewrites the `attribution` block from `co-authored-by` in `docs/agents/loop.json`. It adds `promptCacheTtl` or `subagentPromptCacheTtl`
   where one is missing, and keeps a value your team set. It sets `autoMemoryEnabled` to `false` where
   nothing sets it, and asks before it changes a `true`. It leaves every other key as you have it.
