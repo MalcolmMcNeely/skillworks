@@ -3381,8 +3381,8 @@ def test_an_unknown_argument_still_prints_the_usage(loop, flags):
 LOOP_PAGE = "docs/usage/the-loop.md"
 
 
-def test_the_loop_page_names_the_bypass_flag():
-    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+def test_the_stops_page_names_the_bypass_flag():
+    text = (ROOT / STOPS_PAGE).read_text(encoding="utf-8")
 
     assert "--bypass" in text
 
@@ -3420,6 +3420,12 @@ NAME_CHECK_PAGE = LOOP_FOLDER + "/name-check.md"
 
 FULL_RUN_PAGE = LOOP_FOLDER + "/full-run.md"
 
+STOPS_PAGE = LOOP_FOLDER + "/stops.md"
+
+READING_A_RUN_PAGE = LOOP_FOLDER + "/reading-a-run.md"
+
+STAGE_MAP_PAGE = LOOP_FOLDER + "/stage-map.md"
+
 
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
@@ -3429,7 +3435,52 @@ def test_the_loop_folder_holds_the_pages_split_from_the_loop_page():
     assert {ROOT / TARGET_BRANCH_PAGE, ROOT / TRACKER_PAGE, ROOT / GRILL_PAGE,
             ROOT / TICKETS_PAGE, ROOT / STEPS_PAGE, ROOT / LANDING_PAGE,
             ROOT / DRIFT_CHECK_PAGE, ROOT / NAME_CHECK_PAGE,
-            ROOT / FULL_RUN_PAGE} <= set(loop_folder_pages())
+            ROOT / FULL_RUN_PAGE, ROOT / STOPS_PAGE, ROOT / READING_A_RUN_PAGE,
+            ROOT / STAGE_MAP_PAGE} <= set(loop_folder_pages())
+
+
+def page_text(page):
+    return (ROOT / page).read_text(encoding="utf-8")
+
+
+def flat(text):
+    return " ".join(text.split())
+
+
+def test_the_stops_page_holds_when_a_step_fails_the_keep_and_a_denial():
+    text = page_text(STOPS_PAGE)
+
+    assert text.startswith("# When a step fails\n")
+    for heading in ["\n## Restarting a stopped run: the Keep\n", "\n## A Denial, and `--bypass`\n"]:
+        assert heading in text, heading
+    assert 'rerun["Rerun: Keep, then build again"]' in text
+
+
+def test_the_reading_a_run_page_holds_reading_a_run():
+    text = page_text(READING_A_RUN_PAGE)
+
+    assert text.startswith("# Reading a run\n")
+    assert "The log is `.spec-loop/<spec>/loop.log`." in text
+
+
+def test_the_reading_a_run_page_links_the_stops_page():
+    reading = flat(page_text(READING_A_RUN_PAGE))
+
+    assert "in place of the `SCOPE` line, as [When a step fails](stops.md) shows." in reading
+    assert "with no commit to read, as [When a step fails](stops.md) shows." in reading
+
+
+def test_the_stage_map_page_holds_the_stage_map():
+    text = page_text(STAGE_MAP_PAGE)
+
+    assert text.startswith("# The stage map\n")
+    assert "[Steering](../steering.md) has the detail on each file." in flat(text)
+
+
+def test_the_overview_holds_only_its_text_its_chart_and_its_table():
+    headings = [line for line in page_text(LOOP_PAGE).split("\n") if line.startswith("#")]
+
+    assert headings == ["# The Dev loop", "## The pages of the loop"]
 
 
 def overview_charts():
@@ -3453,32 +3504,29 @@ def test_the_overview_no_longer_holds_the_large_chart():
         assert node not in text, node
 
 
-def test_the_overview_links_the_full_run_and_a_clean_finish_on_the_full_run_page():
-    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
-    stopping = " ".join(page_section(text, "## When a step fails").split())
-    reading = " ".join(page_section(text, "## Reading a run").split())
+def test_the_stops_and_reading_a_run_pages_link_the_full_run_and_a_clean_finish():
+    stopping = flat(page_text(STOPS_PAGE))
+    reading = flat(page_text(READING_A_RUN_PAGE))
 
-    assert "[the full run](the-loop/full-run.md) runs next" in stopping
-    assert "`END` comes only on [a clean finish](the-loop/full-run.md#a-clean-finish)." in reading
-
-
-def test_the_overview_links_the_count_the_gap_round_and_the_name_check_from_its_stops():
-    stopping = " ".join(page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"),
-                                     "## When a step fails").split())
-
-    assert "[counts the drift check's Verdicts](the-loop/drift-check.md#the-count)" in stopping
-    assert "[one round](the-loop/drift-check.md#the-gap-round)" in stopping
-    assert "[the Name check](the-loop/name-check.md)" in stopping
-    assert "[the rename ticket](the-loop/name-check.md#the-rename-ticket)" in stopping
-    assert "[the Name re-check](the-loop/name-check.md#the-name-re-check)" in stopping
+    assert "[the full run](full-run.md) runs next" in stopping
+    assert "`END` comes only on [a clean finish](full-run.md#a-clean-finish)." in reading
 
 
-def test_the_overview_links_the_gap_round_and_the_rename_ticket_from_reading_a_run():
-    reading = " ".join(page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"),
-                                    "## Reading a run").split())
+def test_the_stops_page_links_the_count_the_gap_round_and_the_name_check():
+    stopping = flat(page_text(STOPS_PAGE))
 
-    assert "[the Gap round](the-loop/drift-check.md#the-gap-round) adds its lines" in reading
-    assert "[the rename ticket](the-loop/name-check.md#the-rename-ticket) adds its lines" in reading
+    assert "[counts the drift check's Verdicts](drift-check.md#the-count)" in stopping
+    assert "[one round](drift-check.md#the-gap-round)" in stopping
+    assert "[the Name check](name-check.md)" in stopping
+    assert "[the rename ticket](name-check.md#the-rename-ticket)" in stopping
+    assert "[the Name re-check](name-check.md#the-name-re-check)" in stopping
+
+
+def test_the_reading_a_run_page_links_the_gap_round_and_the_rename_ticket():
+    reading = flat(page_text(READING_A_RUN_PAGE))
+
+    assert "[the Gap round](drift-check.md#the-gap-round) adds its lines" in reading
+    assert "[the rename ticket](name-check.md#the-rename-ticket) adds its lines" in reading
 
 
 def test_the_steps_page_holds_the_steps_an_edit_the_run_by_hand_and_the_suite():
@@ -3514,11 +3562,10 @@ def test_the_landing_page_holds_rebasing_and_landing_with_the_push_race_and_the_
     assert "## Rebasing and Landing" not in (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
 
 
-def test_the_overview_links_the_round_a_red_suite_goes_on_the_steps_page():
-    stopping = " ".join(page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"),
-                                     "## When a step fails").split())
+def test_the_stops_page_links_the_round_a_red_suite_goes_on_the_steps_page():
+    stopping = flat(page_text(STOPS_PAGE))
 
-    assert "the round a red Suite goes, in [the Suite](the-loop/steps.md#the-suite)." in stopping
+    assert "the round a red Suite goes, in [the Suite](steps.md#the-suite)." in stopping
 
 
 def loop_pages():
@@ -3566,7 +3613,8 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
-                                      "the-loop/full-run.md"]
+                                      "the-loop/full-run.md", "the-loop/stops.md",
+                                      "the-loop/reading-a-run.md", "the-loop/stage-map.md"]
 
 
 def test_each_page_in_the_loop_folder_opens_with_a_link_back_to_the_overview():
@@ -3608,13 +3656,16 @@ def test_the_grill_page_gives_the_counted_shape():
         assert named in the_spec, named
 
 
-def test_the_loop_page_gives_the_stop_for_a_spec_in_another_shape():
-    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+def test_the_stops_page_gives_the_stop_for_a_spec_in_another_shape():
+    stopping = flat(page_text(STOPS_PAGE))
 
-    stopping = " ".join(page_section(text, "## When a step fails").split())
-    assert "the spec's [counted shape](the-loop/the-grill.md#the-spec)" in stopping
+    assert "the spec's [counted shape](the-grill.md#the-spec)" in stopping
     assert "ABORT spec #200 is not in the shape the loop counts" in stopping
-    reading = page_section(text, "## Reading a run")
+
+
+def test_the_reading_a_run_page_gives_the_shape_line_and_its_abort():
+    reading = page_text(READING_A_RUN_PAGE)
+
     assert "SHAPE spec #200 holds" in reading
     assert "`ABORT` line" in reading
 
@@ -3646,6 +3697,10 @@ def test_the_steering_page_links_the_tracker_page():
     text = (ROOT / "docs/usage/steering.md").read_text(encoding="utf-8")
 
     assert "(the-loop/tracker.md) says how to choose each one." in text
+
+
+def test_the_steering_page_links_the_stage_map_page():
+    assert "](the-loop/stage-map.md)" in page_text("docs/usage/steering.md")
 
 
 def test_the_index_of_the_user_docs_has_one_row_for_the_loop_saying_the_overview_links_each_part():
@@ -4560,8 +4615,6 @@ def test_the_step_list_is_marked_in_the_user_docs_on_the_steps_page_alone():
 
 # --- the stage map held to the step list ---------------------------------------
 
-STAGE_MAP_PAGE = LOOP_PAGE
-
 MAP_MARK = "<!-- stage map -->"
 
 SEEDS = ROOT / "plugins" / "skillworks" / "skills" / "skillworks-setup" / "seeds"
@@ -4590,6 +4643,14 @@ def given_a_map_naming(names):
     rows = "".join("| `{}` | a | b | c |\n".format(name) for name in names)
     return "Prose.\n\n{}\n| Stage | Always | On demand | Change |\n|---|---|---|---|\n{}\nMore.\n".format(
         MAP_MARK, rows)
+
+
+def test_the_stage_map_is_marked_in_the_user_docs_on_the_stage_map_page_alone():
+    marking = [page.relative_to(ROOT).as_posix()
+               for page in sorted((ROOT / "docs" / "usage").rglob("*.md"))
+               if MAP_MARK in page.read_text(encoding="utf-8")]
+
+    assert marking == [STAGE_MAP_PAGE]
 
 
 def test_the_stage_map_names_every_step_the_loop_runs():

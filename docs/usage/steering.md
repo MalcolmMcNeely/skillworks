@@ -13,7 +13,8 @@ Every Steering file lives in `docs/agents/`, so you find all of it in one place.
 somewhere else, because a tool or a design puts them there. They are at the end of the list.
 
 Each file below says what it does, which part of the loop reads it, and what your team can change in
-it. [The loop](the-loop.md) has the steps these parts name.
+it. [The loop](the-loop.md) has the steps these parts name, and [the stage map](the-loop/stage-map.md)
+says which stage loads each file.
 
 ## Every Steering file always exists
 

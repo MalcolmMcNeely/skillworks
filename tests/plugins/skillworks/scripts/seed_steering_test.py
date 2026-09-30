@@ -1726,6 +1726,12 @@ NAME_CHECK_PAGE = ROOT / "docs" / "usage" / "the-loop" / "name-check.md"
 
 FULL_RUN_PAGE = ROOT / "docs" / "usage" / "the-loop" / "full-run.md"
 
+STOPS_PAGE = ROOT / "docs" / "usage" / "the-loop" / "stops.md"
+
+READING_A_RUN_PAGE = ROOT / "docs" / "usage" / "the-loop" / "reading-a-run.md"
+
+STAGE_MAP_PAGE = ROOT / "docs" / "usage" / "the-loop" / "stage-map.md"
+
 
 def full_run_chart():
     finish = FULL_RUN_PAGE.read_text(encoding="utf-8").split("\n## A clean finish\n", 1)[1]
@@ -1756,12 +1762,17 @@ def test_the_drift_check_page_describes_the_gap_ticket_and_the_one_round():
     assert "through [the same steps](steps.md) as every other ticket" in page
 
 
-def test_the_loop_page_shows_the_gap_ticket_in_its_map_its_log_and_its_stop():
-    text = LOOP_OVERVIEW.read_text(encoding="utf-8")
+def test_the_stage_map_page_shows_the_gap_ticket():
+    assert "| The Gap ticket |" in STAGE_MAP_PAGE.read_text(encoding="utf-8")
 
-    assert "| The Gap ticket |" in text
-    assert "FILED #210 under spec #200" in text
-    assert "STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was built" in text
+
+def test_the_reading_a_run_page_shows_the_gap_ticket_in_the_log():
+    assert "FILED #210 under spec #200" in READING_A_RUN_PAGE.read_text(encoding="utf-8")
+
+
+def test_the_stops_page_shows_the_stop_for_a_gap_left():
+    assert ("STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was built"
+            in STOPS_PAGE.read_text(encoding="utf-8"))
 
 
 def test_the_drift_check_page_holds_the_drift_check_its_verdicts_the_count_and_the_gap_round():
@@ -1811,8 +1822,8 @@ def test_the_full_run_page_shows_the_name_check_in_its_chart():
     assert 'names["Name check' in full_run_chart()
 
 
-def test_the_loop_page_shows_the_name_check_in_its_map():
-    assert "| The Name check |" in LOOP_OVERVIEW.read_text(encoding="utf-8")
+def test_the_stage_map_page_shows_the_name_check():
+    assert "| The Name check |" in STAGE_MAP_PAGE.read_text(encoding="utf-8")
 
 
 def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check():
@@ -1825,18 +1836,25 @@ def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check()
     assert "/skillworks:spec-names <spec> <base> <rename ticket>" in page
     assert "`.spec-loop/<spec>/names-renames.md`" in page
     assert "the way it files [the Gap ticket](drift-check.md#the-gap-round)" in page
-    assert "as [When a step fails](../the-loop.md#when-a-step-fails) shows" in page
+    assert "as [When a step fails](stops.md) shows" in page
 
 
 def test_the_full_run_page_shows_the_rename_ticket_in_its_chart():
     assert 'renames["The rename ticket' in full_run_chart()
 
 
-def test_the_loop_page_shows_the_rename_ticket_in_its_map_its_log_and_its_stop():
-    text = LOOP_OVERVIEW.read_text(encoding="utf-8")
+def test_the_stage_map_page_shows_the_rename_ticket():
+    assert "| The rename ticket |" in STAGE_MAP_PAGE.read_text(encoding="utf-8")
 
-    assert "| The rename ticket |" in text
-    assert "STOP  the Name re-check finds 1 rename not made on spec #200" in text
+
+def test_the_stops_page_shows_the_stop_for_a_rename_not_made():
+    assert ("STOP  the Name re-check finds 1 rename not made on spec #200"
+            in STOPS_PAGE.read_text(encoding="utf-8"))
+
+
+def test_the_reading_a_run_page_shows_the_rename_ticket_in_the_log():
+    text = READING_A_RUN_PAGE.read_text(encoding="utf-8")
+
     assert "FILED #211 under spec #200 makes 2 renames" in text
     assert "NOTE  Gap and Hole has no glossary word" in text
 
@@ -2385,9 +2403,6 @@ def test_a_setting_added_to_a_seed_without_being_named_as_enforced_is_caught():
     assert unnamed(setting_keys(added), enforcement_paragraph(added)) == ["max-length"]
 
 
-STAGE_MAP_PAGE = ROOT / "docs" / "usage" / "the-loop.md"
-
-
 def enforced_row(section, rule):
     rows = [line for line in section.splitlines() if line.startswith("| `{}` |".format(rule))]
     assert len(rows) == 1, rule
@@ -2395,8 +2410,7 @@ def enforced_row(section, rule):
 
 
 def test_the_stage_map_names_every_setting_enforced_only_once_a_check_exists():
-    page = STAGE_MAP_PAGE.read_text(encoding="utf-8")
-    section = page.split("\n## The stage map\n", 1)[1].split("\n## ", 1)[0]
+    section = STAGE_MAP_PAGE.read_text(encoding="utf-8")
 
     assert ENFORCED in section
     assert "`/skillworks:architecture-tests`" in section

@@ -89,5 +89,5 @@ Each rename is Done or Not done, and a Not done carries one sentence of reason. 
 copy at `.spec-loop/<spec>/names-renames.md` and counts it the way it counts the drift check's
 Verdicts. A rename with no Verdict, or with two, counts as not made. A Verdict for a rename the
 ticket does not owe gets a `WARN` line and counts for nothing. A rename not made stops the loop and
-names it, as [When a step fails](../the-loop.md#when-a-step-fails) shows. With every rename Done, the
+names it, as [When a step fails](stops.md) shows. With every rename Done, the
 loop goes on to the full run.
