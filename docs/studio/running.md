@@ -25,6 +25,7 @@ The API reads these settings. Set each one as an environment variable, or in the
 | `Loki__PatienceSeconds` | How long Studio waits on Loki before it shows a Gap. | `5` |
 | `Loki__ReadsAtOnce` | How many reads Studio sends Loki at once. Loki cuts each read into parts and runs sixteen parts at a time, so more reads than this wait in its queue and run out their Patience. | `4` |
 | `Loki__LookbackDays` | The lookback: how many days a list covers when the Filter has no start day. | `7` |
+| `Loki__LookupReachDays` | The Lookup's reach: how many days back a whole Session id is looked for on the Sessions list. | `90` |
 | `Loki__MaxQueryDays` | The most days one Loki query may cover. Studio splits a longer span, because Loki refuses a range longer than 721 hours by default. | `30` |
 | `Tempo__Address` | Where Studio reads the Trace store. The AppHost sets it to its own Tempo. | `http://localhost:3200` |
 | `Tempo__Tenant` | Sent as `X-Scope-OrgID`, for a Tempo with several tenants. | Not sent |

@@ -49,6 +49,12 @@ public sealed record Gap(GapKind Kind, string? Missing)
     // together rather than the second one going unsaid.
     internal static Gap Beside(Gap first, Gap second) => new(first.Kind, $"{first.Missing} {second.Missing}");
 
+    // A whole id names one run, so no row is a whole answer and never a quiet period or a switch that is off.
+    internal static Gap OfLookup(string? unreachable) =>
+        unreachable is { } reason
+            ? new Gap(GapKind.Unreachable, Unread(reason, "this run"))
+            : new Gap(GapKind.Complete, null);
+
     // The rows stand without them, so this names the columns left empty rather than emptying the table.
     internal static Gap OfMeasures(string? unreachable, IReadOnlyList<string> measures) =>
         unreachable is null

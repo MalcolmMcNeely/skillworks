@@ -12,7 +12,7 @@ public sealed record SessionsRead(
     Task<DepthLanding?> Depths,
     // Every line of activity read, so an empty list tells a quiet month from a narrowed one.
     long LinesRead,
-    // At most one of the two, as a read either stopped at a Latest or ran out of lines at the end of its 30 days.
+    // At most one of the two, as a read either stopped at a Latest or ran out of lines at the end of its 30 days or its reach.
     DateTimeOffset? OldestLatestUtc,
     DateTimeOffset? QuietSinceUtc)
 {

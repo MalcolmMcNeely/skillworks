@@ -19,6 +19,9 @@ public sealed class LokiOptions
 
     public int LookbackDays { get; set; } = 7;
 
+    // The Session id is not a label, so a read by it scans every event of its days, and this bounds what one Lookup costs.
+    public int LookupReachDays { get; set; } = 90;
+
     // Loki refuses a range longer than 721 hours by default.
     public int MaxQueryDays { get; set; } = 30;
 

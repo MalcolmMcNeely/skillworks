@@ -54,6 +54,7 @@ public sealed class StudioHost : IDisposable
         bool words = true,
         string? settings = null,
         int? lookbackDays = null,
+        int? lookupReachDays = null,
         string? collectorAddress = null,
         // Only to make the test Trace store cut an answer short, which it will not do on the handful of spans a test pushes.
         int? mostTraces = null,
@@ -66,6 +67,7 @@ public sealed class StudioHost : IDisposable
 
         // Left out unless asked for, as an empty value binds as zero days and would hide the default.
         (string Key, string? Value)[] lookback = lookbackDays is { } days ? [("Loki:LookbackDays", days.ToString())] : [];
+        (string Key, string? Value)[] reach = lookupReachDays is { } reachDays ? [("Loki:LookupReachDays", reachDays.ToString())] : [];
 
         // Left out unless asked for, so an unset address is the pinned one Studio really falls back to.
         (string Key, string? Value)[] address = collectorAddress is null ? [] : [("Collector:Address", collectorAddress)];
@@ -90,6 +92,7 @@ public sealed class StudioHost : IDisposable
                 ("ClaudeSettings:StampPath", Path.Combine(_folder.Path, "telemetry-switch.json")),
                 ("Marketplace:Path", marketplacePath ?? Path.Combine(_folder.Path, "no-marketplace")),
                 .. lookback,
+                .. reach,
                 .. address,
                 .. perRun,
                 .. perPeriod,

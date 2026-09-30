@@ -98,6 +98,27 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             quietSince = null;
         }
 
+        return await ReadAsync(
+            works,
+            window,
+            asOf,
+            heard.LinesRead,
+            heard.Withheld,
+            quietSince is null ? works[^1].Latest : null,
+            quietSince,
+            cancellationToken);
+    }
+
+    private async Task<SessionsRead> ReadAsync(
+        IReadOnlyList<Work> works,
+        EventQuery window,
+        DateTimeOffset asOf,
+        long linesRead,
+        IReadOnlySet<string> heardWithheld,
+        DateTimeOffset? oldestLatest,
+        DateTimeOffset? quietSince,
+        CancellationToken cancellationToken)
+    {
         string[] ids = [.. works.Select(work => work.Id)];
         var own = window with { Sessions = ids };
         var children = window with { Parents = ids };
@@ -106,7 +127,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         // Named, so a busy period costs the trace store no more than the rows loaded.
         var tracing = traces.OfSessionsAsync(
             works.SelectMany(work => work.Members),
-            from,
+            window.From,
             DaySpan.Of(DayOf(asOf)).UntilUtc,
             cancellationToken);
 
@@ -129,7 +150,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
 
         if (gate.Unreachable is { } unreachable)
         {
-            return SessionsRead.Failed(unreachable, heard.LinesRead);
+            return SessionsRead.Failed(unreachable, linesRead);
         }
 
         var rows = Rows(gate, works, asOf);
@@ -138,7 +159,7 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
         var measuring = Measuring(own, children, cancellationToken);
 
         // Taken from the reads that place and name a run, so the words half of a Depth costs no question of its own.
-        var withheld = new HashSet<string>(heard.Withheld, StringComparer.Ordinal);
+        var withheld = new HashSet<string>(heardWithheld, StringComparer.Ordinal);
         withheld.UnionWith(gate.Prompted.Lines.Where(Withheld).Select(line => line.Attribute(EventAttributes.Session)!));
 
         return new SessionsRead(
@@ -146,8 +167,8 @@ public sealed partial class SessionQueries(EventsStoreReader events, TraceStoreR
             rows,
             LandingAsync(measuring.Values, rows, cancellationToken),
             DepthsAsync(tracing, works, rows, withheld),
-            heard.LinesRead,
-            quietSince is null ? works[^1].Latest : null,
+            linesRead,
+            oldestLatest,
             quietSince);
     }
 

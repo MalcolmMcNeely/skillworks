@@ -10,14 +10,16 @@ public static class SessionEndpoints
     public static IEndpointRouteBuilder MapSessionEndpoints(this IEndpointRouteBuilder api)
     {
         // The filter binds as one object, not four parameters, so every list narrows the same way.
+        // The Lookup binds apart from it, as it names one run and is no part of how a list narrows.
         api.MapGet(
             "sessions",
             ([AsParameters] Filter filter,
                 DateTimeOffset? asOf,
                 DateTimeOffset? latestBefore,
+                string? lookup,
                 SessionReport report,
                 CancellationToken cancellationToken) =>
-                new ArrivingAnswer(report.AnswerAsync(filter, asOf, latestBefore, cancellationToken)));
+                new ArrivingAnswer(report.AnswerAsync(filter, asOf, latestBefore, lookup, cancellationToken)));
 
         // The span narrows the read, so opening a run from a table narrowed to a day reads that day alone.
         api.MapGet(

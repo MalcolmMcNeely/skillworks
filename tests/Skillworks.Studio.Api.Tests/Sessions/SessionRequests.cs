@@ -28,6 +28,9 @@ public static class SessionRequests
     public static Task<SessionsAnswer> FurtherBackSessionAnswer(this StudioHost studio, SessionsAnswer earlier) =>
         studio.SessionAnswerOlderThan(earlier, earlier.QuietSinceUtc!.Value, "");
 
+    public static Task<SessionsAnswer> LookupAnswer(this StudioHost studio, string id, string filter = "") =>
+        studio.SessionAnswer($"?lookup={Uri.EscapeDataString(id)}" + (filter.Length == 0 ? "" : $"&{filter.TrimStart('?')}"));
+
     private static Task<SessionsAnswer> SessionAnswerOlderThan(
         this StudioHost studio,
         SessionsAnswer earlier,

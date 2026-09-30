@@ -3,12 +3,13 @@ using Skillworks.Core.Sessions.DepthColumn;
 using Skillworks.Core.Shared.Arriving;
 using Skillworks.Core.Shared.Filters;
 using Skillworks.Core.Shared.Gaps;
+using Skillworks.Core.Sessions.Lookup;
 using Skillworks.Core.Sessions.Measures;
 using Skillworks.Core.Sessions.Queries;
 
 namespace Skillworks.Core.Sessions;
 
-public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeProvider clock)
+public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeProvider clock, LookupReach reach)
 {
     private static readonly Gap NothingMissing = new(GapKind.Complete, null);
 
@@ -18,16 +19,21 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
         Filter filter,
         DateTimeOffset? asOfUtc,
         DateTimeOffset? latestBeforeUtc,
+        string? lookup,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
+        var id = string.IsNullOrWhiteSpace(lookup) ? null : lookup.Trim();
 
         // Never later than now, as an instant still to come would read events the list has not yet reached.
-        var asOf = asOfUtc is { } handed && handed < now ? handed : now;
+        // A Lookup names one run, so it reads as of now and takes no paging.
+        var asOf = id is null && asOfUtc is { } handed && handed < now ? handed : now;
 
         yield return new SessionsHead(asOf);
 
-        var read = await sessions.ListAsync(asOf, latestBeforeUtc, filter, cancellationToken);
+        var read = id is null
+            ? await sessions.ListAsync(asOf, latestBeforeUtc, filter, cancellationToken)
+            : await sessions.LookupAsync(id, reach.StartBefore(asOf), asOf, cancellationToken);
         var fellShort = new List<MeasureLanding>();
         DepthLanding? depths = null;
 
@@ -83,7 +89,7 @@ public sealed class SessionReport(SessionQueries sessions, GapReport gaps, TimeP
         }
 
         var gap = Shown(
-            gaps.InRows(read.Unreachable, read.LinesRead),
+            id is null ? gaps.InRows(read.Unreachable, read.LinesRead) : gaps.InLookup(read.Unreachable),
             // Only where rows stand, as a Measure with no row to sit on leaves no column of dashes to explain.
             Missed(read.Rows.Count > 0 ? fellShort : []),
             // Only where a row was left a dash, as a store that fell short but named every row lost nothing.
