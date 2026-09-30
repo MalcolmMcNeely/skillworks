@@ -1657,7 +1657,6 @@ SCRIPT_TESTS_IGNORE = {
     "docs/adr": "no test reads a decision record",
     "docs/studio": "no test reads Studio's own docs",
     "docs/assets": "no test reads a picture",
-    "README.md": "no test reads the README",
     "src/*.cs": "the tests check that the projects exist, and never read their code",
     "src/Skillworks.AppHost": "the AppHost is in no solution filter the tests read",
     "src/Skillworks.Studio.Web/src": "of the front end the tests read only package.json",

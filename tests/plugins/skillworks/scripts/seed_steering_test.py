@@ -1142,9 +1142,21 @@ def test_grilling_sends_a_design_that_ends_in_a_spec_to_the_grill():
 OLD_GRILL = "grill" + "-with-docs"
 
 
+def user_docs(root):
+    return list((root / "docs" / "usage").rglob("*.md"))
+
+
+def test_the_user_docs_are_read_in_the_folders_below_too(tmp_path):
+    below = tmp_path / "docs" / "usage" / "the-loop" / "tracker.md"
+    below.parent.mkdir(parents=True)
+    below.write_text("# The Tracker\n", encoding="utf-8")
+
+    assert user_docs(tmp_path) == [below]
+
+
 def test_no_skill_seed_script_or_user_doc_names_the_grills_old_skill():
     pages = [path for path in PLUGIN.rglob("*") if path.is_file() and path.suffix in (".md", ".py", ".mjs", ".json")]
-    pages += list((ROOT / "docs" / "usage").glob("*.md"))
+    pages += user_docs(ROOT)
     pages += [ROOT / "docs" / "agents" / "domain.md"]
     assert {SKILLS / "grill" / "SKILL.md", SETUP / "seeds" / "domain.md", ROOT / "docs" / "usage" / "the-loop.md"} <= set(pages)
 

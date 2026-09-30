@@ -55,7 +55,6 @@
         "docs/adr",
         "docs/studio",
         "docs/assets",
-        "README.md",
         "src/*.cs",
         "src/Skillworks.AppHost",
         "src/Skillworks.Studio.Web/src",
