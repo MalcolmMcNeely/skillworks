@@ -57,6 +57,8 @@ Each page below holds one part of the loop, in the order a run takes them.
 | [The tickets](the-loop/tickets.md) | How the Cut makes the tickets, how a ticket is picked and claimed, and where it is built. |
 | [The steps of one ticket](the-loop/steps.md) | What is done to a ticket before it Lands, from `build` to `finish`, and how the Suite runs. |
 | [Rebasing and Landing](the-loop/landing.md) | How a ticket reaches the Target branch: the rebase, the push race and the Turn. |
+| [The drift check](the-loop/drift-check.md) | How the finished work is judged against the spec: the Verdicts, the count and the Gap round. |
+| [The Name check](the-loop/name-check.md) | How the names the spec brought in are judged: the Name report, the rename ticket and the Name re-check. |
 
 ## When a step fails
 
@@ -135,9 +137,9 @@ Check that `git log` on the Target branch shows each Landed ticket's `Ticket:` t
 loop again.
 
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
-check's Verdicts](#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
+check's Verdicts](the-loop/drift-check.md#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
 stops the loop with a `STOP` line, and the spec stays open. A Gap does not stop it at once: the loop
-builds its Gaps in [one round](#the-gap-round). A Gap still left after that round stops the loop.
+builds its Gaps in [one round](the-loop/drift-check.md#the-gap-round). A Gap still left after that round stops the loop.
 Every ticket has landed by then, so there is nothing to Keep, and the full run still runs before the
 loop ends. The line names each Gap left:
 
@@ -152,11 +154,11 @@ The loop built these once and they are still owed, so a second build would most 
 Read the report, build what is owed in a ticket of its own or change the spec, and run the loop again.
 
 **A Name report the loop cannot read.** After the drift check, the script runs [the Name
-check](#the-name-check). No Name report, or a report with no `### Renames` list, stops the loop with
+check](the-loop/name-check.md). No Name report, or a report with no `### Renames` list, stops the loop with
 a `STOP` line, and the spec stays open. A rename does not stop it: the loop builds it in [the rename
-ticket](#the-rename-ticket).
+ticket](the-loop/name-check.md#the-rename-ticket).
 
-**A rename not made.** After the rename ticket Lands, [the Name re-check](#the-name-re-check) gives
+**A rename not made.** After the rename ticket Lands, [the Name re-check](the-loop/name-check.md#the-name-re-check) gives
 each rename Done or Not done. A rename Not done, one with no Verdict, or one with two stops the loop.
 So does a Name re-check that recorded no new report, or one with no `### Verdicts` list. The full
 run still runs first. The line names each rename not made:
@@ -220,9 +222,9 @@ A Proof knows only the files in your repo. A change outside it, such as a new SD
 stale. So after each loop run that landed at least one ticket, the script runs the whole Suite once
 more, on the newest Target branch on `origin`, in a worktree of its own.
 
-It runs once, at the end, after the drift check, its count and [the Name check](#the-name-check).
-When the count finds a Gap, it runs after [the Gap round](#the-gap-round) too, and when the Name
-check finds a rename, after [the Name re-check](#the-name-re-check). It is the slowest step, so it
+It runs once, at the end, after the drift check, its count and [the Name check](the-loop/name-check.md).
+When the count finds a Gap, it runs after [the Gap round](the-loop/drift-check.md#the-gap-round) too, and when the Name
+check finds a rename, after [the Name re-check](the-loop/name-check.md#the-name-re-check). It is the slowest step, so it
 runs only on the finished spec. It runs when the loop stopped early too, whether at a ticket, at the
 count or at the Name check, because the tickets that landed are on the Target branch all the same.
 
@@ -240,114 +242,11 @@ that flakes in the full run gets a `FLAKE` line, and its red output is kept in
 in place, and the log names its path. The next full run of the spec removes that worktree before it
 opens its own. A left worktree that will not go stops the run, and the `FAIL` line names its path.
 
-## The drift check
-
-Every ticket passed its own acceptance criteria. Nothing so far has asked whether all of them together
-are what the spec wanted.
-
-So when no open ticket is left, the script opens one more worktree and runs
-`/skillworks:spec-drift <spec> <base>` in a fresh Session. It judges the work against the spec, not the
-tickets, because a ticket that drifted still passed its own criteria. It records one report with the
-spec, under the heading `## Drift report`, through `tracker-publish drift` with either Tracker. With
-the GitHub Tracker the report is a new comment on the spec issue, and a rerun adds another comment
-below it. With the files Tracker there is no issue, so the report goes at the end of the spec's
-`spec.md`.
-The script then reads the report back from the Tracker and keeps a copy at
-`.spec-loop/<spec>/drift.md`.
-
-The drift check reads the spec's commits through `spec-commits`: the commits after the base commit
-that the spec's tickets Landed, the Gap ticket's among them. A commit is the spec's only when its
-`Ticket:` trailer names one of the spec's tickets, so a commit with no `Ticket:` trailer is not read,
-and neither is another spec's work. A hand fix that should count for the spec carries the trailer of
-one of its tickets, such as `Ticket: #<n>`, or `Ticket: <spec>/<n>` with the files Tracker.
-
-The spec's commits show where the work is. The Verdict judges the newest Target branch as it stands,
-so a story done by a hand fix or by another spec counts as Done, and code from any source that does
-what the spec ruled out is Contradicts. Unrequested work and two names for one idea come only from
-the spec's commits, and an item is listed only while it still stands on the Target branch.
-
-When your team has a README Surface, the drift check reads the README on every spec, even a spec with
-no README item. The README Surface is the Surface headed `## The README` in
-`docs/agents/surfaces.md`, and its "Where it lives" gives the README's path. A link, path or command in
-the README that the spec removed, renamed or moved makes the README Out of step, and the reason names
-it. The count treats that Verdict as an item of the spec, so an Out of step README, or a README with
-no Verdict, is a Gap. The Gap ticket fixes only the broken line, within what the Surface's "What to
-capture" allows. With no README Surface, a README Verdict on a spec with no README item gets a `WARN`
-line and counts for nothing, like any other name the spec does not hold.
-
-### Verdicts
-
-The report opens with a `### Verdicts` list. It gives every item of the spec one **Verdict**, on a
-line of its own: `- S2: Missing. No code reads the report.` A story is `S<n>`, a decision is `D<n>`,
-and a Surface is its bold name. Each story and decision gets one of four Verdicts:
-
-| Verdict | What it means |
-|---|---|
-| Done | The code does what the spec asked. |
-| Partial | Some of it is there, and the report says what is not. |
-| Missing | None of it is there. |
-| Contradicts | The code does something the spec ruled out. |
-
-Each Surface gets **In step** or **Out of step**. Every Verdict other than Done or In step carries one
-sentence of reason. The prose follows the list, with what each Out of step Surface lacks under a
-`### Surfaces` heading, and a look for two tickets that brought in two names for one idea, with your
-glossary as the judge. Last comes a `### Unrequested` list: work the spec never asked for, one item
-per line.
-
-### The count
-
-The drift check judges. The script does not. It counts the Verdicts against the items it read from
-the spec before the first ticket, so an item the drift check skipped is caught by arithmetic.
-
-A **Gap** is an item the spec asked for that is not proved done:
-
-- an item with a Verdict of Missing, Partial or Out of step;
-- an item with no Verdict;
-- an item with more than one Verdict, because two Verdicts that disagree never pass as one.
-
-A Verdict that names no item of the spec, such as a typo, gets a `WARN` line and counts for nothing.
-Each Unrequested item gets a `NOTE` line. Unrequested work never stops the loop.
-
-The loop stops, and the spec stays open, when:
-
-- the drift check recorded no report;
-- the report has no `### Verdicts` list;
-- any Verdict is Contradicts. The stop line names each Contradicts and every Gap beside it, because a
-  person decides on a part of the spec the code ruled against. The loop stops at the count, before any
-  Gap is built;
-- any Gap is left after [the Gap round](#the-gap-round). The stop line names each one.
-
-The drift check fixes nothing and closes nothing. A fix is new work, and the loop files it as a ticket
-of its own.
-
-### The Gap round
-
-When the count finds a Gap and no Contradicts, the loop builds the Gaps itself. You do not have to
-ask for a ticket.
-
-1. **The Gap ticket.** The script writes one ticket for every Gap, from a fixed template and with no
-   model. For each Gap it quotes the item's text from the spec, its Verdict and the reason. An item
-   with no Verdict, or with two, reads "The drift check did not judge this exactly once. Check it,
-   and build it if it is not there.", so work already done is not built twice. The acceptance
-   criteria are the Gap items. The Tracker files it under the spec: a sub-issue with the
-   `ready-for-agent` label with GitHub, and a new file in the spec's `tickets/` folder with files.
-2. **The build.** The loop reads the open tickets again, finds the Gap ticket, and builds it through
-   [the same steps](the-loop/steps.md) as every other ticket, then Lands it.
-3. **The re-check.** The script runs the drift check again, on the Gap items alone:
-   `/skillworks:spec-drift <spec> <base> S4, The user docs`. It reads the same spec's commits as the
-   first drift check, the Gap ticket's now among them. A small context misses less. The
-   report is kept at `.spec-loop/<spec>/drift-gaps.md`, and the script counts it against those items
-   only.
-
-There is one round. A Gap that survives a build aimed at it comes to you rather than looping, so a Gap
-left after the re-check stops the loop and names each one. A Contradicts in the re-check stops it too,
-and so does a re-check that recorded no new report, because the Gap items were not judged again.
-
 ### A clean finish
 
 The script decides a clean finish, and nothing else does. A clean finish is every Verdict Done or In
-step, no rename owed in [the Name report](#the-name-check) or every rename Done in [the Name
-re-check](#the-name-re-check), and [the full run](#the-full-run) green. Only then does the script write
+step, no rename owed in [the Name report](the-loop/name-check.md) or every rename Done in [the Name
+re-check](the-loop/name-check.md#the-name-re-check), and [the full run](#the-full-run) green. Only then does the script write
 its `END` line, and with the files Tracker only then does it close the spec. A Gap left after the
 round, a Contradicts, a rename not made or a red full run stops the loop before either.
 `/skillworks:spec-loop` reads the `END` line and does not judge the report itself, so the skill and
@@ -358,98 +257,6 @@ Closing the spec is where a person says the work is done. With a branch name, a 
 hand after a clean finish. With `spec`, the loop marks the spec's pull request ready for review, and
 the spec closes when a person merges it. With the files Tracker, the loop closes the spec itself on a
 clean finish, and with `spec` it leaves the pull request to you.
-
-## The Name check
-
-The drift check asks whether the work is there. The **Name check** asks one smaller thing: whether
-the names still say what the code means. A small question in a small context misses less.
-
-It runs once, after the drift check and its count, or after [the Gap round](#the-gap-round) when the
-count found a Gap, so it sees every name the spec brought in, the Gap ticket's too. The script opens
-one more worktree and runs `/skillworks:spec-names <spec> <base>` in a fresh Session. It reads two
-things, and nothing else:
-
-- the commits the spec's tickets Landed after the base commit, through `spec-commits`, in place of
-  the spec's whole diff. A commit with no `Ticket:` trailer is not read, and neither is another
-  spec's work;
-- the glossary of each context those commits touch, as `CONTEXT-MAP.md` names it, or your one
-  `CONTEXT.md`.
-
-It lists two kinds of finding, and each one is a rename:
-
-- a name whose meaning moved: the code under it now does something else, and the name stayed;
-- a concept two tickets named two ways.
-
-A name is a finding only while it still stands on the Target branch. The check searches the Target
-branch before it lists a name, so a name a later commit renamed or removed never becomes a rename
-ticket with nothing to change.
-
-A rename is never "Optional". A name that says the wrong thing is work owed, and nobody is asked
-whether to fix it.
-
-### The Name report
-
-The Session records a **Name report** with the spec, as the drift check records its report, through
-`tracker-publish names` with either Tracker. With the GitHub Tracker it is a new comment on the spec
-issue, and a rerun adds another comment below it. With the files Tracker it goes at the end of
-`spec.md`, below the drift report. A new drift report takes an old Name report away, because a new
-drift check starts the judging again.
-
-```markdown
-## Name report
-
-### Renames
-
-- `Batch`: it now names a whole run of tickets, and the glossary calls that a Job.
-```
-
-The report opens with `## Name report`, then a `### Renames` list, one line per finding. Each line
-names the name or the concept and says in one sentence why it must change. A concept the glossary
-has no word for says `no glossary word` on its line. With nothing to rename, the list says `- None`.
-
-The script reads the report back from the Tracker, so a finding the Session only said and never
-recorded is caught. It keeps a copy at `.spec-loop/<spec>/names.md`, beside `drift.md`, and writes a
-`NAME` line for each rename. No report stops the loop, and so does a report with no `### Renames`
-list.
-
-With no rename there is no rename ticket and no Name re-check, and the loop goes on to the full run.
-
-### The rename ticket
-
-When the Name report lists a rename, the loop makes it. You do not have to ask for a ticket.
-
-The script writes one **rename ticket** from a fixed template and with no model: one entry for each
-line of the `### Renames` list, quoting the line. The acceptance criteria are the renames. The
-Tracker files it under the spec, the way it files [the Gap ticket](#the-gap-round), and the loop
-builds it through [the same steps](the-loop/steps.md) as every other ticket. It comes after
-the Gap ticket, so no later build brings in a new bad name.
-
-The build takes the glossary's word for a concept when the glossary has one. When the glossary has
-none, it takes the name the code and the spec use most, and the script writes a `NOTE` line saying
-the concept has no glossary word. The build never edits a glossary. A new word is settled in a grill.
-
-### The Name re-check
-
-After the rename ticket Lands, the script runs the Name check again, on the rename ticket alone:
-`/skillworks:spec-names <spec> <base> <rename ticket>`. It reads the rename ticket's list and the
-diff of that ticket's commits, and nothing else. It records a new Name report with a `### Verdicts`
-list, one line for each rename:
-
-```markdown
-## Name report
-
-### Verdicts
-
-- Batch: Done
-- Gap and Hole: Not done. Hole is still the name in two files.
-```
-
-Each rename is Done or Not done, and a Not done carries one sentence of reason. The script keeps a
-copy at `.spec-loop/<spec>/names-renames.md` and counts it the way it counts the drift check's
-Verdicts. A rename with no Verdict, or with two, counts as not made. A Verdict for a rename the
-ticket does not owe gets a `WARN` line and counts for nothing. A rename not made stops the loop and
-names it, as [When a step fails](#when-a-step-fails) shows. With every rename Done, the loop goes on
-to the full run.
 
 ## The stage map
 
@@ -580,7 +387,7 @@ in place of the `SCOPE` line, as [When a step fails](#when-a-step-fails) shows.
 The `COUNT` line says how many items the spec holds and how many Verdicts the report gave. A `NOTE`
 line names each Unrequested item. A `WARN` line names a Verdict for an item the spec does not hold.
 
-When the count finds a Gap, [the Gap round](#the-gap-round) adds its lines before the full run's. A
+When the count finds a Gap, [the Gap round](the-loop/drift-check.md#the-gap-round) adds its lines before the full run's. A
 `GAP` line names each Gap, and the `FILED` line names the Gap ticket. The ticket's own lines follow,
 then the re-check's:
 
@@ -597,7 +404,7 @@ then the re-check's:
 19:39:47 COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts
 ```
 
-When the Name check finds a rename, [the rename ticket](#the-rename-ticket) adds its lines before
+When the Name check finds a rename, [the rename ticket](the-loop/name-check.md#the-rename-ticket) adds its lines before
 the full run's. A `NAME` line names each rename, a `NOTE` line names each concept with no glossary
 word, and the `FILED` line names the rename ticket. The ticket's own lines follow, then the Name
 re-check's:

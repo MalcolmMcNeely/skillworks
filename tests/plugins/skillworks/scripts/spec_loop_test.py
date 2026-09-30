@@ -3414,6 +3414,10 @@ STEPS_PAGE = LOOP_FOLDER + "/steps.md"
 
 LANDING_PAGE = LOOP_FOLDER + "/landing.md"
 
+DRIFT_CHECK_PAGE = LOOP_FOLDER + "/drift-check.md"
+
+NAME_CHECK_PAGE = LOOP_FOLDER + "/name-check.md"
+
 
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
@@ -3421,7 +3425,27 @@ def loop_folder_pages():
 
 def test_the_loop_folder_holds_the_pages_split_from_the_loop_page():
     assert {ROOT / TARGET_BRANCH_PAGE, ROOT / TRACKER_PAGE, ROOT / GRILL_PAGE,
-            ROOT / TICKETS_PAGE, ROOT / STEPS_PAGE, ROOT / LANDING_PAGE} <= set(loop_folder_pages())
+            ROOT / TICKETS_PAGE, ROOT / STEPS_PAGE, ROOT / LANDING_PAGE,
+            ROOT / DRIFT_CHECK_PAGE, ROOT / NAME_CHECK_PAGE} <= set(loop_folder_pages())
+
+
+def test_the_overview_links_the_count_the_gap_round_and_the_name_check_from_its_stops():
+    stopping = " ".join(page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"),
+                                     "## When a step fails").split())
+
+    assert "[counts the drift check's Verdicts](the-loop/drift-check.md#the-count)" in stopping
+    assert "[one round](the-loop/drift-check.md#the-gap-round)" in stopping
+    assert "[the Name check](the-loop/name-check.md)" in stopping
+    assert "[the rename ticket](the-loop/name-check.md#the-rename-ticket)" in stopping
+    assert "[the Name re-check](the-loop/name-check.md#the-name-re-check)" in stopping
+
+
+def test_the_overview_links_the_gap_round_and_the_rename_ticket_from_reading_a_run():
+    reading = " ".join(page_section((ROOT / LOOP_PAGE).read_text(encoding="utf-8"),
+                                    "## Reading a run").split())
+
+    assert "[the Gap round](the-loop/drift-check.md#the-gap-round) adds its lines" in reading
+    assert "[the rename ticket](the-loop/name-check.md#the-rename-ticket) adds its lines" in reading
 
 
 def test_the_steps_page_holds_the_steps_an_edit_the_run_by_hand_and_the_suite():
@@ -3507,7 +3531,8 @@ def overview_table_links():
 def test_the_overview_s_table_lists_the_pages_in_run_order():
     assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
-                                      "the-loop/steps.md", "the-loop/landing.md"]
+                                      "the-loop/steps.md", "the-loop/landing.md",
+                                      "the-loop/drift-check.md", "the-loop/name-check.md"]
 
 
 def test_each_page_in_the_loop_folder_opens_with_a_link_back_to_the_overview():

@@ -1718,58 +1718,100 @@ def test_spec_loop_names_each_unrequested_item_before_the_close_offer():
     assert skill.index("`NOTE  Unrequested:`") < named < skill.index("make one offer")
 
 
+LOOP_OVERVIEW = ROOT / "docs" / "usage" / "the-loop.md"
+
+DRIFT_CHECK_PAGE = ROOT / "docs" / "usage" / "the-loop" / "drift-check.md"
+
+NAME_CHECK_PAGE = ROOT / "docs" / "usage" / "the-loop" / "name-check.md"
+
+
 def test_the_loop_page_says_the_driver_decides_a_clean_finish_after_the_full_run():
-    page = " ".join((ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8").split())
+    page = " ".join(LOOP_OVERVIEW.read_text(encoding="utf-8").split())
 
     assert "The script decides a clean finish, and nothing else does." in page
-    assert ("every Verdict Done or In step, no rename owed in [the Name report](#the-name-check) "
-            "or every rename Done in [the Name re-check](#the-name-re-check), and [the full "
+    assert ("every Verdict Done or In step, no rename owed in [the Name "
+            "report](the-loop/name-check.md) or every rename Done in [the Name "
+            "re-check](the-loop/name-check.md#the-name-re-check), and [the full "
             "run](#the-full-run) green") in page
     assert ("It runs once, at the end, after the drift check, its count and [the Name "
-            "check](#the-name-check).") in page
+            "check](the-loop/name-check.md).") in page
 
 
-def test_the_loop_page_describes_the_gap_ticket_and_the_one_round():
-    text = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
+def test_the_drift_check_page_describes_the_gap_ticket_and_the_one_round():
+    text = DRIFT_CHECK_PAGE.read_text(encoding="utf-8")
     page = " ".join(text.split())
 
-    assert "\n### The Gap round\n" in text
+    assert "\n## The Gap round\n" in text
     assert "There is one round." in page
     assert ('"The drift check did not judge this exactly once. Check it, and build it if it is not '
             'there."') in page
     assert "on the Gap items alone" in page
+    assert "through [the same steps](steps.md) as every other ticket" in page
+
+
+def test_the_loop_page_shows_the_gap_ticket_in_its_map_its_log_and_its_stop():
+    text = LOOP_OVERVIEW.read_text(encoding="utf-8")
+
     assert "| The Gap ticket |" in text
     assert "FILED #210 under spec #200" in text
     assert "STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was built" in text
 
 
-def test_the_loop_page_describes_the_name_check_and_its_report():
-    text = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
+def test_the_drift_check_page_holds_the_drift_check_its_verdicts_the_count_and_the_gap_round():
+    text = DRIFT_CHECK_PAGE.read_text(encoding="utf-8")
+
+    assert text.startswith("# The drift check\n")
+    for heading in ["\n## Verdicts\n", "\n## The count\n", "\n## The Gap round\n"]:
+        assert heading in text, heading
+    overview = LOOP_OVERVIEW.read_text(encoding="utf-8")
+    assert "## The drift check" not in overview
+    assert "### The count" not in overview
+
+
+def test_a_clean_finish_stays_on_the_loop_page():
+    assert "\n### A clean finish\n" in LOOP_OVERVIEW.read_text(encoding="utf-8")
+
+
+def test_the_name_check_page_describes_the_name_check_and_its_report():
+    text = NAME_CHECK_PAGE.read_text(encoding="utf-8")
     page = " ".join(text.split())
 
-    assert "\n## The Name check\n" in text
-    assert "\n### The Name report\n" in text
+    assert text.startswith("# The Name check\n")
+    assert "\n## The Name report\n" in text
     assert "/skillworks:spec-names <spec> <base>" in page
     assert "the commits the spec's tickets Landed after the base commit, through `spec-commits`" in page
     assert "A name is a finding only while it still stands on the Target branch." in page
     assert "A rename is never \"Optional\"." in page
     assert "`.spec-loop/<spec>/names.md`, beside `drift.md`" in page
+    assert "With no rename there is no rename ticket and no Name re-check" in page
+    assert "## The Name check" not in LOOP_OVERVIEW.read_text(encoding="utf-8")
+
+
+def test_the_loop_page_shows_the_name_check_in_its_chart_and_its_map():
+    text = LOOP_OVERVIEW.read_text(encoding="utf-8")
+
     assert 'names["Name check' in text
     assert "| The Name check |" in text
-    assert "With no rename there is no rename ticket and no Name re-check" in page
 
 
-def test_the_loop_page_describes_the_rename_ticket_and_the_name_re_check():
-    text = (ROOT / "docs" / "usage" / "the-loop.md").read_text(encoding="utf-8")
+def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check():
+    text = NAME_CHECK_PAGE.read_text(encoding="utf-8")
     page = " ".join(text.split())
 
-    assert "\n### The rename ticket\n" in text
-    assert "\n### The Name re-check\n" in text
-    assert 'renames["The rename ticket' in text
-    assert "| The rename ticket |" in text
+    assert "\n## The rename ticket\n" in text
+    assert "\n## The Name re-check\n" in text
     assert "The build never edits a glossary." in page
     assert "/skillworks:spec-names <spec> <base> <rename ticket>" in page
     assert "`.spec-loop/<spec>/names-renames.md`" in page
+    assert "the way it files [the Gap ticket](drift-check.md#the-gap-round)" in page
+    assert "as [When a step fails](../the-loop.md#when-a-step-fails) shows" in page
+
+
+def test_the_loop_page_shows_the_rename_ticket_in_its_chart_its_map_its_log_and_its_stop():
+    text = LOOP_OVERVIEW.read_text(encoding="utf-8")
+
+    assert 'renames["The rename ticket' in text
+    assert "| The rename ticket |" in text
     assert "STOP  the Name re-check finds 1 rename not made on spec #200" in text
     assert "FILED #211 under spec #200 makes 2 renames" in text
     assert "NOTE  Gap and Hole has no glossary word" in text
