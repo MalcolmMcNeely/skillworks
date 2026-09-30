@@ -9,7 +9,7 @@ const ROOT = join(import.meta.dirname, "..", "..", "..", "..", "..");
 
 const PLUGIN = join(ROOT, "plugins", "skillworks");
 
-const SCRIPT = join(PLUGIN, "scripts", "hooks", "session-trailer.mjs");
+const SCRIPT = join(PLUGIN, "scripts", "hooks", "commit-trailers.mjs");
 
 const SESSION = "3f2a9c1e-5b7d-4e8f-a1c2-9d0e6b4f7a31";
 
@@ -25,12 +25,12 @@ const COMMIT = `${RULE} commit ${TRAILER}`;
 
 const PS_COMMIT = `${RULE} commit ${PS_TRAILER}`;
 
-const TICKET_KEY = "SKILLWORKS_TICKET";
+const TICKET_VARIABLE = "SKILLWORKS_TICKET";
 
 let temp;
 
 beforeEach(async () => {
-  temp = await mkdtemp(join(tmpdir(), "session-trailer-"));
+  temp = await mkdtemp(join(tmpdir(), "commit-trailers-"));
 });
 
 afterEach(async () => {
@@ -66,7 +66,7 @@ function hook(payload, extra = {}) {
 
 // The Session running these tests may have been handed a ticket, and a test sets its own or none.
 async function answerTo(command, session, tool, ticket = "", cwd = undefined) {
-  const ran = await hook(input(command, session, tool, cwd), { [TICKET_KEY]: ticket });
+  const ran = await hook(input(command, session, tool, cwd), { [TICKET_VARIABLE]: ticket });
   assert.equal(ran.status, 0, ran.err);
   assert.equal(ran.err, "");
   return ran.out === "" ? undefined : JSON.parse(ran.out).hookSpecificOutput;
@@ -159,7 +159,7 @@ test("the Plugin runs this script before the Bash and PowerShell tools, from the
   const [entry] = group.hooks;
   assert.equal(entry.type, "command");
   assert.equal(entry.command, "node");
-  assert.deepEqual(entry.args, ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-trailer.mjs"]);
+  assert.deepEqual(entry.args, ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/commit-trailers.mjs"]);
 });
 
 for (const command of [
@@ -228,8 +228,8 @@ test("a rewrite keeps every other field of the tool input", async () => {
 });
 
 for (const [state, extra] of [
-  ["on", { OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:1" }],
-  ["off", { OTEL_EXPORTER_OTLP_ENDPOINT: "" }],
+  ["on", { OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:1", [TICKET_VARIABLE]: "" }],
+  ["off", { OTEL_EXPORTER_OTLP_ENDPOINT: "", [TICKET_VARIABLE]: "" }],
 ]) {
   test(`a commit gets the trailer with telemetry ${state}`, async () => {
     // Act

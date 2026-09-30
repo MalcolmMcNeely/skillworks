@@ -6,9 +6,9 @@ import { text } from "node:stream/consumers";
 import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE } from "./git-grammar.mjs";
 import { powerShellCommits } from "./powershell-commits.mjs";
 
-const KEY = "Skillworks-Session";
+const SESSION_KEY = "Skillworks-Session";
 
-const TICKET = "SKILLWORKS_TICKET";
+const TICKET_VARIABLE = "SKILLWORKS_TICKET";
 
 const CREDIT_KEY = "Co-Authored-By";
 
@@ -25,11 +25,11 @@ const NO_TYPED_CREDIT =
 
 const PLAIN =
   "Run `git commit` as a plain command of its own, not inside a shell string, eval, backticks or another program, " +
-  `so the ${KEY} trailer can be added to it.`;
+  `so the ${SESSION_KEY} trailer can be added to it.`;
 
 const PLAIN_POWERSHELL =
   "Run `git commit` as a plain command of its own, not inside a script block, Invoke-Expression, a string handed " +
-  `to pwsh -Command, powershell -Command or another program, so the ${KEY} trailer can be added to it.`;
+  `to pwsh -Command, powershell -Command or another program, so the ${SESSION_KEY} trailer can be added to it.`;
 
 // Each of these runs a command it is handed as words or as a string, which the hook cannot rewrite in place.
 const RUNS_ANOTHER = new Set([
@@ -69,15 +69,15 @@ function judge(source, tool, sessionId, ticket, credit) {
   if (commits.length === 0) return {};
   if (credit && TYPED_CREDIT.test(source)) return { deny: NO_TYPED_CREDIT };
   if (typeof sessionId !== "string" || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
-    return { deny: `The hook was handed no Session id it can write, so it cannot add the ${KEY} trailer.` };
+    return { deny: `The hook was handed no Session id it can write, so it cannot add the ${SESSION_KEY} trailer.` };
   }
   if (!/^[A-Za-z0-9#/._-]*$/.test(ticket)) {
-    return { deny: `The ${TICKET} variable holds a value the hook cannot write, so it cannot add the Ticket trailer.` };
+    return { deny: `The ${TICKET_VARIABLE} variable holds a value the hook cannot write, so it cannot add the Ticket trailer.` };
   }
   const quote = (value) => (powerShell ? `'${value}'` : `"${value}"`);
   // With git's default rule, a Ticket replaced on an amend moves between two Session lines and lets the second double.
-  const rules = [`-c trailer.${KEY}.ifExists=addIfDifferent`];
-  const trailers = [`--trailer ${quote(`${KEY}: ${sessionId}`)}`];
+  const rules = [`-c trailer.${SESSION_KEY}.ifExists=addIfDifferent`];
+  const trailers = [`--trailer ${quote(`${SESSION_KEY}: ${sessionId}`)}`];
   if (credit === "show") {
     rules.push(`-c trailer.${CREDIT_KEY}.ifExists=addIfDifferent`);
     trailers.unshift(`--trailer ${quote(CREDIT)}`);
@@ -320,9 +320,9 @@ if (typeof command !== "string") process.exit(0);
 let verdict;
 try {
   const credit = creditAnswer(typeof payload.cwd === "string" ? payload.cwd : process.cwd());
-  verdict = judge(command, payload.tool_name, payload.session_id, process.env[TICKET] ?? "", credit);
+  verdict = judge(command, payload.tool_name, payload.session_id, process.env[TICKET_VARIABLE] ?? "", credit);
 } catch {
-  // An unreadable command may still hold a commit, and a commit without the trailer is the miss this hook prevents.
+  // An unreadable command may still hold a commit, and a commit without its Session trailer is the miss this hook prevents.
   verdict = COMMIT_IN_TEXT.test(command) ? { deny: PLAIN } : {};
 }
 

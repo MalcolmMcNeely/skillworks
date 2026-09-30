@@ -77,7 +77,7 @@ watching and nothing says so. To see a hook fail, run `claude --debug hooks`.
 ## Which Session made a commit
 
 Every commit a Session makes names that Session. The Plugin's `PreToolUse` hook runs
-`plugins/skillworks/scripts/hooks/session-trailer.mjs`, which adds a `Skillworks-Session: <id>`
+`plugins/skillworks/scripts/hooks/commit-trailers.mjs`, which adds a `Skillworks-Session: <id>`
 trailer to each `git commit` Claude runs through the Bash or PowerShell tool, whether telemetry is on
 or off. The spec loop adds one to the commit it makes when it keeps a stopped run's work. The id is
 the Session's `session.id`. Read a commit's Sessions back with:

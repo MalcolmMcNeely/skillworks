@@ -20,7 +20,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-trailer.mjs"],
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/commit-trailers.mjs"],
             "timeout": 5
           }
         ]
