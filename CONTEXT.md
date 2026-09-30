@@ -276,10 +276,10 @@ _Avoid_: Query, search, scope
 
 **Lookup**:
 The box on the Sessions list that takes a Session's id. While the text is part of an id, it keeps
-only the rows already read whose id starts with it. A whole id that no row holds is asked of the
-stores, so a run from long ago is one paste away. The reader opens a run by picking its row, so an id
-that names no run never opens a page. It is not part of the Filter: it names one run, and a reload
-clears it.
+only the rows already read whose id starts with it. A whole id that no row holds is asked of the stores over the Lookup's **reach**, the last ninety
+days, so a run from long ago is one paste away. A run older than the reach is not found, and the
+Lookup says how far it looked. The reader opens a run by picking its row, so an id that names no run
+never opens a page. It is not part of the Filter: it names one run, and a reload clears it.
 _Avoid_: Search, find, jump
 
 **Activation eval**:
