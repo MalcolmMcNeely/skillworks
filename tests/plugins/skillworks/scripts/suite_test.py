@@ -1545,6 +1545,8 @@ DRIFT_CHECK_PAGE = "docs/usage/the-loop/drift-check.md"
 
 NAME_CHECK_PAGE = "docs/usage/the-loop/name-check.md"
 
+FULL_RUN_PAGE = "docs/usage/the-loop/full-run.md"
+
 
 def test_the_loop_docs_say_the_checks_run_together():
     for doc in (STEPS_PAGE, "docs/usage/suite.md"):
@@ -1571,7 +1573,7 @@ def test_the_loop_s_pages_are_the_overview_and_each_page_in_its_folder():
     assert {"docs/usage/the-loop.md", "docs/usage/the-loop/target-branch.md",
             "docs/usage/the-loop/tracker.md", "docs/usage/the-loop/the-grill.md",
             "docs/usage/the-loop/tickets.md", STEPS_PAGE, LANDING_PAGE, DRIFT_CHECK_PAGE,
-            NAME_CHECK_PAGE} <= set(LOOP_PAGES)
+            NAME_CHECK_PAGE, FULL_RUN_PAGE} <= set(LOOP_PAGES)
 
 
 @pytest.mark.parametrize("doc", LOOP_PAGES)

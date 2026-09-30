@@ -1724,17 +1724,24 @@ DRIFT_CHECK_PAGE = ROOT / "docs" / "usage" / "the-loop" / "drift-check.md"
 
 NAME_CHECK_PAGE = ROOT / "docs" / "usage" / "the-loop" / "name-check.md"
 
+FULL_RUN_PAGE = ROOT / "docs" / "usage" / "the-loop" / "full-run.md"
 
-def test_the_loop_page_says_the_driver_decides_a_clean_finish_after_the_full_run():
-    page = " ".join(LOOP_OVERVIEW.read_text(encoding="utf-8").split())
+
+def full_run_chart():
+    finish = FULL_RUN_PAGE.read_text(encoding="utf-8").split("\n## A clean finish\n", 1)[1]
+    return finish.split("```mermaid\n", 1)[1].split("```", 1)[0]
+
+
+def test_the_full_run_page_says_the_driver_decides_a_clean_finish_after_the_full_run():
+    page = " ".join(FULL_RUN_PAGE.read_text(encoding="utf-8").split())
 
     assert "The script decides a clean finish, and nothing else does." in page
     assert ("every Verdict Done or In step, no rename owed in [the Name "
-            "report](the-loop/name-check.md) or every rename Done in [the Name "
-            "re-check](the-loop/name-check.md#the-name-re-check), and [the full "
+            "report](name-check.md) or every rename Done in [the Name "
+            "re-check](name-check.md#the-name-re-check), and [the full "
             "run](#the-full-run) green") in page
     assert ("It runs once, at the end, after the drift check, its count and [the Name "
-            "check](the-loop/name-check.md).") in page
+            "check](name-check.md).") in page
 
 
 def test_the_drift_check_page_describes_the_gap_ticket_and_the_one_round():
@@ -1768,8 +1775,21 @@ def test_the_drift_check_page_holds_the_drift_check_its_verdicts_the_count_and_t
     assert "### The count" not in overview
 
 
-def test_a_clean_finish_stays_on_the_loop_page():
-    assert "\n### A clean finish\n" in LOOP_OVERVIEW.read_text(encoding="utf-8")
+def test_the_full_run_page_holds_the_full_run_and_a_clean_finish():
+    text = FULL_RUN_PAGE.read_text(encoding="utf-8")
+
+    assert text.startswith("# The full run\n")
+    assert "\n## A clean finish\n" in text
+    overview = LOOP_OVERVIEW.read_text(encoding="utf-8")
+    assert "## The full run" not in overview
+    assert "### A clean finish" not in overview
+
+
+def test_the_full_run_page_shows_the_end_of_a_run_in_its_chart_beside_a_clean_finish():
+    chart = full_run_chart()
+
+    for node in ['drift["Drift check', 'clean["A clean finish', 'ready["Mark the pull request']:
+        assert node in chart, node
 
 
 def test_the_name_check_page_describes_the_name_check_and_its_report():
@@ -1787,11 +1807,12 @@ def test_the_name_check_page_describes_the_name_check_and_its_report():
     assert "## The Name check" not in LOOP_OVERVIEW.read_text(encoding="utf-8")
 
 
-def test_the_loop_page_shows_the_name_check_in_its_chart_and_its_map():
-    text = LOOP_OVERVIEW.read_text(encoding="utf-8")
+def test_the_full_run_page_shows_the_name_check_in_its_chart():
+    assert 'names["Name check' in full_run_chart()
 
-    assert 'names["Name check' in text
-    assert "| The Name check |" in text
+
+def test_the_loop_page_shows_the_name_check_in_its_map():
+    assert "| The Name check |" in LOOP_OVERVIEW.read_text(encoding="utf-8")
 
 
 def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check():
@@ -1807,10 +1828,13 @@ def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check()
     assert "as [When a step fails](../the-loop.md#when-a-step-fails) shows" in page
 
 
-def test_the_loop_page_shows_the_rename_ticket_in_its_chart_its_map_its_log_and_its_stop():
+def test_the_full_run_page_shows_the_rename_ticket_in_its_chart():
+    assert 'renames["The rename ticket' in full_run_chart()
+
+
+def test_the_loop_page_shows_the_rename_ticket_in_its_map_its_log_and_its_stop():
     text = LOOP_OVERVIEW.read_text(encoding="utf-8")
 
-    assert 'renames["The rename ticket' in text
     assert "| The rename ticket |" in text
     assert "STOP  the Name re-check finds 1 rename not made on spec #200" in text
     assert "FILED #211 under spec #200 makes 2 renames" in text

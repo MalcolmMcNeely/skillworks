@@ -96,7 +96,7 @@ and names both in the ticket's Closing note. The ticket's worktree goes when it 
 **The spec gets a note of the run's Flakes.** When the loop ends, whether the spec completes or the
 run stops, the script adds one note to the spec under the heading `## Flakes`. It lists each Flake of
 the run: the check, the step it came in, such as `#202 suite` or `the full run`, and the file that
-keeps its red output. When [the full run](../the-loop.md#the-full-run) left its worktree in place, the note names
+keeps its red output. When [the full run](full-run.md) left its worktree in place, the note names
 that path too, so a crash dump is found without a search. A run with no Flake adds no note. The note
 goes the way the drift report goes. With the GitHub Tracker it is a new comment on the spec issue.
 With the files Tracker it is a section of `spec.md`, above the drift report, and a later run's note

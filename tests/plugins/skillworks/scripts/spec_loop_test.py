@@ -3418,6 +3418,8 @@ DRIFT_CHECK_PAGE = LOOP_FOLDER + "/drift-check.md"
 
 NAME_CHECK_PAGE = LOOP_FOLDER + "/name-check.md"
 
+FULL_RUN_PAGE = LOOP_FOLDER + "/full-run.md"
+
 
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
@@ -3426,7 +3428,38 @@ def loop_folder_pages():
 def test_the_loop_folder_holds_the_pages_split_from_the_loop_page():
     assert {ROOT / TARGET_BRANCH_PAGE, ROOT / TRACKER_PAGE, ROOT / GRILL_PAGE,
             ROOT / TICKETS_PAGE, ROOT / STEPS_PAGE, ROOT / LANDING_PAGE,
-            ROOT / DRIFT_CHECK_PAGE, ROOT / NAME_CHECK_PAGE} <= set(loop_folder_pages())
+            ROOT / DRIFT_CHECK_PAGE, ROOT / NAME_CHECK_PAGE,
+            ROOT / FULL_RUN_PAGE} <= set(loop_folder_pages())
+
+
+def overview_charts():
+    opening = (ROOT / LOOP_PAGE).read_text(encoding="utf-8").split("\n## ", 1)[0]
+    return re.findall(r"```mermaid\n(.*?)```", opening, re.DOTALL)
+
+
+def test_the_overview_holds_one_small_chart_of_the_loop():
+    charts = overview_charts()
+    boxes = set(re.findall(r"\b(\w+)\s*[\[{(]", charts[0])) if charts else set()
+
+    assert len(charts) == 1
+    assert 6 <= len(boxes) <= 10, boxes
+
+
+def test_the_overview_no_longer_holds_the_large_chart():
+    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+
+    for node in ['drift["Drift check', 'names["Name check', 'renames["The rename ticket',
+                 'clean["A clean finish']:
+        assert node not in text, node
+
+
+def test_the_overview_links_the_full_run_and_a_clean_finish_on_the_full_run_page():
+    text = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
+    stopping = " ".join(page_section(text, "## When a step fails").split())
+    reading = " ".join(page_section(text, "## Reading a run").split())
+
+    assert "[the full run](the-loop/full-run.md) runs next" in stopping
+    assert "`END` comes only on [a clean finish](the-loop/full-run.md#a-clean-finish)." in reading
 
 
 def test_the_overview_links_the_count_the_gap_round_and_the_name_check_from_its_stops():
@@ -3457,7 +3490,7 @@ def test_the_steps_page_holds_the_steps_an_edit_the_run_by_hand_and_the_suite():
     assert "**An Edit.**" in page
     assert "**The run by hand.**" in page
     assert "[The Suite](../suite.md) has the whole file." in page
-    assert "When [the full run](../the-loop.md#the-full-run) left its worktree in place" in page
+    assert "When [the full run](full-run.md) left its worktree in place" in page
     overview = (ROOT / LOOP_PAGE).read_text(encoding="utf-8")
     assert "### The steps of one ticket" not in overview
     assert "### The Suite" not in overview
@@ -3532,7 +3565,8 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
     assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
-                                      "the-loop/drift-check.md", "the-loop/name-check.md"]
+                                      "the-loop/drift-check.md", "the-loop/name-check.md",
+                                      "the-loop/full-run.md"]
 
 
 def test_each_page_in_the_loop_folder_opens_with_a_link_back_to_the_overview():
