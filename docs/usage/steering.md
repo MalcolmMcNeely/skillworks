@@ -154,6 +154,10 @@ Plugin, and no team edits them. There is no file for them, so do not look for on
 - The plain writing in `unslop`, and the output style the Plugin forces on every Session.
 - The trailers on every commit: the Session trailer always, the `Ticket` trailer in the loop, and the
   credit line for Claude as `co-authored-by` in `docs/agents/loop.json` says.
+- The three trailer rules the hook writes into `.git/config`:
+  `trailer.Skillworks-Session.ifExists=addIfDifferent`,
+  `trailer.Co-Authored-By.ifExists=addIfDifferent` and `trailer.Ticket.ifExists=replace`. The hook
+  writes the Plugin's value over one your team set.
 - The skills, the scripts they drive and the hooks: the steps of the loop, their order, the Nudge, the
   Keep, the Turn, and the round a red Suite goes.
 

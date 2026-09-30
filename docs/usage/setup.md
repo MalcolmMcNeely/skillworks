@@ -136,6 +136,12 @@ Review these before you commit them.
 
 Setup writes nothing under `~/.claude`, and it leaves `.claude/settings.local.json` alone.
 
+Setup does not write `.git/config`. The Plugin's hook writes three rules there on the first commit it
+rewrites in each clone: `trailer.Skillworks-Session.ifExists=addIfDifferent`,
+`trailer.Co-Authored-By.ifExists=addIfDifferent` and `trailer.Ticket.ifExists=replace`. They tell git
+to replace a `Ticket` line and not to add a line twice on an amend. The hook writes them again when
+one goes missing or holds another value.
+
 [Steering](steering.md) says what each of these files does and what your team can change in it.
 
 ## Credit for Claude

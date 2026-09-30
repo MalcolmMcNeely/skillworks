@@ -1,4 +1,4 @@
-import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE } from "./git-grammar.mjs";
+import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE, placeAfterCommit } from "./git-grammar.mjs";
 
 // Each of these runs a command it is handed as a string or as words, which the hook cannot rewrite in place.
 const RUNS_ANOTHER = new Set([
@@ -27,7 +27,7 @@ export function powerShellCommits(source) {
       if (hidesCommit(pipeline)) hidden = true;
       for (const words of pipeline) {
         if (runs(words)) runsAnother = true;
-        const at = commitWord(words);
+        const at = trailerPlace(words);
         if (at === STOPPED || (at && inScriptBlock)) hidden = true;
         else if (at) commits.push(at);
         for (const word of words) walk(word.inner, inScriptBlock || word.scriptBlock);
@@ -40,7 +40,7 @@ export function powerShellCommits(source) {
   return { commits, hidden };
 }
 
-function commitWord(words) {
+function trailerPlace(words) {
   const at = nameIndex(words);
   if (at < 0 || words[at].dynamic || baseName(words[at].value) !== "git") return undefined;
   let i = at + 1;
@@ -55,7 +55,7 @@ function commitWord(words) {
     } else if (word.value.startsWith("-")) {
       i += 1;
     } else {
-      return word.value === "commit" && !word.dynamic ? word : undefined;
+      return word.value === "commit" && !word.dynamic ? placeAfterCommit(words, i) : undefined;
     }
   }
   return undefined;

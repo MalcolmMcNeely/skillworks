@@ -1,9 +1,12 @@
 // Git places a --trailer in the message's own trailer block, even when a model left a line stranded above a blank one.
 
+import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { text } from "node:stream/consumers";
-import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE } from "./git-grammar.mjs";
+import { setTimeout as wait } from "node:timers/promises";
+import { promisify } from "node:util";
+import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE, placeAfterCommit } from "./git-grammar.mjs";
 import { powerShellCommits } from "./powershell-commits.mjs";
 
 const SESSION_KEY = "Skillworks-Session";
@@ -14,6 +17,18 @@ const CREDIT_KEY = "Co-Authored-By";
 
 // Fixed, because the hook is never told the model, and the Session trailer leads to the Session that records it.
 const CREDIT = `${CREDIT_KEY}: Claude <noreply@anthropic.com>`;
+
+// With git's default rule, a Ticket replaced on an amend moves between two Session lines and lets the second double.
+const RULES = [
+  [SESSION_KEY, "addIfDifferent"],
+  [CREDIT_KEY, "addIfDifferent"],
+  ["Ticket", "replace"],
+];
+
+// Another git process can hold the config's lock, and the hook has 5 seconds in all.
+const LOCKED_TRIES = 3;
+
+const LOCKED_PAUSE_MS = 200;
 
 // A message line can open after a quote, as in its own -m, or after a \n that Bash's $'...' turns into a newline.
 const TYPED_CREDIT = /(?:^|['"]|\\n|`n)[ \t]*co-authored-by:[^\n]*noreply@anthropic\.com/im;
@@ -62,6 +77,37 @@ function creditAnswer(cwd) {
   }
 }
 
+// The rules sit in the repo's config and not before commit, where they would stop the team's allow rules matching.
+async function writeRules(cwd) {
+  const git = (...args) => promisify(execFile)("git", ["-C", cwd, "config", "--local", ...args], { windowsHide: true });
+  let held;
+  try {
+    held = (await git("--get-regexp", "^trailer\\.")).stdout;
+  } catch (error) {
+    // git answers 1 when no key matches, and anything else means cwd is no repo git can read.
+    if (error.code !== 1) return;
+    held = "";
+  }
+  const values = new Map(
+    held.split(/\r?\n/).map((line) => [line.slice(0, line.indexOf(" ")), line.slice(line.indexOf(" ") + 1)]),
+  );
+  let tries = LOCKED_TRIES;
+  for (const [key, value] of RULES) {
+    if (values.get(`trailer.${key}.ifexists`) === value) continue;
+    for (;;) {
+      try {
+        await git("--replace-all", `trailer.${key}.ifExists`, value);
+        break;
+      } catch {
+        // The commit goes on without the rule, and finish's ticket-trailer check still catches a Ticket gone wrong.
+        if (tries === 0) return;
+        tries -= 1;
+        await wait(LOCKED_PAUSE_MS);
+      }
+    }
+  }
+}
+
 function judge(source, tool, sessionId, ticket, credit) {
   const powerShell = tool === "PowerShell";
   const { commits, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
@@ -75,22 +121,14 @@ function judge(source, tool, sessionId, ticket, credit) {
     return { deny: `The ${TICKET_VARIABLE} variable holds a value the hook cannot write, so it cannot add the Ticket trailer.` };
   }
   const quote = (value) => (powerShell ? `'${value}'` : `"${value}"`);
-  // With git's default rule, a Ticket replaced on an amend moves between two Session lines and lets the second double.
-  const rules = [`-c trailer.${SESSION_KEY}.ifExists=addIfDifferent`];
   const trailers = [`--trailer ${quote(`${SESSION_KEY}: ${sessionId}`)}`];
-  if (credit === "show") {
-    rules.push(`-c trailer.${CREDIT_KEY}.ifExists=addIfDifferent`);
-    trailers.unshift(`--trailer ${quote(CREDIT)}`);
-  }
-  if (ticket) {
-    rules.push("-c trailer.Ticket.ifExists=replace");
-    trailers.unshift(`--trailer ${quote(`Ticket: ${ticket}`)}`);
-  }
+  if (credit === "show") trailers.unshift(`--trailer ${quote(CREDIT)}`);
+  if (ticket) trailers.unshift(`--trailer ${quote(`Ticket: ${ticket}`)}`);
+  const added = trailers.join(" ");
   let rewritten = source;
-  for (const { start, end } of commits.sort((a, b) => b.start - a.start)) {
-    rewritten =
-      `${rewritten.slice(0, start)}${rules.join(" ")} ${rewritten.slice(start, end)} ` +
-      `${trailers.join(" ")}${rewritten.slice(end)}`;
+  for (const { at, beforeEndOfOptions } of commits.sort((a, b) => b.at - a.at)) {
+    const insert = beforeEndOfOptions ? `${added} ` : ` ${added}`;
+    rewritten = `${rewritten.slice(0, at)}${insert}${rewritten.slice(at)}`;
   }
   return { command: rewritten };
 }
@@ -98,7 +136,7 @@ function judge(source, tool, sessionId, ticket, credit) {
 function bashCommits(source) {
   const commits = [];
   for (const words of allCommands(new Scanner(source).list(false))) {
-    const at = commitWord(words);
+    const at = trailerPlace(words);
     if (at) commits.push(at);
     else if (hidesCommit(words)) return { commits, hidden: true };
   }
@@ -109,7 +147,7 @@ function allCommands(commands) {
   return commands.flatMap((words) => [words, ...words.flatMap((word) => allCommands(word.inner))]);
 }
 
-function commitWord(words) {
+function trailerPlace(words) {
   const at = nameIndex(words);
   if (at < 0 || !isGit(words[at])) return undefined;
   let i = at + 1;
@@ -122,7 +160,7 @@ function commitWord(words) {
     } else if (word.value.startsWith("-")) {
       i += 1;
     } else {
-      return word.value === "commit" && !word.dynamic ? word : undefined;
+      return word.value === "commit" && !word.dynamic ? placeAfterCommit(words, i) : undefined;
     }
   }
   return undefined;
@@ -317,9 +355,11 @@ const payload = JSON.parse(await text(process.stdin));
 const command = payload.tool_input?.command;
 if (typeof command !== "string") process.exit(0);
 
+const cwd = typeof payload.cwd === "string" ? payload.cwd : process.cwd();
+
 let verdict;
 try {
-  const credit = creditAnswer(typeof payload.cwd === "string" ? payload.cwd : process.cwd());
+  const credit = creditAnswer(cwd);
   verdict = judge(command, payload.tool_name, payload.session_id, process.env[TICKET_VARIABLE] ?? "", credit);
 } catch {
   // An unreadable command may still hold a commit, and a commit without its Session trailer is the miss this hook prevents.
@@ -329,6 +369,7 @@ try {
 if (verdict.deny) {
   answer({ permissionDecision: "deny", permissionDecisionReason: verdict.deny });
 } else if (verdict.command !== undefined) {
+  await writeRules(cwd);
   // No decision is given, so the rewritten command still goes through the permissions the user set.
   answer({ updatedInput: { ...payload.tool_input, command: verdict.command } });
 }
