@@ -2075,7 +2075,7 @@ a.home-panel-face:hover::before {
   color: var(--ink-faint);
 }
 
-/* The key names each part beside its colour, so no part is told by colour alone. */
+/* The key names each Share beside its colour, so no Share is told by colour alone. */
 .breakdown-fill.is-cacheRead,
 .breakdown-dot.is-cacheRead {
   background: var(--ink-faint);
@@ -2103,7 +2103,7 @@ a.home-panel-face:hover::before {
   background: var(--warned);
 }
 
-/* A Tool call's parts take the colours the Time breakdown gives hooks, waiting and tools. */
+/* A Tool call's Shares take the colours the Time breakdown gives hooks, waiting and tools. */
 .breakdown-fill.is-hooksBefore,
 .breakdown-dot.is-hooksBefore,
 .breakdown-fill.is-hooksAfter,
