@@ -66,6 +66,12 @@ inputs. Nothing changed between the two, so the red was not the code's. A Flake 
 it is always reported, with its red output kept, so a check that flakes is never silent.
 _Avoid_: Flaky test, intermittent, retry
 
+**Fresh**:
+A Session that starts with nothing in its context but what it Loads and what its prompt says. Its
+opposite is a resumed Session, which carries on with all it already read and did. A Fresh Session
+judges work it has no memory of writing, and starts in the Smart zone.
+_Avoid_: Cold, blank, new
+
 **Gap**:
 An item of a spec the finished work does not yet deliver: a story or a decision the drift check found
 Missing or Partial, or did not judge exactly once, or a Surface it found Out of step. The loop builds
