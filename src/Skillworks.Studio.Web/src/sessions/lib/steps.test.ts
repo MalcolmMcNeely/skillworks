@@ -89,7 +89,7 @@ describe('foldSessionLine', () => {
   });
 
   it('holds no details until their line arrives, so a row shows what it shows today', () => {
-    expect(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }).turns).toBeNull();
+    expect(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }).details).toBeNull();
   });
 
   it('takes the details of the turns when their line arrives', () => {
@@ -115,7 +115,9 @@ describe('foldSessionLine', () => {
       },
     };
 
-    expect(foldSessionLine(opened, { kind: 'details', turns, tools: {} }).turns).toEqual(turns);
+    expect(foldSessionLine(opened, { kind: 'details', turns, tools: {}, refusals: {}, faults: {} }).details?.turns).toEqual(
+      turns,
+    );
   });
 
   it('takes the details of the tool calls when their line arrives', () => {
@@ -141,11 +143,46 @@ describe('foldSessionLine', () => {
       },
     };
 
-    expect(foldSessionLine(opened, { kind: 'details', turns: {}, tools }).tools).toEqual(tools);
+    expect(foldSessionLine(opened, { kind: 'details', turns: {}, tools, refusals: {}, faults: {} }).details?.tools).toEqual(
+      tools,
+    );
   });
 
-  it('holds no tool details until their line arrives', () => {
-    expect(foldSessionLine(opened, { kind: 'steps', steps: [prompt] }).tools).toBeNull();
+  it('takes the details of the refused tool calls when their line arrives', () => {
+    const refusals = {
+      '9': {
+        tool: 'Bash',
+        input: null,
+        inputBytes: 40,
+        parameters: null,
+        command: null,
+        description: null,
+        refusedBy: 'user_reject',
+      },
+    };
+
+    expect(
+      foldSessionLine(opened, { kind: 'details', turns: {}, tools: {}, refusals, faults: {} }).details?.refusals,
+    ).toEqual(refusals);
+  });
+
+  it('takes the details of the faults when their line arrives', () => {
+    const faults = {
+      '10': {
+        error: 'Overloaded',
+        statusCode: 529,
+        attempt: 2,
+        model: 'claude-opus-5',
+        effort: 'high',
+        purpose: 'work' as const,
+        side: null,
+        sentAs: null,
+      },
+    };
+
+    expect(foldSessionLine(opened, { kind: 'details', turns: {}, tools: {}, refusals: {}, faults }).details?.faults).toEqual(
+      faults,
+    );
   });
 
   it('marks a run with no steps landed too, so an empty timeline is told apart from one still to come', () => {

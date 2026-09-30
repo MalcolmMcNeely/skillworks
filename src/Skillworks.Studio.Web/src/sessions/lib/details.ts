@@ -70,11 +70,40 @@ export type TokenPart = 'cacheRead' | 'cacheWrite' | 'input' | 'output';
 
 export type TimePart = 'wait' | 'writing';
 
-export interface DetailsPage {
-  kind: 'details';
+// The same fields a Tool call asks with, so a refused call reads what it wanted to do by the same rule.
+export interface RefusalDetails {
+  tool: string | null;
+  input: string | null;
+  inputBytes: number | null;
+  parameters: string | null;
+  command: string | null;
+  description: string | null;
+  refusedBy: string | null;
+}
+
+export interface FaultDetails {
+  error: string | null;
+  statusCode: number | null;
+  attempt: number | null;
+  model: string | null;
+  effort: string | null;
+  purpose: Purpose;
+  side: SideRequest | null;
+  sentAs: string | null;
+}
+
+export interface StepDetails {
   turns: Record<string, TurnDetails>;
   tools: Record<string, ToolDetails>;
+  refusals: Record<string, RefusalDetails>;
+  faults: Record<string, FaultDetails>;
 }
+
+export interface DetailsPage extends StepDetails {
+  kind: 'details';
+}
+
+export type AskedWith = Pick<ToolDetails, 'tool' | 'input' | 'inputBytes' | 'parameters' | 'command' | 'description'>;
 
 const purposeWords: Record<Exclude<Purpose, 'side'>, string> = {
   work: 'Work on the Prompt',
@@ -91,7 +120,7 @@ const sideWords: Record<Exclude<SideRequest, 'other'>, string> = {
   webSearch: 'Web search',
 };
 
-export function describePurpose(turn: TurnDetails): string {
+export function describePurpose(turn: Pick<TurnDetails, 'purpose' | 'side' | 'sentAs'>): string {
   if (turn.purpose !== 'side') {
     return purposeWords[turn.purpose];
   }
@@ -103,13 +132,14 @@ export function describePurpose(turn: TurnDetails): string {
   return sideWords[turn.side];
 }
 
-export function describeModel(turn: TurnDetails): string {
+// A Fault carries no speed, so it reads as the normal one.
+export function describeModel(turn: Pick<TurnDetails, 'model' | 'effort'> & { speed?: string | null }): string {
   if (turn.model === null) {
     return notKnown;
   }
 
   const effort = turn.effort === null ? '' : ` · ${turn.effort} effort`;
-  const speed = turn.speed === null || turn.speed === 'normal' ? '' : ` · ${turn.speed}`;
+  const speed = turn.speed === undefined || turn.speed === null || turn.speed === 'normal' ? '' : ` · ${turn.speed}`;
 
   return `${turn.model}${effort}${speed}`;
 }
@@ -129,7 +159,7 @@ export function describeStop(turn: TurnDetails): string {
   return Object.hasOwn(stopWords, turn.stopReason) ? stopWords[turn.stopReason] : turn.stopReason;
 }
 
-export function describeAttempt(turn: TurnDetails): string {
+export function describeAttempt(turn: { attempt: number | null }): string {
   return turn.attempt === null ? notKnown : `Attempt ${turn.attempt}`;
 }
 
@@ -167,6 +197,25 @@ export function describeAllowedBy(call: ToolDetails): string {
   return Object.hasOwn(allowedWords, call.allowedBy) ? allowedWords[call.allowedBy] : call.allowedBy;
 }
 
+const refusedWords: Record<string, string> = {
+  config: 'Refused by your settings',
+  hook: 'A hook refused it',
+  user_reject: 'You refused it',
+  user_abort: 'You stopped it',
+};
+
+export function describeRefusedBy(refusal: RefusalDetails): string {
+  if (refusal.refusedBy === null) {
+    return notKnown;
+  }
+
+  return Object.hasOwn(refusedWords, refusal.refusedBy) ? refusedWords[refusal.refusedBy] : refusal.refusedBy;
+}
+
+export function describeStatusCode(fault: FaultDetails): string {
+  return fault.statusCode === null ? notKnown : String(fault.statusCode);
+}
+
 export function describeOutcome(call: ToolDetails): string {
   return call.passed ? 'Passed' : 'Failed';
 }
@@ -175,7 +224,7 @@ function withheldOf(bytes: number | null): string {
   return bytes === null ? 'Withheld' : `Withheld · ${describeCount(bytes)} bytes`;
 }
 
-export function describeWithheld(call: ToolDetails): string {
+export function describeWithheld(call: Pick<AskedWith, 'inputBytes'>): string {
   return withheldOf(call.inputBytes);
 }
 
@@ -254,7 +303,7 @@ function textOf(fields: Record<string, unknown> | null, field: string): string |
   return typeof value === 'string' && value !== '' ? value : null;
 }
 
-export function fileOf(call: ToolDetails): string | null {
+export function fileOf(call: Pick<AskedWith, 'input'>): string | null {
   const input = fieldsOf(call.input);
 
   return textOf(input, 'file_path') ?? textOf(input, 'notebook_path');
@@ -262,7 +311,7 @@ export function fileOf(call: ToolDetails): string | null {
 
 const inputOpening = 80;
 
-function acted(call: ToolDetails): string | null {
+function acted(call: AskedWith): string | null {
   const input = fieldsOf(call.input);
 
   switch (call.tool) {
@@ -291,25 +340,37 @@ function acted(call: ToolDetails): string | null {
   }
 }
 
+function whatItAsked(call: AskedWith): string {
+  return acted(call) ?? (call.input === null ? describeWithheld(call) : (call.tool ?? notKnown));
+}
+
 export function whatItDid(call: ToolDetails): string {
-  const did = acted(call) ?? (call.input === null ? describeWithheld(call) : (call.tool ?? notKnown));
+  const did = whatItAsked(call);
 
   return call.passed ? did : `Failed · ${did}`;
 }
 
 // Null details are a line not yet arrived, so a row keeps the words its Step carries until then.
-export function rowLineOf(
-  step: { id: string; kind: string; words: string | null },
-  turns: Record<string, TurnDetails> | null,
-  tools: Record<string, ToolDetails> | null,
-): string | null {
-  const call = step.kind === 'tool' ? tools?.[step.id] : undefined;
+export function rowLineOf(step: { id: string; kind: string; words: string | null }, details: StepDetails | null): string | null {
+  const call = step.kind === 'tool' ? details?.tools[step.id] : undefined;
 
   if (call !== undefined) {
     return whatItDid(call);
   }
 
-  const turn = step.kind === 'turn' ? turns?.[step.id] : undefined;
+  const refusal = step.kind === 'refused' ? details?.refusals[step.id] : undefined;
+
+  if (refusal !== undefined) {
+    return whatItAsked(refusal);
+  }
+
+  const fault = step.kind === 'fault' ? details?.faults[step.id] : undefined;
+
+  if (fault !== undefined) {
+    return fault.error ?? notKnown;
+  }
+
+  const turn = step.kind === 'turn' ? details?.turns[step.id] : undefined;
 
   if (turn === undefined) {
     return step.words;

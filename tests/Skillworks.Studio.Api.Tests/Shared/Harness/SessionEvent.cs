@@ -70,6 +70,10 @@ public sealed record SessionEvent(string Session, string EventName, string At)
 
     public string? Error { get; init; }
 
+    public string? StatusCode { get; init; }
+
+    public string? Attempt { get; init; }
+
     public string? ToolUseId { get; init; }
 
     public string? RequestId { get; init; }
@@ -119,6 +123,8 @@ public sealed record SessionEvent(string Session, string EventName, string At)
         ("tool_result_size_bytes", ResultBytes),
         ("decision_source", AllowedBy),
         ("error", Error),
+        ("status_code", StatusCode),
+        ("attempt", Attempt),
         ("tool_use_id", ToolUseId),
         ("request_id", RequestId),
         ("vcs.owner.name", Owner),

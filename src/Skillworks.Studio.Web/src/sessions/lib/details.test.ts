@@ -6,6 +6,8 @@ import {
   describeOutcome,
   describeOutputNote,
   describePurpose,
+  describeRefusedBy,
+  describeStatusCode,
   describeStop,
   describeWithheld,
   fileOf,
@@ -15,7 +17,10 @@ import {
   tokenPartsOf,
   toolTimePartsOf,
   whatItDid,
+  type FaultDetails,
+  type RefusalDetails,
   type SideRequest,
+  type StepDetails,
   type ToolDetails,
   type TurnDetails,
 } from './details';
@@ -67,6 +72,37 @@ function tool(details: Partial<ToolDetails> = {}): ToolDetails {
   };
 }
 
+function refusal(details: Partial<RefusalDetails> = {}): RefusalDetails {
+  return {
+    tool: 'Bash',
+    input: null,
+    inputBytes: null,
+    parameters: null,
+    command: null,
+    description: null,
+    refusedBy: 'user_reject',
+    ...details,
+  };
+}
+
+function fault(details: Partial<FaultDetails> = {}): FaultDetails {
+  return {
+    error: 'RateLimited',
+    statusCode: null,
+    attempt: null,
+    model: 'claude-opus-5',
+    effort: null,
+    purpose: 'work',
+    side: null,
+    sentAs: null,
+    ...details,
+  };
+}
+
+function page(landed: Partial<StepDetails> = {}): StepDetails {
+  return { turns: {}, tools: {}, refusals: {}, faults: {}, ...landed };
+}
+
 function step(kind: Step['kind'], words: string | null): Step {
   return {
     id: '7',
@@ -115,27 +151,90 @@ describe('rowLineOf', () => {
   it('reads a turn as its purpose, its output tokens and its cost', () => {
     const turns = { '7': turn({ outputTokens: 1_200, cost: 0.42 }) };
 
-    expect(rowLineOf(step('turn', 'claude-opus-5'), turns, null)).toBe('Work on the Prompt · 1.2K output tokens · $0.42');
+    expect(rowLineOf(step('turn', 'claude-opus-5'), page({ turns }))).toBe(
+      'Work on the Prompt · 1.2K output tokens · $0.42',
+    );
   });
 
   it('starts a side requests row with its purpose', () => {
     const turns = { '7': turn({ purpose: 'side', side: 'awaySummary', outputTokens: 80, cost: 0.01 }) };
 
-    expect(rowLineOf(step('turn', 'claude-opus-5'), turns, null)).toMatch(/^Recap while you were away · /);
+    expect(rowLineOf(step('turn', 'claude-opus-5'), page({ turns }))).toMatch(/^Recap while you were away · /);
   });
 
   it('shows what a turn shows today until the details arrive', () => {
-    expect(rowLineOf(step('turn', 'claude-opus-5'), null, null)).toBe('claude-opus-5');
+    expect(rowLineOf(step('turn', 'claude-opus-5'), null)).toBe('claude-opus-5');
   });
 
   it('shows what a tool call shows today until the details arrive', () => {
-    expect(rowLineOf(step('tool', 'ShellError'), { '7': turn() }, null)).toBe('ShellError');
+    expect(rowLineOf(step('tool', 'ShellError'), page({ turns: { '7': turn() } }))).toBe('ShellError');
   });
 
   it('reads a tool call as what it did', () => {
     const tools = { '7': tool({ description: 'Build the solution' }) };
 
-    expect(rowLineOf(step('tool', null), null, tools)).toBe('Build the solution');
+    expect(rowLineOf(step('tool', null), page({ tools }))).toBe('Build the solution');
+  });
+
+  it('reads a refused tool call as what it wanted to do', () => {
+    const refusals = { '7': refusal({ command: 'rm -rf bin', description: 'Clear the build output' }) };
+
+    expect(rowLineOf(step('refused', 'user_reject'), page({ refusals }))).toBe('Clear the build output');
+  });
+
+  it('reads a refused call of any tool by the tool call rule', () => {
+    const refusals = { '7': refusal({ tool: 'Edit', input: '{"file_path":"src/Clock.cs"}' }) };
+
+    expect(rowLineOf(step('refused', 'config'), page({ refusals }))).toBe('src/Clock.cs');
+  });
+
+  it('reads a refused call whose input was kept back as withheld with its size', () => {
+    const refusals = { '7': refusal({ inputBytes: 64 }) };
+
+    expect(rowLineOf(step('refused', 'hook'), page({ refusals }))).toBe('Withheld · 64 bytes');
+  });
+
+  it('shows what a refused call shows today until the details arrive', () => {
+    expect(rowLineOf(step('refused', 'user_reject'), null)).toBe('user_reject');
+  });
+
+  it('reads a fault as its error', () => {
+    const faults = { '7': fault({ error: 'Overloaded: the API is busy' }) };
+
+    expect(rowLineOf(step('fault', 'RateLimited'), page({ faults }))).toBe('Overloaded: the API is busy');
+  });
+
+  it('shows what a fault shows today until the details arrive', () => {
+    expect(rowLineOf(step('fault', 'RateLimited'), null)).toBe('RateLimited');
+  });
+});
+
+describe('describeRefusedBy', () => {
+  it.each([
+    ['config', 'Refused by your settings'],
+    ['hook', 'A hook refused it'],
+    ['user_reject', 'You refused it'],
+    ['user_abort', 'You stopped it'],
+  ])('says a call refused by %s in words', (refusedBy, words) => {
+    expect(describeRefusedBy(refusal({ refusedBy }))).toBe(words);
+  });
+
+  it('gives any other value as claude code sent it', () => {
+    expect(describeRefusedBy(refusal({ refusedBy: 'mode' }))).toBe('mode');
+  });
+
+  it('says who refused a call claude code did not name is not known', () => {
+    expect(describeRefusedBy(refusal({ refusedBy: null }))).toBe('Not known');
+  });
+});
+
+describe('describeStatusCode', () => {
+  it('gives the status code claude code sent', () => {
+    expect(describeStatusCode(fault({ statusCode: 529 }))).toBe('529');
+  });
+
+  it('says a status code claude code did not send is not known', () => {
+    expect(describeStatusCode(fault({ statusCode: null }))).toBe('Not known');
   });
 });
 

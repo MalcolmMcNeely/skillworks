@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Skillworks.Core.Sessions.Agents;
 using Skillworks.Core.Sessions.Details;
 using Skillworks.Core.Sessions.Steps;
@@ -20,6 +21,8 @@ public sealed partial class StepQueries
     private const string StopReasonAttribute = "stop_reason";
 
     private const string AttemptAttribute = "attempt";
+
+    private const string StatusCodeAttribute = "status_code";
 
     // Sent only with the tool details setting on, as is the input.
     private const string ParametersAttribute = "tool_parameters";
@@ -128,7 +131,46 @@ public sealed partial class StepQueries
                 .ToDictionary(each => each.Step.Id, each => TurnDetailsOf(each.Line, answers, requests), StringComparer.Ordinal),
             opened.Drawn
                 .Where(each => each.Step.Kind == StepKind.Tool)
-                .ToDictionary(each => each.Step.Id, each => ToolDetailsOf(each.Line, uses, within, before, after), StringComparer.Ordinal));
+                .ToDictionary(each => each.Step.Id, each => ToolDetailsOf(each.Line, uses, within, before, after), StringComparer.Ordinal),
+            opened.Drawn
+                .Where(each => each.Step.Kind == StepKind.Refused)
+                .ToDictionary(each => each.Step.Id, each => RefusalDetailsOf(each.Line), StringComparer.Ordinal),
+            opened.Drawn
+                .Where(each => each.Step.Kind == StepKind.Fault)
+                .ToDictionary(each => each.Step.Id, each => FaultDetailsOf(each.Line), StringComparer.Ordinal));
+    }
+
+    private static FaultDetails FaultDetailsOf(EventLine line)
+    {
+        var sentAs = line.Attribute(EventAttributes.QuerySource);
+        var purpose = PurposeOf(sentAs);
+
+        return new FaultDetails(
+            ErrorOf(line),
+            Whole(line.Attribute(StatusCodeAttribute)),
+            Whole(line.Attribute(AttemptAttribute)),
+            line.Attribute(ModelAttribute),
+            line.Attribute(EffortAttribute),
+            purpose,
+            SideOf(purpose, sentAs),
+            sentAs);
+    }
+
+    private static RefusalDetails RefusalDetailsOf(EventLine line)
+    {
+        var input = Recorded(line, EventAttributes.ToolInput);
+        var parameters = Recorded(line, ParametersAttribute);
+        var asked = ToolInput.Fields(input);
+        var named = ToolInput.Fields(parameters);
+
+        return new RefusalDetails(
+            line.Attribute(ToolAttribute),
+            input,
+            Bytes(line, InputBytesAttribute),
+            parameters,
+            CommandOf(named, asked),
+            DescriptionOf(named, asked),
+            line.Attribute(SourceAttribute));
     }
 
     private static ToolDetails ToolDetailsOf(
@@ -151,12 +193,12 @@ public sealed partial class StepQueries
         return new ToolDetails(
             line.Attribute(ToolAttribute),
             !Failed(line),
-            Failed(line) ? line.Attribute(ErrorTextAttribute) ?? line.Attribute(ErrorAttribute) : null,
+            Failed(line) ? ErrorOf(line) : null,
             input,
             Bytes(line, InputBytesAttribute),
             parameters,
-            ToolInput.Text(named, FullCommandField) ?? ToolInput.Text(asked, CommandField),
-            ToolInput.Text(named, DescriptionField) ?? ToolInput.Text(asked, DescriptionField),
+            CommandOf(named, asked),
+            DescriptionOf(named, asked),
             Bytes(line, ResultBytesAttribute),
             line.Attribute(AllowedByAttribute),
             span is not null,
@@ -228,7 +270,7 @@ public sealed partial class StepQueries
 
         return new TurnDetails(
             purpose,
-            purpose == Purpose.Side ? SideRequests.GetValueOrDefault(sentAs!, SideRequest.Other) : null,
+            SideOf(purpose, sentAs),
             sentAs,
             line.Attribute(ModelAttribute),
             line.Attribute(EffortAttribute),
@@ -245,10 +287,23 @@ public sealed partial class StepQueries
             answer is null ? null : Recorded(answer, EventAttributes.Response),
             answer is null ? null : Length(answer, EventAttributes.ResponseLength, EventAttributes.Response),
             asked?.Attributes.GetValueOrDefault(StopReasonAttribute) is { Length: > 0 } stopped ? stopped : null,
-            int.TryParse(asked?.Attributes.GetValueOrDefault(AttemptAttribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out var attempt)
-                ? attempt
-                : null);
+            Whole(asked?.Attributes.GetValueOrDefault(AttemptAttribute)));
     }
+
+    private static SideRequest? SideOf(Purpose purpose, string? sentAs) =>
+        purpose == Purpose.Side ? SideRequests.GetValueOrDefault(sentAs!, SideRequest.Other) : null;
+
+    private static string? ErrorOf(EventLine line) =>
+        line.Attribute(ErrorTextAttribute) ?? line.Attribute(ErrorAttribute);
+
+    private static string? CommandOf(JsonElement? named, JsonElement? asked) =>
+        ToolInput.Text(named, FullCommandField) ?? ToolInput.Text(asked, CommandField);
+
+    private static string? DescriptionOf(JsonElement? named, JsonElement? asked) =>
+        ToolInput.Text(named, DescriptionField) ?? ToolInput.Text(asked, DescriptionField);
+
+    private static int? Whole(string? said) =>
+        int.TryParse(said, NumberStyles.Integer, CultureInfo.InvariantCulture, out var whole) ? whole : null;
 
     // The Time breakdown sets Side requests apart by this too, so the two never disagree.
     private static Purpose PurposeOf(string? sentAs) => sentAs switch

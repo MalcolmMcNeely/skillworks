@@ -247,8 +247,7 @@ export function Session() {
               subagents={landed.subagents}
               traced={landed.traced}
               agents={landed.agents}
-              turns={landed.turns}
-              tools={landed.tools}
+              details={landed.details}
               onExchange={onExchange}
               onStep={open}
               onOpen={onOpenPrompts}

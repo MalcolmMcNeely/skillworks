@@ -13,6 +13,8 @@ import {
   describeOutcome,
   describeOutputNote,
   describePurpose,
+  describeRefusedBy,
+  describeStatusCode,
   describeStop,
   describeWithheld,
   fileOf,
@@ -21,6 +23,10 @@ import {
   timePartsOf,
   tokenPartsOf,
   toolTimePartsOf,
+  type AskedWith,
+  type FaultDetails,
+  type RefusalDetails,
+  type StepDetails,
   type ToolDetails,
   type TurnDetails,
 } from '../../lib/details';
@@ -149,11 +155,11 @@ function OpenedTurn({ turn }: { turn: TurnDetails }) {
   );
 }
 
-function Withheld({ call }: { call: ToolDetails }) {
+function Withheld({ call }: { call: AskedWith }) {
   return <p className="prompts-unsaid">{describeWithheld(call)}</p>;
 }
 
-function Asked({ call }: { call: ToolDetails }) {
+function Asked({ call }: { call: AskedWith }) {
   if (call.tool === 'Bash') {
     return (
       <>
@@ -184,7 +190,7 @@ function Asked({ call }: { call: ToolDetails }) {
 
 const changingTools = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit']);
 
-function changes(call: ToolDetails): boolean {
+function changes(call: AskedWith): boolean {
   return call.tool !== null && changingTools.has(call.tool);
 }
 
@@ -275,31 +281,78 @@ function OpenedTool({ call }: { call: ToolDetails }) {
   );
 }
 
+function OpenedRefusal({ refusal }: { refusal: RefusalDetails }) {
+  return (
+    <dl className="prompts-turn">
+      <dt className="micro">What it wanted to do</dt>
+      <dd>
+        <Asked call={refusal} />
+      </dd>
+      <dt className="micro">Who refused it</dt>
+      <dd>{describeRefusedBy(refusal)}</dd>
+    </dl>
+  );
+}
+
+function OpenedFault({ fault }: { fault: FaultDetails }) {
+  return (
+    <dl className="prompts-turn">
+      <dt className="micro">Error</dt>
+      <dd>{fault.error === null ? notKnown : <pre className="prompts-code">{fault.error}</pre>}</dd>
+      <dt className="micro">Status code</dt>
+      <dd>{describeStatusCode(fault)}</dd>
+      <dt className="micro">Attempt</dt>
+      <dd>{describeAttempt(fault)}</dd>
+      <dt className="micro">Model</dt>
+      <dd>{describeModel(fault)}</dd>
+      <dt className="micro">Why it ran</dt>
+      <dd>
+        {describePurpose(fault)}
+        {fault.sentAs === null ? null : <code className="prompts-turn-raw">{fault.sentAs}</code>}
+      </dd>
+    </dl>
+  );
+}
+
+function openedOf(step: Mark['step'], details: StepDetails | null) {
+  const turn = step.kind === 'turn' ? details?.turns[step.id] : undefined;
+  const call = step.kind === 'tool' ? details?.tools[step.id] : undefined;
+  const refusal = step.kind === 'refused' ? details?.refusals[step.id] : undefined;
+  const fault = step.kind === 'fault' ? details?.faults[step.id] : undefined;
+
+  if (turn !== undefined) {
+    return <OpenedTurn turn={turn} />;
+  }
+
+  if (call !== undefined) {
+    return <OpenedTool call={call} />;
+  }
+
+  if (refusal !== undefined) {
+    return <OpenedRefusal refusal={refusal} />;
+  }
+
+  if (fault !== undefined) {
+    return <OpenedFault fault={fault} />;
+  }
+
+  return step.words === null ? null : <p className="step-words">{step.words}</p>;
+}
+
 function OpenedStep({
   mark,
   traced,
   agents,
-  turns,
-  tools,
+  details,
 }: {
   mark: Mark;
   traced: boolean;
   agents: Record<string, string>;
-  turns: Record<string, TurnDetails> | null;
-  tools: Record<string, ToolDetails> | null;
+  details: StepDetails | null;
 }) {
   const { step } = mark;
   const note = noteOf(step);
-  const turn = step.kind === 'turn' ? turns?.[step.id] : undefined;
-  const call = step.kind === 'tool' ? tools?.[step.id] : undefined;
-  const opened =
-    turn !== undefined ? (
-      <OpenedTurn turn={turn} />
-    ) : call !== undefined ? (
-      <OpenedTool call={call} />
-    ) : step.words === null ? null : (
-      <p className="step-words">{step.words}</p>
-    );
+  const opened = openedOf(step, details);
 
   return (
     <div className="prompts-step">
@@ -319,26 +372,24 @@ function StepLine({
   row,
   traced,
   agents,
-  turns,
-  tools,
+  details,
   onStep,
 }: {
   row: StepRow;
   traced: boolean;
   agents: Record<string, string>;
-  turns: Record<string, TurnDetails> | null;
-  tools: Record<string, ToolDetails> | null;
+  details: StepDetails | null;
   onStep: (step: string) => void;
 }) {
   const { mark } = row;
   const { step } = mark;
   const note = noteOf(step);
-  const line = rowLineOf(step, turns, tools);
+  const line = rowLineOf(step, details);
 
   return (
     <li data-step={step.id} className={classOf(row)}>
       {row.open ? (
-        <OpenedStep mark={mark} traced={traced} agents={agents} turns={turns} tools={tools} />
+        <OpenedStep mark={mark} traced={traced} agents={agents} details={details} />
       ) : (
         <button type="button" className="prompts-step-pick" onClick={() => onStep(step.id)}>
           <span className="micro">{describeClock(mark.startMs, true)}</span>
@@ -377,8 +428,7 @@ function Row({
   opened,
   traced,
   agents,
-  turns,
-  tools,
+  details,
   onExchange,
   onStep,
 }: {
@@ -387,14 +437,13 @@ function Row({
   opened: Mark | null;
   traced: boolean;
   agents: Record<string, string>;
-  turns: Record<string, TurnDetails> | null;
-  tools: Record<string, ToolDetails> | null;
+  details: StepDetails | null;
   onExchange: (band: Band) => void;
   onStep: (step: string) => void;
 }) {
   // An Answer, or a Step the lanes have left out, has no row to open in, so it keeps a card of its own.
   const alone = row.open && opened !== null && !steps.some((each) => each.open);
-  const step = alone ? <OpenedStep mark={opened} traced={traced} agents={agents} turns={turns} tools={tools} /> : null;
+  const step = alone ? <OpenedStep mark={opened} traced={traced} agents={agents} details={details} /> : null;
   const list =
     steps.length === 0 ? null : (
       <ol className="prompts-steps">
@@ -404,8 +453,7 @@ function Row({
             row={each}
             traced={traced}
             agents={agents}
-            turns={turns}
-            tools={tools}
+            details={details}
             onStep={onStep}
           />
         ))}
@@ -465,8 +513,7 @@ export function Prompts({
   subagents,
   traced,
   agents,
-  turns,
-  tools,
+  details,
   onExchange,
   onStep,
   onOpen,
@@ -483,8 +530,7 @@ export function Prompts({
   subagents: readonly Subagent[];
   traced: boolean;
   agents: Record<string, string>;
-  turns: Record<string, TurnDetails> | null;
-  tools: Record<string, ToolDetails> | null;
+  details: StepDetails | null;
   onExchange: (band: Band) => void;
   onStep: (step: string) => void;
   onOpen: () => void;
@@ -569,8 +615,7 @@ export function Prompts({
                 opened={opened}
                 traced={traced}
                 agents={agents}
-                turns={turns}
-                tools={tools}
+                details={details}
                 onExchange={onExchange}
                 onStep={onStep}
               />
