@@ -1508,6 +1508,45 @@ a.home-panel-face:hover::before {
   gap: 0.35rem 0.75rem;
 }
 
+/* Opposite the Repository picker, so the two ways of choosing what the list shows sit at either end. */
+.lookup {
+  align-items: center;
+  border: 1px solid var(--line);
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+  padding-left: 0.45rem;
+}
+
+.lookup:hover {
+  background: var(--pressed);
+}
+
+.lookup:has(input:focus-visible) {
+  outline: 2px solid var(--hud);
+  outline-offset: 2px;
+}
+
+.lookup input {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  min-width: 0;
+  padding: clamp(0.22rem, 0.8vh, 0.36rem) 0.45rem clamp(0.22rem, 0.8vh, 0.36rem) 0;
+  /* A whole Session id is 36 marks, so a pasted one shows in full. */
+  width: 38ch;
+}
+
+.lookup input:focus-visible {
+  outline: none;
+}
+
+.lookup input::placeholder {
+  color: var(--ink-faint);
+}
+
 .chosen-skill {
   align-items: baseline;
   display: flex;

@@ -9,6 +9,7 @@ import { UpButton } from '../../shared/pages/components/UpButton';
 import { useTabTitle } from '../../shared/pages/components/useTabTitle';
 import { sessions as page } from '../../shared/pages/lib/pages';
 import { fetchSessions } from '../api/sessions';
+import { Lookup } from '../components/Lookup';
 import { SessionTable } from '../components/SessionTable';
 import { failSessionsRead, foldSessionsLine, listFilter, nextRead, readOn, type SessionsAnswer } from '../lib/sessions';
 
@@ -22,6 +23,9 @@ interface Reading {
 // The newest work first, with nothing asked for, so a reader sees what is happening now the moment the page opens.
 export function Sessions() {
   const [reading, setReading] = useState<Reading | null>(null);
+
+  // Page state and not the address bar, so a link to the list stays a link to the list and a reload clears it.
+  const [lookup, setLookup] = useState('');
 
   // One read at a time, so a changed filter stops a Load more still in flight.
   const inFlight = useRef<AbortController | null>(null);
@@ -100,6 +104,7 @@ export function Sessions() {
           repository={filter.repository}
           onChange={(repository) => show({ ...filter, repository })}
         />
+        <Lookup text={lookup} onChange={setLookup} />
       </section>
 
       <ChosenSkill skill={filter.skill} onClear={() => show({ ...filter, skill: '' })} />
@@ -108,6 +113,7 @@ export function Sessions() {
         answer={answer}
         failure={failure}
         filter={filter}
+        lookup={lookup}
         onReadOn={() => {
           if (answer !== null && readOn(answer) === 'ready') {
             read(asked, answer);

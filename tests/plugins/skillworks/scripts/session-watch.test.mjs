@@ -68,7 +68,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(temp, { recursive: true, force: true });
+  // A git the hook's limit cut off can sit in the folder a moment longer, and Windows will not remove a folder a process sits in.
+  await rm(temp, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 async function collector() {

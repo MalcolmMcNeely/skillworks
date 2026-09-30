@@ -3,6 +3,7 @@ import { describeCount, describeMoney } from '../../shared/figures/lib/figures';
 import type { Filter } from '../../shared/filters/lib/filters';
 import { SignalWord } from '../../shared/gaps/components/SignalWord';
 import { nowhere, sessionAddress } from '../../shared/session/lib/where';
+import { describeNoMatch, narrowByLookup } from '../lib/lookup';
 import {
   describeNoSessions,
   describeQuiet,
@@ -94,11 +95,13 @@ export function SessionTable({
   answer,
   failure,
   filter,
+  lookup,
   onReadOn,
 }: {
   answer: SessionsAnswer | null;
   failure: string | null;
   filter: Filter;
+  lookup: string;
   onReadOn: () => void;
 }) {
   if (failure !== null) {
@@ -109,11 +112,14 @@ export function SessionTable({
     return <p className="session-word">Reading the runs…</p>;
   }
 
+  // More reads on from the whole answer and not this one, so the rows a further read adds are narrowed as they land.
+  const shown = narrowByLookup(answer, lookup);
+
   // A quiet month is not the start of the store, so an empty list still offers to look further back.
-  if (answer.rows.length === 0) {
+  if (shown.rows.length === 0) {
     return (
       <>
-        <p className="session-word">{describeNoSessions(filter, answer)}</p>
+        <p className="session-word">{describeNoMatch(answer, lookup) ?? describeNoSessions(filter, answer)}</p>
         <More answer={answer} onReadOn={onReadOn} />
       </>
     );
@@ -133,7 +139,7 @@ export function SessionTable({
           </tr>
         </thead>
         <tbody>
-          {answer.rows.map((row) => (
+          {shown.rows.map((row) => (
             <Row key={row.session.id} row={row} filter={filter} />
           ))}
         </tbody>
