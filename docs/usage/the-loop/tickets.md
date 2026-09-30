@@ -13,7 +13,7 @@ terminal to answer them. The slices it shows are written to the loop log, so you
 the work runs. A spec that still has no tickets after the Cut stops the loop with a `STOP` line. A
 spec that already has tickets, such as one a restarted run meets, skips the Cut.
 
-Each ticket is a thin slice through every layer, small enough for one fresh Session, and it names the
+Each ticket is a thin slice through every layer, small enough for one Fresh Session, and it names the
 tickets that must land before it. With `github`, each one is published as a **sub-issue of the
 spec**. With `files`, each one is a file in the spec's `tickets/` folder.
 Either way, a ticket belongs to one spec, and that is what stops two people's loops from taking each

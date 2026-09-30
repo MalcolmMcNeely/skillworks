@@ -3608,6 +3608,13 @@ def test_no_page_of_the_loop_says_cold_of_a_session():
     assert saying == []
 
 
+def test_no_page_of_the_loop_says_fresh_in_lower_case():
+    saying = [page.name for page in loop_pages()
+              if re.search(r"\bfresh\b", page.read_text(encoding="utf-8"))]
+
+    assert saying == []
+
+
 def test_the_grill_page_holds_stage_one_the_grill_the_gate_and_the_spec():
     text = (ROOT / GRILL_PAGE).read_text(encoding="utf-8")
 

@@ -8,7 +8,7 @@ the names still say what the code means. A small question in a small context mis
 It runs once, after the drift check and its count, or after [the Gap
 round](drift-check.md#the-gap-round) when the count found a Gap, so it sees every name the spec
 brought in, the Gap ticket's too. The script opens one more worktree and runs
-`/skillworks:spec-names <spec> <base>` in a fresh Session. It reads two things, and nothing else:
+`/skillworks:spec-names <spec> <base>` in a Fresh Session. It reads two things, and nothing else:
 
 - the commits the spec's tickets Landed after the base commit, through `spec-commits`, in place of
   the spec's whole diff. A commit with no `Ticket:` trailer is not read, and neither is another

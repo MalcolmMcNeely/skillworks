@@ -6,7 +6,7 @@ Every ticket passed its own acceptance criteria. Nothing so far has asked whethe
 are what the spec wanted.
 
 So when no open ticket is left, the script opens one more worktree and runs
-`/skillworks:spec-drift <spec> <base>` in a fresh Session. It judges the work against the spec, not the
+`/skillworks:spec-drift <spec> <base>` in a Fresh Session. It judges the work against the spec, not the
 tickets, because a ticket that drifted still passed its own criteria. It records one report with the
 spec, under the heading `## Drift report`, through `tracker-publish drift` with either Tracker. With
 the GitHub Tracker the report is a new comment on the spec issue, and a rerun adds another comment

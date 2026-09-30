@@ -127,7 +127,7 @@ KEPT  ticket-203 held uncommitted work. The whole attempt is on branch spec-loop
 **Held** means the worktree had uncommitted work, and the Keep committed it. **Clean** means it had
 none. Either way, the attempt is on that branch if you want to read it.
 
-Then the run starts the first open ticket again from the Target branch, with a fresh build.
+Then the run starts the first open ticket again from the Target branch, with a Fresh build Session.
 
 ## A Denial, and `--bypass`
 
