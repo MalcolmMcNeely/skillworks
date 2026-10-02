@@ -1,4 +1,7 @@
 {
   "name": "skillworks",
-  "description": "The Skillworks loop: the skills that grill an idea into a spec, cut it into tickets, and build, review and land each one."
+  "description": "The Skillworks loop: the skills that grill an idea into a spec, cut it into tickets, and build, review and land each one.",
+  "author": {
+    "name": "Malcolm McNeely"
+  }
 }

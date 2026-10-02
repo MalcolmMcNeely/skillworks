@@ -1,5 +1,6 @@
 ---
 name: what-next
+argument-hint: "[where you are, or what you want to do]"
 description: Ask which skill fits your situation. A router over the skills in the Plugin.
 disable-model-invocation: true
 ---

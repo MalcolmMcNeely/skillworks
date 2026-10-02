@@ -1,5 +1,6 @@
 ---
 name: review-standards
+argument-hint: "<ticket>"
 description: Review a ticket's change against this repo's documented coding standards and its review file, and report under a Standards heading.
 disable-model-invocation: true
 ---
@@ -11,4 +12,4 @@ The argument is the ticket, named as its Tracker names it: `docs/agents/issue-tr
 `/skillworks:review-standards 168`
 `/skillworks:review-standards 7/2`
 
-Read the axis file `../review-changes/standards.md`, from this skill's base directory, and follow it in loop mode. In loop mode the axis edits what it finds. `/skillworks:review-changes` follows the same file in report-only mode, so a review by hand checks what the loop checks.
+Read the axis file `${CLAUDE_PLUGIN_ROOT}/skills/review-changes/standards.md` and follow it in loop mode. From this skill's folder that file is `../review-changes/standards.md`. In loop mode the axis edits what it finds. `/skillworks:review-changes` follows the same file in report-only mode, so a review by hand checks what the loop checks.

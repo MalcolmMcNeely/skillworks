@@ -1,5 +1,6 @@
 ---
 name: spec-drift
+argument-hint: "<spec> <base> [items, separated by commas]"
 description: Compare the work a spec loop produced against what the spec asked for, and record the gaps with the spec.
 disable-model-invocation: true
 ---

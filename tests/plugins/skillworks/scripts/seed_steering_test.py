@@ -1045,6 +1045,20 @@ def test_to_spec_can_be_invoked_by_claude():
     assert not hidden("to-spec")
 
 
+FRONT_MATTER_KEYS = {"name", "description", "argument-hint", "disable-model-invocation"}
+
+
+# Claude Code ignores a key it does not know and says nothing, so a misspelt flag would show a hidden skill to Claude.
+def test_every_skill_keeps_to_the_front_matter_keys_the_plugin_uses():
+    strays = {}
+    for skill in sorted(folder.name for folder in SKILLS.iterdir() if (folder / "SKILL.md").exists()):
+        keys = set(re.findall(r"^([A-Za-z_-]+):", front_matter(skill), re.MULTILINE))
+        if keys - FRONT_MATTER_KEYS or not {"name", "description"} <= keys:
+            strays[skill] = sorted(keys)
+
+    assert strays == {}
+
+
 def test_to_spec_points_a_plain_talk_at_the_grill():
     assert description("to-spec").endswith(
         "Not for turning a plain talk into a spec: the developer starts the Dev loop with "

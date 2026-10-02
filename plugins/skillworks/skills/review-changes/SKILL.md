@@ -1,5 +1,6 @@
 ---
 name: review-changes
+argument-hint: "[fixed point] [ticket]"
 description: >
   Review the changes since a fixed point (commit, branch, tag, or merge-base), or an uncommitted
   change, along three axes — Standards (does the code follow this repo's documented coding
@@ -19,9 +20,9 @@ Three-axis review of a change:
 
 Each axis runs as a **parallel sub-agent** so they don't pollute each other's context, then this skill sets their reports side by side.
 
-Each axis keeps its steps in an axis file in this skill's folder. The spec loop's review step follows the same files, so a review by hand checks what the loop checks:
+Each axis keeps its steps in an axis file in this skill's folder, `${CLAUDE_SKILL_DIR}`. The spec loop's review step follows the same files, so a review by hand checks what the loop checks:
 
-| Axis | Axis file, from this skill's base directory |
+| Axis | Axis file, in `${CLAUDE_SKILL_DIR}` |
 |---|---|
 | Standards | `standards.md` |
 | Spec | `spec.md` |
@@ -51,7 +52,7 @@ Look for the ticket or spec the change was built for, in this order:
 
 Give each sub-agent the same four things, and let it read the rest itself:
 
-- The path to its axis file, from the table above, resolved against this skill's base directory. Tell it to read that file and follow it in report-only mode.
+- The full path to its axis file: `${CLAUDE_SKILL_DIR}/` and the file name from the table above. Tell it to read that file and follow it in report-only mode.
 - The diff command and the `--stat -M` command.
 - The commit list, or a line saying the change is uncommitted.
 - The ticket or spec: its number and Tracker, or the fetched contents.

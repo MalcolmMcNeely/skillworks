@@ -1,5 +1,6 @@
 ---
 name: grill
+argument-hint: "[the idea or plan]"
 description: A relentless interview to sharpen a plan or design, writing the glossary and ADRs as it goes and publishing the spec at the end.
 disable-model-invocation: true
 ---

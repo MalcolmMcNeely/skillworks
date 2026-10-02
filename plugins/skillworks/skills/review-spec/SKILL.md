@@ -1,5 +1,6 @@
 ---
 name: review-spec
+argument-hint: "<ticket>"
 description: Review a ticket's change against what the ticket asked for, and report the gaps under a Spec heading.
 disable-model-invocation: true
 ---
@@ -11,4 +12,4 @@ The argument is the ticket: its issue number with the GitHub Tracker, or `<spec>
 `/skillworks:review-spec 168`
 `/skillworks:review-spec 7/2`
 
-Read the axis file `../review-changes/spec.md`, from this skill's base directory, and follow it in loop mode. In loop mode the axis edits what it finds. `/skillworks:review-changes` follows the same file in report-only mode, so a review by hand checks what the loop checks.
+Read the axis file `${CLAUDE_PLUGIN_ROOT}/skills/review-changes/spec.md` and follow it in loop mode. From this skill's folder that file is `../review-changes/spec.md`. In loop mode the axis edits what it finds. `/skillworks:review-changes` follows the same file in report-only mode, so a review by hand checks what the loop checks.

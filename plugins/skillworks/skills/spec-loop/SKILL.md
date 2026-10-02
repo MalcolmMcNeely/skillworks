@@ -1,5 +1,6 @@
 ---
 name: spec-loop
+argument-hint: "<spec-number> [--dry-run | --bypass]"
 description: Drive a published spec to done, one ticket at a time, each in its own fresh session.
 disable-model-invocation: true
 ---

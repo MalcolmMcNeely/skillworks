@@ -1,5 +1,6 @@
 ---
 name: comment-sweep
+argument-hint: "[paths or a commit range]"
 description: Sweep comments back to what this repo's comments rules keep, cutting first and then compressing each survivor to one line. Use when the user asks to sweep, cut, tidy or trim the comments on a diff, a commit range or a set of files.
 ---
 

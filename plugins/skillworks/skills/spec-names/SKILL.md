@@ -1,5 +1,6 @@
 ---
 name: spec-names
+argument-hint: "<spec> <base> [<rename ticket>]"
 description: Read a spec's own commits against the glossary, list every name whose meaning moved and every concept two tickets named two ways, and record the Name report with the spec.
 disable-model-invocation: true
 ---

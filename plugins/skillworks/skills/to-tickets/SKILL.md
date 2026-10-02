@@ -1,5 +1,6 @@
 ---
 name: to-tickets
+argument-hint: "<spec number, issue URL or spec path>"
 description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker with one tracker-publish command — edges in each ticket file's frontmatter, which become native blocking links on GitHub.
 disable-model-invocation: true
 ---
@@ -30,7 +31,7 @@ Break the work into **tracer bullet** tickets.
 
 <vertical-slice-rules>
 
-- Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests) — vertical, NOT a horizontal slice of one layer
+- Each slice cuts a narrow but complete path through every layer (schema, API, UI, tests) — vertical, not a horizontal slice of one layer
 - A completed slice is demoable or verifiable on its own
 - Each slice is sized as the ticket shape says
 - Any prefactoring should be done first

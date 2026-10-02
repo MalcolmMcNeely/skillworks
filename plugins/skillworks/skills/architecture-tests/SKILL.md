@@ -44,7 +44,7 @@ Say which one you chose for each rule, and why, before you write it.
 
 ## 4. Write each test red first, then prove it green
 
-Follow `/skillworks:tdd`, one rule at a time.
+Call the Skill tool with "skillworks:tdd", the skill a person types as `/skillworks:tdd`, and write each test by it, one rule at a time.
 
 1. **Red.** Make the test fail on a breach you build for it: a fixture folder, a file the test writes and then removes, or a setting the test is handed. A test you never saw fail may test nothing.
 2. **Green.** Run it on the team's code, and read the result.
