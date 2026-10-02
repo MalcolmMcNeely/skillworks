@@ -7,8 +7,8 @@ under, and the scripts that drive it.
 ## Language
 
 **Blocked**:
-A step whose Session says, in the first line of its report, that the step owes work only a person
-can clear. A Denial can be the cause, and so can a choice or a check that is a person's to make. It
+A step or a check whose Session says, in the first line of its report, that it owes work only a
+person can clear. A Denial can be the cause, and so can a choice or a check that is a person's to make. It
 is the Session's own word, so the driver reads it and does not judge it. A ticket that waits on
 another ticket is not Blocked: it has an open blocker.
 _Avoid_: Stuck, walled, refused
@@ -141,10 +141,11 @@ lists, in a ticket of its own, and never asks whether to.
 _Avoid_: Rename check, naming review, lint
 
 **Nudge**:
-What the driver sends to resume a Session whose step ended with work still owed. It names what is
-owed, so the Session carries on with its context rather than starting again. A Nudge answers a
-Session that stopped short, never one that could not run, and a step that still owes work after two
-of them stops the loop.
+What the driver sends to resume a Session that ended with work still owed: a ticket step, the Cut
+or a check. It names what is owed, so the Session carries on with its context rather than starting
+again. A Nudge answers a Session that stopped short, never one that could not run. It never settles
+a choice the Session put to a person: it names Blocked as the answer for that. A Session that still
+owes work after two of them stops the loop.
 _Avoid_: Continuation, retry, prod
 
 **Order of events**:
