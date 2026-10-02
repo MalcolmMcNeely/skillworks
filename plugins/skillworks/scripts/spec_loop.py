@@ -135,7 +135,7 @@ UNATTENDED = (
     "call was denied and no allowed way exists, or the ticket has nothing left to build.")
 
 # Read only at the start of a line, so a Session that mentions one in passing names none.
-CHOICE_AND_CHECK_OPENINGS = (("CHOSE", "CHOSE"), ("HAND CHECK", "HAND "))
+CHOICE_AND_HAND_CHECK_OPENINGS = (("CHOSE", "CHOSE"), ("HAND CHECK", "HAND "))
 
 # Nobody is at a terminal to approve the slices, and the log holds only the Session's last message.
 CUT_UNATTENDED = (
@@ -425,7 +425,7 @@ class Loop:
         self.run_flakes = []
         self.left_full_run_tree = ""
 
-        self.choices_and_checks = []
+        self.choices_and_hand_checks = []
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -666,14 +666,14 @@ class Loop:
     def say_result(self, who, result):
         self.say_denials(who, result)
         for line in str(field(result, "result")).split("\n"):
-            for opening, tag in CHOICE_AND_CHECK_OPENINGS:
+            for opening, tag in CHOICE_AND_HAND_CHECK_OPENINGS:
                 if line.startswith(opening):
                     self.say("{} {}{}".format(tag, who, line))
-                    self.choices_and_checks.append((opening, who + line))
+                    self.choices_and_hand_checks.append((opening, who + line))
 
     # Only ever added to, so an attempt a Nudge, a second fix or a rerun came after is still read.
-    def add_to_journal(self, ran, held, step, attempt, failed, ticket=None, check=None):
-        entry = {"at": stamp(), "ticket": ticket, "check": check, "step": step,
+    def add_to_journal(self, ran, held, step, attempt, failed, ticket=None, spec_step=None):
+        entry = {"at": stamp(), "ticket": ticket, "spec_step": spec_step, "step": step,
                  "attempt": attempt, "status": ran.status, "failed": failed,
                  "denials": len(denials(held)), "blocked": blocked_line(held) or None,
                  "choices": lines_opening(held, "CHOSE"),
@@ -681,14 +681,14 @@ class Loop:
         appended(self.journal, json.dumps(entry) + "\n")
 
     # Said at a stop as well as at a clean finish, so a Hand check is never lost mid-log.
-    def list_choices_and_checks(self):
-        if not self.choices_and_checks:
+    def list_choices_and_hand_checks(self):
+        if not self.choices_and_hand_checks:
             return
-        chosen = sum(1 for opening, _ in self.choices_and_checks if opening == "CHOSE")
+        chosen = sum(1 for opening, _ in self.choices_and_hand_checks if opening == "CHOSE")
         self.say("LIST  this run made {} and named {}{}".format(
             how_many(chosen, "Choice", "Choices"),
-            how_many(len(self.choices_and_checks) - chosen, "Hand check", "Hand checks"),
-            "".join("\n      " + said for _, said in self.choices_and_checks)))
+            how_many(len(self.choices_and_hand_checks) - chosen, "Hand check", "Hand checks"),
+            "".join("\n      " + said for _, said in self.choices_and_hand_checks)))
 
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
@@ -1247,7 +1247,7 @@ class Loop:
                 failed = ([] if blocked or recorded is None or recorded.holds()
                           else [recorded.check])
             finally:
-                self.add_to_journal(ran, result, named, nudge, failed, check=what)
+                self.add_to_journal(ran, result, named, nudge, failed, spec_step=what)
             if blocked:
                 raise self.stop_naming_denials("STOP  spec {} {} is Blocked: {}\n      See {}".format(
                     self.spec_named(), named, blocked, result), result)
@@ -1619,7 +1619,7 @@ def main(argv, runner, out, err, wait):
         spec, dry, mode = arguments(argv)
         loop = Loop(runner, spec, out, err, wait, mode)
         loop.run(dry)
-        loop.list_choices_and_checks()
+        loop.list_choices_and_hand_checks()
         return 0
     except Stop as stopped:
         if stopped.status == MISUSED or loop is None:
@@ -1627,7 +1627,7 @@ def main(argv, runner, out, err, wait):
         else:
             # A refusal from a script the loop reads ends its line itself, and say ends it again.
             loop.say(stopped.said.rstrip("\n"))
-            loop.list_choices_and_checks()
+            loop.list_choices_and_hand_checks()
         return stopped.status
 
 

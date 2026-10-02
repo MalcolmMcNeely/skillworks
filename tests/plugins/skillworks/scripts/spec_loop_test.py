@@ -945,12 +945,12 @@ def test_a_cut_nudge_names_what_is_missing_and_the_command_that_records_it(loop,
     loop.run(SPEC)
 
     assert nudge_calls(runner)[0][2].split("\n") == [
-        CUT_OWED, BACKGROUND_LINE, BLOCKER_LINE, ""]
+        CUT_OWED, BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
 def test_a_blocked_answer_to_a_cut_nudge_stops_the_loop_with_no_second_nudge(loop, runner):
     given_the_tracker_holds(loop, ())
-    given_sessions_that_report(loop).nudged["to-tickets"] = [A_BLOCK]
+    given_sessions_that_report(loop).nudged["to-tickets"] = [A_BLOCKED]
 
     loop.run(SPEC)
 
@@ -1537,7 +1537,7 @@ def test_an_axis_that_edits_does_not_stop_the_loop(loop, runner):
 STOPPED_SHORT = "I will wait for the tests to finish."
 BACKGROUND_LINE = ("Any command you left in the background was stopped when your last turn "
                    "ended, so its output is not complete. Run it again in the foreground.")
-BLOCKER_LINE = (
+CHOICE_LINE = (
     "Nobody will answer a question. If you put a choice to a person, make it yourself, within "
     "what this step allows, write a `CHOSE` line, and do what is owed. Begin your answer with a "
     "line that starts with `BLOCKED` only when you cannot do the work.")
@@ -1671,7 +1671,7 @@ def test_a_nudge_runs_as_the_session_it_resumes_ran(loop, runner):
         assert nudge.where == first.where
 
 
-def test_a_nudge_names_what_is_owed_then_the_background_then_the_blocker(loop, runner):
+def test_a_nudge_names_what_is_owed_then_the_background_then_the_choice(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_an_axis_that_stops_short(given_sessions_that_report(loop), "architecture")
 
@@ -1679,7 +1679,7 @@ def test_a_nudge_names_what_is_owed_then_the_background_then_the_blocker(loop, r
 
     asked = nudge_calls(runner)[0][2].split("\n")
     assert "## Architecture" in asked[0]
-    assert asked[1:] == [BACKGROUND_LINE, BLOCKER_LINE, ""]
+    assert asked[1:] == [BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
 def test_the_log_has_one_nudge_line_for_each_nudge(loop):
@@ -1882,7 +1882,7 @@ def test_a_finish_still_owing_work_after_two_nudges_stops_the_loop(loop):
     assert ticket_worktree_of(loop).is_dir()
 
 
-def test_a_build_nudge_names_what_it_owes_then_the_background_then_the_blocker(loop, runner):
+def test_a_build_nudge_names_what_it_owes_then_the_background_then_the_choice(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop).builds = False
 
@@ -1890,7 +1890,7 @@ def test_a_build_nudge_names_what_it_owes_then_the_background_then_the_blocker(l
 
     asked = nudge_calls(runner)[0][2].split("\n")
     assert "changed nothing" in asked[0]
-    assert asked[1:] == [BACKGROUND_LINE, BLOCKER_LINE, ""]
+    assert asked[1:] == [BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
 def test_a_finish_nudge_names_each_failed_check_on_a_line_of_its_own(loop, runner):
@@ -1903,7 +1903,7 @@ def test_a_finish_nudge_names_each_failed_check_on_a_line_of_its_own(loop, runne
     assert "not committed" in asked[0]
     assert "uncommitted changes" in asked[1]
     assert "#168 is still open" in asked[2]
-    assert asked[3:] == [BACKGROUND_LINE, BLOCKER_LINE, ""]
+    assert asked[3:] == [BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
 def test_a_finish_nudge_resumes_the_finish_sessions_own_id_and_not_the_build_session(
@@ -2876,7 +2876,7 @@ def test_a_run_with_no_choice_and_no_hand_check_writes_no_list(loop):
 
 # --- the Blocked stop ---------------------------------------------------------
 
-A_BLOCK = "BLOCKED .claude/settings.json: the write was refused as a sensitive file."
+A_BLOCKED = "BLOCKED .claude/settings.json: the write was refused as a sensitive file."
 
 
 def stop_lines(loop):
@@ -2886,36 +2886,36 @@ def stop_lines(loop):
 
 def test_a_blocked_build_stops_the_loop_at_the_build_with_no_nudge(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop).says["implement"] = "\n" + A_BLOCK + "\nThe rest."
+    given_sessions_that_report(loop).says["implement"] = "\n" + A_BLOCKED + "\nThe rest."
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert stop_lines(loop) == ["STOP  #168 step build is Blocked: " + A_BLOCK]
+    assert stop_lines(loop) == ["STOP  #168 step build is Blocked: " + A_BLOCKED]
     assert nudge_lines(loop) == []
     assert len(step_calls(runner)) == 1
 
 
 def test_a_blocked_answer_to_a_nudge_stops_the_loop_with_no_second_nudge(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards", A_BLOCK)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards", A_BLOCKED)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
     assert len(nudge_calls(runner)) == 1
-    assert stop_lines(loop) == ["STOP  #168 step standards is Blocked: " + A_BLOCK]
+    assert stop_lines(loop) == ["STOP  #168 step standards is Blocked: " + A_BLOCKED]
 
 
 def test_a_blocked_stop_names_each_denial_and_the_way_past_them(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
-    sessions.says["review-spec"] = A_BLOCK
+    sessions.says["review-spec"] = A_BLOCKED
     given_a_session_that_was_denied(sessions, "review-spec", A_DENIED_WRITE, A_DENIED_COMMAND)
 
     loop.run(SPEC)
 
-    assert lines_under(loop, "STOP  #168 step spec is Blocked: " + A_BLOCK)[1:] == [
+    assert lines_under(loop, "STOP  #168 step spec is Blocked: " + A_BLOCKED)[1:] == [
         '      Denial: Write {"file_path": ".claude/rules/words.md", "content": "' + "x" * 28 + "...",
         '      Denial: Bash {"command": "rm -rf .claude/worktrees"}',
         "      If one of these Denials stopped the loop, rerun with " + BYPASS]
@@ -2923,7 +2923,7 @@ def test_a_blocked_stop_names_each_denial_and_the_way_past_them(loop):
 
 def test_a_result_that_holds_blocked_below_its_first_line_is_not_blocked(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_a_spec_axis_that_says(given_sessions_that_report(loop), A_BLOCK)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), A_BLOCKED)
 
     loop.run(SPEC)
 
@@ -2933,7 +2933,7 @@ def test_a_result_that_holds_blocked_below_its_first_line_is_not_blocked(loop, r
 def test_a_blocked_session_that_errored_still_fails_its_check(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
-    sessions.says["review-spec"] = A_BLOCK
+    sessions.says["review-spec"] = A_BLOCKED
     sessions.errors.add("review-spec")
 
     ran = loop.run(SPEC)
@@ -2945,7 +2945,7 @@ def test_a_blocked_finish_that_closed_its_ticket_reopens_it(loop):
     tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
     sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker),
-                                   lambda: sessions.says.update(implement=A_BLOCK))
+                                   lambda: sessions.says.update(implement=A_BLOCKED))
 
     loop.run(SPEC)
 
@@ -2954,14 +2954,14 @@ def test_a_blocked_finish_that_closed_its_ticket_reopens_it(loop):
 
 def test_a_blocked_drift_check_stops_the_loop_before_the_name_check(loop, runner):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    given_sessions_that_report(loop).says["spec-drift"] = A_BLOCK
+    given_sessions_that_report(loop).says["spec-drift"] = A_BLOCKED
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = drift_report()
 
     loop.run(SPEC)
 
     assert prompts_asking(runner, NAME_CHECK) == []
-    assert stop_lines(loop)[0] == "STOP  spec #158 drift is Blocked: " + A_BLOCK
+    assert stop_lines(loop)[0] == "STOP  spec #158 drift is Blocked: " + A_BLOCKED
 
 
 # --- the Parent each Session names -------------------------------------------
@@ -3727,7 +3727,7 @@ def test_a_drift_check_nudge_names_what_is_missing_and_the_command_that_records_
     drifted(loop, "Looks good to me.\n")
 
     assert nudge_calls(runner)[0][2].split("\n") == [
-        DRIFT_OWED, BACKGROUND_LINE, BLOCKER_LINE, ""]
+        DRIFT_OWED, BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
 def test_a_drift_check_nudge_resumes_the_check_s_own_session_in_its_worktree(loop, runner):
@@ -3794,7 +3794,7 @@ def test_a_name_check_nudge_names_what_is_missing_and_the_command_that_records_i
     named_back(loop, "Looks good to me.\n")
 
     assert nudge_calls(runner)[0][2].split("\n") == [
-        NAMES_OWED, BACKGROUND_LINE, BLOCKER_LINE, ""]
+        NAMES_OWED, BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
 def test_a_name_check_that_records_its_report_after_a_nudge_lets_the_run_carry_on(loop):
@@ -5439,7 +5439,7 @@ def test_a_nudged_step_leaves_one_journal_entry_for_each_result(loop):
 
 def test_a_rerun_adds_journal_entries_and_leaves_the_earlier_ones_unchanged(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+    given_sessions_that_report(loop).says["implement"] = A_BLOCKED
     loop.run(SPEC)
     first = journal_lines(loop)[:-1]
 
@@ -5461,7 +5461,7 @@ def test_a_journal_entry_holds_every_field_of_a_session_result(loop):
     entry = dict(entries_of(loop, "spec")[0])
     assert re.fullmatch(STAMP, entry.pop("at") + " ")
     assert entry == {
-        "ticket": "168", "check": None, "step": "spec", "attempt": 0, "status": 0,
+        "ticket": "168", "spec_step": None, "step": "spec", "attempt": 0, "status": 0,
         "failed": [], "denials": 1, "blocked": None, "choices": [A_CHOICE],
         "hand_checks": [A_HAND_CHECK],
         "result": json.loads(Path(loop.records() / "ticket-168-spec.json").read_text(
@@ -5470,11 +5470,11 @@ def test_a_journal_entry_holds_every_field_of_a_session_result(loop):
 
 def test_a_blocked_result_is_kept_in_the_journal_with_its_line(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+    given_sessions_that_report(loop).says["implement"] = A_BLOCKED
 
     loop.run(SPEC)
 
-    assert [entry["blocked"] for entry in entries_of(loop, "build")] == [A_BLOCK]
+    assert [entry["blocked"] for entry in entries_of(loop, "build")] == [A_BLOCKED]
 
 
 def test_a_result_that_is_not_json_is_kept_in_the_journal_as_raw_text(loop):
@@ -5493,7 +5493,7 @@ def test_the_cut_and_each_of_its_nudges_leave_a_journal_entry(loop):
 
     loop.run(SPEC)
 
-    assert [(entry["check"], entry["attempt"], entry["failed"])
+    assert [(entry["spec_step"], entry["attempt"], entry["failed"])
             for entry in entries_of(loop, "cut")] == [
         ("Cut", n, ["tickets-filed"]) for n in range(3)]
 

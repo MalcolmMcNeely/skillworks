@@ -196,7 +196,7 @@ One entry holds:
 |---|---|
 | `at` | The date and the time in UTC, as on a log line: `2026-09-28 15:59:37` |
 | `ticket` | The ticket number, or `null` for the Cut and the checks |
-| `check` | `Cut`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
+| `spec_step` | `Cut`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
 | `step` | The step, such as `build`, `standards` or `resolve`, or the name of the Cut or the check, such as `cut` or `drift-gaps` |
 | `attempt` | `0` for the first result of the step, `1` and `2` for the answer to the first and the second Nudge |
 | `status` | The exit status of the Session |
@@ -208,7 +208,7 @@ One entry holds:
 | `result` | The whole result as the Session returned it. When it is not JSON, this holds its raw text |
 
 ```
-{"at": "2026-09-28 15:59:37", "ticket": "202", "check": null, "step": "standards", "attempt": 0, "status": 0, "failed": ["axis-reported"], "denials": 1, "blocked": null, "choices": [], "hand_checks": [], "result": {"is_error": false, "session_id": "...", "result": "I will wait for the tests to finish."}}
+{"at": "2026-09-28 15:59:37", "ticket": "202", "spec_step": null, "step": "standards", "attempt": 0, "status": 0, "failed": ["axis-reported"], "denials": 1, "blocked": null, "choices": [], "hand_checks": [], "result": {"is_error": false, "session_id": "...", "result": "I will wait for the tests to finish."}}
 ```
 
 ## Counting runs

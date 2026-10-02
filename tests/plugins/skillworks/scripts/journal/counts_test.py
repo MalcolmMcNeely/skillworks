@@ -3,7 +3,7 @@
 import shutil
 
 from conftest import ROOT, launch
-from spec_loop_test import (A_BLOCK, A_CHOICE, A_DENIED_COMMAND, A_HAND_CHECK, ONE_OPEN_TICKET,
+from spec_loop_test import (A_BLOCKED, A_CHOICE, A_DENIED_COMMAND, A_HAND_CHECK, ONE_OPEN_TICKET,
                             SPEC, a_denied_command, given_a_session_that_was_denied,
                             given_a_spec_axis_that_says, given_an_axis_that_stops_short,
                             given_sessions_that_report, given_the_tracker_holds, loop)
@@ -60,7 +60,7 @@ def test_a_step_counts_each_choice_and_hand_check_its_results_made(loop):
 
 def test_a_blocked_build_is_a_blocked_stop_of_the_build(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+    given_sessions_that_report(loop).says["implement"] = A_BLOCKED
     loop.run(SPEC)
 
     assert row_of(counted(loop, SPEC).out, "How steps ended", "Step", "build")["Blocked"] == "1"
@@ -68,7 +68,7 @@ def test_a_blocked_build_is_a_blocked_stop_of_the_build(loop):
 
 def test_a_stop_line_of_the_log_is_counted(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+    given_sessions_that_report(loop).says["implement"] = A_BLOCKED
     loop.run(SPEC)
 
     assert LOG_LINES.format(stops=1) in counted(loop, SPEC).out
@@ -86,7 +86,7 @@ def test_a_nudged_step_that_then_passed_is_counted_as_passed(loop):
 
 def test_a_nudged_step_that_answered_blocked_is_counted_as_blocked(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards", A_BLOCK)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards", A_BLOCKED)
     loop.run(SPEC)
 
     assert row_of(counted(loop, SPEC).out, "What a Nudge got", "Step", "standards") == {
@@ -117,7 +117,7 @@ def test_the_denials_of_a_step_are_counted_by_tool_name(loop):
 def test_each_model_a_result_names_is_a_row_of_the_model_table(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
-    sessions.says["implement"] = A_BLOCK
+    sessions.says["implement"] = A_BLOCKED
     sessions.models["implement"] = [OPUS]
     loop.run(SPEC)
 
@@ -129,7 +129,7 @@ def test_a_result_that_names_more_than_one_model_is_a_row_of_its_own(loop):
     sessions = given_sessions_that_report(loop)
     sessions.models["implement"] = [OPUS]
     sessions.models["review-standards"] = [OPUS, HAIKU]
-    given_an_axis_that_stops_short(sessions, "standards", A_BLOCK)
+    given_an_axis_that_stops_short(sessions, "standards", A_BLOCKED)
     loop.run(SPEC)
 
     assert row_of(counted(loop, SPEC).out, "Which model ran", "Model", HAIKU + " + " + OPUS)[
@@ -138,7 +138,7 @@ def test_a_result_that_names_more_than_one_model_is_a_row_of_its_own(loop):
 
 def test_a_result_that_names_no_model_is_counted_under_none_named(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+    given_sessions_that_report(loop).says["implement"] = A_BLOCKED
     loop.run(SPEC)
 
     assert table(counted(loop, SPEC).out, "Which model ran") == [
@@ -155,7 +155,7 @@ def test_the_reading_a_run_page_gives_the_command_and_its_four_tables():
 
 def test_with_no_spec_number_every_spec_folder_with_a_journal_is_counted_and_no_other(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+    given_sessions_that_report(loop).says["implement"] = A_BLOCKED
     loop.run(SPEC)
     records = loop.records().parent
     shutil.copytree(loop.records(), records / "159")

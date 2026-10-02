@@ -72,7 +72,7 @@ def step_runs(journal):
     runs = []
     open_runs = {}
     for entry in journal:
-        key = (entry.get("ticket"), entry.get("check"), entry["step"])
+        key = (entry.get("ticket"), entry.get("spec_step"), entry["step"])
         if entry["attempt"] == 0 or key not in open_runs:
             open_runs[key] = []
             runs.append(open_runs[key])
