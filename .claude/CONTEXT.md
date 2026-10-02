@@ -7,10 +7,12 @@ under, and the scripts that drive it.
 ## Language
 
 **Blocked**:
-A step or a check whose Session says, in the first line of its report, that it owes work only a
-person can clear. A Denial can be the cause, and so can a choice or a check that is a person's to make. It
-is the Session's own word, so the driver reads it and does not judge it. A ticket that waits on
-another ticket is not Blocked: it has an open blocker.
+A step or a check whose Session says, in the first line of its report, that it cannot do its work:
+a Denial it cannot get past, or a ticket with nothing left to build. A choice is never the cause,
+because a Session makes a choice itself and says what it chose. A check it cannot run is not one
+either: it names that check for a person, and carries on. It is the Session's own word, so the
+driver reads it and does not judge it. A ticket that waits on another ticket is not Blocked: it has
+an open blocker.
 _Avoid_: Stuck, walled, refused
 
 **Clean**:
