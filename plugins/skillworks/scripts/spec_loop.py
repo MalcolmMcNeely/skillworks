@@ -45,7 +45,7 @@ from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of
                            read_rename_verdicts, read_renames, unmade_said)
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
-from runner import Subprocess, session_changes
+from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
 from seed_steering import missing_steering
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
@@ -473,7 +473,7 @@ class Loop:
         rest = [str(a) for a in rest] or self.new_session()
         return self.runner.run(
             ["claude", "-p", prompt] + rest
-            + ["--permission-mode", self.permission_mode, "--output-format", "json"],
+            + ["--permission-mode", self.permission_mode, "--output-format", "json"] + MAY_READ_THE_PLUGIN,
             self.job_worktree,
             session_changes(self.tracker.trailer(ticket) if ticket else None))
 

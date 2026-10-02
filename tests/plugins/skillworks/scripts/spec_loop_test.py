@@ -7,7 +7,7 @@ import json
 import re
 import threading
 import uuid
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import pytest
 
@@ -17,7 +17,7 @@ import spec_loop
 import ticket_worktree
 from conftest import (ROOT, SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
                       project_suite, write_loop, write_steering, write_suite)
-from runner import Subprocess
+from runner import Subprocess, plugin_read_rule
 from suite import Suite
 
 SPEC = "158"
@@ -3937,6 +3937,29 @@ def modes_of_sessions(runner):
 
 def loop_line(loop):
     return next(line for line in loop.log().split("\n") if " LOOP " in line)
+
+
+def read_rules_of_sessions(runner):
+    calls = session_calls(runner)
+    assert call_asking(runner, RESOLVE) is not None, "the landing asked no Session to resolve"
+    return {call[call.index("--allowedTools") + 1] if "--allowedTools" in call else None for call in calls}
+
+
+# A Session works in its worktree and Claude Code refuses a read outside it, so a skill could not read its own files.
+def test_every_session_and_the_landing_may_read_the_plugins_own_files(loop, runner):
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    loop.run(SPEC)
+
+    assert read_rules_of_sessions(runner) == {plugin_read_rule(ROOT / "plugins" / "skillworks")}
+
+
+@pytest.mark.parametrize("folder, rule", [
+    (PureWindowsPath("C:/tools/skillworks"), "Read(//c/tools/skillworks/**)"),
+    (PurePosixPath("/opt/skillworks"), "Read(//opt/skillworks/**)"),
+])
+def test_the_read_rule_names_a_folder_the_way_claude_code_reads_one(folder, rule):
+    assert plugin_read_rule(folder) == rule
 
 
 def test_bypass_runs_every_session_and_the_landing_in_bypass_mode(loop, runner):

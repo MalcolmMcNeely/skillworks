@@ -19,6 +19,7 @@
 import os
 import shutil
 import subprocess
+from pathlib import Path
 from typing import NamedTuple
 
 
@@ -38,6 +39,20 @@ BASH_LIMIT_MS = str(45 * 60 * 1000)
 
 # The Plugin's commit hook reads it, and adds its value to each commit as the Ticket trailer.
 TICKET_VARIABLE = "SKILLWORKS_TICKET"
+
+
+PLUGIN_FOLDER = Path(__file__).resolve().parents[1]
+
+
+# Claude Code reads a rule's path from the root as //, and a Windows drive as its first folder.
+def plugin_read_rule(folder=PLUGIN_FOLDER):
+    drive = folder.drive.rstrip(":").lower()
+    below = "/".join(folder.parts[1:])
+    return "Read(//{}/**)".format("/".join(part for part in (drive, below) if part))
+
+
+# A Session works in its worktree, and a skill's own files sit outside it.
+MAY_READ_THE_PLUGIN = ["--allowedTools", plugin_read_rule()]
 
 
 # Here and not in the driver, because the driver imports the landing script and it starts a Session too.
