@@ -33,7 +33,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 import land_ticket
 import ticket_worktree
@@ -76,6 +76,13 @@ class Step(NamedTuple):
     resumes: bool
     # False where the driver does the work, so nothing asks a Session for a result it never gave.
     session: bool = True
+
+
+# What a Session that changes nothing must leave on the Tracker, so one that stopped short is Nudged.
+class Recorded(NamedTuple):
+    check: str
+    holds: Callable[[], object]
+    owed: str
 
 
 # The skills load from the Plugin, and Claude Code names a Plugin skill with the Plugin in front.
@@ -134,6 +141,8 @@ CHOICE_AND_CHECK_OPENINGS = (("CHOSE", "CHOSE"), ("HAND CHECK", "HAND "))
 CUT_UNATTENDED = (
     "\n\nSkip the approval questions. End with the breakdown you showed, as your last message, "
     "so the loop log holds it.")
+
+CUT_RECORDED = "tickets-filed"
 
 UNCUT_NUMBER = "<ticket>"
 UNCUT_JOB_NUMBER = "UNCUT"
@@ -828,10 +837,17 @@ class Loop:
     def cut_asks(self):
         return PLUGIN + "to-tickets {}".format(self.spec)
 
+    def cut_owed(self):
+        return ("Spec {} holds no tickets yet. Publish the tickets you showed, one file for each in "
+                ".spec-loop/{}/tickets/, with tracker-publish tickets {} <file>...\n".format(
+                    self.spec_named(), self.spec, self.spec))
+
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
-        result = self.run_clean_session("cut", "Cut", self.cut_asks() + CUT_UNATTENDED)
+        result = self.run_clean_session(
+            "cut", "Cut", self.cut_asks() + CUT_UNATTENDED,
+            Recorded(CUT_RECORDED, lambda: self.tracker.tickets(self.spec), self.cut_owed()))
         shown = str(field(result, "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
@@ -916,6 +932,7 @@ class Loop:
             plan += "  before the first ticket\n" + plan_line(
                 "cut", 'claude -p "{}" --session-id <new id>'.format(self.cut_asks()),
                 "nothing left uncommitted, at least one ticket under the spec")
+            plan += "                   nudges: up to {}, on {}\n".format(NUDGES, CUT_RECORDED)
             plan += "  each ticket the Cut makes\n" + self.ticket_plan(UNCUT_NUMBER, landing)
         for number, state, title in self.tracker.ticket_rows(self.spec):
             plan += "  {} [{}] {}\n".format(self.named(number), state, title)
@@ -1146,7 +1163,7 @@ class Loop:
 
     # The Session records its work with the spec and changes nothing, so a tree it left changed stops.
     # Returned so the caller's stop can name the Denials that may be why nothing was recorded.
-    def run_clean_session(self, named, what, prompt):
+    def run_clean_session(self, named, what, prompt, recorded=None):
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened(named)
         if not self.job_worktree:
@@ -1154,16 +1171,26 @@ class Loop:
 
         ran = self.claude_p(prompt + "\n\n" + UNATTENDED)
         result = self.log_dir / (named + ".json")
-        written(result, ran.out)
-        written(self.log_dir / (named + ".err"), ran.err)
-        self.say_result("spec {} {:<13}".format(self.spec_named(), named), result)
-        if ran.status != 0:
-            self.say("WARN  {} exited non-zero. See {}".format(
-                what, self.log_dir / (named + ".err")))
-        blocked = blocked_line(result)
-        if blocked:
-            raise self.stop_naming_denials("STOP  spec {} {} is Blocked: {}\n      See {}".format(
-                self.spec_named(), named, blocked, result), result)
+        reasons = self.log_dir / (named + ".err")
+        written(reasons, ran.err)
+        nudge = 0
+        while True:
+            written(result, ran.out)
+            self.say_result("spec {} {:<13}".format(self.spec_named(), named), result)
+            if ran.status != 0:
+                self.say("WARN  {} exited non-zero. See {}".format(what, reasons))
+            blocked = blocked_line(result)
+            if blocked:
+                raise self.stop_naming_denials("STOP  spec {} {} is Blocked: {}\n      See {}".format(
+                    self.spec_named(), named, blocked, result), result)
+            # Read before the worktree goes, so a Nudge can resume the Session where it ran.
+            if recorded is None or nudge == NUDGES or recorded.holds():
+                break
+            nudge += 1
+            self.say("NUDGE spec {} {:<13}{} of {}, failed {}".format(
+                self.spec_named(), named, nudge, NUDGES, recorded.check))
+            ran = self.claude_p(recorded.owed + NUDGE_TAIL, "--resume", field(result, "session_id"))
+            appended(reasons, ran.err)
 
         if self.tree_of_job():
             raise stop("FAIL  {} left uncommitted changes in {}.".format(what, self.job_worktree))

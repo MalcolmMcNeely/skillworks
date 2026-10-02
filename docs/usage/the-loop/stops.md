@@ -28,6 +28,11 @@ line. Two Nudges are the limit. A step that still owes work after them stops the
 could not run at all, such as one that ended in an error or never loaded its command, gets no Nudge.
 It stops the loop at once.
 
+**A Nudge for the Cut.** The Cut is Nudged too, when the Tracker holds no ticket after it. Its Nudge
+names what is missing and the command that records it, then ends as every Nudge does. Each Nudge
+writes a `NUDGE` line. A Cut that still filed nothing after two Nudges stops the loop with a `STOP`
+line, as [the tickets](tickets.md) says.
+
 **A Blocked step.** A Session that cannot do its work begins its report with a line that starts
 with `BLOCKED`, as [Sessions](sessions.md#nobody-answers-in-the-loop) says. The script reads only the
 first line of the report that is not empty, so a `BLOCKED` lower down does not count. It reads it

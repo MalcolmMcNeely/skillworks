@@ -696,6 +696,14 @@ def test_the_dry_run_names_the_steps_that_can_be_nudged_and_no_others(loop):
         assert planned_nudges(ran, step) == ""
 
 
+def test_the_dry_run_names_the_nudges_of_the_cut(loop):
+    given_the_tracker_holds(loop, ())
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert planned_nudges(ran, "cut") == "up to 2, on tickets-filed"
+
+
 def test_the_dry_run_names_the_gap_round_between_the_drift_check_and_the_full_run(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 
@@ -865,6 +873,83 @@ def test_a_spec_still_without_tickets_after_the_cut_stops_the_loop(loop, runner)
     assert ran.status == 1
     assert "STOP  spec #158 still has no tickets" in loop.log()
     assert call_asking(runner, "/skillworks:implement") is None
+
+
+CUT_OWED = ("Spec #158 holds no tickets yet. Publish the tickets you showed, one file for each in "
+            ".spec-loop/158/tickets/, with tracker-publish tickets 158 <file>...")
+
+
+def test_a_cut_that_filed_no_ticket_has_a_nudge_line_for_each_nudge(loop):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert [unstamped(line) for line in nudge_lines(loop)] == [
+        "NUDGE spec #158 cut          1 of 2, failed tickets-filed",
+        "NUDGE spec #158 cut          2 of 2, failed tickets-filed"]
+
+
+def test_a_cut_that_files_tickets_after_a_nudge_lets_the_run_carry_on(loop, runner):
+    tracker = given_the_tracker_holds(loop, ())
+    sessions = given_sessions_that_report(loop)
+    sessions.when_nudged[CUT_TICKETS] = lambda: setattr(tracker, "tickets", ONE_OPEN_TICKET)
+
+    loop.run(SPEC)
+
+    assert call_asking(runner, "/skillworks:implement 168 --stop-after-tests") is not None
+
+
+def test_a_cut_that_filed_nothing_after_the_last_nudge_stops_the_loop_with_today_s_stop_line(
+        loop):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert stop_lines(loop)[0].startswith(
+        "STOP  spec #158 still has no tickets after the Cut, so nothing was built.")
+
+
+def test_a_cut_nudge_resumes_the_cut_s_own_session_in_the_cut_s_worktree(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    made = [call for call in runner.made if call.args[0] == "claude"]
+    cut = next(call for call in made if call.args[2].startswith(CUT_TICKETS))
+    nudges = [call for call in made if not call.args[2].startswith("/")]
+    assert [(call.args[call.args.index("--resume") + 1], call.where) for call in nudges] == [
+        (id_given(cut.args), cut.where)] * 2
+
+
+def test_a_cut_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert nudge_calls(runner)[0][2].split("\n") == [
+        CUT_OWED, BACKGROUND_LINE, BLOCKER_LINE, ""]
+
+
+def test_a_blocked_answer_to_a_cut_nudge_stops_the_loop_with_no_second_nudge(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop).nudged["to-tickets"] = [A_BLOCK]
+
+    loop.run(SPEC)
+
+    assert len(nudge_calls(runner)) == 1
+
+
+def test_a_cut_that_filed_tickets_at_once_is_never_nudged(loop, runner):
+    tracker = given_the_tracker_holds(loop, ())
+    given_a_cut_that_files(given_sessions_that_report(loop), tracker, ONE_OPEN_TICKET)
+
+    loop.run(SPEC)
+
+    assert [line for line in nudge_lines(loop) if " cut " in line] == []
 
 
 def test_a_cut_that_filed_no_tickets_after_denials_gives_the_way_past_them(loop):
@@ -4029,6 +4114,17 @@ def test_the_grill_page_gives_the_counted_shape():
                   "starts at 1", "in bold", '"None"', "Testing Decisions are not counted",
                   "turned down"]:
         assert named in the_spec, named
+
+
+def test_the_tickets_stops_and_sessions_pages_say_the_cut_is_nudged_before_it_stops_the_loop():
+    said = [flat(page_text(TICKETS_PAGE)), flat(page_text(STOPS_PAGE)),
+            flat(page_text(SESSIONS_PAGE))]
+
+    assert [
+        "A spec that still has no tickets after the last Nudge stops the loop" in said[0],
+        "A Cut that still filed nothing after two Nudges stops the loop" in said[1],
+        "A step of a ticket gets one, and so does the Cut when it filed no ticket." in said[2],
+    ] == [True, True, True]
 
 
 def test_the_stops_page_gives_the_stop_for_a_spec_in_another_shape():

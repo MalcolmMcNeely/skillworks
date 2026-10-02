@@ -10,8 +10,11 @@ The script cuts the tickets as its first step, the **Cut**, after it checks the 
 before the first ticket, and only when the spec has none. The Cut starts a Session that types
 `/skillworks:to-tickets <spec>` and tells it to skip its approval questions, because nobody is at the
 terminal to answer them. The slices it shows are written to the loop log, so you can read them while
-the work runs. A spec that still has no tickets after the Cut stops the loop with a `STOP` line. A
-spec that already has tickets, such as one a restarted run meets, skips the Cut.
+the work runs. A Cut that filed no tickets is Nudged: the script resumes the same Session, in the
+Cut's own worktree, and names what is missing and the `tracker-publish tickets` command that records
+it. The Cut gets two Nudges at most. A spec that still has no tickets after the last Nudge stops the
+loop with a `STOP` line. A spec that already has tickets, such as one a restarted run meets, skips
+the Cut.
 
 Each ticket is a thin slice through every layer, small enough for one Fresh Session, and it names the
 tickets that must land before it. With `github`, each one is published as a **sub-issue of the
