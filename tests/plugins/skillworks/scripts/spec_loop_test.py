@@ -5391,3 +5391,126 @@ def test_what_next_leaves_the_reruns_to_the_suite_file_and_names_no_tool_of_this
     assert "`uv`" not in text
     assert "container" not in text
     assert "Suite file sets how many times" in text
+
+
+# --- the Journal ---------------------------------------------------------------
+
+def journal(loop):
+    held = loop.records() / "journal.jsonl"
+    if not held.is_file():
+        return []
+    return [json.loads(line) for line in held.read_text(encoding="utf-8").split("\n") if line]
+
+
+def journal_lines(loop):
+    return (loop.records() / "journal.jsonl").read_text(encoding="utf-8").split("\n")
+
+
+def entries_of(loop, step):
+    return [entry for entry in journal(loop) if entry["step"] == step]
+
+
+def attempts_of(loop, step):
+    return [entry["attempt"] for entry in entries_of(loop, step)]
+
+
+def test_a_nudged_step_leaves_one_journal_entry_for_each_result(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(
+        given_sessions_that_report(loop), "standards", "## Standards. Nothing found.")
+
+    loop.run(SPEC)
+
+    assert [(entry["attempt"], entry["failed"], entry["result"]["result"])
+            for entry in entries_of(loop, "standards")] == [
+        (0, ["axis-reported"], STOPPED_SHORT), (1, [], "## Standards. Nothing found.")]
+
+
+def test_a_rerun_adds_journal_entries_and_leaves_the_earlier_ones_unchanged(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+    loop.run(SPEC)
+    first = journal_lines(loop)[:-1]
+
+    loop.run(SPEC)
+
+    again = journal_lines(loop)[:-1]
+    assert again[:len(first)] == first and len(again) > len(first)
+
+
+def test_a_journal_entry_holds_every_field_of_a_session_result(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["review-spec"] = "\n".join(
+        ["## Spec. Nothing found.", A_CHOICE, A_HAND_CHECK])
+    given_a_session_that_was_denied(sessions, "review-spec", A_DENIED_COMMAND)
+
+    loop.run(SPEC)
+
+    entry = dict(entries_of(loop, "spec")[0])
+    assert re.fullmatch(STAMP, entry.pop("at") + " ")
+    assert entry == {
+        "ticket": "168", "check": None, "step": "spec", "attempt": 0, "status": 0,
+        "failed": [], "denials": 1, "blocked": None, "choices": [A_CHOICE],
+        "hand_checks": [A_HAND_CHECK],
+        "result": json.loads(Path(loop.records() / "ticket-168-spec.json").read_text(
+            encoding="utf-8"))}
+
+
+def test_a_blocked_result_is_kept_in_the_journal_with_its_line(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).says["implement"] = A_BLOCK
+
+    loop.run(SPEC)
+
+    assert [entry["blocked"] for entry in entries_of(loop, "build")] == [A_BLOCK]
+
+
+def test_a_result_that_is_not_json_is_kept_in_the_journal_as_raw_text(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).garbles.add("implement")
+
+    loop.run(SPEC)
+
+    assert [entry["result"] for entry in entries_of(loop, "build")] == [
+        "the session ended before it wrote a result\n"]
+
+
+def test_the_cut_and_each_of_its_nudges_leave_a_journal_entry(loop):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert [(entry["check"], entry["attempt"], entry["failed"])
+            for entry in entries_of(loop, "cut")] == [
+        ("Cut", n, ["tickets-filed"]) for n in range(3)]
+
+
+def test_the_drift_check_and_each_of_its_nudges_leave_a_journal_entry(loop):
+    drifted(loop, "Looks good to me.\n")
+
+    assert attempts_of(loop, "drift") == [0, 1, 2]
+
+
+def test_the_name_check_and_each_of_its_nudges_leave_a_journal_entry(loop):
+    named_back(loop, "Looks good to me.\n")
+
+    assert attempts_of(loop, "names") == [0, 1, 2]
+
+
+def test_a_check_that_recorded_its_report_leaves_one_journal_entry_with_nothing_failed(loop):
+    named_back(loop, NO_RENAMES)
+
+    assert [entry["failed"] for entry in entries_of(loop, "names")] == [[]]
+
+
+def test_the_result_file_of_a_nudged_step_keeps_its_name_and_holds_the_newest_result(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(
+        given_sessions_that_report(loop), "standards", "## Standards. Nothing found.")
+
+    loop.run(SPEC)
+
+    assert spec_loop.field(loop.records() / "ticket-168-standards.json", "result") == (
+        "## Standards. Nothing found.")

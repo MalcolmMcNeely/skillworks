@@ -249,6 +249,25 @@ def denials(path):
 DENIALS_SHOWN = 3
 
 
+# A result that is not JSON is kept as it came, so the Journal holds what a broken Session said.
+def as_kept(text):
+    try:
+        return json.loads(text)
+    except ValueError:
+        return text
+
+
+def lines_opening(path, opening):
+    return [line for line in str(field(path, "result")).split("\n") if line.startswith(opening)]
+
+
+STAMP_FORM = "%Y-%m-%d %H:%M:%S"
+
+
+def stamp():
+    return datetime.now(timezone.utc).strftime(STAMP_FORM)
+
+
 def written(path, text):
     Path(path).write_text(text, encoding="utf-8", newline="\n")
 
@@ -378,6 +397,7 @@ class Loop:
         self.permission_mode = permission_mode
         self.log_dir = Path(".spec-loop") / spec
         self.log = self.log_dir / "loop.log"
+        self.journal = self.log_dir / "journal.jsonl"
 
         self.root = Path.cwd()
         self.target = ""
@@ -421,7 +441,7 @@ class Loop:
         self.out.write(said)
 
     def say(self, said):
-        self.wrote("{} {}\n".format(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), said))
+        self.wrote("{} {}\n".format(stamp(), said))
 
     def named(self, ticket):
         return self.tracker.named(ticket)
@@ -651,6 +671,15 @@ class Loop:
                     self.say("{} {}{}".format(tag, who, line))
                     self.choices_and_checks.append((opening, who + line))
 
+    # Only ever added to, so an attempt a Nudge, a second fix or a rerun came after is still read.
+    def add_to_journal(self, ran, held, step, attempt, failed, ticket=None, check=None):
+        entry = {"at": stamp(), "ticket": ticket, "check": check, "step": step,
+                 "attempt": attempt, "status": ran.status, "failed": failed,
+                 "denials": len(denials(held)), "blocked": blocked_line(held) or None,
+                 "choices": lines_opening(held, "CHOSE"),
+                 "hand_checks": lines_opening(held, "HAND CHECK"), "result": as_kept(ran.out)}
+        appended(self.journal, json.dumps(entry) + "\n")
+
     # Said at a stop as well as at a clean finish, so a Hand check is never lost mid-log.
     def list_choices_and_checks(self):
         if not self.choices_and_checks:
@@ -702,10 +731,22 @@ class Loop:
         while True:
             written(held, ran.out)
             self.say_result("{} {:<13}".format(self.named(ticket), step.name), held)
+            failed = None
+            try:
+                if ran.status == 0:
+                    failed = self.failed_checks(ticket, step, held, reasons)
+            finally:
+                self.add_to_journal(ran, held, step.name, nudge, failed, ticket=ticket)
             if ran.status != 0:
                 raise self.stop_step(ticket, step.name, "exited non-zero",
                                      "{} and {}".format(reasons, held), held)
-            failed = self.failed_checks(ticket, step, held, reasons)
+            if failed and failed[0] not in NUDGED_BY:
+                raise self.stop_step(ticket, step.name, "failed check " + failed[0],
+                                     "{} and {}".format(held, reasons), held)
+            blocked = blocked_line(held)
+            if blocked:
+                raise self.stop_blocked(ticket, step.name, blocked,
+                                        "{} and {}".format(held, reasons), held)
             if not failed:
                 return
             if nudge == NUDGES:
@@ -722,18 +763,16 @@ class Loop:
 
     # Every check runs every time, since a Nudge that mends one thing can break another.
     # Blocked is read between the kinds: a Session that never ran fails, and a Blocked one stops.
+    # Handed back and not raised, so the Journal keeps what was judged before the loop acts on it.
     def failed_checks(self, ticket, step, held, reasons):
         checks = step.checks.split()
         for check in checks:
             if check in NUDGED_BY:
                 continue
             if not self.passes_noting_reason(ticket, step, check, held, reasons):
-                raise self.stop_step(ticket, step.name, "failed check " + check,
-                                     "{} and {}".format(held, reasons), held)
-        blocked = blocked_line(held)
-        if blocked:
-            raise self.stop_blocked(ticket, step.name, blocked, "{} and {}".format(held, reasons),
-                                    held)
+                return [check]
+        if blocked_line(held):
+            return []
         return [check for check in checks if check in NUDGED_BY
                 and not self.passes_noting_reason(ticket, step, check, held, reasons)]
 
@@ -1195,11 +1234,17 @@ class Loop:
             if ran.status != 0:
                 self.say("WARN  {} exited non-zero. See {}".format(what, reasons))
             blocked = blocked_line(result)
+            failed = None
+            try:
+                # Read before the worktree goes, so a Nudge can resume the Session where it ran.
+                failed = ([] if blocked or recorded is None or recorded.holds()
+                          else [recorded.check])
+            finally:
+                self.add_to_journal(ran, result, named, nudge, failed, check=what)
             if blocked:
                 raise self.stop_naming_denials("STOP  spec {} {} is Blocked: {}\n      See {}".format(
                     self.spec_named(), named, blocked, result), result)
-            # Read before the worktree goes, so a Nudge can resume the Session where it ran.
-            if recorded is None or nudge == NUDGES or recorded.holds():
+            if not failed or nudge == NUDGES:
                 break
             nudge += 1
             self.say("NUDGE spec {} {:<13}{} of {}, failed {}".format(
@@ -1497,6 +1542,7 @@ class Loop:
         self.root = Path(found.out.strip())
         self.log_dir = self.root / ".spec-loop" / self.spec
         self.log = self.log_dir / "loop.log"
+        self.journal = self.log_dir / "journal.jsonl"
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         self.preflight()

@@ -175,3 +175,35 @@ A dry run on a spec with no tickets still checks the shape first. Then it says t
 cut the tickets first, and prints the Cut as the `cut` step. It prints the steps each ticket will
 take, with `<ticket>` where the number goes, then the landing steps and what comes after the last
 ticket.
+
+## The Journal
+
+A step's result file, such as `ticket-202-standards.json`, holds the newest result of that step. A
+Nudge, a second fix or a rerun writes over it. The Journal keeps them all.
+
+The Journal is `.spec-loop/<spec>/journal.jsonl`, beside the log. It has one JSON object on each
+line, and each one is an entry for one Session result. The driver adds the entry as the result
+comes in, before it acts on the result. It never changes or removes an entry, so a rerun adds new
+entries below the old ones. Ticket steps, the Cut, the drift check, the Name check, their re-checks,
+and each Nudge of any of them all add entries. The `suite` step starts no Session, so it adds none.
+
+One entry holds:
+
+| Field | What it holds |
+|---|---|
+| `at` | The date and the time in UTC, as on a log line: `2026-09-28 15:59:37` |
+| `ticket` | The ticket number, or `null` for the Cut and the checks |
+| `check` | `Cut`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
+| `step` | The step, such as `build` or `standards`, or the name of the Cut or the check, such as `cut` or `drift-gaps` |
+| `attempt` | `0` for the first result of the step, `1` and `2` for the answer to the first and the second Nudge |
+| `status` | The exit status of the Session |
+| `failed` | The checks the result failed. It is `[]` when none failed, and `null` when no check was judged, such as after a non-zero exit |
+| `denials` | The count of Denials in the result |
+| `blocked` | The Session's `BLOCKED` line, or `null` |
+| `choices` | Each `CHOSE` line of the result |
+| `hand_checks` | Each `HAND CHECK` line of the result |
+| `result` | The whole result as the Session returned it. When it is not JSON, this holds its raw text |
+
+```
+{"at": "2026-09-28 15:59:37", "ticket": "202", "check": null, "step": "standards", "attempt": 0, "status": 0, "failed": ["axis-reported"], "denials": 1, "blocked": null, "choices": [], "hand_checks": [], "result": {"is_error": false, "session_id": "...", "result": "I will wait for the tests to finish."}}
+```
