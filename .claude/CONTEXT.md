@@ -15,6 +15,11 @@ driver reads it and does not judge it. A ticket that waits on another ticket is 
 an open blocker.
 _Avoid_: Stuck, walled, refused
 
+**Choice**:
+What a Session settled by itself where its ticket left more than one way open. It says each one in
+a line the driver copies to the log, so a person reads what was chosen and is never asked.
+_Avoid_: Decision, pick, judgement call
+
 **Clean**:
 A worktree git reports nothing uncommitted in. A Kept job is Clean when its Job branch carries only
 the commits the job had already made, and the driver reads the same fact of a finishing worktree
@@ -92,6 +97,11 @@ The stage where a developer and Claude argue a design out until nothing is left 
 glossary and the ADRs as each settles, and ending in a published spec. The developer's yes to its
 summary is the one gate before the spec loop runs with nobody watching.
 _Avoid_: grill-with-docs, interview, design session
+
+**Hand check**:
+A check a ticket asks for that no Session can run, so a person runs it after the loop. The Session
+names it and how to run it, the ticket still Lands, and the loop lists each one when it ends.
+_Avoid_: Manual check, unchecked, owed check
 
 **Held**:
 A worktree that had uncommitted work in it when the run stopped. A Keep commits that work to the
