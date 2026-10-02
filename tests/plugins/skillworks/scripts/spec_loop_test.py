@@ -411,6 +411,11 @@ def prompts_asking(runner, mark):
     return [call[2] for call in session_calls(runner) if call[2].startswith(mark)]
 
 
+# The command is the prompt's first line, and the words every Session is told follow it.
+def commands_asking(runner, mark):
+    return [prompt.split("\n")[0] for prompt in prompts_asking(runner, mark)]
+
+
 STAMP = r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} "
 
 
@@ -2622,6 +2627,140 @@ def test_the_name_check_leaves_its_count_of_denials(loop):
     assert "DENY  spec #158 names        0 Denials\n" in loop.log()
 
 
+# --- the Choices and Hand checks a Session names ------------------------------
+
+# Written out from the spec, so the words a Session reads cannot drift with the driver's.
+UNATTENDED = (
+    "Nobody will answer a question in this loop. Where the ticket leaves more than one way open, "
+    "pick one that your step allows and carry on, and write one line that starts with `CHOSE`, "
+    "with what you chose and why. Where the ticket asks for a check you cannot run, carry on, and "
+    "write one line that starts with `HAND CHECK`, with the check and how a person runs it. Begin "
+    "your report with a line that starts with `BLOCKED` only when you cannot do the work: a tool "
+    "call was denied and no allowed way exists, or the ticket has nothing left to build.")
+
+A_CHOICE = "CHOSE the short name, because the glossary holds it."
+A_HAND_CHECK = "HAND CHECK open the page in a browser and read its heading."
+
+
+def last_stamped(loop):
+    return unstamped([line for line in loop.log().split("\n") if re.match(STAMP, line)][-1])
+
+
+def given_a_spec_axis_that_says(sessions, *lines):
+    sessions.says["review-spec"] = "\n".join(("## Spec. Nothing found.",) + lines)
+
+
+def test_every_session_of_a_ticket_and_the_cut_is_told_nobody_will_answer(loop, runner):
+    tracker = given_the_tracker_holds(loop, ())
+    given_a_cut_that_files(given_sessions_that_report(loop), tracker, ONE_OPEN_TICKET)
+
+    loop.run(SPEC)
+
+    prompts = [call[2] for call in step_calls(runner)]
+    assert len(prompts) == 8
+    assert all(UNATTENDED in prompt for prompt in prompts)
+
+
+def test_the_drift_check_and_the_name_check_are_told_nobody_will_answer(loop, runner):
+    drifted(loop, drift_report())
+
+    prompts = prompts_asking(runner, "/skillworks:spec-drift") + prompts_asking(runner, NAME_CHECK)
+    assert len(prompts) == 2
+    assert all(UNATTENDED in prompt for prompt in prompts)
+
+
+def test_the_dry_run_prints_what_every_session_is_told_after_its_command(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert "  every Session above is told, after its command\n    " + UNATTENDED + "\n" in ran.out
+
+
+def test_a_choice_a_session_made_reaches_the_log_with_its_ticket_and_its_step(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), A_CHOICE)
+
+    loop.run(SPEC)
+
+    assert "CHOSE #168 spec         " + A_CHOICE + "\n" in loop.log()
+
+
+def test_a_hand_check_a_session_named_reaches_the_log_with_its_ticket_and_its_step(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), A_HAND_CHECK)
+
+    loop.run(SPEC)
+
+    assert "HAND  #168 spec         " + A_HAND_CHECK + "\n" in loop.log()
+
+
+def test_a_choice_a_check_session_made_reaches_the_log_with_the_check(loop):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["spec-names"] = "Recorded.\n" + A_CHOICE
+    given_the_closed_ticket_landed_after_the_base(loop)
+    tracker.name_report = NO_RENAMES
+
+    loop.run(SPEC)
+
+    assert "CHOSE spec #158 names        " + A_CHOICE + "\n" in loop.log()
+
+
+def test_a_choice_that_does_not_open_its_line_is_not_read(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), "I " + A_CHOICE)
+
+    loop.run(SPEC)
+
+    assert not any(unstamped(line).startswith("CHOSE") for line in loop.log().split("\n"))
+
+
+def test_a_stop_ends_the_log_with_every_choice_and_hand_check_of_the_run(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_a_spec_axis_that_says(sessions, A_CHOICE, A_HAND_CHECK)
+    sessions.says["review-architecture"] = "## Architecture. Nothing found.\n" + A_CHOICE
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    header = "LIST  this run made 2 Choices and named 1 Hand check"
+    assert last_stamped(loop) == header
+    assert lines_under(loop, header) == [
+        "      #168 spec         " + A_CHOICE,
+        "      #168 spec         " + A_HAND_CHECK,
+        "      #168 architecture " + A_CHOICE]
+
+
+def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run(loop):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["spec-drift"] = "Recorded.\n" + A_HAND_CHECK
+    sessions.says["spec-names"] = "Recorded.\n" + A_CHOICE
+    given_the_closed_ticket_landed_after_the_base(loop)
+    tracker.drift_report = drift_report()
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    header = "LIST  this run made 1 Choice and named 1 Hand check"
+    assert last_stamped(loop) == header
+    assert lines_under(loop, header) == [
+        "      spec #158 drift        " + A_HAND_CHECK,
+        "      spec #158 names        " + A_CHOICE]
+
+
+def test_a_run_with_no_choice_and_no_hand_check_writes_no_list(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "LIST" not in loop.log()
+
+
 # --- the Parent each Session names -------------------------------------------
 
 PARENT = "skillworks.parent.session.id=parent-session"
@@ -3032,7 +3171,7 @@ def test_the_re_check_judges_the_gap_items_alone_and_a_closed_round_ends_the_run
         verdicts_alone(S2="Done", The_user_docs="In step"))
 
     assert ran.status == 0, said(ran)
-    assert prompts_asking(runner, "/skillworks:spec-drift") == [
+    assert commands_asking(runner, "/skillworks:spec-drift") == [
         "/skillworks:spec-drift {} {}".format(SPEC, base_of(loop)),
         "/skillworks:spec-drift {} {} S2, The user docs".format(SPEC, base_of(loop))]
     log = loop.log()
@@ -3118,7 +3257,7 @@ def test_a_name_check_that_finds_no_rename_goes_on_to_a_clean_finish(loop, runne
     ran = named_back(loop, NO_RENAMES)
 
     assert ran.status == 0, said(ran)
-    assert prompts_asking(runner, NAME_CHECK) == [
+    assert commands_asking(runner, NAME_CHECK) == [
         "{} {} {}".format(NAME_CHECK, SPEC, base_of(loop))]
     log = loop.log()
     assert "NAMES the report is recorded on spec #{}".format(SPEC) in log
@@ -3277,7 +3416,7 @@ def test_a_rename_made_is_checked_on_the_rename_ticket_alone_and_ends_the_run(lo
     ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
 
     assert ran.status == 0, said(ran)
-    assert prompts_asking(runner, NAME_CHECK) == [
+    assert commands_asking(runner, NAME_CHECK) == [
         "{} {} {}".format(NAME_CHECK, SPEC, base_of(loop)),
         "{} {} {} {}".format(NAME_CHECK, SPEC, base_of(loop), RENAME_TICKET)]
     log = loop.log()

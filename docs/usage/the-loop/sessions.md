@@ -65,11 +65,28 @@ A Fresh call is `claude -p "<prompt>" --session-id <new id>`. A resumed call is
 - **[The grill](the-grill.md#the-grill)** is your own Session, with you in it, and the spec is
   written in that same Session. No Session after it can read it.
 
+## Nobody answers in the loop
+
+A loop Session never waits for a person. The driver adds one paragraph after the command of every
+Session it starts: each step of a ticket, the Cut, and each drift check and Name check. It says that
+nobody will answer a question, and it asks for two kinds of line:
+
+- **A Choice.** Where the ticket leaves more than one way open, the Session takes one way that its
+  step allows, carries on, and writes a line that starts with `CHOSE`, with what it chose and why.
+- **A Hand check.** Where the ticket asks for a check that no Session can run, the Session carries
+  on, and writes a line that starts with `HAND CHECK`, with the check and how a person runs it.
+
+The driver copies each of these lines into the log, and lists them all again when the run ends, as
+[Reading a run](reading-a-run.md) shows.
+
+The paragraph is the driver's and sits in no skill. A skill you run by hand still asks you, because
+you are there to answer.
+
 ## What a Fresh Session starts with
 
 | It starts with | What that is |
 |---|---|
-| Its prompt | The step's command and the ticket's number. |
+| Its prompt | The step's command and the ticket's number, then the paragraph that says nobody will answer. |
 | `CLAUDE.md` | With the rules it imports. |
 | What the step's skill reads | On demand, as [the stage map](stage-map.md) shows. |
 | The ticket and the spec | On the Tracker. |

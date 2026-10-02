@@ -53,6 +53,29 @@ check name the spec, and the file their result sits in:
       Denial: Bash {"command": "cd docs && git status"}
 ```
 
+A Session that made a Choice, or named a Hand check, gets a line for each, after its `DENY` line. A
+`CHOSE` line holds a Choice and a `HAND` line holds a Hand check. Each names the ticket and the step,
+or the spec and the check, and then holds the Session's own line as it wrote it:
+
+```
+2026-09-28 15:59:37 CHOSE #202 spec         CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
+2026-09-28 15:59:37 HAND  #202 spec         HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
+```
+
+When the run ends, the driver writes every Choice and every Hand check of the run again, as one
+list after a `LIST` line. It does this at a clean finish, after the `END` line, and at an early stop,
+after the `STOP`, `FAIL`, `RED` or `ABORT` line. A run with no Choice and no Hand check has no list:
+
+```
+2026-09-28 18:52:31 END   spec #200 complete. Every ticket is on master.
+2026-09-28 18:52:31 LIST  this run made 1 Choice and named 1 Hand check
+      #202 spec         CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
+      #202 spec         HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
+```
+
+Each Hand check in the list is a check for you to run. When the loop ends, the Session that started
+it names each item in the list to you, one by one.
+
 A check that flakes in a ticket's `suite` step, or in its landing, adds a `FLAKE` line that names
 the check and the file that keeps its red output:
 
@@ -133,7 +156,8 @@ re-check's:
 
 A `STOP` line names each Gap left after the round, each Contradicts, each rename not made and a spec
 with no commit to read, as [When a step fails](stops.md) shows. It comes last, after the
-full run's lines, in place of `END`. `END` comes only on [a clean finish](full-run.md#a-clean-finish).
+full run's lines, in place of `END`, and only a `LIST` can follow it. `END` comes only on
+[a clean finish](full-run.md#a-clean-finish).
 
 The position counts closed tickets, so a restarted run starts at its real place. The time left is the
 mean of the tickets this run has finished, with the one now running counted as still to do.
@@ -143,8 +167,9 @@ Expect a long run. A ticket can take from half an hour to a few hours.
 `spec-loop <spec> --dry-run` prints the whole plan instead of running it: the `SHAPE` line, every
 ticket, its worktree and Job branch, every step's command and facts, the landing steps, and what comes
 after the last ticket: the drift check, the Gap round, the Name check, the rename ticket, the Name
-re-check and the full run. A spec in another shape stops the dry run at its `ABORT` line, as it would
-stop a run. It starts no Session and reaches no remote.
+re-check and the full run. Last, it prints the paragraph every Session is told after its command. A
+spec in another shape stops the dry run at its `ABORT` line, as it would stop a run. It starts no
+Session and reaches no remote.
 
 A dry run on a spec with no tickets still checks the shape first. Then it says that a Session would
 cut the tickets first, and prints the Cut as the `cut` step. It prints the steps each ticket will

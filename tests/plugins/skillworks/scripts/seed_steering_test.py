@@ -1718,6 +1718,15 @@ def test_spec_loop_names_each_unrequested_item_before_the_close_offer():
     assert skill.index("`NOTE  Unrequested:`") < named < skill.index("make one offer")
 
 
+def test_spec_loop_names_each_choice_and_hand_check_before_the_close_offer_and_at_a_stop():
+    skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
+
+    named = skill.index("Name each Choice and each Hand check from the list at the end of the log "
+                        "to the user, one by one, before any close offer and at an early stop as "
+                        "well.")
+    assert skill.index("### 3. Report") < named < skill.index("make one offer")
+
+
 LOOP_OVERVIEW = ROOT / "docs" / "usage" / "the-loop.md"
 
 DRIFT_CHECK_PAGE = ROOT / "docs" / "usage" / "the-loop" / "drift-check.md"

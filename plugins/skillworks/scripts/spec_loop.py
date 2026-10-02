@@ -116,6 +116,18 @@ SUITE_BY_COMMAND = (
     "commands the Suite file names. In this loop the driver runs the whole Suite as a step of its "
     "own.")
 
+# Driver text and in no skill, because nobody answers only in the loop, and a skill run by hand asks.
+UNATTENDED = (
+    "Nobody will answer a question in this loop. Where the ticket leaves more than one way open, "
+    "pick one that your step allows and carry on, and write one line that starts with `CHOSE`, "
+    "with what you chose and why. Where the ticket asks for a check you cannot run, carry on, and "
+    "write one line that starts with `HAND CHECK`, with the check and how a person runs it. Begin "
+    "your report with a line that starts with `BLOCKED` only when you cannot do the work: a tool "
+    "call was denied and no allowed way exists, or the ticket has nothing left to build.")
+
+# Read only at the start of a line, so a Session that mentions one in passing names none.
+CHOICE_AND_CHECK_OPENINGS = (("CHOSE", "CHOSE"), ("HAND CHECK", "HAND "))
+
 # Nobody is at a terminal to approve the slices, and the log holds only the Session's last message.
 CUT_UNATTENDED = (
     "\n\nSkip the approval questions. End with the breakdown you showed, as your last message, "
@@ -368,6 +380,8 @@ class Loop:
         self.run_flakes = []
         self.left_full_run_tree = ""
 
+        self.choices_and_checks = []
+
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
 
@@ -481,7 +495,7 @@ class Loop:
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
-        asked = self.asks(step, ticket) + SUITE_BY_COMMAND
+        asked = self.asks(step, ticket) + SUITE_BY_COMMAND + "\n\n" + UNATTENDED
         if step.name == "finish":
             return asked + self.suite_report(), ""
         if step.name != "fix":
@@ -604,6 +618,24 @@ class Loop:
             said += "\n      Denial: " + denial
         self.say(said)
 
+    def say_result(self, who, result):
+        self.say_denials(who, result)
+        for line in str(field(result, "result")).split("\n"):
+            for opening, tag in CHOICE_AND_CHECK_OPENINGS:
+                if line.startswith(opening):
+                    self.say("{} {}{}".format(tag, who, line))
+                    self.choices_and_checks.append((opening, who + line))
+
+    # Said at a stop as well as at a clean finish, so a Hand check is never lost mid-log.
+    def list_choices_and_checks(self):
+        if not self.choices_and_checks:
+            return
+        chosen = sum(1 for opening, _ in self.choices_and_checks if opening == "CHOSE")
+        self.say("LIST  this run made {} and named {}{}".format(
+            how_many(chosen, "Choice", "Choices"),
+            how_many(len(self.choices_and_checks) - chosen, "Hand check", "Hand checks"),
+            "".join("\n      " + said for _, said in self.choices_and_checks)))
+
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
         return self.stop_naming_denials("FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
@@ -637,7 +669,7 @@ class Loop:
         nudge = 0
         while True:
             written(held, ran.out)
-            self.say_denials("{} {:<13}".format(self.named(ticket), step.name), held)
+            self.say_result("{} {:<13}".format(self.named(ticket), step.name), held)
             if ran.status != 0:
                 raise self.stop_step(ticket, step.name, "exited non-zero",
                                      "{} and {}".format(reasons, held), held)
@@ -865,7 +897,8 @@ class Loop:
             if state == "open":
                 plan += self.ticket_plan(number, landing)
 
-        self.wrote(plan + self.after_tickets_plan())
+        self.wrote(plan + self.after_tickets_plan()
+                   + "  every Session above is told, after its command\n    " + UNATTENDED + "\n")
         # Asked the way the run asks, so the ticket named is the one a run would claim first.
         chosen = self.next_ticket(self.tracker.open_tickets(self.spec))
         if self.ticket_count == 0:
@@ -1094,11 +1127,11 @@ class Loop:
         if not self.job_worktree:
             raise stop("FAIL  the {} got no worktree to run in.".format(what))
 
-        ran = self.claude_p(prompt)
+        ran = self.claude_p(prompt + "\n\n" + UNATTENDED)
         result = self.log_dir / (named + ".json")
         written(result, ran.out)
         written(self.log_dir / (named + ".err"), ran.err)
-        self.say_denials("spec {} {:<13}".format(self.spec_named(), named), result)
+        self.say_result("spec {} {:<13}".format(self.spec_named(), named), result)
         if ran.status != 0:
             self.say("WARN  {} exited non-zero. See {}".format(
                 what, self.log_dir / (named + ".err")))
@@ -1444,6 +1477,7 @@ def main(argv, runner, out, err, wait):
         spec, dry, mode = arguments(argv)
         loop = Loop(runner, spec, out, err, wait, mode)
         loop.run(dry)
+        loop.list_choices_and_checks()
         return 0
     except Stop as stopped:
         if stopped.status == MISUSED or loop is None:
@@ -1451,6 +1485,7 @@ def main(argv, runner, out, err, wait):
         else:
             # A refusal from a script the loop reads ends its line itself, and say ends it again.
             loop.say(stopped.said.rstrip("\n"))
+            loop.list_choices_and_checks()
         return stopped.status
 
 

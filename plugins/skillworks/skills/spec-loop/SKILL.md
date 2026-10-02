@@ -38,6 +38,8 @@ When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which ti
 
 Each ticket Lands on its Target branch. `target-branch` in `docs/agents/loop.json` names it for every spec, or says `spec`, and then each spec names its own branch under `## Branch` and is reviewed as one pull request.
 
+Name each Choice and each Hand check from the list at the end of the log to the user, one by one, before any close offer and at an early stop as well.
+
 **A clean finish** is the log's `END` line. The driver decides it and you read it: the driver writes `END` only when every Verdict in the drift report is Done or In step, after the one round in which it files and builds a Gap ticket of its own, when every rename the Name check that follows finds is made, in a rename ticket the driver files and builds and a Name re-check that confirms each one, and when the full run of the Suite, which runs once and last, is green. Do not judge the drift report yourself, so you and the driver never disagree. `/skillworks:spec-drift` records that report with the spec, and the driver reads it back from the Tracker, a comment on the spec issue with GitHub or the `## Drift report` section of `spec.md` with files, and keeps it at `.spec-loop/<spec-number>/drift.md`. Its `DRIFT` line in the log names that file. A log with no `END` line is not a clean finish: a `STOP` line names each Contradicts the count found, each Gap left after the round, or each rename the Name re-check found not made, and a `RED` line names each check the full run found red.
 
 Unrequested work never stops the loop, and the driver writes a `NOTE  Unrequested:` line for each item. Name each of those items to the user, one by one, before any close offer, so they read them at the moment they decide. Then:
