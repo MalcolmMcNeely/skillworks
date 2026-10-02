@@ -32,6 +32,7 @@
       "Bash(skillworks-suite:*)",
       "Bash(tracker-publish:*)",
       "Bash(spec-commits:*)",
+      "Bash(spec-loop-counts:*)",
       "Read(~/.claude/plugins/**)"
     ]
   },

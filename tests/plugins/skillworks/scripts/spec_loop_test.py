@@ -238,6 +238,7 @@ class Sessions:
         self.stages = set()
         self.bare = set()
         self.denials = {}
+        self.models = {}
         self.garbles = set()
         self.errors = set()
         self.then = {}
@@ -326,6 +327,8 @@ class Sessions:
         answered = {"is_error": step in self.errors, "session_id": session, "result": said}
         if step in self.denials:
             answered["permission_denials"] = self.denials[step]
+        if step in self.models:
+            answered["modelUsage"] = {model: {"inputTokens": 1} for model in self.models[step]}
         return Ran(0, json.dumps(answered) + "\n", "")
 
     def record(self, session, command, args):

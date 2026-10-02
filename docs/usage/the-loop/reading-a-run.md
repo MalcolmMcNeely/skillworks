@@ -207,3 +207,64 @@ One entry holds:
 ```
 {"at": "2026-09-28 15:59:37", "ticket": "202", "check": null, "step": "standards", "attempt": 0, "status": 0, "failed": ["axis-reported"], "denials": 1, "blocked": null, "choices": [], "hand_checks": [], "result": {"is_error": false, "session_id": "...", "result": "I will wait for the tests to finish."}}
 ```
+
+## Counting runs
+
+`spec-loop-counts` counts how the steps of the loop's runs ended. It reads the Journal and the log,
+and nothing else. It starts no Session, and it names no model and no effort.
+
+```
+spec-loop-counts 200
+spec-loop-counts
+```
+
+With a spec number, it counts that spec. With none, it counts every spec folder under `.spec-loop/`
+that holds a Journal. A folder with no Journal holds a run from before the Journal existed, so it is
+left out. The first line names the specs it counted. Four tables follow:
+
+```
+Specs counted: 200, 214
+
+## How steps ended
+
+| Step | Results | Nudges | Blocked | Choices | Hand checks |
+|---|---|---|---|---|---|
+| build | 6 | tree-changed 1 | 1 | 2 | 1 |
+| standards | 7 | axis-reported 2 | 0 | 0 | 0 |
+| finish | 5 | ticket-closed 1 | 0 | 1 | 0 |
+
+Log lines: FAIL 1, STOP 1, RED 0, ABORT 0
+
+## What a Nudge got
+
+| Step | Nudged | Passed | Blocked | Failed |
+|---|---|---|---|---|
+| build | 1 | 1 | 0 | 0 |
+| standards | 1 | 0 | 0 | 1 |
+| finish | 1 | 1 | 0 | 0 |
+
+## Denials
+
+| Step | Results with a Denial | Denied calls |
+|---|---|---|
+| build | 2 | Bash 5, Write 1 |
+
+## Which model ran
+
+| Model | Results |
+|---|---|
+| claude-haiku-4-5-20251001 + claude-opus-5-5 | 3 |
+| claude-opus-5-5 | 15 |
+```
+
+- **How steps ended** gives, for each step, its Session results, the Nudges for each failed check,
+  its Blocked stops, its Choices and its Hand checks. Below it, `Log lines` counts the `FAIL`,
+  `STOP`, `RED` and `ABORT` lines of the log.
+- **What a Nudge got** gives, for each step that was Nudged, how many times it then passed, how many
+  times it answered Blocked, and how many times it failed after the last Nudge. A run with no Nudge
+  says so in place of the table.
+- **Denials** gives, for each step, the results that hold a Denial, and the denied calls by tool name.
+  A run with no Denial says so in place of the table.
+- **Which model ran** gives the results for each model that a result's own `modelUsage` field names. A
+  result that names more than one model is a row of its own. A result that names none, such as one
+  that is not JSON, is counted under `none named`.
