@@ -143,6 +143,8 @@ CUT_UNATTENDED = (
     "so the loop log holds it.")
 
 CUT_RECORDED = "tickets-filed"
+REPORT_RECORDED = "report-recorded"
+NEW_REPORT_RECORDED = "new-report-recorded"
 
 UNCUT_NUMBER = "<ticket>"
 UNCUT_JOB_NUMBER = "UNCUT"
@@ -353,6 +355,10 @@ def how_many(count, word, words):
 
 def contradicts_said(verdict):
     return verdict.item + (": " + verdict.reason if verdict.reason else "")
+
+
+def nudges_line(checks):
+    return "                   nudges: up to {}, on {}\n".format(NUDGES, checks)
 
 
 def plan_line(name, what, checks=""):
@@ -842,6 +848,12 @@ class Loop:
                 ".spec-loop/{}/tickets/, with tracker-publish tickets {} <file>...\n".format(
                     self.spec_named(), self.spec, self.spec))
 
+    # A re-check records with the same command as its check, so one sentence serves all four.
+    def report_owed(self, report, kind, file):
+        return ("Spec {} holds no {} yet. Record the report you wrote with tracker-publish {} {} "
+                ".spec-loop/{}/{}\n".format(self.spec_named(), report, kind, self.spec, self.spec,
+                                            file))
+
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
@@ -870,16 +882,20 @@ class Loop:
         return ("  after every ticket is closed\n"
                 + plan_line("drift", drift + '" --session-id <new id>',
                             "a report recorded, a Verdicts list, no Contradicts")
+                + nudges_line(REPORT_RECORDED)
                 + plan_line("gap-ticket", "one ticket under the spec when the count finds a Gap, "
                             "built through every step above")
                 + plan_line("re-check", drift + ' <the Gap items>" --session-id <new id>, once',
                             "no Gap left, no Contradicts")
+                + nudges_line(NEW_REPORT_RECORDED)
                 + plan_line("names", names + '" --session-id <new id>',
                             "a Name report recorded, a Renames list")
+                + nudges_line(REPORT_RECORDED)
                 + plan_line("rename-ticket", "one ticket under the spec when the Name check finds "
                             "a rename, built through every step above")
                 + plan_line("name-re-check", names + ' <the rename ticket>" --session-id <new id>, '
                             'once', "a new Name report, a Verdicts list, every rename Done")
+                + nudges_line(NEW_REPORT_RECORDED)
                 + plan_line("full-run", "the whole Suite on the newest origin/<target>, with no "
                             "Proofs and no images, once and last"))
 
@@ -905,8 +921,7 @@ class Loop:
             plan += plan_line(step.name, call, step.checks)
             nudged = nudged_on(step)
             if nudged:
-                plan += "                   nudges: up to {}, on {}\n".format(
-                    NUDGES, " ".join(nudged))
+                plan += nudges_line(" ".join(nudged))
 
         for step in landing:
             named, what, checks = columns(step)
@@ -932,7 +947,7 @@ class Loop:
             plan += "  before the first ticket\n" + plan_line(
                 "cut", 'claude -p "{}" --session-id <new id>'.format(self.cut_asks()),
                 "nothing left uncommitted, at least one ticket under the spec")
-            plan += "                   nudges: up to {}, on {}\n".format(NUDGES, CUT_RECORDED)
+            plan += nudges_line(CUT_RECORDED)
             plan += "  each ticket the Cut makes\n" + self.ticket_plan(UNCUT_NUMBER, landing)
         for number, state, title in self.tracker.ticket_rows(self.spec):
             plan += "  {} [{}] {}\n".format(self.named(number), state, title)
@@ -1221,9 +1236,19 @@ class Loop:
         else:
             self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
                 self.spec_named()))
+        recorded = Recorded(
+            NEW_REPORT_RECORDED if asked else REPORT_RECORDED,
+            lambda: self.drift_recorded(asked),
+            self.report_owed("new drift report" if asked else "drift report", "drift",
+                             "drift-report.md"))
         result = self.run_clean_session(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
-            self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""))
+            self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""), recorded)
         return self.read_drift_report(named, asked, result)
+
+    # The Tracker hands back the newest report, so a re-check that recorded none reads the first.
+    def drift_recorded(self, asked):
+        report = self.tracker.drift_report(self.spec)
+        return report and not (asked and report == self.drift_read)
 
     # Read back from the Tracker, so a report the Session only said and never recorded is caught.
     def read_drift_report(self, named, asked, result):
@@ -1311,7 +1336,9 @@ class Loop:
         self.say("NAMES checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
         result = self.run_clean_session("names", "Name check", PLUGIN + "spec-names {} {}".format(
-            self.spec, base))
+            self.spec, base), Recorded(
+                REPORT_RECORDED, lambda: self.tracker.name_report(self.spec),
+                self.report_owed("Name report", "names", "names-report.md")))
 
         # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
         report = self.tracker.name_report(self.spec)
@@ -1357,11 +1384,12 @@ class Loop:
                  "{}.".format(self.named(ticket), self.spec_named()))
         result = self.run_clean_session(
             "names-renames", "Name re-check", PLUGIN + "spec-names {} {} {}".format(
-                self.spec, base, self.tracker.reference(ticket)))
+                self.spec, base, self.tracker.reference(ticket)), Recorded(
+                    NEW_REPORT_RECORDED, self.new_name_report,
+                    self.report_owed("new Name report", "names", "names-report.md")))
 
-        # The Tracker hands back the newest report, so a check that recorded none reads the first.
-        report = self.tracker.name_report(self.spec)
-        if not report or report == self.names_read:
+        report = self.new_name_report()
+        if not report:
             raise self.stop_naming_denials("STOP  the Name re-check recorded no new report on spec {}, so no "
                                    "rename was checked and the spec stays open.".format(
                                        self.spec_named()), result)
@@ -1388,6 +1416,11 @@ class Loop:
                            "".join("      Not made: {}\n".format(unmade_said(unmade))
                                    for unmade in counted.unmade), held))
         self.say("NAMES every rename is made on spec {}".format(self.spec_named()))
+
+    # The Tracker hands back the newest report, so a check that recorded none reads the first.
+    def new_name_report(self):
+        report = self.tracker.name_report(self.spec)
+        return report if report != self.names_read else None
 
     # Its own ticket after the Gap ticket, so each build has one job and no later build brings a name.
     def close_renames(self, base):

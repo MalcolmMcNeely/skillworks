@@ -33,6 +33,13 @@ names what is missing and the command that records it, then ends as every Nudge 
 writes a `NUDGE` line. A Cut that still filed nothing after two Nudges stops the loop with a `STOP`
 line, as [the tickets](tickets.md) says.
 
+**A Nudge for the checks.** The drift check and the Name check are Nudged too, when the Tracker holds
+no report after them, and so are their re-checks, when the Tracker holds no new report. The Nudge
+names what is missing and the command that records it, then ends as every Nudge does, and writes a
+`NUDGE` line. A check that still recorded nothing after two Nudges stops the loop with a `STOP`
+line. Only a missing report earns a Nudge. A report with no Verdicts list, a tree left changed and a
+non-zero exit stop or warn as before, with no Nudge.
+
 **A Blocked step.** A Session that cannot do its work begins its report with a line that starts
 with `BLOCKED`, as [Sessions](sessions.md#nobody-answers-in-the-loop) says. The script reads only the
 first line of the report that is not empty, so a `BLOCKED` lower down does not count. It reads it

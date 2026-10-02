@@ -704,6 +704,17 @@ def test_the_dry_run_names_the_nudges_of_the_cut(loop):
     assert planned_nudges(ran, "cut") == "up to 2, on tickets-filed"
 
 
+def test_the_dry_run_names_the_nudges_of_the_checks(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert [planned_nudges(ran, step) for step in
+            ("drift", "re-check", "names", "name-re-check")] == [
+        "up to 2, on report-recorded", "up to 2, on new-report-recorded",
+        "up to 2, on report-recorded", "up to 2, on new-report-recorded"]
+
+
 def test_the_dry_run_names_the_gap_round_between_the_drift_check_and_the_full_run(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 
@@ -3668,6 +3679,183 @@ def test_a_name_re_check_with_no_verdicts_list_stops_the_loop(loop):
     assert "END" not in loop.log()
 
 
+# --- the Nudge a check that recorded nothing is given ------------------------
+
+DRIFT_OWED = ("Spec #158 holds no drift report yet. Record the report you wrote with "
+              "tracker-publish drift 158 .spec-loop/158/drift-report.md")
+NAMES_OWED = ("Spec #158 holds no Name report yet. Record the report you wrote with "
+              "tracker-publish names 158 .spec-loop/158/names-report.md")
+
+
+def unstamped_nudges(loop):
+    return [unstamped(line) for line in nudge_lines(loop)]
+
+
+def stopped_after_the_last_nudge(loop):
+    lines = [unstamped(line) for line in loop.log().split("\n")]
+    nudged = [at for at, line in enumerate(lines) if line.startswith("NUDGE")]
+    stopped = [at for at, line in enumerate(lines) if line.startswith("STOP")]
+    return len(nudged) == 2 and len(stopped) == 1 and nudged[-1] < stopped[0]
+
+
+def test_a_drift_check_that_recorded_no_report_has_a_nudge_line_for_each_nudge(loop):
+    drifted(loop, "Looks good to me.\n")
+
+    assert unstamped_nudges(loop) == [
+        "NUDGE spec #158 drift        1 of 2, failed report-recorded",
+        "NUDGE spec #158 drift        2 of 2, failed report-recorded"]
+
+
+def test_a_drift_check_that_recorded_no_report_still_stops_the_loop_after_the_last_nudge(loop):
+    drifted(loop, "Looks good to me.\n")
+
+    assert stopped_after_the_last_nudge(loop)
+
+
+def test_a_drift_check_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
+    drifted(loop, "Looks good to me.\n")
+
+    assert nudge_calls(runner)[0][2].split("\n") == [
+        DRIFT_OWED, BACKGROUND_LINE, BLOCKER_LINE, ""]
+
+
+def test_a_drift_check_nudge_resumes_the_check_s_own_session_in_its_worktree(loop, runner):
+    drifted(loop, "Looks good to me.\n")
+
+    made = [call for call in runner.made if call.args[0] == "claude"]
+    check = next(call for call in made if call.args[2].startswith("/skillworks:spec-drift"))
+    nudges = [call for call in made if not call.args[2].startswith("/")]
+    assert [(call.args[call.args.index("--resume") + 1], call.where) for call in nudges] == [
+        (id_given(check.args), check.where)] * 2
+
+
+def test_a_drift_check_that_records_its_report_after_a_nudge_lets_the_run_carry_on(loop):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    tracker.drift_report = "Looks good to me.\n"
+    sessions.when_nudged["spec-drift"] = lambda: setattr(tracker, "drift_report", drift_report())
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+
+
+def test_a_drift_re_check_that_recorded_no_new_report_is_nudged(loop):
+    report = drift_report(S2="Missing")
+    drifted_in_a_round(loop, report, report)
+
+    assert unstamped_nudges(loop) == [
+        "NUDGE spec #158 drift-gaps   1 of 2, failed new-report-recorded",
+        "NUDGE spec #158 drift-gaps   2 of 2, failed new-report-recorded"]
+
+
+def test_a_drift_re_check_that_records_a_new_report_after_a_nudge_lets_the_run_carry_on(loop):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
+    report = drift_report(S2="Missing")
+    given_drift_reports(sessions, tracker, report, report)
+    sessions.when_nudged["spec-drift"] = lambda: setattr(
+        tracker, "drift_report", verdicts_alone(S2="Done"))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+
+
+def test_a_name_check_that_recorded_no_report_has_a_nudge_line_for_each_nudge(loop):
+    named_back(loop, "Looks good to me.\n")
+
+    assert unstamped_nudges(loop) == [
+        "NUDGE spec #158 names        1 of 2, failed report-recorded",
+        "NUDGE spec #158 names        2 of 2, failed report-recorded"]
+
+
+def test_a_name_check_that_recorded_no_report_still_stops_the_loop_after_the_last_nudge(loop):
+    named_back(loop, "Looks good to me.\n")
+
+    assert stopped_after_the_last_nudge(loop)
+
+
+def test_a_name_check_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
+    named_back(loop, "Looks good to me.\n")
+
+    assert nudge_calls(runner)[0][2].split("\n") == [
+        NAMES_OWED, BACKGROUND_LINE, BLOCKER_LINE, ""]
+
+
+def test_a_name_check_that_records_its_report_after_a_nudge_lets_the_run_carry_on(loop):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    tracker.name_report = "Looks good to me.\n"
+    sessions.when_nudged["spec-names"] = lambda: setattr(tracker, "name_report", NO_RENAMES)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+
+
+def test_a_name_re_check_that_recorded_no_new_report_is_nudged(loop):
+    report = name_report(*RENAMED)
+    renamed_in_a_round(loop, report, report)
+
+    assert unstamped_nudges(loop) == [
+        "NUDGE spec #158 names-renames1 of 2, failed new-report-recorded",
+        "NUDGE spec #158 names-renames2 of 2, failed new-report-recorded"]
+
+
+def test_a_name_re_check_that_records_a_new_report_after_a_nudge_lets_the_run_carry_on(loop):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, RENAME_TICKET)
+    report = name_report(*RENAMED)
+    given_name_reports(sessions, tracker, report, report)
+    sessions.when_nudged["spec-names"] = lambda: setattr(
+        tracker, "name_report", rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+
+
+def test_a_drift_report_with_no_verdicts_list_earns_no_nudge(loop):
+    drifted(loop, "## Drift report\n\nNothing drifted.\n")
+
+    assert nudge_lines(loop) == []
+
+
+def test_a_name_report_with_no_renames_list_earns_no_nudge(loop):
+    named_back(loop, "## Name report\n\nNothing to rename.\n")
+
+    assert nudge_lines(loop) == []
+
+
+def test_a_check_that_left_its_tree_changed_earns_no_nudge(loop):
+    given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    sessions.writes["spec-drift"] = ("stray.txt", "left behind\n")
+
+    loop.run(SPEC)
+
+    assert nudge_lines(loop) == []
+
+
+def test_a_check_that_exited_non_zero_earns_no_nudge(loop):
+    given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    sessions.refuses.add("spec-drift")
+
+    loop.run(SPEC)
+
+    assert nudge_lines(loop) == []
+
+
 def test_attributes_already_set_are_kept_and_the_parent_is_added(loop, runner, monkeypatch):
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
     monkeypatch.setenv("OTEL_RESOURCE_ATTRIBUTES", "team=studio,host.kind=laptop")
@@ -4125,6 +4313,20 @@ def test_the_tickets_stops_and_sessions_pages_say_the_cut_is_nudged_before_it_st
         "A Cut that still filed nothing after two Nudges stops the loop" in said[1],
         "A step of a ticket gets one, and so does the Cut when it filed no ticket." in said[2],
     ] == [True, True, True]
+
+
+def test_the_check_stops_and_sessions_pages_say_the_checks_are_nudged_before_they_stop_the_loop():
+    said = [flat(page_text(DRIFT_CHECK_PAGE)), flat(page_text(NAME_CHECK_PAGE)),
+            flat(page_text(STOPS_PAGE)), flat(page_text(SESSIONS_PAGE))]
+
+    assert [
+        "the drift check recorded no report, after two Nudges." in said[0],
+        "a re-check that recorded no new report after two Nudges" in said[0],
+        "No report after two Nudges stops the loop" in said[1],
+        "A Name re-check that recorded no new report is Nudged" in said[1],
+        "A check that still recorded nothing after two Nudges stops the loop" in said[2],
+        "The drift check and the Name check are Nudged before they stop the loop" in said[3],
+    ] == [True] * 6
 
 
 def test_the_stops_page_gives_the_stop_for_a_spec_in_another_shape():

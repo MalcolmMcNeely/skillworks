@@ -55,7 +55,10 @@ A Fresh call is `claude -p "<prompt>" --session-id <new id>`. A resumed call is
 
 - **A Nudge** resumes the Session that the step's own result names, so it carries on with what it
   knows. A step gets two at most. A step of a ticket gets one, and so does the Cut when it filed no
-  ticket. The Cut's Nudge resumes the Cut's Session in the Cut's own worktree.
+  ticket. The Cut's Nudge resumes the Cut's Session in the Cut's own worktree. The drift check and
+  the Name check are Nudged before they stop the loop, when they recorded no report, and so are
+  their re-checks, when they recorded no new report. Each one resumes the check's Session in its own
+  worktree.
 - **The round of a red Suite** runs `fix`, `sweep` and `suite` once more. `fix` resumes the build
   Session again, and `sweep` is Fresh again.
 - **A restart after [a Keep](stops.md#restarting-a-stopped-run-the-keep)** starts the ticket again

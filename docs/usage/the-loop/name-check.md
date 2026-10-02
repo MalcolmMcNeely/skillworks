@@ -50,8 +50,10 @@ has no word for says `no glossary word` on its line. With nothing to rename, the
 
 The script reads the report back from the Tracker, so a finding the Session only said and never
 recorded is caught. It keeps a copy at `.spec-loop/<spec>/names.md`, beside `drift.md`, and writes a
-`NAME` line for each rename. No report stops the loop, and so does a report with no `### Renames`
-list.
+`NAME` line for each rename. A Name check that recorded no report is Nudged: the script resumes the
+same Session in its own worktree, and names what is missing and the `tracker-publish names` command
+that records it. Each Nudge writes a `NUDGE` line. No report after two Nudges stops the loop, and so
+does a report with no `### Renames` list, which gets no Nudge.
 
 With no rename there is no rename ticket and no Name re-check, and the loop goes on to the full run.
 
@@ -91,3 +93,6 @@ Verdicts. A rename with no Verdict, or with two, counts as not made. A Verdict f
 ticket does not owe gets a `WARN` line and counts for nothing. A rename not made stops the loop and
 names it, as [When a step fails](stops.md) shows. With every rename Done, the
 loop goes on to the full run.
+
+A Name re-check that recorded no new report is Nudged, as the Name check is. No new report after
+two Nudges stops the loop.
