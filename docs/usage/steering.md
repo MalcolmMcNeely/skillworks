@@ -153,6 +153,8 @@ Plugin, and no team edits them. There is no file for them, so do not look for on
   anti-patterns. Your taste in tests is not fixed. It is the testing rule, `testing.md`.
 - The deep-module view in `codebase-design`.
 - The plain writing in `unslop`, and the output style the Plugin forces on every Session.
+- The rules for writing a document an agent reads, in `skillsmith`. Claude loads it when it edits a
+  skill, a `CLAUDE.md` or a rule file.
 - The trailers on every commit: the Session trailer always, the `Ticket` trailer in the loop, and the
   credit line for Claude as `co-authored-by` in `docs/agents/loop.json` says.
 - The three trailer rules the hook writes into `.git/config`:

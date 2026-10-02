@@ -120,7 +120,7 @@ const skills = [
   { name: 'to-spec', rate: 0.8, turns: [10, 25], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'user-slash': 7, 'claude-proactive': 3 } },
   { name: 'to-tickets', rate: 0.7, turns: [10, 30], models: { [opus]: 3, [haiku]: 1 }, efforts: { xhigh: 1 }, triggers: { 'nested-skill': 6, 'user-slash': 4 } },
   { name: 'research', rate: 0.6, turns: [20, 60], models: { [sonnet]: 1 }, efforts: { high: 1 }, triggers: { 'claude-proactive': 5, 'user-slash': 3, 'agent-preload': 2 } },
-  { name: 'writing-for-agents', rate: 0.6, turns: [4, 15], models: { [opus]: 1 }, efforts: { high: 1 }, triggers: { 'nested-skill': 7, 'claude-proactive': 3 } },
+  { name: 'skillsmith', rate: 0.6, turns: [4, 15], models: { [opus]: 1 }, efforts: { high: 1 }, triggers: { 'nested-skill': 7, 'claude-proactive': 3 } },
   { name: 'prototype', rate: 0.45, turns: [30, 120], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'user-slash': 1 } },
   { name: 'resolve-conflict', rate: 0.4, turns: [5, 20], models: { [sonnet]: 1 }, efforts: { medium: 1 }, triggers: { 'user-slash': 1 } },
   { name: 'codebase-design', rate: 0.3, turns: [10, 40], models: { [opus]: 1 }, efforts: { xhigh: 1 }, triggers: { 'claude-proactive': 5, 'nested-skill': 5 } },

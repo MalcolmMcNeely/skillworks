@@ -1015,7 +1015,7 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
 HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop")
 
 VISIBLE_SKILLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
-                  "diagnosing-bugs", "prototype", "unslop", "architecture-tests")
+                  "diagnosing-bugs", "prototype", "unslop", "architecture-tests", "skillsmith")
 
 
 def front_matter(skill):
@@ -1177,6 +1177,25 @@ def test_no_skill_seed_script_or_user_doc_names_the_grills_old_skill():
     named = [str(path.relative_to(ROOT)) for path in pages if OLD_GRILL in path.read_text(encoding="utf-8")]
 
     assert named == []
+
+
+OLD_SKILLSMITH = "writing" + "-for-agents"
+
+
+def test_no_skill_seed_script_or_user_doc_names_skillsmiths_old_name():
+    pages = [path for path in PLUGIN.rglob("*") if path.is_file() and path.suffix in (".md", ".py", ".mjs", ".json")]
+    pages += user_docs(ROOT)
+    assert {SKILLS / "skillsmith" / "SKILL.md", SETUP / "seeds" / "domain.md", ROOT / "docs" / "usage" / "steering.md"} <= set(pages)
+
+    named = [str(path.relative_to(ROOT)) for path in pages if OLD_SKILLSMITH in path.read_text(encoding="utf-8")]
+
+    assert named == []
+
+
+def test_skillsmith_carries_its_own_description():
+    assert description("skillsmith").strip('"') == (
+        "Rules for writing a document an agent reads. Use when creating or editing a skill, a CLAUDE.md or AGENTS.md,"
+        " a rule file, a subagent brief, or a prompt a script sends. Not for prose a person reads: that is unslop.")
 
 
 def test_the_grill_walks_the_surfaces_after_the_design_questions_and_before_the_sum_up():
@@ -1698,6 +1717,13 @@ def test_the_licence_notices_name_review_changes_among_the_skills_we_changed():
     assert "code-review" not in notices
 
 
+def test_the_licence_notices_name_skillsmith_among_the_skills_that_are_ours():
+    notices = " ".join((ROOT / "THIRD-PARTY-NOTICES.md").read_text(encoding="utf-8").split())
+    ours = notices.split(" except ", 1)[1].split("which are ours", 1)[0]
+
+    assert "`skillsmith`" in ours
+
+
 def test_no_plugin_file_or_steering_doc_names_the_old_review_skill():
     pages = [path for folder in (PLUGIN, ROOT / "docs" / "usage", ROOT / "docs" / "agents")
              for path in folder.rglob("*") if path.is_file() and path.suffix in (".md", ".py", ".mjs", ".json")]
@@ -2087,7 +2113,7 @@ def test_the_steering_page_lists_the_machinery_no_team_edits():
     page = STEERING_PAGE.read_text(encoding="utf-8")
     fixed = page.split("## What is fixed", 1)[1]
 
-    for machinery in ("`tdd`", "`codebase-design`", "`unslop`", "output style"):
+    for machinery in ("`tdd`", "`codebase-design`", "`unslop`", "`skillsmith`", "output style"):
         assert machinery in fixed, machinery
 
 

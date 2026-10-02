@@ -1,6 +1,6 @@
 ---
-name: writing-for-agents
-description: Writing documents for agents. Use when creating or editing skills, or modifying AGENTS.md or CLAUDE.md.
+name: skillsmith
+description: "Rules for writing a document an agent reads. Use when creating or editing a skill, a CLAUDE.md or AGENTS.md, a rule file, a subagent brief, or a prompt a script sends. Not for prose a person reads: that is unslop."
 ---
 
 Reference for writing any document an agent reads: a skill, a `CLAUDE.md` or `AGENTS.md`, a rule file, a subagent brief, a prompt a script sends. It is rules to check a draft against, and not steps to run. You are done when the document has been held against every section here that bears on it, and each change you made names the fault it mends.
