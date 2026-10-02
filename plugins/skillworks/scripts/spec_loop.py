@@ -212,6 +212,10 @@ def denials(path):
     return named
 
 
+# Enough to show what a Session was denied, and few enough that a passing step stays short.
+DENIALS_SHOWN = 3
+
+
 def written(path, text):
     Path(path).write_text(text, encoding="utf-8", newline="\n")
 
@@ -590,6 +594,16 @@ class Loop:
         return stop(said + "\n      If one of these Denials stopped the loop, rerun with "
                     "spec-loop {} --bypass".format(self.spec))
 
+    # Said for a passing result too, so a Denial the Session found a way round still shows.
+    def say_denials(self, who, result):
+        named = denials(result)
+        said = "DENY  {}{}".format(who, how_many(len(named), "Denial", "Denials"))
+        if len(named) > DENIALS_SHOWN:
+            said += ", and the first {} follow".format(DENIALS_SHOWN)
+        for denial in named[:DENIALS_SHOWN]:
+            said += "\n      Denial: " + denial
+        self.say(said)
+
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
         return self.stop_naming_denials("FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
@@ -623,6 +637,7 @@ class Loop:
         nudge = 0
         while True:
             written(held, ran.out)
+            self.say_denials("{} {:<13}".format(self.named(ticket), step.name), held)
             if ran.status != 0:
                 raise self.stop_step(ticket, step.name, "exited non-zero",
                                      "{} and {}".format(reasons, held), held)
@@ -1083,6 +1098,7 @@ class Loop:
         result = self.log_dir / (named + ".json")
         written(result, ran.out)
         written(self.log_dir / (named + ".err"), ran.err)
+        self.say_denials("spec {} {:<13}".format(self.spec_named(), named), result)
         if ran.status != 0:
             self.say("WARN  {} exited non-zero. See {}".format(
                 what, self.log_dir / (named + ".err")))

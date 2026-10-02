@@ -11,10 +11,15 @@ date or time of its own.
 2026-09-28 15:55:20 SHAPE spec #200 holds 14 stories, 6 decisions and 1 Surface, so the drift check's Verdicts can be counted
 2026-09-28 15:55:22 START #202 TICKET: Preflight checks for uv
 2026-09-28 15:55:32 STEP  #202 build        2/6
+2026-09-28 15:57:40 DENY  #202 build        0 Denials
 2026-09-28 15:57:41 STEP  #202 standards    2/6
+2026-09-28 15:59:37 DENY  #202 standards    1 Denial
+      Denial: Bash {"command": "cd scripts && uv run pytest"}
 2026-09-28 15:59:38 EDIT  #202 standards    changed scripts/preflight.py
 2026-09-28 16:02:18 STEP  #202 fix          2/6
+2026-09-28 16:29:50 DENY  #202 fix          0 Denials
 2026-09-28 16:29:54 STEP  #202 finish       2/6
+2026-09-28 16:56:40 DENY  #202 finish       0 Denials
 2026-09-28 16:56:48 ok    #202 landed on master as bfa44a6 in 1 try, holding the Turn for its push
 2026-09-28 16:56:52 DONE  #202  bfa44a6
 2026-09-28 16:57:06 STEP  #203 build        3/6  ~245m left
@@ -33,6 +38,20 @@ Session wrote them, and then the first `START` line:
 ```
 
 The Cut's result and error output sit beside the log as `cut.json` and `cut.err`.
+
+A `DENY` line follows every result a Session returns. It gives the count of Denials in that result,
+and lists the first three below it on `Denial:` lines. A Denial is a tool call the Session was not
+allowed to make. The line is there when the count is 0 as well, and when the step passed, so a
+Session that found a way round a Denial still shows it. A Nudged step has one `DENY` line for each
+result. The `suite` step starts no Session, so it has none. The Cut, the drift check and the Name
+check name the spec, and the file their result sits in:
+
+```
+2026-09-28 15:55:21 DENY  spec #200 cut          5 Denials, and the first 3 follow
+      Denial: Write {"file_path": ".claude/rules/words.md", "content": "# Words\n\nThe YAML block at...
+      Denial: Bash {"command": "cd docs && git log --oneline"}
+      Denial: Bash {"command": "cd docs && git status"}
+```
 
 A check that flakes in a ticket's `suite` step, or in its landing, adds a `FLAKE` line that names
 the check and the file that keeps its red output:

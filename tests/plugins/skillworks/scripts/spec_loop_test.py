@@ -2479,7 +2479,7 @@ def test_a_stop_with_no_denials_gives_no_way_past_them(loop):
     assert ran.status == 1
     assert "step finish failed check new-commit" in said(ran)
     assert BYPASS not in said(ran) + loop.log()
-    assert "Denial" not in said(ran) + loop.log()
+    assert "Denial:" not in said(ran) + loop.log()
 
 
 def test_a_stop_with_an_empty_list_of_denials_gives_no_way_past_them(loop):
@@ -2524,6 +2524,102 @@ def test_a_stop_of_the_step_the_driver_runs_itself_gives_no_way_past_denials(loo
     assert ran.status == 1
     assert "step suite failed check suite-green" in said(ran)
     assert BYPASS not in said(ran) + loop.log()
+
+
+# --- the count of Denials each Session result leaves --------------------------
+
+def deny_lines(loop, step):
+    lines = [unstamped(line) for line in loop.log().split("\n")]
+    return [line for line in lines if line.split()[0:1] == ["DENY"] and line.split()[2] == step]
+
+
+def lines_under(loop, line):
+    lines = loop.log().split("\n")
+    at = [unstamped(each) for each in lines].index(line)
+    under = []
+    for each in lines[at + 1:]:
+        if not each or re.match(STAMP, each):
+            break
+        under.append(each)
+    return under
+
+
+def a_denied_command(n):
+    return {"tool_name": "Bash", "tool_use_id": "toolu_{}".format(n),
+            "tool_input": {"command": "echo {}".format(n)}}
+
+
+def test_a_step_that_passed_leaves_its_count_of_denials_and_each_denial_in_the_log(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_session_that_was_denied(given_sessions_that_report(loop), "review-standards",
+                                    A_DENIED_COMMAND)
+
+    loop.run(SPEC)
+
+    assert ('DENY  #168 standards    1 Denial\n'
+            '      Denial: Bash {"command": "rm -rf .claude/worktrees"}\n') in loop.log()
+
+
+def test_a_result_with_no_denials_still_leaves_its_count_of_0(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert deny_lines(loop, "spec") == ["DENY  #168 spec         0 Denials"]
+
+
+def test_a_result_with_more_than_three_denials_lists_the_first_three(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_session_that_was_denied(given_sessions_that_report(loop), "review-standards",
+                                    *[a_denied_command(n) for n in range(1, 5)])
+
+    loop.run(SPEC)
+
+    assert lines_under(loop, "DENY  #168 standards    4 Denials, and the first 3 follow") == [
+        '      Denial: Bash {"command": "echo 1"}',
+        '      Denial: Bash {"command": "echo 2"}',
+        '      Denial: Bash {"command": "echo 3"}']
+
+
+def test_a_nudged_step_leaves_a_count_of_denials_for_each_result(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(
+        given_sessions_that_report(loop), "standards", "## Standards. Nothing found.")
+
+    loop.run(SPEC)
+
+    assert len(deny_lines(loop, "standards")) == 2
+
+
+def test_the_suite_step_leaves_no_count_of_denials(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert deny_lines(loop, "suite") == []
+
+
+def test_the_cut_leaves_its_count_of_denials(loop):
+    tracker = given_the_tracker_holds(loop, ())
+    given_a_cut_that_files(given_sessions_that_report(loop), tracker, ONE_OPEN_TICKET)
+
+    loop.run(SPEC)
+
+    assert "DENY  spec #158 cut          0 Denials\n" in loop.log()
+
+
+def test_the_drift_check_leaves_its_count_of_denials(loop):
+    drifted(loop, drift_report(), A_DENIED_WRITE)
+
+    assert "DENY  spec #158 drift        1 Denial\n      Denial: Write" in loop.log()
+
+
+def test_the_name_check_leaves_its_count_of_denials(loop):
+    named_back(loop, NO_RENAMES)
+
+    assert "DENY  spec #158 names        0 Denials\n" in loop.log()
 
 
 # --- the Parent each Session names -------------------------------------------
