@@ -86,8 +86,9 @@ needs their clone of Skillworks at the same path.
 The allowlist holds two read rules as well. `Read(~/.claude/plugins/**)` opens an installed Plugin's
 folder to reading. When the Marketplace folder sits outside your repo, setup adds a read rule for
 that folder too, such as `Read(//c/tools/skillworks/plugins/**)`. A skill must read its own files,
-such as the guides `tdd` reads. In the loop's `acceptEdits` mode a read outside the repo is a Denial
-unless a rule allows it, and the loop cannot ask you.
+such as the guides `tdd` reads. The loop's driver gives each of its Sessions a read rule for the
+Plugin's folder, so these two rules are for a Session you run by hand. Without them it stops to ask
+you before each read outside the repo.
 
 Expect a permission prompt on a first run, at the seeding and at the preflight. The allowlist that clears it is written
 in step 6.
