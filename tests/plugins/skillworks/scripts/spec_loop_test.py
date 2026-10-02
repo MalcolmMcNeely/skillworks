@@ -411,11 +411,18 @@ def prompts_asking(runner, mark):
     return [call[2] for call in session_calls(runner) if call[2].startswith(mark)]
 
 
+STAMP = r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} "
+
+
+def unstamped(line):
+    return re.sub("^" + STAMP, "", line)
+
+
 def edit_of(loop, axis):
     for line in loop.log().split("\n"):
-        words = line.split()
-        if len(words) > 4 and words[1] == "EDIT" and words[3] == axis:
-            return " ".join(words[4:])
+        words = unstamped(line).split()
+        if len(words) > 3 and words[0] == "EDIT" and words[2] == axis:
+            return " ".join(words[3:])
     return ""
 
 
@@ -1436,13 +1443,13 @@ def nudge_calls(runner):
 
 
 def nudge_lines(loop):
-    return [line for line in loop.log().split("\n") if line.split()[1:2] == ["NUDGE"]]
+    return [line for line in loop.log().split("\n") if unstamped(line).split()[0:1] == ["NUDGE"]]
 
 
 # The finish never commits unless a case says so, so it is Nudged too, and a case names its step.
 def failed_in(loop, step):
     return [line.split("failed ", 1)[1] for line in nudge_lines(loop)
-            if line.split()[3] == step]
+            if unstamped(line).split()[2] == step]
 
 
 def test_a_review_that_reports_on_its_first_nudge_passes_and_the_loop_goes_on(loop, runner):
@@ -2044,7 +2051,7 @@ def flake_files(loop, step):
 
 
 def flake_lines(loop):
-    return [line for line in loop.log().split("\n") if line[9:15] == "FLAKE "]
+    return [line for line in loop.log().split("\n") if unstamped(line).startswith("FLAKE ")]
 
 
 def given_two_checks_that_each_flake(loop):
@@ -3782,8 +3789,6 @@ def test_the_target_branch_page_names_main_only_as_an_example_of_a_target_branch
 
 WAITS = "waits for the Turn"
 
-STAMP = r"[0-9]{2}:[0-9]{2}:[0-9]{2} "
-
 
 def given_a_run_that_lands(loop):
     tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
@@ -3844,6 +3849,15 @@ def landing_output(loop):
 
 def stamped_in_log(loop, line):
     return re.search("^" + STAMP + re.escape(line) + "$", loop.log(), re.MULTILINE) is not None
+
+
+def test_a_line_the_driver_stamps_starts_with_the_date_and_the_time(loop):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert re.search("^" + STAMP + "DONE  #168 ", loop.log(), re.MULTILINE)
 
 
 def test_a_loop_waiting_for_the_turn_says_so_in_its_log_while_it_waits(loop):

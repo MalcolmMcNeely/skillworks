@@ -378,7 +378,7 @@ class Loop:
         self.out.write(said)
 
     def say(self, said):
-        self.wrote("{} {}\n".format(datetime.now(timezone.utc).strftime("%H:%M:%S"), said))
+        self.wrote("{} {}\n".format(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), said))
 
     def named(self, ticket):
         return self.tracker.named(ticket)
