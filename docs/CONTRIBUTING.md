@@ -95,6 +95,111 @@ script, such as `python - <<'EOF'` with nothing before the `EOF`, opens its new 
 fails to read the console, starts again, and never stops, so the command holds a session for the
 whole of its wait. The basic prompt reads the empty input and exits at once.
 
+## Changing a Plugin skill
+
+The tests and the driver match a skill's exact text. Read this before you change a file under
+`plugins/skillworks/skills/`. Each fact here points at the code or the test that holds it. Where
+this page and the code differ, the code is right, so mend this page.
+
+### Tests match the text
+
+`tests/plugins/skillworks/scripts/` holds tests that read the skills as text. Most are in
+`seed_steering_test.py`. More are in `suite_test.py`, `spec_loop_test.py` and `count/`. Before you
+change a skill, search those files for the skill's name and for each string you mean to touch. They
+pin four kinds of thing:
+
+- A sentence, a heading or a command that must be there, word for word.
+- A word that must not be there. Some bans match inside a longer word: an axis file may hold no
+  first word of a Suite command.
+- A position: the last sentence of a description, four strings inside one paragraph, the first
+  fenced block of a file, a stub with no `## ` heading.
+- The front matter: which skills are hidden, and the keys a Plugin skill may use, in
+  `FRONT_MATTER_KEYS`. Add a new key there in the same commit.
+
+Several tests sweep every skill: no Skill tool call to a hidden skill, no path into a hidden skill's
+folder, no link out of the Plugin, no habit of this repo. A new line in any skill can trip one.
+
+Where a test pins the old words and the change needs new ones, change the test in the same commit.
+Where the new text can keep the old words, keep them.
+
+### The driver matches the text
+
+The driver is `plugins/skillworks/scripts/spec_loop.py`, with `land_ticket.py`, `count/` and
+`tracker/` beside it. It types each loop skill's command name and flags, and it reads what the
+Session writes:
+
+- The heading an axis ends under, `## Standards`, `## Spec` or `## Architecture`, anywhere in the
+  last message.
+- `BLOCKED` at the start of the first line that is not empty.
+- `CHOSE` and `HAND CHECK` at the start of any line.
+- `REFUSED <n>` at the start of any line of a resolve.
+- The reports on the Tracker: the first line, the `###` lists, and the shape of each line in a list.
+
+Read the reader's code before you change a shape or write one of these markers into a skill.
+`docs/usage/the-loop/` describes each shape for a person, so a change to a shape changes that page
+too.
+
+### What the driver already says
+
+The driver adds one paragraph to every Session it starts, and ends every Nudge the same way. The
+texts are `UNATTENDED` and `NUDGE_TAIL` in `spec_loop.py`, and
+[Nobody answers in the loop](usage/the-loop/sessions.md#nobody-answers-in-the-loop) gives them in
+plain words. They say that nobody will answer, and they ask for three kinds of line: a Choice
+(`CHOSE`), a Hand check (`HAND CHECK`), and Blocked (`BLOCKED`, only when the work cannot be done).
+
+So a loop skill:
+
+- Does not repeat that paragraph. It is the driver's, and a skill run by hand still asks the person.
+- Says which mode a rule is for, where the loop and a hand run differ.
+- Ends a step that cannot be done on the `BLOCKED` line. It does not end it by leaving a check to
+  fail, because a failed check earns a Nudge, and the Nudge says to do what is owed.
+- Starts no other line with one of the three openings.
+
+### A loop Session
+
+- It is a fresh `claude -p` Session in the ticket's worktree. `build`, `fix` and `finish` share one
+  Session. Each axis, the sweep, the Cut and each check has its own.
+- The Plugin loads from the main checkout. So a ticket that changes a skill does not change its own
+  later steps.
+- A tool call outside the allow rules is a Denial, and nobody can approve it. The rules are in
+  `.claude/settings.json`, seeded from `plugins/skillworks/skills/skillworks-setup/settings.json`.
+  Check that each command a loop skill names is allowed in the form the skill gives it.
+- Scratch files go under `.spec-loop/` in the worktree. A temp folder, or a path outside the
+  worktree, is refused.
+- `spec-loop-counts` prints how the steps of past runs ended, with their Nudges and Denials. Read it
+  before and after a change to a loop skill. It costs nothing.
+
+### The output style
+
+`plugins/skillworks/output-styles/skillworks.md` is forced on every Session, loop Sessions too. It
+asks for few, plain words and for two options at most. A skill that fixes what a report holds says
+that every item is written. A skill that needs its own terms in a reply says where they go.
+
+### Steering and Machinery
+
+A Plugin skill is Machinery: every repo runs the same text. So it carries no fact of one repo. It
+reads the fact from the repo's Steering under `docs/agents/`, and a test fails a skill that states a
+habit of this repo.
+
+- Where the glossary and the ADRs live: `docs/agents/domain.md`. A bare `CONTEXT.md` is the wrong
+  file in a repo with more than one context.
+- How to read and write a ticket: `docs/agents/issue-tracker.md`, in words that fit either Tracker.
+- A Steering file that is missing gets the stop that `tdd` has: stop, name the file, say that
+  `/skillworks:skillworks-setup` writes it, and say that nothing was done.
+
+The seeds under `skillworks-setup/seeds/` become each team's own files. An edit to a seed shows as a
+diff in every team's next setup run, so do not edit one for style.
+
+### With the change
+
+- Files that share a sentence change together: the three axis files, the three axis stubs, a skill
+  and the user page that describes it.
+- A vendored skill is listed in `THIRD-PARTY-NOTICES.md`. Update the notice when the body stops
+  being upstream.
+- Run `skillworks-suite`.
+- A running Session keeps the Plugin text it started with. Restart it after the change Lands. A
+  project skill under `.claude/skills/` needs no restart.
+
 ## Repo layout
 
 | Path | What it is |

@@ -42,6 +42,11 @@ in a Linux image. `uv` has to be on PATH, because the command is Python.
 
 `docs/CONTRIBUTING.md` has the rest, under Checks.
 
+### Changing a Plugin skill
+
+The tests and the driver match the exact text of a Plugin skill. Before you change a file under
+`plugins/skillworks/skills/`, read `docs/CONTRIBUTING.md`, under Changing a Plugin skill.
+
 ### After a Plugin change Lands
 
 When a change to the Plugin Lands on `main`, quit and restart every running Claude Code Session
