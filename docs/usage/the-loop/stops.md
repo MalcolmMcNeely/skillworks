@@ -6,12 +6,15 @@ Part of [the Dev loop](../the-loop.md).
 flowchart TD
     step["A step ends"] --> ran{"Session could run?"}
     ran -- no --> stop(["Stop: FAIL line"])
-    ran -- yes --> checks{"Facts pass?"}
+    ran -- yes --> blocked{"Says BLOCKED?"}
+    blocked -- yes --> blockedstop(["Stop: STOP line, no Nudge"])
+    blocked -- no --> checks{"Facts pass?"}
     checks -- yes --> next(["Next step"])
     checks -- "work still owed" --> nudges{"Two Nudges sent?"}
     nudges -- no --> nudge["Nudge<br/>resume and name what is owed"] --> checks
     nudges -- yes --> stop
     stop --> denial{"Denials listed?"}
+    blockedstop --> denial
     denial -- yes --> bypass["Hint: rerun with --bypass"]
     denial -- no --> rerun["Rerun: Keep, then build again"]
     bypass --> rerun
@@ -19,9 +22,28 @@ flowchart TD
 
 **A Nudge.** A Session can stop before its work is done: no report written, nothing committed, the
 ticket still open. The script then resumes that same Session and names what is still owed, so it
-carries on with what it knows. Two Nudges are the limit. A step that still owes work after them stops
-the loop. A Session that could not run at all, such as one that ended in an error or never loaded its
-command, gets no Nudge. It stops the loop at once.
+carries on with what it knows. The Nudge also says that nobody will answer a question. A Session that
+put a choice to a person makes that Choice itself, within what its step allows, and writes a `CHOSE`
+line. Two Nudges are the limit. A step that still owes work after them stops the loop. A Session that
+could not run at all, such as one that ended in an error or never loaded its command, gets no Nudge.
+It stops the loop at once.
+
+**A Blocked step.** A Session that cannot do its work begins its report with a line that starts
+with `BLOCKED`, as [Sessions](sessions.md#nobody-answers-in-the-loop) says. The script reads only the
+first line of the report that is not empty, so a `BLOCKED` lower down does not count. It reads it
+after the facts that show the Session could run, and before the facts that show the work was done. A
+Blocked step stops the loop at once, at that step, even when every fact passes. A Blocked build stops
+the loop before the reviews run. No Nudge is sent, and a Blocked answer to a Nudge gets no second
+Nudge. The script reopens the ticket if it is closed. The `STOP` line names the ticket, the step and
+the Session's own line, then lists the Denials of that result and the hint, as below:
+
+```
+STOP  #203 step build is Blocked: BLOCKED .claude/settings.json: the write was refused as a sensitive file.
+      Its worktree is at .claude/worktrees/spec-200/ticket-203. See ...
+```
+
+A Blocked Cut, drift check or Name check stops the loop the same way, and its `STOP` line names the
+check.
 
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, in [the Suite](steps.md#the-suite). The script reopens the ticket, because `finish` may have closed it before its work
@@ -137,8 +159,8 @@ you, so a Denial is final. A write under `.claude/` is always turned down in the
 your allow rules say.
 
 Many Denials are worked around. When a step stops and its result lists Denials, the `FAIL` line names
-each one and adds a hint. So does the `STOP` line of a Cut that filed no tickets, and of a check that
-recorded no report:
+each one and adds a hint. So does the `STOP` line of a Blocked step, of a Cut that filed no tickets,
+and of a check that recorded no report:
 
 ```
       Denial: Write {"file_path": ".claude/settings.json", ...

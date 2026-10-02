@@ -164,6 +164,9 @@ class Tracker:
             return Ran(0, "me\n", "")
         if asked.startswith("issue edit"):
             return Ran(0, "", "")
+        if asked.startswith("issue reopen "):
+            self.closed.discard(asked.split(" ")[2])
+            return Ran(0, "", "")
         if asked.startswith("issue create"):
             return self.file(self.runner.calls[-1])
         if asked.endswith("--jq .id"):
@@ -1435,7 +1438,10 @@ def test_an_axis_that_edits_does_not_stop_the_loop(loop, runner):
 STOPPED_SHORT = "I will wait for the tests to finish."
 BACKGROUND_LINE = ("Any command you left in the background was stopped when your last turn "
                    "ended, so its output is not complete. Run it again in the foreground.")
-BLOCKER_LINE = "If something blocks you, say what it is."
+BLOCKER_LINE = (
+    "Nobody will answer a question. If you put a choice to a person, make it yourself, within "
+    "what this step allows, write a `CHOSE` line, and do what is owed. Begin your answer with a "
+    "line that starts with `BLOCKED` only when you cannot do the work.")
 
 
 def given_an_axis_that_stops_short(sessions, axis, *nudged):
@@ -2759,6 +2765,96 @@ def test_a_run_with_no_choice_and_no_hand_check_writes_no_list(loop):
 
     assert ran.status == 1
     assert "LIST" not in loop.log()
+
+
+# --- the Blocked stop ---------------------------------------------------------
+
+A_BLOCK = "BLOCKED .claude/settings.json: the write was refused as a sensitive file."
+
+
+def stop_lines(loop):
+    return [unstamped(line) for line in loop.log().split("\n")
+            if unstamped(line).startswith("STOP ")]
+
+
+def test_a_blocked_build_stops_the_loop_at_the_build_with_no_nudge(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).says["implement"] = "\n" + A_BLOCK + "\nThe rest."
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert stop_lines(loop) == ["STOP  #168 step build is Blocked: " + A_BLOCK]
+    assert nudge_lines(loop) == []
+    assert len(step_calls(runner)) == 1
+
+
+def test_a_blocked_answer_to_a_nudge_stops_the_loop_with_no_second_nudge(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "standards", A_BLOCK)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(nudge_calls(runner)) == 1
+    assert stop_lines(loop) == ["STOP  #168 step standards is Blocked: " + A_BLOCK]
+
+
+def test_a_blocked_stop_names_each_denial_and_the_way_past_them(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["review-spec"] = A_BLOCK
+    given_a_session_that_was_denied(sessions, "review-spec", A_DENIED_WRITE, A_DENIED_COMMAND)
+
+    loop.run(SPEC)
+
+    assert lines_under(loop, "STOP  #168 step spec is Blocked: " + A_BLOCK)[1:] == [
+        '      Denial: Write {"file_path": ".claude/rules/words.md", "content": "' + "x" * 28 + "...",
+        '      Denial: Bash {"command": "rm -rf .claude/worktrees"}',
+        "      If one of these Denials stopped the loop, rerun with " + BYPASS]
+
+
+def test_a_result_that_holds_blocked_below_its_first_line_is_not_blocked(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), A_BLOCK)
+
+    loop.run(SPEC)
+
+    assert call_asking(runner, "/skillworks:implement 168 --fix") is not None
+
+
+def test_a_blocked_session_that_errored_still_fails_its_check(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["review-spec"] = A_BLOCK
+    sessions.errors.add("review-spec")
+
+    ran = loop.run(SPEC)
+
+    assert "FAIL  #168 step spec failed check no-error" in said(ran)
+
+
+def test_a_blocked_finish_that_closed_its_ticket_reopens_it(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker),
+                                   lambda: sessions.says.update(implement=A_BLOCK))
+
+    loop.run(SPEC)
+
+    assert "#168 is open again, so a rerun starts from it" in loop.log()
+
+
+def test_a_blocked_drift_check_stops_the_loop_before_the_name_check(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    given_sessions_that_report(loop).says["spec-drift"] = A_BLOCK
+    given_the_closed_ticket_landed_after_the_base(loop)
+    tracker.drift_report = drift_report()
+
+    loop.run(SPEC)
+
+    assert prompts_asking(runner, NAME_CHECK) == []
+    assert stop_lines(loop)[0] == "STOP  spec #158 drift is Blocked: " + A_BLOCK
 
 
 # --- the Parent each Session names -------------------------------------------

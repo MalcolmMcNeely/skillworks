@@ -35,6 +35,14 @@ gh api "repos/{owner}/{repo}/issues/<n>" --jq '.issue_dependencies_summary.block
 
 Tests, typechecks and lints are deterministic validation: their result, not your expectation of it, decides the next step. Run each one in the foreground, with a timeout long enough for it to finish, and read its result before your next action. A caller may drive you with `claude -p`, which ends the session the moment your turn ends, so a run still going at that moment is lost, and so is the commit it would have allowed.
 
+## Blocked
+
+A step is Blocked when you cannot do its work: a tool call was denied and no allowed way exists, or the ticket has nothing left to build. Begin your report with one line that starts with `BLOCKED` and says what blocks the step, such as:
+
+    BLOCKED .claude/settings.json: the write was refused as a sensitive file.
+
+Say the rest below that line. A driver stops its loop on that line, so a person reads it before more work is spent. A tool call that was denied, and that you then made in a way the rules allow, blocks nothing and earns no line.
+
 ## A write under `.claude/` refused
 
 A write under `.claude/` is refused as a sensitive file. No allow rule lifts it, only the permission mode does, so the refusal is the harness and not a fault in the call you made. Do not try the write again, and do not route around it with a shell redirection, a patch command or any other tool.
@@ -42,10 +50,10 @@ A write under `.claude/` is refused as a sensitive file. No allow rule lifts it,
 One refused write blocks one line of the ticket and nothing else. Do every other part of the ticket, and run the tests over what you did write. Then:
 
 1. **Commit the verified work**, with the ticket named in the message as Finishing says. Under `--stop-after-tests` the change stays uncommitted, as that flag already says.
-2. **Leave the ticket open.** Work that is not done is not closed, and the driver reads the open ticket as the stop.
+2. **Leave the ticket open.** Work that is not done is not closed, and the driver reads the `BLOCKED` line as the stop.
 3. **Write the wall on the ticket.** Comment with the exact path, the exact change you could not write, and that the write was refused as a sensitive file. A developer has to be able to make that change from the comment alone, without opening anything else. With the files Tracker, write it at the end of the ticket file under `## Blocked`, in the commit, and leave its `status` open.
 
-Say the same in your report, so it reaches the driver's log as well.
+Begin your report with the `BLOCKED` line, and say the same below it, so it reaches the driver's log as well.
 
 ## Building
 

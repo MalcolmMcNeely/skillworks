@@ -75,6 +75,10 @@ nobody will answer a question, and it asks for two kinds of line:
   step allows, carries on, and writes a line that starts with `CHOSE`, with what it chose and why.
 - **A Hand check.** Where the ticket asks for a check that no Session can run, the Session carries
   on, and writes a line that starts with `HAND CHECK`, with the check and how a person runs it.
+- **Blocked.** Only where the Session cannot do the work, it begins its report with a line that
+  starts with `BLOCKED`: a tool call was denied and no allowed way exists, or the ticket has nothing
+  left to build. A choice is never Blocked. The driver then stops the loop at that step, with no
+  Nudge, as [When a step fails](stops.md) shows.
 
 The driver copies each of these lines into the log, and lists them all again when the run ends, as
 [Reading a run](reading-a-run.md) shows.

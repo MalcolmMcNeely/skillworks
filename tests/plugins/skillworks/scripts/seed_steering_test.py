@@ -2473,3 +2473,26 @@ def test_implement_builds_with_skillworks_suite_and_leaves_the_loop_s_suite_to_t
 
     assert "run `skillworks-suite`" in building
     assert "In a loop the driver runs the Suite" in building
+
+
+def test_implement_says_what_blocked_is_and_how_to_report_it_right_after_test_runs():
+    text = skill_text("implement")
+
+    assert text.split("\n## Test runs\n", 1)[1].split("\n## ", 2)[1].startswith(
+        "Blocked\n\n"
+        "A step is Blocked when you cannot do its work: a tool call was denied and no allowed way "
+        "exists, or the ticket has nothing left to build. Begin your report with one line that "
+        "starts with `BLOCKED` and says what blocks the step, such as:\n\n"
+        "    BLOCKED .claude/settings.json: the write was refused as a sensitive file.\n\n"
+        "Say the rest below that line. A driver stops its loop on that line, so a person reads it "
+        "before more work is spent. A tool call that was denied, and that you then made in a way "
+        "the rules allow, blocks nothing and earns no line.\n")
+
+
+def test_implement_s_refused_write_ends_on_the_blocked_line_and_not_the_open_ticket():
+    refused = section(skill_text("implement"), "A write under `.claude/` refused")
+
+    assert "the driver reads the `BLOCKED` line as the stop" in refused
+    assert ("Begin your report with the `BLOCKED` line, and say the same below it, so it reaches "
+            "the driver's log as well.") in refused
+    assert "the driver reads the open ticket as the stop" not in refused

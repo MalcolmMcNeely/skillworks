@@ -108,7 +108,9 @@ NUDGES = 2
 NUDGE_TAIL = (
     "Any command you left in the background was stopped when your last turn ended, so its output "
     "is not complete. Run it again in the foreground.\n"
-    "If something blocks you, say what it is.\n")
+    "Nobody will answer a question. If you put a choice to a person, make it yourself, within "
+    "what this step allows, write a `CHOSE` line, and do what is owed. Begin your answer with a "
+    "line that starts with `BLOCKED` only when you cannot do the work.\n")
 
 # The command keeps Proofs the driver reads, so the Suite step after runs only what changed.
 SUITE_BY_COMMAND = (
@@ -203,6 +205,14 @@ def field(path, name):
         return ""
     value = held.get(name)
     return "" if value is None else value
+
+
+# The first line alone, so a Session that quotes the word lower in its report is not Blocked.
+def blocked_line(path):
+    for line in str(field(path, "result")).split("\n"):
+        if line.strip():
+            return line if line.startswith("BLOCKED") else ""
+    return ""
 
 
 # Cut short, because a write's input holds the whole file and one Denial is read on one line.
@@ -641,6 +651,13 @@ class Loop:
         return self.stop_naming_denials("FAIL  {} step {} {}. Its worktree is at {}. See {}".format(
             self.named(ticket), step, reason, self.job_worktree, see), result)
 
+    # No Nudge, because one would tell a Session to close a ticket it cannot finish.
+    def stop_blocked(self, ticket, step, line, see, result):
+        self.reopen(ticket)
+        return self.stop_naming_denials("STOP  {} step {} is Blocked: {}\n      Its worktree is at "
+                                        "{}. See {}".format(self.named(ticket), step, line,
+                                                            self.job_worktree, see), result)
+
     def run_step(self, ticket, step, *rest):
         held = self.step_file(ticket, step.name, "json")
         reasons = self.step_file(ticket, step.name, "err")
@@ -689,19 +706,27 @@ class Loop:
             appended(reasons, ran.err)
 
     # Every check runs every time, since a Nudge that mends one thing can break another.
+    # Blocked is read between the kinds: a Session that never ran fails, and a Blocked one stops.
     def failed_checks(self, ticket, step, held, reasons):
-        failed = []
-        for check in step.checks.split():
-            passed, reason = self.check_passes(ticket, step, check, held)
-            if reason:
-                appended(reasons, reason)
-            if passed:
+        checks = step.checks.split()
+        for check in checks:
+            if check in NUDGED_BY:
                 continue
-            if check not in NUDGED_BY:
+            if not self.passes_noting_reason(ticket, step, check, held, reasons):
                 raise self.stop_step(ticket, step.name, "failed check " + check,
                                      "{} and {}".format(held, reasons), held)
-            failed.append(check)
-        return failed
+        blocked = blocked_line(held)
+        if blocked:
+            raise self.stop_blocked(ticket, step.name, blocked, "{} and {}".format(held, reasons),
+                                    held)
+        return [check for check in checks if check in NUDGED_BY
+                and not self.passes_noting_reason(ticket, step, check, held, reasons)]
+
+    def passes_noting_reason(self, ticket, step, check, held, reasons):
+        passed, reason = self.check_passes(ticket, step, check, held)
+        if reason:
+            appended(reasons, reason)
+        return passed
 
     # --- the step the driver runs itself -------------------------------------
 
@@ -1135,6 +1160,10 @@ class Loop:
         if ran.status != 0:
             self.say("WARN  {} exited non-zero. See {}".format(
                 what, self.log_dir / (named + ".err")))
+        blocked = blocked_line(result)
+        if blocked:
+            raise self.stop_naming_denials("STOP  spec {} {} is Blocked: {}\n      See {}".format(
+                self.spec_named(), named, blocked, result), result)
 
         if self.tree_of_job():
             raise stop("FAIL  {} left uncommitted changes in {}.".format(what, self.job_worktree))
