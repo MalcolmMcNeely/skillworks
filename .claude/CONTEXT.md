@@ -103,6 +103,12 @@ developer or the driver types it. The two stages of the Dev loop are hidden, and
 driver types, so Claude can never send a developer off the Dev loop.
 _Avoid_: Entry point, manual skill
 
+**Journal**:
+What the driver keeps of every Session result of a spec: one entry for each, in the order they came.
+An entry is added and never written over, so an attempt that a Nudge or a rerun followed can still be
+read. The counts of a run are made from it.
+_Avoid_: History, archive, result log
+
 **Keep**:
 What the loop does to the worktree group a stopped run left behind. Each job's uncommitted work is
 committed, its Job branch is renamed out of the way so the job can be opened again, and the worktree
