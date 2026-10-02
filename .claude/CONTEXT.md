@@ -6,6 +6,13 @@ under, and the scripts that drive it.
 
 ## Language
 
+**Blocked**:
+A step whose Session says, in the first line of its report, that the step owes work only a person
+can clear. A Denial can be the cause, and so can a choice or a check that is a person's to make. It
+is the Session's own word, so the driver reads it and does not judge it. A ticket that waits on
+another ticket is not Blocked: it has an open blocker.
+_Avoid_: Stuck, walled, refused
+
 **Clean**:
 A worktree git reports nothing uncommitted in. A Kept job is Clean when its Job branch carries only
 the commits the job had already made, and the driver reads the same fact of a finishing worktree
