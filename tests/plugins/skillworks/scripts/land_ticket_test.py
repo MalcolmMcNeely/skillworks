@@ -3,6 +3,7 @@
 
 import ast
 import io
+import json
 import re
 import subprocess
 import sys
@@ -1163,6 +1164,19 @@ def test_a_refusal_stops_the_run_and_names_the_rule_that_fired(repo, runner):
     assert repo.work.is_dir()
     assert git(repo.work, "rev-parse", "main").strip() == mine
     assert unmerged(repo)
+
+
+def test_a_refusal_in_the_result_of_a_session_that_answers_in_json_names_its_rule(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    runner.stub("claude", says=json.dumps(
+        {"session_id": "session-abc", "result": "REFUSED 1: neither side says which count."}))
+    given_a_project(repo)
+    given_two_conflicting_files(repo, 167, 164)
+
+    ran = run_land(runner, repo.work, 167, "session-abc")
+
+    assert "refused under rule 1" in report(ran)
 
 
 def test_a_refusal_that_staged_everything_still_stops_the_run(repo, runner):

@@ -28,6 +28,7 @@
 # A script of its own, so the risky part can be proved against a throwaway
 # repository without running a session.
 
+import json
 import os
 import re
 import sys
@@ -128,11 +129,21 @@ class Turn:
         self.lock.release()
 
 
+# The result as JSON carries the Denials, and only its text is what the session said.
+def result_text(out):
+    try:
+        held = json.loads(out)
+    except ValueError:
+        return out
+    return str(held.get("result", "")) if isinstance(held, dict) else out
+
+
 class Landing:
     def __init__(self, runner, worktree, ticket, session, out, err, wait, permission_mode,
-                 target=None, spec=None, tracker=None, flaked=None):
+                 target=None, spec=None, tracker=None, flaked=None, resolved=None):
         self.runner = runner
         self.flaked = flaked or self.note_flake
+        self.resolved = resolved or (lambda ran, failed: None)
         self.tracker = tracker
         self.spec = spec
         self.worktree = Path(worktree).as_posix()
@@ -288,7 +299,7 @@ class Landing:
     def resolve_call(self, prompt):
         return self.runner.run(
             ["claude", "-p", prompt, "--resume", self.session,
-             "--permission-mode", self.permission_mode],
+             "--permission-mode", self.permission_mode, "--output-format", "json"],
             self.worktree,
             session_changes(self.tracker.trailer(self.ticket)))
 
@@ -319,9 +330,21 @@ class Landing:
                            .format(self.named))
 
         ran = self.resolve_call(prompt)
-        said = (ran.out + ran.err).rstrip("\n")
+        failed, stopped = None, None
+        # Handed over before the stop is raised, so a caller keeps a result that stopped the landing.
+        try:
+            failed, stopped = self.judge_resolution(ran, conflicted)
+        finally:
+            self.resolved(ran, failed)
+        if stopped is not None:
+            raise stopped
+        self.say("{} resolved its conflict in session {}".format(self.named, self.session))
+
+    # Handed back and not raised, so the check that failed is named beside its stop.
+    def judge_resolution(self, ran, conflicted):
+        said = (result_text(ran.out) + ran.err).rstrip("\n")
         if ran.status != 0:
-            raise self.die(
+            return None, self.die(
                 "{t} handed its conflict to session {s}, which exited non-zero. The rebase is "
                 "still open in {w}, and nothing was pushed. It said:\n{m}".format(
                     t=self.named, s=self.session, w=self.worktree, m=said))
@@ -329,7 +352,7 @@ class Landing:
         rule = REFUSAL.search(said)
         if rule:
             self.conflict_ended("refused")
-            raise self.die(
+            return ["no-refusal"], self.die(
                 "{t} came back from session {s}, which refused under rule {r}. The rebase is "
                 "still open in {w}, and nothing was pushed. The session said:\n{m}".format(
                     t=self.named, s=self.session, r=rule.group(1), w=self.worktree, m=said))
@@ -338,7 +361,7 @@ class Landing:
         left = self.unmerged()
         if left:
             self.conflict_ended("refused")
-            raise self.die(
+            return ["none-left-conflicting"], self.die(
                 "{t} came back from session {s}, which named no rule, with these files still "
                 "conflicting:\n{l}\nThe rebase is still open in {w}, and nothing was pushed. The "
                 "session said:\n{m}".format(
@@ -350,7 +373,7 @@ class Landing:
             if self.git("cat-file", "-e", ":" + name).status != 0:
                 continue
             if self.git("grep", "--cached", "-q", "-E", MARKER, "--", name).status == 0:
-                raise self.die(
+                return ["no-marker-staged"], self.die(
                     "{t} staged {f} with a conflict marker still in it, so the resolution is "
                     "half finished. The rebase is still open in {w}, and nothing was pushed. The "
                     "session said:\n{m}".format(t=self.named, f=name, w=self.worktree, m=said))
@@ -363,17 +386,16 @@ class Landing:
                 # The run stopped before anything could say the first resolution was any good.
                 self.conflict_ended("caught")
                 self.conflict = self.measure(later)
-                raise self.die(
+                return ["rebase-carried-on"], self.die(
                     "{t} resolved its first conflict and a later commit of its own conflicted as "
                     "well. Only the first is handed over, so the rebase is still open in {w}, and "
                     "nothing was pushed. Put it back with: git -C {w} rebase --abort".format(
                         t=self.named, w=self.worktree))
-            raise self.die(
+            return ["rebase-carried-on"], self.die(
                 "{t} resolved its conflicting files and the rebase would not carry on. The "
                 "rebase is still open in {w}, and nothing was pushed. git said:\n{g}".format(
                     t=self.named, w=self.worktree, g=(carried.out + carried.err).rstrip("\n")))
-
-        self.say("{} resolved its conflict in session {}".format(self.named, self.session))
+        return [], None
 
     # A rebase that quietly dropped the work would otherwise push an empty success.
     def survived(self, mine, before):
@@ -565,8 +587,9 @@ def permission_mode_set():
 # The driver hands in the mode of its run, so the resolving Session never falls back to the default.
 # It hands in the Target branch too, since in spec mode only the driver has read the spec.
 # A Flake goes to the driver when it asks, so the loop keeps the red output a hand run only notes.
+# The resolving Session's result goes to the driver too, which keeps every Session result.
 def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracker=None,
-         flaked=None):
+         flaked=None, resolved=None):
     if permission_mode is None:
         permission_mode = permission_mode_set()
     try:
@@ -583,7 +606,7 @@ def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracke
             raise misuse(USAGE)
 
         Landing(runner, worktree, ticket, session, out, err, wait, permission_mode,
-                target, spec, tracker, flaked).land()
+                target, spec, tracker, flaked, resolved).land()
         return 0
     except Stop as stop:
         err.write(stop.said)

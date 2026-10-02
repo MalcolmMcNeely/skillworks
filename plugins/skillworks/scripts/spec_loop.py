@@ -1102,13 +1102,20 @@ class Loop:
         landed = land_ticket.main(
             [self.job_worktree, ticket, session], self.runner, said, said, self.wait,
             self.permission_mode, self.target, self.tracker,
-            lambda flake: self.keep_flake(ticket, "land", flake))
+            lambda flake: self.keep_flake(ticket, "land", flake),
+            lambda ran, failed: self.keep_resolution(ticket, ran, failed))
         said.end()
         if landed != 0:
             # The finishing step closed it, and the work it closed on never reached the remote.
             self.reopen(ticket)
             raise stop("FAIL  {} did not reach {}. Its worktree is at {}. See {}".format(
                 self.named(ticket), self.target, self.job_worktree, held))
+
+    def keep_resolution(self, ticket, ran, failed):
+        held = self.step_file(ticket, "resolve", "json")
+        written(held, ran.out)
+        self.say_result("{} {:<13}".format(self.named(ticket), "resolve"), held)
+        self.add_to_journal(ran, held, "resolve", 0, failed, ticket=ticket)
 
     def run_ticket(self, ticket):
         self.say("START {} {}".format(self.named(ticket), self.tracker.title(ticket)))

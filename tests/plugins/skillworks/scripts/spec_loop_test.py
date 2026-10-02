@@ -2692,6 +2692,14 @@ def test_a_result_with_more_than_three_denials_lists_the_first_three(loop):
         '      Denial: Bash {"command": "echo 3"}']
 
 
+def test_the_conflict_session_of_the_landing_leaves_its_count_of_denials(loop):
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    loop.run(SPEC)
+
+    assert deny_lines(loop, "resolve") == ["DENY  #168 resolve      0 Denials"]
+
+
 def test_a_nudged_step_leaves_a_count_of_denials_for_each_result(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_an_axis_that_stops_short(
@@ -5506,6 +5514,15 @@ def test_a_check_that_recorded_its_report_leaves_one_journal_entry_with_nothing_
     named_back(loop, NO_RENAMES)
 
     assert [entry["failed"] for entry in entries_of(loop, "names")] == [[]]
+
+
+def test_the_conflict_session_of_the_landing_leaves_a_journal_entry(loop):
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    loop.run(SPEC)
+
+    assert [(entry["ticket"], entry["attempt"], entry["failed"])
+            for entry in entries_of(loop, "resolve")] == [("168", 0, ["none-left-conflicting"])]
 
 
 def test_the_result_file_of_a_nudged_step_keeps_its_name_and_holds_the_newest_result(loop):

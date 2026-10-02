@@ -43,7 +43,9 @@ A `DENY` line follows every result a Session returns. It gives the count of Deni
 and lists the first three below it on `Denial:` lines. A Denial is a tool call the Session was not
 allowed to make. The line is there when the count is 0 as well, and when the step passed, so a
 Session that found a way round a Denial still shows it. A Nudged step has one `DENY` line for each
-result. The `suite` step starts no Session, so it has none. The Cut, the drift check and the Name
+result. The Session that resolves a conflict at the landing has one too, as
+`DENY  #202 resolve      0 Denials`, and its result sits beside the log as `ticket-202-resolve.json`.
+The `suite` step starts no Session, so it has none. The Cut, the drift check and the Name
 check name the spec, and the file their result sits in:
 
 ```
@@ -184,8 +186,9 @@ Nudge, a second fix or a rerun writes over it. The Journal keeps them all.
 The Journal is `.spec-loop/<spec>/journal.jsonl`, beside the log. It has one JSON object on each
 line, and each one is an entry for one Session result. The driver adds the entry as the result
 comes in, before it acts on the result. It never changes or removes an entry, so a rerun adds new
-entries below the old ones. Ticket steps, the Cut, the drift check, the Name check, their re-checks,
-and each Nudge of any of them all add entries. The `suite` step starts no Session, so it adds none.
+entries below the old ones. Ticket steps, the Session that resolves a conflict at the landing, the
+Cut, the drift check, the Name check, their re-checks, and each Nudge of any of them all add entries.
+The `suite` step starts no Session, so it adds none.
 
 One entry holds:
 
@@ -194,7 +197,7 @@ One entry holds:
 | `at` | The date and the time in UTC, as on a log line: `2026-09-28 15:59:37` |
 | `ticket` | The ticket number, or `null` for the Cut and the checks |
 | `check` | `Cut`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
-| `step` | The step, such as `build` or `standards`, or the name of the Cut or the check, such as `cut` or `drift-gaps` |
+| `step` | The step, such as `build`, `standards` or `resolve`, or the name of the Cut or the check, such as `cut` or `drift-gaps` |
 | `attempt` | `0` for the first result of the step, `1` and `2` for the answer to the first and the second Nudge |
 | `status` | The exit status of the Session |
 | `failed` | The checks the result failed. It is `[]` when none failed, and `null` when no check was judged, such as after a non-zero exit |
