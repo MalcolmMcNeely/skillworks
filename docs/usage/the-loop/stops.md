@@ -57,6 +57,14 @@ STOP  #203 step build is Blocked: BLOCKED .claude/settings.json: the write was r
 A Blocked Cut, drift check or Name check stops the loop the same way, and its `STOP` line names the
 check.
 
+The Cut answers Blocked when `issue-tracker.md` holds no section "The ticket shape", which the
+script does not check for. It answers Blocked for a missing `issue-tracker.md` or `domain.md` as
+well. It answers Blocked too when `tracker-publish tickets` stopped twice on the same fault, and its
+line names the command. So the run stops before it builds a spec that is half cut. A spec that holds
+a ticket skips the Cut, so publish the missing tickets before you run the loop again, with the same
+`tracker-publish tickets` command. The ticket files are in the Cut's worktree, at
+`.claude/worktrees/spec-<spec>/cut/.spec-loop/<spec>/tickets/`.
+
 A review answers Blocked when its review file is missing, and its line names the file. The sweep
 does the same when `comments.md` is missing. That can happen only when the file goes missing after
 the run starts, because the script checks for it before any ticket, as "A missing Steering file"

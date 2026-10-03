@@ -957,6 +957,20 @@ def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
     assert "-template>" not in to_tickets
 
 
+def test_to_tickets_reads_the_tracker_docs_by_their_path_from_the_repo_root():
+    assert ('Read `docs/agents/issue-tracker.md`. Its section "The ticket shape"'
+            in (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8"))
+
+
+# A heading that calls the step optional is leave to skip it, and the read of the domain docs with it.
+def test_to_tickets_finds_the_glossary_through_the_domain_docs_in_a_step_it_may_not_skip():
+    to_tickets = (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert ("\n### 2. Explore the codebase\n\nRead `docs/agents/domain.md`: it says where this repo keeps its "
+            "glossary and its ADRs.") in to_tickets
+    assert "CONTEXT.md" not in to_tickets
+
+
 def skill_text(skill):
     return (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
 
@@ -1460,6 +1474,23 @@ def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing()
     assert stops("to-tickets", "`docs/agents/issue-tracker.md`", '"The ticket shape"')
 
 
+def test_to_tickets_stops_when_the_domain_docs_are_missing():
+    assert stops("to-tickets", "`docs/agents/domain.md`")
+
+
+def test_to_tickets_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_file_or_the_ticket_shape_is_missing():
+    assert stops("to-tickets", "`BLOCKED`", "Under the spec loop", "begin your last message",
+                 "`docs/agents/issue-tracker.md`", "`docs/agents/domain.md`", '"The ticket shape"')
+
+
+def test_to_tickets_ends_a_command_that_stops_twice_on_one_fault_on_the_blocked_line_under_the_loop():
+    stopped = [paragraph for paragraph in skill_text("to-tickets").split("\n\n")
+               if "If the command stops a second time on the same fault, stop." in paragraph]
+
+    assert [all(said in paragraph for said in ("Quote what it printed", "Under the spec loop", "`BLOCKED`"))
+            for paragraph in stopped] == [True]
+
+
 def test_tdd_stops_when_the_testing_rule_is_missing():
     assert stops("tdd", "`docs/agents/rules/testing.md`")
 
@@ -1754,7 +1785,7 @@ STEERING_READERS = {
                          "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
                          "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
-                  "spec-names/SKILL.md"],
+                  "spec-names/SKILL.md", "to-tickets/SKILL.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],
     "review-architecture.md": ["review-changes/architecture.md"],
