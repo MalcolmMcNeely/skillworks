@@ -57,9 +57,10 @@ STOP  #203 step build is Blocked: BLOCKED .claude/settings.json: the write was r
 A Blocked Cut, drift check or Name check stops the loop the same way, and its `STOP` line names the
 check.
 
-A review answers Blocked when its review file is missing, and its line names the file. That can
-happen only when the file goes missing after the run starts, because the script checks for it before
-any ticket, as "A missing Steering file" below says.
+A review answers Blocked when its review file is missing, and its line names the file. The sweep
+does the same when `comments.md` is missing. That can happen only when the file goes missing after
+the run starts, because the script checks for it before any ticket, as "A missing Steering file"
+below says.
 
 A build answers Blocked for a missing file too, when it is `loop.json`, `issue-tracker.md` or
 `suite.json`, and for a ticket that has an open blocker. The script picks only a ticket with no open

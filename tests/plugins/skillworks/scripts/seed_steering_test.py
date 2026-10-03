@@ -700,6 +700,13 @@ def test_the_comment_sweep_reads_its_table_from_the_comments_rule():
     assert "What a sweep keeps and cuts" in sweep
 
 
+def test_neither_pass_of_the_comment_sweep_touches_what_the_comments_rule_leaves_alone():
+    scope = section(skill_text("comment-sweep"), "What is in scope")
+
+    assert ("out of scope in every file, and neither pass touches them: a doc comment the rules allow, "
+            "and anything the rules say a sweep leaves alone.") in scope
+
+
 def test_the_review_standards_seed_holds_the_smells_list():
     smells = seeded("review-standards.md")
 
@@ -1395,6 +1402,14 @@ def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing()
 
 def test_tdd_stops_when_the_testing_rule_is_missing():
     assert stops("tdd", "`docs/agents/rules/testing.md`")
+
+
+def test_the_comment_sweep_stops_when_the_comments_rule_is_missing():
+    assert stops("comment-sweep", "`docs/agents/rules/comments.md`")
+
+
+def test_the_comment_sweep_begins_its_report_with_a_blocked_line_under_the_loop_when_the_comments_rule_is_missing():
+    assert stops("comment-sweep", "`docs/agents/rules/comments.md`", "`BLOCKED`", "Under the spec loop")
 
 
 def test_implement_stops_on_the_blocked_line_when_a_steering_file_it_reads_is_missing():

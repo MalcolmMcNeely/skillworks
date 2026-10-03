@@ -28,7 +28,7 @@ Every step but `suite` is a Session of its own, run inside the ticket's worktree
 | `spec` | Reviews the change against the ticket and the spec, and each Surface the spec names for the ticket, and fixes what it finds. |
 | `architecture` | Reviews where the change sits and which way it points, and fixes what it finds. |
 | `fix` | Reads all three reports at once, settles any disagreement, and fixes what is left. |
-| `sweep` | Cuts the comments back to what your rules keep. |
+| `sweep` | Cuts the comments the change wrote back to what your rules keep. A comment the change did not touch stays as it is. |
 | `suite` | The script runs your Suite. No Session is asked. |
 | `finish` | Commits the change, and closes the ticket. The Plugin's hook adds the `Ticket` trailer to every commit a loop Session makes. It never pushes. |
 
