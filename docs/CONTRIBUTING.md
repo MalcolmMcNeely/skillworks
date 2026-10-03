@@ -223,7 +223,7 @@ diff in every team's next setup run, so do not edit one for style.
 | `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |
 | `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
 | `docs/usage/` | How a team uses Skillworks, and how the loop works, for a human reading it rather than a skill. |
-| `docs/studio/` | How to run Studio, its settings, and how it gets its telemetry. |
+| `docs/studio/` | How to run Studio, its settings, and how it gets its telemetry. Studio's glossary, `CONTEXT.md`, sits here too, and `CONTEXT-MAP.md` points at it. |
 | `docs/assets/` | The pictures the README shows. |
 
 The top folder under a code root is a Slice, named for a job Studio does, with `Shared` beside the

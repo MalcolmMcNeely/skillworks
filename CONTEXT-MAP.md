@@ -6,12 +6,15 @@ judges a file.
 
 ## Contexts
 
-- [Studio](./CONTEXT.md) — the local app that watches, authors, tests and publishes the Plugin
+- [Studio](./docs/studio/CONTEXT.md) — the local app that watches, authors, tests and publishes the Plugin
 - [Architecture](./src/Skillworks.Architecture/CONTEXT.md) — the check that holds the shape of the code
 - [Loop](./.claude/CONTEXT.md) — the setup an agent runs under, and the scripts that drive it
 
 A context is a product area. A large repository splits its contexts by project; a small one splits by
 folder. The test is the same either way.
+
+No glossary sits at the repository root. A `CONTEXT.md` there reads as the glossary of the whole
+repository, and each glossary here judges one context only.
 
 ## Relationships
 
@@ -46,7 +49,7 @@ left to its own shape rather than measured against one it was never built to.
 ```yaml
 contexts:
   studio:
-    glossary: CONTEXT.md
+    glossary: docs/studio/CONTEXT.md
     slices: true
     code:
       - src/Skillworks.AppHost
