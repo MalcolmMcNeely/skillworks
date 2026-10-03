@@ -15,9 +15,11 @@ Two arguments: the spec's number, then the commit the loop started from. The num
 
 The base commit bounds the search for the spec's commits. If it was not passed, read `.spec-loop/<spec>/base.sha`. If that is missing too, stop and ask. Do not guess a base.
 
-A third argument, the rename ticket, makes this the Name re-check: see [The Name re-check](#the-name-re-check). Without one, do everything down to it and stop there.
+A third argument, the rename ticket, makes this the Name re-check: see [The Name re-check](#the-name-re-check). With one, that section takes the place of What you read, What you list and The report. Without one, do everything down to it and stop there.
 
-`tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to record the report with each one. The Target branch is `target-branch` in `docs/agents/loop.json`. When that says `spec`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
+`tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to record the report with each one. The Target branch is `target-branch` in `docs/agents/loop.json`. When that says `spec`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files. In `spec` mode, read the spec for that branch name and for nothing more.
+
+If `docs/agents/loop.json`, `docs/agents/issue-tracker.md` or `docs/agents/domain.md` is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the loop reads that line and stops at once.
 
 ## What you read
 
@@ -31,16 +33,18 @@ Two things, and nothing else. A small context keeps the judge sharp, and one fin
 
    Do not read the range from the base commit, and build no search of your own over it. Other loops and hand commits Land on the same Target branch, and their names are not this spec's.
 
-2. **The glossary of each context the spec's commits touch.** `CONTEXT-MAP.md` at the repo root names each context, the paths it owns and its glossary. A repo with one context has one `CONTEXT.md` at its root. Read each glossary on `origin/<target>`.
+   If `spec-commits` refuses, mend what the refusal names and run it again once. If it refuses again, stop, quote the refusal, and say that nothing was judged. Under the spec loop, begin your last message with a line that starts with `BLOCKED` and names the command, as for a missing file.
 
-Read nothing else: not the spec, not its tickets, not the drift report, and not the code outside the spec's commits. A name is judged by what the spec's commits make it mean and by what the glossary says it means. The one read beyond them is the check in [What you list](#what-you-list) that a name still stands.
+2. **The glossary of each context the spec's commits touch.** `docs/agents/domain.md` says where this repo keeps its glossaries. Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file. Read each glossary on `origin/<target>`. Under the spec loop, this checkout was just cut from `origin/<target>`, so the glossary file in the checkout holds that text: read it with the Read tool. In a hand run the checkout may be behind, so read it with `git -C . show origin/<target>:<path>`.
+
+Read nothing else: not the spec, not its tickets, not the drift report, and not the code outside the spec's commits. A name is judged by what the spec's commits make it mean and by what the glossary says it means. Three reads go beyond the two: the files under `docs/agents/` that this skill names, the spec's branch name in `spec` mode, and the search in [What you list](#what-you-list) that shows a name still stands.
 
 ## What you list
 
 Every finding is a rename. A rename is never "Optional", and never a matter of taste: a name that says something the code no longer does is a defect, and so is one concept under two names. The loop treats every rename you list as work owed, and asks no one whether to make it, so list only what must change.
 
 1. **A name whose meaning moved.** The spec's commits changed what a type, function, field, file or glossary word does, and the name stayed. A comment edited above a declaration whose name did not change is the sign to look for. Name the old name and say what it now means.
-2. **A concept two tickets named two ways.** Two of the spec's commits with two `Ticket:` trailers brought in two names for one thing. Name both, and say which one the glossary uses. When the glossary has no word for it, write `no glossary word` on the line, and name the one the code and the spec use most. The loop reads those words and tells a person the word needs settling.
+2. **A concept two tickets named two ways.** Two of the spec's commits with two `Ticket:` trailers brought in two names for one thing. Name both, and say which one the glossary uses. When the glossary has no word for it, write `no glossary word` on the line, and name the one the spec's commits use most. The loop reads those words and tells a person the word needs settling.
 
 A name the glossary lists under _Avoid_ is a finding too, when the spec's commits brought it in.
 
@@ -53,6 +57,8 @@ git -C . grep -n -w "<name>" origin/<target>
 The search starts with `git -C`, because a loop Session's allowlist holds that rule and no rule for a bare `git grep`.
 
 A name that no longer stands is not a finding. For a concept two tickets named two ways, both names have to stand. With one of them gone, the rename is already made.
+
+The loop builds every rename you list, and that build edits no glossary. So a name the search finds only in a glossary's own file is not a rename, because the build could change nothing. Leave it out of the list, and give it one line under a `### Glossary` heading below the list, where a person reads it.
 
 ## The report
 
@@ -87,6 +93,8 @@ Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere 
 - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. Post nothing on the spec after it, because the loop reads the last comment.
 - **Files**: the command pushes the report to the end of the spec's `spec.md`, below the drift report, and takes the place of any earlier Name report. It writes through an index of its own, so the checkout stays clean. The loop turns down a Name check that leaves the checkout changed.
 
+The report is recorded when the command prints the comment's URL, or the path of `spec.md`. If `tracker-publish` refuses, mend what the refusal names and run it again once. If it refuses again, stop, quote the refusal, and say that the report is not recorded. Under the spec loop, begin your last message with a line that starts with `BLOCKED` and names the command, as for a missing file.
+
 **Report only. Rename nothing.** A rename is new work, and needs a ticket of its own.
 
 ## The Name re-check
@@ -106,12 +114,18 @@ Read two things, and nothing else:
    git log -p --reverse --grep "^Ticket: <trailer>$" <base>..origin/<target>
    ```
 
+Under the spec loop, run no `git fetch` of your own before either read, even where `docs/agents/issue-tracker.md` names one. The loop fetched the Target branch before it started this Session, and a loop Session has no permission for a bare fetch. In a hand run, fetch the Target branch first.
+
 Do not look for new renames. Judge only the ones the ticket lists.
+
+The same three reads go beyond the two as in [What you read](#what-you-read). Here the search shows where an old name still stands, with the same `git -C . grep` as in [What you list](#what-you-list): a diff shows what a commit changed, and not what it left behind.
 
 Give each rename one Verdict:
 
 - **Done**: the diff renamed it everywhere the old name stood for the concept.
 - **Not done**: it did not, or only in part. Follow it with one sentence saying where the old name still stands.
+
+The build of the rename ticket edits no glossary, so an old name the search finds only in a glossary's own file does not make a rename Not done.
 
 Record the report with the spec, as above, with `## Name report` as its first line. The `### Verdicts` list comes next, one line per rename, each `- <heading>: <Verdict>`. Write each rename exactly as its heading names it, because the loop matches the two:
 

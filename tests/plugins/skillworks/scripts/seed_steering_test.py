@@ -1394,6 +1394,33 @@ def test_spec_names_reads_only_the_spec_commits_and_the_glossary_and_records_a_n
     assert "tracker-publish names <spec> .spec-loop/<spec>/names-report.md" in spec_names
 
 
+def test_spec_names_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    spec_names = skill_text("spec-names")
+
+    assert "`docs/agents/domain.md` says where this repo keeps its glossaries." in spec_names
+    assert "CONTEXT.md" not in spec_names
+
+
+# Each fence says to read nothing else, so one that names no Steering file cuts the team's files out.
+def test_spec_names_keeps_the_steering_files_it_names_outside_both_read_fences():
+    spec_names = skill_text("spec-names")
+    fence = [paragraph for paragraph in spec_names.split("\n\n") if paragraph.startswith("Read nothing else")]
+
+    assert ["the files under `docs/agents/` that this skill names" in paragraph for paragraph in fence] == [True]
+    assert ("The same three reads go beyond the two as in [What you read](#what-you-read)."
+            in section(spec_names, "The Name re-check"))
+
+
+@pytest.mark.parametrize("command", ["spec-commits", "tracker-publish"])
+def test_spec_names_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
+    refused = [paragraph for paragraph in skill_text("spec-names").split("\n\n")
+               if "If `{}` refuses".format(command) in paragraph]
+
+    assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
+                                               "Under the spec loop", "`BLOCKED`"))
+            for paragraph in refused] == [True]
+
+
 def stops(skill, *names):
     return says_stop((SKILLS / skill / "SKILL.md").read_text(encoding="utf-8"), *names)
 
@@ -1455,6 +1482,17 @@ def test_spec_drift_stops_when_a_steering_file_it_reads_is_missing():
 
 def test_spec_drift_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_steering_file_is_missing():
     assert stops("spec-drift", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_DRIFT_READS)
+
+
+SPEC_NAMES_READS = ["`{}`".format(WHERE[name]) for name in ("loop.json", "issue-tracker.md", "domain.md")]
+
+
+def test_spec_names_stops_when_a_steering_file_it_reads_is_missing():
+    assert stops("spec-names", *SPEC_NAMES_READS)
+
+
+def test_spec_names_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_steering_file_is_missing():
+    assert stops("spec-names", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_NAMES_READS)
 
 
 def test_implement_stops_on_the_blocked_line_when_a_steering_file_it_reads_is_missing():
@@ -1715,7 +1753,8 @@ STEERING_READERS = {
     "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
                          "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
                          "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
-    "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md"],
+    "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
+                  "spec-names/SKILL.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],
     "review-architecture.md": ["review-changes/architecture.md"],

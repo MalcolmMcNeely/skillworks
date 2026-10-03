@@ -70,6 +70,11 @@ The drift check answers Blocked for a missing file as well, when it is `loop.jso
 `issue-tracker.md`, `surfaces.md` or `domain.md`. It answers Blocked too when `spec-commits` or
 `tracker-publish drift` refused twice, and its line names the command.
 
+The Name check answers Blocked for a missing file as well, when it is `loop.json`,
+`issue-tracker.md` or `domain.md`. It answers Blocked too when `spec-commits` or
+`tracker-publish names` refused twice, and its line names the command. The Name re-check does the
+same for a missing file and for `tracker-publish names`.
+
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, in [the Suite](steps.md#the-suite). The script reopens the ticket, because `finish` may have closed it before its work
 reached the Target branch, and the loop only picks open tickets. If this run landed a ticket before
