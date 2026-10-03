@@ -1435,6 +1435,18 @@ def test_spec_names_ends_a_command_that_refuses_twice_on_the_blocked_line_under_
             for paragraph in refused] == [True]
 
 
+def test_tdd_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    tdd = skill_text("tdd")
+
+    assert "read `docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs." in tdd
+    assert "CONTEXT.md" not in tdd
+
+
+# `tests.md` holds the pointer to the determinism rule, so a body that drops its link leaves that pointer unread.
+def test_tdd_says_when_to_read_the_file_that_names_the_determinism_rule():
+    assert "Read [tests.md](tests.md) before the first test when" in skill_text("tdd")
+
+
 def stops(skill, *names):
     return says_stop((SKILLS / skill / "SKILL.md").read_text(encoding="utf-8"), *names)
 
@@ -1493,6 +1505,15 @@ def test_to_tickets_ends_a_command_that_stops_twice_on_one_fault_on_the_blocked_
 
 def test_tdd_stops_when_the_testing_rule_is_missing():
     assert stops("tdd", "`docs/agents/rules/testing.md`")
+
+
+def test_tdd_stops_when_the_domain_docs_are_missing():
+    assert stops("tdd", "`docs/agents/domain.md`")
+
+
+def test_tdd_begins_its_report_with_a_blocked_line_under_the_loop_when_a_steering_file_it_reads_is_missing():
+    assert stops("tdd", "`BLOCKED`", "Under the spec loop", "begin your report",
+                 "`docs/agents/rules/testing.md`", "`docs/agents/domain.md`")
 
 
 def test_the_comment_sweep_stops_when_the_comments_rule_is_missing():
@@ -1785,7 +1806,7 @@ STEERING_READERS = {
                          "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
                          "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
-                  "spec-names/SKILL.md", "to-tickets/SKILL.md"],
+                  "spec-names/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],
     "review-architecture.md": ["review-changes/architecture.md"],
