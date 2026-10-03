@@ -22,13 +22,13 @@ git diff HEAD
 git diff HEAD --stat
 ```
 
-If the diff is empty, stop and report that there is nothing to review.
+If the diff is empty, there is nothing to review. Say so under the `## Standards` heading and end the turn.
 
 ### The standards
 
 Read every file in `docs/agents/rules/`. The agent wrote this code under those rules, so the review holds it to the same ones. Read any other file the repo uses to say how code is written, such as a `CODING_STANDARDS.md` or a `CONTRIBUTING.md`.
 
-Then read the glossary that claims the changed files. `CONTEXT-MAP.md` says which one, and a word the glossary rejects is a finding on this axis.
+Then read the glossary that claims the changed files. `docs/agents/domain.md` says where this repo keeps its glossaries. Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file. A word the glossary rejects is a finding on this axis.
 
 ## The review file
 
@@ -36,7 +36,7 @@ On top of what the repo writes down, this axis always reads its review file, `do
 
 Apply each team check only to the paths it names. A check that names no paths covers the whole change. Skip every path and every kind of finding that "Do not report" names.
 
-If `docs/agents/review-standards.md` is missing, stop. Tell the user that `docs/agents/review-standards.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Standards` heading, so the step fails and the loop stops.
+If `docs/agents/review-standards.md` is missing, stop. Review nothing and edit nothing. Tell the user that `docs/agents/review-standards.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
 
 ## What to report
 
@@ -48,8 +48,6 @@ Report per file and hunk where that helps:
 4. Every existing name whose meaning the change moved. A name that no longer says what its code does misleads the next reader, so rename it in the same ticket. The sign to look for is a comment edited above a declaration whose name did not change: the comment moved with the code, and the name was left behind.
 
 Mark each finding as a hard breach or a judgement call. A documented standard can be a hard breach. A baseline smell never is. A team check is what the check says it is. A moved name is always owed: it is fixed like a hard breach, and never left as a nice-to-have.
-
-Keep the whole report under 400 words.
 
 ## Fix what you find
 
@@ -71,4 +69,6 @@ End with the findings under a `## Standards` heading. The driver reads that head
 No findings on this change.
 ```
 
-A turn that ends without that heading fails the step and stops the loop.
+Under the heading, write one entry for each finding: the file and line, the standard, smell or check it breaches, the line or hunk quoted, hard breach or judgement call, and in loop mode whether you fixed it or left it, with the reason. Write every finding. This last message is the whole report: the loop pastes it, and no earlier message of this session, into the next step's prompt, and in report-only mode it is all the caller gets. So keep each entry short, and never drop a finding to make the report shorter.
+
+A turn that ends without that heading fails the step and stops the loop. The one turn that may end without it is the `BLOCKED` turn for a missing review file.

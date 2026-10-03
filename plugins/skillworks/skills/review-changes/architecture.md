@@ -24,7 +24,13 @@ git diff HEAD
 git diff HEAD --stat -M
 ```
 
-If the diff is empty, stop and report that there is nothing to review.
+If the diff is empty, there is nothing to review. Say so under the `## Architecture` heading and end the turn.
+
+### When to skip
+
+Skip the axis when the change sits inside one module and touches no config, no dependency manifest, no new file and no file move. There is no arrangement question to answer. A new file asks which folder it belongs in, and a moved file asks which way it now points, so neither of those skips.
+
+Read the review file before you skip, as "The review file" below says, because the team's own checks hold for every change. Where a team check covers a path the change touches, do not skip. A skipped axis reads none of the other sources below, runs no placement check and fixes nothing. Note the skip in the report.
 
 ### The sources, in order of rank
 
@@ -32,13 +38,15 @@ Three kinds, and each outranks the one before it.
 
 **Documented.** Anything that says how the code is *arranged* rather than how it is written: `CONTEXT-MAP.md`, each context's `CONTEXT.md`, and `docs/adr/`. `docs/agents/domain.md` says where this repo's decisions live. Read that first and follow it.
 
-**Written as rules.** `docs/agents/rules/file-placement.md` holds the placement rules the code was written under. Read the context map beside it, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
+**Written as rules.** `docs/agents/rules/file-placement.md` holds the placement rules the code was written under. Read the context map beside it, where the repo has one, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in `docs/agents/placement-checks.md`. Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
 
 **Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
 
 Run the placement checks, and only those. `docs/agents/placement-checks.md` names each command that proves placement, with its folder. Run each command in its folder, from the repo root. Where a row names a command to run first, run that first in the same folder, unless the path it names is there in that folder. Run nothing else. The driver runs the whole Suite as a step of its own, and this axis would never read the rest.
 
-Each names the rule, the path and what to do. Quote a breach as it came. Say which commands you ran and what each said. Where the placement-checks file names no command, or no command checks the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
+Send each command to the Bash tool as a call of its own: the command alone where its folder is the repo root, and `cd <folder> && <command>` where it is not, with nothing wrapped round it. Look for the path a "run first" row names with a file tool, before the command, and not with a test inside the shell line. A loop session runs only the commands its permission rules name, and a rule matches the plain form, so a wrapped command or a PowerShell call is refused, and nobody is there to approve it.
+
+Quote a breach as the command printed it. Say which commands you ran and what each said. Where the placement-checks file names no command, or no command checks the code you are judging, say that too: a repo that cannot check its own boundaries is itself the finding a reader wants.
 
 ### The review file
 
@@ -46,7 +54,7 @@ On top of what the repo has, this axis always reads its review file, `docs/agent
 
 Apply each team check only to the paths it names. A check that names no paths covers the whole change. A team check is a hard breach or a judgement call, as the check says. Skip every path and every kind of finding that "Do not report" names.
 
-If `docs/agents/review-architecture.md` is missing, stop. Tell the user that `docs/agents/review-architecture.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Architecture` heading, so the step fails and the loop stops.
+If `docs/agents/review-architecture.md` is missing, stop. Review nothing and edit nothing. Tell the user that `docs/agents/review-architecture.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
 
 ## The three binding rules
 
@@ -63,12 +71,6 @@ Run the placement checks first, and report what each one said. Then, for every m
 3. Does the change introduce a cycle?
 4. Does any folder the change creates breach a written placement rule?
 5. Does anything the change added breach a team check?
-
-Keep the whole report under 400 words.
-
-## When to skip
-
-Skip the axis when the change sits inside one module and touches no config, no dependency manifest, no new file and no file move. There is no arrangement question to answer. A new file asks which folder it belongs in, and a moved file asks which way it now points, so neither of those skips. Note the skip in the report.
 
 ## Fix what you find
 
@@ -92,4 +94,6 @@ End with the findings under an `## Architecture` heading. The driver reads that 
 Skipped: the change sits inside one module and adds no file.
 ```
 
-A turn that ends without that heading fails the step and stops the loop.
+Under the heading, write one line for each placement check you ran, with what it said, and then one entry for each finding: the file and line, the rule, baseline item or team check it breaches, the line quoted, hard breach or judgement call, and in loop mode whether you fixed it or left it, with the reason. Write every finding. This last message is the whole report: the loop pastes it, and no earlier message of this session, into the next step's prompt, and in report-only mode it is all the caller gets. So keep each entry short, and never drop a finding to make the report shorter.
+
+A turn that ends without that heading fails the step and stops the loop. The one turn that may end without it is the `BLOCKED` turn for a missing review file.

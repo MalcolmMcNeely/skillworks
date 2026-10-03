@@ -57,6 +57,10 @@ STOP  #203 step build is Blocked: BLOCKED .claude/settings.json: the write was r
 A Blocked Cut, drift check or Name check stops the loop the same way, and its `STOP` line names the
 check.
 
+A review answers Blocked when its review file is missing, and its line names the file. That can
+happen only when the file goes missing after the run starts, because the script checks for it before
+any ticket, as "A missing Steering file" below says.
+
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, in [the Suite](steps.md#the-suite). The script reopens the ticket, because `finish` may have closed it before its work
 reached the Target branch, and the loop only picks open tickets. If this run landed a ticket before

@@ -29,7 +29,7 @@ This axis always reads its review file, `docs/agents/review-spec.md`. Read it yo
 
 Apply each team check only to the paths it names. A check that names no paths covers the whole change. A team check is a hard breach or a judgement call, as the check says. Skip every path and every kind of finding that "Do not report" names.
 
-If `docs/agents/review-spec.md` is missing, stop. Tell the user that `docs/agents/review-spec.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. End the turn without the `## Spec` heading, so the step fails and the loop stops.
+If `docs/agents/review-spec.md` is missing, stop. Review nothing and edit nothing. Tell the user that `docs/agents/review-spec.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
 
 ### The change
 
@@ -41,7 +41,7 @@ git diff HEAD
 git diff HEAD --stat
 ```
 
-If the diff is empty, stop and report that there is nothing to review.
+If the diff is empty, there is nothing to review. Say so under the `## Spec` heading and end the turn.
 
 ## What to look for
 
@@ -66,8 +66,6 @@ Two things are out of scope, because reporting them makes the axis noise:
 
 Where a criterion is deliberately left for later, the ticket says so. Quote that line rather than reporting the gap.
 
-Keep the whole report under 400 words.
-
 ## Fix what you find
 
 This axis edits the worktree, and it should. A finding you can fix, you fix here. The session that read the ticket against the change is the one that knows what is missing, so a criterion a few lines short is closed here rather than handed on.
@@ -88,4 +86,6 @@ End with the findings under a `## Spec` heading. The driver reads that heading t
 Every acceptance criterion is delivered. No findings on this change.
 ```
 
-A turn that ends without that heading fails the step and stops the loop.
+Under the heading, write one entry for each finding: its kind, the ticket line it turns on, quoted, the file and line, and in loop mode whether you fixed it or left it, with the reason. A criterion that is delivered gets no entry. Write every finding. This last message is the whole report: the loop pastes it, and no earlier message of this session, into the next step's prompt, and in report-only mode it is all the caller gets. So keep each entry short, and never drop a finding to make the report shorter.
+
+A turn that ends without that heading fails the step and stops the loop. The one turn that may end without it is the `BLOCKED` turn for a missing review file.

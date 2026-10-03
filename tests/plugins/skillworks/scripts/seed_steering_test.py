@@ -1380,6 +1380,15 @@ def test_each_axis_stops_when_its_review_file_is_missing():
         assert says_stop(axis_text(skill), "`{}`".format(WHERE[name])), skill
 
 
+def test_each_axis_begins_its_loop_mode_report_with_a_blocked_line_when_its_review_file_is_missing():
+    for skill, name in REVIEW_FILE_OF.items():
+        assert says_stop(axis_text(skill), "`{}`".format(WHERE[name]), "`BLOCKED`", "In loop mode"), skill
+
+
+def test_review_changes_stops_when_the_tracker_docs_are_missing():
+    assert stops("review-changes", "`docs/agents/issue-tracker.md`")
+
+
 def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing():
     assert stops("to-tickets", "`docs/agents/issue-tracker.md`", '"The ticket shape"')
 
@@ -1626,6 +1635,126 @@ def test_the_axis_files_name_each_steering_file_by_its_path_from_the_repo_root()
             assert "`{}`](".format(WHERE[name]) not in text, "{} links {}".format(skill, name)
 
 
+RULES_FOLDER = "docs/agents/rules/"
+
+RULES_FOLDER_READERS = ["review-changes/standards.md", "architecture-tests/SKILL.md"]
+
+# A page that drops its pointer leaves the team's file unread, and no other check would show it.
+STEERING_READERS = {
+    "comments.md": ["comment-sweep/SKILL.md"],
+    "determinism.md": ["tdd/tests.md"],
+    "file-placement.md": ["review-changes/architecture.md"],
+    "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md"],
+    "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
+                         "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
+                         "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
+    "domain.md": ["review-changes/standards.md", "review-changes/architecture.md"],
+    "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
+    "review-standards.md": ["review-changes/standards.md"],
+    "review-architecture.md": ["review-changes/architecture.md"],
+    "review-spec.md": ["review-changes/spec.md"],
+    "suite.json": ["implement/SKILL.md", "architecture-tests/SKILL.md", "resolve-conflict/SKILL.md"],
+    "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
+                  "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
+    "surfaces.md": ["grill/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "review-changes/spec.md"],
+}
+
+
+def test_every_page_that_reads_a_steering_file_names_it_by_its_path_from_the_repo_root():
+    for seed, pages in STEERING_READERS.items():
+        for page in pages:
+            text = (SKILLS / page).read_text(encoding="utf-8")
+            assert "`{}`".format(WHERE[seed]) in text, "{} names {}".format(page, seed)
+
+
+def test_every_page_that_reads_the_rules_folder_names_it_by_its_path_from_the_repo_root():
+    for page in RULES_FOLDER_READERS:
+        assert "`{}`".format(RULES_FOLDER) in (SKILLS / page).read_text(encoding="utf-8"), page
+
+
+# A rule needs no page of its own, because the Standards axis reads every file in the rules folder.
+def unread_steering(seeds, readers, folder_readers):
+    return sorted(seed for seed in seeds if not readers.get(seed) and not (seed in RULES and folder_readers))
+
+
+def test_every_steering_file_setup_seeds_has_a_page_that_reads_it():
+    assert unread_steering(seed_steering.PLACES, STEERING_READERS, RULES_FOLDER_READERS) == []
+
+
+def test_a_seed_no_page_reads_is_caught():
+    assert unread_steering(["words.md", "new-baseline.md"], STEERING_READERS, RULES_FOLDER_READERS) == ["new-baseline.md"]
+
+
+STEERING_PATH = re.compile(r"docs/agents/[\w./*<>-]*")
+
+PATHS_SETUP_WRITES = set(seed_steering.PLACES.values()) | {
+    "docs/agents/", RULES_FOLDER, RULES_FOLDER + "*.md", seed_steering.BASES + "/"}
+
+
+# A page that points at a file setup never writes sends a team's session to a file that is not there.
+def unseeded_steering(text):
+    return sorted({path.rstrip(".") for path in STEERING_PATH.findall(text)} - PATHS_SETUP_WRITES)
+
+
+def test_no_plugin_page_names_a_steering_file_setup_does_not_seed():
+    pages = sorted(SKILLS.rglob("*.md"))
+    assert pages
+
+    for page in pages:
+        assert unseeded_steering(page.read_text(encoding="utf-8")) == [], page
+
+
+def test_a_steering_path_setup_does_not_seed_is_caught():
+    text = "Read `docs/agents/review-standards.md`, then `docs/agents/review-standard.md`. The rules sit in docs/agents/rules/."
+
+    assert unseeded_steering(text) == ["docs/agents/review-standard.md"]
+
+
+TEAM_CHECK_STEP = {
+    "review-standards": "3. Every breach of a team check. Name the check and quote the hunk.",
+    "review-architecture": "5. Does anything the change added breach a team check?",
+    "review-spec": "Then walk the team checks in `docs/agents/review-spec.md`. A breach of one is a finding.",
+}
+
+
+@pytest.mark.parametrize("skill", list(AXIS_FILE_OF))
+def test_each_axis_holds_the_change_to_each_team_check_on_the_paths_the_check_names(skill):
+    text = axis_text(skill)
+
+    assert "axis always reads its review file, `{}`".format(WHERE[REVIEW_FILE_OF[skill]]) in text
+    assert "Apply each team check only to the paths it names. A check that names no paths covers the whole change." in text
+    assert TEAM_CHECK_STEP[skill] in text
+
+
+@pytest.mark.parametrize("skill", list(AXIS_FILE_OF))
+def test_each_axis_skips_every_path_and_kind_of_finding_the_teams_do_not_report_list_names(skill):
+    assert 'Skip every path and every kind of finding that "Do not report" names.' in axis_text(skill)
+
+
+def test_the_architecture_axis_reads_its_review_file_before_it_skips_and_never_skips_past_a_team_check():
+    skipping = axis_text("review-architecture").split("\n### When to skip\n", 1)[1].split("\n### ", 1)[0]
+
+    assert "Read the review file before you skip" in skipping
+    assert "Where a team check covers a path the change touches, do not skip." in skipping
+
+
+def test_the_standards_axis_reads_every_file_in_the_rules_folder():
+    assert "Read every file in `{}`.".format(RULES_FOLDER) in axis_text("review-standards")
+
+
+def test_the_standards_axis_finds_the_glossary_through_the_domain_doc_and_reports_a_word_it_rejects():
+    text = axis_text("review-standards")
+
+    assert "`{}` says where this repo keeps its glossaries.".format(WHERE["domain.md"]) in text
+    assert "A word the glossary rejects is a finding on this axis." in text
+
+
+# A repo with one context has a glossary and no map, so a page that takes the map as given finds no file.
+def test_the_axes_read_the_context_map_only_where_the_repo_has_one():
+    assert "Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file." in axis_text("review-standards")
+    assert "Read the context map beside it, where the repo has one," in axis_text("review-architecture")
+
+
 def test_code_review_is_renamed_review_changes_which_sends_a_check_on_correctness_to_claude_codes_own():
     front = skill_text("review-changes").split("---\n")[1]
 
@@ -1655,7 +1784,7 @@ def test_review_changes_sends_each_sub_agent_to_its_axis_file_in_report_only_mod
 def test_each_axis_skill_follows_its_axis_file_in_loop_mode(skill):
     text = skill_text(skill)
 
-    assert "`../review-changes/{}`".format(AXIS_FILE_OF[skill]) in text
+    assert "`${{CLAUDE_PLUGIN_ROOT}}/skills/review-changes/{}`".format(AXIS_FILE_OF[skill]) in text
     assert "follow it in loop mode" in text
 
 

@@ -28,7 +28,7 @@ Each axis keeps its steps in an axis file in this skill's folder, `${CLAUDE_SKIL
 | Spec | `spec.md` |
 | Architecture | `architecture.md` |
 
-The issue tracker should have been provided to you. If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`.
+`docs/agents/issue-tracker.md` says how this repo names and reads a ticket. If it is missing, stop. Tell the user that it is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed.
 
 ## Pin the fixed point
 
@@ -38,7 +38,7 @@ Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so th
 
 **An uncommitted change** has no commits for a three-dot diff to see, and needs no fixed point. Run `git add -N .` so new files show, then use `git diff HEAD` and `git diff HEAD --stat -M` in place of the commands above. There is no commit list.
 
-Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here — not inside three parallel sub-agents.
+Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. If the ref does not resolve, or the diff is empty, stop. Tell the user which, and start no sub-agent: three of them would each fail on it apart.
 
 ## Find the spec
 
@@ -49,6 +49,8 @@ Look for the ticket or spec the change was built for, in this order:
 3. With neither, ask the user which ticket or spec the change was built for. If they say there isn't one, skip the Spec sub-agent and note that in the report.
 
 ## Spawn the sub-agents in parallel
+
+Start the sub-agents in one message, one sub-agent call for each axis, so they run at the same time. Use the general-purpose type, because an axis runs git and its checks in a shell, and reads the whole files its sources name.
 
 Give each sub-agent the same four things, and let it read the rest itself:
 
@@ -61,7 +63,7 @@ Say in each prompt that the sub-agent edits nothing. A review by hand reports, a
 
 ## Aggregate
 
-Present the reports under `## Standards`, `## Spec` and `## Architecture` headings, verbatim or lightly cleaned. Do **not** merge or rerank findings — the axes are deliberately separate (see _Why three axes_).
+Present each report under its `## Standards`, `## Spec` or `## Architecture` heading, as it came. Keep every finding, with its file, its line and its quote, because a finding cut here is lost with nothing to show it. Tidy the layout only, and write each heading once. Do **not** merge or rerank findings — the axes are deliberately separate (see _Why three axes_).
 
 If an axis stops because a file it needs is missing, give its message under its heading as it came.
 
