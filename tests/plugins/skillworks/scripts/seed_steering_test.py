@@ -1345,6 +1345,39 @@ def test_spec_drift_reads_the_spec_commits_and_judges_the_target_branch_as_it_st
     assert "only when it still stands on `origin/<target>`" in spec_drift
 
 
+def test_spec_drift_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    spec_drift = skill_text("spec-drift")
+
+    assert "`docs/agents/domain.md` says where this repo keeps its glossaries." in spec_drift
+    assert "CONTEXT.md" not in spec_drift
+
+
+# A hand run with the files Tracker fetches as the tracker docs say, so the ban holds only where the driver fetched.
+def test_spec_drift_runs_no_fetch_of_its_own_under_the_loop_alone():
+    assert ("Under the spec loop, run no `git fetch` of your own, even where "
+            "`docs/agents/issue-tracker.md` names one.") in skill_text("spec-drift")
+
+
+def test_spec_drift_says_its_report_is_recorded_when_the_command_prints_where_it_went():
+    assert ("The report is recorded when the command prints the comment's URL, or the path of "
+            "`spec.md`.") in skill_text("spec-drift")
+
+
+def test_spec_drift_posts_nothing_on_the_spec_after_its_report_because_the_loop_reads_the_last_comment():
+    assert ("the loop reads the last one, so post nothing on the spec after the report"
+            in skill_text("spec-drift"))
+
+
+@pytest.mark.parametrize("command", ["spec-commits", "tracker-publish"])
+def test_spec_drift_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
+    refused = [paragraph for paragraph in skill_text("spec-drift").split("\n\n")
+               if "If `{}` refuses".format(command) in paragraph]
+
+    assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
+                                               "Under the spec loop", "`BLOCKED`"))
+            for paragraph in refused] == [True]
+
+
 def test_spec_names_reads_only_the_spec_commits_and_the_glossary_and_records_a_name_report():
     spec_names = skill_text("spec-names")
 
@@ -1410,6 +1443,18 @@ def test_the_comment_sweep_stops_when_the_comments_rule_is_missing():
 
 def test_the_comment_sweep_begins_its_report_with_a_blocked_line_under_the_loop_when_the_comments_rule_is_missing():
     assert stops("comment-sweep", "`docs/agents/rules/comments.md`", "`BLOCKED`", "Under the spec loop")
+
+
+SPEC_DRIFT_READS = ["`{}`".format(WHERE[name])
+                    for name in ("loop.json", "issue-tracker.md", "surfaces.md", "domain.md")]
+
+
+def test_spec_drift_stops_when_a_steering_file_it_reads_is_missing():
+    assert stops("spec-drift", *SPEC_DRIFT_READS)
+
+
+def test_spec_drift_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_steering_file_is_missing():
+    assert stops("spec-drift", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_DRIFT_READS)
 
 
 def test_implement_stops_on_the_blocked_line_when_a_steering_file_it_reads_is_missing():
@@ -1670,7 +1715,7 @@ STEERING_READERS = {
     "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
                          "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
                          "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
-    "domain.md": ["review-changes/standards.md", "review-changes/architecture.md"],
+    "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],
     "review-architecture.md": ["review-changes/architecture.md"],

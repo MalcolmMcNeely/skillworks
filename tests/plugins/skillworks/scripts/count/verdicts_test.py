@@ -69,6 +69,20 @@ def test_the_list_ends_at_the_next_heading():
     assert [verdict.item for verdict in read.verdicts] == ["S1"]
 
 
+def test_a_note_bullet_left_in_the_verdicts_list_gives_its_item_a_second_verdict():
+    read = read_verdicts(report("### Verdicts\n\n- S2: Partial. The log is short.\n\n"
+                                "S2 is half there:\n\n- S2: Done in part\n"))
+
+    assert [(verdict.item, verdict.word) for verdict in read.verdicts] == [("S2", "Partial"), ("S2", "Done")]
+
+
+def test_a_note_bullet_under_the_notes_heading_gives_its_item_no_verdict():
+    read = read_verdicts(report("### Verdicts\n\n- S2: Partial. The log is short.\n",
+                                "### Notes\n\nS2 is half there:\n\n- S2: Done in part\n"))
+
+    assert [(verdict.item, verdict.word) for verdict in read.verdicts] == [("S2", "Partial")]
+
+
 def test_a_report_with_no_verdicts_list_has_none_to_read():
     read = read_verdicts(report("Everything is done.\n"))
 
@@ -130,6 +144,21 @@ def test_spec_drift_names_the_verdicts_list_and_the_unrequested_list():
 
 def test_spec_drift_says_every_verdict_but_done_and_in_step_carries_a_reason():
     assert "every Verdict other than Done or In step" in skill_text()
+
+
+def test_spec_drift_keeps_the_verdicts_list_to_verdict_lines_and_puts_the_prose_under_headings_of_its_own():
+    text = skill_text()
+
+    assert "The `### Verdicts` list holds Verdict lines and nothing else." in text
+    for heading in ("`### Notes`", "`### Surfaces`", "`### Glossary`"):
+        assert "a {} heading with".format(heading) in text
+
+
+# The loop reads the list down to the next heading, so prose shown there would teach a bullet into it.
+def test_the_report_spec_drift_shows_holds_only_verdict_lines_in_its_verdicts_list():
+    listed = example_report().split("### Verdicts\n", 1)[1].split("\n#", 1)[0]
+
+    assert [line for line in listed.splitlines() if line.strip() and not line.startswith("- ")] == []
 
 
 def test_the_report_spec_drift_shows_reads_as_the_loop_reads_it():

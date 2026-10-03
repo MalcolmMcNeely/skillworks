@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # Spec Drift
 
-The last step of `/skillworks:spec-loop`. Every ticket passed its own acceptance criteria. Nothing so far has asked whether the pile of them is what the spec wanted.
+`/skillworks:spec-loop` runs this once every ticket has Landed. Every ticket passed its own acceptance criteria. Nothing so far has asked whether the pile of them is what the spec wanted.
 
 Two arguments: the spec's number, then the commit the loop started from. The number is the spec's issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, with the files Tracker.
 
@@ -27,6 +27,10 @@ The **spec's commits** are the commits after the base commit whose `Ticket:` tra
 
 The Target branch is `target-branch` in `docs/agents/loop.json`. When that says `spec`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
 
+If `docs/agents/loop.json`, `docs/agents/issue-tracker.md`, `docs/agents/surfaces.md` or `docs/agents/domain.md` is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
+
+Under the spec loop, run no `git fetch` of your own, even where `docs/agents/issue-tracker.md` names one. The driver fetches the Target branch before it starts this Session, the `spec-commits` command in step 2 fetches it again, and a loop Session has no permission for a bare fetch.
+
 ## Process
 
 1. Read the spec in full, then every one of its tickets with how each was closed.
@@ -40,6 +44,8 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
    ```
 
    Build no search of your own, such as a `git log` over the range. The command is how the loop, the re-check and a hand run all read the same commits.
+
+   If `spec-commits` refuses, mend what the refusal names and run it again once. If it refuses again, stop, quote the refusal, and say that nothing was judged. Under the spec loop, begin your last message with a line that starts with `BLOCKED` and names the command, as for a missing file.
 
 3. Give every user story and implementation decision in the spec one Verdict. A story is `S<n>` and a decision is `D<n>`, by its number in the spec's list:
 
@@ -63,14 +69,15 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
 5. List **Unrequested** work: behaviour in the spec's commits that no story and no ticket asked for. Look nowhere else, so another spec's work and a hand commit never show up here. List an item only when it still stands on `origin/<target>`, because a later commit may have taken it out.
 
-6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. Look only in the spec's commits, and name a pair only when both still stand on `origin/<target>`. The project glossary is the arbiter.
+6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. Look only in the spec's commits, and name a pair only when both still stand on `origin/<target>`. The project glossary is the arbiter. `docs/agents/domain.md` says where this repo keeps its glossaries.
 
 7. Write the report. The loop reads its lists, so their shape is fixed:
 
    - The first line is `## Drift report`.
    - The `### Verdicts` list comes next. Each line is `- <item>: <Verdict>`, one line per item, and every item of the spec gets exactly one. Given a list of items, every item in the list gets exactly one, and no other item gets any. The loop counts them: an item with no Verdict, or with two, is a Gap, like a Missing one.
    - After the Verdict, every Verdict other than Done or In step carries one sentence of reason, on the same line.
-   - The prose follows: what each Partial, Missing and Contradicts lacks or breaks, then a `### Surfaces` heading with what each Out of step Surface lacks, then the glossary notes from step 6.
+   - The `### Verdicts` list holds Verdict lines and nothing else. The loop reads the list down to the next heading, and takes every bullet there that holds an item, a colon and a Verdict word as a Verdict. So a note written there as `- S2: Done in part` gives S2 a second Verdict and makes it a Gap.
+   - The prose follows under headings of its own: a `### Notes` heading with what each Partial, Missing and Contradicts lacks or breaks, then a `### Surfaces` heading with what each Out of step Surface lacks, then a `### Glossary` heading with the notes from step 6.
    - The `### Unrequested` list comes last, one item per line. With nothing Unrequested it says `- None`.
 
    ```markdown
@@ -84,11 +91,17 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
    - D2: Contradicts. The driver closes the spec when a Gap is left.
    - The user docs: Out of step. `the-loop.md` does not say what a Gap is.
 
+   ### Notes
+
    S2 is half there: ...
 
    ### Surfaces
 
    The user docs: ...
+
+   ### Glossary
+
+   Gap and Hole name one thing: ...
 
    ### Unrequested
 
@@ -103,7 +116,9 @@ The Target branch is `target-branch` in `docs/agents/loop.json`. When that says 
 
    Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.
 
-   - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. A second run adds a second comment, and the loop reads the last one.
+   - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. A second run adds a second comment, and the loop reads the last one, so post nothing on the spec after the report.
    - **Files**: the command pushes the report to the end of the spec's `spec.md` on the remote, and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
 
-9. **Report only. Fix nothing.** A fix is new work and needs its own ticket. The loop files the Gaps you find as a ticket of its own. Do not close the spec either. With GitHub the human closes it once they have read this report. With files the loop closes it after this step, when the count finds nothing owed.
+   The report is recorded when the command prints the comment's URL, or the path of `spec.md`. A report you only say in this Session is lost, because the loop reads the Tracker. If `tracker-publish` refuses, mend what the refusal names and run it again once. If it refuses again, stop, quote the refusal, and say that the report is not recorded. Under the spec loop, begin your last message with a line that starts with `BLOCKED` and names the command, as for a missing file.
+
+9. **Report only. Fix nothing.** A fix is new work and needs its own ticket. The loop files the Gaps you find as a ticket of its own. Do not close the spec, and do not tell the user to close it. Under the spec loop, more checks come after this report, the Name check and the full run of the Suite among them, and the loop or a person settles the close after those.

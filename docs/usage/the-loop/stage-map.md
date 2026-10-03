@@ -31,7 +31,7 @@ use with nobody watching.
 | `suite` | Nothing. No Session runs. | `suite.json`, and each Dockerfile a check names as its `image` | Every check, its `ready`, its `ignores`, its `image`, and `runs`. |
 | `finish` | `CLAUDE.md` and the rules | `issue-tracker.md` | Nothing. The loop reads back the two conventions in `issue-tracker.md`, so leave them as they are. |
 | Landing | `CLAUDE.md` and the rules, in the Session that resolves a conflict | `suite.json`, for the Suite again | The checks in `suite.json`. |
-| The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `surfaces.md` | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
+| The drift check | `CLAUDE.md` and the rules | `issue-tracker.md`, `domain.md`, your glossary, `surfaces.md` | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
 | The Gap ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of the drift report's Verdicts and reasons. |
 | The Name check | `CLAUDE.md` and the rules | `issue-tracker.md`, `CONTEXT-MAP.md`, your glossary | The glossary, which decides the word a moved name or a concept named two ways should take. |
 | The rename ticket | What each step above loads, since it is built through them | The same as each step | The glossary, whose word each rename takes. The script writes the ticket from a fixed template, out of the Name report's lines. |

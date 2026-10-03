@@ -66,6 +66,10 @@ A build answers Blocked for a missing file too, when it is `loop.json`, `issue-t
 `suite.json`, and for a ticket that has an open blocker. The script picks only a ticket with no open
 blocker, so that can happen only when a blocker opens after the pick.
 
+The drift check answers Blocked for a missing file as well, when it is `loop.json`,
+`issue-tracker.md`, `surfaces.md` or `domain.md`. It answers Blocked too when `spec-commits` or
+`tracker-publish drift` refused twice, and its line names the command.
+
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, in [the Suite](steps.md#the-suite). The script reopens the ticket, because `finish` may have closed it before its work
 reached the Target branch, and the loop only picks open tickets. If this run landed a ticket before

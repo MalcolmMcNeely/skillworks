@@ -49,10 +49,13 @@ and a Surface is its bold name. Each story and decision gets one of four Verdict
 | Contradicts | The code does something the spec ruled out. |
 
 Each Surface gets **In step** or **Out of step**. Every Verdict other than Done or In step carries one
-sentence of reason. The prose follows the list, with what each Out of step Surface lacks under a
-`### Surfaces` heading, and a look for two tickets that brought in two names for one idea, with your
-glossary as the judge. Last comes a `### Unrequested` list: work the spec never asked for, one item
-per line.
+sentence of reason. The list holds Verdict lines and nothing else, because the script reads every
+bullet under that heading down to the next heading.
+
+The prose follows under headings of its own. `### Notes` says what each Partial, Missing and
+Contradicts lacks or breaks. `### Surfaces` says what each Out of step Surface lacks. `### Glossary`
+holds a look for two tickets that brought in two names for one idea, with your glossary as the
+judge. Last comes a `### Unrequested` list: work the spec never asked for, one item per line.
 
 ## The count
 
@@ -73,6 +76,9 @@ The loop stops, and the spec stays open, when:
 - the drift check recorded no report, after two Nudges. A drift check that recorded no report is
   Nudged first: the script resumes the same Session in its own worktree, and names what is missing
   and the `tracker-publish drift` command that records it. Each Nudge writes a `NUDGE` line;
+- the drift check began its last message with a `BLOCKED` line. It does so when a Steering file it
+  reads is missing, or when `spec-commits` or `tracker-publish drift` refused twice. The loop stops
+  at once, with no Nudge, as [When a step fails](stops.md) shows;
 - the report has no `### Verdicts` list;
 - any Verdict is Contradicts. The stop line names each Contradicts and every Gap beside it, because a
   person decides on a part of the spec the code ruled against. The loop stops at the count, before any
