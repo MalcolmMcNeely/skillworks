@@ -30,6 +30,10 @@ flowchart TD
 4. **Resolve**, only when the rebase conflicts. The build Session is resumed to fix it. It is told
    that it wrote one side and the other side is a stranger's, so it argues for the other side before
    it drops a line of it. It gets the commits that landed meanwhile, and the ticket behind each one.
+   The Session refuses in two cases, and the stop in the log names the rule. Rule 1: the answer is on
+   neither side and in neither ticket. Rule 2: its checks still fail after one try at a fix. A refusal
+   stops the landing with the rebase open in the worktree. Under rule 2 the files hold the Session's
+   resolution, staged or not.
 5. **The Suite again**, on the new base. Only the checks with no Proof for the rebased files run, so
    most landings run nothing. An unmoved base skips this, because the `suite` step already answers
    for it.

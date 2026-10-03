@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import land_ticket
-from conftest import (SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
+from conftest import (PLUGIN, SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
                       project_suite, write_loop, write_suite)
 from steering.target_branch import LOOP_FILE
 from suite import SUITE_FILE, Suite
@@ -1102,6 +1102,26 @@ def test_a_conflict_is_handed_back_to_the_ticket_s_own_session(repo, runner):
     assert runner.built("dotnet test Skillworks.slnx")
 
 
+def heading_the_resolve_skill_looks_for():
+    skill = (PLUGIN / "skills" / "resolve-conflict" / "SKILL.md").read_text(encoding="utf-8")
+    [heading] = set(re.findall(r"`(## [^`]+)`", skill))
+    return heading
+
+
+# The skill stops a Session that was handed no such heading, so a renamed one would stop every resolve.
+def test_the_other_side_is_handed_over_under_the_heading_the_skill_looks_for(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    stub_session(repo, runner, staging(repo, "start\ntheir line\nmy line\n"))
+    given_a_project(repo)
+    given_a_conflict(repo, 166, 164)
+
+    run_land(runner, repo.work, 166, "session-abc")
+
+    [resolving] = runner.started("claude")
+    assert heading_the_resolve_skill_looks_for() in resolving[resolving.index("-p") + 1].split("\n")
+
+
 def test_the_resolving_session_gets_the_environment_every_driver_session_gets(
         repo, runner, monkeypatch):
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
@@ -1144,7 +1164,7 @@ def test_the_resolving_session_is_handed_the_trailer_of_the_ticket_it_lands(repo
 def test_a_refusal_stops_the_run_and_names_the_rule_that_fired(repo, runner):
     given_the_suite_passes(runner)
     given_the_tracker_answers(runner)
-    # A refusal leaves the conflict where it stands, so this stub touches no file.
+    # A refusal under rule 1 leaves the conflict where it stands, so this stub touches no file.
     runner.stub("claude", says="REFUSED 1: neither side says which count the tile shows.\n\n"
                                "Mine wanted a count per skill. Theirs wanted a count per session.")
     given_a_project(repo)
@@ -1196,6 +1216,19 @@ def test_a_refusal_that_staged_everything_still_stops_the_run(repo, runner):
     assert "outcome=refused" in report(ran)
     assert target_of(repo) == base
     assert not runner.started("dotnet")
+
+
+def test_a_refusal_below_the_first_line_of_the_answer_still_stops_the_run(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    stub_session(repo, runner, staging(repo, "resolved\n"),
+                 says="The file is staged.\nREFUSED 2: the typecheck still fails.")
+    given_a_project(repo)
+    given_a_conflict(repo, 167, 164)
+
+    ran = run_land(runner, repo.work, 167, "session-abc")
+
+    assert "refused under rule 2" in report(ran)
 
 
 def test_a_conflict_with_no_marker_in_it_is_still_measured(repo, runner):
