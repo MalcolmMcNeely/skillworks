@@ -1447,6 +1447,31 @@ def test_tdd_says_when_to_read_the_file_that_names_the_determinism_rule():
     assert "Read [tests.md](tests.md) before the first test when" in skill_text("tdd")
 
 
+def codebase_design_pages():
+    return {page.name: page.read_text(encoding="utf-8") for page in sorted((SKILLS / "codebase-design").glob("*.md"))}
+
+
+def test_codebase_design_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    pages = codebase_design_pages()
+
+    assert ("read `docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs."
+            in pages["DESIGN-IT-TWICE.md"])
+    assert [name for name, text in pages.items() if "CONTEXT.md" in text] == []
+
+
+def test_codebase_design_lets_the_testing_rule_win_where_the_two_differ_on_what_to_fake():
+    categories = codebase_design_pages()["DEEPENING.md"].split("\n## Dependency categories\n", 1)[1].split("\n## ", 1)[0]
+
+    assert ("Where `docs/agents/rules/testing.md` exists and rules differently on what to fake or mock, "
+            "the rule wins.") in categories
+
+
+# Each file holds a pointer to a Steering file, so a body that drops its pointer leaves that Steering file unread.
+@pytest.mark.parametrize("page", ["DEEPENING.md", "DESIGN-IT-TWICE.md"])
+def test_codebase_design_says_when_to_read_each_file_that_names_a_steering_file(page):
+    assert "Read `${{CLAUDE_SKILL_DIR}}/{}` when".format(page) in skill_text("codebase-design")
+
+
 def stops(skill, *names):
     return says_stop((SKILLS / skill / "SKILL.md").read_text(encoding="utf-8"), *names)
 
@@ -1801,12 +1826,13 @@ STEERING_READERS = {
     "comments.md": ["comment-sweep/SKILL.md"],
     "determinism.md": ["tdd/tests.md"],
     "file-placement.md": ["review-changes/architecture.md"],
-    "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md"],
+    "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md", "codebase-design/DEEPENING.md"],
     "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
                          "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
                          "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
-                  "spec-names/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md"],
+                  "spec-names/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
+                  "codebase-design/DESIGN-IT-TWICE.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],
     "review-architecture.md": ["review-changes/architecture.md"],

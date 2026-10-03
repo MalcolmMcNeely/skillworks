@@ -6,6 +6,8 @@ How to deepen a cluster of shallow modules safely, given its dependencies. Assum
 
 When assessing a candidate for deepening, classify its dependencies. The category determines how the deepened module is tested across its seam.
 
+Where `docs/agents/rules/testing.md` exists and rules differently on what to fake or mock, the rule wins. It is the team's word on taste in tests, and this file is the method.
+
 ### 1. In-process
 
 Pure computation, in-memory state, no I/O. Always deepenable — merge the modules and test through the new interface directly. No adapter needed.

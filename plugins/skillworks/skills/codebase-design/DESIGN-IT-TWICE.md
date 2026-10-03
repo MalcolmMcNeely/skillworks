@@ -18,16 +18,18 @@ Show this to the user, then immediately proceed to Step 2. The user reads and th
 
 ### 2. Spawn sub-agents
 
-Spawn 3+ sub-agents in parallel. Each must produce a **radically different** interface for the deepened module.
+Spawn three sub-agents in parallel, and a fourth when a dependency of the candidate is in category 3 or 4 of [DEEPENING.md](DEEPENING.md), the two that take a port. Each must produce a **radically different** interface for the deepened module.
 
 Prompt each sub-agent with a separate technical brief (file paths, coupling details, dependency category from [DEEPENING.md](DEEPENING.md), what sits behind the seam). The brief is independent of the user-facing problem-space explanation in Step 1. Give each agent a different design constraint:
 
 - Agent 1: "Minimize the interface — aim for 1–3 entry points max. Maximise leverage per entry point."
 - Agent 2: "Maximise flexibility — support many use cases and extension."
 - Agent 3: "Optimise for the most common caller — make the default case trivial."
-- Agent 4 (if applicable): "Design around ports & adapters for cross-seam dependencies."
+- Agent 4 (the fourth, when there is one): "Design around ports & adapters for cross-seam dependencies."
 
-Include both [SKILL.md](SKILL.md) vocabulary and CONTEXT.md vocabulary in the brief so each sub-agent names things consistently with the architecture language and the project's domain language.
+Paste the Glossary section of [SKILL.md](SKILL.md) into each brief, and with it the domain terms the candidate touches. To find those terms, read `docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs. Read the glossary that claims the candidate's code, where there is one. A sub-agent sees only its brief, and not this conversation or the skills loaded in it, so the terms have to travel in the brief for each sub-agent to name things consistently with the architecture language and the project's domain language.
+
+If `docs/agents/domain.md` is missing, tell the user that it is missing and that `/skillworks:skillworks-setup` writes it, and send each brief with the Glossary section alone.
 
 Each sub-agent outputs:
 

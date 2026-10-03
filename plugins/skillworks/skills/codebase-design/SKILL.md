@@ -9,7 +9,7 @@ Design **deep modules**: a lot of behaviour behind a small interface, placed at 
 
 ## Glossary
 
-Use these terms exactly — don't substitute "component," "service," "API," or "boundary." Consistent language is the whole point.
+Use these terms exactly, in every reply, sub-agent brief and file that describes a design. Don't substitute "component," "service," "API," or "boundary": one word for one thing is what lets the user, the other skills and the sub-agents mean the same thing. The output style sets how plain the sentences are, and these terms stay as the nouns. Say what a term means in a few words the first time a reply uses it.
 
 **Module** — anything with an interface and an implementation. Deliberately scale-agnostic: a function, class, package, or tier-spanning slice. _Avoid_: unit, component, service.
 
@@ -110,5 +110,5 @@ Good interfaces make testing natural:
 
 ## Going deeper
 
-- **Deepening a cluster given its dependencies** — see [DEEPENING.md](DEEPENING.md): dependency categories, seam discipline, and replace-don't-layer testing.
-- **Exploring alternative interfaces** — see [DESIGN-IT-TWICE.md](DESIGN-IT-TWICE.md): spin up parallel sub-agents to design the interface several radically different ways, then compare on depth, locality, and seam placement.
+- **Deepening a cluster given its dependencies.** Read `${CLAUDE_SKILL_DIR}/DEEPENING.md` when the work is to merge shallow modules into a deep one, or to decide how a deepened module is tested. It holds the dependency categories, seam discipline, and replace-don't-layer testing.
+- **Exploring alternative interfaces.** Read `${CLAUDE_SKILL_DIR}/DESIGN-IT-TWICE.md` when the user wants to explore alternative interfaces for a chosen deepening candidate. It holds the design-it-twice pattern: parallel sub-agents design the interface several radically different ways, then you compare on depth, locality, and seam placement.
