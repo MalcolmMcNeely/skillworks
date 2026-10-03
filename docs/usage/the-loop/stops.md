@@ -61,6 +61,10 @@ A review answers Blocked when its review file is missing, and its line names the
 happen only when the file goes missing after the run starts, because the script checks for it before
 any ticket, as "A missing Steering file" below says.
 
+A build answers Blocked for a missing file too, when it is `loop.json`, `issue-tracker.md` or
+`suite.json`, and for a ticket that has an open blocker. The script picks only a ticket with no open
+blocker, so that can happen only when a blocker opens after the pick.
+
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, in [the Suite](steps.md#the-suite). The script reopens the ticket, because `finish` may have closed it before its work
 reached the Target branch, and the loop only picks open tickets. If this run landed a ticket before

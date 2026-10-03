@@ -24,6 +24,8 @@ The order is the spec loop's own, so the developer at the keyboard and the drive
 
 If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why. `tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to read each one. With the files Tracker a ticket comes as `<spec>/<ticket>`, such as `7/2`, because its number is local to its spec.
 
+If `docs/agents/loop.json`, `docs/agents/issue-tracker.md` or `docs/agents/suite.json` is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was done. Begin that report with the `BLOCKED` line, as Blocked says below.
+
 **Refuse a blocked ticket.** A ticket with an open blocker is not ready. With the GitHub Tracker, ask, with the ticket number in place of `<n>`:
 
 ```bash
@@ -31,6 +33,8 @@ gh api "repos/{owner}/{repo}/issues/<n>" --jq '.issue_dependencies_summary.block
 ```
 
 `gh api` fills in `{owner}` and `{repo}` from the repo you are in. Anything but `0` means stop, name the open blockers, and do nothing else. With the files Tracker, a ticket is blocked while any ticket in its `blocked-by` is open on the remote's Target branch.
+
+A ticket with an open blocker is work you cannot do, so begin that report with the `BLOCKED` line, as Blocked says below.
 
 ## Test runs
 
@@ -50,8 +54,8 @@ A write under `.claude/` is refused as a sensitive file. No allow rule lifts it,
 
 One refused write blocks one line of the ticket and nothing else. Do every other part of the ticket, and run the tests over what you did write. Then:
 
-1. **Commit the verified work**, with the ticket named in the message as Finishing says. Under `--stop-after-tests` the change stays uncommitted, as that flag already says.
-2. **Leave the ticket open.** Work that is not done is not closed, and the driver reads the `BLOCKED` line as the stop.
+1. **Commit the verified work**, with the ticket named in the message as Finishing says. Under `--stop-after-tests` and under `--fix` the run ends before Finishing, so the change stays uncommitted, as Building and Fixing already say.
+2. **Leave the ticket open.** Work that is not done is not closed, and the driver reads the `BLOCKED` line as the stop. This holds through Finishing as well: commit as its step 3 says, and skip the close in its steps 2 and 5. Under the spec loop, a later message that tells you to close the ticket does not change this, because the driver sends that message for every ticket still open, whatever kept it open. Begin your answer to it with the `BLOCKED` line, and close nothing.
 3. **Write the wall on the ticket.** Comment with the exact path, the exact change you could not write, and that the write was refused as a sensitive file. A developer has to be able to make that change from the comment alone, without opening anything else. With the files Tracker, write it at the end of the ticket file under `## Blocked`, in the commit, and leave its `status` open.
 
 Begin your report with the `BLOCKED` line, and say the same below it, so it reaches the driver's log as well.
@@ -62,7 +66,7 @@ For every change that has behaviour to test, call the Skill tool with "skillwork
 
 Run typechecking and single test files regularly.
 
-**A test that a check with an image runs is run as a Trial, and never on the host.** A check with `image` in the Suite file runs in a container, and its tests can take many times as long on the host. Start from that check's own `command`, runner options included, and narrow only its paths and filters, such as a test file and `-k`:
+**A test that a check with an image runs is run as a Trial, and never on the host.** A check with `image` in the Suite file `docs/agents/suite.json` runs in a container, and its tests can take many times as long on the host. Start from that check's own `command`, runner options included, and narrow only its paths and filters, such as a test file and `-k`:
 
 ```bash
 skillworks-suite --image <the check's Dockerfile> -- <the check's command, narrowed>
@@ -110,7 +114,7 @@ It runs after the findings are fixed, because anything that writes after a sweep
 
 ## Running the suite
 
-Run the whole suite, as the Suite file `docs/agents/suite.json` names it, and read its passing result. A partial pass or a skipped suite leaves the ticket open.
+Run `skillworks-suite` with no arguments, so that it covers every check the Suite file `docs/agents/suite.json` names, and read its passing result. A partial pass or a skipped suite leaves the ticket open.
 
 Under the spec loop this section never runs. The driver runs the suite as a step of its own, reads the result itself, and hands the passing output to Finishing, so the gate that says a ticket is done rests on nothing a session said about itself.
 

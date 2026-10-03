@@ -1397,6 +1397,13 @@ def test_tdd_stops_when_the_testing_rule_is_missing():
     assert stops("tdd", "`docs/agents/rules/testing.md`")
 
 
+def test_implement_stops_on_the_blocked_line_when_a_steering_file_it_reads_is_missing():
+    before = section(skill_text("implement"), "Before you start")
+
+    assert says_stop(before, "`BLOCKED`", *("`{}`".format(WHERE[name])
+                                           for name in ("loop.json", "issue-tracker.md", "suite.json")))
+
+
 def test_a_missing_lever_that_only_sends_the_user_to_setup_is_caught():
     tells = "If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`."
 
@@ -2676,3 +2683,36 @@ def test_implement_s_refused_write_ends_on_the_blocked_line_and_not_the_open_tic
     assert ("Begin your report with the `BLOCKED` line, and say the same below it, so it reaches "
             "the driver's log as well.") in refused
     assert "the driver reads the open ticket as the stop" not in refused
+
+
+def test_implement_s_refused_write_keeps_the_ticket_open_through_finishing_and_through_a_nudge():
+    text = skill_text("implement")
+    refused = section(text, "A write under `.claude/` refused")
+    finishing = section(text, "Finishing")
+
+    assert "commit as its step 3 says, and skip the close in its steps 2 and 5" in refused
+    assert "Begin your answer to it with the `BLOCKED` line, and close nothing." in refused
+    assert "\n2. **With the files Tracker, close the ticket now**" in finishing
+    assert "\n3. **Commit to the branch you are on.**" in finishing
+    assert "\n5. **With the GitHub Tracker, close the ticket**" in finishing
+
+
+def test_implement_ends_its_refusal_of_a_blocked_ticket_on_the_blocked_line():
+    before = section(skill_text("implement"), "Before you start")
+
+    assert ("A ticket with an open blocker is work you cannot do, so begin that report with the "
+            "`BLOCKED` line, as Blocked says below.") in before
+
+
+# Running the suite never runs in a loop, so a path named only there leaves a build with no Suite file.
+def test_implement_s_building_names_the_suite_file_by_its_path():
+    building = section(skill_text("implement"), "Building")
+
+    assert "`{}`".format(WHERE["suite.json"]) in building
+
+
+def test_implement_runs_the_suite_by_its_command_in_a_hand_run():
+    running = section(skill_text("implement"), "Running the suite")
+
+    assert "Run `skillworks-suite` with no arguments" in running
+    assert "`{}`".format(WHERE["suite.json"]) in running
