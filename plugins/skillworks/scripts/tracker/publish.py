@@ -98,7 +98,7 @@ def github_spec(body, branch):
     return first[2:].strip(), text
 
 
-def publish_spec(tracker, slug, body, branch, out):
+def publish_spec(tracker, slug, body, branch, out, err):
     in_spec_mode = tracker.target is None
     if not SLUG.fullmatch(slug):
         raise refusal("The slug {} is not kebab case, such as local-tracker.".format(slug))
@@ -109,7 +109,7 @@ def publish_spec(tracker, slug, body, branch, out):
         raise refusal("docs/agents/loop.json names the Target branch {}, so the spec goes there, "
                       "and no branch is named.".format(tracker.target))
     if isinstance(tracker, GitHub):
-        out.write("{}\t{}\n".format(*tracker.file_spec(*github_spec(body, branch))))
+        out.write("{}\t{}\n".format(*tracker.file_spec(*github_spec(body, branch), err)))
         return
     if body.lstrip().startswith(FENCE):
         raise refusal("The body already opens with frontmatter. tracker-publish writes it, so "
@@ -246,7 +246,7 @@ def main(argv, runner, out, err, wait, where=None):
         if command == "spec" and len(argv) in (3, 4):
             tracker = opened(runner, where, None, wait)
             publish_spec(tracker, argv[1], read(where, argv[2]), argv[3] if len(argv) == 4 else "",
-                         out)
+                         out, err)
             return 0
         if command == "tickets" and len(argv) > 2 and is_a_number(argv[1]):
             spec = str(int(argv[1]))

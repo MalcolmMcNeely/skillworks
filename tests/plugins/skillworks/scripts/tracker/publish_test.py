@@ -19,6 +19,12 @@ SPEC_BRANCH = "spec/local-tracker"
 
 BODY = "# SPEC: A local tracker\n\n## Problem Statement\n\nNo GitHub.\n"
 
+FILED_BODY = "## Problem Statement\n\nNo GitHub.\n"
+
+# The sha256 of the title, a newline and FILED_BODY, worked out outside the code under test.
+HASH_LINE = ("<!-- skillworks-spec sha256:e167abbc1f143b1e3955268f97d0530bb70cada2af94b2bee3968b5d9e2"
+             "6e0c6 -->")
+
 
 class Writer:
     def __init__(self, repo, runner, scratch):
@@ -503,15 +509,15 @@ class Specs:
         if self.fails and self.fails in " ".join(called):
             return Ran(1, "", "HTTP 502: Bad Gateway\n")
         if called[0] == "api" and "labels=ready-for-agent&state=open" in " ".join(called):
-            return Ran(0, "".join("{0}\thttps://github.com/owner/repo/issues/{0}\t{1}\n".format(
-                number, title) for number, title in self.open), "")
+            return Ran(0, "".join("{0}\thttps://github.com/owner/repo/issues/{0}\t{1}\t{2}\n".format(
+                number, body.split("\n", 1)[0], title) for number, title, body in self.open), "")
         if called[:2] == ["issue", "create"]:
             assert called[called.index("--label") + 1] == "ready-for-agent"
             title = called[called.index("--title") + 1]
             body = Path(called[called.index("--body-file") + 1]).read_text(encoding="utf-8")
             number = str(400 + len(self.filed) + 1)
             self.filed.append((title, body))
-            self.open.append((number, title))
+            self.open.append((number, title, body))
             return Ran(0, "https://github.com/owner/repo/issues/{}\n".format(number), "")
         return None
 
@@ -533,27 +539,38 @@ def test_on_github_a_spec_is_filed_as_one_labelled_issue_and_its_number_and_url_
 
     assert ran.status == 0, said(ran)
     assert ran.out == "401\thttps://github.com/owner/repo/issues/401\n"
-    assert github_specs.filed == [("SPEC: A local tracker", "## Problem Statement\n\nNo GitHub.\n")]
+    assert github_specs.filed == [("SPEC: A local tracker", HASH_LINE + "\n\n" + FILED_BODY)]
     assert len(writer.runner.built("issue create")) == 1
 
 
-def test_on_github_an_open_spec_with_the_title_is_printed_and_nothing_is_filed(writer, github_specs):
-    github_specs.open = [("312", "SPEC: Something else"), ("398", "SPEC: A local tracker")]
+def test_on_github_a_spec_with_the_title_of_an_open_spec_and_another_body_gets_an_issue_of_its_own(
+        writer, github_specs):
+    github_specs.open = [("312", "SPEC: Something else", "Other.\n")]
+    writer.spec(body="# SPEC: A local tracker\n\n## Problem Statement\n\nAn older design.\n")
+
+    ran = writer.spec()
+
+    assert (ran.status, ran.out) == (0, "402\thttps://github.com/owner/repo/issues/402\n"), said(ran)
+    assert "#401" in ran.err and "#312" not in ran.err
+
+
+def test_on_github_an_open_spec_with_the_title_and_no_hash_line_is_never_taken(writer, github_specs):
+    github_specs.open = [("398", "SPEC: A local tracker", FILED_BODY)]
 
     ran = writer.spec()
 
     assert ran.status == 0, said(ran)
-    assert ran.out == "398\thttps://github.com/owner/repo/issues/398\n"
-    assert github_specs.filed == []
+    assert ran.out == "401\thttps://github.com/owner/repo/issues/401\n"
 
 
-def test_on_github_a_second_run_files_nothing_twice(writer, github_specs):
+def test_on_github_a_second_run_with_the_same_spec_files_nothing_twice_and_says_so(
+        writer, github_specs):
     first = writer.spec()
 
     ran = writer.spec()
 
-    assert ran.out == first.out, said(ran)
-    assert len(github_specs.filed) == 1
+    assert (ran.out, len(github_specs.filed)) == (first.out, 1), said(ran)
+    assert "already filed as #401" in ran.err
 
 
 def test_on_github_in_spec_mode_the_branch_section_is_written_from_the_branch_named(writer):
@@ -563,7 +580,9 @@ def test_on_github_in_spec_mode_the_branch_section_is_written_from_the_branch_na
 
     assert ran.status == 0, said(ran)
     body = specs.filed[0][1]
-    assert body == "## Branch\n\n{}\n\n## Problem Statement\n\nNo GitHub.\n".format(SPEC_BRANCH)
+    assert body == ("<!-- skillworks-spec sha256:b95cba84204c93438290de83947d711604739f4d6d3e94d2c"
+                    "eb749063abe730c -->\n\n## Branch\n\n{}\n\n## Problem Statement\n\nNo "
+                    "GitHub.\n".format(SPEC_BRANCH))
     assert spec_branch(body) == SPEC_BRANCH
 
 

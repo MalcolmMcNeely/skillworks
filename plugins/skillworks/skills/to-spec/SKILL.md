@@ -54,7 +54,7 @@ When the command fails, run it again. It files nothing twice.
 
 ### With `github`
 
-The command files one issue. Its title is the `# SPEC: ` heading, its body is the text below that heading, and it carries the `ready-for-agent` label. In `spec` mode it writes the `## Branch` section at the top of the body, from the branch named. It first looks for an open `ready-for-agent` issue with the same title. When it finds one, it files nothing and prints that issue's number and URL, so a run after a network failure never files a second spec.
+The command files one issue. Its title is the `# SPEC: ` heading, its body is the text below that heading, and it carries the `ready-for-agent` label. In `spec` mode it writes the `## Branch` section at the top of the body, from the branch named. Above all of it, the body opens with a hidden line that holds a hash of the title and the body. The command first looks for an open `ready-for-agent` issue whose body opens with the same hidden line. When it finds one, it files nothing and prints that issue's number and URL, so a run after a network failure never files a second spec. A spec with the same title as an open spec and a different body gets an issue of its own, and the command names each open spec with that title. The command writes a note on stderr when it finds the spec already filed, and when another open spec shares the title. Tell the developer each note it writes.
 
 ### With `files`
 

@@ -1,5 +1,6 @@
 # gh 2.92.0 has no dependency flags, so reads go through `gh api`: docs/research/harness/ticket-state-guardrails.md.
 
+import hashlib
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,8 +25,9 @@ READY = "ready-for-agent"
 ROWS = '.[] | "\\(.number)\\t\\(.state)\\t\\(.title)"'
 
 
-def rows(said):
-    return [tuple((line.split("\t") + ["", ""])[:3]) for line in listed(said)]
+def rows(said, columns=3):
+    return [tuple((line.split("\t", columns - 1) + [""] * columns)[:columns])
+            for line in listed(said)]
 
 
 class NewTicket(NamedTuple):
@@ -52,6 +54,12 @@ def checked_set(tickets):
                 raise refusal("{} is blocked by {}, which is not a ticket before it. Nothing was "
                               "filed.".format(ticket.title, blocker))
         seen.add(ticket.title)
+
+
+# Issues filed before a change to this format never match again, so the format is held as it is.
+def spec_hash_line(title, body):
+    digest = hashlib.sha256("{}\n{}".format(title, body).encode("utf-8")).hexdigest()
+    return "<!-- skillworks-spec sha256:{} -->".format(digest)
 
 
 def spec_branch(spec):
@@ -278,28 +286,38 @@ class GitHub:
                                  "-F", "issue_id=" + self.issue_id(blocker, filing)))
             filing.changed = True
 
-    # Found by its title first, so a run after one that failed on the network files no second spec.
-    def file_spec(self, title, body):
-        found = self.open_ready('"\\(.number)\\t\\(.html_url)\\t\\(.title)"')
+    # Found by the hash line its body opens with, because a title is not unique and the failed run may never have heard its number.
+    def file_spec(self, title, body, err):
+        found = self.open_ready('"\\(.number)\\t\\(.html_url)\\t\\(.body // "" | split("\\n")[0] | '
+                                'rtrimstr("\\r"))\\t\\(.title)"')
         if found.status != 0:
             raise refusal("GitHub would not list the open specs, so nothing was filed. Run "
                           "tracker-publish again. gh said:\n{}".format(
                               (found.out + found.err).rstrip("\n")))
-        for number, url, named in rows(found.out):
-            if named == title:
+        marked = spec_hash_line(title, body)
+        open_specs = rows(found.out, 4)
+        for number, url, first, _ in open_specs:
+            if first.strip() == marked:
+                err.write("The spec is already filed as #{}, so nothing was filed "
+                          "again.\n".format(number))
                 return number, url
         # A spec can outgrow the longest command line Windows takes, so the body goes by file.
         with tempfile.TemporaryDirectory() as folder:
             body_file = Path(folder) / "spec.md"
-            body_file.write_text(body, encoding="utf-8", newline="\n")
+            body_file.write_text(marked + "\n\n" + body, encoding="utf-8", newline="\n")
             made = self.gh("issue", "create", "--title", title, "--body-file", body_file,
                            "--label", READY)
         url = made.out.strip()
         number = url.rsplit("/", 1)[-1]
         if made.status != 0 or not is_a_number(number):
             raise refusal("GitHub would not file the spec {}. Run tracker-publish again: a second "
-                          "run finds a spec already filed by its title, and files nothing twice. "
-                          "gh said:\n{}".format(title, (made.out + made.err).rstrip("\n")))
+                          "run finds a spec already filed by the hash line its body opens with, and "
+                          "files nothing twice. gh said:\n{}".format(
+                              title, (made.out + made.err).rstrip("\n")))
+        shared = ["#" + other for other, _, _, named in open_specs if named == title]
+        if shared:
+            err.write("Filed as #{}. Each open spec with the same title: {}.\n".format(
+                number, ", ".join(shared)))
         return number, url
 
     # Always a new comment, because the loop reads the last one and an old report stays for a person to see.
