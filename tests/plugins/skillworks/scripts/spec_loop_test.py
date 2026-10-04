@@ -3246,6 +3246,18 @@ def test_a_spec_with_no_commit_after_the_base_stops_before_any_check_and_stays_o
     assert "END" not in loop.log()
 
 
+def test_a_closed_ticket_with_no_commit_after_the_base_is_named_with_a_reopen_and_a_rerun(loop):
+    given_the_tracker_holds(loop, (("161", "closed", "TICKET: Already done"),
+                                   ("162", "closed", "TICKET: Closed with no Landing")))
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ("STOP  spec #{} has no commit after the base commit {} whose Ticket: trailer names one "
+            "of its tickets. #161 and #162 are closed with no Landed commit. Reopen each one, "
+            "then rerun with: spec-loop {}").format(SPEC, base_of(loop), SPEC) in loop.log(), said(ran)
+
+
 def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runner):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     given_sessions_that_report(loop)
@@ -4497,6 +4509,16 @@ def test_the_stops_page_says_what_an_error_the_driver_did_not_expect_does():
         "The full run does not start" in stopping,
         "Rerun with `spec-loop <spec>`" in stopping,
     ] == [True] * 5
+
+
+def test_the_keep_says_a_closed_ticket_with_no_landed_commit_is_named_to_be_reopened_by_hand():
+    keep = flat(page_section(page_text(STOPS_PAGE), "## Restarting a stopped run: the Keep"))
+
+    assert [
+        "A ticket closed with no Landed commit gets a `STOP` line that names it" in keep,
+        "#203 is closed with no Landed commit. Reopen it, then rerun with: spec-loop 200." in keep,
+        "Reopen it by hand, and run the loop again." in keep,
+    ] == [True] * 3
 
 
 def test_the_reading_a_run_page_gives_the_shape_line_and_its_abort():

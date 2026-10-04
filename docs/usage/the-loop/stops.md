@@ -134,9 +134,11 @@ ABORT docs/agents/review-standards.md is missing, and setup seeds it. Run /skill
 
 **A spec with no commit to read.** Before the drift check, the drift re-check and the Name check, the
 script looks up the spec's commits the way `spec-commits` does. Every Landed ticket's commit names its
-ticket in a `Ticket:` trailer, so a spec with no such commit after the base commit means the lookup
-broke. The loop stops with a `STOP` line and runs no check, so a broken lookup never reads as a clean
-report. The spec stays open, and the full run still runs first:
+ticket in a `Ticket:` trailer, so a spec with no such commit after the base commit and no closed
+ticket means the lookup broke. A closed ticket with no such commit gets a line of its own, as [the
+Keep](#restarting-a-stopped-run-the-keep) shows. The loop stops with a `STOP` line and runs no check,
+so a broken lookup never reads as a clean report. The spec stays open, and the full run still runs
+first:
 
 ```
 STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2c3e8a5d6f1b4 whose Ticket: trailer names one of its tickets. Every Landed ticket's commit names it, so the lookup broke. The drift check did not run and the spec stays open.
@@ -197,6 +199,16 @@ KEPT  ticket-203 held uncommitted work. The whole attempt is on branch spec-loop
 none. Either way, the attempt is on that branch if you want to read it.
 
 Then the run starts the first open ticket again from the Target branch, with a Fresh build Session.
+
+A ticket closed with no Landed commit gets a `STOP` line that names it. A run can close a ticket and
+then end before its commit reaches the Target branch. The rerun picks only open tickets, so it skips
+that ticket and finds no commit of the spec. The line names each closed ticket:
+
+```
+STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2c3e8a5d6f1b4 whose Ticket: trailer names one of its tickets. #203 is closed with no Landed commit. Reopen it, then rerun with: spec-loop 200. The drift check did not run and the spec stays open.
+```
+
+Reopen it by hand, and run the loop again.
 
 ## A Denial, and `--bypass`
 

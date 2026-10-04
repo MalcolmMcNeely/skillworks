@@ -374,6 +374,10 @@ def how_many(count, word, words):
     return "{} {}".format(count, word if count == 1 else words)
 
 
+def in_words(names):
+    return names[0] if len(names) == 1 else "{} and {}".format(", ".join(names[:-1]), names[-1])
+
+
 def contradicts_said(verdict):
     return verdict.item + (": " + verdict.reason if verdict.reason else "")
 
@@ -1291,12 +1295,21 @@ class Loop:
         kept, left = spec_commits(self.tracker, self.spec, base, self.wait, self.target)
         if not kept:
             raise stop("STOP  spec {} has no commit after the base commit {} whose Ticket: trailer "
-                       "names one of its tickets. Every Landed ticket's commit names it, so the "
-                       "lookup broke. The {} did not run and the spec stays open.".format(
-                           self.spec_named(), base, what))
+                       "names one of its tickets. {} The {} did not run and the spec stays "
+                       "open.".format(self.spec_named(), base, self.why_no_commit(), what))
         self.say("SCOPE the {} reads {} of spec {}, and leaves out {} after the base commit".format(
             what, how_many(len(kept), "commit", "commits"), self.spec_named(),
             how_many(len(left), "other commit", "other commits")))
+
+    # A ticket closed by a run that died before its push holds no commit, and the loop skips it.
+    def why_no_commit(self):
+        closed = [self.named(number) for number, state, _ in self.tracker.ticket_rows(self.spec)
+                  if state == "closed"]
+        if not closed:
+            return "Every Landed ticket's commit names it, so the lookup broke."
+        return "{} {} closed with no Landed commit. Reopen {}, then rerun with: spec-loop {}.".format(
+            in_words(closed), "is" if len(closed) == 1 else "are",
+            "it" if len(closed) == 1 else "each one", self.spec)
 
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
