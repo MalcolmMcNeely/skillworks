@@ -57,6 +57,12 @@ STOP  #203 step build is Blocked: BLOCKED .claude/settings.json: the write was r
 A Blocked Cut, drift check or Name check stops the loop the same way, and its `STOP` line names the
 check.
 
+**A fault Finishing may not fix.** Finishing fixes nothing, so a fault it finds is not a stop. It
+writes a line that starts with `DEPARTS`, with the fault and why it may not fix it, and the loop goes
+on. The list at the end of the run shows every Departure first. A question the ticket puts to a
+person does not stop Finishing either: it closes the ticket, with the question and the build's
+answer in the Closing note, as [Sessions](sessions.md#nobody-answers-in-the-loop) says.
+
 The Cut answers Blocked when `issue-tracker.md` holds no section "The ticket shape", which the
 script does not check for. It answers Blocked for a missing `issue-tracker.md` or `domain.md` as
 well. It answers Blocked too when `tracker-publish tickets` stopped twice on the same fault, and its

@@ -2761,13 +2761,35 @@ def test_the_name_check_leaves_its_count_of_denials(loop):
 # --- the Choices and Hand checks a Session names ------------------------------
 
 # Written out from the spec, so the words a Session reads cannot drift with the driver's.
-UNATTENDED = (
-    "Nobody will answer a question in this loop. Where the ticket leaves more than one way open, "
-    "pick one that your step allows and carry on, and write one line that starts with `CHOSE`, "
-    "with what you chose and why. Where the ticket asks for a check you cannot run, carry on, and "
-    "write one line that starts with `HAND CHECK`, with the check and how a person runs it. Begin "
-    "your report with a line that starts with `BLOCKED` only when you cannot do the work: a tool "
-    "call was denied and no allowed way exists, or the ticket has nothing left to build.")
+BLOCKED_ONLY_WHEN = (
+    "Begin your report with a line that starts with `BLOCKED` only when you cannot do the work: a "
+    "tool call was denied and no allowed way exists, or the ticket has nothing left to build.")
+
+TOLD_TO_BUILD = (
+    "Nobody will answer a question in this loop. A Choice is only for what the ticket and the spec "
+    "leave open. A point either of them names is not open, and a part that only touches the point "
+    "does not open it. Where they leave more than one way open, pick one that your step allows and "
+    "carry on, and write one line that starts with `CHOSE`, with what you chose and why. Where two "
+    "parts that both name one point disagree, take the stricter one and carry on, and write one "
+    "line that starts with `DEPARTS`, naming both parts and why. A question the ticket tells you to "
+    "ask a person is a Choice: answer it, and write a `CHOSE` line. Where a check needs a real "
+    "device such as a printer or a phone, a real outside account or service, or a person's eyes on "
+    "the screen or the page, carry on, and write one line that starts with `HAND CHECK`, with the "
+    "check and how a person runs it. No Session has those three things, and nothing else is a Hand "
+    "check. The Suite is never one, because the driver runs it. A question to a person is never "
+    "one, because it is a Choice. " + BLOCKED_ONLY_WHEN)
+
+TOLD_TO_JUDGE = (
+    "Nobody will answer a question in this loop. Where the change differs from the ticket or the "
+    "spec, a review reports a finding and a check gives a Verdict. Write no line that starts with "
+    "`CHOSE`, `DEPARTS` or `HAND CHECK`. " + BLOCKED_ONLY_WHEN)
+
+TOLD_TO_FINISH = (
+    "Nobody will answer a question in this loop. A question the ticket puts to a person never "
+    "keeps the ticket open: the build answered it, so close the ticket, and put the question and "
+    "the build's answer in the Closing note. Where you find a fault you may not fix, carry on, and "
+    "write one line that starts with `DEPARTS`, with the fault and why you may not fix it. Write no "
+    "line that starts with `CHOSE` or `HAND CHECK`. " + BLOCKED_ONLY_WHEN)
 
 A_CHOICE = "CHOSE the short name, because the glossary holds it."
 A_HAND_CHECK = "HAND CHECK open the page in a browser and read its heading."
@@ -2783,31 +2805,66 @@ def given_a_spec_axis_that_says(sessions, *lines):
     sessions.says["review-spec"] = "\n".join(("## Spec. Nothing found.",) + lines)
 
 
-def test_every_session_of_a_ticket_and_the_cut_is_told_nobody_will_answer(loop, runner):
+def cut_and_built(loop):
     tracker = given_the_tracker_holds(loop, ())
     given_a_cut_that_files(given_sessions_that_report(loop), tracker, ONE_OPEN_TICKET)
-
     loop.run(SPEC)
 
-    prompts = [call[2] for call in step_calls(runner)]
-    assert len(prompts) == 8
-    assert all(UNATTENDED in prompt for prompt in prompts)
+
+def test_the_build_fix_and_the_cut_are_told_the_words_for_a_step_that_builds(loop, runner):
+    cut_and_built(loop)
+
+    prompts = [prompt_asking(runner, "/skillworks:implement 168 --stop-after-tests"),
+               prompt_asking(runner, "/skillworks:implement 168 --fix"),
+               prompt_asking(runner, CUT_TICKETS)]
+    assert all(TOLD_TO_BUILD in prompt for prompt in prompts)
 
 
-def test_the_drift_check_and_the_name_check_are_told_nobody_will_answer(loop, runner):
+def test_the_cut_is_told_to_skip_the_approval_questions_after_the_words_for_a_step_that_builds(
+        loop, runner):
+    cut_and_built(loop)
+
+    assert prompt_asking(runner, CUT_TICKETS).endswith(
+        TOLD_TO_BUILD + "\n\nSkip the approval questions. End with the breakdown you showed, as your last "
+        "message, so the loop log holds it.")
+
+
+def test_each_review_and_the_sweep_are_told_only_the_words_for_a_step_that_judges(loop, runner):
+    cut_and_built(loop)
+
+    prompts = (prompts_asking(runner, "/skillworks:review-")
+               + prompts_asking(runner, "/skillworks:comment-sweep"))
+    assert len(prompts) == 4
+    assert all(prompt.endswith(TOLD_TO_JUDGE) and "Choice" not in prompt for prompt in prompts)
+
+
+def test_the_drift_check_and_the_name_check_are_told_only_the_words_for_a_step_that_judges(
+        loop, runner):
     drifted(loop, drift_report())
 
     prompts = prompts_asking(runner, "/skillworks:spec-drift") + prompts_asking(runner, NAME_CHECK)
     assert len(prompts) == 2
-    assert all(UNATTENDED in prompt for prompt in prompts)
+    assert all(prompt.endswith(TOLD_TO_JUDGE) and "Choice" not in prompt for prompt in prompts)
 
 
-def test_the_dry_run_prints_what_every_session_is_told_after_its_command(loop):
+def test_finishing_is_told_a_question_never_keeps_the_ticket_open_and_a_fault_is_a_departure(
+        loop, runner):
+    cut_and_built(loop)
+
+    finished = prompt_asking(runner, "/skillworks:implement 168 --finish")
+    assert TOLD_TO_FINISH in finished and TOLD_TO_BUILD not in finished and TOLD_TO_JUDGE not in finished
+
+
+def test_the_dry_run_prints_each_set_of_words_beside_the_steps_that_get_it(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 
     ran = loop.run(SPEC, "--dry-run")
 
-    assert "  every Session above is told, after its command\n    " + UNATTENDED + "\n" in ran.out
+    assert ("  each Session above is told, after its command\n"
+            "    build, fix, cut:\n    " + TOLD_TO_BUILD + "\n"
+            "    standards, spec, architecture, sweep, drift, re-check, names, name-re-check:\n"
+            "    " + TOLD_TO_JUDGE + "\n"
+            "    finish:\n    " + TOLD_TO_FINISH + "\n") in ran.out
 
 
 def test_a_choice_a_session_made_reaches_the_log_with_its_ticket_and_its_step(loop):

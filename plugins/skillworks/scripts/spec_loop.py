@@ -78,6 +78,8 @@ class Step(NamedTuple):
     resumes: bool
     # False where the driver does the work, so nothing asks a Session for a result it never gave.
     session: bool = True
+    # Empty only where the driver does the work, because no Session is there to be told anything.
+    told: str = ""
 
 
 # What a Session that changes nothing must leave on the Tracker, so one that stopped short is Nudged.
@@ -95,16 +97,53 @@ AXIS_CHECKS = "no-error command-loaded ticket-open axis-reported"
 # One list, read by the plan and by the run, so the two cannot drift apart.
 REVIEW_STEPS = ("standards", "spec", "architecture")
 
+# Driver text and in no skill, because nobody answers only in the loop, and a skill run by hand asks.
+BLOCKED_ONLY_WHEN = (
+    "Begin your report with a line that starts with `BLOCKED` only when you cannot do the work: a "
+    "tool call was denied and no allowed way exists, or the ticket has nothing left to build.")
+
+# Only a step that builds may choose, so a judge cannot choose its way out of a finding.
+TOLD_TO_BUILD = (
+    "Nobody will answer a question in this loop. A Choice is only for what the ticket and the spec "
+    "leave open. A point either of them names is not open, and a part that only touches the point "
+    "does not open it. Where they leave more than one way open, pick one that your step allows and "
+    "carry on, and write one line that starts with `CHOSE`, with what you chose and why. Where two "
+    "parts that both name one point disagree, take the stricter one and carry on, and write one "
+    "line that starts with `DEPARTS`, naming both parts and why. A question the ticket tells you to "
+    "ask a person is a Choice: answer it, and write a `CHOSE` line. Where a check needs a real "
+    "device such as a printer or a phone, a real outside account or service, or a person's eyes on "
+    "the screen or the page, carry on, and write one line that starts with `HAND CHECK`, with the "
+    "check and how a person runs it. No Session has those three things, and nothing else is a Hand "
+    "check. The Suite is never one, because the driver runs it. A question to a person is never "
+    "one, because it is a Choice. " + BLOCKED_ONLY_WHEN)
+
+TOLD_TO_JUDGE = (
+    "Nobody will answer a question in this loop. Where the change differs from the ticket or the "
+    "spec, a review reports a finding and a check gives a Verdict. Write no line that starts with "
+    "`CHOSE`, `DEPARTS` or `HAND CHECK`. " + BLOCKED_ONLY_WHEN)
+
+# The build already answered the ticket's question, so a ticket held open for it never Lands.
+TOLD_TO_FINISH = (
+    "Nobody will answer a question in this loop. A question the ticket puts to a person never "
+    "keeps the ticket open: the build answered it, so close the ticket, and put the question and "
+    "the build's answer in the Closing note. Where you find a fault you may not fix, carry on, and "
+    "write one line that starts with `DEPARTS`, with the fault and why you may not fix it. Write no "
+    "line that starts with `CHOSE` or `HAND CHECK`. " + BLOCKED_ONLY_WHEN)
+
 STEPS = (
     (Step("build", PLUGIN + "implement {} --stop-after-tests",
-          "no-error command-loaded ticket-open tree-changed", False),)
-    + tuple(Step(axis, PLUGIN + "review-" + axis + " {}", AXIS_CHECKS, False) for axis in REVIEW_STEPS)
-    + (Step("fix", PLUGIN + "implement {} --fix", "no-error command-loaded ticket-open", True),
-       Step("sweep", PLUGIN + "comment-sweep", "no-error command-loaded ticket-open", False),
+          "no-error command-loaded ticket-open tree-changed", False, told=TOLD_TO_BUILD),)
+    + tuple(Step(axis, PLUGIN + "review-" + axis + " {}", AXIS_CHECKS, False, told=TOLD_TO_JUDGE)
+            for axis in REVIEW_STEPS)
+    + (Step("fix", PLUGIN + "implement {} --fix", "no-error command-loaded ticket-open", True,
+            told=TOLD_TO_BUILD),
+       Step("sweep", PLUGIN + "comment-sweep", "no-error command-loaded ticket-open", False,
+            told=TOLD_TO_JUDGE),
        Step("suite", "the whole suite, as the Suite file names it",
             "suite-can-run suite-green", False, session=False),
        Step("finish", PLUGIN + "implement {} --finish",
-            "no-error command-loaded new-commit ticket-trailer tree-clean ticket-closed", True))
+            "no-error command-loaded new-commit ticket-trailer tree-clean ticket-closed", True,
+            told=TOLD_TO_FINISH))
 )
 
 # A check that proves the work was done. One that proves the Session could run never earns a Nudge.
@@ -126,15 +165,6 @@ SUITE_BY_COMMAND = (
     "\n\nWhen you check your work against the Suite, run `skillworks-suite`, and never the test "
     "commands the Suite file names. In this loop the driver runs the whole Suite as a step of its "
     "own.")
-
-# Driver text and in no skill, because nobody answers only in the loop, and a skill run by hand asks.
-UNATTENDED = (
-    "Nobody will answer a question in this loop. Where the ticket leaves more than one way open, "
-    "pick one that your step allows and carry on, and write one line that starts with `CHOSE`, "
-    "with what you chose and why. Where the ticket asks for a check you cannot run, carry on, and "
-    "write one line that starts with `HAND CHECK`, with the check and how a person runs it. Begin "
-    "your report with a line that starts with `BLOCKED` only when you cannot do the work: a tool "
-    "call was denied and no allowed way exists, or the ticket has nothing left to build.")
 
 # Read only at the start of a line, so a Session that mentions one in passing names none.
 # In the order the list shows them, so a Departure is the first thing a developer reads.
@@ -396,6 +426,15 @@ def plan_line(name, what, checks=""):
     return said
 
 
+def told_plan():
+    named = {told: [step.name for step in STEPS if step.told == told]
+             for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
+    named[TOLD_TO_BUILD].append("cut")
+    named[TOLD_TO_JUDGE] += ["drift", "re-check", "names", "name-re-check"]
+    return "  each Session above is told, after its command\n" + "".join(
+        "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
+
+
 class Loop:
     def __init__(self, runner, spec, out, err, wait, permission_mode):
         self.runner = runner
@@ -549,7 +588,7 @@ class Loop:
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
-        asked = self.asks(step, ticket) + SUITE_BY_COMMAND + "\n\n" + UNATTENDED
+        asked = self.asks(step, ticket) + SUITE_BY_COMMAND + "\n\n" + step.told
         if step.name == "finish":
             return asked + self.suite_report(), ""
         if step.name != "fix":
@@ -910,8 +949,9 @@ class Loop:
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
         result = self.run_clean_session(
-            "cut", "Cut", self.cut_asks() + CUT_UNATTENDED,
-            Recorded(CUT_RECORDED, lambda: self.tracker.tickets(self.spec), self.cut_owed()))
+            "cut", "Cut", self.cut_asks(),
+            Recorded(CUT_RECORDED, lambda: self.tracker.tickets(self.spec), self.cut_owed()),
+            TOLD_TO_BUILD + CUT_UNATTENDED)
         shown = str(field(result, "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
@@ -1006,8 +1046,7 @@ class Loop:
             if state == "open":
                 plan += self.ticket_plan(number, landing)
 
-        self.wrote(plan + self.after_tickets_plan()
-                   + "  every Session above is told, after its command\n    " + UNATTENDED + "\n")
+        self.wrote(plan + self.after_tickets_plan() + told_plan())
         # Asked the way the run asks, so the ticket named is the one a run would claim first.
         chosen = self.next_ticket(self.tracker.open_tickets(self.spec))
         if self.ticket_count == 0:
@@ -1255,13 +1294,13 @@ class Loop:
 
     # The Session records its work with the spec and changes nothing, so a tree it left changed stops.
     # Returned so the caller's stop can name the Denials that may be why nothing was recorded.
-    def run_clean_session(self, named, what, prompt, recorded=None):
+    def run_clean_session(self, named, what, prompt, recorded=None, told=TOLD_TO_JUDGE):
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened(named)
         if not self.job_worktree:
             raise stop("FAIL  the {} got no worktree to run in.".format(what))
 
-        ran = self.claude_p(prompt + "\n\n" + UNATTENDED)
+        ran = self.claude_p(prompt + "\n\n" + told)
         result = self.log_dir / (named + ".json")
         reasons = self.log_dir / (named + ".err")
         written(reasons, ran.err)

@@ -71,30 +71,55 @@ A Fresh call is `claude -p "<prompt>" --session-id <new id>`. A resumed call is
 
 ## Nobody answers in the loop
 
-A loop Session never waits for a person. The driver adds one paragraph after the command of every
-Session it starts: each step of a ticket, the Cut, and each drift check and Name check. It says that
-nobody will answer a question, and it asks for two kinds of line:
+A loop Session never waits for a person. The driver adds words after the command of every Session
+it starts. Each kind of step gets its own words, and every set says that nobody will answer a
+question.
 
-- **A Choice.** Where the ticket leaves more than one way open, the Session takes one way that its
-  step allows, carries on, and writes a line that starts with `CHOSE`, with what it chose and why.
-- **A Hand check.** Where the ticket asks for a check that no Session can run, the Session carries
-  on, and writes a line that starts with `HAND CHECK`, with the check and how a person runs it.
+| Kind of step | The steps | What the words let it write |
+|---|---|---|
+| A step that builds | The build, `fix` and the Cut | `CHOSE`, `DEPARTS` and `HAND CHECK` |
+| A step that judges | The three reviews, `sweep`, the drift check and the Name check | None of the three |
+| Finishing | `finish` | `DEPARTS` only |
+
+Only a step that builds makes a Choice or names a Hand check. A review that finds the change differs
+from the ticket or the spec reports a finding. A check gives a Verdict. Neither makes a Choice.
+
+The lines a Session can write:
+
+- **A Choice.** A Choice is only for what the ticket and the spec leave open. A point either of them
+  names is not open, and a part that only touches the point does not open it. Where they leave more
+  than one way open, the Session takes one way, carries on, and writes a line that starts with
+  `CHOSE`, with what it chose and why.
+- **A question in the ticket.** A question the ticket tells the Session to ask a person is a Choice.
+  The build answers it and writes a `CHOSE` line. The question never keeps the ticket open:
+  Finishing closes it, and puts the question and the build's answer in the Closing note. You can
+  change the answer later from the ticket.
+- **A Departure.** Where two parts that both name one point disagree, the build takes the stricter
+  one, carries on, and writes a line that starts with `DEPARTS`, naming both parts and why.
+  Finishing writes the same line for a fault it may not fix. The loop goes on after a `DEPARTS`
+  line, and the list at the end of the run shows every Departure first.
+- **A Hand check.** A Hand check needs one of three things no Session has: a real device, such as a
+  printer or a phone; a real outside account or service; or a person's eyes on the screen or the
+  page. Nothing else is one. The Suite is never one, because the driver runs it. A question to a
+  person is never one, because it is a Choice. The Session carries on, and writes a line that starts
+  with `HAND CHECK`, with the check and how a person runs it.
 - **Blocked.** Only where the Session cannot do the work, it begins its report with a line that
   starts with `BLOCKED`: a tool call was denied and no allowed way exists, or the ticket has nothing
   left to build. A choice is never Blocked. The driver then stops the loop at that step, with no
   Nudge, as [When a step fails](stops.md) shows.
 
 The driver copies each of these lines into the log, and lists them all again when the run ends, as
-[Reading a run](reading-a-run.md) shows.
+[Reading a run](reading-a-run.md) shows. `spec-loop <spec> --dry-run` prints each set of words
+beside the steps that get it.
 
-The paragraph is the driver's and sits in no skill. A skill you run by hand still asks you, because
-you are there to answer.
+The words are the driver's and sit in no skill. A skill you run by hand still asks you, because you
+are there to answer.
 
 ## What a Fresh Session starts with
 
 | It starts with | What that is |
 |---|---|
-| Its prompt | The step's command and the ticket's number, then the paragraph that says nobody will answer. |
+| Its prompt | The step's command and the ticket's number, then the words for its kind of step, which say nobody will answer. |
 | `CLAUDE.md` | With the rules it imports. |
 | What the step's skill reads | On demand, as [the stage map](stage-map.md) shows. |
 | The ticket and the spec | On the Tracker. |

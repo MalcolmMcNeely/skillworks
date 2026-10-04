@@ -131,7 +131,7 @@ Session writes:
 - The heading an axis ends under, `## Standards`, `## Spec` or `## Architecture`, anywhere in the
   last message.
 - `BLOCKED` at the start of the first line that is not empty.
-- `CHOSE` and `HAND CHECK` at the start of any line.
+- `DEPARTS`, `CHOSE` and `HAND CHECK` at the start of any line.
 - `REFUSED <n>` at the start of any line of a resolve.
 - The reports on the Tracker: the first line, the `###` lists, and the shape of each line in a list.
 
