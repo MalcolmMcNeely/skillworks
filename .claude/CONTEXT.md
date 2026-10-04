@@ -16,8 +16,10 @@ an open blocker.
 _Avoid_: Stuck, walled, refused
 
 **Choice**:
-What a Session settled by itself where its ticket left more than one way open. It says each one in
-a line the driver copies to the log, so a person reads what was chosen and is never asked.
+What a Session settled by itself where its ticket left more than one way open. Only a step that
+builds makes one: the build, `fix` and the Cut. A step that judges never does: a review that finds
+the change differs from the ticket has a finding, and a check gives a Verdict. It says each one in a
+line the driver copies to the log, so a person reads what was chosen and is never asked.
 _Avoid_: Decision, pick, judgement call
 
 **Clean**:
