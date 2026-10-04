@@ -614,7 +614,7 @@ def test_a_ticket_already_on_main_is_refused(repo, runner):
     assert not runner.started("dotnet")
 
 
-def test_a_rebase_that_drops_the_ticket_is_refused(repo, runner):
+def test_a_ticket_the_new_base_already_holds_is_refused(repo, runner):
     given_the_suite_passes(runner)
     given_a_project(repo)
     # The other side made the very change this ticket makes, so nothing is left to replay.
