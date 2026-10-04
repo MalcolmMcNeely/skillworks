@@ -130,6 +130,11 @@ TOLD_TO_FINISH = (
     "write one line that starts with `DEPARTS`, with the fault and why you may not fix it. Write no "
     "line that starts with `CHOSE` or `HAND CHECK`. " + BLOCKED_ONLY_WHEN)
 
+FIX_HANDED = (
+    "The build wrote each line below for this ticket, and the list at the end of the run already "
+    "holds it. Write a line that starts with `CHOSE`, `DEPARTS` or `HAND CHECK` only for a Choice, "
+    "a Departure or a Hand check that is not below.")
+
 STEPS = (
     (Step("build", PLUGIN + "implement {} --stop-after-tests",
           "no-error command-loaded ticket-open tree-changed", False, told=TOLD_TO_BUILD),)
@@ -489,6 +494,7 @@ class Loop:
         self.left_full_run_tree = ""
 
         self.listed = []
+        self.built = {}
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -613,11 +619,20 @@ class Loop:
             return None, reason
         said = ("{}\n\nThe three review axes have run. Their reports follow, each with the Edit "
                 "that axis made.\n{}").format(asked, reports.rstrip("\n"))
+        said += self.build_lines(ticket)
         if self.red_suite is not None:
             said += ("\n\n## The suite went red\n\nThe driver ran it as often as the Suite file "
                      "asks, and it went red every time. What it said follows.\n\n{}\n").format(
                          self.red_suite.said.rstrip("\n"))
         return said, ""
+
+    # Handed on, so the list at the end of the run shows a line the fix carries forward only once.
+    def build_lines(self, ticket):
+        written_by_build = self.built.get(ticket, [])
+        if not written_by_build:
+            return ""
+        return "\n\n## The build wrote these lines\n\n{}\n\n{}\n".format(
+            FIX_HANDED, "\n".join(written_by_build))
 
     # --- the checks ----------------------------------------------------------
 
@@ -728,11 +743,14 @@ class Loop:
 
     def say_result(self, who, result):
         self.say_denials(who, result)
+        listed = []
         for line in str(field(result, "result")).split("\n"):
             for opening, tag, *_ in LISTED_OPENINGS:
                 if line.startswith(opening):
                     self.say("{} {}{}".format(tag, who, line))
                     self.listed.append((opening, who + line))
+                    listed.append(line)
+        return listed
 
     # Only ever added to, so an attempt a Nudge, a second fix or a rerun came after is still read.
     def add_to_journal(self, ran, held, step, attempt, failed, ticket=None, spec_step=None):
@@ -797,7 +815,9 @@ class Loop:
         nudge = 0
         while True:
             written(held, ran.out)
-            self.say_result("{} {:<13}".format(self.named(ticket), step.name), held)
+            listed = self.say_result("{} {:<13}".format(self.named(ticket), step.name), held)
+            if step.name == "build":
+                self.built.setdefault(ticket, []).extend(listed)
             failed = None
             try:
                 if ran.status == 0:

@@ -63,8 +63,8 @@ step, or the spec and the check, and then holds the Session's own line as it wro
 
 ```
 2026-09-28 15:57:40 DEPRT #202 build        DEPARTS the ticket checks for uv 0.4 and decision 3 for any uv, so I took the ticket's, the stricter.
-2026-09-28 15:59:37 CHOSE #202 spec         CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
-2026-09-28 15:59:37 HAND  #202 spec         HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
+2026-09-28 15:57:40 CHOSE #202 build        CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
+2026-09-28 15:57:40 HAND  #202 build        HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
 ```
 
 When the run ends, the driver writes every Departure, every Choice and every Hand check of the run
@@ -77,9 +77,14 @@ Departure, no Choice and no Hand check has no list:
 2026-09-28 18:52:31 END   spec #200 complete. Every ticket is on master.
 2026-09-28 18:52:31 LIST  this run wrote 1 Departure, made 1 Choice and named 1 Hand check
       #202 build        DEPARTS the ticket checks for uv 0.4 and decision 3 for any uv, so I took the ticket's, the stricter.
-      #202 spec         CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
-      #202 spec         HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
+      #202 build        CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
+      #202 build        HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
 ```
+
+The list shows each Choice, Departure and Hand check once, so its counts are true. Only the build,
+`fix` and the Cut write these lines. The driver hands `fix` the lines the build wrote for its
+ticket, and `fix` writes a line only for one that is not among them. `fix` gets no line that the
+build of another ticket wrote.
 
 Each Departure in the list is a point where two parts of the ticket or the spec disagree. Read them
 first. Each Hand check in the list is a check for you to run. When the loop ends, the Session that

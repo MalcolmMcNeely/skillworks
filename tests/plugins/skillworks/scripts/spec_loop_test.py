@@ -2832,6 +2832,11 @@ TOLD_TO_FINISH = (
     "write one line that starts with `DEPARTS`, with the fault and why you may not fix it. Write no "
     "line that starts with `CHOSE` or `HAND CHECK`. " + BLOCKED_ONLY_WHEN)
 
+FIX_HANDED = (
+    "The build wrote each line below for this ticket, and the list at the end of the run already "
+    "holds it. Write a line that starts with `CHOSE`, `DEPARTS` or `HAND CHECK` only for a Choice, "
+    "a Departure or a Hand check that is not below.")
+
 A_CHOICE = "CHOSE the short name, because the glossary holds it."
 A_HAND_CHECK = "HAND CHECK open the page in a browser and read its heading."
 A_DEPARTURE = ("DEPARTS the ticket turns down a quantity below 1 and decision 5 leaves out a 0, so I "
@@ -3000,6 +3005,42 @@ def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run
     assert lines_under(loop, header) == [
         "      spec #158 names        " + A_CHOICE,
         "      spec #158 drift        " + A_HAND_CHECK]
+
+
+def test_the_fix_is_handed_the_lines_the_build_wrote_and_told_to_write_only_a_new_one(
+        loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).says["implement"] = "\n".join(
+        ("Built.", A_CHOICE, A_DEPARTURE, A_HAND_CHECK))
+
+    loop.run(SPEC)
+
+    assert prompt_asking(runner, "/skillworks:implement 168 --fix").endswith(
+        "\n\n## The build wrote these lines\n\n" + FIX_HANDED + "\n\n"
+        + "\n".join((A_CHOICE, A_DEPARTURE, A_HAND_CHECK)) + "\n")
+
+
+def test_the_fix_is_handed_no_line_the_build_of_another_ticket_wrote(loop, runner):
+    tracker = given_the_tracker_holds(loop, TWO_OPEN_TICKETS)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["implement"] = "Built.\n" + A_CHOICE
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+
+    def build_169():
+        (Path(loop.runner.where) / "built-169.txt").write_text("built\n", encoding="utf-8")
+        sessions.says["implement"] = "Built."
+    sessions.then["implement 169 --stop-after-tests"] = build_169
+
+    loop.run(SPEC)
+
+    fixed = prompt_asking(runner, "/skillworks:implement 169 --fix")
+    assert fixed != "" and A_CHOICE not in fixed
+
+
+def test_the_reading_a_run_page_says_the_list_shows_each_line_once():
+    page = " ".join((ROOT / READING_A_RUN_PAGE).read_text(encoding="utf-8").split())
+
+    assert "The list shows each Choice, Departure and Hand check once" in page
 
 
 def test_a_run_with_no_departure_no_choice_and_no_hand_check_writes_no_list(loop):
