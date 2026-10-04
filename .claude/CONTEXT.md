@@ -178,9 +178,11 @@ _Avoid_: Rename check, naming review, lint
 **Nudge**:
 What the driver sends to resume a Session that ended with work still owed: a ticket step, the Cut
 or a check. It names what is owed, so the Session carries on with its context rather than starting
-again. A Nudge answers a Session that stopped short, never one that could not run. It tells a
-Session that put a choice to a person to make that Choice itself, and to answer Blocked only where
-the work cannot be done. A Session that still owes work after two of them stops the loop.
+again. A Nudge answers a Session that stopped short, never one that could not run. It tells every
+Session to answer Blocked only where the work cannot be done. What it says of a choice put to a
+person depends on the step: a step that builds makes that Choice itself, a step that judges reports
+it as a finding or gives the Verdict, and Finishing closes the ticket with the question and the
+build's answer in the Closing note. A Session that still owes work after two of them stops the loop.
 _Avoid_: Continuation, retry, prod
 
 **Order of events**:
