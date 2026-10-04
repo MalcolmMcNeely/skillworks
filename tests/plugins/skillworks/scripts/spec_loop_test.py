@@ -2982,6 +2982,105 @@ def test_a_blocked_drift_check_stops_the_loop_before_the_name_check(loop, runner
     assert stop_lines(loop)[0] == "STOP  spec #158 drift is Blocked: " + A_BLOCKED
 
 
+# --- an error the driver did not expect --------------------------------------
+
+UNEXPECTED = "the runner broke"
+
+UNEXPECTED_FAIL = ("FAIL  the driver met an error it did not expect, RuntimeError: " + UNEXPECTED
+                   + ". The traceback is above in ")
+
+
+def raising(error):
+    def throw():
+        raise error
+    return throw
+
+
+def given_an_error_after_finish_closed_the_ticket(loop, error=None):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["review-spec"] = "## Spec. Nothing found.\nCHOSE the shorter name"
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker),
+                                   raising(error or RuntimeError(UNEXPECTED)))
+    return tracker
+
+
+def test_an_error_the_driver_did_not_expect_after_finish_opens_the_ticket_again(loop):
+    tracker = given_an_error_after_finish_closed_the_ticket(loop)
+
+    loop.run(SPEC)
+
+    assert "168" not in tracker.closed
+
+
+def test_an_error_the_driver_did_not_expect_ends_the_log_on_a_fail_line_and_the_list(loop):
+    given_an_error_after_finish_closed_the_ticket(loop)
+
+    loop.run(SPEC)
+
+    *_, fail, listed, choice = [unstamped(line) for line in loop.log().rstrip("\n").split("\n")]
+    assert (fail.startswith(UNEXPECTED_FAIL), fail.endswith("loop.log. Rerun with: spec-loop 158"),
+            listed, choice) == (
+        True, True, "LIST  this run made 1 Choice and named 0 Hand checks",
+        "      #168 spec         CHOSE the shorter name")
+
+
+def test_an_error_the_driver_did_not_expect_exits_with_status_1(loop):
+    given_an_error_after_finish_closed_the_ticket(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+
+
+def test_an_error_the_driver_did_not_expect_puts_its_traceback_in_the_log_and_on_stderr(loop):
+    given_an_error_after_finish_closed_the_ticket(loop)
+
+    ran = loop.run(SPEC)
+
+    traceback_end = "RuntimeError: " + UNEXPECTED + "\n"
+    assert [("Traceback (most recent call last):" in held and traceback_end in held)
+            for held in (loop.log(), ran.err)] == [True, True]
+
+
+def test_an_error_the_driver_did_not_expect_starts_no_full_run(loop):
+    tracker = given_the_tracker_holds(loop, TWO_OPEN_TICKETS)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    # The first build's file has landed by then, so the second build writes one of its own.
+    sessions.then["implement 169 --stop-after-tests"] = lambda: (
+        Path(loop.runner.where) / "built-169.txt").write_text("built\n", encoding="utf-8")
+    sessions.then["implement 169 --finish"] = all_of(
+        committed(loop.runner, "169"), closed(tracker, "169"), raising(RuntimeError(UNEXPECTED)))
+
+    loop.run(SPEC)
+
+    assert full_run_calls(loop, "dotnet") == []
+
+
+def test_ctrl_c_after_finish_opens_the_ticket_again(loop):
+    tracker = given_an_error_after_finish_closed_the_ticket(loop, KeyboardInterrupt())
+
+    with pytest.raises(KeyboardInterrupt):
+        loop.run(SPEC)
+
+    assert "168" not in tracker.closed
+
+
+def test_a_reopen_that_fails_leaves_the_first_error_in_view(loop):
+    tracker = given_an_error_after_finish_closed_the_ticket(loop)
+
+    def answer():
+        if loop.runner.calls[-1][1:3] == ["issue", "reopen"]:
+            raise OSError("gh went away")
+        return tracker.answer()
+    loop.runner.stub("gh", does=answer)
+
+    ran = loop.run(SPEC)
+
+    assert UNEXPECTED_FAIL in said(ran)
+
+
 # --- the Parent each Session names -------------------------------------------
 
 PARENT = "skillworks.parent.session.id=parent-session"
@@ -4386,6 +4485,18 @@ def test_the_stops_page_gives_the_stop_for_a_spec_in_another_shape():
 
     assert "the spec's [counted shape](the-grill.md#the-spec)" in stopping
     assert "ABORT spec #200 is not in the shape the loop counts" in stopping
+
+
+def test_the_stops_page_says_what_an_error_the_driver_did_not_expect_does():
+    stopping = flat(page_text(STOPS_PAGE))
+
+    assert [
+        "**An error the driver did not expect.**" in stopping,
+        "The script opens the ticket again" in stopping,
+        "FAIL the driver met an error it did not expect, " in stopping,
+        "The full run does not start" in stopping,
+        "Rerun with `spec-loop <spec>`" in stopping,
+    ] == [True] * 5
 
 
 def test_the_reading_a_run_page_gives_the_shape_line_and_its_abort():

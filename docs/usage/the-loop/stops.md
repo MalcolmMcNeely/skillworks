@@ -92,6 +92,15 @@ the stop, [the full run](full-run.md) runs next. The `FAIL` line in the log name
 FAIL  #203 step fix failed check ticket-open. Its worktree is at .claude/worktrees/spec-200/ticket-203. See ...
 ```
 
+**An error the driver did not expect.** A fault in the script itself, or a Ctrl+C, can end the run
+where no step planned a stop. The script opens the ticket again, because `finish` may have closed it.
+It writes the traceback to the log, then a `FAIL` line, then the Choices and Hand checks. The full run
+does not start, so a fault in the script does no more harm. Rerun with `spec-loop <spec>`:
+
+```
+FAIL  the driver met an error it did not expect, KeyError: 'session_id'. The traceback is above in .spec-loop/200/loop.log. Rerun with: spec-loop 200
+```
+
 **A spec in another shape.** Before any ticket, the script reads the spec's [counted
 shape](the-grill.md#the-spec). A spec it cannot count stops the loop there, before a
 ticket is claimed or a Session started. The `ABORT` line names each fault. Fix the spec on the

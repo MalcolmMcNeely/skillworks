@@ -30,6 +30,7 @@ import json
 import os
 import sys
 import time
+import traceback
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1118,6 +1119,24 @@ class Loop:
         self.say_result("{} {:<13}".format(self.named(ticket), "resolve"), held)
         self.add_to_journal(ran, held, "resolve", 0, failed, ticket=ticket)
 
+    # A planned stop reopens the ticket itself, and anything else may come after finish closed it.
+    def build_and_land(self, ticket):
+        try:
+            self.land(ticket, self.build_ticket(ticket))
+        except Stop:
+            raise
+        except BaseException:
+            self.reopen_keeping_the_error(ticket)
+            raise
+
+    # A reopen that raises would take the place of the error that is why the run ended.
+    def reopen_keeping_the_error(self, ticket):
+        try:
+            self.reopen(ticket)
+        except Exception as failed:
+            self.say("WARN  {} did not reopen, {}: {}. Reopen it by hand, or a rerun will skip "
+                     "it.".format(self.named(ticket), type(failed).__name__, failed))
+
     def run_ticket(self, ticket):
         self.say("START {} {}".format(self.named(ticket), self.tracker.title(ticket)))
 
@@ -1130,7 +1149,7 @@ class Loop:
         self.ticket_base = self.git(self.job_worktree, "rev-parse", "HEAD").out.strip()
         started = time.time()
 
-        self.land(ticket, self.build_ticket(ticket))
+        self.build_and_land(ticket)
         self.landed.append(ticket)
         landed_at = self.git(self.job_worktree, "rev-parse", "--short", "HEAD").out.strip()
 
@@ -1630,6 +1649,18 @@ def main(argv, runner, out, err, wait):
             loop.say(stopped.said.rstrip("\n"))
             loop.list_choices_and_hand_checks()
         return stopped.status
+    except Exception as failed:
+        if loop is None:
+            raise
+        held = traceback.format_exc()
+        loop.log_dir.mkdir(parents=True, exist_ok=True)
+        appended(loop.log, held)
+        err.write(held)
+        loop.say("FAIL  the driver met an error it did not expect, {}: {}. The traceback is above "
+                 "in {}. Rerun with: spec-loop {}".format(
+                     type(failed).__name__, failed, loop.log.as_posix(), loop.spec))
+        loop.list_choices_and_hand_checks()
+        return REFUSED
 
 
 if __name__ == "__main__":
