@@ -57,6 +57,13 @@ to work that has landed. A stage of the Dev loop names only the next stage. Ever
 open to a developer who types it, and the Dev loop never asks for one.
 _Avoid_: Rail, main flow, happy path
 
+**Departure**:
+What a step that builds did against the words of its ticket or its spec, because two parts that both
+name one point disagree and it took the stricter one. It says each one in a line of its own, which
+the driver lists above every Choice, so a person reads it first. The loop goes on. A step that
+judges never writes one: a change that differs from the ticket is a finding.
+_Avoid_: Deviation, override
+
 **Drift check**:
 The judge that gives each story, decision and Surface of a spec a Verdict once every ticket has
 Landed. A Verdict judges the Target branch as it stands, so work that reached it by any way counts.
