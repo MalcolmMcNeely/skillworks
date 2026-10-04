@@ -17,6 +17,7 @@ import spec_loop
 import ticket_worktree
 from conftest import (ROOT, SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
                       project_suite, write_loop, write_steering, write_suite)
+from output.streams import speaking_any_character
 from runner import Subprocess, plugin_read_rule
 from suite import Suite
 
@@ -2276,6 +2277,23 @@ def test_a_flake_in_the_landing_gets_a_flake_line_and_a_kept_file(loop):
     assert re.fullmatch("flake-ticket-168-land-" + FLAKE_STAMP + r"\.out", kept.name)
     assert "a landing test failed" in kept.read_text(encoding="utf-8")
     assert kept.as_posix() in line
+
+
+def test_a_landing_red_with_a_character_the_code_page_lacks_ends_with_its_fail_line(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop, runs=2)
+    sessions.then[FINISH] = all_of(
+        committed(runner), closed(tracker), lambda: loop.repo.advance_origin("later"),
+        lambda: runner.refuse(SOLUTION, "❯ a landing test failed"))
+    # A pipe on Windows takes code page 1252, and a command's start is what makes it speak any character.
+    out = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    speaking_any_character(out)
+
+    spec_loop.main([SPEC], runner, out, io.StringIO(), loop.waits.append)
+    out.flush()
+
+    assert "FAIL  #168 did not reach main." in out.buffer.getvalue().decode("utf-8")
+    assert tracker.closed == set()
 
 
 def test_a_ticket_that_passes_with_a_flake_lands_and_its_worktree_is_removed(loop, runner):

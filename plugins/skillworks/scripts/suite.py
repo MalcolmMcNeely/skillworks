@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
+from output.streams import speaking_any_character
 from runner import Subprocess
 from stop import Stop, misuse, refusal
 
@@ -472,11 +473,6 @@ def main(argv, runner, out, err):
     except Stop as stop:
         err.write(stop.said)
         return stop.status
-
-
-# A check can print any character, and a Windows pipe would otherwise take the locale's code page.
-def speaking_any_character(stream):
-    stream.reconfigure(newline="\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

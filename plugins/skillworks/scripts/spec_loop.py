@@ -45,6 +45,7 @@ from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of
                            read_rename_verdicts, read_renames, unmade_said)
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
+from output.streams import speaking_any_character
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
 from seed_steering import missing_steering
 from steering.readme_surface import readme_surface_of
@@ -1632,7 +1633,6 @@ def main(argv, runner, out, err, wait):
 
 
 if __name__ == "__main__":
-    # Windows adds a carriage return, which would reach the log as well as the terminal.
-    sys.stdout.reconfigure(newline="\n")
-    sys.stderr.reconfigure(newline="\n")
+    speaking_any_character(sys.stdout)
+    speaking_any_character(sys.stderr)
     sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep))

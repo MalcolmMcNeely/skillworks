@@ -6,6 +6,7 @@ import sys
 import time
 
 from fetch_origin import fetch_origin
+from output.streams import speaking_any_character
 from runner import Subprocess
 from stop import Stop, is_a_number, misuse, refusal
 from tracker.publish import opened
@@ -90,8 +91,7 @@ def main(argv, runner, out, err, wait, where=None):
 
 
 if __name__ == "__main__":
-    # Windows adds a carriage return, which a check reads as part of the patch.
-    sys.stdout.reconfigure(newline="\n", encoding="utf-8")
-    sys.stderr.reconfigure(newline="\n")
+    speaking_any_character(sys.stdout)
+    speaking_any_character(sys.stderr)
     # python -m runs from the scripts folder, so the caller's folder is handed in first.
     sys.exit(main(sys.argv[2:], Subprocess(), sys.stdout, sys.stderr, time.sleep, sys.argv[1]))

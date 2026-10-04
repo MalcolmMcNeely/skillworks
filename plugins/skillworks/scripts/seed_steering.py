@@ -5,6 +5,7 @@ import re
 import sys
 from pathlib import Path
 
+from output.streams import speaking_any_character
 from runner import Subprocess
 from stop import Stop, misuse, refusal
 
@@ -301,6 +302,6 @@ def main(argv, runner, out, err):
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(newline="\n")
-    sys.stderr.reconfigure(newline="\n")
+    speaking_any_character(sys.stdout)
+    speaking_any_character(sys.stderr)
     sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr))

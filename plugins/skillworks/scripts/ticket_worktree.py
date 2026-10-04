@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from fetch_origin import fetch_origin
+from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.target_branch import target_branch_for
 from stop import Stop, is_a_number, misuse, refusal
@@ -307,7 +308,6 @@ def main(argv, runner, out, err, wait, target=None):
 
 
 if __name__ == "__main__":
-    # Windows adds a carriage return, which goes with the path a caller reads off stdout.
-    sys.stdout.reconfigure(newline="\n")
-    sys.stderr.reconfigure(newline="\n")
+    speaking_any_character(sys.stdout)
+    speaking_any_character(sys.stderr)
     sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep))

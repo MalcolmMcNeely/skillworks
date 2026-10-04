@@ -40,6 +40,7 @@ from filelock import FileLock, Timeout
 
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
+from output.streams import speaking_any_character
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
@@ -614,7 +615,6 @@ def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracke
 
 
 if __name__ == "__main__":
-    # Windows adds a carriage return, which the driver would read as part of the plan.
-    sys.stdout.reconfigure(newline="\n")
-    sys.stderr.reconfigure(newline="\n")
+    speaking_any_character(sys.stdout)
+    speaking_any_character(sys.stderr)
     sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep))

@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from configuration.checks import check_configuration
+from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.rule_imports import RULES_FOLDER, missing_import
 from steering.target_branch import SPEC_MODE, target_setting, tracker_setting
@@ -252,7 +253,6 @@ def main(argv, runner, out, err, where=None):
 
 
 if __name__ == "__main__":
-    # Windows adds a carriage return, which the output would carry to the screen.
-    sys.stdout.reconfigure(newline="\n")
-    sys.stderr.reconfigure(newline="\n")
+    speaking_any_character(sys.stdout)
+    speaking_any_character(sys.stderr)
     sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr))

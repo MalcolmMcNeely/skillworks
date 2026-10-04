@@ -7,6 +7,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from output.streams import speaking_any_character
 from stop import Stop, is_a_number, misuse, refusal
 
 USAGE = "usage: spec-loop-counts [<spec-issue-number>]\n"
@@ -203,8 +204,7 @@ def main(argv, out, err, where):
 
 
 if __name__ == "__main__":
-    # Windows adds a carriage return, which would end every row of a table with one.
-    sys.stdout.reconfigure(newline="\n", encoding="utf-8")
-    sys.stderr.reconfigure(newline="\n")
+    speaking_any_character(sys.stdout)
+    speaking_any_character(sys.stderr)
     # python -m runs from the scripts folder, so the caller's folder is handed in first.
     sys.exit(main(sys.argv[2:], sys.stdout, sys.stderr, sys.argv[1]))
