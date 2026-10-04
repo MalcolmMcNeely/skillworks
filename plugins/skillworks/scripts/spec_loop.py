@@ -137,7 +137,10 @@ UNATTENDED = (
     "call was denied and no allowed way exists, or the ticket has nothing left to build.")
 
 # Read only at the start of a line, so a Session that mentions one in passing names none.
-CHOICE_AND_HAND_CHECK_OPENINGS = (("CHOSE", "CHOSE"), ("HAND CHECK", "HAND "))
+# In the order the list shows them, so a Departure is the first thing a developer reads.
+LISTED_OPENINGS = (("DEPARTS", "DEPRT", "Departure", "Departures", "wrote"),
+                   ("CHOSE", "CHOSE", "Choice", "Choices", "made"),
+                   ("HAND CHECK", "HAND ", "Hand check", "Hand checks", "named"))
 
 # Nobody is at a terminal to approve the slices, and the log holds only the Session's last message.
 CUT_UNATTENDED = (
@@ -431,7 +434,7 @@ class Loop:
         self.run_flakes = []
         self.left_full_run_tree = ""
 
-        self.choices_and_hand_checks = []
+        self.listed = []
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -672,10 +675,10 @@ class Loop:
     def say_result(self, who, result):
         self.say_denials(who, result)
         for line in str(field(result, "result")).split("\n"):
-            for opening, tag in CHOICE_AND_HAND_CHECK_OPENINGS:
+            for opening, tag, *_ in LISTED_OPENINGS:
                 if line.startswith(opening):
                     self.say("{} {}{}".format(tag, who, line))
-                    self.choices_and_hand_checks.append((opening, who + line))
+                    self.listed.append((opening, who + line))
 
     # Only ever added to, so an attempt a Nudge, a second fix or a rerun came after is still read.
     def add_to_journal(self, ran, held, step, attempt, failed, ticket=None, spec_step=None):
@@ -683,18 +686,22 @@ class Loop:
                  "attempt": attempt, "status": ran.status, "failed": failed,
                  "denials": len(denials(held)), "blocked": blocked_line(held) or None,
                  "choices": lines_opening(held, "CHOSE"),
-                 "hand_checks": lines_opening(held, "HAND CHECK"), "result": as_kept(ran.out)}
+                 "hand_checks": lines_opening(held, "HAND CHECK"),
+                 "departures": lines_opening(held, "DEPARTS"), "result": as_kept(ran.out)}
         appended(self.journal, json.dumps(entry) + "\n")
 
     # Said at a stop as well as at a clean finish, so a Hand check is never lost mid-log.
-    def list_choices_and_hand_checks(self):
-        if not self.choices_and_hand_checks:
+    def list_what_sessions_wrote(self):
+        if not self.listed:
             return
-        chosen = sum(1 for opening, _ in self.choices_and_hand_checks if opening == "CHOSE")
-        self.say("LIST  this run made {} and named {}{}".format(
-            how_many(chosen, "Choice", "Choices"),
-            how_many(len(self.choices_and_hand_checks) - chosen, "Hand check", "Hand checks"),
-            "".join("\n      " + said for _, said in self.choices_and_hand_checks)))
+        counts = []
+        lines = []
+        for opening, _, one, many, verb in LISTED_OPENINGS:
+            of_kind = [said for each, said in self.listed if each == opening]
+            counts.append("{} {}".format(verb, how_many(len(of_kind), one, many)))
+            lines += of_kind
+        self.say("LIST  this run {}, {} and {}{}".format(
+            *counts, "".join("\n      " + said for said in lines)))
 
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
@@ -1652,7 +1659,7 @@ def main(argv, runner, out, err, wait):
         spec, dry, mode = arguments(argv)
         loop = Loop(runner, spec, out, err, wait, mode)
         loop.run(dry)
-        loop.list_choices_and_hand_checks()
+        loop.list_what_sessions_wrote()
         return 0
     except Stop as stopped:
         if stopped.status == MISUSED or loop is None:
@@ -1660,7 +1667,7 @@ def main(argv, runner, out, err, wait):
         else:
             # A refusal from a script the loop reads ends its line itself, and say ends it again.
             loop.say(stopped.said.rstrip("\n"))
-            loop.list_choices_and_hand_checks()
+            loop.list_what_sessions_wrote()
         return stopped.status
     except Exception as failed:
         if loop is None:
@@ -1672,7 +1679,7 @@ def main(argv, runner, out, err, wait):
         loop.say("FAIL  the driver met an error it did not expect, {}: {}. The traceback is above "
                  "in {}. Rerun with: spec-loop {}".format(
                      type(failed).__name__, failed, loop.log.as_posix(), loop.spec))
-        loop.list_choices_and_hand_checks()
+        loop.list_what_sessions_wrote()
         return REFUSED
 
 

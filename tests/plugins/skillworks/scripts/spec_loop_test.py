@@ -2771,6 +2771,8 @@ UNATTENDED = (
 
 A_CHOICE = "CHOSE the short name, because the glossary holds it."
 A_HAND_CHECK = "HAND CHECK open the page in a browser and read its heading."
+A_DEPARTURE = ("DEPARTS the ticket turns down a quantity below 1 and decision 5 leaves out a 0, so I "
+               "took the ticket's, the stricter.")
 
 
 def last_stamped(loop):
@@ -2847,21 +2849,41 @@ def test_a_choice_that_does_not_open_its_line_is_not_read(loop):
     assert not any(unstamped(line).startswith("CHOSE") for line in loop.log().split("\n"))
 
 
-def test_a_stop_ends_the_log_with_every_choice_and_hand_check_of_the_run(loop):
+def test_a_departure_a_session_wrote_reaches_the_log_with_its_ticket_and_its_step(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), A_DEPARTURE)
+
+    loop.run(SPEC)
+
+    assert "DEPRT #168 spec         " + A_DEPARTURE + "\n" in loop.log()
+
+
+def test_a_departure_that_does_not_open_its_line_is_not_read(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), "I " + A_DEPARTURE)
+
+    loop.run(SPEC)
+
+    assert not any(unstamped(line).startswith("DEPRT") for line in loop.log().split("\n"))
+
+
+def test_a_stop_ends_the_log_with_every_departure_first_then_the_choices_then_the_hand_checks(
+        loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
-    given_a_spec_axis_that_says(sessions, A_CHOICE, A_HAND_CHECK)
+    given_a_spec_axis_that_says(sessions, A_CHOICE, A_HAND_CHECK, A_DEPARTURE)
     sessions.says["review-architecture"] = "## Architecture. Nothing found.\n" + A_CHOICE
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    header = "LIST  this run made 2 Choices and named 1 Hand check"
+    header = "LIST  this run wrote 1 Departure, made 2 Choices and named 1 Hand check"
     assert last_stamped(loop) == header
     assert lines_under(loop, header) == [
+        "      #168 spec         " + A_DEPARTURE,
         "      #168 spec         " + A_CHOICE,
-        "      #168 spec         " + A_HAND_CHECK,
-        "      #168 architecture " + A_CHOICE]
+        "      #168 architecture " + A_CHOICE,
+        "      #168 spec         " + A_HAND_CHECK]
 
 
 def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run(loop):
@@ -2875,14 +2897,14 @@ def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run
     ran = loop.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    header = "LIST  this run made 1 Choice and named 1 Hand check"
+    header = "LIST  this run wrote 0 Departures, made 1 Choice and named 1 Hand check"
     assert last_stamped(loop) == header
     assert lines_under(loop, header) == [
-        "      spec #158 drift        " + A_HAND_CHECK,
-        "      spec #158 names        " + A_CHOICE]
+        "      spec #158 names        " + A_CHOICE,
+        "      spec #158 drift        " + A_HAND_CHECK]
 
 
-def test_a_run_with_no_choice_and_no_hand_check_writes_no_list(loop):
+def test_a_run_with_no_departure_no_choice_and_no_hand_check_writes_no_list(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
 
@@ -3021,7 +3043,7 @@ def test_an_error_the_driver_did_not_expect_ends_the_log_on_a_fail_line_and_the_
     *_, fail, listed, choice = [unstamped(line) for line in loop.log().rstrip("\n").split("\n")]
     assert (fail.startswith(UNEXPECTED_FAIL), fail.endswith("loop.log. Rerun with: spec-loop 158"),
             listed, choice) == (
-        True, True, "LIST  this run made 1 Choice and named 0 Hand checks",
+        True, True, "LIST  this run wrote 0 Departures, made 1 Choice and named 0 Hand checks",
         "      #168 spec         CHOSE the shorter name")
 
 
@@ -5627,7 +5649,7 @@ def test_a_journal_entry_holds_every_field_of_a_session_result(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     sessions = given_sessions_that_report(loop)
     sessions.says["review-spec"] = "\n".join(
-        ["## Spec. Nothing found.", A_CHOICE, A_HAND_CHECK])
+        ["## Spec. Nothing found.", A_CHOICE, A_HAND_CHECK, A_DEPARTURE])
     given_a_session_that_was_denied(sessions, "review-spec", A_DENIED_COMMAND)
 
     loop.run(SPEC)
@@ -5637,7 +5659,7 @@ def test_a_journal_entry_holds_every_field_of_a_session_result(loop):
     assert entry == {
         "ticket": "168", "spec_step": None, "step": "spec", "attempt": 0, "status": 0,
         "failed": [], "denials": 1, "blocked": None, "choices": [A_CHOICE],
-        "hand_checks": [A_HAND_CHECK],
+        "hand_checks": [A_HAND_CHECK], "departures": [A_DEPARTURE],
         "result": json.loads(Path(loop.records() / "ticket-168-spec.json").read_text(
             encoding="utf-8"))}
 

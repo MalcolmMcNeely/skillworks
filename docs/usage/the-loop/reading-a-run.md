@@ -55,28 +55,35 @@ check name the spec, and the file their result sits in:
       Denial: Bash {"command": "cd docs && git status"}
 ```
 
-A Session that made a Choice, or named a Hand check, gets a line for each, after its `DENY` line. A
-`CHOSE` line holds a Choice and a `HAND` line holds a Hand check. Each names the ticket and the step,
-or the spec and the check, and then holds the Session's own line as it wrote it:
+A Session that wrote a Departure, made a Choice or named a Hand check gets a line for each, after
+its `DENY` line. A `DEPRT` line holds a Departure, a `CHOSE` line holds a Choice and a `HAND` line
+holds a Hand check. The driver reads a `DEPARTS`, `CHOSE` or `HAND CHECK` line only at the start of a
+line, so a Session that names one in the middle of a line writes none. Each names the ticket and the
+step, or the spec and the check, and then holds the Session's own line as it wrote it:
 
 ```
+2026-09-28 15:57:40 DEPRT #202 build        DEPARTS the ticket checks for uv 0.4 and decision 3 for any uv, so I took the ticket's, the stricter.
 2026-09-28 15:59:37 CHOSE #202 spec         CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
 2026-09-28 15:59:37 HAND  #202 spec         HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
 ```
 
-When the run ends, the driver writes every Choice and every Hand check of the run again, as one
-list after a `LIST` line. It does this at a clean finish, after the `END` line, and at an early stop,
-after the `STOP`, `FAIL`, `RED` or `ABORT` line. A run with no Choice and no Hand check has no list:
+When the run ends, the driver writes every Departure, every Choice and every Hand check of the run
+again, as one list after a `LIST` line. The Departures come first, then the Choices, then the Hand
+checks. The `LIST` line counts all three. The driver writes the list at a clean finish, after the
+`END` line, and at an early stop, after the `STOP`, `FAIL`, `RED` or `ABORT` line. A run with no
+Departure, no Choice and no Hand check has no list:
 
 ```
 2026-09-28 18:52:31 END   spec #200 complete. Every ticket is on master.
-2026-09-28 18:52:31 LIST  this run made 1 Choice and named 1 Hand check
+2026-09-28 18:52:31 LIST  this run wrote 1 Departure, made 1 Choice and named 1 Hand check
+      #202 build        DEPARTS the ticket checks for uv 0.4 and decision 3 for any uv, so I took the ticket's, the stricter.
       #202 spec         CHOSE the uv check in preflight.py, because the ticket names no file and the other checks sit there.
       #202 spec         HAND CHECK run spec-loop on a machine with no uv, and read the ABORT line.
 ```
 
-Each Hand check in the list is a check for you to run. When the loop ends, the Session that started
-it names each item in the list to you, one by one.
+Each Departure in the list is a point where two parts of the ticket or the spec disagree. Read them
+first. Each Hand check in the list is a check for you to run. When the loop ends, the Session that
+started it names each item in the list to you, one by one.
 
 A check that flakes in a ticket's `suite` step, or in its landing, adds a `FLAKE` line that names
 the check and the file that keeps its red output:
@@ -205,10 +212,11 @@ One entry holds:
 | `blocked` | The Session's `BLOCKED` line, or `null` |
 | `choices` | Each `CHOSE` line of the result |
 | `hand_checks` | Each `HAND CHECK` line of the result |
+| `departures` | Each `DEPARTS` line of the result |
 | `result` | The whole result as the Session returned it. When it is not JSON, this holds its raw text |
 
 ```
-{"at": "2026-09-28 15:59:37", "ticket": "202", "spec_step": null, "step": "standards", "attempt": 0, "status": 0, "failed": ["axis-reported"], "denials": 1, "blocked": null, "choices": [], "hand_checks": [], "result": {"is_error": false, "session_id": "...", "result": "I will wait for the tests to finish."}}
+{"at": "2026-09-28 15:59:37", "ticket": "202", "spec_step": null, "step": "standards", "attempt": 0, "status": 0, "failed": ["axis-reported"], "denials": 1, "blocked": null, "choices": [], "hand_checks": [], "departures": [], "result": {"is_error": false, "session_id": "...", "result": "I will wait for the tests to finish."}}
 ```
 
 ## Counting runs
@@ -230,11 +238,11 @@ Specs counted: 200, 214
 
 ## How steps ended
 
-| Step | Results | Nudges | Blocked | Choices | Hand checks |
-|---|---|---|---|---|---|
-| build | 6 | tree-changed 1 | 1 | 2 | 1 |
-| standards | 7 | axis-reported 2 | 0 | 0 | 0 |
-| finish | 5 | ticket-closed 1 | 0 | 1 | 0 |
+| Step | Results | Nudges | Blocked | Departures | Choices | Hand checks |
+|---|---|---|---|---|---|---|
+| build | 6 | tree-changed 1 | 1 | 1 | 2 | 1 |
+| standards | 7 | axis-reported 2 | 0 | 0 | 0 | 0 |
+| finish | 5 | ticket-closed 1 | 0 | 0 | 1 | 0 |
 
 Log lines: FAIL 1, STOP 1, RED 0, ABORT 0
 
@@ -261,8 +269,8 @@ Log lines: FAIL 1, STOP 1, RED 0, ABORT 0
 ```
 
 - **How steps ended** gives, for each step, its Session results, the Nudges for each failed check,
-  its Blocked stops, its Choices and its Hand checks. Below it, `Log lines` counts the `FAIL`,
-  `STOP`, `RED` and `ABORT` lines of the log.
+  its Blocked stops, its Departures, its Choices and its Hand checks. Below it, `Log lines` counts
+  the `FAIL`, `STOP`, `RED` and `ABORT` lines of the log.
 - **What a Nudge got** gives, for each step that was Nudged, how many times it then passed, how many
   times it answered Blocked, and how many times it failed after the last Nudge. A run with no Nudge
   says so in place of the table.

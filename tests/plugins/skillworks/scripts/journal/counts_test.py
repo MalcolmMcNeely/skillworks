@@ -3,8 +3,8 @@
 import shutil
 
 from conftest import ROOT, launch
-from spec_loop_test import (A_BLOCKED, A_CHOICE, A_DENIED_COMMAND, A_HAND_CHECK, ONE_OPEN_TICKET,
-                            SPEC, a_denied_command, given_a_session_that_was_denied,
+from spec_loop_test import (A_BLOCKED, A_CHOICE, A_DENIED_COMMAND, A_DEPARTURE, A_HAND_CHECK,
+                            ONE_OPEN_TICKET, SPEC, a_denied_command, given_a_session_that_was_denied,
                             given_a_spec_axis_that_says, given_an_axis_that_stops_short,
                             given_sessions_that_report, given_the_tracker_holds, loop)
 
@@ -45,7 +45,7 @@ def test_a_nudged_step_shows_its_results_and_the_check_its_nudge_was_for(loop):
 
     assert row_of(ran.out, "How steps ended", "Step", "standards") == {
         "Step": "standards", "Results": "2", "Nudges": "axis-reported 1", "Blocked": "0",
-        "Choices": "0", "Hand checks": "0"}
+        "Departures": "0", "Choices": "0", "Hand checks": "0"}
 
 
 def test_a_step_counts_each_choice_and_hand_check_its_results_made(loop):
@@ -56,6 +56,14 @@ def test_a_step_counts_each_choice_and_hand_check_its_results_made(loop):
     row = row_of(counted(loop, SPEC).out, "How steps ended", "Step", "spec")
 
     assert (row["Choices"], row["Hand checks"]) == ("1", "1")
+
+
+def test_a_step_counts_each_departure_its_results_wrote(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_spec_axis_that_says(given_sessions_that_report(loop), A_DEPARTURE, A_DEPARTURE)
+    loop.run(SPEC)
+
+    assert row_of(counted(loop, SPEC).out, "How steps ended", "Step", "spec")["Departures"] == "2"
 
 
 def test_a_blocked_build_is_a_blocked_stop_of_the_build(loop):

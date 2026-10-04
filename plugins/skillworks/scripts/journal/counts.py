@@ -64,6 +64,7 @@ class Step:
         self.results = 0
         self.nudges = {}
         self.blocked = 0
+        self.departures = 0
         self.choices = 0
         self.hand_checks = 0
 
@@ -92,6 +93,7 @@ def how_steps_ended(journal):
         for entry in run:
             step.results += 1
             step.blocked += 1 if entry.get("blocked") else 0
+            step.departures += len(entry.get("departures") or [])
             step.choices += len(entry.get("choices") or [])
             step.hand_checks += len(entry.get("hand_checks") or [])
     return steps
@@ -108,10 +110,11 @@ def named_counts(counted):
 
 
 def steps_table(journal, stops):
-    rows = [(name, step.results, named_counts(step.nudges), step.blocked, step.choices,
-             step.hand_checks) for name, step in how_steps_ended(journal).items()]
+    rows = [(name, step.results, named_counts(step.nudges), step.blocked, step.departures,
+             step.choices, step.hand_checks) for name, step in how_steps_ended(journal).items()]
     said = "## How steps ended\n\n"
-    said += markdown(("Step", "Results", "Nudges", "Blocked", "Choices", "Hand checks"), rows)
+    said += markdown(("Step", "Results", "Nudges", "Blocked", "Departures", "Choices",
+                      "Hand checks"), rows)
     return said + "\nLog lines: " + named_counts(stops) + "\n"
 
 
