@@ -416,6 +416,13 @@ class Landing:
         if lost:
             changes = self.replay_changes(last_commit)
             lost = [name for name in lost if name in changes]
+        # A placement rule can make a resolution move a file, so a move is followed, not lost.
+        if lost:
+            moved = self.renames(last_commit)
+            for name in lost:
+                if name in moved:
+                    self.out.write("note  {} moved {} to {}\n".format(self.named, name, moved[name]))
+            lost = [name for name in lost if name not in moved]
         if lost:
             # A reset would throw away the resolution and get back nothing, so the hint only reads.
             now = self.git("rev-parse", "--short", "HEAD").out.strip()
@@ -449,6 +456,12 @@ class Landing:
         differs = listed(self.read("has files git would not list against the replay",
                                    "diff", "--name-only", self.upstream, tree))
         return set(differs) | set(conflicted)
+
+    def renames(self, last_commit):
+        said = self.read("has files git would not pair against the ticket before the rebase",
+                         "diff", "-M", "--name-status", "-z", "--diff-filter=R", last_commit, "HEAD")
+        fields = said.split("\0")
+        return {fields[i + 1]: fields[i + 2] for i in range(0, len(fields) - 2, 3)}
 
     def rebase_onto_target(self, base):
         mine = self.read("has commits git would not count against its base",

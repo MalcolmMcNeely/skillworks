@@ -1370,6 +1370,82 @@ def test_a_ticket_lands_when_the_new_base_holds_its_change_and_one_more_in_that_
     assert (ran.status, target_of(repo)) == (0, head_of(repo))
 
 
+# Lines enough that git still pairs the two paths after one of them changes.
+NOTE_REQUEST = "namespace Shop.Orders;\n\npublic record AddNoteRequest(\n    string Text,\n    string Author);\n"
+
+
+def test_a_ticket_lands_when_the_other_side_renamed_a_file_it_changed(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    given_a_project(repo)
+    write(repo.work / "notes.txt", "one\ntwo\nthree\nfour\nfive\n")
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "A file the other side will move")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
+
+    other = repo.other_checkout()
+    (other / "moved").mkdir()
+    git(other, "mv", "notes.txt", "moved/notes.txt")
+    git(other, "commit", "--quiet", "-m", "Somebody else moved it\n\nTicket: #164")
+    git(other, "push", "--quiet", "origin", repo.target)
+
+    write(repo.work / "notes.txt", "one\ntwo\nmy line\nfour\nfive\n")
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Do the work\n\nTicket: #168")
+
+    ran = run_land(runner, repo.work, 168)
+
+    assert (ran.status, target_of(repo)) == (0, head_of(repo))
+
+
+def given_a_resolution_that_moves_a_file_the_ticket_added(repo, runner):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+
+    def settle(path):
+        if path.name != "shared.txt":
+            return
+        path.write_text("start\ntheir line\nmy line\n", encoding="utf-8", newline="")
+        git(repo.work, "add", path.as_posix())
+        (repo.work / "Requests").mkdir()
+        git(repo.work, "mv", "AddNoteRequest.cs", "Requests/AddNoteRequest.cs")
+        write(repo.work / "Requests" / "AddNoteRequest.cs",
+              NOTE_REQUEST.replace("Shop.Orders;", "Shop.Orders.Requests;"))
+        git(repo.work, "add", "-A")
+
+    stub_session(repo, runner, settle)
+    given_a_project(repo)
+    given_the_other_side_changed(repo, 164)
+    append(repo.work / "shared.txt", "my line")
+    write(repo.work / "AddNoteRequest.cs", NOTE_REQUEST)
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Do the work\n\nTicket: #169")
+
+
+def test_a_ticket_lands_when_its_resolution_moved_a_file_it_added(repo, runner):
+    given_a_resolution_that_moves_a_file_the_ticket_added(repo, runner)
+
+    ran = run_land(runner, repo.work, 169, "session-abc")
+
+    assert (ran.status, target_of(repo)) == (0, head_of(repo))
+
+
+def test_a_file_a_resolution_moved_is_named_in_a_note_with_both_paths(repo, runner):
+    given_a_resolution_that_moves_a_file_the_ticket_added(repo, runner)
+
+    ran = run_land(runner, repo.work, 169, "session-abc")
+
+    assert "note  #169 moved AddNoteRequest.cs to Requests/AddNoteRequest.cs\n" in ran.out
+
+
+def test_a_resolution_that_moved_a_file_reads_resolved(repo, runner):
+    given_a_resolution_that_moves_a_file_the_ticket_added(repo, runner)
+
+    ran = run_land(runner, repo.work, 169, "session-abc")
+
+    assert "outcome=resolved" in ran.out
+
+
 def test_a_git_that_turns_the_replay_down_stops_the_landing_and_names_git_2_38(repo, runner):
     given_the_other_side_made_the_same_change(repo, runner)
     runner.refuse("merge-tree", "error: unknown option `write-tree'")
