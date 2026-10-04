@@ -2132,13 +2132,20 @@ def test_spec_loop_names_each_unrequested_item_before_the_close_offer():
     assert skill.index("`NOTE  Unrequested:`") < named < skill.index("make one offer")
 
 
-def test_spec_loop_names_each_choice_and_hand_check_before_the_close_offer_and_at_a_stop():
+def test_spec_loop_names_each_departure_first_then_each_choice_and_hand_check_before_the_close_offer_and_at_a_stop():
     skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
 
-    named = skill.index("Name each Choice and each Hand check from the list at the end of the log "
-                        "to the user, one by one, before any close offer and at an early stop as "
-                        "well.")
+    named = skill.index("Name each Departure first, then each Choice and each Hand check, from the "
+                        "list at the end of the log to the user, one by one, before any close "
+                        "offer and at an early stop as well.")
     assert skill.index("### 3. Report") < named < skill.index("make one offer")
+
+
+def test_the_stops_page_says_an_unexpected_error_ends_the_log_with_the_departures_first():
+    page = STOPS_PAGE.read_text(encoding="utf-8")
+
+    unexpected = page.split("**An error the driver did not expect.**", 1)[1].split("```", 1)[0]
+    assert "then the Departures, the Choices and the Hand checks" in " ".join(unexpected.split())
 
 
 LOOP_OVERVIEW = ROOT / "docs" / "usage" / "the-loop.md"

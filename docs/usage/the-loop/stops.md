@@ -108,8 +108,8 @@ FAIL  #203 step fix failed check ticket-open. Its worktree is at .claude/worktre
 
 **An error the driver did not expect.** A fault in the script itself, or a Ctrl+C, can end the run
 where no step planned a stop. The script opens the ticket again, because `finish` may have closed it.
-It writes the traceback to the log, then a `FAIL` line, then the Choices and Hand checks. The full run
-does not start, so a fault in the script does no more harm. Rerun with `spec-loop <spec>`:
+It writes the traceback to the log, then a `FAIL` line, then the Departures, the Choices and the Hand
+checks. The full run does not start, so a fault in the script does no more harm. Rerun with `spec-loop <spec>`:
 
 ```
 FAIL  the driver met an error it did not expect, KeyError: 'session_id'. The traceback is above in .spec-loop/200/loop.log. Rerun with: spec-loop 200
