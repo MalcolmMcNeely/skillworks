@@ -26,7 +26,8 @@ flowchart TD
    such as `Ticket: 7/2`.
 2. **Fetch** `origin`.
 3. **Rebase** onto the newest Target branch, only when it moved. Then the script checks that no commit
-   and no file was lost.
+   and no file was lost. A stop for a lost file names the commit the worktree holds now and the commit
+   from before the rebase, and gives a `git diff` of the two that changes nothing. It gives no reset.
 4. **Resolve**, only when the rebase conflicts. The build Session is resumed to fix it. It is told
    that it wrote one side and the other side is a stranger's, so it argues for the other side before
    it drops a line of it. It gets the commits that landed meanwhile, and the ticket behind each one.

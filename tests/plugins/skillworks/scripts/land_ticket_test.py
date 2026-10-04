@@ -1283,6 +1283,18 @@ def test_a_session_that_resolves_nothing_leaves_the_conflict_standing(repo, runn
 
 
 def test_a_resolution_that_drops_the_ticket_s_change_is_caught(repo, runner):
+    given_a_resolution_that_drops_the_ticket_s_change(repo, runner)
+    base = target_of(repo)
+
+    ran = run_land(runner, repo.work, 166, "session-abc")
+
+    assert ran.status == 1
+    assert "dropped" in report(ran)
+    assert "shared.txt" in report(ran)
+    assert target_of(repo) == base
+
+
+def given_a_resolution_that_drops_the_ticket_s_change(repo, runner):
     given_the_suite_passes(runner)
     given_the_tracker_answers(runner)
 
@@ -1294,14 +1306,25 @@ def test_a_resolution_that_drops_the_ticket_s_change_is_caught(repo, runner):
     stub_session(repo, runner, settle)
     given_a_project(repo)
     given_a_conflict_beside_other_work(repo, 166, 164)
-    base = target_of(repo)
+
+
+def test_a_stop_for_a_lost_file_shows_what_was_dropped_with_a_diff_of_both_commits(repo, runner):
+    given_a_resolution_that_drops_the_ticket_s_change(repo, runner)
+    before = git(repo.work, "rev-parse", "--short", "HEAD").strip()
 
     ran = run_land(runner, repo.work, 166, "session-abc")
 
-    assert ran.status == 1
-    assert "dropped" in report(ran)
-    assert "shared.txt" in report(ran)
-    assert target_of(repo) == base
+    now = git(repo.work, "rev-parse", "--short", "HEAD").strip()
+    assert "git -C {} diff {} {} -- shared.txt".format(
+        repo.work.as_posix(), now, before) in report(ran)
+
+
+def test_a_stop_for_a_lost_file_never_says_to_reset(repo, runner):
+    given_a_resolution_that_drops_the_ticket_s_change(repo, runner)
+
+    ran = run_land(runner, repo.work, 166, "session-abc")
+
+    assert "reset" not in report(ran) and "ORIG_HEAD" not in report(ran)
 
 
 def test_a_conflict_with_no_session_named_is_left_standing(repo, runner):

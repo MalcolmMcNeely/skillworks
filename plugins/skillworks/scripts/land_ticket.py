@@ -399,7 +399,7 @@ class Landing:
         return [], None
 
     # A rebase that quietly dropped the work would otherwise push an empty success.
-    def survived(self, mine, before):
+    def survived(self, mine, before, last_commit):
         landed = self.read("has commits git would not count against the new base",
                            "rev-list", "--count", self.upstream + "..HEAD").strip()
         if landed != mine:
@@ -411,25 +411,32 @@ class Landing:
         # A resolution that takes the other side wholesale keeps the commit and loses the file.
         here = listed(self.read("has files git would not list against the new base",
                                 "diff", "--name-only", self.upstream, "HEAD"))
-        missing = "".join("\n  " + name for name in before if name not in here)
-        if missing:
+        lost = [name for name in before if name not in here]
+        if lost:
+            # A reset would throw away the resolution and get back nothing, so the hint only reads.
+            now = self.git("rev-parse", "--short", "HEAD").out.strip()
+            then = self.git("rev-parse", "--short", last_commit).out.strip()
             raise self.die(
-                "{t} changed these files before the rebase and no longer changes them on the new "
-                "base:{f}\nThe rebase dropped work, and nothing was pushed. Get it back with: "
-                "git -C {w} reset --hard ORIG_HEAD".format(
-                    t=self.named, f=missing, w=self.worktree))
+                "{t} held its change in these files before the rebase, and holds none of it in "
+                "them on the new base:{f}\nThe rebase dropped work, and nothing was pushed.\n"
+                "The worktree holds {n} now, and that commit is still in the worktree.\n"
+                "The ticket before the rebase is {b}.\nSee what was dropped with: "
+                "git -C {w} diff {n} {b} -- {l}".format(
+                    t=self.named, f="".join("\n  " + name for name in lost), n=now, b=then,
+                    w=self.worktree, l=" ".join(lost)))
 
     def rebase_onto_target(self, base):
         mine = self.read("has commits git would not count against its base",
                          "rev-list", "--count", base + "..HEAD").strip()
         mine_files = listed(self.read("has files git would not list against its base",
                                       "diff", "--name-only", base, "HEAD"))
+        last_commit = self.read("has no commit git would name", "rev-parse", "HEAD").strip()
 
         said = self.git("rebase", self.upstream)
         if said.status != 0:
             self.resolve_conflict(base, (said.out + said.err).rstrip("\n"))
 
-        self.survived(mine, mine_files)
+        self.survived(mine, mine_files, last_commit)
 
         commit = self.git("rev-parse", "--short", "HEAD").out.strip()
         self.say("{} rebased onto {} as {}".format(
