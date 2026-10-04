@@ -625,9 +625,37 @@ def test_a_rebase_that_drops_the_ticket_is_refused(repo, runner):
     ran = run_land(runner, repo.work, 165)
 
     assert ran.status == 1
-    assert "dropped" in report(ran)
     assert target_of(repo) == base
     assert not runner.started("dotnet")
+
+
+def test_a_commit_the_new_base_already_holds_stops_and_says_nothing_was_lost(repo, runner):
+    given_the_suite_passes(runner)
+    given_a_project(repo)
+    repo.advance_origin("work")
+    commit_for_ticket(repo, 165)
+
+    ran = run_land(runner, repo.work, 165)
+
+    said = report(ran)
+    assert ("nothing was lost" in said and "reset" not in said
+            and "ORIG_HEAD" not in said and "kept" not in said)
+
+
+def test_a_commit_the_new_base_already_holds_with_a_git_that_turns_the_replay_down_names_git_2_38(
+        repo, runner):
+    given_the_suite_passes(runner)
+    given_a_project(repo)
+    repo.advance_origin("work")
+    commit_for_ticket(repo, 165)
+    # A second commit still changes the file, so the file survives without the replay.
+    repo.write_commit(repo.work, "work.txt", "more", "Do more work\n\nTicket: #165")
+    runner.refuse("merge-tree", "error: unknown option `write-tree'")
+    base = target_of(repo)
+
+    ran = run_land(runner, repo.work, 165)
+
+    assert (ran.status, target_of(repo), "2.38" in report(ran)) == (1, base, True)
 
 
 def test_a_commit_that_names_no_ticket_is_refused(repo, runner):

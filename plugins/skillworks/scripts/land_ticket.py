@@ -402,18 +402,15 @@ class Landing:
     def survived(self, mine, before, last_commit):
         landed = self.read("has commits git would not count against the new base",
                            "rev-list", "--count", self.upstream + "..HEAD").strip()
-        if landed != mine:
-            raise self.die(
-                "{t} had {m} commit(s) before the rebase and has {l} on the new base. The rebase "
-                "dropped work, and nothing was pushed. Get it back with: git -C {w} reset --hard "
-                "ORIG_HEAD".format(t=self.named, m=mine, l=landed, w=self.worktree))
+        # Git leaves out a commit whose whole change the new base holds, so a fall alone does not prove a loss.
+        fell = int(landed) < int(mine)
 
         # A resolution that takes the other side wholesale keeps the commit and loses the file.
         here = listed(self.read("has files git would not list against the new base",
                                 "diff", "--name-only", self.upstream, "HEAD"))
         lost = [name for name in before if name not in here]
         # The other side may have made the same change, so only a replay can tell a loss from it.
-        if lost:
+        if lost or fell:
             changes = self.replay_changes(last_commit)
             lost = [name for name in lost if name in changes]
         # A placement rule can make a resolution move a file, so a move is followed, not lost.
@@ -435,6 +432,13 @@ class Landing:
                 "git -C {w} diff {n} {b} -- {l}".format(
                     t=self.named, f="".join("\n  " + name for name in lost), n=now, b=then,
                     w=self.worktree, l=" ".join(lost)))
+        # What remains is less than the ticket built, so a person decides whether that is the ticket.
+        if fell:
+            raise self.die(
+                "{t} had {m} commit(s) before the rebase and has {l} on the new base. The new base "
+                "already holds the change of each commit that is gone, so nothing was lost. "
+                "Nothing was pushed, and the commits that remain did not Land. A person decides "
+                "what happens to {t}.".format(t=self.named, m=mine, l=landed))
 
     # Only options git 2.38 knows, because the image the script tests run in holds git 2.39.
     def replay_changes(self, last_commit):

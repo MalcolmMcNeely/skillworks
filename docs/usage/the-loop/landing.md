@@ -30,7 +30,9 @@ flowchart TD
    base does not hold its change, and git finds no path that it moved to. For a file that a
    resolution moved, the landing writes a `note` line that names the old path and the new path. A
    stop for a lost file names the commit the worktree holds now and the commit from before the
-   rebase, and gives a `git diff` of the two that changes nothing. It gives no reset.
+   rebase, and gives a `git diff` of the two that changes nothing. It gives no reset. Git leaves a
+   commit out when the new base already holds its whole change. Such a commit stops the landing too,
+   and the message says that nothing was lost. A person decides what happens to the ticket.
 4. **Resolve**, only when the rebase conflicts. The build Session is resumed to fix it. It is told
    that it wrote one side and the other side is a stranger's, so it argues for the other side before
    it drops a line of it. It gets the commits that landed meanwhile, and the ticket behind each one.
