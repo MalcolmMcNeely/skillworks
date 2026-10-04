@@ -115,8 +115,8 @@ A check a ticket asks for that no Session can run, so a person runs it after the
 of three things no Session has: a real device, such as a printer or a phone; a real outside account
 or service; or a person's eyes on the screen or the page. Nothing else is one. The Suite is never
 one, because the driver runs it, and a question to a person is never one, because it is a Choice.
-The Session names it and how to run it, the ticket still Lands, and the loop lists each one when it
-ends.
+A step that builds names it and how to run it, once, the ticket still Lands, and the loop lists
+each one when it ends.
 _Avoid_: Manual check, unchecked, owed check
 
 **Held**:
