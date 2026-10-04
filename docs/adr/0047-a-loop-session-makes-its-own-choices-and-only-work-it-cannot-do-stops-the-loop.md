@@ -73,3 +73,8 @@ say how many steps ended Blocked, how many Choices were made, and what a Nudge g
 
 Nothing shows that a Session writes each line when it should. The lines are the Session's own word,
 as a review's heading is, and the Suite stays the gate.
+
+_The parts that let every Session make a Choice, and that have Finishing tell a fault in a `CHOSE`
+line, are superseded by
+[ADR 0048](0048-only-a-step-that-builds-makes-a-choice-and-a-departure-is-listed-first.md). Only a
+step that builds makes a Choice, and a fault Finishing tells is a Departure. The rest stands._
