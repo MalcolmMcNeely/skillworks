@@ -1327,6 +1327,59 @@ def test_a_stop_for_a_lost_file_never_says_to_reset(repo, runner):
     assert "reset" not in report(ran) and "ORIG_HEAD" not in report(ran)
 
 
+def write(path, text):
+    Path(path).write_text(text, encoding="utf-8", newline="\n")
+
+
+# The ticket also changes work.txt, so git keeps its commit when the new base holds the rest.
+def given_the_other_side_made_the_same_change(repo, runner, theirs_end="five"):
+    given_the_suite_passes(runner)
+    given_the_tracker_answers(runner)
+    given_a_project(repo)
+    write(repo.work / "shared.txt", "one\ntwo\nthree\nfour\nfive\n")
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "A file both sides will change")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
+
+    other = repo.other_checkout()
+    write(other / "shared.txt", "one\nsame change\nthree\nfour\n{}\n".format(theirs_end))
+    git(other, "add", "-A")
+    git(other, "commit", "--quiet", "-m", "Somebody else got there first\n\nTicket: #164")
+    git(other, "push", "--quiet", "origin", repo.target)
+
+    write(repo.work / "shared.txt", "one\nsame change\nthree\nfour\nfive\n")
+    append(repo.work / "work.txt", "work")
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Do the work\n\nTicket: #167")
+
+
+def test_a_ticket_lands_when_the_new_base_already_holds_its_change_to_a_file(repo, runner):
+    given_the_other_side_made_the_same_change(repo, runner)
+
+    ran = run_land(runner, repo.work, 167)
+
+    assert (ran.status, target_of(repo)) == (0, head_of(repo))
+
+
+def test_a_ticket_lands_when_the_new_base_holds_its_change_and_one_more_in_that_file(
+        repo, runner):
+    given_the_other_side_made_the_same_change(repo, runner, theirs_end="their last line")
+
+    ran = run_land(runner, repo.work, 167)
+
+    assert (ran.status, target_of(repo)) == (0, head_of(repo))
+
+
+def test_a_git_that_turns_the_replay_down_stops_the_landing_and_names_git_2_38(repo, runner):
+    given_the_other_side_made_the_same_change(repo, runner)
+    runner.refuse("merge-tree", "error: unknown option `write-tree'")
+    base = target_of(repo)
+
+    ran = run_land(runner, repo.work, 167)
+
+    assert (ran.status, target_of(repo), "2.38" in report(ran)) == (1, base, True)
+
+
 def test_a_conflict_with_no_session_named_is_left_standing(repo, runner):
     given_the_suite_passes(runner)
     runner.stub("claude")

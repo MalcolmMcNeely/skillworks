@@ -412,6 +412,10 @@ class Landing:
         here = listed(self.read("has files git would not list against the new base",
                                 "diff", "--name-only", self.upstream, "HEAD"))
         lost = [name for name in before if name not in here]
+        # The other side may have made the same change, so only a replay can tell a loss from it.
+        if lost:
+            changes = self.replay_changes(last_commit)
+            lost = [name for name in lost if name in changes]
         if lost:
             # A reset would throw away the resolution and get back nothing, so the hint only reads.
             now = self.git("rev-parse", "--short", "HEAD").out.strip()
@@ -424,6 +428,27 @@ class Landing:
                 "git -C {w} diff {n} {b} -- {l}".format(
                     t=self.named, f="".join("\n  " + name for name in lost), n=now, b=then,
                     w=self.worktree, l=" ".join(lost)))
+
+    # Only options git 2.38 knows, because the image the script tests run in holds git 2.39.
+    def replay_changes(self, last_commit):
+        said = self.git("merge-tree", "--write-tree", "--name-only", self.upstream, last_commit)
+        lines = said.out.split("\n")
+        tree = lines[0].strip()
+        if said.status not in (0, 1) or not tree:
+            raise self.die(
+                "{t} could not tell lost work from work the new base already holds, because git "
+                "would not replay the ticket on the new base. That needs git 2.38 or later. "
+                "Nothing was pushed. git said:\n{g}".format(
+                    t=self.named, g=(said.out + said.err).rstrip("\n")))
+        conflicted = []
+        if said.status == 1:
+            for line in lines[1:]:
+                if not line:
+                    break
+                conflicted.append(line)
+        differs = listed(self.read("has files git would not list against the replay",
+                                   "diff", "--name-only", self.upstream, tree))
+        return set(differs) | set(conflicted)
 
     def rebase_onto_target(self, base):
         mine = self.read("has commits git would not count against its base",

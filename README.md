@@ -116,8 +116,9 @@ Skillworks is built this way. Its specs and tickets are its
 
 ### Set up the Plugin
 
-You need `git`, `claude` and `uv` on your `PATH`, and `gh` logged in if your specs live in GitHub
-Issues. Your repo needs an `origin` remote. Clone Skillworks once, anywhere on your machine:
+You need `git` 2.38 or later, `claude` and `uv` on your `PATH`, and `gh` logged in if your specs
+live in GitHub Issues. Your repo needs an `origin` remote. Clone Skillworks once, anywhere on your
+machine:
 
 ```
 git clone https://github.com/MalcolmMcNeely/skillworks.git

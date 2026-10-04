@@ -9,7 +9,8 @@ newer Seed and keeps your team's edits.
 
 You need these on your machine:
 
-- `git`, with a `user.email`. The files Tracker claims each ticket in that name.
+- `git` 2.38 or later, with a `user.email`. The files Tracker claims each ticket in that name. The
+  landing needs 2.38 to tell lost work from work the new base already holds.
 - `gh`, logged in, with the GitHub Tracker only. Check with `gh auth status`.
 - `claude` on your `PATH`. The loop starts a Session with it for each step.
 - `uv` on your `PATH`. The loop's scripts are Python and run under it.
