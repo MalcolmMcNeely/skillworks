@@ -66,6 +66,15 @@ Two things are out of scope, because reporting them makes the axis noise:
 
 Where a criterion is deliberately left for later, the ticket says so. Quote that line rather than reporting the gap.
 
+## Judging a Departure
+
+A build that meets two parts of the ticket or the spec that both name one point and disagree takes the stricter one, and writes a line that starts with `DEPARTS`, naming both parts and why. A build can misread a part, and take the looser one, or take a part that only touches the point. Where the caller hands over `DEPARTS` lines, judge each one:
+
+1. Do both parts really name the point? A part that only touches the point does not name it.
+2. Was the stricter one taken? Read the code and its tests, and not only the line.
+
+Where the rule did not hold, it is an **Asked for, built wrong** finding. It quotes the part the build should have kept, and it is fixed as any other finding is. Where the rule held, there is no finding.
+
 ## Fix what you find
 
 This axis edits the worktree, and it should. A finding you can fix, you fix here. The session that read the ticket against the change is the one that knows what is missing, so a criterion a few lines short is closed here rather than handed on.

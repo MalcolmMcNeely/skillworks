@@ -2837,6 +2837,10 @@ FIX_HANDED = (
     "holds it. Write a line that starts with `CHOSE`, `DEPARTS` or `HAND CHECK` only for a Choice, "
     "a Departure or a Hand check that is not below.")
 
+SPEC_HANDED = (
+    "The build wrote each `DEPARTS` line below for this ticket. Judge each one as your axis file "
+    "says under Judging a Departure.")
+
 A_CHOICE = "CHOSE the short name, because the glossary holds it."
 A_HAND_CHECK = "HAND CHECK open the page in a browser and read its heading."
 A_DEPARTURE = ("DEPARTS the ticket turns down a quantity below 1 and decision 5 leaves out a 0, so I "
@@ -3035,6 +3039,28 @@ def test_the_fix_is_handed_no_line_the_build_of_another_ticket_wrote(loop, runne
 
     fixed = prompt_asking(runner, "/skillworks:implement 169 --fix")
     assert fixed != "" and A_CHOICE not in fixed
+
+
+def test_the_spec_review_is_handed_the_departures_the_build_wrote(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).says["implement"] = "\n".join(
+        ("Built.", A_CHOICE, A_DEPARTURE, A_HAND_CHECK))
+
+    loop.run(SPEC)
+
+    assert prompt_asking(runner, "/skillworks:review-spec 168").endswith(
+        "\n\n## The build wrote these Departures\n\n" + SPEC_HANDED + "\n\n" + A_DEPARTURE + "\n")
+
+
+def test_the_standards_and_architecture_reviews_are_handed_no_departure(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).says["implement"] = "Built.\n" + A_DEPARTURE
+
+    loop.run(SPEC)
+
+    reviews = [prompt_asking(runner, "/skillworks:review-" + axis + " 168")
+               for axis in ("standards", "architecture")]
+    assert all(review != "" and A_DEPARTURE not in review for review in reviews)
 
 
 def test_the_reading_a_run_page_says_the_list_shows_each_line_once():

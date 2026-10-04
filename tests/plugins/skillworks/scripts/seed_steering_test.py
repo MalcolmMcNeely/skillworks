@@ -2004,6 +2004,16 @@ def test_each_axis_file_is_a_plain_file_and_no_skill(skill):
     assert not axis_text(skill).startswith("---")
 
 
+def test_the_spec_axis_judges_a_departure_and_a_broken_rule_is_asked_for_built_wrong():
+    judging = " ".join(section(axis_text("review-spec"), "Judging a Departure").split())
+
+    assert "`DEPARTS`" in judging
+    assert "Do both parts really name the point?" in judging
+    assert "Was the stricter one taken?" in judging
+    assert "Where the rule did not hold, it is an **Asked for, built wrong** finding" in judging
+    assert "Where the rule held, there is no finding" in judging
+
+
 def test_review_changes_holds_no_brief_or_binding_rule_of_its_own():
     text = skill_text("review-changes")
 

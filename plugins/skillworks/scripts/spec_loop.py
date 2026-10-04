@@ -135,6 +135,10 @@ FIX_HANDED = (
     "holds it. Write a line that starts with `CHOSE`, `DEPARTS` or `HAND CHECK` only for a Choice, "
     "a Departure or a Hand check that is not below.")
 
+SPEC_HANDED = (
+    "The build wrote each `DEPARTS` line below for this ticket. Judge each one as your axis file "
+    "says under Judging a Departure.")
+
 STEPS = (
     (Step("build", PLUGIN + "implement {} --stop-after-tests",
           "no-error command-loaded ticket-open tree-changed", False, told=TOLD_TO_BUILD),)
@@ -431,6 +435,12 @@ def in_words(names):
     return names[0] if len(names) == 1 else "{} and {}".format(", ".join(names[:-1]), names[-1])
 
 
+def handed(what, preface, lines):
+    if not lines:
+        return ""
+    return "\n\n## The build wrote these {}\n\n{}\n\n{}\n".format(what, preface, "\n".join(lines))
+
+
 def contradicts_said(verdict):
     return verdict.item + (": " + verdict.reason if verdict.reason else "")
 
@@ -612,6 +622,8 @@ class Loop:
         asked = self.asks(step, ticket) + SUITE_BY_COMMAND + "\n\n" + step.told
         if step.name == "finish":
             return asked + self.suite_report(), ""
+        if step.name == "spec":
+            return asked + self.build_departures(ticket), ""
         if step.name != "fix":
             return asked, ""
         reports, reason = self.review_reports(ticket)
@@ -628,11 +640,12 @@ class Loop:
 
     # Handed on, so the list at the end of the run shows a line the fix carries forward only once.
     def build_lines(self, ticket):
-        written_by_build = self.built.get(ticket, [])
-        if not written_by_build:
-            return ""
-        return "\n\n## The build wrote these lines\n\n{}\n\n{}\n".format(
-            FIX_HANDED, "\n".join(written_by_build))
+        return handed("lines", FIX_HANDED, self.built.get(ticket, []))
+
+    # The spec review alone judges whether the build kept to the rule for taking the stricter part.
+    def build_departures(self, ticket):
+        departures = [line for line in self.built.get(ticket, []) if line.startswith("DEPARTS")]
+        return handed("Departures", SPEC_HANDED, departures)
 
     # --- the checks ----------------------------------------------------------
 
