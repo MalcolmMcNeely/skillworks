@@ -947,6 +947,27 @@ def test_this_repos_tracker_docs_hold_the_seeds_files_tracker():
     assert files_tracker(ours) == files_tracker(seeded("issue-tracker.md"))
 
 
+READ_A_TICKET = "`gh issue view <number> --json number,title,state,labels,body,comments`"
+
+
+def ticket_reads(tracker):
+    return [line for line in tracker.splitlines() if "gh issue view <number>" in line]
+
+
+# With `--comments` and its output in a pipe, `gh` prints the comments and never the body.
+def test_the_issue_tracker_seed_reads_a_ticket_with_its_body_and_its_comments():
+    assert ticket_reads(seeded("issue-tracker.md")) == [
+        "- **Read an issue**: {}.".format(READ_A_TICKET),
+        "Run {}.".format(READ_A_TICKET),
+    ]
+
+
+def test_this_repos_tracker_docs_read_a_ticket_as_the_seed_does():
+    ours = (ROOT / "docs" / "agents" / "issue-tracker.md").read_text(encoding="utf-8")
+
+    assert ticket_reads(ours) == ticket_reads(seeded("issue-tracker.md"))
+
+
 def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
     to_tickets = (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8")
 
