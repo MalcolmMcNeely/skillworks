@@ -26,6 +26,14 @@ so a story done by a hand fix or by another spec counts as Done, and code from a
 what the spec ruled out is Contradicts. Unrequested work and two names for one idea come only from
 the spec's commits, and an item is listed only while it still stands on the Target branch.
 
+The drift check reads every `DEPARTS` line the spec's builds wrote, in this run and in any earlier run
+on the same spec. The script reads them from the Journal. A build writes a `DEPARTS` line when two
+parts of the ticket or the spec name one point and disagree, and it takes the stricter one. The drift
+check asks two things of each line: do both parts really name the point, and was the stricter one
+taken? Where the rule held, the part that lost gets Contradicts, so the loop stops at the end with the
+spec open. The Departure is the reason on that Verdict, and you mend the spec. Where the rule did not
+hold, the item gets the Verdict the code earns.
+
 When your team has a README Surface, the drift check reads the README on every spec, even a spec with
 no README item. The README Surface is the Surface headed `## The README` in
 `docs/agents/surfaces.md`, and its "Where it lives" gives the README's path. A link, path or command in

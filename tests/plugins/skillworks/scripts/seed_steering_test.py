@@ -2014,6 +2014,25 @@ def test_the_spec_axis_judges_a_departure_and_a_broken_rule_is_asked_for_built_w
     assert "Where the rule held, there is no finding" in judging
 
 
+def test_spec_drift_judges_a_departure_and_where_the_rule_held_the_part_that_lost_contradicts():
+    judging = " ".join(section(skill_text("spec-drift"), "Judging a Departure").split())
+
+    assert "`DEPARTS`" in judging
+    assert "Do both parts really name the point?" in judging
+    assert "Was the stricter one taken?" in judging
+    assert ("Where the rule held, the item for the part that lost gets **Contradicts**, and the "
+            "Departure is its one sentence of reason") in judging
+    assert "Where the rule did not hold, the item gets the Verdict the code earns" in judging
+
+
+def test_the_drift_check_page_says_a_departure_where_the_rule_held_keeps_the_spec_open():
+    page = " ".join(DRIFT_CHECK_PAGE.read_text(encoding="utf-8").split())
+
+    assert "The drift check reads every `DEPARTS` line the spec's builds wrote" in page
+    assert ("Where the rule held, the part that lost gets Contradicts, so the loop stops at the "
+            "end with the spec open") in page
+
+
 def test_review_changes_holds_no_brief_or_binding_rule_of_its_own():
     text = skill_text("review-changes")
 

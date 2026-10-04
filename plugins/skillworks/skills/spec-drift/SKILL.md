@@ -31,6 +31,15 @@ If `docs/agents/loop.json`, `docs/agents/issue-tracker.md`, `docs/agents/surface
 
 Under the spec loop, run no `git fetch` of your own, even where `docs/agents/issue-tracker.md` names one. The driver fetches the Target branch before it starts this Session, the `spec-commits` command in step 2 fetches it again, and a loop Session has no permission for a bare fetch.
 
+## Judging a Departure
+
+A build that meets two parts of the ticket or the spec that both name one point and disagree takes the stricter one, and writes a line that starts with `DEPARTS`, naming both parts and why. Where the caller hands over `DEPARTS` lines, judge each one:
+
+1. Do both parts really name the point? A part that only touches the point does not name it.
+2. Was the stricter one taken? Read the code and its tests, and not only the line.
+
+Where the rule held, the item for the part that lost gets **Contradicts**, and the Departure is its one sentence of reason. The spec rules two ways on that point, and only the developer can mend it. Where the rule did not hold, the item gets the Verdict the code earns, as any other item does.
+
 ## Process
 
 1. Read the spec in full, then every one of its tickets with how each was closed.
@@ -57,6 +66,8 @@ Under the spec loop, run no `git fetch` of your own, even where `docs/agents/iss
    Judge the Target branch as it stands, on `origin/<target>`. The spec's commits show where the work is, and the files on the Target branch decide the Verdict. Work that reached the Target branch another way, by a hand fix or by another spec, counts toward Done. Code from any source that does what the spec ruled out is Contradicts.
 
    Judge against the **spec**, not against the tickets. A ticket that drifted still passed its own criteria, which is exactly why this step exists. Testing Decisions get no Verdict, because the Suite already proves them.
+
+   Judge each `DEPARTS` line you were handed as Judging a Departure says.
 
 4. Give every Surface the spec names one Verdict, by its bold name. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each one the change touches, with what it has to say once the change Lands. Read each Surface on `origin/<target>`, at the path the spec gives or at its "Where it lives" in `docs/agents/surfaces.md`:
 

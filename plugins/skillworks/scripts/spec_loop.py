@@ -139,6 +139,10 @@ SPEC_HANDED = (
     "The build wrote each `DEPARTS` line below for this ticket. Judge each one as your axis file "
     "says under Judging a Departure.")
 
+DRIFT_HANDED = (
+    "A build of this spec wrote each `DEPARTS` line below, in this run or an earlier one. Judge each "
+    "one as the skill says under Judging a Departure.")
+
 STEPS = (
     (Step("build", PLUGIN + "implement {} --stop-after-tests",
           "no-error command-loaded ticket-open tree-changed", False, told=TOLD_TO_BUILD),)
@@ -435,10 +439,10 @@ def in_words(names):
     return names[0] if len(names) == 1 else "{} and {}".format(", ".join(names[:-1]), names[-1])
 
 
-def handed(what, preface, lines):
+def handed(heading, preface, lines):
     if not lines:
         return ""
-    return "\n\n## The build wrote these {}\n\n{}\n\n{}\n".format(what, preface, "\n".join(lines))
+    return "\n\n## {}\n\n{}\n\n{}\n".format(heading, preface, "\n".join(lines))
 
 
 def contradicts_said(verdict):
@@ -640,12 +644,22 @@ class Loop:
 
     # Handed on, so the list at the end of the run shows a line the fix carries forward only once.
     def build_lines(self, ticket):
-        return handed("lines", FIX_HANDED, self.built.get(ticket, []))
+        return handed("The build wrote these lines", FIX_HANDED, self.built.get(ticket, []))
 
     # The spec review alone judges whether the build kept to the rule for taking the stricter part.
     def build_departures(self, ticket):
         departures = [line for line in self.built.get(ticket, []) if line.startswith("DEPARTS")]
-        return handed("Departures", SPEC_HANDED, departures)
+        return handed("The build wrote these Departures", SPEC_HANDED, departures)
+
+    # Read from the Journal, so a Departure built in a run that stopped still keeps the spec open.
+    def spec_departures(self):
+        departures = []
+        if self.journal.is_file():
+            for line in listed(self.journal.read_text(encoding="utf-8")):
+                entry = json.loads(line)
+                if entry.get("step") == "build":
+                    departures += [d for d in entry.get("departures", []) if d not in departures]
+        return handed("The builds wrote these Departures", DRIFT_HANDED, departures)
 
     # --- the checks ----------------------------------------------------------
 
@@ -1343,13 +1357,13 @@ class Loop:
     # The Session records its work with the spec and changes nothing, so a tree it left changed stops.
     # Returned so the caller's stop can name the Denials that may be why nothing was recorded.
     def run_clean_session(self, named, what, prompt, recorded=None, told=TOLD_TO_JUDGE,
-                          nudge_tail=NUDGE_TAILS[TOLD_TO_JUDGE]):
+                          nudge_tail=NUDGE_TAILS[TOLD_TO_JUDGE], handed_on=""):
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened(named)
         if not self.job_worktree:
             raise stop("FAIL  the {} got no worktree to run in.".format(what))
 
-        ran = self.claude_p(prompt + "\n\n" + told)
+        ran = self.claude_p(prompt + "\n\n" + told + handed_on)
         result = self.log_dir / (named + ".json")
         reasons = self.log_dir / (named + ".err")
         written(reasons, ran.err)
@@ -1422,7 +1436,8 @@ class Loop:
             self.report_owed("new drift report" if asked else "drift report", "drift",
                              "drift-report.md"))
         result = self.run_clean_session(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
-            self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""), recorded)
+            self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""), recorded,
+            handed_on=self.spec_departures())
         return self.read_drift_report(named, asked, result)
 
     # The Tracker hands back the newest report, so a re-check that recorded none reads the first.

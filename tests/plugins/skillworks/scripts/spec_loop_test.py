@@ -2841,6 +2841,10 @@ SPEC_HANDED = (
     "The build wrote each `DEPARTS` line below for this ticket. Judge each one as your axis file "
     "says under Judging a Departure.")
 
+DRIFT_HANDED = (
+    "A build of this spec wrote each `DEPARTS` line below, in this run or an earlier one. Judge each "
+    "one as the skill says under Judging a Departure.")
+
 A_CHOICE = "CHOSE the short name, because the glossary holds it."
 A_HAND_CHECK = "HAND CHECK open the page in a browser and read its heading."
 A_DEPARTURE = ("DEPARTS the ticket turns down a quantity below 1 and decision 5 leaves out a 0, so I "
@@ -3061,6 +3065,49 @@ def test_the_standards_and_architecture_reviews_are_handed_no_departure(loop, ru
     reviews = [prompt_asking(runner, "/skillworks:review-" + axis + " 168")
                for axis in ("standards", "architecture")]
     assert all(review != "" and A_DEPARTURE not in review for review in reviews)
+
+
+ANOTHER_DEPARTURE = ("DEPARTS the ticket keeps the old column and decision 2 drops it, so I took "
+                     "decision 2's, the stricter.")
+
+
+def handed_departures(*departures):
+    return "\n\n## The builds wrote these Departures\n\n{}\n\n{}\n".format(
+        DRIFT_HANDED, "\n".join(departures))
+
+
+def test_the_drift_check_is_handed_the_departures_every_build_of_the_spec_wrote_and_no_other_steps_lines(
+        loop, runner):
+    tracker = given_the_tracker_holds(loop, TWO_OPEN_TICKETS)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["implement"] = "Built.\n" + A_DEPARTURE
+    given_a_spec_axis_that_says(sessions, "DEPARTS the spec review would have taken the looser.")
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "169")
+    sessions.then[FINISH] = all_of(
+        committed(loop.runner), closed(tracker),
+        lambda: sessions.says.update({"implement": "Built.\n" + ANOTHER_DEPARTURE}))
+
+    loop.run(SPEC)
+
+    assert prompts_asking(runner, "/skillworks:spec-drift")[0].endswith(
+        handed_departures(A_DEPARTURE, ANOTHER_DEPARTURE))
+
+
+def test_a_departure_a_build_wrote_in_an_earlier_run_on_the_spec_reaches_the_drift_check(
+        loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.says["implement"] = "Built.\n" + A_DEPARTURE
+    sessions.says["review-spec"] = A_BLOCKED
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    loop.run(SPEC)
+    sessions.says["implement"] = "Built."
+    del sessions.says["review-spec"]
+
+    loop.run(SPEC)
+
+    assert prompts_asking(runner, "/skillworks:spec-drift")[0].endswith(
+        handed_departures(A_DEPARTURE))
 
 
 def test_the_reading_a_run_page_says_the_list_shows_each_line_once():
