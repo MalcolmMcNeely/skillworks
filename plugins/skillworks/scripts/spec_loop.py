@@ -153,12 +153,27 @@ NUDGED_BY = ("axis-reported", "tree-changed", "new-commit", "ticket-trailer", "t
 # Enough for a Session that stopped short, and few enough that a stuck one stops where it can be read.
 NUDGES = 2
 
-NUDGE_TAIL = (
+NUDGE_BACKGROUND = (
     "Any command you left in the background was stopped when your last turn ended, so its output "
-    "is not complete. Run it again in the foreground.\n"
-    "Nobody will answer a question. If you put a choice to a person, make it yourself, within "
-    "what this step allows, write a `CHOSE` line, and do what is owed. Begin your answer with a "
-    "line that starts with `BLOCKED` only when you cannot do the work.\n")
+    "is not complete. Run it again in the foreground.\n")
+
+NUDGE_BLOCKED = ("Begin your answer with a line that starts with `BLOCKED` only when you cannot do "
+                 "the work.\n")
+
+# The tail follows the words the step was told, so a Nudge never invites a Choice from a judge.
+NUDGE_TAILS = {
+    TOLD_TO_BUILD: NUDGE_BACKGROUND + (
+        "Nobody will answer a question. If you put a choice to a person, make it yourself, within "
+        "what this step allows, write a `CHOSE` line, and do what is owed. ") + NUDGE_BLOCKED,
+    TOLD_TO_JUDGE: NUDGE_BACKGROUND + (
+        "Nobody will answer a question. If you put a choice to a person, report it as a finding, "
+        "or, where your step is a check, give the Verdict, and do what is owed. Write no line that "
+        "starts with `CHOSE`, `DEPARTS` or `HAND CHECK`. ") + NUDGE_BLOCKED,
+    TOLD_TO_FINISH: NUDGE_BACKGROUND + (
+        "Nobody will answer a question. A question the ticket puts to a person never keeps the "
+        "ticket open: the build answered it, so close the ticket, with the question and the "
+        "build's answer in the Closing note, and do what is owed. ") + NUDGE_BLOCKED,
+}
 
 # The command keeps Proofs the driver reads, so the Suite step after runs only what changed.
 SUITE_BY_COMMAND = (
@@ -809,7 +824,7 @@ class Loop:
             self.say("NUDGE {} {:<13}{} of {}, failed {}".format(
                 self.named(ticket), step.name, nudge, NUDGES, " ".join(failed)))
             ran = self.claude_p("".join(owed(self.tracker, ticket, step, check)
-                                        for check in failed) + NUDGE_TAIL,
+                                        for check in failed) + NUDGE_TAILS[step.told],
                                 "--resume", field(held, "session_id"), ticket=ticket)
             appended(reasons, ran.err)
 
@@ -951,7 +966,7 @@ class Loop:
         result = self.run_clean_session(
             "cut", "Cut", self.cut_asks(),
             Recorded(CUT_RECORDED, lambda: self.tracker.tickets(self.spec), self.cut_owed()),
-            TOLD_TO_BUILD + CUT_UNATTENDED)
+            TOLD_TO_BUILD + CUT_UNATTENDED, NUDGE_TAILS[TOLD_TO_BUILD])
         shown = str(field(result, "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
@@ -1294,7 +1309,8 @@ class Loop:
 
     # The Session records its work with the spec and changes nothing, so a tree it left changed stops.
     # Returned so the caller's stop can name the Denials that may be why nothing was recorded.
-    def run_clean_session(self, named, what, prompt, recorded=None, told=TOLD_TO_JUDGE):
+    def run_clean_session(self, named, what, prompt, recorded=None, told=TOLD_TO_JUDGE,
+                          nudge_tail=NUDGE_TAILS[TOLD_TO_JUDGE]):
         # The main checkout was never pulled, so only a fresh worktree holds the finished work.
         self.job_worktree = self.opened(named)
         if not self.job_worktree:
@@ -1326,7 +1342,7 @@ class Loop:
             nudge += 1
             self.say("NUDGE spec {} {:<13}{} of {}, failed {}".format(
                 self.spec_named(), named, nudge, NUDGES, recorded.check))
-            ran = self.claude_p(recorded.owed + NUDGE_TAIL, "--resume", field(result, "session_id"))
+            ran = self.claude_p(recorded.owed + nudge_tail, "--resume", field(result, "session_id"))
             appended(reasons, ran.err)
 
         if self.tree_of_job():

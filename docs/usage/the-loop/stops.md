@@ -22,11 +22,19 @@ flowchart TD
 
 **A Nudge.** A Session can stop before its work is done: no report written, nothing committed, the
 ticket still open. The script then resumes that same Session and names what is still owed, so it
-carries on with what it knows. The Nudge also says that nobody will answer a question. A Session that
-put a choice to a person makes that Choice itself, within what its step allows, and writes a `CHOSE`
-line. Two Nudges are the limit. A step that still owes work after them stops the loop. A Session that
-could not run at all, such as one that ended in an error or never loaded its command, gets no Nudge.
-It stops the loop at once.
+carries on with what it knows. The Nudge also says that nobody will answer a question, and what to do
+with a choice the Session put to a person. That part follows the kind of step:
+
+- **A step that builds** (the build, `fix` and the Cut) makes that Choice itself, within what its
+  step allows, and writes a `CHOSE` line.
+- **A step that judges** (the three reviews, `sweep`, the drift check and the Name check) makes no
+  Choice. A review reports the choice as a finding, and a check gives the Verdict.
+- **Finishing** closes the ticket, with the question and the build's answer in the Closing note.
+
+Every Nudge also says that a command left in the background was stopped, and when to answer
+`BLOCKED`. Two Nudges are the limit. A step that still owes work after them stops the loop. A
+Session that could not run at all, such as one that ended in an error or never loaded its command,
+gets no Nudge. It stops the loop at once.
 
 **A Nudge for the Cut.** The Cut is Nudged too, when the Tracker holds no ticket after it. Its Nudge
 names what is missing and the command that records it, then ends as every Nudge does. Each Nudge

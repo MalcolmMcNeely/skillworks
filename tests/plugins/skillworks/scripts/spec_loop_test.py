@@ -1538,10 +1538,19 @@ def test_an_axis_that_edits_does_not_stop_the_loop(loop, runner):
 STOPPED_SHORT = "I will wait for the tests to finish."
 BACKGROUND_LINE = ("Any command you left in the background was stopped when your last turn "
                    "ended, so its output is not complete. Run it again in the foreground.")
+BLOCKED_SENTENCE = ("Begin your answer with a line that starts with `BLOCKED` only when you cannot "
+                    "do the work.")
 CHOICE_LINE = (
     "Nobody will answer a question. If you put a choice to a person, make it yourself, within "
-    "what this step allows, write a `CHOSE` line, and do what is owed. Begin your answer with a "
-    "line that starts with `BLOCKED` only when you cannot do the work.")
+    "what this step allows, write a `CHOSE` line, and do what is owed. " + BLOCKED_SENTENCE)
+FINDING_LINE = (
+    "Nobody will answer a question. If you put a choice to a person, report it as a finding, or, "
+    "where your step is a check, give the Verdict, and do what is owed. Write no line that starts "
+    "with `CHOSE`, `DEPARTS` or `HAND CHECK`. " + BLOCKED_SENTENCE)
+CLOSE_LINE = (
+    "Nobody will answer a question. A question the ticket puts to a person never keeps the ticket "
+    "open: the build answered it, so close the ticket, with the question and the build's answer "
+    "in the Closing note, and do what is owed. " + BLOCKED_SENTENCE)
 
 
 def given_an_axis_that_stops_short(sessions, axis, *nudged):
@@ -1672,7 +1681,7 @@ def test_a_nudge_runs_as_the_session_it_resumes_ran(loop, runner):
         assert nudge.where == first.where
 
 
-def test_a_nudge_names_what_is_owed_then_the_background_then_the_choice(loop, runner):
+def test_a_review_nudge_names_what_is_owed_then_the_background_then_the_finding(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_an_axis_that_stops_short(given_sessions_that_report(loop), "architecture")
 
@@ -1680,7 +1689,17 @@ def test_a_nudge_names_what_is_owed_then_the_background_then_the_choice(loop, ru
 
     asked = nudge_calls(runner)[0][2].split("\n")
     assert "## Architecture" in asked[0]
-    assert asked[1:] == [BACKGROUND_LINE, CHOICE_LINE, ""]
+    assert asked[1:] == [BACKGROUND_LINE, FINDING_LINE, ""]
+
+
+def test_a_review_nudge_asks_for_a_finding_and_never_invites_a_choice(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_an_axis_that_stops_short(given_sessions_that_report(loop), "spec")
+
+    loop.run(SPEC)
+
+    asked = nudge_calls(runner)[0][2]
+    assert "report it as a finding" in asked and "make it yourself" not in asked
 
 
 def test_the_log_has_one_nudge_line_for_each_nudge(loop):
@@ -1894,6 +1913,28 @@ def test_a_build_nudge_names_what_it_owes_then_the_background_then_the_choice(lo
     assert asked[1:] == [BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
+def test_a_build_nudge_still_tells_it_to_make_the_choice_and_write_a_chose_line(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).builds = False
+
+    loop.run(SPEC)
+
+    asked = nudge_calls(runner)[0][2]
+    assert "make it yourself" in asked and "write a `CHOSE` line" in asked
+
+
+def test_a_finish_nudge_tells_it_to_close_the_ticket_with_the_question_and_answer_in_the_note(
+        loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    asked = nudge_calls(runner)[0][2]
+    assert ("close the ticket, with the question and the build's answer in the Closing note"
+            in asked)
+
+
 def test_a_finish_nudge_names_each_failed_check_on_a_line_of_its_own(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
@@ -1904,7 +1945,7 @@ def test_a_finish_nudge_names_each_failed_check_on_a_line_of_its_own(loop, runne
     assert "not committed" in asked[0]
     assert "uncommitted changes" in asked[1]
     assert "#168 is still open" in asked[2]
-    assert asked[3:] == [BACKGROUND_LINE, CHOICE_LINE, ""]
+    assert asked[3:] == [BACKGROUND_LINE, CLOSE_LINE, ""]
 
 
 def test_a_finish_nudge_resumes_the_finish_sessions_own_id_and_not_the_build_session(
@@ -3935,7 +3976,14 @@ def test_a_drift_check_nudge_names_what_is_missing_and_the_command_that_records_
     drifted(loop, "Looks good to me.\n")
 
     assert nudge_calls(runner)[0][2].split("\n") == [
-        DRIFT_OWED, BACKGROUND_LINE, CHOICE_LINE, ""]
+        DRIFT_OWED, BACKGROUND_LINE, FINDING_LINE, ""]
+
+
+def test_a_drift_check_nudge_asks_for_the_verdict_and_never_invites_a_choice(loop, runner):
+    drifted(loop, "Looks good to me.\n")
+
+    asked = nudge_calls(runner)[0][2]
+    assert "give the Verdict" in asked and "make it yourself" not in asked
 
 
 def test_a_drift_check_nudge_resumes_the_check_s_own_session_in_its_worktree(loop, runner):
@@ -4002,7 +4050,14 @@ def test_a_name_check_nudge_names_what_is_missing_and_the_command_that_records_i
     named_back(loop, "Looks good to me.\n")
 
     assert nudge_calls(runner)[0][2].split("\n") == [
-        NAMES_OWED, BACKGROUND_LINE, CHOICE_LINE, ""]
+        NAMES_OWED, BACKGROUND_LINE, FINDING_LINE, ""]
+
+
+def test_a_name_check_nudge_asks_for_the_verdict_and_never_invites_a_choice(loop, runner):
+    named_back(loop, "Looks good to me.\n")
+
+    asked = nudge_calls(runner)[0][2]
+    assert "give the Verdict" in asked and "make it yourself" not in asked
 
 
 def test_a_name_check_that_records_its_report_after_a_nudge_lets_the_run_carry_on(loop):

@@ -141,11 +141,13 @@ too.
 
 ### What the driver already says
 
-The driver adds one paragraph to every Session it starts, and ends every Nudge the same way. The
-texts are `UNATTENDED` and `NUDGE_TAIL` in `spec_loop.py`, and
+The driver adds one paragraph to every Session it starts, and ends every Nudge, with words for the
+kind of step: one that builds, one that judges, or Finishing. The texts are `TOLD_TO_BUILD`,
+`TOLD_TO_JUDGE`, `TOLD_TO_FINISH` and `NUDGE_TAILS` in `spec_loop.py`, and
 [Nobody answers in the loop](usage/the-loop/sessions.md#nobody-answers-in-the-loop) gives them in
-plain words. They say that nobody will answer, and they ask for three kinds of line: a Choice
-(`CHOSE`), a Hand check (`HAND CHECK`), and Blocked (`BLOCKED`, only when the work cannot be done).
+plain words. They say that nobody will answer, and they name the kinds of line each step may write:
+a Choice (`CHOSE`), a Departure (`DEPARTS`), a Hand check (`HAND CHECK`), and Blocked (`BLOCKED`,
+only when the work cannot be done).
 
 So a loop skill:
 
@@ -153,7 +155,7 @@ So a loop skill:
 - Says which mode a rule is for, where the loop and a hand run differ.
 - Ends a step that cannot be done on the `BLOCKED` line. It does not end it by leaving a check to
   fail, because a failed check earns a Nudge, and the Nudge says to do what is owed.
-- Starts no other line with one of the three openings.
+- Starts no other line with one of the four openings.
 
 ### A loop Session
 
