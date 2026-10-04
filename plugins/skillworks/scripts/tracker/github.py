@@ -24,6 +24,8 @@ READY = "ready-for-agent"
 
 ROWS = '.[] | "\\(.number)\\t\\(.state)\\t\\(.title)"'
 
+FIRST_LINE = '\\(.body // "" | split("\\n")[0] | rtrimstr("\\r"))'
+
 
 def rows(said, columns=3):
     return [tuple((line.split("\t", columns - 1) + [""] * columns)[:columns])
@@ -42,7 +44,7 @@ class Filing:
     changed: bool
 
 
-# A ticket is found again by its title, and a blocker by the number it was filed as, before it.
+# A ticket is found again among its spec's tickets by its title alone, and a blocker by the number it was filed as, before it.
 def checked_set(tickets):
     seen = set()
     for ticket in tickets:
@@ -60,6 +62,11 @@ def checked_set(tickets):
 def spec_hash_line(title, body):
     digest = hashlib.sha256("{}\n{}".format(title, body).encode("utf-8")).hexdigest()
     return "<!-- skillworks-spec sha256:{} -->".format(digest)
+
+
+# Issues filed before a change to this format are never taken as loose, so the format is held as it is.
+def ticket_spec_line(spec):
+    return "<!-- skillworks-ticket spec:{} -->".format(spec)
 
 
 def spec_branch(spec):
@@ -197,7 +204,7 @@ class GitHub:
     def file_ticket(self, spec, title, body):
         return self.file_tickets(spec, [NewTicket(title, body)]).numbers[0]
 
-    # Matched by title, so a run after a failed one files nothing twice and adds only what is missing.
+    # Matched by title, and a loose ticket by its spec line too, so a rerun after a failure files nothing twice.
     def file_tickets(self, spec, tickets):
         checked_set(tickets)
         filing = Filing([], False)
@@ -224,8 +231,9 @@ class GitHub:
         if ran.status != 0:
             done = ("Already filed: {}.".format(", ".join("#" + n for n in filing.numbers))
                     if filing.numbers else "Nothing was filed.")
-            raise refusal("GitHub {}. {} Run it again: a second run finds each ticket by title and "
-                          "files nothing twice. gh said:\n{}".format(
+            raise refusal("GitHub {}. {} Run it again: a second run finds each ticket by its title "
+                          "under the spec, or by the spec its body's first line names, and files "
+                          "nothing twice. gh said:\n{}".format(
                               why, done, (ran.out + ran.err).rstrip("\n")))
         return ran.out
 
@@ -238,21 +246,22 @@ class GitHub:
         return self.gh("api", "--paginate", "repos/{}/issues?labels={}&state=open&per_page=100".format(
             self.repo, READY), "--jq", ".[] | select(.pull_request == null) | " + row)
 
-    # An issue filed by a run that failed before it was linked has the label and no parent yet.
+    # A run that failed before linking leaves the label and no parent, and the spec line keeps another spec's ticket out.
     def unlinked(self, spec, filing):
         said = self.checked(filing, "would not list the open tickets",
-                            self.open_ready('"\\(.number)\\t\\(.title)"'))
+                            self.open_ready('"\\(.number)\\t{}\\t\\(.title)"'.format(FIRST_LINE)))
+        marked = ticket_spec_line(spec)
         loose = {}
-        for number, title in (line.split("\t", 1) for line in listed(said) if "\t" in line):
-            if title not in loose and not self.checked(
+        for number, first, title in rows(said):
+            if first.strip() == marked and title not in loose and not self.checked(
                     filing, "would not say which spec #{} is under".format(number),
                     self.field(number, '.parent_issue_url // ""')).strip():
                 loose[title] = number
         return loose
 
     def filed(self, spec, ticket, filing):
-        made = self.gh("issue", "create", "--title", ticket.title, "--body", ticket.body,
-                       "--label", READY)
+        made = self.gh("issue", "create", "--title", ticket.title,
+                       "--body", ticket_spec_line(spec) + "\n\n" + ticket.body, "--label", READY)
         number = made.out.strip().rsplit("/", 1)[-1]
         self.checked(filing, "would not file the ticket {} under spec #{}".format(
             ticket.title, spec), made if is_a_number(number) else made._replace(status=1))
@@ -288,8 +297,7 @@ class GitHub:
 
     # Found by the hash line its body opens with, because a title is not unique and the failed run may never have heard its number.
     def file_spec(self, title, body, err):
-        found = self.open_ready('"\\(.number)\\t\\(.html_url)\\t\\(.body // "" | split("\\n")[0] | '
-                                'rtrimstr("\\r"))\\t\\(.title)"')
+        found = self.open_ready('"\\(.number)\\t\\(.html_url)\\t{}\\t\\(.title)"'.format(FIRST_LINE))
         if found.status != 0:
             raise refusal("GitHub would not list the open specs, so nothing was filed. Run "
                           "tracker-publish again. gh said:\n{}".format(

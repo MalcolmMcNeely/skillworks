@@ -691,7 +691,8 @@ def test_on_github_tickets_are_filed_blockers_first_each_a_labelled_sub_issue_wi
         ("TICKET: Read loop.json", "158", ["ready-for-agent"], []),
         ("TICKET: Close in the worktree", "158", ["ready-for-agent"], ["400"]),
         ("TICKET: Claim", "158", ["ready-for-agent"], ["400", "401"])]
-    assert github_tickets.issues["400"]["body"] == "## What to build\n\nRead it.\n"
+    assert github_tickets.issues["400"]["body"] == (
+        "<!-- skillworks-ticket spec:158 -->\n\n## What to build\n\nRead it.\n")
     assert all("status:" not in i["body"] for i in github_tickets.issues.values())
 
 
@@ -739,6 +740,37 @@ def test_on_github_a_second_run_after_a_full_one_changes_nothing_and_says_so(wri
     assert ran.out == "400\n401\n402\n"
     assert "nothing" in ran.err.lower()
     assert github_tickets.writes == []
+
+
+def test_on_github_a_loose_ticket_of_another_spec_with_the_title_is_not_linked_and_one_is_filed(
+        writer, github_tickets):
+    theirs = github_tickets.holds("TICKET: Read loop.json",
+                                  body="<!-- skillworks-ticket spec:157 -->\n\nTheirs.\n")
+
+    ran = writer.tickets("158", {"01-read-loop-json.md": ticket_file("TICKET: Read loop.json")})
+
+    assert ran.status == 0, said(ran)
+    assert (github_tickets.issues[theirs]["parent"], ran.out) == ("", "401\n")
+
+
+def test_on_github_a_loose_ticket_that_names_this_spec_is_linked_and_nothing_is_filed_twice(
+        writer, github_tickets):
+    ours = github_tickets.holds("TICKET: Read loop.json",
+                                body="<!-- skillworks-ticket spec:158 -->\n\nOurs.\n")
+
+    ran = writer.tickets("158", {"01-read-loop-json.md": ticket_file("TICKET: Read loop.json")})
+
+    assert ran.status == 0, said(ran)
+    assert (list(github_tickets.issues), github_tickets.issues[ours]["parent"]) == ([ours], "158")
+
+
+def test_on_github_a_loose_ticket_with_no_hidden_line_is_not_linked(writer, github_tickets):
+    unmarked = github_tickets.holds("TICKET: Read loop.json", body="Read it.\n")
+
+    ran = writer.tickets("158", {"01-read-loop-json.md": ticket_file("TICKET: Read loop.json")})
+
+    assert ran.status == 0, said(ran)
+    assert (github_tickets.issues[unmarked]["parent"], ran.out) == ("", "401\n")
 
 
 def test_the_command_runs_from_the_plugins_bin_folder(writer):

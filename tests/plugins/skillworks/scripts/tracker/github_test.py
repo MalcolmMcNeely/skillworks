@@ -197,9 +197,9 @@ class Issues:
         self.writes = []
         runner.stub("gh", does=self.answer)
 
-    def holds(self, title, parent="", state="open", blocked_by=()):
+    def holds(self, title, parent="", state="open", blocked_by=(), body=""):
         number = str(400 + len(self.issues))
-        self.issues[number] = {"title": title, "body": "", "labels": ["ready-for-agent"],
+        self.issues[number] = {"title": title, "body": body, "labels": ["ready-for-agent"],
                                "state": state, "parent": parent, "blocked_by": list(blocked_by)}
         return number
 
@@ -246,8 +246,12 @@ class Issues:
             number = called[2].split("/")[4]
             return Ran(0, "".join(n + "\n" for n in self.issues[number]["blocked_by"]), "")
         if called[:2] == ["api", "--paginate"] and "labels=ready-for-agent&state=open" in called[2]:
-            return Ran(0, "".join("{}\t{}\n".format(n, i["title"]) for n, i in self.issues.items()
-                                  if i["state"] == "open" and "ready-for-agent" in i["labels"]), "")
+            ready = [(n, i) for n, i in self.issues.items()
+                     if i["state"] == "open" and "ready-for-agent" in i["labels"]]
+            if ".body" in called[-1]:
+                return Ran(0, "".join("{}\t{}\t{}\n".format(n, i["body"].split("\n", 1)[0], i["title"])
+                                      for n, i in ready), "")
+            return Ran(0, "".join("{}\t{}\n".format(n, i["title"]) for n, i in ready), "")
         if asked.endswith("--jq .id"):
             return Ran(0, "9" + called[1].rsplit("/", 1)[-1] + "\n", "")
         if asked.endswith('--jq .parent_issue_url // ""'):
@@ -275,7 +279,8 @@ def test_a_set_is_filed_in_order_each_a_sub_issue_with_its_label_and_its_blocker
         ("TICKET: Read the file", "158", ["ready-for-agent"], []),
         ("TICKET: Check the file", "158", ["ready-for-agent"], []),
         ("TICKET: Write the report", "158", ["ready-for-agent"], ["400", "401"])]
-    assert issues.issues["400"]["body"] == "## What to build\n\nOne.\n"
+    assert issues.issues["400"]["body"] == (
+        "<!-- skillworks-ticket spec:158 -->\n\n## What to build\n\nOne.\n")
 
 
 def test_a_second_filing_after_a_full_one_changes_nothing_and_says_so(runner):
@@ -314,7 +319,8 @@ def test_a_second_filing_after_an_issue_was_filed_and_not_linked_links_it(runner
     issues = Issues(runner)
     tracker = github(runner)
     tracker.file_tickets("158", A_SET[:2])
-    issues.holds("TICKET: Write the report", blocked_by=["400"])
+    issues.holds("TICKET: Write the report", blocked_by=["400"],
+                 body="<!-- skillworks-ticket spec:158 -->\n\nThree.\n")
     issues.writes.clear()
 
     filing = tracker.file_tickets("158", A_SET)
@@ -384,6 +390,15 @@ def test_a_ticket_the_driver_files_is_a_set_of_one_under_the_spec(runner):
     assert number == "400"
     assert issues.issues["400"]["title"] == "TICKET: Build the Gaps"
     assert issues.issues["400"]["parent"] == "158"
+
+
+def test_a_ticket_the_driver_files_opens_with_the_line_that_names_its_spec(runner):
+    issues = Issues(runner)
+
+    github(runner).file_ticket("158", "TICKET: Build the Gaps", "## What to build\n\nS2.\n")
+
+    assert issues.issues["400"]["body"] == (
+        "<!-- skillworks-ticket spec:158 -->\n\n## What to build\n\nS2.\n")
 
 
 def test_a_ticket_the_driver_files_again_after_a_failure_is_not_filed_twice(runner):
