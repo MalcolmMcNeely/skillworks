@@ -1,6 +1,7 @@
 # The Session judges and this only reads, so every count in the fit is the same on every run.
 
 import io
+import json
 import os
 import re
 import sys
@@ -16,9 +17,15 @@ from stop import Stop, misuse, refusal
 from tracker.files import SPEC_FILE, SPECS, TICKETS, number_of
 from tracker.github import GH_QUIET
 
-USAGE = "usage: context-backfill check\n"
+USAGE = "usage: context-backfill check\n       context-backfill history\n"
 
 SCRATCH = ".context-backfill"
+FIT_FILE = "fit.md"
+LOG_FILE = "log.txt"
+RENAMES_FILE = "renames.md"
+TICKETS_FILE = "tickets.md"
+PULLS_FILE = "pull-requests.md"
+SPECS_FILE = "specs.md"
 
 # Characters no commit message holds, so the log splits cleanly.
 FIELD = "\x1f"
@@ -31,6 +38,18 @@ ISSUE_REFERENCE = re.compile(r"(?<![\w&/])#[0-9]+\b")
 COUNTS_QUERY = ("query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) "
                 "{ issues { totalCount } pullRequests { totalCount } } }")
 COUNTS = '.data.repository | "\\(.issues.totalCount)\\t\\(.pullRequests.totalCount)"'
+
+# Few calls for hundreds of tickets, and one query stays far below GitHub's node limit.
+BATCH = 50
+TICKET_FIELDS = ("number title body state url createdAt "
+                 "comments(first: 100) { nodes { author { login } body createdAt } }")
+NAMED_QUERY = ("query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { "
+               "%s } }")
+NAMED_ONE = ("t{0}: issueOrPullRequest(number: {0}) {{ __typename "
+             "... on Issue {{ {1} }} ... on PullRequest {{ {1} }} }}")
+PULL_FIELDS = "number,title,body,url,mergedAt,mergeCommit,comments,reviews"
+# gh stops at the limit it is handed, and a history has no fixed number of pull requests.
+EVERY_PULL = "1000000"
 
 PROJECT_FILES = {
     "package.json", "pyproject.toml", "setup.py", "go.mod", "Cargo.toml", "pom.xml", "build.gradle",
@@ -160,9 +179,8 @@ def github_tickets(runner, top):
                        "-F", "owner={owner}", "-F", "name={repo}", "--jq", COUNTS], top, GH_QUIET)
     counts = said.out.split()
     if said.status != 0 or len(counts) != 2:
-        reason = (said.err or said.out).strip().split("\n")[0] or "nothing"
         return ("none read, because gh said: {}. The history will be read from git "
-                "alone.".format(reason))
+                "alone.".format(gh_said(said)))
     return "{}, and {} pull requests".format(*counts)
 
 
@@ -219,17 +237,194 @@ def check(runner, where, out, wait):
         raise refusal("origin/{} could not be fetched, so there is no history to read. git said:\n{}".format(
             branch, said.getvalue().rstrip("\n")))
     ref = "origin/" + branch
-    lines = fit(runner, top, ref, tracker)
-    out.write("The fit of {}:\n".format(ref) + "".join("  " + line + "\n" for line in lines) + "\n")
+    said = "The fit of {}:\n".format(ref) + "".join("  " + line + "\n" for line in fit(runner, top, ref, tracker))
+    out.write(said + "\n")
     out.write(make_scratch_folder(top))
+    write_scratch(top, FIT_FILE, said)
+
+
+def write_scratch(top, name, text):
+    (Path(top) / SCRATCH).mkdir(exist_ok=True)
+    (Path(top) / SCRATCH / name).write_text(text, encoding="utf-8", newline="\n")
+
+
+# The passes read the fit, so a warning that costs them evidence goes where they will read it.
+def warn(top, out, warning):
+    line = "  Warning: " + warning + "\n"
+    path = Path(top) / SCRATCH / FIT_FILE
+    held = path.read_text(encoding="utf-8") if path.exists() else ""
+    if line not in held:
+        write_scratch(top, FIT_FILE, held + line)
+    out.write(line.lstrip())
+
+
+def write_log(runner, top, ref):
+    said = git(runner, top, "log", "--name-status",
+               "--format=commit %H%nAuthor: %aN <%aE>%nDate: %aI%n%n%B", ref)
+    if said.status != 0:
+        raise refusal("git would not read the log of {}. git said:\n{}".format(ref, (said.out + said.err).rstrip("\n")))
+    write_scratch(top, LOG_FILE, said.out)
+
+
+def write_renames(runner, top, ref):
+    said = git(runner, top, "log", "-M", "--diff-filter=R", "--name-status",
+               "--format=" + RECORD + "%h" + FIELD + "%as" + FIELD + "%s", ref)
+    lines = []
+    for record in said.out.split(RECORD)[1:]:
+        head, _, changes = record.partition("\n")
+        sha, day, subject = head.split(FIELD, 2)
+        for change in changes.splitlines():
+            parts = change.split("\t")
+            if len(parts) == 3 and parts[0].startswith("R"):
+                lines.append("- {} {} {} -> {}: {}\n".format(sha, day, parts[1], parts[2], subject))
+    write_scratch(top, RENAMES_FILE, "# Renames\n\n" + "".join(lines))
+
+
+# A file's text can hold a fence of its own, so the fence around it is longer than any it holds.
+def fenced(text):
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return fence + "\n" + text.rstrip("\n") + "\n" + fence + "\n"
+
+
+def write_specs(runner, top, ref):
+    said = git(runner, top, "log", "--reverse", "--no-renames", "--name-status",
+               "--format=" + RECORD + "%H" + FIELD + "%as" + FIELD + "%s", ref, "--", SPECS)
+    parts = ["# Specs, at every commit that touched them\n"]
+    for record in said.out.split(RECORD)[1:]:
+        head, _, changes = record.partition("\n")
+        sha, day, subject = head.split(FIELD, 2)
+        parts.append("\n## {} {} {}\n".format(sha[:12], day, subject))
+        for change in changes.splitlines():
+            status, _, path = change.partition("\t")
+            if not path:
+                continue
+            if status == "D":
+                parts.append("\n### {} (deleted)\n".format(path))
+                continue
+            text = git(runner, top, "show", "{}:{}".format(sha, path)).out
+            parts.append("\n### {} ({})\n\n{}".format(path, "added" if status == "A" else "changed", fenced(text)))
+    write_scratch(top, SPECS_FILE, "".join(parts))
+
+
+def named_numbers(runner, top, ref):
+    numbers = set()
+    for commit in commits_on(runner, top, ref):
+        numbers.update(int(found[1:]) for found in ISSUE_REFERENCE.findall(commit.message))
+    return sorted(numbers)
+
+
+def thread(entries):
+    parts = []
+    for when, login, kind, body in sorted(entries):
+        if body.strip():
+            parts.append("\n### {}{}, {}\n\n{}\n".format(login, kind, when, body.strip("\n")))
+    return "".join(parts)
+
+
+def login_of(entry):
+    return (entry.get("author") or {}).get("login") or "ghost"
+
+
+def pull_request_text(pull):
+    merged = (pull.get("mergeCommit") or {}).get("oid") or "an unknown commit"
+    entries = [(entry.get("createdAt") or "", login_of(entry), "", entry.get("body") or "")
+               for entry in pull.get("comments") or []]
+    entries += [(entry.get("submittedAt") or "", login_of(entry), ", a review that " + (entry.get("state") or "").lower(),
+                 entry.get("body") or "") for entry in pull.get("reviews") or []]
+    return "\n## #{} {}\nPull request, merged {} as {}\n{}\n\n{}\n{}".format(
+        pull["number"], pull.get("title") or "", pull.get("mergedAt") or "", merged, pull.get("url") or "",
+        (pull.get("body") or "").strip("\n"), thread(entries))
+
+
+def ticket_text(ticket):
+    kind = "Pull request" if ticket.get("__typename") == "PullRequest" else "Issue"
+    entries = [(entry.get("createdAt") or "", login_of(entry), "", entry.get("body") or "")
+               for entry in (ticket.get("comments") or {}).get("nodes") or []]
+    return "\n## #{} {}\n{}, {}, opened {}\n{}\n\n{}\n{}".format(
+        ticket["number"], ticket.get("title") or "", kind, (ticket.get("state") or "").lower(),
+        ticket.get("createdAt") or "", ticket.get("url") or "", (ticket.get("body") or "").strip("\n"),
+        thread(entries))
+
+
+def gh_said(said):
+    return (said.err or said.out).strip().split("\n")[0] or "nothing"
+
+
+def merged_pull_requests(runner, top, branch, out):
+    said = runner.run(["gh", "pr", "list", "--state", "merged", "--base", branch, "--limit", EVERY_PULL,
+                       "--json", PULL_FIELDS], top, GH_QUIET)
+    try:
+        pulls = json.loads(said.out) if said.status == 0 else None
+    except ValueError:
+        pulls = None
+    if pulls is None:
+        warn(top, out, "gh would not list the merged pull requests, so no pull request thread was "
+                       "read. gh said: {}".format(gh_said(said)))
+        return []
+    return sorted(pulls, key=lambda pull: pull["number"])
+
+
+def named_tickets(runner, top, numbers, out):
+    tickets = []
+    for start in range(0, len(numbers), BATCH):
+        batch = numbers[start:start + BATCH]
+        query = NAMED_QUERY % " ".join(NAMED_ONE.format(number, TICKET_FIELDS) for number in batch)
+        said = runner.run(["gh", "api", "graphql", "-f", "query=" + query,
+                           "-F", "owner={owner}", "-F", "name={repo}"], top, GH_QUIET)
+        try:
+            found = json.loads(said.out)["data"]["repository"] if said.status == 0 else None
+        except (ValueError, KeyError, TypeError):
+            found = None
+        if found is None:
+            warn(top, out, "gh would not read tickets #{} to #{}, so their threads were not read. "
+                           "gh said: {}".format(batch[0], batch[-1], gh_said(said)))
+            continue
+        # A number nobody filed, or one gh may not read, comes back empty.
+        tickets += [found["t{}".format(number)] for number in batch if found.get("t{}".format(number))]
+    return tickets
+
+
+def read_github(runner, top, ref, branch, out):
+    if runner.run(["gh", "auth", "status"], top, GH_QUIET).status != 0:
+        warn(top, out, "gh is not signed in, so no ticket or pull request thread was read, and the "
+                       "history comes from git alone. Run gh auth login, then run context-backfill "
+                       "history again.")
+        return
+    pulls = merged_pull_requests(runner, top, branch, out)
+    merged = {pull["number"] for pull in pulls}
+    numbers = [number for number in named_numbers(runner, top, ref) if number not in merged]
+    write_scratch(top, PULLS_FILE, "# Pull requests merged into {}\n{}".format(
+        branch, "".join(pull_request_text(pull) for pull in pulls)))
+    write_scratch(top, TICKETS_FILE, "# Tickets and pull requests the commits name\n{}".format(
+        "".join(ticket_text(ticket) for ticket in named_tickets(runner, top, numbers, out))))
+
+
+def history(runner, where, out):
+    top = top_of(runner, where)
+    refuse_part_of_a_history(runner, top)
+    tracker = tracker_setting(top)
+    branch = target_of(runner, top)
+    ref = "origin/" + branch
+    write_log(runner, top, ref)
+    write_renames(runner, top, ref)
+    if tracker == "github":
+        read_github(runner, top, ref, branch, out)
+    else:
+        write_specs(runner, top, ref)
+    out.write("The history of {} is in {}/.\n".format(ref, SCRATCH))
+
+
+COMMANDS = {"check": check,
+            "history": lambda runner, where, out, wait: history(runner, where, out)}
 
 
 def main(argv, runner, out, err, wait, where=None):
     where = where or os.getcwd()
     try:
-        if argv != ["check"]:
+        if len(argv) != 1 or argv[0] not in COMMANDS:
             raise misuse(USAGE)
-        check(runner, where, out, wait)
+        COMMANDS[argv[0]](runner, where, out, wait)
         return 0
     except Stop as stop:
         err.write(stop.said)

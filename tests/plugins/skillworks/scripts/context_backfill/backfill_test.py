@@ -8,10 +8,18 @@ from conftest import Ran, git, no_wait, run
 from context_backfill import backfill
 
 
-def check(runner, where):
+def command(name, runner, where):
     out, err = io.StringIO(), io.StringIO()
-    status = backfill.main(["check"], runner, out, err, no_wait, where.as_posix())
+    status = backfill.main([name], runner, out, err, no_wait, where.as_posix())
     return Ran(status, out.getvalue(), err.getvalue())
+
+
+def check(runner, where):
+    return command("check", runner, where)
+
+
+def history_of(runner, where):
+    return command("history", runner, where)
 
 
 class History:
@@ -31,6 +39,9 @@ class History:
     def commit(self, message, author, when, files):
         for name, text in files.items():
             path = self.work / name
+            if text is None:
+                path.unlink()
+                continue
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8", newline="\n")
         git(self.work, "add", "-A")
@@ -40,6 +51,9 @@ class History:
         done = subprocess.run(["git", "-C", self.work.as_posix(), "commit", "--quiet", "-m", message],
                               env=env, capture_output=True, encoding="utf-8", errors="replace")
         assert done.returncode == 0, done.stdout + done.stderr
+
+    def head(self):
+        return git(self.work, "rev-parse", "HEAD").strip()
 
     def push(self):
         git(self.work, "push", "--quiet", "origin", "main")
@@ -156,6 +170,92 @@ def test_a_gitignore_that_names_the_scratch_folder_gets_no_second_line(history, 
     check(runner, full)
 
     assert (full / ".gitignore").read_text(encoding="utf-8") == "bin/\n.context-backfill/\n"
+
+
+def comment(login, body, when):
+    return {"author": {"login": login}, "body": body, "createdAt": when}
+
+
+def ticket(kind, number, title, body, *thread):
+    return {"__typename": kind, "number": number, "title": title, "body": body, "state": "CLOSED",
+            "url": "https://github.invalid/owner/repo/issues/{}".format(number),
+            "createdAt": "2019-06-01T10:00:00Z", "comments": {"nodes": list(thread)}}
+
+
+NAMED_TICKETS = json.dumps({"data": {"repository": {
+    "t12": ticket("Issue", 12, "A crash on empty input", "It crashes on an empty file.",
+                  comment("ann", "An empty file is a valid file, so the parser has to read it.",
+                          "2019-06-02T10:00:00Z")),
+    "t14": ticket("PullRequest", 14, "A web front end", "People asked to read dates in a browser.",
+                  comment("bob", "TypeScript, because the team already writes it.", "2020-01-09T10:00:00Z")),
+}}})
+
+
+def merged_pull_requests(sha):
+    return json.dumps([{
+        "number": 20, "title": "Rename the parser to the reader", "body": "It reads more than dates now.",
+        "url": "https://github.invalid/owner/repo/pull/20", "mergedAt": "2022-02-01T10:00:00Z",
+        "mergeCommit": {"oid": sha},
+        "comments": [comment("cy", "Reader is the word the docs use.", "2022-01-31T10:00:00Z")],
+        "reviews": [{"author": {"login": "ann"}, "body": "Keep the old name out of the docs too.",
+                     "state": "APPROVED", "submittedAt": "2022-01-31T11:00:00Z"}],
+    }])
+
+
+def scratch(where, name):
+    return (where / ".context-backfill" / name).read_text(encoding="utf-8")
+
+
+def test_history_writes_the_log_the_named_tickets_the_merged_pull_requests_and_the_renames(history, runner):
+    history.commit("Rename the parser to the reader", BOB, "2022-02-01T10:00:00+00:00",
+                   {"app/parse.py": None, "app/reader.py": "pass  # empty\n"})
+    history.push()
+    full = history.clone("full")
+    runner.reply("auth status", "")
+    runner.reply("pr list", merged_pull_requests(history.head()))
+    runner.reply("issueOrPullRequest", NAMED_TICKETS)
+
+    history_of(runner, full)
+
+    assert ("The old one could not read a date with no year." in scratch(full, "log.txt"),
+            "An empty file is a valid file, so the parser has to read it." in scratch(full, "tickets.md"),
+            "TypeScript, because the team already writes it." in scratch(full, "tickets.md"),
+            "Reader is the word the docs use." in scratch(full, "pull-requests.md"),
+            "Keep the old name out of the docs too." in scratch(full, "pull-requests.md"),
+            "app/parse.py -> app/reader.py" in scratch(full, "renames.md")) == (True,) * 6
+
+
+def test_with_the_files_tracker_history_writes_the_specs_at_each_commit_and_calls_no_service(history, runner):
+    history.commit("Add the parser spec", ANN, "2022-01-01T10:00:00+00:00", {
+        ".specs/0001-parser/spec.md": "# Parser\n\nRead a date with no year.\n",
+        ".specs/0001-parser/tickets/01-read-dates.md": "# Read dates\n",
+    })
+    history.commit("Narrow the parser spec", BOB, "2022-01-05T10:00:00+00:00", {
+        ".specs/0001-parser/spec.md": "# Parser\n\nRead a date with no year, and never guess one.\n",
+    })
+    history.push()
+    full = history.clone("full", tracker="files")
+
+    history_of(runner, full)
+
+    specs = scratch(full, "specs.md")
+    assert ("Read a date with no year.\n" in specs,
+            "Read a date with no year, and never guess one." in specs,
+            "# Read dates" in specs,
+            runner.started("gh")) == (True, True, True, [])
+
+
+def test_a_gh_with_no_login_puts_the_warning_in_the_fit_and_still_writes_the_log_and_renames(history, runner):
+    full = history.clone("full")
+    runner.reply("totalCount", "41\t12\n")
+    runner.reply("auth status", "", status=1)
+    check(runner, full)
+
+    history_of(runner, full)
+
+    assert ("Warning: gh is not signed in" in scratch(full, "fit.md"),
+            "Add the parser" in scratch(full, "log.txt"),
+            scratch(full, "renames.md").startswith("# Renames")) == (True, True, True)
 
 
 def test_a_gitignore_with_no_last_newline_gets_the_line_on_a_line_of_its_own(history, runner):

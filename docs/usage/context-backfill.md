@@ -69,9 +69,34 @@ their reason.
 When `gh` cannot read the tickets, such as when it is not signed in, the Tickets line says so and
 the fit is printed from git alone.
 
-The check also creates `.context-backfill/`, and adds it to `.gitignore` when the line is missing.
+The check also creates `.context-backfill/`, adds it to `.gitignore` when the line is missing, and
+writes the fit into `.context-backfill/fit.md`.
+
+## What the first run reads
+
+Once the check passes, the command reads the history once into `.context-backfill/`. Every later
+pass of the first run reads these files, and none of them calls the Tracker, so the Tracker is read
+once per run.
+
+| File | What it holds |
+|---|---|
+| `log.txt` | The full log of the Target branch: each commit's message with its body, and the files it changed. |
+| `renames.md` | Each rename the log shows, with its commit and subject. |
+| `tickets.md` | With the GitHub Tracker: each ticket and pull request a commit message names, with its thread. |
+| `pull-requests.md` | With the GitHub Tracker: each pull request merged into the Target branch, with its merge commit, its thread and its reviews. |
+| `specs.md` | With the files Tracker: each file under `.specs/`, at every commit that touched it. |
+
+With the GitHub Tracker the command reads through `gh`. With the files Tracker it reads the specs
+through git and calls no service, so it works where the only remote is a bare repo.
+
+### A missing `gh` login
+
+When `gh auth status` fails, the command adds a warning to the fit in `fit.md` and goes on with git
+alone. The log and the renames are still written. A missing login costs the ticket and pull
+request threads, which are where most reasons were written at the time, and not the run. Sign in
+with `gh auth login` and run the command again to read them.
 
 ## What comes next
 
-The command shows the fit and stops. Later versions read the history, write the Answer sheet, and
-land what you accept. This page grows as they arrive.
+The command reads the history and stops. Later versions write the Answer sheet and land what you
+accept. This page grows as they arrive.

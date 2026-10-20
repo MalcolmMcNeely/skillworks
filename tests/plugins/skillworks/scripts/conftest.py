@@ -231,6 +231,7 @@ class RecordingRunner:
         self.real = Subprocess()
         self.made = []
         self.refusals = []
+        self.replies = []
         self.stubs = {}
         self.hidden = set()
 
@@ -255,6 +256,10 @@ class RecordingRunner:
     def refuse(self, mark, says, times=None):
         self.refusals.append([mark, says, times])
 
+    # One reply answers one operation with one shape, so a fake that serves several holds no logic.
+    def reply(self, mark, says, status=0):
+        self.replies.append((mark, says, status))
+
     def stub(self, name, says="", status=0, does=None):
         self.stubs[name] = (says, status, does)
 
@@ -269,6 +274,9 @@ class RecordingRunner:
             if times is not None:
                 refusal[2] = times - 1
             return Ran(1, "", says + "\n")
+        for mark, says, status in self.replies:
+            if mark in line:
+                return Ran(status, says, "")
         if args[0] in self.stubs:
             says, status, does = self.stubs[args[0]]
             if does is not None:

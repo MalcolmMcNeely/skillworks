@@ -1,6 +1,6 @@
 ---
 name: context-backfill
-description: Check that this clone holds the whole history, and show how much of it there is and how much of it carries a reason, before a Context backfill fills the glossary, the map and the ADRs.
+description: Check that this clone holds the whole history, show how much of it there is and how much of it carries a reason, and read it once into the scratch folder, before a Context backfill fills the glossary, the map and the ADRs.
 disable-model-invocation: true
 ---
 
@@ -31,5 +31,26 @@ If `docs/agents/loop.json` is missing, the check says so. Tell the person that `
 On a full clone the check prints the fit: the commits on the Target branch, the first and last dates, the authors, the share of commits with a body beyond the subject, the share that names a ticket, the tickets the Tracker can reach, and the code roots and languages. Show the person the fit as it was printed.
 
 A low share with a body or naming a ticket means few reasons were written down at the time, so the Answer sheet will hold more Questions and fewer Drafts.
+
+The check also writes the fit into `.context-backfill/fit.md`.
+
+## Read the history
+
+Once the check passes, run the history from the repo root:
+
+```bash
+context-backfill history
+```
+
+It writes the raw material every later pass reads into the scratch folder, once:
+
+- `log.txt`: the full log of the Target branch, with each message's body and the files each commit changed.
+- `renames.md`: each rename the log shows.
+- With the `github` Tracker, `tickets.md`: each ticket and pull request the commit messages name, with its thread. And `pull-requests.md`: each pull request merged into the Target branch, with its merge commit, its thread and its reviews.
+- With the `files` Tracker, `specs.md`: each file under `.specs/`, at every commit that touched it. No service is called.
+
+A later pass reads these files and never calls the Tracker itself, so the Tracker is read once per run.
+
+When `gh` is not signed in, the history warns, adds the warning to `fit.md`, and goes on with git alone. Show the person the warning. A missing login costs the ticket threads and not the run: `gh auth login`, then `context-backfill history` again, reads them.
 
 Then stop. Write nothing else, and change nothing in the repo.
