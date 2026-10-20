@@ -214,7 +214,8 @@ Draft you edited lands as you edited it.
 
 | Answer | Where it lands |
 |---|---|
-| `accept` on a word | `CONTEXT.md` at the repo root, in alphabetical order, with its `_Avoid_` line and no evidence. The file is created when there is none. |
+| `accept` on the map | `CONTEXT-MAP.md` at the repo root, as the sheet holds it. Two Steering files change with it, as the next section says. |
+| `accept` on a word | The glossary, in alphabetical order, with its `_Avoid_` line and no evidence. With one glossary, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, where the map says that context lives. The file is created when there is none. |
 | `accept` on a decision | A new ADR in `docs/adr/`, numbered one above the highest number there, with the Draft's title as its heading and its text as its body. |
 | `reject` | Nowhere. The Draft is dropped. |
 | `?` or blank | Nowhere yet. The Draft stays on the sheet. |
@@ -226,16 +227,32 @@ Recovered from history: commit 9c1d2e3, pull request #20
 ```
 
 That line tells a reader the ADR was recovered from the history and not settled in a grill, and
-where to check it. A word or an ADR already in the repo is never changed.
+where to check it. A word, a map or an ADR already in the repo is never changed.
+
+### What a map changes in Steering
+
+A map changes how the checks read the repo, so two Steering files change in the same commit as the
+map:
+
+- `docs/agents/rules/words.md` gets an empty banned-words list, written `[]`, for each context the
+  map names. The words rule wants a list for every context in the map, so a map with no lists would
+  turn the Suite red.
+- The Domain docs line in `CLAUDE.md` says multi-context, in the words setup writes for a repo with a
+  map. Every Session reads that line to find the glossaries.
+
+Nothing else in Steering changes. No word is ever added to a banned-words list: a word joins a list
+when the team decides the code must stop using it, and that is not the backfill's call.
 
 ### What it commits
 
 | Commit | Subject |
 |---|---|
-| One for the glossary | `Glossary: 2 words in CONTEXT.md` |
+| One for the map, with its Steering edits | `Glossary: the map in CONTEXT-MAP.md` |
+| One for each glossary file | `Glossary: 2 words in CONTEXT.md` |
 | One for each ADR | `ADR: <the ADR's title>` |
 
-Each commit holds only the file it names, so other work in your tree stays out. The run prints the
+The map comes first, so no commit leaves the repo with glossaries and no map to find them by. Each
+commit holds only the files it names, so other work in your tree stays out. The run prints the
 commits it made, then pulls with rebase and pushes to the Target branch.
 
 It then rewrites the sheet to hold only what is left: the `?` lines and the unanswered lines.
@@ -247,6 +264,9 @@ The run writes nothing when:
 - The sheet has no Answer on it. It tells you to mark the sheet.
 - An `Answer:` line holds a word that is not `accept`, `reject` or `?`.
 - The checkout is not on the Target branch.
+- An accepted word names a context that no map holds, on the sheet or in the repo.
+- An accepted map names no context, or setup has not written the words rule or the Domain docs
+  line the map has to change.
 
 ### The `?` lines
 

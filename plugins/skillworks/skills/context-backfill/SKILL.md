@@ -193,16 +193,17 @@ context-backfill apply
 
 It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the sheet, never the text a pass wrote, so a Draft the person edited lands as edited:
 
-- Each accepted word goes into `CONTEXT.md` at the repo root, in alphabetical order, with its `_Avoid_` line and never with its evidence. It creates `CONTEXT.md` when there is none.
+- An accepted map goes into `CONTEXT-MAP.md` at the repo root. In the same commit it adds an empty banned-words list, written `[]`, to `docs/agents/rules/words.md` for each context the map names, and switches the Domain docs line in `CLAUDE.md` to multi-context. It edits nothing else in Steering, and never adds a word to a banned-words list.
+- Each accepted word goes into the glossary, in alphabetical order, with its `_Avoid_` line and never with its evidence. Without a map, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, at the path the map gives it. It creates the file when there is none.
 - Each accepted decision goes into `docs/adr/`, numbered one above the highest number there, with the title as its heading and the Draft's text as its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
 - Each rejected Draft is dropped, and lands nowhere.
-- A word or an ADR already in the repo is never changed.
+- A word, a map or an ADR already in the repo is never changed.
 
-It makes one `Glossary:` commit for the glossary, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch.
+It makes one `Glossary:` commit for the map and its Steering edits, naming the map, then one `Glossary:` commit for each glossary file, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch.
 
 It then rewrites the sheet to hold only what is left: the `?` lines and the unanswered lines. It prints what is left.
 
-If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch, and when an accepted Draft needs a map. A refusal after the commits says the commits are made and names the command that sends them.
+If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch, when an accepted word names a context no map holds, and when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change. A refusal after the commits says the commits are made and names the command that sends them.
 
 ### Talk the `?` lines through
 

@@ -3,8 +3,9 @@
 import re
 from pathlib import Path
 
-from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, SHEET_FILE, WORD, bold_name, is_left,
+from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET_FILE, WORD, bold_name, is_left,
                                            read_sheet, references, what_is_left)
+from context_backfill.context_map import MAP_FILE, contexts_of, map_edits
 from steering.target_branch import LOOP_FILE, SPEC_MODE, target_setting
 from stop import refusal
 
@@ -41,12 +42,32 @@ def marked_sheet(top, scratch):
 
 
 def accepted(sheet):
-    taken = [entry for entry in sheet.entries if entry.is_draft and entry.answer == ACCEPT]
-    beyond = [entry.name for entry in taken if entry.letter not in (WORD, DECISION) or entry.context]
-    if beyond:
-        raise refusal("This version lands words and decisions into one glossary, and these Drafts need a "
-                      "map:\n{}\nNothing was written.".format("\n".join("  " + name for name in beyond)))
-    return taken
+    return [entry for entry in sheet.entries if entry.is_draft and entry.answer == ACCEPT]
+
+
+def map_of(top, taken):
+    held = Path(top) / MAP_FILE
+    if held.is_file():
+        return None, contexts_of(held.read_text(encoding="utf-8"))
+    entry = next((entry for entry in taken if entry.letter == MAP), None)
+    return entry, contexts_of(entry.text) if entry else {}
+
+
+def glossaries(top, taken, contexts):
+    by_name = {name.casefold(): (name, path) for name, path in contexts.items()}
+    groups, strays = {}, []
+    for entry in (entry for entry in taken if entry.letter == WORD):
+        title, path = by_name.get(entry.context.casefold(), (None, None)) if entry.context else (
+            Path(top).name, GLOSSARY_FILE)
+        if path is None:
+            strays.append(entry.name)
+            continue
+        groups.setdefault(path, (title, []))[1].append(entry)
+    if strays:
+        raise refusal("These Drafts name a context that no map in the repo or accepted on the sheet holds:\n{}\n"
+                      "Mend the Context: line, or accept the map, then run this again. Nothing was written.".format(
+                          "\n".join("  " + name for name in strays)))
+    return groups
 
 
 def target_of(runner, top):
@@ -81,18 +102,19 @@ def with_word(held, title, entry, name):
     return "\n".join(lines[:last + 1] + ["", entry] + lines[last + 1:]) + "\n"
 
 
-def land_words(top, words, out):
-    path = Path(top) / GLOSSARY_FILE
+def land_words(top, glossary, title, words, out):
+    path = Path(top) / glossary
     held = path.read_text(encoding="utf-8") if path.exists() else ""
     landed = 0
     for entry in words:
         name = bold_name(entry.text, entry.title)
         if name.casefold() in names_in(held):
-            out.write("{} is already in {}, so it was left as it is.\n".format(name, GLOSSARY_FILE))
+            out.write("{} is already in {}, so it was left as it is.\n".format(name, glossary))
             continue
-        held = with_word(held, Path(top).name, entry.text, name)
+        held = with_word(held, title, entry.text, name)
         landed += 1
     if landed:
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(held, encoding="utf-8", newline="\n")
     return landed
 
@@ -117,11 +139,11 @@ def land_decision(top, entry):
 
 
 # Staged and committed by path, so work elsewhere in the tree stays out of the commit.
-def commit(runner, top, path, subject):
-    for args in (("add", "--", path), ("commit", "--quiet", "-m", subject, "--", path)):
+def commit(runner, top, paths, subject):
+    for args in (("add", "--") + paths, ("commit", "--quiet", "-m", subject, "--") + paths):
         ran = git(runner, top, *args)
         if ran.status != 0:
-            raise refusal("git would not commit {}. git said:\n{}".format(path, said_by(ran)))
+            raise refusal("git would not commit {}. git said:\n{}".format(", ".join(paths), said_by(ran)))
     return "{} {}".format(git(runner, top, "rev-parse", "--short", "HEAD").out.strip(), subject)
 
 
@@ -142,13 +164,24 @@ def words_of(count):
 def apply(runner, top, scratch, out):
     path, sheet = marked_sheet(top, scratch)
     taken = accepted(sheet)
+    map_entry, contexts = map_of(top, taken)
+    groups = glossaries(top, taken, contexts)
+    edits = map_edits(Path(top), map_entry) if map_entry else {}
     branch = target_of(runner, top)
+    if any(entry.letter == MAP for entry in taken) and not map_entry:
+        out.write("{} is already there, so it was left as it is.\n".format(MAP_FILE))
     made = []
-    landed = land_words(top, [entry for entry in taken if entry.letter == WORD], out)
-    if landed:
-        made.append(commit(runner, top, GLOSSARY_FILE, "Glossary: {} in {}".format(words_of(landed), GLOSSARY_FILE)))
+    # The map and its Steering edits go first and together, so no commit holds a map the Suite cannot read.
+    if edits:
+        for name, text in edits.items():
+            (Path(top) / name).write_text(text, encoding="utf-8", newline="\n")
+        made.append(commit(runner, top, tuple(edits), "Glossary: the map in " + MAP_FILE))
+    for glossary, (title, words) in groups.items():
+        landed = land_words(top, glossary, title, words, out)
+        if landed:
+            made.append(commit(runner, top, (glossary,), "Glossary: {} in {}".format(words_of(landed), glossary)))
     for entry in (entry for entry in taken if entry.letter == DECISION):
-        made.append(commit(runner, top, land_decision(top, entry), "ADR: " + entry.title))
+        made.append(commit(runner, top, (land_decision(top, entry),), "ADR: " + entry.title))
     path.write_text(what_is_left(sheet), encoding="utf-8", newline="\n")
     left = [entry.name for entry in sheet.entries if is_left(entry)]
     if made:

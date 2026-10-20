@@ -62,7 +62,7 @@ class History:
         where = self.root / name
         run(["git", "clone", "--quiet", *flags, self.origin.as_uri(), where.as_posix()])
         loop = where / "docs" / "agents" / "loop.json"
-        loop.parent.mkdir(parents=True)
+        loop.parent.mkdir(parents=True, exist_ok=True)
         loop.write_text(json.dumps({"tracker": tracker, "target-branch": "main"}), encoding="utf-8")
         return where
 
@@ -463,6 +463,114 @@ def test_the_commits_carry_their_prefixes_leave_unstaged_work_out_and_reach_the_
         ["ADR: Read the log once", "Glossary: 2 words in CONTEXT.md"],
         ["CONTEXT.md", "docs/adr/0001-read-the-log-once.md"],
         "# App, half edited\n")
+
+
+CONTEXT_MAP = ("# Context Map\n\n## Contexts\n\n"
+               "- [Reader](./app/CONTEXT.md) — turns files into dates\n"
+               "- [Web](./web/CONTEXT.md) — shows the dates in a browser\n")
+
+CLAUDE_FILE = ("# App\n\n## Agent skills\n\n### Domain docs\n\n"
+               "Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.\n\n"
+               "### Rules\n\n@docs/agents/rules/words.md\n")
+
+WORDS_RULE = "# Words\n\nThe words that lost.\n\n```yaml\nbanned-words: {}\nskip-folders: []\n```\n"
+
+
+def the_map(answer="accept"):
+    return "### Draft M1: The map\nAnswer: {}\n{}\nEvidence:\n- code app/ and web/\n\n".format(answer, CONTEXT_MAP)
+
+
+def in_context(number, name, definition, answer, context, avoid=None):
+    return word(number, name, definition, answer, avoid).replace("\nAnswer: {}\n".format(answer),
+                                                                 "\nAnswer: {}\nContext: {}\n".format(answer, context), 1)
+
+
+@pytest.fixture
+def steered(history):
+    history.commit("Set up Skillworks", ANN, "2022-03-01T10:00:00+00:00", {
+        "CLAUDE.md": CLAUDE_FILE,
+        "docs/agents/rules/words.md": WORDS_RULE,
+        "docs/agents/rules/comments.md": "# Comments\n",
+    })
+    history.push()
+    return history
+
+
+@pytest.fixture
+def steered_landing(steered, landing):
+    git(landing, "pull", "--quiet", "origin", "main")
+    return landing
+
+
+def first_change(history, subject_start):
+    for line in git(history.origin, "log", "--reverse", "--format=%H %s", "main").splitlines():
+        sha, subject = line.split(" ", 1)
+        if subject.startswith(subject_start):
+            return subject, sorted(git(history.origin, "show", "--format=", "--name-only", sha).split())
+    return None
+
+
+def test_an_accepted_map_lands_with_an_empty_list_per_context_and_the_multi_context_line_in_one_commit(
+        steered, steered_landing, runner):
+    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
+
+    apply(runner, steered_landing)
+
+    assert (first_change(steered, "Glossary:"),
+            read(steered_landing, "CONTEXT-MAP.md"),
+            read(steered_landing, "docs/agents/rules/words.md").split("```yaml\n", 1)[1],
+            read(steered_landing, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0]) == (
+        ("Glossary: the map in CONTEXT-MAP.md",
+         ["CLAUDE.md", "CONTEXT-MAP.md", "docs/agents/rules/words.md"]),
+        CONTEXT_MAP,
+        "banned-words:\n  reader: []\n  web: []\nskip-folders: []\n```\n",
+        "Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context. "
+        "See `docs/agents/domain.md`.")
+
+
+def test_a_word_lands_in_a_new_glossary_for_the_context_its_context_line_names(steered_landing, runner):
+    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "accept", "web")))
+
+    apply(runner, steered_landing)
+
+    assert read(steered_landing, "web/CONTEXT.md") == "# Web\n\n## Language\n\n**Reader**:\nThe part that reads dates.\n"
+
+
+def test_the_map_commit_comes_before_the_glossary_commits(steered, steered_landing, runner):
+    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "accept",
+                                                             "reader")
+                                + in_context(2, "View", "One page of dates.", "accept", "web")))
+
+    apply(runner, steered_landing)
+
+    assert subjects(steered.origin, "main")[:3][::-1] == [
+        "Glossary: the map in CONTEXT-MAP.md", "Glossary: 1 word in app/CONTEXT.md", "Glossary: 1 word in web/CONTEXT.md"]
+
+
+def test_a_domain_docs_line_wrapped_by_hand_is_switched_whole(steered, steered_landing, runner):
+    wrapped = CLAUDE_FILE.replace("repo root. See", "repo root.\nSee")
+    (steered_landing / "CLAUDE.md").write_text(wrapped, encoding="utf-8", newline="\n")
+    git(steered_landing, "commit", "--quiet", "-am", "Wrap the Domain docs line")
+    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
+
+    apply(runner, steered_landing)
+
+    assert read(steered_landing, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0] == (
+        "Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context. "
+        "See `docs/agents/domain.md`.")
+
+
+def test_a_map_adds_no_word_to_a_list_and_keeps_the_lists_already_there(steered, steered_landing, runner):
+    rule = WORDS_RULE.replace("banned-words: {}\n", "banned-words:\n  reader:\n    - Parser\n")
+    (steered_landing / "docs/agents/rules/words.md").write_text(rule, encoding="utf-8", newline="\n")
+    git(steered_landing, "commit", "--quiet", "-am", "Ban Parser")
+    mark(steered_landing, sheet(words=the_map() + in_context(1, "View", "One page of dates.", "accept", "web",
+                                                             avoid="Screen")))
+
+    apply(runner, steered_landing)
+
+    assert read(steered_landing, "docs/agents/rules/words.md").split("```yaml\n", 1)[1] == (
+        "banned-words:\n  reader:\n    - Parser\n  web: []\nskip-folders: []\n```\n")
 
 
 def test_a_gitignore_with_no_last_newline_gets_the_line_on_a_line_of_its_own(history, runner):

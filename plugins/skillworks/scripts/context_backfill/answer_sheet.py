@@ -15,6 +15,8 @@ WORD = "W"
 DECISION = "D"
 MAP = "M"
 
+# Only these four headings start a section, because the map's own text holds ## headings of its own.
+SECTIONS = ("## Words", "## Decisions", "## Questions", "## Thin")
 HEADING = re.compile(r"^### (Draft|Question) ([A-Z])(\d+):[ \t]*(.*)$")
 EVIDENCE = "Evidence:"
 REF_WORDS = ("commit", "issue", "ticket", "pull", "pr", "spec")
@@ -83,7 +85,7 @@ def read_sheet(text):
     preamble, sections = [], []
     entry = None
     for line in text.splitlines():
-        if line.startswith("## "):
+        if line.rstrip() in SECTIONS:
             sections.append(Section([line], []))
             entry = None
         elif HEADING.match(line) and sections:
