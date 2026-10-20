@@ -1054,7 +1054,7 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
     assert "disable-model-invocation: true\n" in front
 
 
-HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop")
+HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill")
 
 VISIBLE_SKILLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
                   "diagnosing-bugs", "prototype", "unslop", "architecture-tests", "skillsmith")
@@ -1677,7 +1677,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 11
+    assert len(commands) == 12
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
