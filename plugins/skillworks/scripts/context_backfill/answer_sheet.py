@@ -16,7 +16,8 @@ DECISION = "D"
 MAP = "M"
 
 # Only these four headings start a section, because the map's own text holds ## headings of its own.
-SECTIONS = ("## Words", "## Decisions", "## Questions", "## Thin")
+DECISIONS = "## Decisions"
+SECTIONS = ("## Words", DECISIONS, "## Questions", "## Thin")
 HEADING = re.compile(r"^### (Draft|Question) ([A-Z])(\d+):[ \t]*(.*)$")
 EVIDENCE = "Evidence:"
 REF_WORDS = ("commit", "issue", "ticket", "pull", "pr", "spec")
@@ -102,17 +103,30 @@ def read_sheet(text):
 
 
 def is_left(entry):
-    return entry.answer in ("", ASK) if entry.is_draft else True
+    return entry.answer in ("", ASK)
+
+
+# A reason a person wrote is not yet an ADR: it goes back on the sheet as a Draft, to face the same Answer.
+def drafts_of_reasons(sheet):
+    numbers = [int(entry.number) for entry in sheet.entries if entry.is_draft and entry.letter == DECISION]
+    reasoned = [entry for entry in sheet.entries if not entry.is_draft and not is_left(entry)]
+    return [["### {} {}{}: {}".format(DRAFT, DECISION, max(numbers, default=0) + at, entry.title), "Answer:",
+             "{} {}".format(entry.text.rstrip(), entry.answer), EVIDENCE]
+            + ["- " + item for item in entry.evidence] + [""]
+            for at, entry in enumerate(reasoned, start=1)]
 
 
 # What stays is kept as it was written, so a person's edits to a Draft still waiting survive the rewrite.
 def what_is_left(sheet):
     parts = list(sheet.preamble)
+    drafts = drafts_of_reasons(sheet)
     for section in sheet.sections:
         parts += section.lines
         for entry in section.entries:
             if is_left(entry):
                 parts += entry.lines
+        if section.lines[0].rstrip() == DECISIONS:
+            parts += [line for draft in drafts for line in draft]
     return "\n".join(parts).rstrip("\n") + "\n"
 
 

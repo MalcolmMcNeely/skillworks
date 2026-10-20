@@ -3,8 +3,8 @@
 import re
 from pathlib import Path
 
-from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET_FILE, WORD, bold_name, is_left,
-                                           read_sheet, references, what_is_left)
+from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET_FILE, WORD, bold_name, read_sheet,
+                                           references, what_is_left)
 from context_backfill.context_map import MAP_FILE, contexts_of, map_edits
 from steering.target_branch import LOOP_FILE, SPEC_MODE, target_setting
 from stop import refusal
@@ -14,6 +14,9 @@ ADR_FOLDER = "docs/adr"
 LANGUAGE = "## Language"
 WORD_LINE = re.compile(r"^\*\*(.+?)\*\*:")
 ADR_NAME = re.compile(r"^(\d+)-.*\.md$")
+PART = "#### "
+STATUS = "Status: "
+SUPERSEDES = "This supersedes "
 
 
 def git(runner, where, *args):
@@ -128,14 +131,49 @@ def slug(title):
     return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "decision"
 
 
-def land_decision(top, entry):
+def land_adr(top, number, title, text, evidence):
     folder = Path(top) / ADR_FOLDER
     folder.mkdir(parents=True, exist_ok=True)
-    path = folder / "{:04d}-{}.md".format(next_number(folder), slug(entry.title))
-    refs = references(entry.evidence) or entry.evidence
-    path.write_text("# {}\n\n{}\n\nRecovered from history: {}\n".format(entry.title, entry.text, ", ".join(refs)),
+    path = folder / "{:04d}-{}.md".format(number, slug(title))
+    refs = references(evidence) or evidence
+    path.write_text("# {}\n\n{}\n\nRecovered from history: {}\n".format(title, text, ", ".join(refs)),
                     encoding="utf-8", newline="\n")
     return path.relative_to(top).as_posix()
+
+
+def parts_of(text):
+    parts = []
+    for line in text.split("\n"):
+        if line.startswith(PART):
+            parts.append((line[len(PART):].strip(), []))
+        elif parts:
+            parts[-1][1].append(line)
+    return [(title, "\n".join(lines).strip("\n")) for title, lines in parts]
+
+
+# The sheet is written before the numbers exist, so the numbers that tie the pair together are written here.
+def superseded(text, by):
+    kept = [line for line in text.split("\n") if not line.startswith(STATUS)]
+    return "{}superseded by ADR-{:04d}\n\n{}".format(STATUS, by, "\n".join(kept).strip("\n"))
+
+
+def superseding(text, old):
+    if text.startswith(SUPERSEDES):
+        text = text.split(". ", 1)[1] if ". " in text else ""
+    return "{}ADR {:04d}. {}".format(SUPERSEDES, old, text).rstrip()
+
+
+def land_decisions(runner, top, entry):
+    parts = parts_of(entry.text)
+    number = next_number(Path(top) / ADR_FOLDER)
+    if len(parts) != 2:
+        return [commit(runner, top, (land_adr(top, number, entry.title, entry.text, entry.evidence),),
+                       "ADR: " + entry.title)]
+    (old_title, old_text), (new_title, new_text) = parts
+    return [commit(runner, top, (land_adr(top, number, old_title, superseded(old_text, number + 1),
+                                          entry.evidence),), "ADR: " + old_title),
+            commit(runner, top, (land_adr(top, number + 1, new_title, superseding(new_text, number),
+                                          entry.evidence),), "ADR: " + new_title)]
 
 
 # Staged and committed by path, so work elsewhere in the tree stays out of the commit.
@@ -181,9 +219,10 @@ def apply(runner, top, scratch, out):
         if landed:
             made.append(commit(runner, top, (glossary,), "Glossary: {} in {}".format(words_of(landed), glossary)))
     for entry in (entry for entry in taken if entry.letter == DECISION):
-        made.append(commit(runner, top, (land_decision(top, entry),), "ADR: " + entry.title))
-    path.write_text(what_is_left(sheet), encoding="utf-8", newline="\n")
-    left = [entry.name for entry in sheet.entries if is_left(entry)]
+        made += land_decisions(runner, top, entry)
+    rewritten = what_is_left(sheet)
+    path.write_text(rewritten, encoding="utf-8", newline="\n")
+    left = [entry.name for entry in read_sheet(rewritten).entries]
     if made:
         out.write("Commits made:\n" + "".join("  " + line + "\n" for line in made))
     else:

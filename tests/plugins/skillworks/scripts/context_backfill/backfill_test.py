@@ -364,6 +364,40 @@ def test_an_accepted_adr_takes_the_next_number_and_ends_with_where_it_was_recove
         "Recovered from history: commit 9c1d2e3, pull request #20\n")
 
 
+REVERSAL = ("#### Keep the dates in SQLite\nStatus: superseded by the decision below\n"
+            "The dates live in SQLite, because one file is all a laptop needs.\n\n"
+            "#### Keep the dates in Postgres\n"
+            "This supersedes the decision above. The dates moved to Postgres, because two readers wrote at once.")
+
+
+def test_an_accepted_reversal_takes_two_numbers_in_a_row_the_old_marked_superseded_and_the_new_naming_it(
+        grown_landing, runner):
+    mark(grown_landing, sheet(decisions=decision(
+        1, "SQLite gave way to Postgres", REVERSAL, "accept",
+        'commit 4b5c6d7 "Add SQLite"', 'issue #31 "two readers lock the file"')))
+
+    apply(runner, grown_landing)
+
+    assert (read(grown_landing, "docs/adr/0003-keep-the-dates-in-sqlite.md"),
+            read(grown_landing, "docs/adr/0004-keep-the-dates-in-postgres.md")) == (
+        "# Keep the dates in SQLite\n\nStatus: superseded by ADR-0004\n\n"
+        "The dates live in SQLite, because one file is all a laptop needs.\n\n"
+        "Recovered from history: commit 4b5c6d7, issue #31\n",
+        "# Keep the dates in Postgres\n\n"
+        "This supersedes ADR 0003. The dates moved to Postgres, because two readers wrote at once.\n\n"
+        "Recovered from history: commit 4b5c6d7, issue #31\n")
+
+
+def test_each_adr_of_a_reversal_gets_its_own_commit(grown, grown_landing, runner):
+    mark(grown_landing, sheet(decisions=decision(
+        1, "SQLite gave way to Postgres", REVERSAL, "accept", 'commit 4b5c6d7 "Add SQLite"')))
+
+    apply(runner, grown_landing)
+
+    assert subjects(grown.origin, "main")[:2][::-1] == ["ADR: Keep the dates in SQLite",
+                                                        "ADR: Keep the dates in Postgres"]
+
+
 def test_an_existing_adr_is_unchanged(grown_landing, runner):
     mark(grown_landing, sheet(decisions=decision(
         1, "Read dates with no year", "A second record of it.", "accept", 'commit 1a2b3c4 "Add the parser"')))
@@ -420,6 +454,36 @@ def test_the_rewritten_sheet_holds_the_question_marks_and_the_unanswered_lines_a
         "### Draft D2: Read the log once",
         "### Question Q1: The store moved",
         "### Draft W3: Tidy",
+    ]
+
+
+def test_a_written_reason_comes_back_as_an_adr_draft_on_the_rewritten_sheet_and_lands_no_adr(landing, runner):
+    mark(landing, sheet(
+        decisions=decision(2, "Read the log once", "The log is read once per run.", "", 'commit 6f7a8b9 "Cache the log"'),
+        questions=question(1, "The store moved", "The store moved from app/ to store/ in 2021.",
+                           "Two apps came to read it, and app/ belonged to one of them.")))
+
+    apply(runner, landing)
+
+    assert (read(landing, ".context-backfill/answer-sheet.md").split("## Questions", 1)[0].split("\n\n### ")[-1],
+            (landing / "docs" / "adr").exists()) == (
+        "Draft D3: The store moved\nAnswer:\n"
+        "The store moved from app/ to store/ in 2021. Two apps came to read it, and app/ belonged to one of them.\n"
+        "Evidence:\n- commit 77aa001 \"Move the store\"\n\n",
+        False)
+
+
+def test_a_question_with_no_reason_stays_a_question_beside_a_reason_turned_into_a_draft(landing, runner):
+    mark(landing, sheet(questions=question(1, "The store moved", "The store moved in 2021.", "Two apps read it.")
+                        + question(2, "The cache went", "The cache was removed in 2022.", "?")
+                        + question(3, "The port changed", "The port moved to 8080.", "")))
+
+    apply(runner, landing)
+
+    assert headings(read(landing, ".context-backfill/answer-sheet.md")) == [
+        "### Draft D1: The store moved",
+        "### Question Q2: The cache went",
+        "### Question Q3: The port changed",
     ]
 
 

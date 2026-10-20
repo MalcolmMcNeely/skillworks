@@ -162,7 +162,25 @@ decision. The `Context:` line is there only with a map. The text between it and 
 text that will be written into the repo.
 
 A reversal, a decision that was later undone, is one Draft that holds two ADRs: the old one, marked
-superseded, and the new one that names it. One Answer covers both.
+superseded, and the new one that names it. One Answer covers both. Each ADR sits under a `####`
+heading, which is the title it lands with:
+
+```markdown
+### Draft D4: SQLite gave way to Postgres
+Answer:
+#### Keep the dates in SQLite
+Status: superseded by the decision below
+The dates live in SQLite, because one file is all a laptop needs.
+
+#### Keep the dates in Postgres
+This supersedes the decision above. The dates moved to Postgres, because two readers wrote at once.
+Evidence:
+- commit 4b5c6d7 "Add SQLite"
+- issue #31 "two readers lock the file"
+```
+
+The ADRs have no numbers yet, so the status line and the first sentence say "the decision below"
+and "the decision above". The second run puts the numbers in.
 
 ### Marking the sheet
 
@@ -229,6 +247,27 @@ Recovered from history: commit 9c1d2e3, pull request #20
 That line tells a reader the ADR was recovered from the history and not settled in a grill, and
 where to check it. A word, a map or an ADR already in the repo is never changed.
 
+### How a reversal lands
+
+An accepted reversal lands as two ADRs with two numbers in a row, each with its own `ADR:` commit.
+With `0002` the highest number in `docs/adr/`, the example above lands as:
+
+- `0003-keep-the-dates-in-sqlite.md`, the old decision, with the status line
+  `Status: superseded by ADR-0004`.
+- `0004-keep-the-dates-in-postgres.md`, the new decision, whose first sentence is
+  `This supersedes ADR 0003.`
+
+Both end with the same `Recovered from history:` line. A search for the old choice finds why it
+lost.
+
+### A written reason
+
+A reason you wrote on a Question's `Reason:` line lands nowhere in this run. It comes back on the
+rewritten sheet as a decision Draft under Decisions: the Question's text with your reason as its
+why, the same evidence, and a blank `Answer:` line. Mark it like any other Draft, so your reason
+faces the same Answer as every other find before it lands. A Question whose `Reason:` line is `?`
+or blank stays on the sheet as a Question.
+
 ### What a map changes in Steering
 
 A map changes how the checks read the repo, so two Steering files change in the same commit as the
@@ -255,7 +294,8 @@ The map comes first, so no commit leaves the repo with glossaries and no map to 
 commit holds only the files it names, so other work in your tree stays out. The run prints the
 commits it made, then pulls with rebase and pushes to the Target branch.
 
-It then rewrites the sheet to hold only what is left: the `?` lines and the unanswered lines.
+It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a
+decision Draft for each reason you wrote under a Question.
 
 ### What it refuses
 
