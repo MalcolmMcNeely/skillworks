@@ -1,6 +1,6 @@
 ---
 name: context-backfill
-description: Check that this clone holds the whole history, show how much of it there is and how much of it carries a reason, and read it once into the scratch folder, before a Context backfill fills the glossary, the map and the ADRs.
+description: Check that this clone holds the whole history, read it once into the scratch folder, and write every word, map and decision it shows as a Draft on an Answer sheet for a person to mark, before a Context backfill fills the glossary, the map and the ADRs.
 disable-model-invocation: true
 ---
 
@@ -11,6 +11,14 @@ A repo that was built before it had a glossary, a map or ADRs fills them once, f
 It takes no argument. The scratch folder `.context-backfill/` at the repo root is its only state, so what the folder holds says which run this is.
 
 A person is at the keyboard for every run of this skill, and it never runs in the spec loop. A paragraph a driver adds to the prompt, about a Choice, a `CHOSE` line or a `BLOCKED` line, is not this skill's own. Do not follow it. Ask the person instead.
+
+## Which run this is
+
+Look in `.context-backfill/` before anything else.
+
+- **No `answer-sheet.md`.** This is the first run. Go on from Check the clone.
+- **An `answer-sheet.md` with no Answer on it.** Every `Answer:` line and every `Reason:` line is blank, but for the map's `accept` the first run wrote from the talk, which is not an Answer the person marked. Tell the person one thing: mark the sheet. Do nothing else, and stop.
+- **An `answer-sheet.md` with at least one Answer.** This version of the skill does not apply a sheet yet. Tell the person so, and stop. Change nothing on the sheet.
 
 ## Check the clone
 
@@ -36,7 +44,7 @@ The check also writes the fit into `.context-backfill/fit.md`.
 
 ## Read the history
 
-Once the check passes, run the history from the repo root:
+Once the check passes, and when `.context-backfill/log.txt` is not there yet, run the history from the repo root:
 
 ```bash
 context-backfill history
@@ -49,8 +57,126 @@ It writes the raw material every later pass reads into the scratch folder, once:
 - With the `github` Tracker, `tickets.md`: each ticket and pull request the commit messages name, with its thread. And `pull-requests.md`: each pull request merged into the Target branch, with its merge commit, its thread and its reviews.
 - With the `files` Tracker, `specs.md`: each file under `.specs/`, at every commit that touched it. No service is called.
 
-A later pass reads these files and never calls the Tracker itself, so the Tracker is read once per run.
+A later pass reads these files and never calls the Tracker itself, so the Tracker is read once per run. When `log.txt` is already there, a run before this one read the history, so skip this step.
 
 When `gh` is not signed in, the history warns, adds the warning to `fit.md`, and goes on with git alone. Show the person the warning. A missing login costs the ticket threads and not the run: `gh auth login`, then `context-backfill history` again, reads them.
 
-Then stop. Write nothing else, and change nothing in the repo.
+## Run the passes
+
+Five passes run in this order. Each pass writes one file of its own in `.context-backfill/`:
+
+| Pass | Reads | Writes |
+|---|---|---|
+| The shape pass | the code, `fit.md`, `log.txt` | `shape.md` |
+| The words pass | the code, the history files, `shape.md` | `words.md` |
+| The decisions pass | the code, the history files, `shape.md` | `decisions.md` |
+| The lifetime pass | the history files, `shape.md`, `decisions.md` | `lifetime.md` |
+| The sheet pass | `shape.md`, `words.md`, `decisions.md`, `lifetime.md` | `answer-sheet.md` |
+
+The history files are the ones Read the history wrote. A rerun skips every pass whose file is already there, so a run that stopped part of the way picks up at the first pass with no file.
+
+Run each pass in a subagent of its own, through the Agent tool, one at a time and in order. Brief it with the pass's section below, the files it reads, the file it writes, and the Rules for every pass. Size each pass to finish inside the Smart zone, the part of a context window in which a model still keeps every instruction it was given. When the history is too long for one subagent to read inside it, split the pass by date range across subagents run one after another, and have the last one join their finds into the pass's one file.
+
+Write nothing in the repo during the passes. Every file a pass writes is in `.context-backfill/`.
+
+### Rules for every pass
+
+- Use the words Context backfill, Draft, Answer, Answer sheet and Question for those things, and no other words for them.
+- Never write a reason the history does not give. A why is a quote or a close paraphrase of a commit body, a ticket, a pull request or a thread, and it names its source. Where no source gives a why, say that no source gives one.
+- Quote each piece of evidence with its reference: a commit by its short hash and subject, a ticket or a pull request by its number, a spec by its path, and a code line by its path and line number.
+- Read an existing `CONTEXT.md`, `CONTEXT-MAP.md` and `docs/adr/` as evidence. Never offer again what they already hold, and never change them.
+
+### The shape pass
+
+Read the code roots, the folders, the type names, the package boundaries, and the words that recur in commit subjects. Say whether the repo is one context or several, and give the reason.
+
+Polysemy decides it: one word that means two things in two parts of the code calls for a map. Size alone does not, and neither does the number of folders. For a map, name each context, the folders it claims, and the words that mean two things, each with its two meanings and their evidence.
+
+Write the finding into `shape.md`, under `## Finding`.
+
+### The map question
+
+After the shape pass and before the words pass, stop once and ask the person in talk: one glossary, or a map with these contexts. Name the contexts the shape pass found, with the folders each claims, and the polysemy that calls for them. The person may rename, merge or split the contexts.
+
+Write the person's answer into `shape.md`, under `## Answer`, with each context, the folders it claims, and one sentence on what it is. Every later pass sorts each find by this answer.
+
+This is the one question of the first run. When `shape.md` already holds an `## Answer`, do not ask it again.
+
+### The words pass
+
+Offer a word Draft for a name that appears both in the code, as a type, a module or a folder, and in prose, as a commit subject, a ticket or a thread, with one meaning the code holds. Read commit subjects and tickets as hard as types: the words of a process are often in no type at all.
+
+Write each Draft as the glossary will hold it: the word in bold followed by a colon, then a definition of one or two sentences that says what the word is, not what it does. Add an `_Avoid_` line with the names the renames show lost to it, and leave the line out when no rename shows one. With a map, name the context that claims the word.
+
+Never offer a word that is already in a glossary of the repo. Read an existing glossary as evidence of the team's taste in words, and write each definition in that taste.
+
+Write the Drafts into `words.md`, each with its evidence and the number of signals that hold it.
+
+### The decisions pass
+
+Look for the signals of a decision: a dependency added or removed; a folder created, deleted or renamed; a store, a bus, an auth provider or a deployment target chosen; and a body or a thread that says why.
+
+Judge each change by the three tests of an ADR. All three must be true:
+
+1. **Hard to reverse.** Changing the choice later costs something real.
+2. **Surprising without context.** A reader who looks at the code would wonder why it was done that way.
+3. **The result of a real trade-off.** There were real alternatives, and one was picked for a reason.
+
+A change that passes the three tests and has a written reason becomes an ADR Draft: a title, then one to three sentences that say what was decided and why. A change that passes the three tests and has no written reason becomes a Question, and never a Draft: say what changed and when, with its evidence, and leave the why open.
+
+A change that fails a test never reaches the sheet. List it under `## Failed a test`, one line each: the change, its commit, and the test it fails.
+
+Write the Drafts, the Questions and that list into `decisions.md`, each Draft and each Question with its evidence and the number of signals that hold it.
+
+### The lifetime pass
+
+Find the decisions that were later undone. A reversal rarely says revert. Its signals are a dependency removed after it was added, a folder deleted or renamed back, a setting put back, and a later thread that names the old choice.
+
+A reversal becomes one Draft that holds two ADRs. The old decision has a status line that says it is superseded by the new one. The new decision's first sentence says it supersedes the old one. One Answer covers the pair. Where `decisions.md` holds a Draft for either side of the pair, the reversal Draft takes its place.
+
+A reversal with no written reason for either side is a Question, as in the decisions pass.
+
+Write the reversals into `lifetime.md`, each with its evidence, the number of signals that hold it, and the Draft in `decisions.md` it takes the place of.
+
+### The sheet pass
+
+Write the Answer sheet, `.context-backfill/answer-sheet.md`, in the shape below. A later run reads this shape, so keep to it exactly.
+
+The sheet has four sections, in this order: `## Words`, `## Decisions`, `## Questions` and `## Thin`.
+
+- Each Draft is a `###` heading that names its kind and number: `### Draft M1: <title>` for the map, `### Draft W<n>: <word>` for a word, and `### Draft D<n>: <title>` for a decision or a reversal. Number each kind from 1, through every section.
+- Under the heading comes an `Answer:` line, left blank for the person to mark. With a map, a `Context:` line follows it and names the context that claims the Draft. Then comes the Draft's text, exactly as it will be written into the repo. Then comes an `Evidence:` list that quotes each commit, ticket or code line with its reference.
+- A Question is a `### Question Q<n>: <title>` heading with a `Reason:` line in place of the `Answer:` line, left blank for the person to write the reason on, or `?`. Its text says what changed and when, and never why.
+- With a map, the map is the first Draft under Words, its `Answer:` already `accept` from the talk, and the person may change it. Its text is the map as `CONTEXT-MAP.md` will hold it, with each context, where it lives, and one sentence on what it is. Without a map, there is no map Draft.
+- A reversal's text holds both ADRs: under a `####` heading for each, the old decision first, with its status line, and the new decision second.
+- In each section, put the strongest evidence first: more signals, and a reason written at the time, before fewer.
+- A Draft with one signal and no written reason goes under Thin, and not under Words or Decisions.
+
+One word Draft, to fix the shape:
+
+```markdown
+### Draft W3: Verdict
+Answer:
+Context: loop
+**Verdict**:
+A judge's call written for the driver, and never for a person.
+_Avoid_: Mark, grade, status
+Evidence:
+- commit 3f2a9c1 "Rename Grade to Verdict: a grade is a number, a verdict is a call"
+- issue #41 "the driver reads the verdict line"
+```
+
+## End the first run
+
+When the sheet is written, tell the person:
+
+- Where the sheet is: `.context-backfill/answer-sheet.md`.
+- How many Drafts and Questions it holds, in each section.
+- How to mark it: `accept`, `reject` or `?` on each `Answer:` line, and a reason, or `?`, on each `Reason:` line. A Draft's text may be edited in place, and the text on the sheet is the text that lands.
+- That the sheet is a file, so they can hand it to the teammate who was there.
+- That they type this command again once the sheet is marked.
+- That deleting `.context-backfill/` starts over.
+
+Then list each change that failed a test, from `## Failed a test` in `decisions.md`, one line each, so the person knows what the skill saw and chose not to offer.
+
+Then stop. Change nothing in the repo.

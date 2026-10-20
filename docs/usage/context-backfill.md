@@ -96,7 +96,127 @@ alone. The log and the renames are still written. A missing login costs the tick
 request threads, which are where most reasons were written at the time, and not the run. Sign in
 with `gh auth login` and run the command again to read them.
 
+## The passes
+
+Once the history is read, the first run works through five passes, in order. Each runs in a
+subagent of its own and writes one file in `.context-backfill/`:
+
+| Pass | Writes | What it finds |
+|---|---|---|
+| Shape | `shape.md` | Whether the repo is one context or several, and why. |
+| Words | `words.md` | The words the code and the prose both use, with one meaning each. |
+| Decisions | `decisions.md` | The changes that pass the three tests of an ADR. |
+| Lifetime | `lifetime.md` | The decisions that were later undone. |
+| Sheet | `answer-sheet.md` | The Answer sheet, from the four files before it. |
+
+A run that stops part of the way, such as when you close the Session, picks up where it stopped.
+Each pass whose file is already there is skipped, so no pass is paid for twice.
+
+Nothing in the repo changes during the first run. Every file it writes is in the scratch folder.
+
+### The map question
+
+After the shape pass, the run stops once and asks you in talk: one glossary, or a map with these
+contexts. It names the contexts it found, the folders each one claims, and the words that mean two
+things in two parts of the code. A word with two meanings is what calls for a map. Size alone does
+not, and neither does the number of folders.
+
+Answer with one glossary, or with the map as it is, or rename, merge or split the contexts it
+named. Your answer goes into `shape.md`, and every later pass sorts its finds by it. This is the
+only question of the first run.
+
+## The Answer sheet
+
+The first run ends with one file to mark: `.context-backfill/answer-sheet.md`. Every word, map
+and decision the run found is on it as a Draft, with the evidence that holds it quoted. The run
+also lists the changes it saw and chose not to offer, one line each, with the test each one fails.
+
+The sheet has four sections:
+
+| Section | What it holds |
+|---|---|
+| Words | The map first, when you chose one, then a Draft for each word. |
+| Decisions | A Draft for each decision, and for each reversal. |
+| Questions | Each change the history shows but never explains. |
+| Thin | Each Draft with one signal and no reason written at the time. |
+
+In each section the strongest evidence comes first. You can stop reading where the evidence gets
+weak, and you lose nothing you would have accepted.
+
+Each Draft looks like this:
+
+```markdown
+### Draft W3: Verdict
+Answer:
+Context: loop
+**Verdict**:
+A judge's call written for the driver, and never for a person.
+_Avoid_: Mark, grade, status
+Evidence:
+- commit 3f2a9c1 "Rename Grade to Verdict: a grade is a number, a verdict is a call"
+- issue #41 "the driver reads the verdict line"
+```
+
+The heading names the kind and the number: `M` for the map, `W` for a word and `D` for a
+decision. The `Context:` line is there only with a map. The text between it and `Evidence:` is the
+text that will be written into the repo.
+
+A reversal, a decision that was later undone, is one Draft that holds two ADRs: the old one, marked
+superseded, and the new one that names it. One Answer covers both.
+
+### Marking the sheet
+
+Write one of three words on each `Answer:` line:
+
+| Answer | What it does |
+|---|---|
+| `accept` | The Draft is written into the repo. |
+| `reject` | The Draft is dropped. |
+| `?` | The Draft stays, and the next run talks it through with you. |
+
+A blank `Answer:` line is unanswered, and stays on the sheet. The map's `Answer:` line is already
+`accept` from the map question. Change it if you changed your mind.
+
+When a Draft is nearly right, edit its text in place and write `accept`. The text on the sheet is
+the text that lands, and not the text the run wrote.
+
+### Questions
+
+A Question is a change the history shows and never explains: the commits say what moved, and no
+commit body, ticket or thread says why. The backfill never writes a reason the history does not
+give, so it asks you instead.
+
+A Question has a `Reason:` line where a Draft has its `Answer:` line. When you know why the change
+was made, write the reason on that line, in a sentence or two. The next run turns it into a
+decision Draft, so your reason goes through the same three tests as every other find before it
+lands. When you do not know, write `?`, or leave the line blank.
+
+### Handing the sheet over
+
+The sheet is a file, so you can send it to the teammate who was there when a choice was made. They
+mark the lines they remember and write the reasons they know, with no Session and no Skillworks.
+Put the file back at `.context-backfill/answer-sheet.md` before the next run.
+
+### An unmarked sheet
+
+When you type the command and the sheet is there with no Answer and no reason on it, the command
+tells you to mark the sheet, and does nothing else. The map's `accept`, which the first run wrote
+from the map question, does not count as an Answer here. A run typed by habit never applies a
+blank sheet.
+
+## Starting over
+
+Delete the scratch folder:
+
+```
+rm -rf .context-backfill
+```
+
+The next run starts from the check, reads the history again, and asks the map question again.
+There is no flag for it. To run one pass again, delete only that pass's file, and the files of the
+passes after it.
+
 ## What comes next
 
-The command reads the history and stops. Later versions write the Answer sheet and land what you
-accept. This page grows as they arrive.
+This version of the command writes the Answer sheet and stops. A later version reads the marked
+sheet and lands what you accept. This page grows when it arrives.
