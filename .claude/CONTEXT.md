@@ -6,6 +6,12 @@ under, and the scripts that drive it.
 
 ## Language
 
+**Answer**:
+What a person says to one Draft: accept, reject or `?`. Accept writes it into the repo, reject
+drops it, and `?` leaves it where it is and puts it to talk on the next run. The skill reads each
+Answer and never guesses one.
+_Avoid_: Verdict, mark, decision, approval
+
 **Blocked**:
 A step or a check whose Session says, in the first line of its report, that it cannot do its work:
 a Denial it cannot get past, or a ticket with nothing left to build. A choice is never the cause,
@@ -71,6 +77,12 @@ may not fix, and tells it instead. Each is said in a line of its own, which the 
 every Choice, so a person reads it first. The loop goes on. A review never writes one: a change that
 differs from the ticket is a finding.
 _Avoid_: Deviation, override
+
+**Draft**:
+A word, a context map or an ADR the Context backfill found, with the evidence that holds it,
+waiting in the scratch folder for a person's Answer. It is never in the repo: an accepted Draft is
+written into the glossary or `docs/adr/` as a record, and the Draft goes.
+_Avoid_: Candidate, proposal, suggestion
 
 **Drift check**:
 The judge that gives each story, decision and Surface of a spec a Verdict once every ticket has
