@@ -225,8 +225,8 @@ blank sheet.
 ## The second run
 
 Type the command again once the sheet is marked. The run that finds at least one Answer on the
-sheet is the second run. Run it on the Target branch. It writes the text that is on the sheet, so a
-Draft you edited lands as you edited it.
+sheet is the second run. Run it on the Target branch, or on the default branch in `spec` mode. It
+writes the text that is on the sheet, so a Draft you edited lands as you edited it.
 
 ### What it writes
 
@@ -292,7 +292,21 @@ when the team decides the code must stop using it, and that is not the backfill'
 
 The map comes first, so no commit leaves the repo with glossaries and no map to find them by. Each
 commit holds only the files it names, so other work in your tree stays out. The run prints the
-commits it made, then pulls with rebase and pushes to the Target branch.
+commits it made, then pulls with rebase and pushes them.
+
+### Where the commits go
+
+`target-branch` in `docs/agents/loop.json` decides where the commits go:
+
+| `target-branch` | Where the commits go |
+|---|---|
+| A branch name, such as `main` | Straight onto that branch. No pull request is opened. |
+| `spec` | Onto a branch of their own, `spec/context-backfill`, cut from the default branch. The default branch is not touched. The first push opens a draft pull request from that branch to the default branch. |
+
+A protected default branch refuses a direct push, and `spec` mode is how a team works with one. That
+is why the commits never go to the default branch in `spec` mode. Every later apply, such as the one
+for an Answer you give in talk, goes to the same branch and opens no second pull request. Merge the
+pull request when you are ready for the words and ADRs to reach the default branch.
 
 It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a
 decision Draft for each reason you wrote under a Question.
@@ -303,7 +317,8 @@ The run writes nothing when:
 
 - The sheet has no Answer on it. It tells you to mark the sheet.
 - An `Answer:` line holds a word that is not `accept`, `reject` or `?`.
-- The checkout is not on the Target branch.
+- The checkout is not on the Target branch. In `spec` mode, the checkout is not on the default
+  branch or on `spec/context-backfill`.
 - An accepted word names a context that no map holds, on the sheet or in the repo.
 - An accepted map names no context, or setup has not written the words rule or the Domain docs
   line the map has to change.

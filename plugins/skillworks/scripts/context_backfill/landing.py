@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import NamedTuple, Optional
 
 from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET_FILE, WORD, bold_name, read_sheet,
                                            references, what_is_left)
@@ -17,6 +18,10 @@ ADR_NAME = re.compile(r"^(\d+)-.*\.md$")
 PART = "#### "
 STATUS = "Status: "
 SUPERSEDES = "This supersedes "
+SPEC_BRANCH = "spec/context-backfill"
+PULL_REQUEST_TITLE = "Context backfill"
+PULL_REQUEST_BODY = ("The words, the map and the ADRs Context backfill recovered from the history, as the Answer "
+                     "sheet accepted them.")
 
 
 def git(runner, where, *args):
@@ -73,16 +78,44 @@ def glossaries(top, taken, contexts):
     return groups
 
 
+class Landing(NamedTuple):
+    branch: str
+    here: str
+    default_branch: Optional[str] = None
+
+
+def default_of(runner, top):
+    found = git(runner, top, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+    if found.status != 0:
+        raise refusal("{} says spec, and origin names no default branch to cut {} from. Name it, then run "
+                      "this again:\n  git remote set-head origin --auto".format(LOOP_FILE, SPEC_BRANCH))
+    return found.out.strip().removeprefix("origin/")
+
+
 def target_of(runner, top):
     branch = target_setting(top)
-    if branch == SPEC_MODE:
-        raise refusal("{} says spec, and this version lands only on a named Target branch. Nothing was "
-                      "written.".format(LOOP_FILE))
     here = git(runner, top, "symbolic-ref", "--quiet", "--short", "HEAD").out.strip()
-    if here != branch:
-        raise refusal("The Target branch is {}, and this checkout is on {}. Switch to {}, then run this "
-                      "again. Nothing was written.".format(branch, here or "no branch", branch))
-    return branch
+    if branch != SPEC_MODE:
+        if here != branch:
+            raise refusal("The Target branch is {}, and this checkout is on {}. Switch to {}, then run this "
+                          "again. Nothing was written.".format(branch, here or "no branch", branch))
+        return Landing(branch, here)
+    default_branch = default_of(runner, top)
+    if here not in (default_branch, SPEC_BRANCH):
+        raise refusal("{} says spec, so the work goes on {}, cut from {}, and this checkout is on {}. Switch to "
+                      "{}, then run this again. Nothing was written.".format(
+                          LOOP_FILE, SPEC_BRANCH, default_branch, here or "no branch", default_branch))
+    return Landing(SPEC_BRANCH, here, default_branch)
+
+
+# A protected default branch refuses a direct push, so in spec mode the work goes on a branch of its own.
+def branch_off(runner, top, landing):
+    if landing.default_branch is None or landing.here == SPEC_BRANCH:
+        return
+    ran = git(runner, top, "switch", "--quiet", "-c", SPEC_BRANCH)
+    if ran.status != 0:
+        raise refusal("git would not make {}. git said:\n{}\nSwitch to it when it holds earlier backfill work, "
+                      "then run this again. Nothing was written.".format(SPEC_BRANCH, said_by(ran)))
 
 
 def names_in(held):
@@ -185,14 +218,34 @@ def commit(runner, top, paths, subject):
     return "{} {}".format(git(runner, top, "rev-parse", "--short", "HEAD").out.strip(), subject)
 
 
-def push(runner, top, branch):
-    for args in (("pull", "--quiet", "--rebase", "--autostash", "origin", branch),
-                 ("push", "--quiet", "origin", branch)):
+def on_origin(runner, top, branch):
+    return git(runner, top, "ls-remote", "--quiet", "--exit-code", "--heads", "origin", branch).status == 0
+
+
+def push(runner, top, landing, out):
+    branch = landing.branch
+    first_push = landing.default_branch is not None and not on_origin(runner, top, branch)
+    source = landing.default_branch if first_push else branch
+    for args in (("pull", "--quiet", "--rebase", "--autostash", "origin", source),
+                 ("push", "--quiet", "-u", "origin", branch)):
         ran = git(runner, top, *args)
         if ran.status != 0:
             raise refusal("The commits are made, and git would not send them to origin/{}. git said:\n{}\n"
-                          "Mend it, then run: git pull --rebase origin {} && git push origin {}".format(
-                              branch, said_by(ran), branch, branch))
+                          "Mend it, then run: git pull --rebase origin {} && git push -u origin {}".format(
+                              branch, said_by(ran), source, branch))
+    out.write("Pushed to origin/{}.\n".format(branch))
+    if first_push:
+        open_pull_request(runner, top, landing, out)
+
+
+def open_pull_request(runner, top, landing, out):
+    ran = runner.run(["gh", "pr", "create", "--draft", "--base", landing.default_branch, "--head", landing.branch,
+                      "--title", PULL_REQUEST_TITLE, "--body", PULL_REQUEST_BODY], top)
+    if ran.status != 0:
+        raise refusal("The commits are on origin/{}, and gh would not open the draft pull request. gh said:\n{}\n"
+                      "Mend it, then run: gh pr create --draft --base {} --head {}".format(
+                          landing.branch, said_by(ran), landing.default_branch, landing.branch))
+    out.write("Opened a draft pull request: {}\n".format(ran.out.strip()))
 
 
 def words_of(count):
@@ -205,7 +258,9 @@ def apply(runner, top, scratch, out):
     map_entry, contexts = map_of(top, taken)
     groups = glossaries(top, taken, contexts)
     edits = map_edits(Path(top), map_entry) if map_entry else {}
-    branch = target_of(runner, top)
+    landing = target_of(runner, top)
+    if taken:
+        branch_off(runner, top, landing)
     if any(entry.letter == MAP for entry in taken) and not map_entry:
         out.write("{} is already there, so it was left as it is.\n".format(MAP_FILE))
     made = []
@@ -229,5 +284,4 @@ def apply(runner, top, scratch, out):
         out.write("Nothing was accepted, so nothing was committed.\n")
     out.write("Left on the sheet: {}\n".format(len(left)) + "".join("  " + name + "\n" for name in left))
     if made:
-        push(runner, top, branch)
-        out.write("Pushed to origin/{}.\n".format(branch))
+        push(runner, top, landing, out)

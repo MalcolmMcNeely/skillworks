@@ -185,7 +185,7 @@ Then stop. Change nothing in the repo.
 
 ### Apply the sheet
 
-Run the apply from the repo root, on the Target branch:
+Run the apply from the repo root, on the Target branch. When `target-branch` is `spec`, run it on the default branch, or on `spec/context-backfill` once an earlier apply made it:
 
 ```bash
 context-backfill apply
@@ -201,11 +201,11 @@ It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the
 - Each rejected Draft is dropped, and lands nowhere.
 - A word, a map or an ADR already in the repo is never changed.
 
-It makes one `Glossary:` commit for the map and its Steering edits, naming the map, then one `Glossary:` commit for each glossary file, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title, so a reversal makes two. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch.
+It makes one `Glossary:` commit for the map and its Steering edits, naming the map, then one `Glossary:` commit for each glossary file, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title, so a reversal makes two. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch. When `target-branch` is `spec`, a protected default branch would refuse the push, so it commits on `spec/context-backfill`, cut from the default branch, pushes that branch, and on the first push opens a draft pull request to the default branch. A later apply goes to the same branch and opens no second pull request.
 
 It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a decision Draft for each written reason. It prints what is left.
 
-If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch, when an accepted word names a context no map holds, and when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change. A refusal after the commits says the commits are made and names the command that sends them.
+If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in `spec` mode, on the default branch or `spec/context-backfill`, when an accepted word names a context no map holds, and when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change. A refusal after the commits says the commits are made and names the command that sends them.
 
 ### Talk the `?` lines through
 
