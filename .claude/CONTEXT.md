@@ -12,6 +12,12 @@ drops it, and `?` leaves it where it is and puts it to talk on the next run. The
 Answer and never guesses one.
 _Avoid_: Verdict, mark, decision, approval
 
+**Answer sheet**:
+The one file the Context backfill writes for a person to mark: every Draft with its evidence quoted,
+every Question, and a place for an Answer on each line. It lives in the scratch folder, so a developer
+can hand it to the teammate who was there, and nothing on it reaches the repo until it is applied.
+_Avoid_: Review file, report, checklist, worksheet
+
 **Blocked**:
 A step or a check whose Session says, in the first line of its report, that it cannot do its work:
 a Denial it cannot get past, or a ticket with nothing left to build. A choice is never the cause,
@@ -216,6 +222,12 @@ is in the repository, so a change outside it, such as a new SDK, can leave one s
 after each loop run that landed a ticket trusts none, and a check red there loses its Proofs. A Proof
 belongs to one clone and never leaves it.
 _Avoid_: Cache, memo, result, receipt
+
+**Question**:
+A line on the Answer sheet for a change the history shows but never explains: the commits say what
+moved, and no thread says why. A person writes the reason, and the next run makes it a Draft, or
+writes `?` to talk it through. The skill never fills a reason in itself.
+_Avoid_: Unknown, mystery, inferred reason
 
 **Runner**:
 The one way the driver reaches another program. It is injected, so a test supplies its own rather
