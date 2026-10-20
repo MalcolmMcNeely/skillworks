@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-from context_backfill.landing import apply
+from context_backfill.applying import apply
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess

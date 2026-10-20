@@ -287,8 +287,8 @@ def sheet(words="", decisions="", questions="", thin=""):
 
 
 @pytest.fixture
-def landing(history):
-    where = history.clone("landing")
+def checkout(history):
+    where = history.clone("checkout")
     for name, value in (("user.name", "Test"), ("user.email", "test@example.invalid"),
                         ("commit.gpgsign", "false"), ("core.autocrlf", "false")):
         git(where, "config", name, value)
@@ -304,12 +304,12 @@ def read(where, name):
     return (where / name).read_text(encoding="utf-8")
 
 
-def test_an_accepted_word_lands_in_a_new_glossary_with_its_avoid_line_and_no_evidence(landing, runner):
-    mark(landing, sheet(words=word(1, "Reader", "The part that turns a file into dates.", "accept", "Parser")))
+def test_an_accepted_word_is_written_in_a_new_glossary_with_its_avoid_line_and_no_evidence(checkout, runner):
+    mark(checkout, sheet(words=word(1, "Reader", "The part that turns a file into dates.", "accept", "Parser")))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
-    assert read(landing, "CONTEXT.md").split("## Language\n\n", 1)[1] == (
+    assert read(checkout, "CONTEXT.md").split("## Language\n\n", 1)[1] == (
         "**Reader**:\nThe part that turns a file into dates.\n_Avoid_: Parser\n")
 
 
@@ -332,33 +332,33 @@ def grown(history):
 
 
 @pytest.fixture
-def grown_landing(grown, landing):
-    git(landing, "pull", "--quiet", "origin", "main")
-    return landing
+def grown_checkout(grown, checkout):
+    git(checkout, "pull", "--quiet", "origin", "main")
+    return checkout
 
 
-def test_an_accepted_word_lands_in_alphabetical_order_and_the_words_already_there_are_unchanged(
-        grown_landing, runner):
-    mark(grown_landing, sheet(words=word(1, "Batch", "Fifty tickets read in one call.", "accept", "Chunk")))
+def test_an_accepted_word_is_written_in_alphabetical_order_and_the_words_already_there_are_unchanged(
+        grown_checkout, runner):
+    mark(grown_checkout, sheet(words=word(1, "Batch", "Fifty tickets read in one call.", "accept", "Chunk")))
 
-    apply(runner, grown_landing)
+    apply(runner, grown_checkout)
 
-    assert read(grown_landing, "CONTEXT.md") == (
+    assert read(grown_checkout, "CONTEXT.md") == (
         "# App\n\nThe date reader.\n\n## Language\n\n"
         "**Answer**:\nWhat the reader gives back.\n_Avoid_: Result\n\n"
         "**Batch**:\nFifty tickets read in one call.\n_Avoid_: Chunk\n\n"
         "**Verdict**:\nA call on one date.\n")
 
 
-def test_an_accepted_adr_takes_the_next_number_and_ends_with_where_it_was_recovered_from(grown_landing, runner):
-    mark(grown_landing, sheet(decisions=decision(
+def test_an_accepted_adr_takes_the_next_number_and_ends_with_where_it_was_recovered_from(grown_checkout, runner):
+    mark(grown_checkout, sheet(decisions=decision(
         1, "Rename the parser to the reader", "The parser became the reader, because it reads more than dates.",
         "accept", 'commit 9c1d2e3 "Rename the parser to the reader"', 'pull request #20 "It reads more than dates now."',
         "app/reader.py:1 `pass`")))
 
-    apply(runner, grown_landing)
+    apply(runner, grown_checkout)
 
-    assert read(grown_landing, "docs/adr/0003-rename-the-parser-to-the-reader.md") == (
+    assert read(grown_checkout, "docs/adr/0003-rename-the-parser-to-the-reader.md") == (
         "# Rename the parser to the reader\n\n"
         "The parser became the reader, because it reads more than dates.\n\n"
         "Recovered from history: commit 9c1d2e3, pull request #20\n")
@@ -371,15 +371,15 @@ REVERSAL = ("#### Keep the dates in SQLite\nStatus: superseded by the decision b
 
 
 def test_an_accepted_reversal_takes_two_numbers_in_a_row_the_old_marked_superseded_and_the_new_naming_it(
-        grown_landing, runner):
-    mark(grown_landing, sheet(decisions=decision(
+        grown_checkout, runner):
+    mark(grown_checkout, sheet(decisions=decision(
         1, "SQLite gave way to Postgres", REVERSAL, "accept",
         'commit 4b5c6d7 "Add SQLite"', 'issue #31 "two readers lock the file"')))
 
-    apply(runner, grown_landing)
+    apply(runner, grown_checkout)
 
-    assert (read(grown_landing, "docs/adr/0003-keep-the-dates-in-sqlite.md"),
-            read(grown_landing, "docs/adr/0004-keep-the-dates-in-postgres.md")) == (
+    assert (read(grown_checkout, "docs/adr/0003-keep-the-dates-in-sqlite.md"),
+            read(grown_checkout, "docs/adr/0004-keep-the-dates-in-postgres.md")) == (
         "# Keep the dates in SQLite\n\nStatus: superseded by ADR-0004\n\n"
         "The dates live in SQLite, because one file is all a laptop needs.\n\n"
         "Recovered from history: commit 4b5c6d7, issue #31\n",
@@ -388,58 +388,58 @@ def test_an_accepted_reversal_takes_two_numbers_in_a_row_the_old_marked_supersed
         "Recovered from history: commit 4b5c6d7, issue #31\n")
 
 
-def test_each_adr_of_a_reversal_gets_its_own_commit(grown, grown_landing, runner):
-    mark(grown_landing, sheet(decisions=decision(
+def test_each_adr_of_a_reversal_gets_its_own_commit(grown, grown_checkout, runner):
+    mark(grown_checkout, sheet(decisions=decision(
         1, "SQLite gave way to Postgres", REVERSAL, "accept", 'commit 4b5c6d7 "Add SQLite"')))
 
-    apply(runner, grown_landing)
+    apply(runner, grown_checkout)
 
     assert subjects(grown.origin, "main")[:2][::-1] == ["ADR: Keep the dates in SQLite",
                                                         "ADR: Keep the dates in Postgres"]
 
 
-def test_an_existing_adr_is_unchanged(grown_landing, runner):
-    mark(grown_landing, sheet(decisions=decision(
+def test_an_existing_adr_is_unchanged(grown_checkout, runner):
+    mark(grown_checkout, sheet(decisions=decision(
         1, "Read dates with no year", "A second record of it.", "accept", 'commit 1a2b3c4 "Add the parser"')))
 
-    apply(runner, grown_landing)
+    apply(runner, grown_checkout)
 
-    assert read(grown_landing, "docs/adr/0001-read-dates-with-no-year.md") == ADR_ONE
+    assert read(grown_checkout, "docs/adr/0001-read-dates-with-no-year.md") == ADR_ONE
 
 
-def test_an_edited_draft_lands_with_the_text_on_the_sheet_and_not_the_text_the_pass_wrote(landing, runner):
-    (landing / ".context-backfill" / "words.md").write_text(
+def test_an_edited_draft_is_written_with_the_text_on_the_sheet_and_not_the_text_the_pass_wrote(checkout, runner):
+    (checkout / ".context-backfill" / "words.md").write_text(
         "### Reader\n**Reader**:\nThe parser.\n", encoding="utf-8")
-    mark(landing, sheet(words=word(1, "Reader", "The part that reads a file of dates, with or without a year.",
-                                   "accept")))
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads a file of dates, with or without a year.",
+                                    "accept")))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
-    assert "**Reader**:\nThe part that reads a file of dates, with or without a year.\n" in read(landing, "CONTEXT.md")
+    assert "**Reader**:\nThe part that reads a file of dates, with or without a year.\n" in read(checkout, "CONTEXT.md")
 
 
-def landed_text(where):
+def written_text(where):
     paths = [where / "CONTEXT.md"] + sorted((where / "docs" / "adr").glob("*.md"))
     return "".join(path.read_text(encoding="utf-8") for path in paths if path.exists())
 
 
-def test_a_rejected_draft_lands_nowhere(landing, runner):
-    mark(landing, sheet(
+def test_a_rejected_draft_is_written_nowhere(checkout, runner):
+    mark(checkout, sheet(
         words=word(1, "Reader", "The part that reads dates.", "accept") + word(2, "Gadget", "A widget.", "reject"),
         decisions=decision(1, "Use a gadget store", "Gadgets are kept in a store.", "reject",
                            'commit 5e6f7a8 "Add the gadget store"')))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
-    assert ("Gadget" in landed_text(landing), "gadget" in landed_text(landing)) == (False, False)
+    assert ("Gadget" in written_text(checkout), "gadget" in written_text(checkout)) == (False, False)
 
 
 def headings(text):
     return [line for line in text.splitlines() if line.startswith("### ")]
 
 
-def test_the_rewritten_sheet_holds_the_question_marks_and_the_unanswered_lines_and_nothing_else(landing, runner):
-    mark(landing, sheet(
+def test_the_rewritten_sheet_holds_the_question_marks_and_the_unanswered_lines_and_nothing_else(checkout, runner):
+    mark(checkout, sheet(
         words=word(1, "Reader", "The part that reads dates.", "accept") + word(2, "Batch", "Fifty tickets.", "?"),
         decisions=decision(1, "Use a gadget store", "Gadgets are kept in a store.", "reject",
                            'commit 5e6f7a8 "Add the gadget store"')
@@ -447,9 +447,9 @@ def test_the_rewritten_sheet_holds_the_question_marks_and_the_unanswered_lines_a
         questions=question(1, "The store moved", "The store moved from app/ to store/ in 2021.", "?"),
         thin=word(3, "Tidy", "A commit that only tidies.", "")))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
-    assert headings(read(landing, ".context-backfill/answer-sheet.md")) == [
+    assert headings(read(checkout, ".context-backfill/answer-sheet.md")) == [
         "### Draft W2: Batch",
         "### Draft D2: Read the log once",
         "### Question Q1: The store moved",
@@ -457,52 +457,52 @@ def test_the_rewritten_sheet_holds_the_question_marks_and_the_unanswered_lines_a
     ]
 
 
-def test_a_written_reason_comes_back_as_an_adr_draft_on_the_rewritten_sheet_and_lands_no_adr(landing, runner):
-    mark(landing, sheet(
+def test_a_written_reason_comes_back_as_an_adr_draft_on_the_rewritten_sheet_and_writes_no_adr(checkout, runner):
+    mark(checkout, sheet(
         decisions=decision(2, "Read the log once", "The log is read once per run.", "", 'commit 6f7a8b9 "Cache the log"'),
         questions=question(1, "The store moved", "The store moved from app/ to store/ in 2021.",
                            "Two apps came to read it, and app/ belonged to one of them.")))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
-    assert (read(landing, ".context-backfill/answer-sheet.md").split("## Questions", 1)[0].split("\n\n### ")[-1],
-            (landing / "docs" / "adr").exists()) == (
+    assert (read(checkout, ".context-backfill/answer-sheet.md").split("## Questions", 1)[0].split("\n\n### ")[-1],
+            (checkout / "docs" / "adr").exists()) == (
         "Draft D3: The store moved\nAnswer:\n"
         "The store moved from app/ to store/ in 2021. Two apps came to read it, and app/ belonged to one of them.\n"
         "Evidence:\n- commit 77aa001 \"Move the store\"\n\n",
         False)
 
 
-def test_a_question_with_no_reason_stays_a_question_beside_a_reason_turned_into_a_draft(landing, runner):
-    mark(landing, sheet(questions=question(1, "The store moved", "The store moved in 2021.", "Two apps read it.")
-                        + question(2, "The cache went", "The cache was removed in 2022.", "?")
-                        + question(3, "The port changed", "The port moved to 8080.", "")))
+def test_a_question_with_no_reason_stays_a_question_beside_a_reason_turned_into_a_draft(checkout, runner):
+    mark(checkout, sheet(questions=question(1, "The store moved", "The store moved in 2021.", "Two apps read it.")
+                         + question(2, "The cache went", "The cache was removed in 2022.", "?")
+                         + question(3, "The port changed", "The port moved to 8080.", "")))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
-    assert headings(read(landing, ".context-backfill/answer-sheet.md")) == [
+    assert headings(read(checkout, ".context-backfill/answer-sheet.md")) == [
         "### Draft D1: The store moved",
         "### Question Q2: The cache went",
         "### Question Q3: The port changed",
     ]
 
 
-def test_a_sheet_with_no_answer_stops_with_one_message_and_makes_no_commit(landing, runner):
-    mark(landing, sheet(words=word(1, "Reader", "The part that reads dates.", ""),
-                        questions=question(1, "The store moved", "The store moved in 2021.", "")))
-    before = git(landing, "rev-parse", "HEAD")
+def test_a_sheet_with_no_answer_stops_with_one_message_and_makes_no_commit(checkout, runner):
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", ""),
+                         questions=question(1, "The store moved", "The store moved in 2021.", "")))
+    before = git(checkout, "rev-parse", "HEAD")
 
-    ran = apply(runner, landing)
+    ran = apply(runner, checkout)
 
     assert (ran.status, ran.err.startswith("FAIL  Mark the sheet"), ran.err.count("\n"),
-            git(landing, "rev-parse", "HEAD")) == (1, True, 1, before)
+            git(checkout, "rev-parse", "HEAD")) == (1, True, 1, before)
 
 
-def test_the_maps_accept_from_the_talk_is_not_an_answer(landing, runner):
-    mark(landing, sheet(words="### Draft M1: The map\nAnswer: accept\n# Context Map\n\nEvidence:\n- code app/\n\n"
-                        + word(1, "Reader", "The part that reads dates.", "")))
+def test_the_maps_accept_from_the_talk_is_not_an_answer(checkout, runner):
+    mark(checkout, sheet(words="### Draft M1: The map\nAnswer: accept\n# Context Map\n\nEvidence:\n- code app/\n\n"
+                         + word(1, "Reader", "The part that reads dates.", "")))
 
-    ran = apply(runner, landing)
+    ran = apply(runner, checkout)
 
     assert (ran.status, ran.err.startswith("FAIL  Mark the sheet")) == (1, True)
 
@@ -512,27 +512,27 @@ def subjects(where, ref):
 
 
 def test_the_commits_carry_their_prefixes_leave_unstaged_work_out_and_reach_the_target_branch(
-        history, landing, runner):
-    (landing / "README.md").write_text("# App, half edited\n", encoding="utf-8")
-    mark(landing, sheet(
+        history, checkout, runner):
+    (checkout / "README.md").write_text("# App, half edited\n", encoding="utf-8")
+    mark(checkout, sheet(
         words=word(1, "Reader", "The part that reads dates.", "accept") + word(2, "Batch", "Fifty tickets.", "accept"),
         decisions=decision(1, "Read the log once", "The log is read once per run, because gh is slow.", "accept",
                            'commit 6f7a8b9 "Cache the log"')))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
     pushed = subjects(history.origin, "main")
     changed = git(history.origin, "log", "--format=", "--name-only", "-2", "main").split()
-    assert (pushed[:2], sorted(changed), read(landing, "README.md")) == (
+    assert (pushed[:2], sorted(changed), read(checkout, "README.md")) == (
         ["ADR: Read the log once", "Glossary: 2 words in CONTEXT.md"],
         ["CONTEXT.md", "docs/adr/0001-read-the-log-once.md"],
         "# App, half edited\n")
 
 
-def test_with_a_named_target_branch_no_pull_request_is_asked_for(landing, runner):
-    mark(landing, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
+def test_with_a_named_target_branch_no_pull_request_is_asked_for(checkout, runner):
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
     assert runner.started("gh") == []
 
@@ -547,39 +547,39 @@ def asked_for_pull_requests(runner):
 
 
 def test_in_spec_mode_the_commits_reach_a_branch_of_their_own_and_the_default_branch_is_untouched(
-        history, landing, runner):
-    in_spec_mode(landing)
+        history, checkout, runner):
+    in_spec_mode(checkout)
     before = git(history.origin, "rev-parse", "main")
-    mark(landing, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
     runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
     assert (subjects(history.origin, "spec/context-backfill")[0], git(history.origin, "rev-parse", "main")) == (
         "Glossary: 1 word in CONTEXT.md", before)
 
 
-def test_in_spec_mode_one_draft_pull_request_is_asked_for_the_branch(landing, runner):
-    in_spec_mode(landing)
-    mark(landing, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
+def test_in_spec_mode_one_draft_pull_request_is_asked_for_the_branch(checkout, runner):
+    in_spec_mode(checkout)
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
     runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
     assert [(call[call.index("--base") + 1], call[call.index("--head") + 1], "--draft" in call)
             for call in asked_for_pull_requests(runner)] == [("main", "spec/context-backfill", True)]
 
 
 def test_in_spec_mode_a_second_apply_pushes_to_the_same_branch_and_asks_for_no_second_pull_request(
-        history, landing, runner):
-    in_spec_mode(landing)
-    mark(landing, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")
-                        + word(2, "Batch", "Fifty tickets.", "?")))
+        history, checkout, runner):
+    in_spec_mode(checkout)
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")
+                         + word(2, "Batch", "Fifty tickets.", "?")))
     runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
-    apply(runner, landing)
-    mark(landing, sheet(words=word(2, "Batch", "Fifty tickets.", "accept")))
+    apply(runner, checkout)
+    mark(checkout, sheet(words=word(2, "Batch", "Fifty tickets.", "accept")))
 
-    apply(runner, landing)
+    apply(runner, checkout)
 
     assert (subjects(history.origin, "spec/context-backfill")[:2], len(asked_for_pull_requests(runner))) == (
         ["Glossary: 1 word in CONTEXT.md", "Glossary: 1 word in CONTEXT.md"], 1)
@@ -617,9 +617,9 @@ def steered(history):
 
 
 @pytest.fixture
-def steered_landing(steered, landing):
-    git(landing, "pull", "--quiet", "origin", "main")
-    return landing
+def steered_checkout(steered, checkout):
+    git(checkout, "pull", "--quiet", "origin", "main")
+    return checkout
 
 
 def first_change(history, subject_start):
@@ -630,16 +630,16 @@ def first_change(history, subject_start):
     return None
 
 
-def test_an_accepted_map_lands_with_an_empty_list_per_context_and_the_multi_context_line_in_one_commit(
-        steered, steered_landing, runner):
-    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
+def test_an_accepted_map_is_written_with_an_empty_list_per_context_and_the_multi_context_line_in_one_commit(
+        steered, steered_checkout, runner):
+    mark(steered_checkout, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
 
-    apply(runner, steered_landing)
+    apply(runner, steered_checkout)
 
     assert (first_change(steered, "Glossary:"),
-            read(steered_landing, "CONTEXT-MAP.md"),
-            read(steered_landing, "docs/agents/rules/words.md").split("```yaml\n", 1)[1],
-            read(steered_landing, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0]) == (
+            read(steered_checkout, "CONTEXT-MAP.md"),
+            read(steered_checkout, "docs/agents/rules/words.md").split("```yaml\n", 1)[1],
+            read(steered_checkout, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0]) == (
         ("Glossary: the map in CONTEXT-MAP.md",
          ["CLAUDE.md", "CONTEXT-MAP.md", "docs/agents/rules/words.md"]),
         CONTEXT_MAP,
@@ -648,48 +648,48 @@ def test_an_accepted_map_lands_with_an_empty_list_per_context_and_the_multi_cont
         "See `docs/agents/domain.md`.")
 
 
-def test_a_word_lands_in_a_new_glossary_for_the_context_its_context_line_names(steered_landing, runner):
-    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "accept", "web")))
+def test_a_word_is_written_in_a_new_glossary_for_the_context_its_context_line_names(steered_checkout, runner):
+    mark(steered_checkout, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "accept", "web")))
 
-    apply(runner, steered_landing)
+    apply(runner, steered_checkout)
 
-    assert read(steered_landing, "web/CONTEXT.md") == "# Web\n\n## Language\n\n**Reader**:\nThe part that reads dates.\n"
+    assert read(steered_checkout, "web/CONTEXT.md") == "# Web\n\n## Language\n\n**Reader**:\nThe part that reads dates.\n"
 
 
-def test_the_map_commit_comes_before_the_glossary_commits(steered, steered_landing, runner):
-    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "accept",
-                                                             "reader")
-                                + in_context(2, "View", "One page of dates.", "accept", "web")))
+def test_the_map_commit_comes_before_the_glossary_commits(steered, steered_checkout, runner):
+    mark(steered_checkout, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "accept",
+                                                              "reader")
+                                 + in_context(2, "View", "One page of dates.", "accept", "web")))
 
-    apply(runner, steered_landing)
+    apply(runner, steered_checkout)
 
     assert subjects(steered.origin, "main")[:3][::-1] == [
         "Glossary: the map in CONTEXT-MAP.md", "Glossary: 1 word in app/CONTEXT.md", "Glossary: 1 word in web/CONTEXT.md"]
 
 
-def test_a_domain_docs_line_wrapped_by_hand_is_switched_whole(steered, steered_landing, runner):
+def test_a_domain_docs_line_wrapped_by_hand_is_switched_whole(steered, steered_checkout, runner):
     wrapped = CLAUDE_FILE.replace("repo root. See", "repo root.\nSee")
-    (steered_landing / "CLAUDE.md").write_text(wrapped, encoding="utf-8", newline="\n")
-    git(steered_landing, "commit", "--quiet", "-am", "Wrap the Domain docs line")
-    mark(steered_landing, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
+    (steered_checkout / "CLAUDE.md").write_text(wrapped, encoding="utf-8", newline="\n")
+    git(steered_checkout, "commit", "--quiet", "-am", "Wrap the Domain docs line")
+    mark(steered_checkout, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
 
-    apply(runner, steered_landing)
+    apply(runner, steered_checkout)
 
-    assert read(steered_landing, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0] == (
+    assert read(steered_checkout, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0] == (
         "Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context. "
         "See `docs/agents/domain.md`.")
 
 
-def test_a_map_adds_no_word_to_a_list_and_keeps_the_lists_already_there(steered, steered_landing, runner):
+def test_a_map_adds_no_word_to_a_list_and_keeps_the_lists_already_there(steered, steered_checkout, runner):
     rule = WORDS_RULE.replace("banned-words: {}\n", "banned-words:\n  reader:\n    - Parser\n")
-    (steered_landing / "docs/agents/rules/words.md").write_text(rule, encoding="utf-8", newline="\n")
-    git(steered_landing, "commit", "--quiet", "-am", "Ban Parser")
-    mark(steered_landing, sheet(words=the_map() + in_context(1, "View", "One page of dates.", "accept", "web",
-                                                             avoid="Screen")))
+    (steered_checkout / "docs/agents/rules/words.md").write_text(rule, encoding="utf-8", newline="\n")
+    git(steered_checkout, "commit", "--quiet", "-am", "Ban Parser")
+    mark(steered_checkout, sheet(words=the_map() + in_context(1, "View", "One page of dates.", "accept", "web",
+                                                              avoid="Screen")))
 
-    apply(runner, steered_landing)
+    apply(runner, steered_checkout)
 
-    assert read(steered_landing, "docs/agents/rules/words.md").split("```yaml\n", 1)[1] == (
+    assert read(steered_checkout, "docs/agents/rules/words.md").split("```yaml\n", 1)[1] == (
         "banned-words:\n  reader:\n    - Parser\n  web: []\nskip-folders: []\n```\n")
 
 

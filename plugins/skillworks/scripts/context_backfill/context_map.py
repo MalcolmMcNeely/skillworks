@@ -1,4 +1,4 @@
-# A map lands with the Steering edits that keep the Suite green, and with no other: a banned word is the team's call.
+# A map goes in with the Steering edits that keep the Suite green, and with no other: a banned word is the team's call.
 
 import re
 from pathlib import PurePosixPath
@@ -82,11 +82,11 @@ def steering_file(top):
     return held[0] if held else STEERING_FILES[0]
 
 
-# Every edit is worked out before any file is written, so a map that cannot land leaves the tree as it was.
+# Every edit is worked out before any file is written, so a map that cannot be applied leaves the tree as it was.
 def map_edits(top, entry):
     contexts = contexts_of(entry.text)
     if not contexts:
-        raise refusal("{} names no context under ## Contexts, so it cannot land. Mend it on the sheet, then run "
+        raise refusal("{} names no context under ## Contexts, so it cannot be applied. Mend it on the sheet, then run "
                       "this again. Nothing was written.".format(entry.name))
     rule_path = top / WORDS_RULE
     rule = with_empty_lists(rule_path.read_text(encoding="utf-8"), contexts) if rule_path.is_file() else None

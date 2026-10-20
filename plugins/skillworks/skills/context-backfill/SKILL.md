@@ -1,6 +1,6 @@
 ---
 name: context-backfill
-description: Check that this clone holds the whole history, read it once into the scratch folder, write every word, map and decision it shows as a Draft on an Answer sheet for a person to mark, and on the next run land each Draft the person accepted into the glossary and the ADRs.
+description: Check that this clone holds the whole history, read it once into the scratch folder, write every word, map and decision it shows as a Draft on an Answer sheet for a person to mark, and on the next run write each Draft the person accepted into the glossary and the ADRs.
 disable-model-invocation: true
 ---
 
@@ -148,7 +148,7 @@ The sheet has four sections, in this order: `## Words`, `## Decisions`, `## Ques
 - Under the heading comes an `Answer:` line, left blank for the person to mark. With a map, a `Context:` line follows it and names the context that claims the Draft. Then comes the Draft's text, exactly as it will be written into the repo. Then comes an `Evidence:` list that quotes each commit, ticket or code line with its reference.
 - A Question is a `### Question Q<n>: <title>` heading with a `Reason:` line in place of the `Answer:` line, left blank for the person to write the reason on, or `?`. Its text says what changed and when, and never why.
 - With a map, the map is the first Draft under Words, its `Answer:` already `accept` from the talk, and the person may change it. Its text is the map as `CONTEXT-MAP.md` will hold it, with each context, where it lives, and one sentence on what it is. Without a map, there is no map Draft.
-- A reversal's text holds both ADRs: under a `####` heading for each, the old decision first, with its status line, and the new decision second. Each `####` heading is the title its ADR lands with. Neither ADR has a number yet, so write the old one's status line as `Status: superseded by the decision below`, and begin the new one with `This supersedes the decision above.` The second run puts the numbers in.
+- A reversal's text holds both ADRs: under a `####` heading for each, the old decision first, with its status line, and the new decision second. Each `####` heading is the title its ADR is written with. Neither ADR has a number yet, so write the old one's status line as `Status: superseded by the decision below`, and begin the new one with `This supersedes the decision above.` The second run puts the numbers in.
 - In each section, put the strongest evidence first: more signals, and a reason written at the time, before fewer.
 - A Draft with one signal and no written reason goes under Thin, and not under Words or Decisions.
 
@@ -172,7 +172,7 @@ When the sheet is written, tell the person:
 
 - Where the sheet is: `.context-backfill/answer-sheet.md`.
 - How many Drafts and Questions it holds, in each section.
-- How to mark it: `accept`, `reject` or `?` on each `Answer:` line, and a reason, or `?`, on each `Reason:` line. A Draft's text may be edited in place, and the text on the sheet is the text that lands.
+- How to mark it: `accept`, `reject` or `?` on each `Answer:` line, and a reason, or `?`, on each `Reason:` line. A Draft's text may be edited in place, and the text on the sheet is the text that is written.
 - That the sheet is a file, so they can hand it to the teammate who was there.
 - That they type this command again once the sheet is marked.
 - That deleting `.context-backfill/` starts over.
@@ -191,14 +191,14 @@ Run the apply from the repo root, on the Target branch. When `target-branch` is 
 context-backfill apply
 ```
 
-It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the sheet, never the text a pass wrote, so a Draft the person edited lands as edited:
+It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the sheet, never the text a pass wrote, so a Draft the person edited is written as edited:
 
 - An accepted map goes into `CONTEXT-MAP.md` at the repo root. In the same commit it adds an empty banned-words list, written `[]`, to `docs/agents/rules/words.md` for each context the map names, and switches the Domain docs line in `CLAUDE.md` to multi-context. It edits nothing else in Steering, and never adds a word to a banned-words list.
 - Each accepted word goes into the glossary, in alphabetical order, with its `_Avoid_` line and never with its evidence. Without a map, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, at the path the map gives it. It creates the file when there is none.
 - Each accepted decision goes into `docs/adr/`, numbered one above the highest number there, with the title as its heading and the Draft's text as its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
 - An accepted reversal goes in as two ADRs with two numbers in a row, each titled by its `####` heading, and each ending with the same `Recovered from history:` line. The old decision comes first, with the status line `Status: superseded by ADR-<new number>`. The new decision comes second, and its first sentence is `This supersedes ADR <old number>.`
-- A Question whose `Reason:` line holds a reason comes back on the rewritten sheet as a decision Draft under Decisions, with the Question's text, the reason as its why, the same evidence and a blank `Answer:` line. No ADR lands from it in this run. A Question whose `Reason:` line is `?` or blank stays a Question.
-- Each rejected Draft is dropped, and lands nowhere.
+- A Question whose `Reason:` line holds a reason comes back on the rewritten sheet as a decision Draft under Decisions, with the Question's text, the reason as its why, the same evidence and a blank `Answer:` line. No ADR is written from it in this run. A Question whose `Reason:` line is `?` or blank stays a Question.
+- Each rejected Draft is dropped, and is written nowhere.
 - A word, a map or an ADR already in the repo is never changed.
 
 It makes one `Glossary:` commit for the map and its Steering edits, naming the map, then one `Glossary:` commit for each glossary file, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title, so a reversal makes two. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch. When `target-branch` is `spec`, a protected default branch would refuse the push, so it commits on `spec/context-backfill`, cut from the default branch, pushes that branch, and on the first push opens a draft pull request to the default branch. A later apply goes to the same branch and opens no second pull request.
@@ -209,7 +209,7 @@ If it refuses, show the person the refusal and stop. It refuses a sheet with no 
 
 ### Talk the `?` lines through
 
-Take each `?` line on the rewritten sheet, one at a time. Show the person the Draft or the Question with its evidence, and ask for an Answer. An Answer in talk is one of the same three words as on the sheet: `accept`, `reject` or `?`. The person may change the Draft's words before they accept it, and the words they give are the words that land.
+Take each `?` line on the rewritten sheet, one at a time. Show the person the Draft or the Question with its evidence, and ask for an Answer. An Answer in talk is one of the same three words as on the sheet: `accept`, `reject` or `?`. The person may change the Draft's words before they accept it, and the words they give are the words that are written.
 
 For a Question, the person gives the reason, or `?`. Never write a reason the person did not give. A reason given in talk comes back from the apply as a decision Draft with a blank `Answer:` line, so take that Draft through next.
 

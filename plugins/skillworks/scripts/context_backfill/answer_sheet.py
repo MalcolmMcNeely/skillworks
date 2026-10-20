@@ -29,6 +29,7 @@ class Entry(NamedTuple):
     number: str
     title: str
     answer: str
+    reason: str
     context: str
     text: str
     evidence: list
@@ -45,7 +46,7 @@ class Entry(NamedTuple):
     # The first run writes the map's accept from the talk, so it is not an Answer the person marked.
     @property
     def is_marked(self):
-        return bool(self.answer) and not (self.is_draft and self.letter == MAP)
+        return bool(self.answer or self.reason) and not (self.is_draft and self.letter == MAP)
 
 
 class Section(NamedTuple):
@@ -77,9 +78,10 @@ def entry_of(lines):
     text = [line for line in body[:evidence_at]
             if not line.startswith((label + ":", "Context:"))]
     evidence = [line.strip()[2:].strip() for line in body[evidence_at + 1:] if line.strip().startswith("- ")]
-    answer = field(body, label)
-    return Entry(kind, letter, number, title.strip(), answer.lower() if kind == DRAFT else answer,
-                 field(body, "Context"), "\n".join(text).strip("\n"), evidence, lines)
+    said = field(body, label)
+    answer, reason = (said.lower(), "") if kind == DRAFT else ("", said)
+    return Entry(kind, letter, number, title.strip(), answer, reason, field(body, "Context"),
+                 "\n".join(text).strip("\n"), evidence, lines)
 
 
 def read_sheet(text):
@@ -103,7 +105,7 @@ def read_sheet(text):
 
 
 def is_left(entry):
-    return entry.answer in ("", ASK)
+    return (entry.answer if entry.is_draft else entry.reason) in ("", ASK)
 
 
 # A reason a person wrote is not yet an ADR: it goes back on the sheet as a Draft, to face the same Answer.
@@ -111,7 +113,7 @@ def drafts_of_reasons(sheet):
     numbers = [int(entry.number) for entry in sheet.entries if entry.is_draft and entry.letter == DECISION]
     reasoned = [entry for entry in sheet.entries if not entry.is_draft and not is_left(entry)]
     return [["### {} {}{}: {}".format(DRAFT, DECISION, max(numbers, default=0) + at, entry.title), "Answer:",
-             "{} {}".format(entry.text.rstrip(), entry.answer), EVIDENCE]
+             "{} {}".format(entry.text.rstrip(), entry.reason), EVIDENCE]
             + ["- " + item for item in entry.evidence] + [""]
             for at, entry in enumerate(reasoned, start=1)]
 

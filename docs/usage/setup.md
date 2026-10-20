@@ -199,7 +199,8 @@ Setup leaves the rules as prose. An agent reads their settings, but no check enf
 `/skillworks:architecture-tests` after setup to turn the rules into tests your team owns.
 
 For a repo with a history and no glossary, run `/skillworks:context-backfill` first. It fills your
-glossary and your ADRs once, from your code and your history, and lands nothing until you accept it.
+glossary and your ADRs once, from your code and your history, and writes nothing until you accept
+it.
 Setup names it as the next step when a commit touches a file setup does not write, and your repo has
 no `CONTEXT.md` and no `CONTEXT-MAP.md`. [Context backfill](context-backfill.md) says how it works.
 

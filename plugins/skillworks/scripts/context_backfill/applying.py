@@ -78,7 +78,7 @@ def glossaries(top, taken, contexts):
     return groups
 
 
-class Landing(NamedTuple):
+class Destination(NamedTuple):
     branch: str
     here: str
     default_branch: Optional[str] = None
@@ -92,25 +92,25 @@ def default_of(runner, top):
     return found.out.strip().removeprefix("origin/")
 
 
-def target_of(runner, top):
+def destination_of(runner, top):
     branch = target_setting(top)
     here = git(runner, top, "symbolic-ref", "--quiet", "--short", "HEAD").out.strip()
     if branch != SPEC_MODE:
         if here != branch:
             raise refusal("The Target branch is {}, and this checkout is on {}. Switch to {}, then run this "
                           "again. Nothing was written.".format(branch, here or "no branch", branch))
-        return Landing(branch, here)
+        return Destination(branch, here)
     default_branch = default_of(runner, top)
     if here not in (default_branch, SPEC_BRANCH):
         raise refusal("{} says spec, so the work goes on {}, cut from {}, and this checkout is on {}. Switch to "
                       "{}, then run this again. Nothing was written.".format(
                           LOOP_FILE, SPEC_BRANCH, default_branch, here or "no branch", default_branch))
-    return Landing(SPEC_BRANCH, here, default_branch)
+    return Destination(SPEC_BRANCH, here, default_branch)
 
 
 # A protected default branch refuses a direct push, so in spec mode the work goes on a branch of its own.
-def branch_off(runner, top, landing):
-    if landing.default_branch is None or landing.here == SPEC_BRANCH:
+def branch_off(runner, top, destination):
+    if destination.default_branch is None or destination.here == SPEC_BRANCH:
         return
     ran = git(runner, top, "switch", "--quiet", "-c", SPEC_BRANCH)
     if ran.status != 0:
@@ -138,21 +138,21 @@ def with_word(held, title, entry, name):
     return "\n".join(lines[:last + 1] + ["", entry] + lines[last + 1:]) + "\n"
 
 
-def land_words(top, glossary, title, words, out):
+def write_words(top, glossary, title, words, out):
     path = Path(top) / glossary
     held = path.read_text(encoding="utf-8") if path.exists() else ""
-    landed = 0
+    written = 0
     for entry in words:
         name = bold_name(entry.text, entry.title)
         if name.casefold() in names_in(held):
             out.write("{} is already in {}, so it was left as it is.\n".format(name, glossary))
             continue
         held = with_word(held, title, entry.text, name)
-        landed += 1
-    if landed:
+        written += 1
+    if written:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(held, encoding="utf-8", newline="\n")
-    return landed
+    return written
 
 
 def next_number(folder):
@@ -164,7 +164,7 @@ def slug(title):
     return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "decision"
 
 
-def land_adr(top, number, title, text, evidence):
+def write_adr(top, number, title, text, evidence):
     folder = Path(top) / ADR_FOLDER
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / "{:04d}-{}.md".format(number, slug(title))
@@ -196,17 +196,17 @@ def superseding(text, old):
     return "{}ADR {:04d}. {}".format(SUPERSEDES, old, text).rstrip()
 
 
-def land_decisions(runner, top, entry):
+def write_decisions(runner, top, entry):
     parts = parts_of(entry.text)
     number = next_number(Path(top) / ADR_FOLDER)
     if len(parts) != 2:
-        return [commit(runner, top, (land_adr(top, number, entry.title, entry.text, entry.evidence),),
+        return [commit(runner, top, (write_adr(top, number, entry.title, entry.text, entry.evidence),),
                        "ADR: " + entry.title)]
     (old_title, old_text), (new_title, new_text) = parts
-    return [commit(runner, top, (land_adr(top, number, old_title, superseded(old_text, number + 1),
-                                          entry.evidence),), "ADR: " + old_title),
-            commit(runner, top, (land_adr(top, number + 1, new_title, superseding(new_text, number),
-                                          entry.evidence),), "ADR: " + new_title)]
+    return [commit(runner, top, (write_adr(top, number, old_title, superseded(old_text, number + 1),
+                                           entry.evidence),), "ADR: " + old_title),
+            commit(runner, top, (write_adr(top, number + 1, new_title, superseding(new_text, number),
+                                           entry.evidence),), "ADR: " + new_title)]
 
 
 # Staged and committed by path, so work elsewhere in the tree stays out of the commit.
@@ -222,10 +222,10 @@ def on_origin(runner, top, branch):
     return git(runner, top, "ls-remote", "--quiet", "--exit-code", "--heads", "origin", branch).status == 0
 
 
-def push(runner, top, landing, out):
-    branch = landing.branch
-    first_push = landing.default_branch is not None and not on_origin(runner, top, branch)
-    source = landing.default_branch if first_push else branch
+def push(runner, top, destination, out):
+    branch = destination.branch
+    first_push = destination.default_branch is not None and not on_origin(runner, top, branch)
+    source = destination.default_branch if first_push else branch
     for args in (("pull", "--quiet", "--rebase", "--autostash", "origin", source),
                  ("push", "--quiet", "-u", "origin", branch)):
         ran = git(runner, top, *args)
@@ -235,16 +235,16 @@ def push(runner, top, landing, out):
                               branch, said_by(ran), source, branch))
     out.write("Pushed to origin/{}.\n".format(branch))
     if first_push:
-        open_pull_request(runner, top, landing, out)
+        open_pull_request(runner, top, destination, out)
 
 
-def open_pull_request(runner, top, landing, out):
-    ran = runner.run(["gh", "pr", "create", "--draft", "--base", landing.default_branch, "--head", landing.branch,
-                      "--title", PULL_REQUEST_TITLE, "--body", PULL_REQUEST_BODY], top)
+def open_pull_request(runner, top, destination, out):
+    ran = runner.run(["gh", "pr", "create", "--draft", "--base", destination.default_branch, "--head",
+                      destination.branch, "--title", PULL_REQUEST_TITLE, "--body", PULL_REQUEST_BODY], top)
     if ran.status != 0:
         raise refusal("The commits are on origin/{}, and gh would not open the draft pull request. gh said:\n{}\n"
                       "Mend it, then run: gh pr create --draft --base {} --head {}".format(
-                          landing.branch, said_by(ran), landing.default_branch, landing.branch))
+                          destination.branch, said_by(ran), destination.default_branch, destination.branch))
     out.write("Opened a draft pull request: {}\n".format(ran.out.strip()))
 
 
@@ -258,9 +258,9 @@ def apply(runner, top, scratch, out):
     map_entry, contexts = map_of(top, taken)
     groups = glossaries(top, taken, contexts)
     edits = map_edits(Path(top), map_entry) if map_entry else {}
-    landing = target_of(runner, top)
+    destination = destination_of(runner, top)
     if taken:
-        branch_off(runner, top, landing)
+        branch_off(runner, top, destination)
     if any(entry.letter == MAP for entry in taken) and not map_entry:
         out.write("{} is already there, so it was left as it is.\n".format(MAP_FILE))
     made = []
@@ -270,11 +270,11 @@ def apply(runner, top, scratch, out):
             (Path(top) / name).write_text(text, encoding="utf-8", newline="\n")
         made.append(commit(runner, top, tuple(edits), "Glossary: the map in " + MAP_FILE))
     for glossary, (title, words) in groups.items():
-        landed = land_words(top, glossary, title, words, out)
-        if landed:
-            made.append(commit(runner, top, (glossary,), "Glossary: {} in {}".format(words_of(landed), glossary)))
+        written = write_words(top, glossary, title, words, out)
+        if written:
+            made.append(commit(runner, top, (glossary,), "Glossary: {} in {}".format(words_of(written), glossary)))
     for entry in (entry for entry in taken if entry.letter == DECISION):
-        made += land_decisions(runner, top, entry)
+        made += write_decisions(runner, top, entry)
     rewritten = what_is_left(sheet)
     path.write_text(rewritten, encoding="utf-8", newline="\n")
     left = [entry.name for entry in read_sheet(rewritten).entries]
@@ -284,4 +284,4 @@ def apply(runner, top, scratch, out):
         out.write("Nothing was accepted, so nothing was committed.\n")
     out.write("Left on the sheet: {}\n".format(len(left)) + "".join("  " + name + "\n" for name in left))
     if made:
-        push(runner, top, landing, out)
+        push(runner, top, destination, out)

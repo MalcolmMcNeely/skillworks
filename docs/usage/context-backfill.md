@@ -163,7 +163,7 @@ text that will be written into the repo.
 
 A reversal, a decision that was later undone, is one Draft that holds two ADRs: the old one, marked
 superseded, and the new one that names it. One Answer covers both. Each ADR sits under a `####`
-heading, which is the title it lands with:
+heading, which is the title it is written with:
 
 ```markdown
 ### Draft D4: SQLite gave way to Postgres
@@ -196,7 +196,7 @@ A blank `Answer:` line is unanswered, and stays on the sheet. The map's `Answer:
 `accept` from the map question. Change it if you changed your mind.
 
 When a Draft is nearly right, edit its text in place and write `accept`. The text on the sheet is
-the text that lands, and not the text the run wrote.
+the text that is written, and not the text the run wrote.
 
 ### Questions
 
@@ -207,7 +207,7 @@ give, so it asks you instead.
 A Question has a `Reason:` line where a Draft has its `Answer:` line. When you know why the change
 was made, write the reason on that line, in a sentence or two. The next run turns it into a
 decision Draft, so your reason goes through the same three tests as every other find before it
-lands. When you do not know, write `?`, or leave the line blank.
+is written. When you do not know, write `?`, or leave the line blank.
 
 ### Handing the sheet over
 
@@ -226,11 +226,11 @@ blank sheet.
 
 Type the command again once the sheet is marked. The run that finds at least one Answer on the
 sheet is the second run. Run it on the Target branch, or on the default branch in `spec` mode. It
-writes the text that is on the sheet, so a Draft you edited lands as you edited it.
+writes the text that is on the sheet, so a Draft you edited is written as you edited it.
 
 ### What it writes
 
-| Answer | Where it lands |
+| Answer | Where it is written |
 |---|---|
 | `accept` on the map | `CONTEXT-MAP.md` at the repo root, as the sheet holds it. Two Steering files change with it, as the next section says. |
 | `accept` on a word | The glossary, in alphabetical order, with its `_Avoid_` line and no evidence. With one glossary, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, where the map says that context lives. The file is created when there is none. |
@@ -247,10 +247,10 @@ Recovered from history: commit 9c1d2e3, pull request #20
 That line tells a reader the ADR was recovered from the history and not settled in a grill, and
 where to check it. A word, a map or an ADR already in the repo is never changed.
 
-### How a reversal lands
+### How a reversal is written
 
-An accepted reversal lands as two ADRs with two numbers in a row, each with its own `ADR:` commit.
-With `0002` the highest number in `docs/adr/`, the example above lands as:
+An accepted reversal is written as two ADRs with two numbers in a row, each with its own `ADR:`
+commit. With `0002` the highest number in `docs/adr/`, the example above is written as:
 
 - `0003-keep-the-dates-in-sqlite.md`, the old decision, with the status line
   `Status: superseded by ADR-0004`.
@@ -262,11 +262,11 @@ lost.
 
 ### A written reason
 
-A reason you wrote on a Question's `Reason:` line lands nowhere in this run. It comes back on the
-rewritten sheet as a decision Draft under Decisions: the Question's text with your reason as its
+A reason you wrote on a Question's `Reason:` line is written nowhere in this run. It comes back on
+the rewritten sheet as a decision Draft under Decisions: the Question's text with your reason as its
 why, the same evidence, and a blank `Answer:` line. Mark it like any other Draft, so your reason
-faces the same Answer as every other find before it lands. A Question whose `Reason:` line is `?`
-or blank stays on the sheet as a Question.
+faces the same Answer as every other find before it is written. A Question whose `Reason:` line is
+`?` or blank stays on the sheet as a Question.
 
 ### What a map changes in Steering
 
@@ -325,7 +325,7 @@ The run writes nothing when:
 
 ### The `?` lines
 
-After it lands what you accepted, the run talks each `?` line through with you, one at a time. It
+After it writes what you accepted, the run talks each `?` line through with you, one at a time. It
 shows you the Draft or the Question with its evidence, and asks for an Answer. Give one of the same
 three words as on the sheet: `accept`, `reject` or `?`. You can change a Draft's words before you
 accept it. Each Answer you give is applied as you give it, the same way as an Answer on the sheet.
