@@ -1,10 +1,11 @@
 import io
 import json
 import re
+from pathlib import Path
 
 import pytest
 import seed_steering
-from conftest import PLUGIN, ROOT, Ran, git, launch
+from conftest import PLUGIN, ROOT, Ran, Repo, git, launch
 from suite import Suite
 from tracker.files import CLOSING_NOTE
 from tracker.reading import DRIFT_REPORT, NAME_REPORT
@@ -29,7 +30,7 @@ WHERE = {
     "surfaces.md": "docs/agents/surfaces.md",
 }
 
-WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/"]
+WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/", ".context-backfill/"]
 
 RULES = ["comments.md", "determinism.md", "file-placement.md", "testing.md", "words.md"]
 
@@ -1673,6 +1674,59 @@ def test_a_second_run_creates_nothing_more(repo, runner):
     assert list((repo.work / ".handoff").iterdir()) == []
 
 
+def next_step(ran):
+    assert ran.status == 0, ran.err
+    lines = [line for line in ran.out.splitlines() if line.startswith("next step: ")]
+    assert len(lines) == 1, ran.out
+    return lines[0]
+
+
+def empty_repo(root):
+    origin, work = root / "origin.git", root / "work"
+    work.mkdir(parents=True)
+    git(root, "init", "--quiet", "--bare", "--initial-branch=main", origin.as_posix())
+    git(work, "init", "--quiet", "--initial-branch=main")
+    for name, value in Repo.SETTINGS:
+        git(work, "config", name, value)
+    git(work, "remote", "add", "origin", origin.as_posix())
+    # Setup refuses an origin with no default branch, so the emptiest repo it can run in holds one empty commit.
+    git(work, "commit", "--quiet", "--allow-empty", "-m", "Start")
+    git(work, "push", "--quiet", "origin", "main")
+    return Path(git(work, "rev-parse", "--show-toplevel").strip())
+
+
+def test_a_repo_with_a_history_and_no_glossary_is_sent_to_the_backfill_before_architecture_tests(repo, runner):
+    step = next_step(run_seed(runner, repo.work))
+
+    assert step == "next step: /skillworks:context-backfill, then /skillworks:architecture-tests"
+
+
+def test_an_empty_repo_is_sent_to_architecture_tests_alone(tmp_path, runner):
+    step = next_step(run_seed(runner, empty_repo(tmp_path)))
+
+    assert step == "next step: /skillworks:architecture-tests"
+
+
+def test_a_repo_whose_only_commit_is_setups_own_is_sent_to_architecture_tests_alone(tmp_path, runner):
+    work = empty_repo(tmp_path)
+    run_seed(runner, work)
+    git(work, "add", "-A")
+    git(work, "commit", "--quiet", "-m", "Set up Skillworks")
+
+    step = next_step(run_seed(runner, work))
+
+    assert step == "next step: /skillworks:architecture-tests"
+
+
+@pytest.mark.parametrize("glossary", ["CONTEXT.md", "CONTEXT-MAP.md"])
+def test_a_repo_with_a_history_and_a_glossary_is_sent_to_architecture_tests_alone(repo, runner, glossary):
+    (repo.work / glossary).write_text("# Glossary\n", encoding="utf-8", newline="\n")
+
+    step = next_step(run_seed(runner, repo.work))
+
+    assert step == "next step: /skillworks:architecture-tests"
+
+
 def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
@@ -2412,6 +2466,45 @@ def test_the_report_names_architecture_tests_as_the_next_step_and_what_it_fills(
     assert "next step" in paragraphs[0]
     for filled in ("`{}`".format(WHERE["suite.json"]), "`{}`".format(WHERE["placement-checks.md"]), "allowlist"):
         assert filled in paragraphs[0], filled
+
+
+HISTORY_STEP = "a repo with a history and no glossary"
+
+
+def test_the_report_names_the_backfill_before_architecture_tests_for_a_repo_with_a_history():
+    report = setup_section("### 7. Report")
+    paragraph = [paragraph for paragraph in report.split("\n\n") if "`/skillworks:architecture-tests`" in paragraph][0]
+
+    assert "`next step:`" in paragraph
+    assert HISTORY_STEP in paragraph
+    assert paragraph.index("`/skillworks:context-backfill`") < paragraph.index("`/skillworks:architecture-tests`")
+
+
+BACKFILL_SENTENCE = ("A repo built before it had these files fills them once with `/skillworks:context-backfill`, "
+                     "and setup names it as the next step.")
+
+
+def test_the_domain_docs_seed_and_this_repos_copy_say_how_a_repo_with_a_history_fills_them():
+    copy = (ROOT / "docs" / "agents" / "domain.md").read_text(encoding="utf-8")
+
+    assert BACKFILL_SENTENCE in seeded("domain.md")
+    assert BACKFILL_SENTENCE in copy
+
+
+def test_the_setup_page_names_the_backfill_beside_turning_the_rules_into_tests():
+    section = usage_section("## Turn the rules into tests")
+
+    assert "`/skillworks:context-backfill`" in section
+    assert HISTORY_STEP in section
+    assert "](context-backfill.md)" in section
+
+
+def test_what_next_names_the_backfill_in_the_words_setup_uses():
+    any_time = section(skill_text("what-next"), "Skills for any time")
+    entry = [line for line in any_time.splitlines() if line.startswith("- **`/skillworks:context-backfill`** — ")]
+
+    assert len(entry) == 1
+    assert HISTORY_STEP in entry[0]
 
 
 # Each holds only for this repository, so a skill that says one tells a team about a repo it is not in.

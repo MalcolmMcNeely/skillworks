@@ -132,7 +132,7 @@ Review these before you commit them.
 | `docs/agents/loop.json` | The loop's settings. `tracker` holds your answer, `github` or `files`. `target-branch` starts as your remote's default branch. `co-authored-by` holds your answer on the credit for Claude, `show` or `hide`, and starts as `hide`. |
 | `docs/agents/surfaces.md` | The places a change can have to reach besides its code. It starts with the README and the user docs. |
 | `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
-| `.gitignore` | The loop's working folders: `.spec-loop/`, `.handoff/` and `.claude/worktrees/`. Each machine has its own, and nobody shares them. Setup also creates `.handoff/`, where `handoff` saves. |
+| `.gitignore` | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. Each machine has its own, and nobody commits them. Setup also creates `.handoff/`, where `handoff` saves. `.context-backfill/` holds the Answer sheet of the [Context backfill](context-backfill.md). |
 | `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
 | `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. An `attribution` block, which setup rewrites from `co-authored-by` each time it runs. On a second run, setup adds a cache key that is missing and keeps one your team set. |
 
@@ -197,6 +197,11 @@ Then the loop is ready:
 
 Setup leaves the rules as prose. An agent reads their settings, but no check enforces them. Run
 `/skillworks:architecture-tests` after setup to turn the rules into tests your team owns.
+
+For a repo with a history and no glossary, run `/skillworks:context-backfill` first. It fills your
+glossary and your ADRs once, from your code and your history, and lands nothing until you accept it.
+Setup names it as the next step when a commit touches a file setup does not write, and your repo has
+no `CONTEXT.md` and no `CONTEXT-MAP.md`. [Context backfill](context-backfill.md) says how it works.
 
 - **What it reads.** Each rule in `docs/agents/rules/` and the settings at its end, `CONTEXT-MAP.md`
   where your repo has one, and your repo's languages and test runners.

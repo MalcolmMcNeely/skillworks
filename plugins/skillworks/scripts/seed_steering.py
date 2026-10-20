@@ -46,7 +46,7 @@ DEFAULT_BRANCH_PLACEHOLDER = "<default-branch>"
 
 HANDOFF = ".handoff/"
 
-WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/"]
+WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/", ".context-backfill/"]
 
 CHOICE = re.compile(r"^(.+):([0-9]+)=(yours|seed)$")
 
@@ -239,7 +239,7 @@ def ignore_working_folders(top):
         return []
     if held and not held.endswith("\n"):
         held += "\n"
-    lines = ["# The spec loop's working folders. Transient, per-machine."] + missing
+    lines = ["# The Skillworks working folders. Transient, and never committed."] + missing
     named = ", ".join(missing)
     return [Outcome("added {} to .gitignore\n".format(named), "would add {} to .gitignore\n".format(named),
                     writes=[(path, held + "\n".join(lines) + "\n")])]
@@ -249,6 +249,21 @@ def make_handoff_folder(top):
     if (top / HANDOFF).is_dir():
         return []
     return [Outcome("created {}\n".format(HANDOFF), "would create {}\n".format(HANDOFF), makes=[top / HANDOFF])]
+
+
+# Setup's own files are left out, so a team that committed what setup wrote is not sent to read a history it does not have.
+def has_history(runner, top):
+    setups_own = list(PLACES.values()) + [BASES, ".gitignore", "CLAUDE.md", "AGENTS.md", ".claude/settings.json"]
+    found = runner.run(["git", "-C", str(top), "rev-list", "-n", "1", "HEAD", "--", "."]
+                       + [":(exclude){}".format(place) for place in setups_own])
+    return found.status == 0 and bool(found.out.strip())
+
+
+def next_step(runner, top):
+    has_glossary = (top / "CONTEXT.md").exists() or (top / "CONTEXT-MAP.md").exists()
+    if has_history(runner, top) and not has_glossary:
+        return "next step: /skillworks:context-backfill, then /skillworks:architecture-tests\n"
+    return "next step: /skillworks:architecture-tests\n"
 
 
 def parsed(argv):
@@ -273,7 +288,7 @@ def parsed(argv):
 
 
 # A run that stops for a question writes nothing, so no Steering file is left half-merged while the team decides.
-def report(outcomes, out):
+def report(outcomes, step, out):
     asking = [ask for ask in (KEEP, SETTLE) if any(outcome.asks == ask for outcome in outcomes)]
     for outcome in outcomes:
         out.write(outcome.would if asking else outcome.done)
@@ -285,6 +300,8 @@ def report(outcomes, out):
                 path.mkdir(parents=True, exist_ok=True)
     if asking:
         out.write("Nothing was written. Run again with {}.\n".format(" and ".join(asking)))
+    else:
+        out.write(step)
 
 
 def main(argv, runner, out, err):
@@ -294,7 +311,8 @@ def main(argv, runner, out, err):
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        report(seed(top, default_branch(runner, top), choices, settled) + ignore_working_folders(top) + make_handoff_folder(top), out)
+        report(seed(top, default_branch(runner, top), choices, settled) + ignore_working_folders(top) + make_handoff_folder(top),
+               next_step(runner, top), out)
         return 0
     except Stop as stop:
         err.write(stop.said)
