@@ -39,6 +39,12 @@ conflict reads it back. On GitHub it is the comment the ticket closes with, and 
 section of the ticket's own file, so one word serves both Trackers.
 _Avoid_: Closing comment, close comment, resolution
 
+**Context backfill**:
+The Hidden skill that writes a repo's first glossary, context map and ADRs from its code and its
+history, for a repo that was built before it had any. A developer types it once, after setup, and
+nothing it finds reaches the repo until a person has accepted it.
+_Avoid_: Dig, archaeology, recovery, bootstrap, history mining
+
 **Cut**:
 The step the driver takes before the first ticket, when a spec has none: a Session that breaks the
 spec into tickets. It runs once for a spec and never for a ticket, so it is not one of the steps a
