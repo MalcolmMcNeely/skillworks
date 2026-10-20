@@ -118,7 +118,7 @@ Look for the signals of a decision: a dependency added or removed; a folder crea
 
 Judge each change by the three tests of an ADR. All three must be true:
 
-1. **Hard to reverse.** Changing the choice later costs something real.
+1. **Hard to reverse.** Undoing the choice later costs something real. The cost is what the repo loses when the next reader undoes the choice without knowing why, and not the lines the undoing would take. A word the code and the prose settled on, a cap, a count, an order of reads, the shape of a screen or one setting in a rule can each be undone in one line, and each is the kind of choice a reader undoes as a fix, so each passes this test. A change fails it only when undoing it loses nothing, such as a value nobody weighed or a tidy-up. "A word", "a rename", "a count", "a setting" and "one class" describe the size of a change and never say why undoing it would be cheap, so none of them is a reason under this test.
 2. **Surprising without context.** A reader who looks at the code would wonder why it was done that way.
 3. **The result of a real trade-off.** There were real alternatives, and one was picked for a reason.
 
