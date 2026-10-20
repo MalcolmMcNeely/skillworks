@@ -258,6 +258,213 @@ def test_a_gh_with_no_login_puts_the_warning_in_the_fit_and_still_writes_the_log
             scratch(full, "renames.md").startswith("# Renames")) == (True, True, True)
 
 
+def apply(runner, where):
+    return command("apply", runner, where)
+
+
+SHEET_HEAD = "# Answer sheet\n\nMark each Answer: line with accept, reject or ?.\n\n"
+
+
+def word(number, name, definition, answer, avoid=None):
+    return ("### Draft W{}: {}\nAnswer: {}\n**{}**:\n{}\n{}Evidence:\n"
+            "- commit 3f2a9c1 \"Rename the parser to the {}\"\n\n").format(
+        number, name, answer, name, definition, "_Avoid_: " + avoid + "\n" if avoid else "", name.lower())
+
+
+def decision(number, title, text, answer, *evidence):
+    return "### Draft D{}: {}\nAnswer: {}\n{}\nEvidence:\n{}\n".format(
+        number, title, answer, text, "".join("- " + item + "\n" for item in evidence))
+
+
+def question(number, title, text, reason):
+    return "### Question Q{}: {}\nReason: {}\n{}\nEvidence:\n- commit 77aa001 \"Move the store\"\n\n".format(
+        number, title, reason, text)
+
+
+def sheet(words="", decisions="", questions="", thin=""):
+    return (SHEET_HEAD + "## Words\n\n" + words + "## Decisions\n\n" + decisions
+            + "## Questions\n\n" + questions + "## Thin\n\n" + thin)
+
+
+@pytest.fixture
+def landing(history):
+    where = history.clone("landing")
+    for name, value in (("user.name", "Test"), ("user.email", "test@example.invalid"),
+                        ("commit.gpgsign", "false"), ("core.autocrlf", "false")):
+        git(where, "config", name, value)
+    (where / ".context-backfill").mkdir()
+    return where
+
+
+def mark(where, text):
+    (where / ".context-backfill" / "answer-sheet.md").write_text(text, encoding="utf-8", newline="\n")
+
+
+def read(where, name):
+    return (where / name).read_text(encoding="utf-8")
+
+
+def test_an_accepted_word_lands_in_a_new_glossary_with_its_avoid_line_and_no_evidence(landing, runner):
+    mark(landing, sheet(words=word(1, "Reader", "The part that turns a file into dates.", "accept", "Parser")))
+
+    apply(runner, landing)
+
+    assert read(landing, "CONTEXT.md").split("## Language\n\n", 1)[1] == (
+        "**Reader**:\nThe part that turns a file into dates.\n_Avoid_: Parser\n")
+
+
+GLOSSARY = ("# App\n\nThe date reader.\n\n## Language\n\n"
+            "**Answer**:\nWhat the reader gives back.\n_Avoid_: Result\n\n"
+            "**Verdict**:\nA call on one date.\n")
+
+ADR_ONE = "# Read dates with no year\n\nThe parser reads them, because the files hold them.\n"
+
+
+@pytest.fixture
+def grown(history):
+    history.commit("Glossary and two ADRs", ANN, "2022-03-01T10:00:00+00:00", {
+        "CONTEXT.md": GLOSSARY,
+        "docs/adr/0001-read-dates-with-no-year.md": ADR_ONE,
+        "docs/adr/0002-a-web-front-end.md": "# A web front end\n\nIn TypeScript.\n",
+    })
+    history.push()
+    return history
+
+
+@pytest.fixture
+def grown_landing(grown, landing):
+    git(landing, "pull", "--quiet", "origin", "main")
+    return landing
+
+
+def test_an_accepted_word_lands_in_alphabetical_order_and_the_words_already_there_are_unchanged(
+        grown_landing, runner):
+    mark(grown_landing, sheet(words=word(1, "Batch", "Fifty tickets read in one call.", "accept", "Chunk")))
+
+    apply(runner, grown_landing)
+
+    assert read(grown_landing, "CONTEXT.md") == (
+        "# App\n\nThe date reader.\n\n## Language\n\n"
+        "**Answer**:\nWhat the reader gives back.\n_Avoid_: Result\n\n"
+        "**Batch**:\nFifty tickets read in one call.\n_Avoid_: Chunk\n\n"
+        "**Verdict**:\nA call on one date.\n")
+
+
+def test_an_accepted_adr_takes_the_next_number_and_ends_with_where_it_was_recovered_from(grown_landing, runner):
+    mark(grown_landing, sheet(decisions=decision(
+        1, "Rename the parser to the reader", "The parser became the reader, because it reads more than dates.",
+        "accept", 'commit 9c1d2e3 "Rename the parser to the reader"', 'pull request #20 "It reads more than dates now."',
+        "app/reader.py:1 `pass`")))
+
+    apply(runner, grown_landing)
+
+    assert read(grown_landing, "docs/adr/0003-rename-the-parser-to-the-reader.md") == (
+        "# Rename the parser to the reader\n\n"
+        "The parser became the reader, because it reads more than dates.\n\n"
+        "Recovered from history: commit 9c1d2e3, pull request #20\n")
+
+
+def test_an_existing_adr_is_unchanged(grown_landing, runner):
+    mark(grown_landing, sheet(decisions=decision(
+        1, "Read dates with no year", "A second record of it.", "accept", 'commit 1a2b3c4 "Add the parser"')))
+
+    apply(runner, grown_landing)
+
+    assert read(grown_landing, "docs/adr/0001-read-dates-with-no-year.md") == ADR_ONE
+
+
+def test_an_edited_draft_lands_with_the_text_on_the_sheet_and_not_the_text_the_pass_wrote(landing, runner):
+    (landing / ".context-backfill" / "words.md").write_text(
+        "### Reader\n**Reader**:\nThe parser.\n", encoding="utf-8")
+    mark(landing, sheet(words=word(1, "Reader", "The part that reads a file of dates, with or without a year.",
+                                   "accept")))
+
+    apply(runner, landing)
+
+    assert "**Reader**:\nThe part that reads a file of dates, with or without a year.\n" in read(landing, "CONTEXT.md")
+
+
+def landed_text(where):
+    paths = [where / "CONTEXT.md"] + sorted((where / "docs" / "adr").glob("*.md"))
+    return "".join(path.read_text(encoding="utf-8") for path in paths if path.exists())
+
+
+def test_a_rejected_draft_lands_nowhere(landing, runner):
+    mark(landing, sheet(
+        words=word(1, "Reader", "The part that reads dates.", "accept") + word(2, "Gadget", "A widget.", "reject"),
+        decisions=decision(1, "Use a gadget store", "Gadgets are kept in a store.", "reject",
+                           'commit 5e6f7a8 "Add the gadget store"')))
+
+    apply(runner, landing)
+
+    assert ("Gadget" in landed_text(landing), "gadget" in landed_text(landing)) == (False, False)
+
+
+def headings(text):
+    return [line for line in text.splitlines() if line.startswith("### ")]
+
+
+def test_the_rewritten_sheet_holds_the_question_marks_and_the_unanswered_lines_and_nothing_else(landing, runner):
+    mark(landing, sheet(
+        words=word(1, "Reader", "The part that reads dates.", "accept") + word(2, "Batch", "Fifty tickets.", "?"),
+        decisions=decision(1, "Use a gadget store", "Gadgets are kept in a store.", "reject",
+                           'commit 5e6f7a8 "Add the gadget store"')
+        + decision(2, "Read the log once", "The log is read once per run.", "", 'commit 6f7a8b9 "Cache the log"'),
+        questions=question(1, "The store moved", "The store moved from app/ to store/ in 2021.", "?"),
+        thin=word(3, "Tidy", "A commit that only tidies.", "")))
+
+    apply(runner, landing)
+
+    assert headings(read(landing, ".context-backfill/answer-sheet.md")) == [
+        "### Draft W2: Batch",
+        "### Draft D2: Read the log once",
+        "### Question Q1: The store moved",
+        "### Draft W3: Tidy",
+    ]
+
+
+def test_a_sheet_with_no_answer_stops_with_one_message_and_makes_no_commit(landing, runner):
+    mark(landing, sheet(words=word(1, "Reader", "The part that reads dates.", ""),
+                        questions=question(1, "The store moved", "The store moved in 2021.", "")))
+    before = git(landing, "rev-parse", "HEAD")
+
+    ran = apply(runner, landing)
+
+    assert (ran.status, ran.err.startswith("FAIL  Mark the sheet"), ran.err.count("\n"),
+            git(landing, "rev-parse", "HEAD")) == (1, True, 1, before)
+
+
+def test_the_maps_accept_from_the_talk_is_not_an_answer(landing, runner):
+    mark(landing, sheet(words="### Draft M1: The map\nAnswer: accept\n# Context Map\n\nEvidence:\n- code app/\n\n"
+                        + word(1, "Reader", "The part that reads dates.", "")))
+
+    ran = apply(runner, landing)
+
+    assert (ran.status, ran.err.startswith("FAIL  Mark the sheet")) == (1, True)
+
+
+def subjects(where, ref):
+    return git(where, "log", "--format=%s", ref).splitlines()
+
+
+def test_the_commits_carry_their_prefixes_leave_unstaged_work_out_and_reach_the_target_branch(
+        history, landing, runner):
+    (landing / "README.md").write_text("# App, half edited\n", encoding="utf-8")
+    mark(landing, sheet(
+        words=word(1, "Reader", "The part that reads dates.", "accept") + word(2, "Batch", "Fifty tickets.", "accept"),
+        decisions=decision(1, "Read the log once", "The log is read once per run, because gh is slow.", "accept",
+                           'commit 6f7a8b9 "Cache the log"')))
+
+    apply(runner, landing)
+
+    pushed = subjects(history.origin, "main")
+    changed = git(history.origin, "log", "--format=", "--name-only", "-2", "main").split()
+    assert (pushed[:2], sorted(changed), read(landing, "README.md")) == (
+        ["ADR: Read the log once", "Glossary: 2 words in CONTEXT.md"],
+        ["CONTEXT.md", "docs/adr/0001-read-the-log-once.md"],
+        "# App, half edited\n")
+
+
 def test_a_gitignore_with_no_last_newline_gets_the_line_on_a_line_of_its_own(history, runner):
     full = history.clone("full")
     (full / ".gitignore").write_text("bin/", encoding="utf-8")

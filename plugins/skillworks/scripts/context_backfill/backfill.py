@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
+from context_backfill.landing import apply
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
@@ -17,7 +18,7 @@ from stop import Stop, misuse, refusal
 from tracker.files import SPEC_FILE, SPECS, TICKETS, number_of
 from tracker.github import GH_QUIET
 
-USAGE = "usage: context-backfill check\n       context-backfill history\n"
+USAGE = "usage: context-backfill check\n       context-backfill history\n       context-backfill apply\n"
 
 SCRATCH = ".context-backfill"
 FIT_FILE = "fit.md"
@@ -416,7 +417,8 @@ def history(runner, where, out):
 
 
 COMMANDS = {"check": check,
-            "history": lambda runner, where, out, wait: history(runner, where, out)}
+            "history": lambda runner, where, out, wait: history(runner, where, out),
+            "apply": lambda runner, where, out, wait: apply(runner, top_of(runner, where), SCRATCH, out)}
 
 
 def main(argv, runner, out, err, wait, where=None):

@@ -204,6 +204,57 @@ tells you to mark the sheet, and does nothing else. The map's `accept`, which th
 from the map question, does not count as an Answer here. A run typed by habit never applies a
 blank sheet.
 
+## The second run
+
+Type the command again once the sheet is marked. The run that finds at least one Answer on the
+sheet is the second run. Run it on the Target branch. It writes the text that is on the sheet, so a
+Draft you edited lands as you edited it.
+
+### What it writes
+
+| Answer | Where it lands |
+|---|---|
+| `accept` on a word | `CONTEXT.md` at the repo root, in alphabetical order, with its `_Avoid_` line and no evidence. The file is created when there is none. |
+| `accept` on a decision | A new ADR in `docs/adr/`, numbered one above the highest number there, with the Draft's title as its heading and its text as its body. |
+| `reject` | Nowhere. The Draft is dropped. |
+| `?` or blank | Nowhere yet. The Draft stays on the sheet. |
+
+Each ADR ends with one line that names the commits and tickets it came from:
+
+```
+Recovered from history: commit 9c1d2e3, pull request #20
+```
+
+That line tells a reader the ADR was recovered from the history and not settled in a grill, and
+where to check it. A word or an ADR already in the repo is never changed.
+
+### What it commits
+
+| Commit | Subject |
+|---|---|
+| One for the glossary | `Glossary: 2 words in CONTEXT.md` |
+| One for each ADR | `ADR: <the ADR's title>` |
+
+Each commit holds only the file it names, so other work in your tree stays out. The run prints the
+commits it made, then pulls with rebase and pushes to the Target branch.
+
+It then rewrites the sheet to hold only what is left: the `?` lines and the unanswered lines.
+
+### What it refuses
+
+The run writes nothing when:
+
+- The sheet has no Answer on it. It tells you to mark the sheet.
+- An `Answer:` line holds a word that is not `accept`, `reject` or `?`.
+- The checkout is not on the Target branch.
+
+### The `?` lines
+
+After it lands what you accepted, the run talks each `?` line through with you, one at a time. It
+shows you the Draft or the Question with its evidence, and asks for an Answer. Give one of the same
+three words as on the sheet: `accept`, `reject` or `?`. You can change a Draft's words before you
+accept it. Each Answer you give is applied as you give it, the same way as an Answer on the sheet.
+
 ## Starting over
 
 Delete the scratch folder:
@@ -218,5 +269,9 @@ passes after it.
 
 ## What comes next
 
-This version of the command writes the Answer sheet and stops. A later version reads the marked
-sheet and lands what you accept. This page grows when it arrives.
+When nothing is left on the sheet, the run says so, and says that deleting `.context-backfill/`
+starts over. Then it names the next step:
+
+- When `docs/agents/suite.json` names no check yet, `/skillworks:architecture-tests`, which turns
+  the rules into tests your team owns.
+- When it names a check, your first loop: `/skillworks:grill`, then `/skillworks:spec-loop <spec#>`.

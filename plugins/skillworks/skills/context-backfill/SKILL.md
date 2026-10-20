@@ -1,6 +1,6 @@
 ---
 name: context-backfill
-description: Check that this clone holds the whole history, read it once into the scratch folder, and write every word, map and decision it shows as a Draft on an Answer sheet for a person to mark, before a Context backfill fills the glossary, the map and the ADRs.
+description: Check that this clone holds the whole history, read it once into the scratch folder, write every word, map and decision it shows as a Draft on an Answer sheet for a person to mark, and on the next run land each Draft the person accepted into the glossary and the ADRs.
 disable-model-invocation: true
 ---
 
@@ -18,7 +18,7 @@ Look in `.context-backfill/` before anything else.
 
 - **No `answer-sheet.md`.** This is the first run. Go on from Check the clone.
 - **An `answer-sheet.md` with no Answer on it.** Every `Answer:` line and every `Reason:` line is blank, but for the map's `accept` the first run wrote from the talk, which is not an Answer the person marked. Tell the person one thing: mark the sheet. Do nothing else, and stop.
-- **An `answer-sheet.md` with at least one Answer.** This version of the skill does not apply a sheet yet. Tell the person so, and stop. Change nothing on the sheet.
+- **An `answer-sheet.md` with at least one Answer.** This is the second run. Go on from The second run.
 
 ## Check the clone
 
@@ -180,3 +180,43 @@ When the sheet is written, tell the person:
 Then list each change that failed a test, from `## Failed a test` in `decisions.md`, one line each, so the person knows what the skill saw and chose not to offer.
 
 Then stop. Change nothing in the repo.
+
+## The second run
+
+### Apply the sheet
+
+Run the apply from the repo root, on the Target branch:
+
+```bash
+context-backfill apply
+```
+
+It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the sheet, never the text a pass wrote, so a Draft the person edited lands as edited:
+
+- Each accepted word goes into `CONTEXT.md` at the repo root, in alphabetical order, with its `_Avoid_` line and never with its evidence. It creates `CONTEXT.md` when there is none.
+- Each accepted decision goes into `docs/adr/`, numbered one above the highest number there, with the title as its heading and the Draft's text as its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
+- Each rejected Draft is dropped, and lands nowhere.
+- A word or an ADR already in the repo is never changed.
+
+It makes one `Glossary:` commit for the glossary, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch.
+
+It then rewrites the sheet to hold only what is left: the `?` lines and the unanswered lines. It prints what is left.
+
+If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch, and when an accepted Draft needs a map. A refusal after the commits says the commits are made and names the command that sends them.
+
+### Talk the `?` lines through
+
+Take each `?` line on the rewritten sheet, one at a time. Show the person the Draft or the Question with its evidence, and ask for an Answer. An Answer in talk is one of the same three words as on the sheet: `accept`, `reject` or `?`. The person may change the Draft's words before they accept it, and the words they give are the words that land.
+
+For a Question, the person gives the reason, or `?`. Never write a reason the person did not give.
+
+Apply each Answer as it is given: write it on the Draft's `Answer:` line, or on the Question's `Reason:` line, in the sheet, with the words the person gave, and run `context-backfill apply` again. Then go on to the next `?` line. A `?` given in talk leaves the line on the sheet for a later run.
+
+### End the second run
+
+When nothing is left on the sheet, say so, and say that deleting `.context-backfill/` starts over. When lines are left that the person did not answer, name them, and say that they type this command again once they are marked.
+
+Then name the next step. Read `docs/agents/suite.json`:
+
+- When it names no check, the next step is `/skillworks:architecture-tests`, which turns the rules into tests the team owns.
+- When it names a check, the next step is the first loop: `/skillworks:grill`, then `/skillworks:spec-loop <spec#>`.
