@@ -27,14 +27,19 @@ class RealMap(NamedTuple):
     polysemy: set
 
 
-def folder(token):
+def as_written(token):
     token = token.strip()
     if not token or " " in token:
         return None
     token = token.removeprefix("./")
     for tail in ("/**", "/*", "/"):
         token = token.removesuffix(tail)
-    return token.casefold() if token not in ("", ".") else None
+    return token if token not in ("", ".") else None
+
+
+def folder(token):
+    written = as_written(token)
+    return written.casefold() if written else None
 
 
 def yaml_block(text):
@@ -47,7 +52,7 @@ def yaml_block(text):
     return lines[start:end]
 
 
-def map_folders(text):
+def map_paths(text):
     named = {name.casefold(): name for name in contexts_of(text)}
     found, context, listing = {}, None, False
     for line in yaml_block(text):
@@ -57,16 +62,20 @@ def map_folders(text):
         key = YAML_KEY.match(line)
         if key:
             context = named.get(key.group(1).strip().casefold(), key.group(1).strip())
-            found[context], listing = set(), False
+            found[context], listing = [], False
         elif context and line.strip() == "code:":
             listing = True
         elif context and listing and LIST_ITEM.match(line):
-            claimed = folder(LIST_ITEM.match(line).group(1).strip("'\""))
+            claimed = as_written(LIST_ITEM.match(line).group(1).strip("'\""))
             if claimed:
-                found[context].add(claimed)
+                found[context].append(claimed)
         elif line.strip():
             listing = False
-    return {context: folders for context, folders in found.items() if folders}
+    return {context: paths for context, paths in found.items() if paths}
+
+
+def map_folders(text):
+    return {context: {path.casefold() for path in paths} for context, paths in map_paths(text).items()}
 
 
 def real_map(text):

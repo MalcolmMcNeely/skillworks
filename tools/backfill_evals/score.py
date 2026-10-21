@@ -17,6 +17,8 @@ from stop import refusal
 
 COMPARISON_FILE = "comparison.json"
 OUTPUT_FILE = "output.json"
+QUESTION_FILE = "map-question.json"
+CAPPED_FILE = "capped.txt"
 CLONE_FOLDER = "blind-clone"
 ARMS = ("old", "new")
 JUDGED_SECTIONS = (DECISIONS, "## Questions")
@@ -29,10 +31,21 @@ class Run(NamedTuple):
     folder: Path
     sheet: str
     output: str
+    capped: str
 
     @property
     def label(self):
         return "{} {}".format(self.arm, self.name)
+
+    @property
+    def scored(self):
+        return self.sheet is not None and self.capped is None
+
+    # Both Sessions of a run, the one that stopped at the map question and the one resumed with the answer.
+    def spent(self, key):
+        said = [judge.result_of(read_or_none(self.folder / name) or "") or {} for name in (QUESTION_FILE, OUTPUT_FILE)]
+        values = [held[key] for held in said if isinstance(held.get(key), (int, float))]
+        return sum(values) if values else None
 
 
 def read_or_none(path):
@@ -44,7 +57,8 @@ def kept_runs(comparison):
     for arm in ARMS:
         folder = comparison / arm
         for run in sorted(path for path in folder.iterdir() if path.is_dir()) if folder.is_dir() else []:
-            runs.append(Run(arm, run.name, run, read_or_none(run / SHEET_FILE), read_or_none(run / OUTPUT_FILE)))
+            runs.append(Run(arm, run.name, run, read_or_none(run / SHEET_FILE), read_or_none(run / OUTPUT_FILE),
+                            read_or_none(run / CAPPED_FILE)))
     return runs
 
 
@@ -56,9 +70,9 @@ def what_it_says(run):
     return " ".join(said.split()) or "nothing"
 
 
-def writer_of(sheeted):
+def writer_of(scored):
     writers = {}
-    for run in sheeted:
+    for run in scored:
         writers.setdefault(judge.main_model(run.output or "") or "no model named", []).append(run.label)
     if len(writers) > 1:
         raise refusal("The sheets were written by more than one model, and a comparison holds one writer, so the "
@@ -109,9 +123,9 @@ class Judged(NamedTuple):
                    if statement["kind"] == "decision")
 
 
-def judged_all(runner, alias, sheeted, records):
+def judged_all(runner, alias, scored, records):
     models, judged = set(), []
-    for run in sheeted:
+    for run in scored:
         part = judged_part(run.sheet)
         for record, said in records.items():
             model, verdicts = judge.ask(runner, alias, run.folder.as_posix(), said["title"], said["statements"], part)
@@ -137,12 +151,12 @@ def mean(values):
     return sum(values) / len(values)
 
 
-def row(name, old, new, shown, spread):
+def row(name, old, new, shown, spread, change="{:+.1f}"):
     cells = [name]
     for values in (old, new):
         cells += [shown(mean(values)), "{} to {}".format(spread(min(values)), spread(max(values)))] if values \
             else [NONE, NONE]
-    cells.append("{:+.1f}".format(mean(new) - mean(old)) if old and new else NONE)
+    cells.append(change.format(mean(new) - mean(old)) if old and new else NONE)
     return "| " + " | ".join(cells) + " |"
 
 
@@ -150,9 +164,20 @@ def percent(value):
     return "{:.1f}%".format(value)
 
 
-def run_row(name, kept, measure, shown, spread):
-    old, new = ([measure(held) for run, held in kept if run.arm == arm] for arm in ARMS)
-    return row(name, old, new, shown, spread)
+def run_row(name, kept, measure, shown, spread, change="{:+.1f}"):
+    old, new = ([value for value in (measure(held) for run, held in kept if run.arm == arm) if value is not None]
+                for arm in ARMS)
+    return row(name, old, new, shown, spread, change)
+
+
+def spent_rows(scored):
+    kept = [(run, run) for run in scored]
+    return [
+        run_row("Run time, minutes", kept, lambda run: None if run.spent("duration_ms") is None
+                else run.spent("duration_ms") / 60000, "{:.1f}".format, "{:.0f}".format),
+        run_row("Cost at list price, US dollars", kept,lambda run: run.spent("total_cost_usd"),
+                "{:.2f}".format, "{:.2f}".format, "{:+.2f}"),
+    ]
 
 
 def clone_of(runner, source, comparison, pin):
@@ -276,7 +301,7 @@ def citation_lists(checked, missing):
     ])
 
 
-def measures(judged, records, shaped, real, worded, glossaries, evidence, checked, missing):
+def measures(judged, records, shaped, real, worded, glossaries, evidence, checked, missing, scored):
     kinds = [statement["kind"] for said in records.values() for statement in said["statements"]]
     rows = ["| Measure | Old | Old spread | New | New spread | Difference |", "|---|---|---|---|---|---|"]
     for kind in statements.KINDS:
@@ -290,6 +315,7 @@ def measures(judged, records, shaped, real, worded, glossaries, evidence, checke
     rows += shape_rows(shaped, real)
     rows += word_rows(worded, glossaries, evidence)
     rows += citation_rows(checked, missing)
+    rows += spent_rows(scored)
     return "\n".join(rows) + "\n"
 
 
@@ -303,14 +329,15 @@ def unknowns(judged):
 
 
 def failures(failed):
-    listed = ["- {} left no Answer sheet. Its output says: {}".format(run.label, what_it_says(run))
-              for run in failed]
+    listed = ["- {} {}. Its output says: {}".format(
+        run.label, "left no Answer sheet" if run.capped is None else "hit its time cap of {} minutes".format(
+            run.capped.strip()), what_it_says(run)) for run in failed]
     return "## Failed runs\n\nA failed run counts in no score.\n\n" + (
         "\n".join(listed) if listed else "No run failed.") + "\n"
 
 
-def header(pin, comparison, writer, alias, models, version, today, sheeted):
-    scored = ", ".join("{} {}".format(arm, sum(1 for run in sheeted if run.arm == arm)) for arm in ARMS)
+def header(pin, comparison, writer, alias, models, version, today, scored):
+    per_arm = ", ".join("{} {}".format(arm, sum(1 for run in scored if run.arm == arm)) for arm in ARMS)
     return "\n".join([
         "# Backfill evals, old against new", "",
         "- Pin: " + pin["commit"],
@@ -320,7 +347,7 @@ def header(pin, comparison, writer, alias, models, version, today, sheeted):
         "- Judge: {}, asked for as {}".format(" + ".join(sorted(models)) or NONE, alias or NONE),
         "- Claude Code: {} for the runs, {} for the judge".format(comparison.get("claude-code", NONE), version),
         "- Dates: runs started {}, judged {}".format(comparison.get("started", NONE), today),
-        "- Runs scored: " + scored,
+        "- Runs scored: " + per_arm,
     ]) + "\n"
 
 
@@ -331,22 +358,22 @@ def score(runner, source, comparison, pin, folder, today):
     noted = json.loads(read_or_none(comparison / COMPARISON_FILE) or "{}")
     records = held_out(runner, source, pin, folder)
     runs = kept_runs(comparison)
-    sheeted = [run for run in runs if run.sheet is not None]
-    writer = writer_of(sheeted)
+    scored = [run for run in runs if run.scored]
+    writer = writer_of(scored)
     alias = judge.alias_against(writer) if writer else None
-    models, judged = judged_all(runner, alias, sheeted, records) if alias else (set(), [])
+    models, judged = judged_all(runner, alias, scored, records) if alias else (set(), [])
     glossaries = words.glossaries(runner, source, pin["commit"])
-    worded = [(run, words.drafted(run.sheet)) for run in sheeted]
+    worded = [(run, words.drafted(run.sheet)) for run in scored]
     real = shape.real_map(blind_clone.shown(runner, source, pin["commit"], MAP_FILE))
-    shaped = [(run, shape.read_shape(read_or_none(run.folder / shape.SHAPE_FILE))) for run in sheeted]
-    clone = clone_of(runner, source, comparison, pin) if sheeted else None
+    shaped = [(run, shape.read_shape(read_or_none(run.folder / shape.SHAPE_FILE))) for run in scored]
+    clone = clone_of(runner, source, comparison, pin) if scored else None
     evidence = evidence_of(runner, clone, glossaries) if clone else {}
     history = citations.History(runner, clone)
-    checked = [(run, citations.checked(history, run.sheet)) for run in sheeted]
+    checked = [(run, citations.checked(history, run.sheet)) for run in scored]
     missing = missing_of(history, judged, records)
     version = runner.run(["claude", "--version"]).out.strip() or NONE
-    return "\n".join([header(pin, noted, writer, alias, models, version, today, sheeted),
-                      measures(judged, records, shaped, real, worded, glossaries, evidence, checked, missing),
+    return "\n".join([header(pin, noted, writer, alias, models, version, today, scored),
+                      measures(judged, records, shaped, real, worded, glossaries, evidence, checked, missing, scored),
                       losing_names(worded, glossaries), general_words(worded, glossaries),
                       citation_lists(checked, missing), unknowns(judged),
-                      failures([run for run in runs if run.sheet is None])])
+                      failures([run for run in runs if not run.scored])])

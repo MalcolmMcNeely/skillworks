@@ -203,6 +203,37 @@ diff in every team's next setup run, so do not edit one for style.
 - A running Session keeps the Plugin text it started with. Restart it after the change Lands. A
   project skill under `.claude/skills/` needs no restart.
 
+## Running a comparison
+
+A change to the Context backfill skill is measured with the backfill evals harness, in
+`tools/backfill_evals/`. Run it from the repo root:
+
+```
+uv run tools/backfill_evals/harness.py compare [<old ref> [<new ref>]]
+```
+
+- The old ref is the skill before the change. It defaults to the Target branch on origin, which the
+  harness fetches first.
+- The new ref is the skill after the change. It defaults to the working tree, so an edit is measured
+  before it is committed.
+
+It needs Claude Code, `uv`, `git` and `git-filter-repo`, which it runs through `uvx`. It stops and
+names the one that is missing.
+
+Each arm runs three times at once, each run in a Blind clone of its own, and the old arm runs before
+the new one. A run takes about two hours and stops at three, so a comparison takes about four hours,
+then the judge reads every sheet. The harness prints the table, old against new with the spread over
+the runs.
+
+The runs are kept under `tools/backfill_evals/runs/`, which git ignores, one folder per comparison.
+To judge them again without a run, after the judge prompt changes or the judge model moves:
+
+```
+uv run tools/backfill_evals/harness.py score <comparison>
+```
+
+Put the table in the body of the commit that changes the skill. Nothing writes it into the repo.
+
 ## Repo layout
 
 | Path | What it is |

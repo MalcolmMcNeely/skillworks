@@ -34,6 +34,7 @@ TOOL_NAMES = {"claude": "Claude Code"}
 SEEDS_FOLDER = SEEDS.relative_to(ROOT).as_posix()
 ARM_PATHS = ("plugins/skillworks/skills/context-backfill", "plugins/skillworks/scripts", "plugins/skillworks/bin")
 DEFAULT_TARGET = "main"
+WORKING_TREE = None
 
 # Fixed, with the pin's own date, so a second build makes the same reset commit.
 RESET_NAME = "Blind clone"
@@ -150,9 +151,22 @@ def reset(runner, clone, pin_date):
              env=who), "make the reset commit")
 
 
+def serve_the_working_tree(runner, source, clone):
+    listed = must(git(runner, source, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--",
+                      *ARM_PATHS), "list the files of the working tree")
+    for path in filter(None, listed.split("\0")):
+        # A file deleted and not yet staged is still listed, and the working tree no longer holds it.
+        if (Path(source) / path).is_file():
+            (clone / path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(Path(source) / path, clone / path)
+
+
 def serve_the_arm(runner, source, clone, arm):
     for path in ARM_PATHS:
         shutil.rmtree(clone / path, ignore_errors=True)
+    if arm is WORKING_TREE:
+        serve_the_working_tree(runner, source, clone)
+        return
     for mode, blob, path in entries(runner, source, arm, *ARM_PATHS):
         file = clone / path
         write(file, must(git(runner, source, "cat-file", "blob", blob), "read {} at {}".format(path, arm)))
@@ -165,7 +179,9 @@ def build(runner, source, commit, folder, arm):
         raise refusal("{} already holds files, and a Blind clone is built in an empty folder. Name another, "
                       "then run this again. Nothing was built.".format(folder.as_posix()))
     pin = must(git(runner, source, "rev-parse", "--verify", commit + "^{commit}"), "find the commit " + commit).strip()
-    arm = must(git(runner, source, "rev-parse", "--verify", arm + "^{commit}"), "find the arm's ref " + arm).strip()
+    if arm is not WORKING_TREE:
+        arm = must(git(runner, source, "rev-parse", "--verify", arm + "^{commit}"),
+                   "find the arm's ref " + arm).strip()
     target = target_of(shown(runner, source, pin, LOOP_FILE))
     banned = banned_words(shown(runner, source, pin, scrub_rules.FILLED_STEERING[0]))
     pin_date = must(git(runner, source, "show", "-s", "--format=%cI", pin), "read the pin's date").strip()
