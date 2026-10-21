@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import blind_clone
+import citations
 import judge
 import shape
 import statements
@@ -167,8 +168,7 @@ def clone_of(runner, source, comparison, pin):
 
 
 # A losing word the clone's history never shows was scrubbed with the records, so no run could have found it.
-def evidence_of(runner, source, comparison, pin, glossaries):
-    clone = clone_of(runner, source, comparison, pin)
+def evidence_of(runner, clone, glossaries):
     return {glossary.context: words.evidenced(runner, clone, glossary) for glossary in glossaries}
 
 
@@ -223,7 +223,60 @@ def shape_rows(shaped, real):
     return rows
 
 
-def measures(judged, records, shaped, real, worded, glossaries, evidence):
+def missing_of(history, judged, records):
+    held, failed = {}, {}
+    for item in judged:
+        held.setdefault(item.run, [])
+        if item.found:
+            continue
+        if item.run not in failed:
+            failed[item.run] = citations.failed_commits(
+                history, read_or_none(item.run.folder / citations.DECISIONS_FILE))
+        held[item.run].append((item.record, citations.seen_in(history, records[item.record]["commits"],
+                                                              failed[item.run])))
+    return list(held.items())
+
+
+def counted(name, kept, measure):
+    return run_row(name, kept, measure, "{:.1f}".format, "{:.0f}".format)
+
+
+def citation_rows(checked, missing):
+    return [
+        counted("Cited commits not in the Blind clone", checked, lambda held: len(held.absent)),
+        counted("Quotes not in their commit", checked, lambda held: len(held.unquoted)),
+        counted("Whys with no citation", checked, lambda held: len(held.uncited)),
+        counted("Missing records, seen and dropped", missing, lambda held: sum(1 for _, seen in held if seen)),
+        counted("Missing records, never seen", missing, lambda held: sum(1 for _, seen in held if not seen)),
+    ]
+
+
+def listing(title, about, listed, none):
+    return "## {}\n\n{}\n\n".format(title, about) + ("\n".join(listed) if listed else none) + "\n"
+
+
+def citation_lists(checked, missing):
+    return "\n".join([
+        listing("Cited commits not in the Blind clone", "A commit the history does not hold was invented.",
+                ["- {}, {}, cites commit {}, which the Blind clone does not hold".format(run.label, entry.name, short)
+                 for run, held in checked for entry, short in held.absent], "Every cited commit is in the clone."),
+        listing("Quotes not in their commit", "A quote is searched for in its commit's message and diff, with "
+                "line breaks joined.",
+                ['- {}, {}, quotes "{}", which commit {} does not hold'.format(run.label, entry.name, quote, short)
+                 for run, held in checked for entry, quote, short in held.unquoted],
+                "Every quote is in its commit."),
+        listing("Whys with no citation", "A decision Draft whose why cites no commit, ticket, spec or code line.",
+                ["- {}, {}".format(run.label, entry.name) for run, held in checked for entry in held.uncited],
+                "Every why cites its source."),
+        listing("Missing records", "A missing record is seen and dropped when a commit it rests on failed a test "
+                "in the skill's own list, and never seen otherwise.",
+                ["- {}, {}, {}".format(run.label, record, "seen and dropped: commit {} failed a test".format(seen)
+                                       if seen else "never seen")
+                 for run, held in missing for record, seen in held], "No record is missing."),
+    ])
+
+
+def measures(judged, records, shaped, real, worded, glossaries, evidence, checked, missing):
     kinds = [statement["kind"] for said in records.values() for statement in said["statements"]]
     rows = ["| Measure | Old | Old spread | New | New spread | Difference |", "|---|---|---|---|---|---|"]
     for kind in statements.KINDS:
@@ -236,6 +289,7 @@ def measures(judged, records, shaped, real, worded, glossaries, evidence):
                     per_run(judged, "new", records_found), "{:.1f}".format, "{:.0f}".format))
     rows += shape_rows(shaped, real)
     rows += word_rows(worded, glossaries, evidence)
+    rows += citation_rows(checked, missing)
     return "\n".join(rows) + "\n"
 
 
@@ -285,10 +339,14 @@ def score(runner, source, comparison, pin, folder, today):
     worded = [(run, words.drafted(run.sheet)) for run in sheeted]
     real = shape.real_map(blind_clone.shown(runner, source, pin["commit"], MAP_FILE))
     shaped = [(run, shape.read_shape(read_or_none(run.folder / shape.SHAPE_FILE))) for run in sheeted]
-    evidence = evidence_of(runner, source, comparison, pin, glossaries) \
-        if sheeted and any(glossary.losing for glossary in glossaries) else {}
+    clone = clone_of(runner, source, comparison, pin) if sheeted else None
+    evidence = evidence_of(runner, clone, glossaries) if clone else {}
+    history = citations.History(runner, clone)
+    checked = [(run, citations.checked(history, run.sheet)) for run in sheeted]
+    missing = missing_of(history, judged, records)
     version = runner.run(["claude", "--version"]).out.strip() or NONE
     return "\n".join([header(pin, noted, writer, alias, models, version, today, sheeted),
-                      measures(judged, records, shaped, real, worded, glossaries, evidence),
+                      measures(judged, records, shaped, real, worded, glossaries, evidence, checked, missing),
                       losing_names(worded, glossaries), general_words(worded, glossaries),
-                      unknowns(judged), failures([run for run in runs if run.sheet is None])])
+                      citation_lists(checked, missing), unknowns(judged),
+                      failures([run for run in runs if run.sheet is None])])

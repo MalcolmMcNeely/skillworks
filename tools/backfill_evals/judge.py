@@ -11,7 +11,7 @@ YES, NO, UNKNOWN = "yes", "no", "unknown"
 OTHER = {"opus": "fable", "fable": "opus"}
 
 # The judge reasons before it answers, so the last line it gives for a Statement is its answer.
-ANSWER = re.compile(r"^\W*S(\d+)\W*:\s*(yes|no|unknown)\b[\s,.:;-]*(.*)$", re.IGNORECASE | re.MULTILINE)
+ANSWER = re.compile(r"^\W*S(\d+)\W*:\s*(yes|no|unknown)\b[ \t,.:;-]*(.*)$", re.IGNORECASE | re.MULTILINE)
 QUESTION = re.compile(r"\bQuestion\b", re.IGNORECASE)
 
 PROMPT = """You judge whether an Answer sheet holds what one decision record says.

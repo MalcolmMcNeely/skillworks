@@ -64,21 +64,39 @@ def planted(top, *commits):
     return git(top, "rev-parse", "HEAD").strip()
 
 
+SEEDS = "plugins/skillworks/skills/skillworks-setup/seeds"
+
+SET_UP = ("Set up the repo", {
+    "docs/agents/loop.json": json.dumps({"tracker": "github", "target-branch": "main"}) + "\n",
+    "docs/agents/rules/words.md": "# Words\n\n```yaml\nbanned-words:\n  studio: []\nskip-folders: []\n```\n",
+    "docs/agents/domain.md": "# Domain docs\n\nThis repo is multi-context.\n",
+    SEEDS + "/words.md": "# Words\n\nThe seed's own words rule.\n",
+    SEEDS + "/domain.md": "# Domain docs\n\nThe seed's own domain docs.\n",
+})
+
+
+# Pinned by the build itself, because the scorer builds its own Blind clone and refuses one that differs.
+def pinned(root, *commits):
+    top = root / "source"
+    pin = planted(top, SET_UP, *commits)
+    pin_file = root / "pin.json"
+    err = io.StringIO()
+    status = blind_clone.main(["pin", pin, (root / "pinned").as_posix()], Judge({}), io.StringIO(), err,
+                              top.as_posix(), pin_file)
+    assert status == 0, err.getvalue()
+    return top, pin, json.loads(pin_file.read_text(encoding="utf-8"))["records"], pin_file
+
+
 @pytest.fixture(scope="module")
 def source(tmp_path_factory):
-    top = tmp_path_factory.mktemp("harness") / "source"
-    pin = planted(top)
-    records = blind_clone.records_hash(Subprocess(), top, pin)
-    pin_file = top.parent / "pin.json"
-    pin_file.write_text(json.dumps({"commit": pin, "tree": "a tree", "records": records}), encoding="utf-8")
-    return top, pin, records, pin_file
+    return pinned(tmp_path_factory.mktemp("harness"))
 
 
-def given_statements(folder, split_on):
+def given_statements(folder, split_on, commits=None):
     folder.mkdir(parents=True)
     for stem, (title, said) in STATEMENTS.items():
         (folder / (stem + ".json")).write_text(json.dumps({
-            "split-on": split_on, "title": title, "commits": [],
+            "split-on": split_on, "title": title, "commits": (commits or {}).get(stem, []),
             "statements": [{"kind": kind, "says": says} for kind, says in said]}), encoding="utf-8")
     return folder
 
@@ -88,7 +106,7 @@ def output_of(writer, result="The sheet is written."):
         writer: {"outputTokens": 9000}, "claude-haiku-5-5": {"outputTokens": 400}}})
 
 
-def given_runs(runs, arms, writers=None, sheets=None, shapes=None):
+def given_runs(runs, arms, writers=None, sheets=None, shapes=None, passes=None):
     folder = runs / "comparison"
     folder.mkdir(parents=True)
     (folder / score.COMPARISON_FILE).write_text(json.dumps(
@@ -108,6 +126,8 @@ def given_runs(runs, arms, writers=None, sheets=None, shapes=None):
                                                  encoding="utf-8")
             if (arm, run) in (shapes or {}):
                 (held / shape.SHAPE_FILE).write_text(shapes[(arm, run)], encoding="utf-8")
+            for name, said in (passes or {}).get((arm, run), {}).items():
+                (held / name).write_text(said, encoding="utf-8")
     return folder
 
 
@@ -138,12 +158,12 @@ class Judge(Subprocess):
 
 
 def scored(source, tmp_path, arms, writers=None, split_on=None, resolved=OPUS, sheets=None, judging=Judge,
-           shapes=None):
+           shapes=None, passes=None, commits=None):
     top, _, records, pin_file = source
     runs = tmp_path / "runs"
     given_runs(runs, {arm: {run: (None if replies is None else True) for run, replies in kept.items()}
-                      for arm, kept in arms.items()}, writers, sheets, shapes)
-    folder = given_statements(tmp_path / "statements", split_on or records)
+                      for arm, kept in arms.items()}, writers, sheets, shapes, passes)
+    folder = given_statements(tmp_path / "statements", split_on or records, commits)
     judge = judging(arms, resolved)
     out, err = io.StringIO(), io.StringIO()
     status = harness.main(["score", "comparison"], judge, out, err, top.as_posix(), TODAY,
@@ -302,17 +322,8 @@ def test_the_runs_scored_leave_out_the_failed_run(two_arms):
     assert "- Runs scored: old 2, new 2" in out.splitlines()
 
 
-SEEDS = "plugins/skillworks/skills/skillworks-setup/seeds"
-
 # EventLog and VERDICT leave a losing word in the code, and Timer is only ever in a glossary, which the clone loses.
 WORDED = (
-    ("Set up the repo", {
-        "docs/agents/loop.json": json.dumps({"tracker": "github", "target-branch": "main"}) + "\n",
-        "docs/agents/rules/words.md": "# Words\n\n```yaml\nbanned-words:\n  studio: []\nskip-folders: []\n```\n",
-        "docs/agents/domain.md": "# Domain docs\n\nThis repo is multi-context.\n",
-        SEEDS + "/words.md": "# Words\n\nThe seed's own words rule.\n",
-        SEEDS + "/domain.md": "# Domain docs\n\nThe seed's own domain docs.\n",
-    }),
     ("Keep events in a log", {"src/store.py": "class EventLog:\n    pass\n"}),
     ("Mark each step", {"src/steps.py": "VERDICT = 'pass'\n"}),
     ("Glossary: the words", {
@@ -345,15 +356,7 @@ WORD_SHEETS = {
 
 @pytest.fixture(scope="module")
 def worded_source(tmp_path_factory):
-    root = tmp_path_factory.mktemp("worded")
-    top = root / "source"
-    pin = planted(top, *WORDED)
-    pin_file = root / "pin.json"
-    err = io.StringIO()
-    status = blind_clone.main(["pin", pin, (root / "pinned").as_posix()], Judge({}), io.StringIO(), err,
-                              top.as_posix(), pin_file)
-    assert status == 0, err.getvalue()
-    return top, pin, json.loads(pin_file.read_text(encoding="utf-8"))["records"], pin_file
+    return pinned(tmp_path_factory.mktemp("worded"), *WORDED)
 
 
 @pytest.fixture(scope="module")
@@ -452,13 +455,7 @@ SHAPES = {
 
 @pytest.fixture(scope="module")
 def mapped_source(tmp_path_factory):
-    root = tmp_path_factory.mktemp("mapped")
-    top = root / "source"
-    pin = planted(top, *MAPPED)
-    records = blind_clone.records_hash(Subprocess(), top, pin)
-    pin_file = root / "pin.json"
-    pin_file.write_text(json.dumps({"commit": pin, "tree": "a tree", "records": records}), encoding="utf-8")
-    return top, pin, records, pin_file
+    return pinned(tmp_path_factory.mktemp("mapped"), *MAPPED)
 
 
 @pytest.fixture(scope="module")
@@ -499,6 +496,123 @@ def test_score_prints_the_polysemy_words_the_shape_pass_named_against_the_real_m
     _, out, _, _ = shaped
 
     assert "| Polysemy words found, of 2 | 1.5 | 1 to 2 | 0.0 | 0 to 0 | -1.5 |" in out.splitlines()
+
+
+CLOCK = "Read one Clock"
+DAYS = "Count the days"
+CITED = ((DAYS + "\n\nA long range is many reads.", {"docs/days.md": "The store answers one day\nat a time.\n"}),)
+
+
+def ids_by_subject(where, form):
+    return {subject: commit for commit, subject in
+            (line.split(" ", 1) for line in git(where, "log", "--format={} %s".format(form)).splitlines())}
+
+
+@pytest.fixture(scope="module")
+def cited_source(tmp_path_factory):
+    root = tmp_path_factory.mktemp("cited")
+    source = pinned(root, *CITED)
+    return source, ids_by_subject(root / "pinned" / "repo", "%h"), ids_by_subject(source[0], "%H")
+
+
+def decision(number, title, text, *evidence):
+    return "### Draft D{}: {}\nAnswer:\n{}\nEvidence:\n{}".format(
+        number, title, text, "".join("- {}\n".format(item) for item in evidence))
+
+
+def decisions_sheet(*drafts):
+    return "# Answer sheet\n\n## Words\n\n## Decisions\n\n" + "\n".join(drafts) + "\n## Questions\n\n## Thin\n"
+
+
+@pytest.fixture(scope="module")
+def cited(cited_source, tmp_path_factory):
+    source, ids, full = cited_source
+    days = ids[DAYS]
+    sheets = {
+        ("old", "run-1"): decisions_sheet(
+            decision(1, DAYS, 'Commit {} says "The store answers one day at a time".'.format(days),
+                     'commit {} "{}"'.format(days, DAYS), 'commit deadbee "Count every day"'),
+            decision(2, "Keep it small", "Small is better.", 'commit {} "Keep it small"'.format(days))),
+        ("new", "run-1"): decisions_sheet(
+            decision(1, DAYS, 'Commit {} says "A long range is many reads."'.format(days),
+                     'commit {} "{}"'.format(days, DAYS))),
+    }
+    failed = "# Decisions\n\n## Drafts\n\n- {}, commit {}\n\n## Failed a test\n\n- {}, commit {}, fails the " \
+             "surprise test\n".format(DAYS, days, CLOCK, ids[CLOCK])
+    arms = one_run_each({KEEP: "S1: no\nS2: no", SPLIT: "S1: no\nS2: no\nS3: no"})
+    return scored(source, tmp_path_factory.mktemp("scored"), arms, sheets=sheets,
+                  passes={("old", "run-1"): {"decisions.md": failed}},
+                  commits={KEEP: [full[CLOCK]], SPLIT: [full[DAYS]]}), ids
+
+
+@pytest.mark.parametrize("line", [
+    "| Cited commits not in the Blind clone | 1.0 | 1 to 1 | 0.0 | 0 to 0 | -1.0 |",
+    "- old run-1, Draft D1: Count the days, cites commit deadbee, which the Blind clone does not hold",
+])
+def test_a_cited_commit_the_blind_clone_does_not_hold_is_counted_and_named(cited, line):
+    (status, out, err, _), _ = cited
+
+    assert (status, line in out.splitlines()) == (0, True), err + out
+
+
+def test_a_quote_not_in_its_commits_message_or_diff_is_counted(cited):
+    (_, out, _, _), _ = cited
+
+    assert "| Quotes not in their commit | 1.0 | 1 to 1 | 0.0 | 0 to 0 | -1.0 |" in out.splitlines()
+
+
+def test_a_quote_not_in_its_commit_is_named_with_the_commit(cited):
+    (_, out, _, _), ids = cited
+
+    assert '- old run-1, Draft D2: Keep it small, quotes "Keep it small", which commit {} does not hold'.format(
+        ids[DAYS]) in out.splitlines()
+
+
+def test_a_quote_split_over_two_lines_of_the_diff_is_found(cited_source, tmp_path):
+    source, ids, _ = cited_source
+    split = decisions_sheet(decision(1, DAYS, 'Commit {} says "The store answers one day at a time".'.format(
+        ids[DAYS]), "commit " + ids[DAYS]))
+
+    _, out, _, _ = scored(source, tmp_path, one_run_each(ALL_YES),
+                          sheets={("old", "run-1"): split, ("new", "run-1"): split})
+
+    assert "| Quotes not in their commit | 0.0 | 0 to 0 | 0.0 | 0 to 0 | +0.0 |" in out.splitlines()
+
+
+@pytest.mark.parametrize("line", [
+    "| Whys with no citation | 1.0 | 1 to 1 | 0.0 | 0 to 0 | -1.0 |",
+    "- old run-1, Draft D2: Keep it small",
+])
+def test_a_why_that_cites_no_commit_ticket_spec_or_code_line_is_flagged(cited, line):
+    (_, out, _, _), _ = cited
+
+    assert line in out.splitlines()
+
+
+@pytest.mark.parametrize("line", [
+    "| Missing records, seen and dropped | 1.0 | 1 to 1 | 0.0 | 0 to 0 | -1.0 |",
+    "| Missing records, never seen | 1.0 | 1 to 1 | 0.0 | 0 to 0 | -1.0 |",
+    "- old run-1, 0002-split-the-stores, never seen",
+])
+def test_a_missing_record_whose_commits_failed_no_test_is_never_seen(cited, line):
+    (_, out, _, _), _ = cited
+
+    assert line in out.splitlines()
+
+
+def test_a_missing_record_whose_commit_failed_a_test_is_seen_and_dropped(cited):
+    (_, out, _, _), ids = cited
+
+    assert "- old run-1, 0001-keep-one-clock, seen and dropped: commit {} failed a test".format(
+        ids[CLOCK]) in out.splitlines()
+
+
+def test_a_no_with_nothing_after_it_leaves_the_next_answer_whole(source, tmp_path):
+    asked = {KEEP: "S1: no\nS2: yes Draft D1", SPLIT: ALL_YES[SPLIT]}
+
+    _, out, _, _ = scored(source, tmp_path, one_run_each(asked))
+
+    assert "| Statement recall, reason | 100.0% | 100.0% to 100.0% | 100.0% | 100.0% to 100.0% | +0.0 |" in out
 
 
 @pytest.mark.this_repo
