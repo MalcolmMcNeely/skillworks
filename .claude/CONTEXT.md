@@ -18,6 +18,14 @@ every Question, and a place for an Answer on each line. It lives in the scratch 
 can hand it to the teammate who was there, and nothing on it reaches the repo until it is applied.
 _Avoid_: Review file, report, checklist, worksheet
 
+**Blind clone**:
+A clone of this repo at a pinned commit with its glossaries, its map and its ADRs scrubbed from
+every commit, and every commit line and file that named them blanked, so a skill run in it reads the
+code and the history and never the answers. It serves the skill version under test from its own
+Plugin. The records it lost are the held-out records, and a sheet written in it is scored against
+them.
+_Avoid_: Fixture, test repo, scrubbed clone, hold-out
+
 **Blocked**:
 A step or a check whose Session says, in the first line of its report, that it cannot do its work:
 a Denial it cannot get past, or a ticket with nothing left to build. A choice is never the cause,
@@ -248,6 +256,13 @@ _Avoid_: Conversation, chat, transcript
 The part of a context window in which a model still keeps every instruction it was given. A session
 is planned to finish its work inside it.
 _Avoid_: Context budget, token limit, sharp window
+
+**Statement**:
+One thing a held-out record says, split out so a judge can answer yes or no to it: what was decided,
+one reason, one option turned down, or its status. A record is found when the sheet holds every
+Statement of its decision, and recall is counted over Statements by kind, because a decision has no
+fixed size and two records can hold what one Draft holds.
+_Avoid_: Claim (the Tracker's word for taking a ticket), fact, assertion
 
 **Steering**:
 What a repo tells the loop about itself: its rules, its tracker docs, its review files and its
