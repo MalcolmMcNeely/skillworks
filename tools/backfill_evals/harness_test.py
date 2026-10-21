@@ -50,17 +50,23 @@ def commit(top, message, files):
     git(top, "commit", "--quiet", "-m", message)
 
 
-@pytest.fixture(scope="module")
-def source(tmp_path_factory):
-    top = tmp_path_factory.mktemp("harness") / "source"
+def planted(top, *commits):
     git(top.parent, "init", "--quiet", "--initial-branch=main", top.as_posix())
     for name, value in (("user.name", "Test"), ("user.email", "test@example.invalid"),
-                        ("commit.gpgsign", "false"), ("core.autocrlf", "false")):
+                        ("commit.gpgsign", "false"), ("tag.gpgsign", "false"), ("core.autocrlf", "false")):
         git(top, "config", name, value)
     commit(top, "Read one Clock", {"src/clock.py": "CLOCK = 1\n"})
     commit(top, "ADR: Keep one Clock", {"docs/adr/{}.md".format(KEEP): "# Keep one Clock\n"})
     commit(top, "ADR: Split the stores", {"docs/adr/{}.md".format(SPLIT): "# Split the stores\n"})
-    pin = git(top, "rev-parse", "HEAD").strip()
+    for message, files in commits:
+        commit(top, message, files)
+    return git(top, "rev-parse", "HEAD").strip()
+
+
+@pytest.fixture(scope="module")
+def source(tmp_path_factory):
+    top = tmp_path_factory.mktemp("harness") / "source"
+    pin = planted(top)
     records = blind_clone.records_hash(Subprocess(), top, pin)
     pin_file = top.parent / "pin.json"
     pin_file.write_text(json.dumps({"commit": pin, "tree": "a tree", "records": records}), encoding="utf-8")
@@ -81,7 +87,7 @@ def output_of(writer, result="The sheet is written."):
         writer: {"outputTokens": 9000}, "claude-haiku-5-5": {"outputTokens": 400}}})
 
 
-def given_runs(runs, arms, writers=None):
+def given_runs(runs, arms, writers=None, sheets=None):
     folder = runs / "comparison"
     folder.mkdir(parents=True)
     (folder / score.COMPARISON_FILE).write_text(json.dumps(
@@ -97,7 +103,8 @@ def given_runs(runs, arms, writers=None):
                     output_of(writer, "The Session stopped at its time cap."), encoding="utf-8")
                 continue
             (held / score.OUTPUT_FILE).write_text(output_of(writer), encoding="utf-8")
-            (held / score.SHEET_FILE).write_text(SHEET.format(arm + " " + run), encoding="utf-8")
+            (held / score.SHEET_FILE).write_text((sheets or {}).get((arm, run), SHEET.format(arm + " " + run)),
+                                                 encoding="utf-8")
     return folder
 
 
@@ -127,13 +134,13 @@ class Judge(Subprocess):
                                   "modelUsage": {self.resolved: {"outputTokens": 300}}}), "")
 
 
-def scored(source, tmp_path, arms, writers=None, split_on=None, resolved=OPUS):
+def scored(source, tmp_path, arms, writers=None, split_on=None, resolved=OPUS, sheets=None, judging=Judge):
     top, _, records, pin_file = source
     runs = tmp_path / "runs"
     given_runs(runs, {arm: {run: (None if replies is None else True) for run, replies in kept.items()}
-                      for arm, kept in arms.items()}, writers)
+                      for arm, kept in arms.items()}, writers, sheets)
     folder = given_statements(tmp_path / "statements", split_on or records)
-    judge = Judge(arms, resolved)
+    judge = judging(arms, resolved)
     out, err = io.StringIO(), io.StringIO()
     status = harness.main(["score", "comparison"], judge, out, err, top.as_posix(), TODAY,
                           runs=runs, pin_file=pin_file, statements_folder=folder)
@@ -289,6 +296,126 @@ def test_the_runs_scored_leave_out_the_failed_run(two_arms):
     _, out, _, _ = two_arms
 
     assert "- Runs scored: old 2, new 2" in out.splitlines()
+
+
+SEEDS = "plugins/skillworks/skills/skillworks-setup/seeds"
+
+# EventLog and VERDICT leave a losing word in the code, and Timer is only ever in a glossary, which the clone loses.
+WORDED = (
+    ("Set up the repo", {
+        "docs/agents/loop.json": json.dumps({"tracker": "github", "target-branch": "main"}) + "\n",
+        "docs/agents/rules/words.md": "# Words\n\n```yaml\nbanned-words:\n  studio: []\nskip-folders: []\n```\n",
+        "docs/agents/domain.md": "# Domain docs\n\nThis repo is multi-context.\n",
+        SEEDS + "/words.md": "# Words\n\nThe seed's own words rule.\n",
+        SEEDS + "/domain.md": "# Domain docs\n\nThe seed's own domain docs.\n",
+    }),
+    ("Keep events in a log", {"src/store.py": "class EventLog:\n    pass\n"}),
+    ("Mark each step", {"src/steps.py": "VERDICT = 'pass'\n"}),
+    ("Glossary: the words", {
+        "CONTEXT-MAP.md": "# Context Map\n\n## Contexts\n\n- [Studio](./docs/studio/CONTEXT.md) — the app\n"
+                          "- [Loop](./.claude/CONTEXT.md) — the loop\n",
+        "docs/studio/CONTEXT.md": "# Studio\n\n## Language\n\n**Clock**:\nThe one source of now.\n"
+                                  "_Avoid_: Timer, system clock\n\n**Events store**:\nWhere events go.\n"
+                                  "_Avoid_: Event log, `database`\n",
+        ".claude/CONTEXT.md": "# Loop\n\n## Language\n\n**Answer**:\nWhat a person says to one Draft.\n"
+                              "_Avoid_: Verdict\n",
+    }),
+)
+
+
+def words_sheet(*words):
+    drafts = ["### Draft W{}: {}\nAnswer:\nContext: {}\n**{}**:\nA word.\n{}Evidence:\n- commit abc1234\n".format(
+        at, word, context, word, "_Avoid_: {}\n".format(avoid) if avoid else "")
+        for at, (word, context, avoid) in enumerate(words, start=1)]
+    return "# Answer sheet\n\n## Words\n\n" + "\n".join(drafts) + "\n" + SHEET[SHEET.index("## Decisions"):].format(
+        "a decision")
+
+
+WORD_SHEETS = {
+    ("old", "run-1"): words_sheet(("Clock", "studio", "Timer"), ("Event log", "studio", None),
+                                  ("Answer", "loop", "Verdict")),
+    ("new", "run-1"): words_sheet(("clock", "studio", None), ("Events store", "studio", "Event log"),
+                                  ("Reply", "loop", None), ("Status", "loop", None)),
+}
+
+
+@pytest.fixture(scope="module")
+def worded_source(tmp_path_factory):
+    root = tmp_path_factory.mktemp("worded")
+    top = root / "source"
+    pin = planted(top, *WORDED)
+    pin_file = root / "pin.json"
+    err = io.StringIO()
+    status = blind_clone.main(["pin", pin, (root / "pinned").as_posix()], Judge({}), io.StringIO(), err,
+                              top.as_posix(), pin_file)
+    assert status == 0, err.getvalue()
+    return top, pin, json.loads(pin_file.read_text(encoding="utf-8"))["records"], pin_file
+
+
+@pytest.fixture(scope="module")
+def worded(worded_source, tmp_path_factory):
+    return scored(worded_source, tmp_path_factory.mktemp("scored"), one_run_each(ALL_YES), sheets=WORD_SHEETS)
+
+
+class NoFilterRepo(Judge):
+    def run(self, args, where=None, env=None):
+        if any(blind_clone.FILTER_REPO in str(arg) for arg in args):
+            return Ran(1, "", "No solution found when resolving tool dependencies.\n")
+        return super().run(args, where, env)
+
+
+def test_a_scorer_that_must_build_a_blind_clone_names_a_missing_git_filter_repo(worded_source, tmp_path):
+    status, out, err, _ = scored(worded_source, tmp_path, one_run_each(ALL_YES), sheets=WORD_SHEETS,
+                                 judging=NoFilterRepo)
+
+    assert (status, out, "git-filter-repo is missing" in err) == (1, "", True), err
+
+
+@pytest.mark.parametrize("row", [
+    "| Headword recall, Studio, of 2 | 50.0% | 50.0% to 50.0% | 100.0% | 100.0% to 100.0% | +50.0 |",
+    "| Headword recall, Loop, of 1 | 100.0% | 100.0% to 100.0% | 0.0% | 0.0% to 0.0% | -100.0 |",
+])
+def test_score_prints_headword_recall_per_glossary_matched_case_blind_and_never_by_a_synonym(worded, row):
+    status, out, err, _ = worded
+
+    assert (status, row in out.splitlines()) == (0, True), err + out
+
+
+@pytest.mark.parametrize("line", [
+    "| Found under a losing name, Studio | 1.0 | 1 to 1 | 0.0 | 0 to 0 | -1.0 |",
+    "- old run-1, Draft W2: Event log, in Studio, is a losing name of Events store",
+])
+def test_a_draft_headed_by_a_losing_name_is_reported_apart_and_not_found(worded, line):
+    _, out, _, _ = worded
+
+    assert line in out.splitlines()
+
+
+@pytest.mark.parametrize("row", [
+    "| _Avoid_ recall, Studio, of 1 with evidence | 0.0% | 0.0% to 0.0% | 100.0% | 100.0% to 100.0% | +100.0 |",
+    "| _Avoid_ recall, Loop, of 1 with evidence | 100.0% | 100.0% to 100.0% | 0.0% | 0.0% to 0.0% | -100.0 |",
+])
+def test_avoid_recall_counts_only_the_losing_words_the_blind_clones_history_shows(worded, row):
+    _, out, _, _ = worded
+
+    assert row in out.splitlines()
+
+
+@pytest.mark.parametrize("line", [
+    "| General words drafted | 0.0 | 0 to 0 | 1.0 | 1 to 1 | +1.0 |",
+    "- new run-1, Draft W4: Status, in Loop",
+])
+def test_a_headword_on_the_general_words_list_is_flagged(worded, line):
+    _, out, _, _ = worded
+
+    assert line in out.splitlines()
+
+
+def test_the_scorer_builds_its_blind_clone_in_the_comparison_folder(worded):
+    _, _, _, judge = worded
+    clone = Path(judge.read[0][0]).parents[1] / score.CLONE_FOLDER / "repo"
+
+    assert git(clone, "log", "--format=%s", "-1").strip() == blind_clone.RESET_MESSAGE
 
 
 @pytest.mark.this_repo

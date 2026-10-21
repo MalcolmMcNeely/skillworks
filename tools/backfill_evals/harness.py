@@ -14,13 +14,13 @@ USAGE = "usage: harness.py score <comparison>\n"
 
 # Git ignores it, because a sheet is 300 KB and a comparison keeps six.
 RUNS = blind_clone.HERE / "runs"
-TOOLS = ("claude", "git")
+TOOLS = ("claude", "uv", "git")
 
 
 def need_tools(runner):
     for tool in TOOLS:
         if not runner.found(tool):
-            raise refusal("The scorer needs Claude Code and git, and {} is missing. Install it, then run this "
+            raise refusal("The scorer needs Claude Code, uv and git, and {} is missing. Install it, then run this "
                           "again. Nothing was scored.".format(blind_clone.TOOL_NAMES.get(tool, tool)))
 
 

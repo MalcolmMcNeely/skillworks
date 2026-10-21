@@ -8,11 +8,13 @@ from typing import NamedTuple
 import blind_clone
 import judge
 import statements
+import words
 from context_backfill.answer_sheet import DECISIONS, SHEET_FILE, read_sheet
 from stop import refusal
 
 COMPARISON_FILE = "comparison.json"
 OUTPUT_FILE = "output.json"
+CLONE_FOLDER = "blind-clone"
 ARMS = ("old", "new")
 JUDGED_SECTIONS = (DECISIONS, "## Questions")
 NONE = "—"
@@ -145,7 +147,70 @@ def percent(value):
     return "{:.1f}%".format(value)
 
 
-def measures(judged, records):
+def word_row(name, worded, measure, shown, spread):
+    old, new = ([measure(drafts) for run, drafts in worded if run.arm == arm] for arm in ARMS)
+    return row(name, old, new, shown, spread)
+
+
+def clone_of(runner, source, comparison, pin):
+    folder = comparison / CLONE_FOLDER
+    if not (folder / "repo").is_dir():
+        blind_clone.need_tools(runner)
+        made = blind_clone.build(runner, source, pin["commit"], folder, pin["commit"])
+        if made["tree"] != pin["tree"]:
+            raise refusal("The Blind clone's tree hash is {}, and the pin stores {}, so its history is not the one "
+                          "the Statements were split on. Mend the scrub rules, or move the pin. Delete {}, then run "
+                          "this again. Nothing was scored.".format(made["tree"], pin["tree"], folder.as_posix()))
+    return folder / "repo"
+
+
+# A losing word the clone's history never shows was scrubbed with the records, so no run could have found it.
+def evidence_of(runner, source, comparison, pin, glossaries):
+    clone = clone_of(runner, source, comparison, pin)
+    return {glossary.context: words.evidenced(runner, clone, glossary) for glossary in glossaries}
+
+
+def word_rows(worded, glossaries, evidence):
+    rows = []
+    for glossary in glossaries:
+        total = len(glossary.headwords)
+        if total:
+            rows.append(word_row("Headword recall, {}, of {}".format(glossary.context, total), worded,
+                                 lambda drafts: 100.0 * len(words.found(drafts, glossary)) / total, percent, percent))
+    for glossary in glossaries:
+        if glossary.losing:
+            rows.append(word_row("Found under a losing name, " + glossary.context, worded,
+                                 lambda drafts: len(words.under_losing_names(drafts, glossary)),
+                                 "{:.1f}".format, "{:.0f}".format))
+    for glossary in glossaries:
+        held = evidence.get(glossary.context, set())
+        if held:
+            rows.append(word_row("_Avoid_ recall, {}, of {} with evidence".format(glossary.context, len(held)), worded,
+                                 lambda drafts: 100.0 * words.avoids_found(drafts, glossary, held) / len(held),
+                                 percent, percent))
+    rows.append(word_row("General words drafted", worded, lambda drafts: len(words.general(drafts)),
+                         "{:.1f}".format, "{:.0f}".format))
+    return rows
+
+
+def general_words(worded, glossaries):
+    named = {glossary.context.casefold(): glossary.context for glossary in glossaries}
+    listed = ["- {}, {}, in {}".format(run.label, draft.name,
+                                       named.get(draft.context.casefold(), draft.context or NONE))
+              for run, drafts in worded for draft in words.general(drafts)]
+    return "## General words\n\nA headword on the harness's list of general programming words.\n\n" + (
+        "\n".join(listed) if listed else "No headword is a general word.") + "\n"
+
+
+def losing_names(worded, glossaries):
+    listed = ["- {}, {}, in {}, is a losing name of {}".format(run.label, draft.name, glossary.context, winner)
+              for run, drafts in worded for glossary in glossaries
+              for draft, winner in words.under_losing_names(drafts, glossary)]
+    return "## Found under a losing name\n\nA Draft headed by a losing name is not found.\n\n" + (
+        "\n".join(listed) if listed else "No Draft was headed by a losing name.") + "\n"
+
+
+def measures(judged, records, worded, glossaries, evidence):
     kinds = [statement["kind"] for said in records.values() for statement in said["statements"]]
     rows = ["| Measure | Old | Old spread | New | New spread | Difference |", "|---|---|---|---|---|---|"]
     for kind in statements.KINDS:
@@ -156,6 +221,7 @@ def measures(judged, records):
                             per_run(judged, "new", measure), percent, percent))
     rows.append(row("Records found, of {}".format(len(records)), per_run(judged, "old", records_found),
                     per_run(judged, "new", records_found), "{:.1f}".format, "{:.0f}".format))
+    rows += word_rows(worded, glossaries, evidence)
     return "\n".join(rows) + "\n"
 
 
@@ -201,6 +267,12 @@ def score(runner, source, comparison, pin, folder, today):
     writer = writer_of(sheeted)
     alias = judge.alias_against(writer) if writer else None
     models, judged = judged_all(runner, alias, sheeted, records) if alias else (set(), [])
+    glossaries = words.glossaries(runner, source, pin["commit"])
+    worded = [(run, words.drafted(run.sheet)) for run in sheeted]
+    evidence = evidence_of(runner, source, comparison, pin, glossaries) \
+        if sheeted and any(glossary.losing for glossary in glossaries) else {}
     version = runner.run(["claude", "--version"]).out.strip() or NONE
-    return "\n".join([header(pin, noted, writer, alias, models, version, today, sheeted), measures(judged, records),
+    return "\n".join([header(pin, noted, writer, alias, models, version, today, sheeted),
+                      measures(judged, records, worded, glossaries, evidence), losing_names(worded, glossaries),
+                      general_words(worded, glossaries),
                       unknowns(judged), failures([run for run in runs if run.sheet is None])])
