@@ -45,12 +45,14 @@
     },
     {
       "command": ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "--with", "filelock",
-                  "pytest", "-n", "auto", "tests/plugins/skillworks/scripts", "-m", "not this_repo"],
+                  "pytest", "-n", "auto", "tests/plugins/skillworks/scripts", "tools/backfill_evals",
+                  "-m", "not this_repo"],
       "folder": ".",
       "image": "docs/agents/script-tests.Dockerfile",
       "ignores": [
         ".claude",
-        "tools",
+        "tools/*.mjs",
+        "tools/*.yaml",
         "docs/adr",
         "docs/studio",
         "docs/assets",

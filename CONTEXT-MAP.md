@@ -72,4 +72,5 @@ contexts:
       - .claude
       - plugins/skillworks
       - tests/plugins/skillworks/scripts
+      - tools/backfill_evals
 ```

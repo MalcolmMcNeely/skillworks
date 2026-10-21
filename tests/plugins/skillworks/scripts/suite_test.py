@@ -301,13 +301,15 @@ def test_a_suite_file_that_does_not_parse_is_not_ready(tmp_path, runner):
 
 SCRIPT_TESTS = "tests/plugins/skillworks/scripts"
 
+BACKFILL_EVALS = "tools/backfill_evals"
+
 SCRIPT_TESTS_IMAGE = "docs/agents/script-tests.Dockerfile"
 
 # Tests marked this_repo read the paths the image check ignores, which its copy leaves out.
 THIS_REPO = "this_repo"
 
 SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist",
-                        "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS, "-m", "not " + THIS_REPO]
+                        "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS, BACKFILL_EVALS, "-m", "not " + THIS_REPO]
 
 THIS_REPO_S_SUITE_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "pytest",
                                    SCRIPT_TESTS + "/suite_test.py", "-m", THIS_REPO]
@@ -1673,7 +1675,8 @@ def test_this_repo_s_script_test_image_holds_what_the_script_tests_start():
 # Each entry is a path the check cannot read. A path left off costs a run, and one wrongly on lets red pass.
 SCRIPT_TESTS_IGNORE = {
     ".claude": "the tests build every .claude folder they read in a throwaway repo",
-    "tools": "the seeded Studio is a Studio tool",
+    "tools/*.mjs": "the seeded Studio is a Studio tool",
+    "tools/*.yaml": "the seeded Studio's stores are a Studio tool",
     "docs/adr": "no test reads a decision record",
     "docs/studio": "no test reads Studio's own docs",
     "docs/assets": "no test reads a picture",

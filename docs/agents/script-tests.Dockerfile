@@ -10,5 +10,7 @@ RUN apt-get update \
 
 # Fetched once at build, so a run does not download pytest into every fresh container.
 RUN uv run --no-project --with pytest --with pytest-xdist --with filelock python -c ""
+# The Blind clone's build takes git-filter-repo from uvx, at the version the harness names.
+RUN uvx git-filter-repo==2.47.0 --version
 
 WORKDIR /repo
