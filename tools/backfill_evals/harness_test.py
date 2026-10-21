@@ -10,6 +10,7 @@ import pytest
 import blind_clone
 import harness
 import score
+import shape
 from runner import Ran, Subprocess
 
 HERE = Path(__file__).resolve().parent
@@ -87,7 +88,7 @@ def output_of(writer, result="The sheet is written."):
         writer: {"outputTokens": 9000}, "claude-haiku-5-5": {"outputTokens": 400}}})
 
 
-def given_runs(runs, arms, writers=None, sheets=None):
+def given_runs(runs, arms, writers=None, sheets=None, shapes=None):
     folder = runs / "comparison"
     folder.mkdir(parents=True)
     (folder / score.COMPARISON_FILE).write_text(json.dumps(
@@ -105,6 +106,8 @@ def given_runs(runs, arms, writers=None, sheets=None):
             (held / score.OUTPUT_FILE).write_text(output_of(writer), encoding="utf-8")
             (held / score.SHEET_FILE).write_text((sheets or {}).get((arm, run), SHEET.format(arm + " " + run)),
                                                  encoding="utf-8")
+            if (arm, run) in (shapes or {}):
+                (held / shape.SHAPE_FILE).write_text(shapes[(arm, run)], encoding="utf-8")
     return folder
 
 
@@ -134,11 +137,12 @@ class Judge(Subprocess):
                                   "modelUsage": {self.resolved: {"outputTokens": 300}}}), "")
 
 
-def scored(source, tmp_path, arms, writers=None, split_on=None, resolved=OPUS, sheets=None, judging=Judge):
+def scored(source, tmp_path, arms, writers=None, split_on=None, resolved=OPUS, sheets=None, judging=Judge,
+           shapes=None):
     top, _, records, pin_file = source
     runs = tmp_path / "runs"
     given_runs(runs, {arm: {run: (None if replies is None else True) for run, replies in kept.items()}
-                      for arm, kept in arms.items()}, writers, sheets)
+                      for arm, kept in arms.items()}, writers, sheets, shapes)
     folder = given_statements(tmp_path / "statements", split_on or records)
     judge = judging(arms, resolved)
     out, err = io.StringIO(), io.StringIO()
@@ -416,6 +420,85 @@ def test_the_scorer_builds_its_blind_clone_in_the_comparison_folder(worded):
     clone = Path(judge.read[0][0]).parents[1] / score.CLONE_FOLDER / "repo"
 
     assert git(clone, "log", "--format=%s", "-1").strip() == blind_clone.RESET_MESSAGE
+
+
+MAPPED = (("Draw the map", {
+    "CONTEXT-MAP.md": "# Context Map\n\n## Contexts\n\n- [Studio](./docs/studio/CONTEXT.md) — the app\n"
+                      "- [Loop](./.claude/CONTEXT.md) — the loop\n\n## The next context\n\n"
+                      "The Plugin is another area, and `Skill` already means two things here: a folder of\n"
+                      "instructions, and a name in telemetry. `Run` means two things as well.\n\n## Paths\n\n"
+                      "```yaml\ncontexts:\n  studio:\n    glossary: docs/studio/CONTEXT.md\n    slices: true\n"
+                      "    code:\n      - src/Studio.Api\n      - src/Studio.Web\n      - tests/Studio.Tests\n"
+                      "  loop:\n    glossary: .claude/CONTEXT.md\n    code:\n      - .claude\n"
+                      "      - plugins/loop\n```\n",
+}),)
+
+THE_ANSWER = "\n## Answer\n\n### Studio\n\n`src/Studio.Api`, `src/Studio.Web`, `tests/Studio.Tests`\n\n" \
+             "### Loop\n\n`.claude`, `plugins/loop`\n"
+
+SHAPES = {
+    ("old", "run-1"): "# Shape\n\n## Finding\n\nSeveral contexts, because one word means two things.\n\n"
+                      "### Studio\n\nThe app claims `src/Studio.Api` and `src/Studio.Web/`.\n\n"
+                      "### Loop\n\nThe loop claims `./.claude` and `plugins/`.\n\n### Polysemy\n\n"
+                      "- **Skill**: a folder in `plugins/loop`, and a name in `tests/Studio.Tests`.\n" + THE_ANSWER,
+    ("old", "run-2"): "# Shape\n\n## Finding\n\nA map.\n\n- **Studio**: claims `src/Studio.Api`.\n"
+                      "- **Loop**: claims `.claude` and `plugins/loop`.\n\n### Polysemy\n\n"
+                      "- `skill`: two things.\n- `run`: two things.\n- `Step`: two things.\n",
+    ("new", "run-1"): "# Shape\n\n## Finding\n\n### Studio\n\nIt claims `src` and `tests/`.\n\n"
+                      "### Plugin\n\nIt claims `plugins/loop`.\n\n### Polysemy\n\nNo word means two things.\n"
+                      + THE_ANSWER,
+}
+
+
+@pytest.fixture(scope="module")
+def mapped_source(tmp_path_factory):
+    root = tmp_path_factory.mktemp("mapped")
+    top = root / "source"
+    pin = planted(top, *MAPPED)
+    records = blind_clone.records_hash(Subprocess(), top, pin)
+    pin_file = root / "pin.json"
+    pin_file.write_text(json.dumps({"commit": pin, "tree": "a tree", "records": records}), encoding="utf-8")
+    return top, pin, records, pin_file
+
+
+@pytest.fixture(scope="module")
+def shaped(mapped_source, tmp_path_factory):
+    return scored(mapped_source, tmp_path_factory.mktemp("shaped"),
+                  {"old": {"run-1": ALL_YES, "run-2": ALL_YES}, "new": {"run-1": ALL_YES}}, shapes=SHAPES)
+
+
+def test_score_prints_the_real_contexts_the_shape_pass_found_old_against_new(shaped):
+    status, out, err, _ = shaped
+
+    assert (status, "| Contexts found, of 2 | 1.5 | 1 to 2 | 1.0 | 1 to 1 | -0.5 |" in out.splitlines()) == (
+        0, True), err + out
+
+
+WHOLE = "## Finding\n\n### Studio\n\n`src`, `tests`\n\n### Loop\n\n`.claude`, `plugins/loop`\n"
+
+
+def test_a_found_context_that_claims_half_a_real_contexts_folders_does_not_find_it(mapped_source, tmp_path):
+    half = "## Finding\n\n### Studio\n\n`src`, `tests`\n\n### Loop\n\n`.claude`\n"
+
+    _, out, _, _ = scored(mapped_source, tmp_path, one_run_each(ALL_YES),
+                          shapes={("old", "run-1"): half, ("new", "run-1"): WHOLE})
+
+    assert "| Contexts found, of 2 | 1.0 | 1 to 1 | 2.0 | 2 to 2 | +1.0 |" in out.splitlines()
+
+
+def test_two_found_contexts_that_share_a_real_context_between_them_do_not_find_it(mapped_source, tmp_path):
+    shared = "## Finding\n\n### Api\n\n`src/Studio.Api`, `.claude`\n\n### Web\n\n`src/Studio.Web`, `plugins/loop`\n"
+
+    _, out, _, _ = scored(mapped_source, tmp_path, one_run_each(ALL_YES),
+                          shapes={("old", "run-1"): shared, ("new", "run-1"): WHOLE})
+
+    assert "| Contexts found, of 2 | 0.0 | 0 to 0 | 2.0 | 2 to 2 | +2.0 |" in out.splitlines()
+
+
+def test_score_prints_the_polysemy_words_the_shape_pass_named_against_the_real_maps(shaped):
+    _, out, _, _ = shaped
+
+    assert "| Polysemy words found, of 2 | 1.5 | 1 to 2 | 0.0 | 0 to 0 | -1.5 |" in out.splitlines()
 
 
 @pytest.mark.this_repo

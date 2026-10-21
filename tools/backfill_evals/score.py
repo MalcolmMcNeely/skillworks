@@ -7,9 +7,11 @@ from typing import NamedTuple
 
 import blind_clone
 import judge
+import shape
 import statements
 import words
 from context_backfill.answer_sheet import DECISIONS, SHEET_FILE, read_sheet
+from context_backfill.context_map import MAP_FILE
 from stop import refusal
 
 COMPARISON_FILE = "comparison.json"
@@ -147,8 +149,8 @@ def percent(value):
     return "{:.1f}%".format(value)
 
 
-def word_row(name, worded, measure, shown, spread):
-    old, new = ([measure(drafts) for run, drafts in worded if run.arm == arm] for arm in ARMS)
+def run_row(name, kept, measure, shown, spread):
+    old, new = ([measure(held) for run, held in kept if run.arm == arm] for arm in ARMS)
     return row(name, old, new, shown, spread)
 
 
@@ -175,21 +177,21 @@ def word_rows(worded, glossaries, evidence):
     for glossary in glossaries:
         total = len(glossary.headwords)
         if total:
-            rows.append(word_row("Headword recall, {}, of {}".format(glossary.context, total), worded,
-                                 lambda drafts: 100.0 * len(words.found(drafts, glossary)) / total, percent, percent))
+            rows.append(run_row("Headword recall, {}, of {}".format(glossary.context, total), worded,
+                                lambda drafts: 100.0 * len(words.found(drafts, glossary)) / total, percent, percent))
     for glossary in glossaries:
         if glossary.losing:
-            rows.append(word_row("Found under a losing name, " + glossary.context, worded,
-                                 lambda drafts: len(words.under_losing_names(drafts, glossary)),
-                                 "{:.1f}".format, "{:.0f}".format))
+            rows.append(run_row("Found under a losing name, " + glossary.context, worded,
+                                lambda drafts: len(words.under_losing_names(drafts, glossary)),
+                                "{:.1f}".format, "{:.0f}".format))
     for glossary in glossaries:
         held = evidence.get(glossary.context, set())
         if held:
-            rows.append(word_row("_Avoid_ recall, {}, of {} with evidence".format(glossary.context, len(held)), worded,
-                                 lambda drafts: 100.0 * words.avoids_found(drafts, glossary, held) / len(held),
-                                 percent, percent))
-    rows.append(word_row("General words drafted", worded, lambda drafts: len(words.general(drafts)),
-                         "{:.1f}".format, "{:.0f}".format))
+            rows.append(run_row("_Avoid_ recall, {}, of {} with evidence".format(glossary.context, len(held)), worded,
+                                lambda drafts: 100.0 * words.avoids_found(drafts, glossary, held) / len(held),
+                                percent, percent))
+    rows.append(run_row("General words drafted", worded, lambda drafts: len(words.general(drafts)),
+                        "{:.1f}".format, "{:.0f}".format))
     return rows
 
 
@@ -210,7 +212,18 @@ def losing_names(worded, glossaries):
         "\n".join(listed) if listed else "No Draft was headed by a losing name.") + "\n"
 
 
-def measures(judged, records, worded, glossaries, evidence):
+def shape_rows(shaped, real):
+    rows = []
+    if real.contexts:
+        rows.append(run_row("Contexts found, of {}".format(len(real.contexts)), shaped,
+                            lambda found: shape.contexts_found(found, real), "{:.1f}".format, "{:.0f}".format))
+    if real.polysemy:
+        rows.append(run_row("Polysemy words found, of {}".format(len(real.polysemy)), shaped,
+                            lambda found: shape.polysemy_found(found, real), "{:.1f}".format, "{:.0f}".format))
+    return rows
+
+
+def measures(judged, records, shaped, real, worded, glossaries, evidence):
     kinds = [statement["kind"] for said in records.values() for statement in said["statements"]]
     rows = ["| Measure | Old | Old spread | New | New spread | Difference |", "|---|---|---|---|---|---|"]
     for kind in statements.KINDS:
@@ -221,6 +234,7 @@ def measures(judged, records, worded, glossaries, evidence):
                             per_run(judged, "new", measure), percent, percent))
     rows.append(row("Records found, of {}".format(len(records)), per_run(judged, "old", records_found),
                     per_run(judged, "new", records_found), "{:.1f}".format, "{:.0f}".format))
+    rows += shape_rows(shaped, real)
     rows += word_rows(worded, glossaries, evidence)
     return "\n".join(rows) + "\n"
 
@@ -269,10 +283,12 @@ def score(runner, source, comparison, pin, folder, today):
     models, judged = judged_all(runner, alias, sheeted, records) if alias else (set(), [])
     glossaries = words.glossaries(runner, source, pin["commit"])
     worded = [(run, words.drafted(run.sheet)) for run in sheeted]
+    real = shape.real_map(blind_clone.shown(runner, source, pin["commit"], MAP_FILE))
+    shaped = [(run, shape.read_shape(read_or_none(run.folder / shape.SHAPE_FILE))) for run in sheeted]
     evidence = evidence_of(runner, source, comparison, pin, glossaries) \
         if sheeted and any(glossary.losing for glossary in glossaries) else {}
     version = runner.run(["claude", "--version"]).out.strip() or NONE
     return "\n".join([header(pin, noted, writer, alias, models, version, today, sheeted),
-                      measures(judged, records, worded, glossaries, evidence), losing_names(worded, glossaries),
-                      general_words(worded, glossaries),
+                      measures(judged, records, shaped, real, worded, glossaries, evidence),
+                      losing_names(worded, glossaries), general_words(worded, glossaries),
                       unknowns(judged), failures([run for run in runs if run.sheet is None])])
