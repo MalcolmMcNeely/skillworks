@@ -46,7 +46,8 @@ def commit(top, message, files):
 def planted(top):
     git(top.parent, "init", "--quiet", "--initial-branch=main", top.as_posix())
     for name, value in (("user.name", "Test"), ("user.email", "test@example.invalid"),
-                        ("commit.gpgsign", "false"), ("core.autocrlf", "false")):
+                        ("commit.gpgsign", "false"), ("tag.gpgsign", "false"),
+                        ("core.autocrlf", "false")):
         git(top, "config", name, value)
     commit(top, "Base", {
         "CLAUDE.md": "# Repo\n\n### Domain docs\n\nMulti-context: the map and one glossary per context.\n"
