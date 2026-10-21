@@ -1,0 +1,23 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The Watch job is called Dashboard",
+  "commits": [
+    "66dc8eb136a2ba96e4336ebc7f1c712a0019a725",
+    "b1763e64d119bebf4c893387007ae9f0d15f4ae3",
+    "ce82a100e4542910417877a32c495d8ee5ae11cb",
+    "12232abfac915e9abfd4edfff7a0dacadb635833"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Studio's first job and the page that does it are both called Dashboard, no longer Watch."},
+    {"kind": "decision", "says": "Watch becomes the word to avoid in the glossary, in place of Dashboard."},
+    {"kind": "decision", "says": "The Watch Slice becomes Dashboard in every project, in the namespaces, in the slices list and in the front end."},
+    {"kind": "decision", "says": "The page moves from /watch to /dashboard."},
+    {"kind": "decision", "says": "/watch is not redirected to /dashboard."},
+    {"kind": "decision", "says": "The older redirect that sent pre-address links on to Watch is deleted."},
+    {"kind": "decision", "says": "Earlier records that call Studio the dashboard or name the Watch Slice are history and stay as they were written."},
+    {"kind": "reason", "says": "Everyone knows what to expect from a page called Dashboard, and nobody knows what to expect from one called Watch."},
+    {"kind": "reason", "says": "The name reaches the code as well as the screen because the code speaks the glossary."},
+    {"kind": "reason", "says": "Nobody uses Studio yet, so no bookmark needs keeping."},
+    {"kind": "rejected", "says": "Renaming the page while keeping the job called Watch was rejected, because the Slices would stay Watch while the screen said Dashboard, so the code would use a word the glossary no longer holds for that thing."}
+  ]
+}

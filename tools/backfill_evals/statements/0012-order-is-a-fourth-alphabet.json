@@ -1,0 +1,23 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Order is a fourth alphabet",
+  "commits": [
+    "c43ae83d5463a039fe4bd0b9ac6ccb870c74ecb9"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Studio draws a small symbol for four jobs, and the fourth alphabet, Order, says which way a sorted column runs."},
+    {"kind": "decision", "says": "The sort direction marks are ▲ and ▼, and they belong to Order."},
+    {"kind": "decision", "says": "A symbol still belongs to one alphabet, may be reused inside it, and the test that fails when a symbol crosses alphabets is unchanged."},
+    {"kind": "decision", "says": "Alphabet is a closed union, so the set of jobs is written in one place and a fifth needs a decision of its own."},
+    {"kind": "decision", "says": "The sort marks live with the table they serve and join the list the crossing test reads."},
+    {"kind": "reason", "says": "The Sessions table sorts on every column both ways, so a heading has to say which column was sorted and which way it ran."},
+    {"kind": "reason", "says": "None of the three existing jobs fits a sort mark, and putting it in one would give a reader a shape that means two things."},
+    {"kind": "reason", "says": "↑ was already Publish in the identity alphabet, so taking it for a sort direction would be the crossing the test catches."},
+    {"kind": "reason", "says": "A new alphabet should cost a paragraph, because the alternative is eight folders each inventing their own again."},
+    {"kind": "rejected", "says": "Marking the sorted column with colour or weight alone was rejected, because a reader would not see which way it ran, and colour alone is the failure the alphabet rule opens with."},
+    {"kind": "rejected", "says": "Writing the direction as a word in the heading was rejected, because a heading that grows moves the columns beside it every time a reader clicks."},
+    {"kind": "rejected", "says": "Drawing a triangle in CSS instead of a character was rejected as a dodge, because a drawn mark is already treated as a symbol that answers to the alphabets."},
+    {"kind": "rejected", "says": "Forcing the mark into the condition alphabet was rejected, because ascending is not a condition and a reader reads those shapes as how a part is doing."},
+    {"kind": "status", "says": "It supersedes the part of the earlier alphabet record that names three jobs, and everything else that record decided stands."}
+  ]
+}

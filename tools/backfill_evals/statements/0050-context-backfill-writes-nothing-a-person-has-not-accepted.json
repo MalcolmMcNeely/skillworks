@@ -1,0 +1,20 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Context backfill writes nothing a person has not accepted",
+  "commits": ["19594b4893aea7b1849c35998ca23d99d1939879", "adfef12d4c87e09ef583fd04a4406c5e19255e1b", "424d09555298b3abb3ef81e5326060a19c83cd19", "f818c297f34f33fcf09a686a3865eb31cd2ddf54", "b6d8036c5fd551cc5e232a5b8a0bc63b2fef681e"],
+  "statements": [
+    {"kind": "decision", "says": "The Context backfill reads a repo's code and history and writes what it finds as Drafts on an Answer sheet in .context-backfill/."},
+    {"kind": "decision", "says": "Setup keeps the .context-backfill/ folder out of git."},
+    {"kind": "decision", "says": "A word, a map or an ADR reaches CONTEXT.md, CONTEXT-MAP.md or docs/adr/ only after a person has written accept beside it."},
+    {"kind": "decision", "says": "The backfill skill never fills in a reason the history does not give."},
+    {"kind": "decision", "says": "A backfill is two runs: a run that writes the sheet, and a run that applies the Answers."},
+    {"kind": "decision", "says": "A find with no reason in the history is a Question on the sheet, and it becomes an ADR only when a person writes the reason."},
+    {"kind": "reason", "says": "Every other skill in the Plugin writes a word or an ADR the moment it settles, because a person settled it in the same session."},
+    {"kind": "reason", "says": "The backfill settles nothing: it reads what people wrote years ago and works out what they meant."},
+    {"kind": "reason", "says": "A study that asked a model to supply the reason for changes whose reason was never written down found it right about one time in four."},
+    {"kind": "reason", "says": "A record in docs/adr/ is read by every later Session as a fact, so a wrong one steers every later change, and nobody is left who remembers it was a guess."},
+    {"kind": "rejected", "says": "Writing each find straight into the repo with a proposed status was rejected, because a proposed ADR in docs/adr/ is read like any other: docs/agents/domain.md tells a Session to read them all, and nothing tells it to doubt one."},
+    {"kind": "rejected", "says": "Talking each find through in the session was rejected, because the person who knows why is often not the one at the keyboard, and a file can be handed to the teammate who was there, and a session cannot."},
+    {"kind": "rejected", "says": "Letting the skill write a reason it inferred, marked as inferred, was rejected, because the mark does not survive, the next grill reads the sentence and not the mark, and one wrong reason in four is still the record's content."}
+  ]
+}

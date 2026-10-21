@@ -1,0 +1,30 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A team steers its taste, and not the method",
+  "commits": [
+    "4cc8fa343c2f833ba89d8fbc3b19e208e7647819",
+    "9fa24da960ff9b4d9e21f8e999e5fbdac796fa6c",
+    "7ba67553d698b0dd14272364b0a2362309ac49af",
+    "b330c8a2e812502f8d5942db16c9ef6024fe1121",
+    "453f0bb09935ae2edf56f2048ddeb5a46537defe"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Where teams really differ, the Plugin's opinion is a default a team can edit."},
+    {"kind": "decision", "says": "Where the opinion is how Skillworks works, it is Machinery and no team edits it."},
+    {"kind": "decision", "says": "One page lists both Steering and Machinery, so a team knows which is which without reading every skill."},
+    {"kind": "decision", "says": "Which comments a sweep keeps and which it cuts is Steering, held in the comments rule and owned by the team."},
+    {"kind": "decision", "says": "Which code smells a review looks for is Steering, held in the smell baseline."},
+    {"kind": "decision", "says": "The shape and size of a ticket is Steering, held in the tracker docs."},
+    {"kind": "decision", "says": "The rules, the Suite, the Tracker and the Target branch are Steering."},
+    {"kind": "decision", "says": "Steering is seeded into the repo and owned by the team."},
+    {"kind": "decision", "says": "The three review axes and \"cite it or drop it\" are Machinery, the same in every repo."},
+    {"kind": "decision", "says": "The test-first loop in tdd is Machinery."},
+    {"kind": "decision", "says": "The deep-module view in codebase-design is Machinery."},
+    {"kind": "decision", "says": "The plain writing in unslop, and the forced output style, are Machinery."},
+    {"kind": "decision", "says": "The Session trailer on every commit, and auto-memory switched off, are Machinery."},
+    {"kind": "reason", "says": "The fixed parts are what make Skillworks easy to pick up for a team new to Claude."},
+    {"kind": "rejected", "says": "Making every opinion a lever was rejected, because a team would own a file for each one and Skillworks would keep no method of its own."},
+    {"kind": "rejected", "says": "Reading the team's file first and falling back to the Plugin's was rejected, because what a session loads would then change with the Plugin version and no commit, a trade an earlier decision had already turned down."},
+    {"kind": "status", "says": "A later note says the two lists record the decision as it was made, and the Steering page keeps the current lists."}
+  ]
+}

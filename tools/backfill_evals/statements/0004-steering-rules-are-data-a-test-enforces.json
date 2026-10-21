@@ -1,0 +1,42 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Steering rules are data that a test enforces",
+  "commits": [
+    "3ea9043276d93d3d01bab83949820bd07cd5a2b1",
+    "683c8af9597b8166f9ac6d4a2255121667cc8ea0",
+    "314083762cad805094b6fb85b3074d0975f7957e",
+    "051417de1421b102798b8c2c19bb331586a76a83",
+    "479406bb8f9e4205e5b3878aaccc63a1cb077b07",
+    "04ad501b669ed282a3ef43a945787a0ef57ce2d6",
+    "65e04a6daa725952a719310c8c701d86e04c7332",
+    "e9506b2bb98d3cc5b56f43e7be2013bf3474bdb4",
+    "5a94ac646192cc661b9cbc27818a4e65626e98da",
+    "7edfac740725c13fe73f8c598fd7c09ab1ef3c5f"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "The rules for where code goes and how it is commented live in two files, a file-placement rules file and a comments rules file."},
+    {"kind": "decision", "says": "An architecture test project reads the YAML block in each rules file and fails when the code breaks it."},
+    {"kind": "decision", "says": "Changing a rule means editing one of those two files and nothing else."},
+    {"kind": "decision", "says": "The rule on whether a // comment is worth keeping stays as text, and /comment-sweep cleans up what the text misses."},
+    {"kind": "decision", "says": "The spec loop runs the sweep and the review as its own steps, in one session through claude -p --resume: /implement N --stop-after-tests, then /comment-sweep, then /code-review with the commit and the close."},
+    {"kind": "decision", "says": "Run by hand with no flag, /implement still does every step itself."},
+    {"kind": "decision", "says": "The existing code is restructured before or with the test, never after."},
+    {"kind": "decision", "says": "The restructure brings feature folders then concern folders, one type per file, namespaces that match folders, and test folders that mirror source folders."},
+    {"kind": "decision", "says": "The front end moves from layer first to feature first, so the paths in .dependency-cruiser.cjs change once."},
+    {"kind": "decision", "says": "The loop keeps the plain-words output style, renamed skillworks."},
+    {"kind": "decision", "says": "skillworks-setup writes the output style to .claude/output-styles/ and sets it in .claude/settings.json when no style is set."},
+    {"kind": "reason", "says": "Claude puts too many files in one folder, too many types in one file, and too many comments in both."},
+    {"kind": "reason", "says": "Written rules alone do not stop it: a comment rule held on 10 runs of 15."},
+    {"kind": "reason", "says": "859 of the repo's comment lines were XML doc comments that no build reads."},
+    {"kind": "reason", "says": "A folder shape and the presence of a doc comment are facts, so a test can decide them."},
+    {"kind": "reason", "says": "Whether a // comment is worth keeping is not a fact, so a test cannot decide it."},
+    {"kind": "reason", "says": "A test runs where /implement already has to pass the full suite before it can close a ticket."},
+    {"kind": "reason", "says": "A step written into a skill can be skipped, and a step in the script cannot."},
+    {"kind": "reason", "says": "The existing code breaks the rules, which is why it has to be restructured."},
+    {"kind": "rejected", "says": "A PreToolUse hook was rejected, because it fires on every write, blocks the half-moved state of any restructure, and never sees a git mv run from Bash."},
+    {"kind": "rejected", "says": "Text only was rejected, because the flat folders already in this repo are what text alone produced."},
+    {"kind": "rejected", "says": "An output style with keep-coding-instructions: false was rejected, because although it scored 15 of 15 on comment density it also drops Claude Code's instructions on scope and verification, and nobody has priced that."},
+    {"kind": "rejected", "says": "The output style with keep-coding-instructions: false is also not needed, because the doc comment check covers what it fixed."},
+    {"kind": "status", "says": "The sentence saying the spec loop runs the sweep and the review as its own steps in one session is superseded by a later record: the loop now runs seven steps, the review is three of them, and each runs in a session of its own, while the other two sentences of that paragraph stand."}
+  ]
+}

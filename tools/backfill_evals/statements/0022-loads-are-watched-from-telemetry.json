@@ -1,0 +1,42 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Loads are watched from telemetry, not a log file",
+  "commits": [
+    "8ac22113ff4918825865b1279f4734c7353f1bab",
+    "f68822fb18f29ff87538a0fe0abffcf35361f924",
+    "47936bd53d997ccd3ab2cb49adbf04634abf30b7",
+    "26259be84fac9a8992f0bc2f564ad31580e093fd",
+    "4ecde50d582318b5deb94e4425b13753495f2ab9",
+    "73dbc14d388c9e2ab998844cf8e001a7e66084f8",
+    "4312bfdbb5c51609ac940636b774e6dc78775a4f"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Two hooks post the record themselves: SessionStart writes one record for the session, and InstructionsLoaded writes one Load per file."},
+    {"kind": "decision", "says": "Both records go to the Collector already running for Studio, which forwards them to Loki."},
+    {"kind": "decision", "says": "An alarm that knows which rules it expected and says so when one is missing is deferred, not refused."},
+    {"kind": "decision", "says": "The hook is written for node."},
+    {"kind": "decision", "says": "The hook has a time limit of its own, 2 s, well under the 5 s hook limit."},
+    {"kind": "decision", "says": "One time limit covers both the git call that finds the Repository and the post."},
+    {"kind": "decision", "says": "When the time limit runs out, the hook stops git, sends nothing, and exits zero."},
+    {"kind": "decision", "says": "SKILLWORKS_WATCH_LIMIT_MS sets another limit."},
+    {"kind": "decision", "says": "The tests set a long limit, except the tests of the limit itself."},
+    {"kind": "decision", "says": "A hook that fails says nothing, and nothing in this decision fixes that."},
+    {"kind": "decision", "says": "The endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT, which is already set where telemetry is on."},
+    {"kind": "decision", "says": "This is for local development, and a machine with no Collector is not served."},
+    {"kind": "reason", "says": "None of the readers of the rules says which rules a session was actually given."},
+    {"kind": "reason", "says": "CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 takes the rules away while printing nothing, so a week with no rules can look exactly like a week with them."},
+    {"kind": "reason", "says": "Claude Code emits no telemetry of its own that names an instruction file."},
+    {"kind": "reason", "says": "The pair of records keeps two facts apart: a session record with no Loads says the rules did not arrive, and no records at all says the Collector was not there."},
+    {"kind": "reason", "says": "The hook is handed session_id and prompt_id, the same values Claude Code puts on every telemetry event, so the join to the session already exists."},
+    {"kind": "reason", "says": "A record first leaves the alarm buildable on top."},
+    {"kind": "reason", "says": "The alarm waits because the expected set is a second truth that can rot, and it would be guessed before anyone has read a week of real Loads."},
+    {"kind": "reason", "says": "The hook takes about 100 ms under node and about 750 ms under PowerShell, and PowerShell has to be installed on macOS and Linux."},
+    {"kind": "reason", "says": "The setup ships to machines that are not this one, so the slower runtime would cost every one of them."},
+    {"kind": "reason", "says": "A Collector that takes the connection and never answers would otherwise hold the first answer of every Session until the 5 s hook limit ran out."},
+    {"kind": "reason", "says": "The limit was 1 s at first, but on a busy machine git alone could take longer and the record was lost."},
+    {"kind": "reason", "says": "The tests set a long limit so that how busy the machine is cannot decide whether a test passes."},
+    {"kind": "rejected", "says": "A log file was rejected, because the records would sit where nothing else can read them and joining them to a session would be work done by hand."},
+    {"kind": "rejected", "says": "A span in Tempo was rejected, because there is usually no span yet at session start, which is the moment the rules load."},
+    {"kind": "rejected", "says": "InstructionsLoaded alone was rejected, because it cannot report an absence: zero files loaded is zero events."}
+  ]
+}

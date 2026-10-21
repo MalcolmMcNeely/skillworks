@@ -1,0 +1,22 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Glossary words are committed as they settle",
+  "commits": [
+    "86986326b3b464aacdaaa6c8d2a9f6ab42f23af5"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Every skill that writes CONTEXT.md or an ADR commits and pushes the change at the moment it settles, rather than at the end of the session."},
+    {"kind": "decision", "says": "The commit subject line starts Glossary: or ADR:, so the log says which kind of change it was."},
+    {"kind": "decision", "says": "A skill that pulls a teammate's change to either file reads it and speaks up when it touches ground this session already settled."},
+    {"kind": "decision", "says": "What to re-ask after reading a teammate's change is a question for the session that read it."},
+    {"kind": "decision", "says": "The domain-modeling skill holds the rule, so the skills that use it inherit it."},
+    {"kind": "decision", "says": "Staging is by path, so work in progress elsewhere in the tree is never swept into a glossary commit."},
+    {"kind": "decision", "says": "A word pushed for a design later abandoned is removed with one more small commit."},
+    {"kind": "reason", "says": "More than one person runs agent work against the repo, and a word settled during a long grill lives only in one session's context, so a teammate can reserve the same word for something else and one design has to be re-grilled."},
+    {"kind": "reason", "says": "A push has to pull first, so the check for a teammate's change comes free with it."},
+    {"kind": "reason", "says": "The prefix keeps the many small one-file commits readable."},
+    {"kind": "reason", "says": "A word nobody uses costs less than a word two designs fight over."},
+    {"kind": "rejected", "says": "Committing at the end of the session, as to-spec already does, was rejected as the only guard, because the window it leaves open is the whole grill, where the words are chosen."},
+    {"kind": "rejected", "says": "Reserving words out of band, in a shared file or a tracker issue, was rejected, because a second place to look is a second place to forget and the glossary is already the one place the words live."}
+  ]
+}

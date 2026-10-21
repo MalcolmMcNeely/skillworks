@@ -1,0 +1,23 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Health knocks on the Collector instead of counting Spans",
+  "commits": [
+    "1f22484a041e5b8d6122572610d08031c67ddf43",
+    "8deba3c2a7f6499f501a1bbd3d1b8a4e6afd7928"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Health sends an empty payload to each of the Collector's two doors and reads the answer, instead of counting the Spans the Trace store holds."},
+    {"kind": "decision", "says": "A door that answers 404 is not wired to a store, a door that refuses the connection has no Collector behind it, and both are faults that name the action that would change them."},
+    {"kind": "decision", "says": "The Collector is a part of its own, with a Lamp of its own."},
+    {"kind": "decision", "says": "One Lamp covers both of the Collector's doors, and its Detail names the door that is shut."},
+    {"kind": "decision", "says": "Health now writes, but the write is empty and goes to the Collector, never to a store, so a health check can move nothing Studio measures."},
+    {"kind": "decision", "says": "The Trace store's own Lamp still answers for the road behind the Collector's door."},
+    {"kind": "reason", "says": "A Collector that answers but hands nothing on is invisible to every reader Studio has."},
+    {"kind": "reason", "says": "This happened: the Collector served the events door and answered 404 on the Spans door for two days while Health showed the Trace store working."},
+    {"kind": "reason", "says": "An empty payload holds no Span and no event, so it writes nothing and no figure a reader sees can move because Health asked."},
+    {"kind": "reason", "says": "The Collector was the one link in the chain nobody watched, and it is the link that broke."},
+    {"kind": "reason", "says": "Hanging the Spans door off the Trace store's Lamp is what let the fault hide behind a part that was working."},
+    {"kind": "reason", "says": "Knocking proves the door, not the road behind it, so a Collector that takes a payload and drops it further on is still invisible, which is why the Trace store keeps its own Lamp."},
+    {"kind": "rejected", "says": "Counting what the Trace store holds and calling an empty store broken was rejected, because an empty store is the ordinary state of a quiet machine, a new install or anyone who has not run Claude Code today, and it measures work done, not whether the wiring holds."}
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A team may review each spec as one pull request",
+  "commits": [
+    "8e9b9bf5361c67a2efb37cc3471dbe19713cba39",
+    "3119b4bec5e067ceaa00ea1e9662368701e19856",
+    "2a1c79a129e6871570a6d5c50cbea401a175d2ce",
+    "b1058e805e1311bacb7e9819b7fda87935b316b1",
+    "9aeaeeca03daab8dfbe05b22ab8f3ad2fb1959f3",
+    "b5fd9e6e39df406c1dec43668a26907abc7b133c",
+    "b319df1ed0ec2e1562c68ca1d58f618b68ee7e50",
+    "130abda3633d0c4204d0f82930f9c4f564ca398a",
+    "5b1eb2a7841254d0665c28c78e5644be07037bc4",
+    "d0cee1403d236d3738938e5ea2bf929fc05bbc46"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Pushing straight to the default branch stays the default."},
+    {"kind": "decision", "says": "A team that reviews its work through pull requests can still run the loop."},
+    {"kind": "decision", "says": "target-branch in docs/agents/loop.json says which: a branch name, such as main or master, or spec."},
+    {"kind": "decision", "says": "The loop never assumes the default branch is called main."},
+    {"kind": "decision", "says": "With spec, each spec gets a branch of its own, spec/<slug>, and one pull request takes the whole spec to the default branch."},
+    {"kind": "decision", "says": "The spec's branch is its Target branch, and tickets Land on it exactly as they Land on main."},
+    {"kind": "decision", "says": "A closed ticket still means its code is on the Target branch."},
+    {"kind": "decision", "says": "The grill creates the spec's branch and a draft pull request with the first word or ADR it settles, and pushes every later one there."},
+    {"kind": "decision", "says": "to-spec writes the branch name into the spec, and the loop reads it from there."},
+    {"kind": "decision", "says": "A settled word is still pushed the moment it settles, but to the spec's branch rather than the default branch."},
+    {"kind": "decision", "says": "A ticket still Lands the moment it passes, but on its Target branch."},
+    {"kind": "decision", "says": "One pull request for each ticket is deferred, not rejected, and can come later as a third value of target-branch."},
+    {"kind": "decision", "says": "When two specs in flight take the same ADR number or edit the same glossary entry, the second pull request meets an ordinary merge conflict, and no agent resolves it."},
+    {"kind": "decision", "says": "A ticket is closed before its code reaches the default branch, and the spec reaches it whole when a person merges the pull request."},
+    {"kind": "reason", "says": "Renaming the default branch is too much to ask of a team that only wants to try the Plugin."},
+    {"kind": "reason", "says": "Because tickets Land on the spec's branch as they Land on main, blocking, the push race and running with nobody watching all carry over."},
+    {"kind": "reason", "says": "One pull request for each ticket would leave the loop idle through every review, a squash merge would drop the Session trailer, and every settled word would become a pull request of its own."},
+    {"kind": "rejected", "says": "Having the grill push to the default branch while only code goes through the pull request was rejected, because a team that reviews through pull requests usually protects its default branch, so every push from the grill would be refused."},
+    {"kind": "rejected", "says": "Stacked pull requests were rejected, because a ticket's blockers form a graph, not a line, so a ticket with two blockers has no single base."},
+    {"kind": "status", "says": "It amends the decision that a settled word is pushed to the default branch the moment it settles."},
+    {"kind": "status", "says": "It amends the decision that a ticket Lands on main the moment it passes."}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "This repo runs on its own plugin",
+  "commits": [
+    "d42970ad15cddc49f4f50b93641e37e61d4359bc"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "The skills move out of .claude/skills/ and into the plugin under plugins/."},
+    {"kind": "decision", "says": "This repo loads the plugin the way any other repo would: its .claude/settings.json names the marketplace in plugins/ and enables the plugin."},
+    {"kind": "decision", "says": "Every skill that names another by its bare name changes to the namespaced form, such as /skillworks:spec-loop rather than /spec-loop."},
+    {"kind": "reason", "says": "There is one copy of each skill."},
+    {"kind": "reason", "says": "Every session in this repo proves the plugin loads and works."},
+    {"kind": "rejected", "says": "Copying the skills into the plugin was rejected, because .claude/skills/ would stay the working copy, the plugin would drift from it, and nothing in this repo would ever load the copy other repos receive."}
+  ]
+}

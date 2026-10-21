@@ -67,7 +67,7 @@
     },
     {
       "command": ["uv", "run", "--with", "pytest", "pytest",
-                  "tests/plugins/skillworks/scripts/suite_test.py", "-m", "this_repo"],
+                  "tests/plugins/skillworks/scripts/suite_test.py", "tools/backfill_evals", "-m", "this_repo"],
       "folder": "."
     },
     {

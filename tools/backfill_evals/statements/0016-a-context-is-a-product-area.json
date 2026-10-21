@@ -1,0 +1,25 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A context is a product area",
+  "commits": [
+    "60e11de194a3a0d479f78d326f8f2d6b4b256431",
+    "b0921178cc5618a9f2555c75ef3abf13c65d7839"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "The repository holds two contexts: Studio, the app, and Architecture, the check that holds the shape of the code."},
+    {"kind": "decision", "says": "CONTEXT-MAP.md names the contexts and the paths each owns."},
+    {"kind": "decision", "says": "A word is banned only inside the context that claims the file."},
+    {"kind": "decision", "says": "A context is a product area, and the sign that something is a different product area is that a word has to mean two things."},
+    {"kind": "decision", "says": "Neither the size of the repository nor whether it splits by project or by folder is the test of a context."},
+    {"kind": "decision", "says": "The word check reads CONTEXT-MAP.md and keys its banned-word lists by context."},
+    {"kind": "decision", "says": "A file no context claims is judged by no list, and a path two contexts claim is a breach."},
+    {"kind": "decision", "says": "The catalogue is written into the map as the next context, and gets its own glossary the day Author or Publish writes code."},
+    {"kind": "decision", "says": "Slice joins Studio's banned words only once the activity strip stops spelling it."},
+    {"kind": "reason", "says": "Studio spends the word slice on a Part of a run and on a block of hours in the activity strip, while the code's shape needs the same word, and no single glossary can hold both."},
+    {"kind": "reason", "says": "Because a path two contexts claim is a breach, the map cannot drift away from the tree."},
+    {"kind": "reason", "says": "The map stops two glossaries being a burden, because it says which one applies where, in one screen."},
+    {"kind": "rejected", "says": "One glossary with one winner was rejected, because it would ban the word the architecture needs to keep a word Studio spends on two small things, and would keep doing so every time an area grew a language."},
+    {"kind": "rejected", "says": "A context per deployable was rejected, because Studio is one deployable and the check is a library nothing ships, so the count would be one and the two languages would still fight."},
+    {"kind": "rejected", "says": "Splitting the catalogue out now as a third context was rejected for now, because it has almost no code of its own here and a context with no code gives the check nothing to judge."}
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Shared has one door",
+  "commits": [
+    "16cce800ec07d4034759132bc35610b700d99746",
+    "78cdae3bb7161dd24fe06ba9ac257912077f4213"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Shared has one door: every folder in Shared names a word from the glossary of the context that claims it."},
+    {"kind": "decision", "says": "A folder named in the plural of a glossary headword counts as naming that word."},
+    {"kind": "decision", "says": "The glossary grows to cover the plumbing in Shared, rather than the check looking away from it."},
+    {"kind": "decision", "says": "Figure, Alphabet, Key, Page, Palette, Wire and Harness become settled glossary words, each with what it beat."},
+    {"kind": "decision", "says": "The http folder in Shared is renamed to wire."},
+    {"kind": "decision", "says": "The shared-names-a-word check joins the run, so a Shared folder with no glossary word fails dotnet test."},
+    {"kind": "decision", "says": "With every Slice check now in the run, the staging hatch that held a rule out of the run is removed."},
+    {"kind": "decision", "says": "A new piece of Shared code costs a glossary entry before it costs a folder."},
+    {"kind": "decision", "says": "The check knows only three plural endings: a trailing s, ies for y, and es after a hiss."},
+    {"kind": "reason", "says": "The second way into Shared, having no domain meaning, was never checked, because whether a piece of code means anything is a judgement."},
+    {"kind": "reason", "says": "Running the check over the repository showed the unchecked way was holding fifteen folders, of which only two were plumbing at all."},
+    {"kind": "reason", "says": "A plural counts because a folder holds many of a thing."},
+    {"kind": "reason", "says": "wire says what the code does, while http says only which protocol it does it over."},
+    {"kind": "reason", "says": "Each glossary entry says what the word beat, so the next agent picks the same word rather than inventing a synonym."},
+    {"kind": "reason", "says": "The check learns a new plural ending only when a folder needs one, so it stays as small as the tree needs it to be."},
+    {"kind": "rejected", "says": "Keeping the second door as text was rejected, because a rule half a check can read is a rule an agent reads half of."},
+    {"kind": "rejected", "says": "Banning plumbing from Shared and giving it a top-level folder of its own was rejected, because it splits the first level between jobs and machinery again and costs more than two glossary entries."},
+    {"kind": "rejected", "says": "Accepting only an exact headword and renaming every plural folder to the singular was rejected, because those folders read wrong in the singular and a check that makes the tree read worse is a check nobody will keep."},
+    {"kind": "rejected", "says": "Letting the check accept a settled word found anywhere in the folder name was rejected, because it waves through most names and the door stops being a door."},
+    {"kind": "status", "says": "It supersedes the earlier record that let code into Shared two ways: by naming a glossary word, or by having no domain meaning at all."}
+  ]
+}

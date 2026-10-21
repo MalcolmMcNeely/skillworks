@@ -1,0 +1,27 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Every symbol belongs to one alphabet",
+  "commits": [
+    "788710043ce8bf48662435cfcd89b6a0b6f8a787"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Studio's symbols serve three jobs, each its own alphabet: Identity names a page, Condition says how a part is doing, and Cause says what set a Skill off."},
+    {"kind": "decision", "says": "A symbol belongs to one alphabet and may be reused only inside it."},
+    {"kind": "decision", "says": "A test reads every table of symbols and fails when a symbol crosses alphabets."},
+    {"kind": "decision", "says": "A folder may name its own things, but it may not take a symbol the screen has already given away."},
+    {"kind": "decision", "says": "The pages gave way in all three clashes."},
+    {"kind": "decision", "says": "The page symbols are now a named table where they were five bare arguments inside a builder call."},
+    {"kind": "decision", "says": "The page symbols read ⌂ Home, ▦ Watch, ✎ Author, ✓ Test and ↑ Publish."},
+    {"kind": "decision", "says": "Every table names the alphabet it belongs to."},
+    {"kind": "decision", "says": "A word that never leaves its folder and never reaches the screen is not covered, and is the folder's own business."},
+    {"kind": "reason", "says": "Eight feature folders each kept their own table of symbols and none knew about the others, so six symbols came to mean two things at once."},
+    {"kind": "reason", "says": "No single ticket could see the clash; it showed only once Home put a page's symbol and a Health Lamp on one screen."},
+    {"kind": "reason", "says": "● was Watch in cyan and a working part in green, told apart by colour alone."},
+    {"kind": "reason", "says": "◈ was both Home and \"Given to an agent\", and ✦ was both Author and \"Claude chose it\"."},
+    {"kind": "reason", "says": "Reuse inside one alphabet is what a reader wants: ✕ means broken, missing, unreachable and unlinked in four places, and says the same thing every time."},
+    {"kind": "reason", "says": "The pages gave way because a page symbol is only a label, while a filled dot is a lit lamp and a sparkle is Claude choosing."},
+    {"kind": "reason", "says": "Every table names its alphabet so the test has something to read."},
+    {"kind": "rejected", "says": "One shared table of symbols was rejected, because it would pull pages, health, provenance and telemetry into a dependency none of them otherwise needs, so that four folders could share a constant."},
+    {"kind": "rejected", "says": "Failing on any repeat was rejected, because ✕ would have to change in three of its four homes and the screen would lose a symbol that is doing its job."}
+  ]
+}

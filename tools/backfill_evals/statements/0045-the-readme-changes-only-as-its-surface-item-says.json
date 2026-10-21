@@ -1,0 +1,26 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The README changes only as its Surface item says",
+  "commits": ["062e9d73e8951ed50c305d0e54344efd2b2b3c77", "d055e3abc8a7a25cba79d6cdb92abdaabef561e7", "fe8a1572d289616151f43d93f0a48ce5734a1ba6", "a2af03f391d188db6f71e3d264d8a771edd75f9e"],
+  "statements": [
+    {"kind": "decision", "says": "The README Surface, found by its heading \"## The README\", is the one route by which the loop changes the README."},
+    {"kind": "decision", "says": "A spec names the README only in its Surfaces section."},
+    {"kind": "decision", "says": "The spec review removes any README edit its README item does not ask for."},
+    {"kind": "decision", "says": "How much a README item may ask for is the Surface's \"What to capture\", which the team owns."},
+    {"kind": "decision", "says": "The Seed allows a line that changes and one new item in the setup or run steps, and never a new sentence or section."},
+    {"kind": "decision", "says": "The drift check reads the README on every spec, and a link, path or command the spec broke is a Gap."},
+    {"kind": "decision", "says": "A change that deserves new README text goes into the spec's Out of Scope as a focused session, and nothing builds it."},
+    {"kind": "decision", "says": "A repo with no README Surface gets none of these README rules."},
+    {"kind": "decision", "says": "The Plugin fixes that the README item is the only route by which the loop changes the README."},
+    {"kind": "reason", "says": "That the README item is the only route is method, and the Plugin fixes method."},
+    {"kind": "reason", "says": "The loop grew the README one ticket at a time, each spec and builder adding a sentence, until the page was a long reference nobody read to the end."},
+    {"kind": "reason", "says": "Most of the commits that grew the README came from tickets, although the README was never one of the repo's Surfaces."},
+    {"kind": "reason", "says": "A README is a pitch and a way in, and only a focused session writes one well."},
+    {"kind": "reason", "says": "The drift check reading the README means a rename the grill missed is still caught."},
+    {"kind": "reason", "says": "How much the loop may write in a README is taste, and a team steers its taste."},
+    {"kind": "rejected", "says": "Removing the README Surface was rejected, because the appending never came from the Surface and without it nothing would catch a rename that left the README naming something gone."},
+    {"kind": "rejected", "says": "Having the landing refuse a ticket that changes the README was rejected, because a script cannot tell a rename from a new paragraph and the Gap and rename tickets have to touch the README."},
+    {"kind": "rejected", "says": "Having the loop never touch the README was rejected, because the README would be wrong between focused sessions and a wrong setup step is the worst error a README can hold."},
+    {"kind": "rejected", "says": "Having the Plugin fix the limit on README changes was rejected, because how much the loop may write in a README is taste, which a team steers."}
+  ]
+}

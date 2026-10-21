@@ -1,0 +1,28 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A rerun finds its spec by content, and a loose ticket by its spec",
+  "commits": ["03abacb0c5a02de46afc2eb31694818130f237d2", "4c745be7f73f49632286445807d23caf4f30f9f8"],
+  "statements": [
+    {"kind": "decision", "says": "tracker-publish can be run again after a run that failed on the network, and it must find what that run filed rather than file it twice."},
+    {"kind": "decision", "says": "With github, a spec is found again by a hash of its title and its body, written in a hidden HTML comment on the first line of the body."},
+    {"kind": "decision", "says": "A rerun with the same spec file finds its own issue."},
+    {"kind": "decision", "says": "A spec with the same title and a different body gets an issue of its own, and the command says which open spec shares its title."},
+    {"kind": "decision", "says": "A ticket is still found by its title among its spec's sub-issues."},
+    {"kind": "decision", "says": "A ticket carries its spec's number in a hidden comment on its first line, and a rerun matches a loose ticket by its title and that number."},
+    {"kind": "decision", "says": "The hidden lines stay in every issue the command files."},
+    {"kind": "decision", "says": "The format of the hidden lines is held as it is."},
+    {"kind": "decision", "says": "An issue with no hidden line is not matched by its title, so a rerun that spans the change files once more, one time only."},
+    {"kind": "reason", "says": "A failed run may have made the issue and never heard its number back, so the rerun needs something it knows before it files."},
+    {"kind": "reason", "says": "In the retest of 4 October a Grill published a spec whose title matched an older open spec, the command matched by title and returned the old number, and the driver ran the old design."},
+    {"kind": "reason", "says": "The driver does not close a spec when a run ends, so an old spec can wait open a long time for a new one to share its title."},
+    {"kind": "reason", "says": "Two Grills that pick one title at about the same time meet the same fault, and the second spec is lost with no error."},
+    {"kind": "reason", "says": "A ticket filed before a failed link has no parent yet."},
+    {"kind": "reason", "says": "What a loose ticket lacks is which spec it serves, not its content."},
+    {"kind": "reason", "says": "A change to the hidden lines' format means the issues filed before it no longer match."},
+    {"kind": "rejected", "says": "Matching a spec by its title was rejected, because it is the fault the retest of 4 October showed."},
+    {"kind": "rejected", "says": "Keeping the hash in a label was rejected, because a label holds 50 characters and a sha256 hash needs 64."},
+    {"kind": "rejected", "says": "Keeping the hash in a comment on the issue was rejected, because it is a second call after the issue is made, so a failure between the two leaves an issue a rerun cannot find."},
+    {"kind": "rejected", "says": "Hashing each ticket as well was rejected, because Gap and rename tickets hold text a fresh Session writes on each run, so a hash would never match and each rerun would leave a stray open ticket."},
+    {"kind": "rejected", "says": "Falling back to the title for an issue with no hidden line was rejected, because every open spec filed before the change would keep the fault."}
+  ]
+}

@@ -312,7 +312,7 @@ SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist
                         "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS, BACKFILL_EVALS, "-m", "not " + THIS_REPO]
 
 THIS_REPO_S_SUITE_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "pytest",
-                                   SCRIPT_TESTS + "/suite_test.py", "-m", THIS_REPO]
+                                   SCRIPT_TESTS + "/suite_test.py", BACKFILL_EVALS, "-m", THIS_REPO]
 
 ARCHITECTURE_TESTS = "tests/Skillworks.Architecture.Tests"
 

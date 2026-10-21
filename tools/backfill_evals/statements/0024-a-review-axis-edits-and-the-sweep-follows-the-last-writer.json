@@ -1,0 +1,40 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A review axis edits, and the sweep follows the last writer",
+  "commits": [
+    "a05b47d9d5243045712ee62885702b8df9b9d36f",
+    "fe35eac3b7a4893a5dbbaee0dc9a6c63efd0a089",
+    "ae130b53ed1bd5ddc62ea7b867121141b19e55d4",
+    "4239ca88e0ea8109b82fcec286958544402229cc",
+    "8bb8bd15ebf26ed117eee0adf5437789068fb628"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "A review axis now fixes what it finds, rather than only reporting it."},
+    {"kind": "decision", "says": "The driver takes a reading of the worktree before and after each axis step, works out what changed, and carries that to the step that reconciles."},
+    {"kind": "decision", "says": "Comment sweeping moves to the end of the loop."},
+    {"kind": "decision", "says": "The loop runs seven steps: build, standards, spec, architecture, fix, sweep, finish."},
+    {"kind": "decision", "says": "build starts the session and leaves its change uncommitted."},
+    {"kind": "decision", "says": "The three axes each run fresh, read the change, report under their own heading and may fix what they find."},
+    {"kind": "decision", "says": "fix resumes the build session and reconciles, holding all three reports and all three records."},
+    {"kind": "decision", "says": "sweep runs fresh, with no resume, and writes last."},
+    {"kind": "decision", "says": "finish resumes the build session, runs the suite, commits and closes."},
+    {"kind": "decision", "says": "Run by hand with no flag, /implement gains a reviewing section and a fixing section of its own and so mirrors the loop."},
+    {"kind": "decision", "says": "The two halves of the old finishing step are named fix and finish."},
+    {"kind": "decision", "says": "The axes are ordered: standards edits before spec and architecture read, and architecture edits after every other axis has finished."},
+    {"kind": "decision", "says": "fix and finish resume the build session, and the three axes and the sweep do not."},
+    {"kind": "reason", "says": "When axes were readers, the work was taken from the session that had the finding in hand and given to one that did not."},
+    {"kind": "reason", "says": "The driver's before-and-after reading means an edit no session announced still cannot reach a commit unnoticed."},
+    {"kind": "reason", "says": "The sweep moves to the end because every step that writes ran after its old place and could put back what it had just cut."},
+    {"kind": "reason", "says": "fix is the only step that sees the whole picture."},
+    {"kind": "reason", "says": "A sweep reading the change cold sees the whole ticket, where a sweep resumed in the build session only saw what that session had written."},
+    {"kind": "reason", "says": "fix and the suite run after all three axes, which is what makes the asymmetry of their order affordable rather than dangerous."},
+    {"kind": "reason", "says": "An axis that can only report makes the finishing step retype work already understood somewhere else."},
+    {"kind": "reason", "says": "The names fix and finish were used because Closing already means removing a worktree and its branch, and land-ticket already has a resolve step."},
+    {"kind": "rejected", "says": "Keeping an axis a reader, enforced by plan permission mode or by removing the edit tools, was rejected, because fixing what it finds is the point of giving an axis a session of its own."},
+    {"kind": "rejected", "says": "Having an axis name its own edits in its report was rejected, because a step written into a skill can be skipped and the driver already knows for certain what changed."},
+    {"kind": "rejected", "says": "Telling a later axis what the earlier axes changed was rejected, because each axis runs fresh so that none reads another's mind, and nothing follows the last axis anyway."},
+    {"kind": "rejected", "says": "Running the sweep inside the finishing step was rejected, because a step written into a skill can be skipped and a step in the script cannot, and the sweep guards a rule."},
+    {"kind": "rejected", "says": "Running the sweep after the commit was rejected, because the finishing step closes the ticket, so the sweep would tidy a ticket already reported done, add a second commit and leave the suite run before the last edit."},
+    {"kind": "status", "says": "It replaces the one sentence of the earlier record on steering rules that described the loop as sweep and review in one resumed session ending in /code-review, and the other two sentences of that paragraph stand."}
+  ]
+}

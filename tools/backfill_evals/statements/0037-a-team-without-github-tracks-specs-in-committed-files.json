@@ -1,0 +1,30 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A team without GitHub tracks its specs in committed files",
+  "commits": [
+    "58423cca996bac27722cb8b412c7bd65738ea7e5",
+    "5f0920cfada347a4fa36b1a1b212d2f076b1a809",
+    "16eed1cb447f06a409c6fc86391aaaaaca130b0e",
+    "200bd7776ec378757b551c76a130759736af79e9",
+    "00ca48d1b9efbf47de396211b4f627727690ded2",
+    "facbc51f2d5db0a1ff79ed61fdbfad66004a7d8a"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "A team whose remote is not GitHub can still split a spec into tickets and run the loop over them."},
+    {"kind": "decision", "says": "The tracker setting in loop.json is either github or files."},
+    {"kind": "decision", "says": "With files, each spec is a folder under .specs/ holding a spec.md, and each ticket is a file of its own in the spec's tickets folder."},
+    {"kind": "decision", "says": "A ticket file carries frontmatter for its status, its blockers and who claimed it."},
+    {"kind": "decision", "says": "The .specs/ folder is committed, and setup says it cannot be gitignored."},
+    {"kind": "decision", "says": "A ticket is closed in the same commit as its code."},
+    {"kind": "decision", "says": "A claim on a ticket is a pushed commit, so a lost push race is what stops two loops taking the same ticket."},
+    {"kind": "decision", "says": "The repo needs a remote, of any kind."},
+    {"kind": "decision", "says": "Setup refuses a repo with no remote and says how to add one: a bare repo on a shared drive is enough."},
+    {"kind": "reason", "says": "Each job builds in a worktree of its own, and a worktree cannot see a gitignored folder in the main checkout."},
+    {"kind": "reason", "says": "With the files committed, a ticket cannot be closed without Landing, because the close shares a commit with the code."},
+    {"kind": "reason", "says": "With the files committed, every teammate reads the same state."},
+    {"kind": "rejected", "says": "Gitignoring .specs/ so spec text stays out of history was rejected, because it works for one person on one machine only: every job would write outside its own worktree to close its ticket, a close could not share a commit with its code, and no claim would hold."},
+    {"kind": "rejected", "says": "Keeping the files for splitting only and leaving the loop on GitHub was rejected, because it does not let a team off GitHub run the loop, which is the point."},
+    {"kind": "rejected", "says": "Putting every ticket in its spec's one file was rejected, because two jobs closing two tickets would edit one file at once and every landing would meet a conflict."},
+    {"kind": "rejected", "says": "Allowing a repo with no remote was rejected, because worktrees, landing, claims and the grill's push would each need a second path, and one command gives any team a remote."}
+  ]
+}

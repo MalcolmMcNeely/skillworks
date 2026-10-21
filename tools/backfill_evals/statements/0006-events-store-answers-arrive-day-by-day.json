@@ -1,0 +1,43 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Answers from the Events store arrive day by day",
+  "commits": [
+    "4dca846c8057357a7d43d73528c786d5d734f452",
+    "b93db3f2fa15c8bce24208b27b6a433c6428ec12",
+    "9727980e75fba96526465a4e2fec26dc735991e0",
+    "f94cff1855ac5c33a17916a3cc49b98c59b257dc",
+    "fddf9908ad98aabe3cdc812b89c293c6da9d1a7c",
+    "b20fc278927f2ed41358b42024004e1e92133d18"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Every read Studio makes from the Events store streams its answer back one day at a time, newest day first."},
+    {"kind": "decision", "says": "The answer comes as one JSON object per line (NDJSON) over fetch."},
+    {"kind": "decision", "says": "The screen shows each day as it lands, so an answer is Arriving until its last day lands and complete after that."},
+    {"kind": "decision", "says": "Studio has this one way to load from the Events store."},
+    {"kind": "decision", "says": "Health, the telemetry switch and the catalogue stay plain answers."},
+    {"kind": "decision", "says": "Making the queries faster stays open as separate work."},
+    {"kind": "decision", "says": "A store that stops answering part way keeps the days that landed."},
+    {"kind": "decision", "says": "Such an answer ends complete, and where it carries a Gap that Gap is unreachable and names the days it could not read."},
+    {"kind": "decision", "says": "Nothing retries by itself."},
+    {"kind": "decision", "says": "An answer no screen reads a Gap from ends without one, rather than buy a true Gap with a second query a day."},
+    {"kind": "decision", "says": "A screen reads one answer, so it has one Arriving state."},
+    {"kind": "decision", "says": "The skills answer carries each day's counts by skill, by trigger and by hour, and the latest Activation."},
+    {"kind": "decision", "says": "The activation list and its pages were deleted, so no answer can hit the read cap."},
+    {"kind": "decision", "says": "Changing the Filter stops the answer that is arriving."},
+    {"kind": "decision", "says": "The treemap on the at-a-glance screen lays itself out again as each day lands, with tiles sliding into place."},
+    {"kind": "decision", "says": "The tiles move at once when reduced motion is set."},
+    {"kind": "reason", "says": "Health, the telemetry switch and the catalogue read the machine Studio runs on, which is why they stay plain answers."},
+    {"kind": "reason", "says": "A 30-day skills answer asks Loki 12 aggregate queries, each about a second over 30 days."},
+    {"kind": "reason", "says": "Loki runs 4 queries at a time, so the screen stayed empty for 13 to 15 seconds and passed the API's 5 second limit on a Loki read."},
+    {"kind": "reason", "says": "The same 12 queries over the newest single day come back in about half a second."},
+    {"kind": "reason", "says": "30 one-day queries cost about the same in total as one 30-day query."},
+    {"kind": "reason", "says": "A day-by-day answer puts figures on screen within a second whatever the span, without making the whole answer slower."},
+    {"kind": "reason", "says": "An answer built from one query a day counts Activations alone, so its Gap would call a period that only spent quiet."},
+    {"kind": "reason", "says": "No screen reads a list of individual events, which is why the activation list was deleted."},
+    {"kind": "rejected", "says": "Making the queries faster first was not chosen: daily buckets were three times faster on a test Loki split by 24 hours, but the AppHost's Loki splits by 1 hour and was not measured."},
+    {"kind": "rejected", "says": "Making the queries faster first also lost because a faster total still grows with the span, so a longer span or a busier organisation brings the empty screen back."},
+    {"kind": "rejected", "says": "Sending one figure at a time was rejected, because counts would land before cost so the figures on screen would cover different things, and the first figure still waits longer as the span grows."},
+    {"kind": "rejected", "says": "One request per day from the browser was rejected, because a month is 30 requests and the browser would have to order the days and decide what a failure means, which the server decides in one place."},
+    {"kind": "rejected", "says": "Server-sent events were rejected, because EventSource only sends GET, cannot take the abort signal every read already uses, and reconnects on its own, so a store that stops answering would be retried behind the developer's back."}
+  ]
+}

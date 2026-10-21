@@ -1,0 +1,25 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The Sessions list answers as one page",
+  "commits": [
+    "fefebff1323886859d003f0f2372dd93574cd04c"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "A read of the Sessions list sends its head, then every row in one line, then its end."},
+    {"kind": "decision", "says": "The Sessions list keeps the NDJSON transport, the Arriving state and the Gap that every Events store read has."},
+    {"kind": "decision", "says": "The Sessions list drops the day-by-day split of a read."},
+    {"kind": "decision", "says": "A run is never cut at a day boundary, the midnight rule."},
+    {"kind": "decision", "says": "A store that stops answering part way leaves no rows at all, and the answer carries an unreachable Gap naming every day of the span."},
+    {"kind": "decision", "says": "An answer that fell short is told apart from one that found nothing by the row line: absent means still reading, and a line with no rows means the period was quiet."},
+    {"kind": "reason", "says": "The Sessions list is a list of runs, and a run is not a day: a Session that began before midnight and ended after it belongs to no single day."},
+    {"kind": "reason", "says": "Cutting a run at the day boundary would give two half-rows, each with the wrong start and the wrong length, that nothing on screen could put back together."},
+    {"kind": "reason", "says": "The measurement behind the day-by-day split does not apply: its worry was twelve aggregate queries a day over a month, while the list asks four aggregate queries for the whole span, and a week of Sessions came back in 0.08 seconds."},
+    {"kind": "reason", "says": "The list's queries grow with the number of Sessions and Prompts in the span, not with the number of events, so a busy run never cuts it short."},
+    {"kind": "rejected", "says": "Reading the list day by day was rejected, because of the midnight cut."},
+    {"kind": "rejected", "says": "Sending a row at a time was rejected, because the rows are known together from totals over the whole span, so it would add lines without putting anything on screen sooner."},
+    {"kind": "rejected", "says": "One plain JSON answer outside the Arriving transport was rejected, because the screen still needs to know whether the answer fell short, and a second shape for the same question would be two things to read."},
+    {"kind": "status", "says": "A later correction says the list now asks nine queries, up to eleven with a Repository or Skill filter, plus a tenth to the Trace store for Depth, and the 0.08 second week was measured against the four-query list."},
+    {"kind": "status", "says": "A later record replaces the one-page answer with a gate and its Measures, while the midnight rule is not replaced and the later record rests on it."},
+    {"kind": "status", "says": "The read of the whole span is replaced by the record in which the list reads newest activity first, fifty rows at a time, with no span and no column sort, because Loki refused the totals of a week of Sessions, and the midnight rule stands."}
+  ]
+}

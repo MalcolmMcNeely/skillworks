@@ -1,0 +1,19 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The catalogue lives in this repo until other people install it",
+  "commits": [
+    "6057a637e070d1a39b5543ccc6f98ddd677f87f7"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "The catalogue ships as a Claude Code plugin marketplace, a git repository developers add and Claude Code clones."},
+    {"kind": "decision", "says": "The catalogue lives at plugins/ in this repo, beside Studio."},
+    {"kind": "decision", "says": "When other developers consume Skillworks as a published plugin, plugins/ is split into its own repository."},
+    {"kind": "decision", "says": "Studio takes the catalogue path as configuration from day one, defaulting to plugins/ in this repo."},
+    {"kind": "decision", "says": "Nothing in the app assumes the catalogue and Studio live together."},
+    {"kind": "reason", "says": "One repo means one build, one version, and no cross-repo testing before there is anything to test."},
+    {"kind": "reason", "says": "A marketplace install clones the whole repository, so every consumer would pull Studio's React and C# source to get a folder of Markdown."},
+    {"kind": "reason", "says": "Pulling the whole repository is harmless while the only consumer is this machine."},
+    {"kind": "reason", "says": "Taking the catalogue path as configuration keeps the split a move rather than a rewrite."},
+    {"kind": "rejected", "says": "Putting the catalogue in a repo of its own was turned down until other people install it."}
+  ]
+}

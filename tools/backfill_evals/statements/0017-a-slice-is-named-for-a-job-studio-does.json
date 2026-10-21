@@ -1,0 +1,30 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A Slice is named for a job Studio does",
+  "commits": [
+    "99a0e054862e646f545bf9b8762e727a2145cbbb",
+    "d8e990a42cd6cbbe6e2a6786db0f21535672be8d",
+    "b7bfb9df3d7280f55caa2dfe9dbf2e7bb5bf3cef",
+    "688fd3fe7f8e1b904a3d55eb58bcc2cf1b4d3a57",
+    "bd67f423a2b70d7cc88800dc7ba28f441b430bcf",
+    "afb11752ad99b2fcc1fd91024bb7245a356013a3"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "The first folder under a code root is a Slice, named for a job Studio does."},
+    {"kind": "decision", "says": "Watch and Sessions are the Slices, because they are the jobs built so far, and Author, Test and Publish are one line each when they land."},
+    {"kind": "decision", "says": "A Slice never reads another Slice."},
+    {"kind": "decision", "says": "Two Slices may hold a type with the same name, and merging them is the defect, not the duplication."},
+    {"kind": "decision", "says": "Level one of a code root reads Watch, Sessions and Shared."},
+    {"kind": "decision", "says": "The rule that a Slice never reads another Slice holds code files only, and a test may read any Slice."},
+    {"kind": "decision", "says": "No list of exempt tests is kept."},
+    {"kind": "decision", "says": "The single Registration file goes: each Slice registers itself in a file at its own root, and Program.cs calls each one."},
+    {"kind": "reason", "says": "The Watch page's code sat in four folders of Skillworks.Core, one of Skillworks.Studio.Api and one of the front end, and the front-end one was called skills, which is not what the page is called, so an agent asked to change one page opened most of the repository, at a cost that grows with every page."},
+    {"kind": "reason", "says": "The glossary in CONTEXT.md already lists Studio's jobs."},
+    {"kind": "reason", "says": "The two Activation records in different folders are two different records and were right to be."},
+    {"kind": "reason", "says": "A test's job is to check a seam, and a seam test has to see both sides."},
+    {"kind": "reason", "says": "A list of exempt tests would be a second place the truth lives, and it would go stale."},
+    {"kind": "reason", "says": "Registration names every Slice, so it is the single file coupled to everything."},
+    {"kind": "rejected", "says": "Naming Slices for concepts Studio holds, such as Activations, Skills, Spend, Provenance and Sessions, was rejected, because the Watch page would stay spread over four folders and the tree would say what Studio knows rather than what it does."},
+    {"kind": "rejected", "says": "Making Health, Telemetry, Catalogue and Home Slices was rejected, because none is a job the glossary names, and Watch already draws the Health lamps and the Telemetry switch, so the rule that a Slice never reads another Slice would need an exception on its first day, and an exception on the first day is an exception forever."}
+  ]
+}

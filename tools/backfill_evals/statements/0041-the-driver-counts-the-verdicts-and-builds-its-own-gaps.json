@@ -1,0 +1,37 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The driver counts the Verdicts and builds its own Gaps",
+  "commits": [
+    "267a89687ddd3c2a22953240209585bd2c3a006c",
+    "a41f42b4b67bb2a5f6682474da87a3f95b56dd74",
+    "e20af1c9e56b5e20c83a720b735f3fa30d7bc25f",
+    "46257c39aa70f7ca9b7c52ff29a81b283cab8cf2",
+    "41c472946dade55ac4679ed595fa1c644085a3e1",
+    "a4a40d922b7ac1f8ef425e688540b323df3de7e7"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "The spec numbers every story and every implementation decision, and names every Surface, in a shape the driver checks before the first ticket runs."},
+    {"kind": "decision", "says": "The drift check still judges, and writes one Verdict for each item."},
+    {"kind": "decision", "says": "The driver judges nothing: it counts the Verdicts against the spec."},
+    {"kind": "decision", "says": "An item Missing, Partial or Out of step, or with no Verdict, or with two, is a Gap."},
+    {"kind": "decision", "says": "The driver files the Gaps as one ticket under the spec, built by the usual steps, and asks the drift check about those items again."},
+    {"kind": "decision", "says": "The loop has one round of building Gaps."},
+    {"kind": "decision", "says": "A Gap left after the one round stops the loop."},
+    {"kind": "decision", "says": "A Contradicts and a report with no Verdicts each stop the loop, because each needs a person."},
+    {"kind": "decision", "says": "Names get a judge of their own, the Name check, which runs after the Gaps are built and reads only the diff and the glossary."},
+    {"kind": "decision", "says": "The loop makes every rename the Name check lists in a ticket of its own, and a smaller Name check confirms each one was made."},
+    {"kind": "decision", "says": "The full run moves to the end, after both judges and both tickets, and runs once."},
+    {"kind": "decision", "says": "A clean finish is the driver's call: every item Done or In step, every rename made, and the full run green."},
+    {"kind": "decision", "says": "Unrequested work stops nothing, and the driver names each such item in the log for a person to read."},
+    {"kind": "decision", "says": "A spec written before this change cannot be counted, and the loop turns it down before any ticket runs."},
+    {"kind": "reason", "says": "The drift check was one Session that read the spec, every ticket and the whole diff at once, and a model with that much in its context leaves things out and still sounds sure."},
+    {"kind": "reason", "says": "Nothing read the drift report but the Session that drove the loop, so a story the drift check skipped, or found Missing, stayed that way."},
+    {"kind": "reason", "says": "With the files Tracker, the driver closed the spec even when a story was skipped or Missing."},
+    {"kind": "reason", "says": "A name is the one finding no count can check, since nothing lists the names that should have changed, so its judge gets the smallest context."},
+    {"kind": "reason", "says": "The drift check and the Name check can run on work the full run later finds red, and throwing that work away costs less than a second full run."},
+    {"kind": "rejected", "says": "Letting the Session that drives the loop keep reading the report was rejected, because it judges a second time in a second place that can disagree with the first, and it had already let Gaps through."},
+    {"kind": "rejected", "says": "One judge for the spec and the names was rejected, because the judge with the most to read is the one most likely to drop a name, and a dropped name is the one miss nothing else can catch."},
+    {"kind": "rejected", "says": "A second round, or a round for each kind of finding, was rejected, because one round is small enough to reason about and a Gap that survives a build aimed at it is a question for a person."},
+    {"kind": "rejected", "says": "A full run after each Gap ticket and rename ticket was rejected, because the full run is the slowest part of the loop and each ticket already passes its own Suite step before it Lands."}
+  ]
+}

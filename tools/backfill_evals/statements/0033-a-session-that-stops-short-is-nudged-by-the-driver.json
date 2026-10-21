@@ -1,0 +1,38 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A Session that stops short is Nudged by the driver",
+  "commits": [
+    "e5df8985152bbefe12fee346f0becff2f488f23e",
+    "b5a6920bee75d8362167cfdac7d1ec4c083f0cb2",
+    "8f2cf54ea0ffdb821df11f3851780dd911bdb107",
+    "2d3a9bb313206a6fa4a874abb9adbe6b974739b4",
+    "24aff5027b86b0b8c13ec9d69eaaa9405775fc76",
+    "b6df162eadce44a8dee6e6e3acc999957972cb9e",
+    "22f1aab5fcfbd38f395b323e311fe5ce2346e95d"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "A step whose Session ends with work still owed is resumed by the driver with a Nudge, at most twice, before the loop stops."},
+    {"kind": "decision", "says": "A failed check that proves the work was done earns a Nudge: a review's heading, a build that changed the tree, or a finish that committed, left the tree Clean and closed the ticket."},
+    {"kind": "decision", "says": "A failed check that proves the Session could run earns no Nudge."},
+    {"kind": "decision", "says": "The Nudge names each check that failed."},
+    {"kind": "decision", "says": "The Nudge says that any command the Session left in the background was stopped with its last turn."},
+    {"kind": "decision", "says": "The Nudge asks the Session to say what blocks it if something does."},
+    {"kind": "decision", "says": "Every Session runs with a Bash limit of 45 minutes, by default and at most, so a long command finishes in the foreground."},
+    {"kind": "decision", "says": "The log says when a step was Nudged and so took longer."},
+    {"kind": "decision", "says": "The architecture review runs only the commands the placement-checks file names, not the Suite."},
+    {"kind": "reason", "says": "Carrying on cannot mend a Session that errored, loaded no command, or found its ticket closed."},
+    {"kind": "reason", "says": "An architecture review ran the script tests with a ten-minute limit, they took 17 and a half minutes, and Claude Code moved the command to the background."},
+    {"kind": "reason", "says": "Under claude -p nothing notifies a Session when a background command ends, because the process kills its background shells about five seconds after the last result."},
+    {"kind": "reason", "says": "The Session said it would wait, ended its turn and never wrote its report, so the heading check stopped the loop and a finished build and two passed reviews went to a Kept branch."},
+    {"kind": "reason", "says": "An earlier run hit the same limit and passed only because that Session read the output file instead of waiting."},
+    {"kind": "reason", "says": "Anthropic's guidance for unattended runs says an agent can end its turn with a report while work is still owed, so a harness treats that end as a report, names what is still open, and stops after two or three continuations."},
+    {"kind": "reason", "says": "The raised Bash limit removes the cause, and the Nudge catches a Session that backgrounds something and stops anyway."},
+    {"kind": "reason", "says": "The driver runs the whole Suite as its own step, so the architecture review was running tests it never read."},
+    {"kind": "rejected", "says": "A Stop hook in each Session was rejected, because it moves a gate back inside the Session and the driver keeps its own check beside it, so one fact is checked twice."},
+    {"kind": "rejected", "says": "A Stop hook was also rejected because it only runs inside a real Session, so no deterministic test can prove it."},
+    {"kind": "rejected", "says": "A Stop hook was also rejected because a blocked stop brings back no output from a background command, and Claude Code ends the turn after eight blocks, which a long Suite can use up."},
+    {"kind": "rejected", "says": "A Stop hook would earn its place if background shells came back despite the raised limit, because it is the one option that acts before claude -p kills them."},
+    {"kind": "rejected", "says": "Turning off background tasks with CLAUDE_CODE_DISABLE_BACKGROUND_TASKS was rejected, because it is a switch Claude Code offers rather than something Anthropic advises, and it takes away running two long checks at once."},
+    {"kind": "rejected", "says": "Nudging only a review that wrote no heading was rejected, because a build is the most expensive step to lose and it can stop short the same way."}
+  ]
+}

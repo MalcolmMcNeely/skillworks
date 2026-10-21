@@ -1,0 +1,33 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Claude sees only the tools, and the Dev loop names its own next stage",
+  "commits": [
+    "1d113b9868da19d4a71eb9e25beeb19a69245d8a",
+    "f7b55565c22fb62f025b964bb5382654fb4880b0",
+    "ae0500ef6fe3c0940aadf6191f6727d1ff5db839",
+    "479e399caed9dae443c016e66d2eebd90b4d3b13",
+    "14f5d71d91d5a47576bf023e68e9bbe7fa4d52b5"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "implement and to-tickets set disable-model-invocation: true, so Claude no longer sees them."},
+    {"kind": "decision", "says": "The driver types /skillworks:implement in each Session, as it did."},
+    {"kind": "decision", "says": "The driver now cuts a spec's tickets itself, as a step of its own that types /skillworks:to-tickets."},
+    {"kind": "decision", "says": "A developer can still type any of the hidden skills."},
+    {"kind": "decision", "says": "The tools, such as tdd and review-changes, stay open to Claude."},
+    {"kind": "decision", "says": "to-spec stays open to Claude, and its description points at the Grill instead."},
+    {"kind": "decision", "says": "Staying visible with a \"Not for\" line in its description is kept for to-spec, the one step the Grill has to call through the Skill tool."},
+    {"kind": "decision", "says": "Each stage of the Dev loop names only the next stage."},
+    {"kind": "decision", "says": "Setup's allowlist opens ~/.claude/plugins/, and a Marketplace folder outside the repo, to reading."},
+    {"kind": "reason", "says": "Claude sees the description of every skill it may start, and never the description of a skill that sets disable-model-invocation: true."},
+    {"kind": "reason", "says": "Because spec-loop and the Grill set the flag and to-tickets and implement did not, Claude suggested those two after a spec was published and never spec-loop, the one the Dev loop wants."},
+    {"kind": "reason", "says": "The driver cuts the tickets itself because nothing may call a hidden skill through the Skill tool."},
+    {"kind": "reason", "says": "to-spec stays open because the Grill calls it through the Skill tool."},
+    {"kind": "reason", "says": "Three runs of claude -p on 2026-09-28, against a throwaway plugin, decided it."},
+    {"kind": "reason", "says": "In those runs, a hidden skill ran when its command was typed."},
+    {"kind": "reason", "says": "In those runs, the Skill tool refused to call a hidden skill, and said: \"Do not replicate this skill's workflow by other means\"."},
+    {"kind": "reason", "says": "In those runs, a skill that read a hidden skill's file to follow it was refused the read, because the plugin's folder sat outside the repo."},
+    {"kind": "reason", "says": "A skill's own extra files were never readable in a loop Session when the Plugin sits outside the repo, as it does in every repo but this one."},
+    {"kind": "rejected", "says": "Having the calling skill read the hidden skill's file and follow it was rejected, because it works only once a read rule opens the plugin's folder, it goes around what Claude Code means the flag for, which is a skill run only when a person asks, and a later version of Claude Code could close it."},
+    {"kind": "rejected", "says": "Keeping every flow step visible with a \"Not for\" line in its description was rejected for implement and to-tickets, because a line of text asks Claude not to suggest them and the flag makes sure it cannot."}
+  ]
+}

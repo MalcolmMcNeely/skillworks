@@ -1,0 +1,21 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Steering lives in one folder",
+  "commits": [
+    "5c3f94af49a1947dbf214a5c23eb7bb8cbaf12b7",
+    "b2274659faaa1663e9a0a8429c4b830f413aa024",
+    "77f488e59820489836914a48552b545768203dd0"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Every file of a repo's Steering lives under docs/agents/."},
+    {"kind": "decision", "says": "CLAUDE.md loads the rules with an @ import each, so they are in every session from the start."},
+    {"kind": "decision", "says": "The preflight checks that each rule's import is still there."},
+    {"kind": "decision", "says": "The files a tool or a design places stay where they are: CLAUDE.md and .claude/settings.json, the glossaries and the ADRs, and a linter's own config."},
+    {"kind": "reason", "says": "A team finds all of its Steering in one place."},
+    {"kind": "reason", "says": "The rules must be in every session from the start while the rest is read only when a skill needs it, and the imports keep that split while the folder is one."},
+    {"kind": "reason", "says": "Deleting one import line would otherwise turn a rule off without a word."},
+    {"kind": "rejected", "says": "Keeping the rules in .claude/rules/ and listing every file in a map was rejected, because although no import could go missing, a team would still look in two places."},
+    {"kind": "rejected", "says": "Putting all of it under .claude/ was rejected, because Claude Code treats a write there as a protected path that only bypass mode allows, while the loop's default stays acceptEdits and a ticket has to be able to write its Steering."},
+    {"kind": "rejected", "says": "Putting all of it in .claude/rules/ was rejected, because every session and every loop step would carry the reviewers' baselines too, and the loop still could not write there."}
+  ]
+}

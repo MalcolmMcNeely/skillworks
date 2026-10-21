@@ -1,0 +1,25 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A Session arrives in two parts",
+  "commits": [
+    "bb469c415a36e2b2e66aa0ef70c6169db1db81b2",
+    "5887498f326d7198218f007296850a22df0c7b80"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "A read of one Session answers twice: its events land first, and its Spans land second."},
+    {"kind": "decision", "says": "The events draw the timeline, the figures, the Findings and the conversation, and the Spans fill in the trace tree, the agent each Step belongs to and the waits for permission."},
+    {"kind": "decision", "says": "The answer is Arriving until the second part lands, and the Session's Depth grows from Thin to Full while a reader looks at it."},
+    {"kind": "decision", "says": "The read of one Session is split by store, not by time."},
+    {"kind": "decision", "says": "Skillworks.Core joins events to Spans before either part is sent: a tool event finds its span by tool_use_id, a model event by request_id, and the span carries the agent id."},
+    {"kind": "decision", "says": "The browser is sent a Session, never a span."},
+    {"kind": "decision", "says": "A Session with no Spans is Thin, not broken: it opens and draws, and the parts that need a Span say so rather than showing a zero."},
+    {"kind": "decision", "says": "A Finding that rests on a Span reads not known in a Thin Session."},
+    {"kind": "decision", "says": "A reader who wants only Sessions they can read whole asks the Filter for Full, so the page never hides a Session without being asked."},
+    {"kind": "decision", "says": "A running Session is read back and marked Running, and live follow is a second transport that needs its own decision."},
+    {"kind": "reason", "says": "One Session is not many days: the largest Session measured held 2,645 events, well under a single read, and a week of Sessions listed in 0.08 seconds."},
+    {"kind": "reason", "says": "The Events store and the Trace store answer apart, and the Trace store is the slower and the newer of the two."},
+    {"kind": "rejected", "says": "One whole answer was rejected, because nothing would reach the screen until both stores replied, so a slow or broken Trace store would blank a page the events alone can nearly fill."},
+    {"kind": "rejected", "says": "Reading a Session day by day was rejected, because a Session is read whole and cutting it at midnight would split an overnight run into two halves that mean nothing alone."},
+    {"kind": "rejected", "says": "Joining events and spans in the browser from two plain feeds was rejected, because the join rules are the hard part and rest on beta spans that will change, and in Skillworks.Core a test holds them against a real Loki and a real Tempo where in the browser nothing could."}
+  ]
+}

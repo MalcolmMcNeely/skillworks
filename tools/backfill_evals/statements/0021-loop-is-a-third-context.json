@@ -1,0 +1,30 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Loop is a third context",
+  "commits": [
+    "88e173d823d177d02ddbbba2629977ff0cb6bc69",
+    "19945dc5fa2ddd2c045949f834a14531cf8db9f3",
+    "c2b695b4a3e23eb0502a7f34b1a6e3065d0284ed"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Loop is a third context, and its glossary is held in .claude/CONTEXT.md."},
+    {"kind": "decision", "says": "The context map claims .claude, scripts and tests/scripts for Loop."},
+    {"kind": "decision", "says": "The words rule carries a banned-word list for Loop."},
+    {"kind": "decision", "says": "Load is Loop's first word: one instruction file reaching a session."},
+    {"kind": "decision", "says": "The .sh, .ps1 and .mjs extensions join source-files."},
+    {"kind": "decision", "says": "tests/scripts holds the tests for scripts."},
+    {"kind": "decision", "says": "A test-roots setting names the pair of a test root and the folder it mirrors as data."},
+    {"kind": "decision", "says": ".handoff joins skip-folders."},
+    {"kind": "decision", "says": "Being transient and belonging to one machine becomes a second reason for a folder to be skipped."},
+    {"kind": "decision", "says": "Anything the check should leave alone has to say so in skip-folders."},
+    {"kind": "reason", "says": "The Claude setup and its scripts were claimed by no context, so nothing judged the words in a skill file or the shape of a script."},
+    {"kind": "reason", "says": "That setup is what the repository exists to publish, and it was the one part of the tree with no language settled for it."},
+    {"kind": "reason", "says": "The map says a context waits until it has code the check can judge, so adding Loop's shell and node extensions meets that rule rather than bending it."},
+    {"kind": "reason", "says": "Load is named so that a session can be read for what it was given."},
+    {"kind": "reason", "says": "The scripts and their tests mirror each other the way a C# project mirrors its Tests project, which the check had no way to express, so a language with no project file is not stuck with beside."},
+    {"kind": "reason", "says": ".handoff is transient and belongs to one machine, so judging it would let the same commit pass in one checkout and fail in the next."},
+    {"kind": "reason", "says": "The check reads the filesystem and never asks git, so a folder being ignored by git does not put it out of reach."},
+    {"kind": "rejected", "says": "Letting Loop's words sit in Studio's glossary until later was rejected, because Loop has code and putting the setup's words in the app's glossary teaches that the two are one thing."},
+    {"kind": "rejected", "says": "A glossary with no judged code was rejected, because it breaks the map's own rule on the day it is written."}
+  ]
+}

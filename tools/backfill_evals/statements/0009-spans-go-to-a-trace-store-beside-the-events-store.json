@@ -1,0 +1,40 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Spans go to a Trace store beside the Events store",
+  "commits": [
+    "e99bafd24f76ba6eac24c254a60016b3214dfa4e",
+    "4da62195fc27de41a8e42b5504f1f86db0f12bae",
+    "3cb7d6cf977bf89855d2b5502d4e7e3fa38557bc",
+    "bb469c415a36e2b2e66aa0ef70c6169db1db81b2"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Claude Code's spans go to a Grafana Tempo, and Studio reads both Tempo and Loki."},
+    {"kind": "decision", "says": "The Collector grows a traces pipeline beside its logs pipeline."},
+    {"kind": "decision", "says": "Tempo becomes a persistent Aspire container like Loki."},
+    {"kind": "decision", "says": "The glossary gains the term Trace store."},
+    {"kind": "decision", "says": "Log events join to spans through trace_id and span_id: a tool event finds its span by tool_use_id and a model event finds its span by request_id."},
+    {"kind": "decision", "says": "For a subagent's instruction, a reader gets the description its caller wrote, which names what the subagent was for."},
+    {"kind": "decision", "says": "Health gains a Lamp for the Trace store."},
+    {"kind": "decision", "says": "A Gap names which of the two stores fell short."},
+    {"kind": "decision", "says": "Every developer must switch traces on, beside the content settings, or their Sessions read Thin."},
+    {"kind": "decision", "says": "Studio's telemetry switch writes all of the settings as one act, for the machine it runs on and no other."},
+    {"kind": "decision", "says": "The join rules live in Skillworks.Core, where a test can hold them to a real Tempo."},
+    {"kind": "reason", "says": "A trace is not an event, and the two stores fall short apart from each other."},
+    {"kind": "reason", "says": "A session view needs three things that are on a span and on nothing else: which agent ran a step, what a step contained, and how long a person took to answer."},
+    {"kind": "reason", "says": "No log event carries an agent id: two general-purpose subagents run at once carried the same query_source, agent_name and prompt_id on every event."},
+    {"kind": "reason", "says": "Seven days of real data held 238 such overlaps, because a three-agent review starts three subagents at once."},
+    {"kind": "reason", "says": "On spans the two subagents carried distinct ids, every span inside each carried its own agent's id, and the partition was clean."},
+    {"kind": "reason", "says": "A span nests: claude_code.tool.execution under an Agent call is the whole subtree of one subagent, while events carry no such link, so a subagent's tool calls mix into the parent."},
+    {"kind": "reason", "says": "claude_code.tool.blocked_on_user is the wait for permission, and without it the time a person spent not pressing a key reads as work."},
+    {"kind": "reason", "says": "The join costs nothing, and both join paths were measured end to end."},
+    {"kind": "reason", "says": "No span carries text, and the tool.output span event does not fire on an Agent call, so neither a subagent's instruction nor its report is on a span."},
+    {"kind": "reason", "says": "A subagent's report is recoverable, uncut, from its own assistant_response event, but only the opening words of its instruction survive, with the true length beside them."},
+    {"kind": "reason", "says": "The Events store and the Trace store start, work, switch off and break apart from each other, which is why Health gains a Lamp."},
+    {"kind": "reason", "says": "Spans are beta, so their names and attributes can change, which is why the join rules are held by a test against a real Tempo."},
+    {"kind": "rejected", "says": "Events alone were rejected, because they cannot tell two subagents of one type apart, cannot say who ran a tool call, and have no permission wait, so a subagent's work would count as the main thread's."},
+    {"kind": "rejected", "says": "Reading the task output files on the developer's machine for the full instruction and report was rejected, because Studio reads the organisation's stores and never the machine it runs on."},
+    {"kind": "rejected", "says": "Raw API bodies were rejected for now, because they are a much larger recording, the switch is undocumented, and the file mode points at the developer's disk, though they stay open if the missing instruction turns out to matter."},
+    {"kind": "rejected", "says": "One store, with Tempo inside the Events store term, was rejected, because the word says events, the two containers speak different query languages and fail on their own, and Depth only means something if spans can be absent while events are there."},
+    {"kind": "status", "says": "This record supersedes the part of an earlier record that says Studio measures only from the organisation's Loki."}
+  ]
+}

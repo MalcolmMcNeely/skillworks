@@ -1,0 +1,34 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A loop that lost a push race lands on its Turn",
+  "commits": [
+    "14c6b63768856c745968727bc92ca089bd1d201d",
+    "7d210e2775c2891a0f84e0e543242becf1bb37a9",
+    "3304c1164a3fbbb8af36329eb5945688c0cdc52a",
+    "4c674fabc045ea7941026e4731f586c6d4576495"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "A loop that loses a push race waits for its Turn, the right to push to main that one loop in a clone holds at a time, and keeps it until it Lands."},
+    {"kind": "decision", "says": "Every push takes the Turn."},
+    {"kind": "decision", "says": "A loop that has not lost holds the Turn for a few seconds, only for its push."},
+    {"kind": "decision", "says": "A loop that lost holds the Turn from fetch to push, with the Suite inside, so the loops beside it wait at their push and cannot beat it again."},
+    {"kind": "decision", "says": "A lost push race is tried again for as long as it takes."},
+    {"kind": "decision", "says": "A loop that waits for the Turn says which spec and ticket hold it."},
+    {"kind": "decision", "says": "The Turn is let go when the loop that held it ends, however it ends."},
+    {"kind": "decision", "says": "Any push error other than a lost race stops the loop at once."},
+    {"kind": "reason", "says": "Another loop pushing is an expected event and not a failure."},
+    {"kind": "reason", "says": "The logs proved that a bounded retry did not answer a lost push."},
+    {"kind": "reason", "says": "A lost push costs a whole Suite run, 13 to 34 minutes here, and one loop landed inside that window every time."},
+    {"kind": "reason", "says": "Two landings each rebased three times, passed the Suite three times, lost three times and stopped their loops."},
+    {"kind": "reason", "says": "Not one landing across the repository's loop logs met a conflict, so the time went on Suite runs and never on fixing anything."},
+    {"kind": "reason", "says": "A waiting loop names the spec and ticket holding the Turn so that a Suite that hangs inside a landing is found."},
+    {"kind": "reason", "says": "A push error other than a lost race stops the loop because a person has to fix it."},
+    {"kind": "rejected", "says": "Holding the Turn for every landing was rejected, because a loop with no race to lose would wait on a loop that lost, and most landings meet no race."},
+    {"kind": "rejected", "says": "Letting a loop that has not lost push without the Turn was rejected, because it pushes while the holder runs its Suite and the holder loses again."},
+    {"kind": "rejected", "says": "One lander that takes tickets from a queue was rejected, because the next ticket of a spec often needs the one before it on main, so the loop waits all the same."},
+    {"kind": "rejected", "says": "Skipping the Suite after a clean rebase was rejected, because a rebase with no conflict can still break the program."},
+    {"kind": "rejected", "says": "A GitHub merge queue was rejected, because it needs pull requests and this repository has none."},
+    {"kind": "rejected", "says": "A Turn that every clone shares was rejected, because the races seen were between loops of one clone, and the retry still lands work that a push from somewhere else beat."},
+    {"kind": "status", "says": "It replaces the earlier decision that rejected holding a lock across landing and relied on a bounded retry for a lost push."}
+  ]
+}

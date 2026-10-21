@@ -1,0 +1,28 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "A commit names its Session",
+  "commits": [
+    "b375001b189cced4d868771dcca265a6eafa1a35",
+    "ef98a0e64b8f103d37d2943116de01d9e5c544eb",
+    "2a7ae1efe10ee6cd6e76a003e2e9b06e7627d440",
+    "03412ebffbf5f53b86cd49f95f7377e58eba4019",
+    "68bb756d44fe4dd60fa3c06016bbbeacfa39e7ae"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Every commit a Session makes carries a Skillworks-Session trailer holding the session.id that telemetry carries, so a commit leads to the Session that wrote it."},
+    {"kind": "decision", "says": "A PreToolUse hook in the Plugin adds the trailer to each git commit Claude runs."},
+    {"kind": "decision", "says": "The hook denies, with its reason, a commit it cannot rewrite safely, so Claude runs it again in a plain form."},
+    {"kind": "decision", "says": "The driver picks each Session's id before it starts the Session and records it beside the ticket's worktree."},
+    {"kind": "decision", "says": "The Keep names every Session that ran on the ticket."},
+    {"kind": "decision", "says": "The trailer is optional where a ticket Lands."},
+    {"kind": "decision", "says": "An amend by a second Session adds a second trailer line, and both stay."},
+    {"kind": "reason", "says": "A link that goes missing without a word is worse than none, because a reader trusts the history that has it."},
+    {"kind": "reason", "says": "The Keep makes its commit inside a script, where no hook sees it."},
+    {"kind": "reason", "says": "The Keep names every Session because the Session running at the stop never reported its id."},
+    {"kind": "reason", "says": "The trailer is optional where a ticket Lands because the hook and the Keep are what make it reliable."},
+    {"kind": "reason", "says": "Both trailer lines stay after an amend because both Sessions wrote the commit."},
+    {"kind": "rejected", "says": "A git prepare-commit-msg hook was rejected, because git takes its hooks from each clone and never from a plugin, so a fresh clone with nothing installed would make commits with no trailer and no warning."},
+    {"kind": "rejected", "says": "Reusing the Claude-Session key was rejected, because Claude Code on the web writes it with a URL, so one key would hold two kinds of value."},
+    {"kind": "rejected", "says": "Letting a commit the hook cannot rewrite run as it is was rejected, because it is the quiet miss the trailer exists to prevent."}
+  ]
+}

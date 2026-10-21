@@ -1,0 +1,24 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Every Load comes from the repository",
+  "commits": [
+    "1ee30a95ba353b58ac2f3fa9a8b1efef97032108",
+    "f051e1bf4301ebc5b78b64e629e784580264d0e7",
+    "2f479472b72557727046689636b263b463a29949"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Loop turns auto-memory off with autoMemoryEnabled: false in the repository's .claude/settings.json, so every Load comes from a file the repository carries."},
+    {"kind": "decision", "says": "skillworks-setup writes the same line into every repository it configures."},
+    {"kind": "decision", "says": "A developer who wants memory back in one repository writes it into .claude/settings.local.json, which is per-machine and never committed."},
+    {"kind": "decision", "says": "skillworks-setup leaves .claude/settings.local.json alone."},
+    {"kind": "decision", "says": "The memory files stay on disk, so removing the line is one commit and the files the machine already holds come back with it."},
+    {"kind": "decision", "says": "The preflight script warns when the line is missing, and warns rather than fails."},
+    {"kind": "reason", "says": "Memory files are Loads whose source is the machine rather than the repository, so one commit steers two machines differently and a run cannot be read back from what the repository holds."},
+    {"kind": "reason", "says": "The project settings line beats a developer's own toggle, because /config writes auto-memory to the user's settings and the project file wins."},
+    {"kind": "reason", "says": "skillworks-setup leaves settings.local.json alone because a conflict there can only be deliberate."},
+    {"kind": "reason", "says": "The preflight warns rather than fails because a team that removed the line on purpose should not have their loop stop."},
+    {"kind": "rejected", "says": "A developer's own settings were rejected, because they reach every repository on one machine and none on any other, and the project settings win over them anyway."},
+    {"kind": "rejected", "says": "A managed policy file was rejected for now, because the rollout has to stay small and reversible and a policy is neither; it stays available the day the company wants the line locked."},
+    {"kind": "rejected", "says": "The plugin was rejected, because a plugin is not one of the settings sources Claude Code reads and only ships skills."}
+  ]
+}

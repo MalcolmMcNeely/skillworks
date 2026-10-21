@@ -1,0 +1,31 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Each review axis reads one file the team owns",
+  "commits": [
+    "3bfb2831026415d111ffa424ff83ad8efed3893f",
+    "6d42262afb5bec50da50cb3ce68038bad439a03b",
+    "4d8be4770b0fdfdf919e4bb8f8d851aa1ed6871a",
+    "ce9e0e8730debd467307324f177fde1565bcc985"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Each of the three review axes reads one file of its own in docs/agents/: review-standards.md, review-spec.md and review-architecture.md."},
+    {"kind": "decision", "says": "Each review file holds the Plugin's defaults for that axis and the team's own checks."},
+    {"kind": "decision", "says": "The smell baseline becomes review-standards.md, and the arrangement baseline becomes review-architecture.md."},
+    {"kind": "decision", "says": "Each check says what to look for, whether it is a hard breach or a judgement call, and the paths it covers when it covers fewer than all."},
+    {"kind": "decision", "says": "A \"Do not report\" list names what the axis skips."},
+    {"kind": "decision", "says": "A hard breach is always fixed and never left."},
+    {"kind": "decision", "says": "A judgement call may be left, with the reason."},
+    {"kind": "decision", "says": "A check that should also shape the build is a rule, because a review file is read only by its review."},
+    {"kind": "decision", "says": "code-review becomes review-changes."},
+    {"kind": "decision", "says": "review-changes' sub-agents each follow one axis skill in a mode that reports and edits nothing."},
+    {"kind": "decision", "says": "A breach of a rule marked hard is now always fixed, as a moved name already was."},
+    {"kind": "reason", "says": "A team had no good place to add a review check: a new rule loads into every Session, and an item in the smell baseline could never be a hard breach."},
+    {"kind": "reason", "says": "code-review is renamed so Claude does not confuse it with Claude Code's own /code-review."},
+    {"kind": "reason", "says": "Having review-changes' sub-agents follow the axis skills gives each axis one text, so a review by hand checks what the loop checks."},
+    {"kind": "rejected", "says": "One file for every review check was rejected, because every axis would read every check, the file would grow with each concern, and Anthropic warns that a long review file weakens the rules that matter most."},
+    {"kind": "rejected", "says": "One file for each concern, such as review-security.md, was rejected, because every axis would read every file to find its own checks."},
+    {"kind": "rejected", "says": "A root REVIEW.md that also steers Anthropic's Code Review on a pull request was rejected for now, because up to 2026-09-10 Anthropic's docs said that Code Review reads REVIEW.md as it stands and does not expand an @ import, so a REVIEW.md that imports the team's files would reach the review as one line, and a copy would drift from the three axis files."},
+    {"kind": "rejected", "says": "Keeping the baselines as separate files was rejected, because the standards axis would read two files for its checks and a team would look in two places to change one review."},
+    {"kind": "rejected", "says": "Letting code-review keep its own brief for each axis was rejected, because its briefs had already drifted from the loop's axis skills and a review by hand missed checks the loop makes."}
+  ]
+}

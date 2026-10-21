@@ -1,0 +1,43 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The Sessions list sends its rows before its Measures",
+  "commits": [
+    "cf14f9d0a0411c39b0a388bb23a18f2cb5708f6c",
+    "d9453576d154f44c098e1e6f97c5a305d5cd2bca",
+    "8fcc19295debabac23335f70c5cfb556a7ecbd45",
+    "03f8667747695849e3d81a41f2758a612be2000e",
+    "88866dc974da05863058135fa1445cd8330ba204",
+    "27e36e62ffd4705a4b7c0a2cdc0ca55fd15ae5ac"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "A read of the Sessions list sends its head, then its rows once the gate reads have landed, then each Measure on its own as it lands, then its end."},
+    {"kind": "decision", "says": "The gate is the five reads that decide which runs exist and what they are called: the run list, the first event, the last event, the title and the first prompt, issued ahead of the rest."},
+    {"kind": "decision", "says": "A Skill filter puts the activation read in the gate, because it decides which rows exist."},
+    {"kind": "decision", "says": "A reader who arrives already sorted by a Measure puts that Measure's reads in the gate, so rows are never drawn in one order and then moved."},
+    {"kind": "decision", "says": "Behind the gate come the Measures: Tool calls from the tool result read, Cost from the turn read, Faults from the tool result and model error reads together, and Friction from the decision read."},
+    {"kind": "decision", "says": "Friction rides the answer though no column draws it, because its read is already paid for."},
+    {"kind": "decision", "says": "A Measure lands whole, as one line, never as one line per read."},
+    {"kind": "decision", "says": "The Measure reads go out together, and a test asserts which lines came rather than their order."},
+    {"kind": "decision", "says": "The column headings are inert until the answer is complete, and the heading over a Measure that fell short stays inert after."},
+    {"kind": "decision", "says": "Where a Measure falls short the rows stand, its cells read a dash, and the answer's Gap names the Measures it could not read."},
+    {"kind": "decision", "says": "Where a gate read falls short there are no rows to stand, so the table is empty with a Gap."},
+    {"kind": "decision", "says": "A cell whose Measure has not landed is blank and carries the Arriving state, so no new word and no new symbol reaches the screen."},
+    {"kind": "decision", "says": "Nothing retries by itself, and a Measure that fell short comes back when the reader changes the Filter."},
+    {"kind": "decision", "says": "The midnight rule stands, and nothing cuts a run at a day boundary."},
+    {"kind": "decision", "says": "The glossary gains Measure."},
+    {"kind": "decision", "says": "Narrowing on half an answer is refused, so a shortened Depth read narrows nothing, and its Gap says so."},
+    {"kind": "reason", "says": "The list asks nine span-wide queries, up to eleven, not the four first costed, and nine against a Loki that runs four at a time is the shape measured at 13 to 15 seconds on a month."},
+    {"kind": "reason", "says": "Every query had to land before a single row could be drawn, because Readings.Unreachable ORs all nine, so one store read that timed out emptied the whole table."},
+    {"kind": "reason", "says": "One slow read no longer empties the table, and the whole-table wait shrinks to the gate."},
+    {"kind": "reason", "says": "The Trace store answers and falls short apart from the Events store, so a Depth it could not read says nothing about which runs exist, and emptying the table on it spent the whole Events store answer on a second store's outage."},
+    {"kind": "rejected", "says": "Reading the list day by day was rejected again, because a run that began before midnight would arrive twice and the table would sort itself again under the reader's hand."},
+    {"kind": "rejected", "says": "A gate of three reads, leaving the name to arrive behind it, was rejected, because the name is how a reader finds the run they want and a name that changes under the cursor is worse than one more round."},
+    {"kind": "rejected", "says": "One line per read was rejected, because Faults sums two reads and a reader would watch the number climb without knowing which it had reached."},
+    {"kind": "rejected", "says": "A fixed order for the Measures was rejected, because the API would hold finished work back to buy an order a test could read top to bottom."},
+    {"kind": "rejected", "says": "Sorting while the answer arrives was rejected, because a reader who sorted on a Measure that had not landed would watch the table settle twice."},
+    {"kind": "status", "says": "It replaces the one-page answer of the record in which the Sessions list answers as one page, and rests on that record's midnight rule."},
+    {"kind": "status", "says": "A correction takes the Trace store Depth read out of the gate: where it falls short the rows stand un-narrowed, and the Gap says the table was not narrowed by a Depth it could not read."},
+    {"kind": "status", "says": "A correction says Figure is a word of its own, how a Measure is written for a reader, so Figure leaves Avoid under Measure and never joins the banned words."},
+    {"kind": "status", "says": "The read of the whole span is replaced by the record in which the list reads newest activity first, fifty rows at a time, with no span and no column sort, and the midnight rule stands."}
+  ]
+}

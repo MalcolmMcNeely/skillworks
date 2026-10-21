@@ -1,0 +1,22 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Studio is a local-first web app, C# behind React, run by Aspire",
+  "commits": [
+    "6057a637e070d1a39b5543ccc6f98ddd677f87f7"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Studio runs locally on the developer's machine rather than as a hosted service."},
+    {"kind": "decision", "says": "Studio is an ASP.NET Core API with a React front end served by Vite."},
+    {"kind": "decision", "says": "An Aspire AppHost starts both the API and the front end with one F5."},
+    {"kind": "decision", "says": "Skillworks.Core holds the domain so that the planned C# MCP server can be a second thin shell over it."},
+    {"kind": "decision", "says": "If a job later genuinely needs the Claude Agent SDK, Aspire runs a Node service beside the C# one."},
+    {"kind": "reason", "says": "Studio has to author skills and run evals, and both write files and start claude on the machine the developer is sitting at, which a hosted service cannot do."},
+    {"kind": "reason", "says": "The same React can be wrapped in a desktop shell later without changing anything below it."},
+    {"kind": "reason", "says": "C# can run the Claude CLI as a subprocess, the documented alternative for languages the Agent SDK does not ship for, and evals go through claude plugin eval, a CLI command from any language."},
+    {"kind": "reason", "says": "C# is the house language, the MCP server is already planned in C# against the official MCP C# SDK, and one language covers both shells."},
+    {"kind": "reason", "says": "Aspire 13's AddViteApp runs npm install and npm run dev with hot reload, injects the API address so no port is hard coded, and manages the telemetry containers."},
+    {"kind": "rejected", "says": "A desktop shell such as Electron, Tauri or Photino was rejected, because the server and not the window is what reaches the filesystem, so the wrapper buys an icon and costs packaging, signing and updates."},
+    {"kind": "rejected", "says": "A TypeScript backend was rejected, though it was the closer call: the Claude Agent SDK ships for Python and TypeScript only, so C# cannot use it."},
+    {"kind": "rejected", "says": "Going without Aspire was rejected, because the alternative is two terminals every day."}
+  ]
+}

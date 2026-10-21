@@ -1,0 +1,33 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Telemetry has two stores: SQLite for transcripts, Loki for events",
+  "commits": [
+    "936a1059e017b13785f679e58114ffae7c79a9e8",
+    "5247b60b33f3e88501157863ce2178a828466a15",
+    "f1ec3807a954695329889b2ef10781c2745c0e2d",
+    "59cd4dac3116ee66d30d8b25cdf7591dad123245"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Studio reads skill usage from two stores: transcripts in SQLite and events in Loki."},
+    {"kind": "decision", "says": "A background job parses the transcripts once into SQLite and keeps up with new sessions."},
+    {"kind": "decision", "says": "Claude Code sends OTLP to an OpenTelemetry Collector, which forwards to Loki."},
+    {"kind": "decision", "says": "Skillworks.Core queries Loki's /loki/api/v1/query_range over HttpClient."},
+    {"kind": "decision", "says": "The Collector and Loki containers are Aspire resources with a persistent lifetime and a data volume, so they keep catching events after the AppHost stops."},
+    {"kind": "decision", "says": "The containers' host ports are pinned and unproxied."},
+    {"kind": "decision", "says": "The two stores join on skill name and time, in C#, not in a database."},
+    {"kind": "decision", "says": "The hand-started claude-loki, claude-grafana and claude-renderer containers predate this decision and must be removed."},
+    {"kind": "decision", "says": "Studio writes the OTEL_* block into ~/.claude/settings.json itself, merging rather than replacing and asking before the first write."},
+    {"kind": "decision", "says": "The collector's host port is pinned so the value written to the settings stays stable across runs."},
+    {"kind": "reason", "says": "Every assistant record in the transcripts carries attributionSkill beside the full usage block, so cost per skill is already on disk and needs nothing switched on."},
+    {"kind": "reason", "says": "The transcripts on this machine hold 678 MB across 1471 files, far too much to reparse per request."},
+    {"kind": "reason", "says": "Transcripts are the durable record: they exist whether or not Studio is running."},
+    {"kind": "reason", "says": "Transcripts do not say where a skill came from, while the skill_activated log event carries skill.source, plugin.name and marketplace.name."},
+    {"kind": "reason", "says": "That provenance is what tells an engine from an entry point once the catalogue ships as a plugin."},
+    {"kind": "reason", "says": "The ports are unproxied because Aspire's proxy holds the port and then dies with the AppHost."},
+    {"kind": "reason", "says": "The Collector is there for the seam: dropping noisy events, renaming fields and fanning out to a second sink later are all collector config, invisible to Claude Code and to Studio."},
+    {"kind": "reason", "says": "The old containers must go because Aspire's Loki wants port 3100, which the old one holds."},
+    {"kind": "reason", "says": "Nothing is emitted until ~/.claude/settings.json carries the OTEL_* variables, which is why Studio writes them."},
+    {"kind": "rejected", "says": "A single store was the tempting alternative and was not chosen; its pull is that two stores have to be joined on skill name and time in C#, which is the cost of the split."},
+    {"kind": "rejected", "says": "Grafana is not part of this, because Studio is the dashboard and a second UI over the same data is waste."}
+  ]
+}

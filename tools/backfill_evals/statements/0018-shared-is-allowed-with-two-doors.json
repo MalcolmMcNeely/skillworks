@@ -1,0 +1,28 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Shared is allowed, with two doors",
+  "commits": [
+    "99a0e054862e646f545bf9b8762e727a2145cbbb",
+    "b7bfb9df3d7280f55caa2dfe9dbf2e7bb5bf3cef",
+    "16cce800ec07d4034759132bc35610b700d99746",
+    "eb0f67ef4250d525d6be1ad68c6d2ade543f5ebc"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Shared comes off the banned folder names, at the top of a code root only."},
+    {"kind": "decision", "says": "Code gets into Shared one of two ways: it names a word from CONTEXT.md, or it has no domain meaning at all."},
+    {"kind": "decision", "says": "The first door is checked against the glossary's headwords, and the second stays as text for judgement."},
+    {"kind": "decision", "says": "The test runs on the piece, not on the word: only what two Slices actually read moves to Shared."},
+    {"kind": "decision", "says": "Only the list of Skill names the filter offers goes to Shared, while the Map, the Tiles and the skill report stay in Watch."},
+    {"kind": "decision", "says": "common, utils, helpers and misc stay banned everywhere, and a lowercase shared stays banned below the first level."},
+    {"kind": "decision", "says": "Shared never reads a Slice."},
+    {"kind": "reason", "says": "A folder named for nothing fills with anything, which is why shared was banned."},
+    {"kind": "reason", "says": "Code no single Slice owns is real, such as the two store readers, the Filter every list narrows by and the words a Gap is reported in."},
+    {"kind": "reason", "says": "Naming each piece of shared code at the top level puts technical folders back beside the jobs, which is the thing Slices are meant to fix."},
+    {"kind": "reason", "says": "Whether code has no domain meaning is a judgement no check can make."},
+    {"kind": "reason", "says": "Because the arrow runs one way, a Slice can be read in full without opening anything above it."},
+    {"kind": "reason", "says": "Half the door is unchecked and only a review will catch a misplaced piece, a price smaller than pretending the code belongs to a job."},
+    {"kind": "rejected", "says": "Keeping the ban and naming each shared folder for what it does at the top level was rejected, because it splits level one between jobs and machinery again."},
+    {"kind": "rejected", "says": "Letting a headcount decide, so that code stays in Shared if two Slices use it and moves out otherwise, was rejected, because it waves http and palette through and throws out Catalogue, and counting users asks how popular a thing is, not what it means."},
+    {"kind": "rejected", "says": "Two folders, one for words and one for plumbing, was rejected, because it divides the top level again."}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The backfill evals answer the map question with the real map",
+  "commits": ["10044802f7737c865d92f8b397fc3d7979dc21be"],
+  "statements": [
+    {"kind": "decision", "says": "A headless Context backfill run in a Blind clone resumes the Session with an answer to the map question."},
+    {"kind": "decision", "says": "The harness answers the map question with the real map's three contexts, Studio, Architecture and Loop, and their folders."},
+    {"kind": "decision", "says": "The shape pass is scored on its own from what it wrote in shape.md before the map question."},
+    {"kind": "reason", "says": "Answering with the real map makes every run sort its Drafts the same way."},
+    {"kind": "reason", "says": "The evals compare two versions of the skill on the same Blind clone, and the comparison is only as sharp as the noise between runs."},
+    {"kind": "reason", "says": "Two runs of one skill version split Architecture two different ways, once into Studio and once into Plugin, and every headword and decision count kept per glossary moved with the split."},
+    {"kind": "reason", "says": "Feeding the real answer takes that movement out of every pass after the shape pass, and gives the shape pass a score of its own."},
+    {"kind": "rejected", "says": "Answering \"a map with the contexts you found\" was rejected, because although it measures the sheet as a person would get it, the context split then changes between runs of the same skill and nothing after it is comparable."}
+  ]
+}

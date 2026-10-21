@@ -1,0 +1,27 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "The Map shows 25 Skills, so no Tile's area lies",
+  "commits": [
+    "01e0e585914a60dd7c650052daf9693261d688c1"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Every Tile gets at least a fiftieth of the Map."},
+    {"kind": "decision", "says": "The Map shows at most 25 Skills."},
+    {"kind": "decision", "says": "The Filter and the order key choose which 25 Skills the Map shows."},
+    {"kind": "decision", "says": "The floor becomes a flat fiftieth at every size, and the guard that shrank it is no longer needed."},
+    {"kind": "decision", "says": "A Skill is off the Map for one of two different reasons: it had no figure to be sized by, or it had a figure and did not fit."},
+    {"kind": "decision", "says": "Each reason a Skill is off the Map gets its own line beneath the Map, naming the Skills."},
+    {"kind": "decision", "says": "A reader who wants the tail flips the order key."},
+    {"kind": "reason", "says": "The floor keeps a barely used Skill large enough to read and to click."},
+    {"kind": "reason", "says": "25 is the largest count for which the floor and its own guard both hold exactly."},
+    {"kind": "reason", "says": "The floor cannot hold at any size: fifty-one Skills at a fiftieth each is more than the whole Map."},
+    {"kind": "reason", "says": "The code shrank the floor as the count grew, to min(2%, 0.5/n), so the promise quietly weakened past 25 Skills and was half of itself at 50, and nothing on screen and no test said where it stopped holding."},
+    {"kind": "reason", "says": "A floor is a lie about area: with four Skills at 1000, 1, 1 and 0.5, the last is a two thousandth of the total and was drawn at a fiftieth, forty times too big."},
+    {"kind": "reason", "says": "Two floored Tiles look the same size when one may be a hundred times the other, and comparing areas is the whole job of the Map."},
+    {"kind": "reason", "says": "A cap makes the rule true instead of writing down where it stops."},
+    {"kind": "reason", "says": "Nobody looks at the middle of the order."},
+    {"kind": "rejected", "says": "Fifty Tiles with the guard dropped was rejected, because fifty at a fiftieth each fills the whole Map, so in a long tail every Tile sits on the floor at the same size and no picture is left."},
+    {"kind": "rejected", "says": "Marking a floored Tile on screen was rejected, because in a real catalogue the long tail is mostly floored, so the mark would cover most of the Map and make the glance harder rather than truer."},
+    {"kind": "rejected", "says": "Writing the limit down and leaving the Map alone was rejected, because it keeps a Map whose areas cannot be trusted and asks the reader to remember when."}
+  ]
+}

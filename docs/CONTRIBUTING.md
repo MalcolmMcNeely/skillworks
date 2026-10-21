@@ -22,7 +22,7 @@ dotnet test Skillworks.Studio.slnf --blame-crash --blame-crash-dump-type mini
 
 uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts tools/backfill_evals -m "not this_repo"
 
-uv run --with pytest pytest tests/plugins/skillworks/scripts/suite_test.py -m this_repo
+uv run --with pytest pytest tests/plugins/skillworks/scripts/suite_test.py tools/backfill_evals -m this_repo
 
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
@@ -42,7 +42,8 @@ alone, so they never wait on Docker. The Core and API tests run over one solutio
 tests in the Linux image `docs/agents/script-tests.Dockerfile`, because on Windows each git and bash
 process they start is slow to start. Run by hand, the command above runs them on your own machine.
 The tests marked `this_repo` run on the host in a check of their own, because they read the paths
-the script tests ignore, and the image gets no copy of those.
+the script tests ignore, or this repo's history, and the image gets no copy of those. The backfill
+evals' Statement files are checked there, against the records and the commits at the pin.
 `claude plugin validate` reads each skill's frontmatter with the parser Claude Code uses at runtime.
 Claude Code drops a skill whose frontmatter does not parse, so this check goes red on it. A Plugin
 with only warnings, such as no version or no author, leaves it green.

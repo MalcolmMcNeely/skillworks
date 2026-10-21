@@ -1,0 +1,31 @@
+{
+  "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
+  "title": "Steering is the repo's, and machinery is the plugin's",
+  "commits": [
+    "d17984276f4a57a037a470f7643dbdcd228f5395",
+    "d09252edd5ac435b46254c9969357469d8b8fbb1",
+    "f7b5313e3b34d6ceecc36fe0dbe8cb71a4ec5f69",
+    "e5888dd8b882c84c24b315f6ac7b793c7a98da2f",
+    "2acf759f1392068a68412ea81a711b097dab6348",
+    "6bde09dbd1bb95c96f3556bd33aac3f68e3e8d67",
+    "7ba67553d698b0dd14272364b0a2362309ac49af",
+    "e7960b77b0a189481e2a8216f107a1dc42dbc09c"
+  ],
+  "statements": [
+    {"kind": "decision", "says": "Steering, meaning the rules, the tracker docs, the review baselines and the Suite, is copied into each repo as files by skillworks-setup."},
+    {"kind": "decision", "says": "The repo owns its steering from then on, and a team edits its copy to suit itself."},
+    {"kind": "decision", "says": "A plugin update never overwrites a repo's steering."},
+    {"kind": "decision", "says": "No skill in the Plugin names a fact about one repo; it reads the fact from the repo's steering."},
+    {"kind": "decision", "says": "Machinery, meaning the skills, the scripts they drive, the hooks and the output style, stays in the Plugin and runs from there."},
+    {"kind": "decision", "says": "The output style is machinery."},
+    {"kind": "decision", "says": "The Plugin forces its output style with force-for-plugin, so it is on wherever the Plugin is and beats any outputStyle a repo or a developer sets."},
+    {"kind": "decision", "says": "The preflight warns, and does not stop, when another enabled plugin forces a style."},
+    {"kind": "reason", "says": "Every repo runs the same machinery code, and a fix reaches every repo with the next update."},
+    {"kind": "reason", "says": "Skillworks is for developers new to Claude and its opinions are what make it easy to pick up, so the way Claude reports is one of them."},
+    {"kind": "reason", "says": "A forced style holds for the whole session, not only while a Skillworks skill runs."},
+    {"kind": "reason", "says": "When two enabled plugins force a style the first one loaded wins, and the docs do not say what order installed plugins load in, so Skillworks could lose that race without a word."},
+    {"kind": "rejected", "says": "Shipping the steering in the Plugin through a SessionStart hook was rejected, because every repo would get the same text that no repo could change, the rules carry settings that differ per repo, and the Plugin rather than the repo would become the source of what a session loads."},
+    {"kind": "rejected", "says": "Copying the scripts into each repo was rejected, because each copy drifts from the next and a fix reaches none of them."},
+    {"kind": "rejected", "says": "Copying the output style into each repo was rejected, because a team could change how the loop reports, and a repo copy with the Plugin's name would leave it unclear which one a session loaded."}
+  ]
+}
