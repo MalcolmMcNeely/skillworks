@@ -17,6 +17,9 @@ SKILLED = (("Write the skill", {SKILL: "The old skill.\n"}),)
 QUESTION = "One glossary, or a map with these contexts? Studio claims `src`, and Loop claims `plugins`."
 FINDING = "# Shape\n\n## Finding\n\n### Studio\n\n`src/Studio.Api`, `src/Studio.Web`\n\n### Loop\n\n`.claude`\n"
 FIRST_MINUTES, FIRST_DOLLARS = 10, 1.5
+# Claude Code warns on stderr in a clone nobody has trusted, after the JSON it writes on stdout.
+WARNED = ("Ignoring 37 permissions.allow entries from .claude/settings.json: this workspace has not been "
+          "trusted.\n")
 
 PLAN = {
     "old": {"run-1": ("sheet", 50, 3.0), "run-2": ("sheet", 60, 4.0), "run-3": ("sheet", 70, 5.0)},
@@ -50,7 +53,7 @@ class Backfill(Judge):
             self.skills[(arm, run)] = (clone / SKILL).read_text(encoding="utf-8")
             (scratch / "fit.md").write_text("Commits: 9\n", encoding="utf-8")
             (scratch / "shape.md").write_text(FINDING, encoding="utf-8")
-            return Ran(0, session_output(arm + run, QUESTION, FIRST_MINUTES, FIRST_DOLLARS), "")
+            return Ran(0, session_output(arm + run, QUESTION, FIRST_MINUTES, FIRST_DOLLARS), WARNED)
         if kind == "capped":
             return Ran(compare.TIMED_OUT, "Reading the history", "")
         if kind == "no sheet":
@@ -58,7 +61,7 @@ class Backfill(Judge):
                                          minutes, dollars), "")
         (scratch / score.SHEET_FILE).write_text(SHEET.format(arm + " " + run), encoding="utf-8")
         (scratch / "decisions.md").write_text("# Decisions\n\n## Failed a test\n", encoding="utf-8")
-        return Ran(0, session_output(arm + run, "The sheet is written.", minutes, dollars), "")
+        return Ran(0, session_output(arm + run, "The sheet is written.", minutes, dollars), WARNED)
 
 
 def resumes(runner):
@@ -146,6 +149,12 @@ def test_every_session_of_a_run_loads_the_plugin_from_its_own_clone(compared):
              for where, args, _ in runner.sessions}
 
     assert (len(runner.sessions), named) == (12, {True})
+
+
+def test_the_writer_is_named_although_claude_code_warned_on_stderr_after_its_json(compared):
+    _, out, err, _, _ = compared
+
+    assert "- Writer: " + FABLE in out.splitlines(), err
 
 
 def test_a_run_is_stopped_at_the_time_cap_less_what_its_first_session_spent(compared):

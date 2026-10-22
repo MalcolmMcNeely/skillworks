@@ -72,12 +72,19 @@ class Verdict(NamedTuple):
         return self.answer == YES and (kind == "decision" or not QUESTION.search(self.holder))
 
 
+# Claude Code writes its JSON on stdout and a warning, such as one about a folder nobody has trusted, on
+# stderr, and a run keeps both in one file, so the JSON is read from where it starts and what follows it is
+# left alone.
 def result_of(said):
-    try:
-        held = json.loads(said)
-    except ValueError:
-        return None
-    return held if isinstance(held, dict) else None
+    decoder = json.JSONDecoder()
+    for start in (found.start() for found in re.finditer(r"^\{", said, re.MULTILINE)):
+        try:
+            held, _ = decoder.raw_decode(said, start)
+        except ValueError:
+            continue
+        if isinstance(held, dict):
+            return held
+    return None
 
 
 # Subagents run on smaller models, so the model that wrote the most is the one that answered.
