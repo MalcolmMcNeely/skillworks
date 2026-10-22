@@ -22,6 +22,9 @@ TIMED_OUT = 124
 PROMPT = "/skillworks:context-backfill"
 # Nobody is at the keyboard to approve a tool call, and the clone is thrown away after the run.
 PERMISSION_MODE = "bypassPermissions"
+# Named outright, because the marketplace is one entry per user that six clones and the developer's own Sessions all
+# write, and a Session loads the skill from whichever path was written last.
+PLUGIN_FOLDER = "plugins/skillworks"
 CLONES = "clones"
 
 
@@ -88,7 +91,8 @@ def comparison_folder(runs, today):
 
 def session(runner, clone, prompt, seconds, *rest):
     return runner.capped(["claude", "-p", prompt, *rest, "--permission-mode", PERMISSION_MODE,
-                          "--output-format", "json"], clone.as_posix(), session_changes(), seconds)
+                          "--plugin-dir", (clone / PLUGIN_FOLDER).as_posix(), "--output-format", "json"],
+                         clone.as_posix(), session_changes(), seconds)
 
 
 def kept(folder, name, ran):

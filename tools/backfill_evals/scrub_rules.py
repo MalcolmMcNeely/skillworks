@@ -12,7 +12,10 @@ MAP = "CONTEXT-MAP.md"
 ADR_FOLDER = "docs/adr/"
 FILLED_STEERING = ("docs/agents/rules/words.md", "docs/agents/domain.md")
 
-PATHS = (GLOSSARY, MAP, ADR_FOLDER) + FILLED_STEERING
+# The Statement files say what each record says, so a pin after the harness landed would hand them to the clone.
+HARNESS_FOLDER = "tools/backfill_evals/"
+
+PATHS = (GLOSSARY, MAP, ADR_FOLDER, HARNESS_FOLDER) + FILLED_STEERING
 PATH_GLOBS = ("*/" + GLOSSARY,)
 
 

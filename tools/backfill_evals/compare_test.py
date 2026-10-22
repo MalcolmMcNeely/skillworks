@@ -139,6 +139,15 @@ def test_a_run_with_no_sheet_or_that_hits_the_time_cap_is_listed_as_failed_with_
     assert line in out.splitlines()
 
 
+def test_every_session_of_a_run_loads_the_plugin_from_its_own_clone(compared):
+    _, _, _, runner, _ = compared
+
+    named = {args[args.index("--plugin-dir") + 1] == where + "/plugins/skillworks"
+             for where, args, _ in runner.sessions}
+
+    assert (len(runner.sessions), named) == (12, {True})
+
+
 def test_a_run_is_stopped_at_the_time_cap_less_what_its_first_session_spent(compared):
     _, _, _, runner, _ = compared
 

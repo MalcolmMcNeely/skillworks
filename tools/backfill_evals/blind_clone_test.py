@@ -70,6 +70,8 @@ def planted(top):
            {"CONTEXT-MAP.md": "# Context Map\n", ".claude/CONTEXT.md": "**Loop**:\nThe loop.\n"})
     commit(top, "Point the code at its reason", {
         "src/app.py": "# See ADR 0001, ADR-0001 and [why](docs/adr/0001-keep-one-clock.md).\nx = 1\n"})
+    commit(top, "Split the records into Statements", {
+        "tools/backfill_evals/statements/0001-keep-one-clock.json": '{"title": "Keep one Clock"}\n'})
     pin = git(top, "rev-parse", "HEAD").strip()
     commit(top, "The arm's skill", {SKILL: "The skill under test.\n", SCRIPT: "UNDER_TEST = True\n",
                                     BIN: "#!/bin/sh\necho under test\n"})
@@ -126,6 +128,12 @@ def test_no_record_path_is_in_any_commit(clone):
     paths = set(git(clone, "log", "--all", "--name-only", "--format=").split())
 
     assert [p for p in paths if p.endswith(RECORD_PATHS) or p.startswith("docs/adr/")] == []
+
+
+def test_a_pin_after_the_harness_landed_hands_the_clone_no_statement_file(clone):
+    paths = set(git(clone, "log", "--all", "--name-only", "--format=").split())
+
+    assert [p for p in paths if p.startswith("tools/backfill_evals/")] == []
 
 
 def test_no_commit_line_names_a_record(clone):
