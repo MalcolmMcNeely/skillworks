@@ -2,6 +2,7 @@
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import NamedTuple
 
@@ -23,6 +24,8 @@ CLONE_FOLDER = "blind-clone"
 ARMS = ("old", "new")
 JUDGED_SECTIONS = (DECISIONS, "## Questions")
 NONE = "—"
+# A judge call takes about 100 seconds, so six sheets of 51 records asked one at a time take most of a night.
+JUDGES_AT_ONCE = 8
 
 
 class Run(NamedTuple):
@@ -124,15 +127,17 @@ class Judged(NamedTuple):
 
 
 def judged_all(runner, alias, scored, records):
-    models, judged = set(), []
-    for run in scored:
-        briefed = judge.write_brief(run.folder, judged_part(run.sheet))
-        for record, said in records.items():
-            model, verdicts = judge.ask(runner, alias, run.folder.as_posix(), briefed, said["title"],
-                                        said["statements"])
-            models.add(model or "no model named")
-            judged.append(Judged(run, record, said["statements"], verdicts))
-    return models, judged
+    briefs = [(run, judge.write_brief(run.folder, judged_part(run.sheet))) for run in scored]
+    asked = [(run, briefed, record, said) for run, briefed in briefs for record, said in records.items()]
+
+    def one(question):
+        run, briefed, record, said = question
+        model, verdicts = judge.ask(runner, alias, run.folder.as_posix(), briefed, said["title"], said["statements"])
+        return model, Judged(run, record, said["statements"], verdicts)
+
+    with ThreadPoolExecutor(max_workers=JUDGES_AT_ONCE) as pool:
+        answered = list(pool.map(one, asked))
+    return {model or "no model named" for model, _ in answered}, [item for _, item in answered]
 
 
 def per_run(judged, arm, measure):

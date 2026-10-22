@@ -3,6 +3,7 @@
 import io
 import json
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,8 @@ FABLE = "claude-fable-5-1"
 OPUS = "claude-opus-5-5"
 TODAY = "2026-10-21"
 VERSION = "2.1.5 (Claude Code)"
+# Only ends a test whose judge never asks the calls together, which would otherwise hang the Suite.
+STUCK_SECONDS = 60
 
 STATEMENTS = {
     KEEP: ("Keep one Clock", [("decision", "Studio reads one Clock."), ("reason", "A test holds it still.")]),
@@ -316,6 +319,26 @@ def test_statements_split_on_records_that_no_longer_hash_the_same_are_refused(so
     status, out, err, judge = scored(source, tmp_path, one_run_each(ALL_YES), split_on="0" * 64)
 
     assert (status, out, judge.asked, records in err, "0" * 64 in err) == (1, "", [], True, True)
+
+
+# A judge that asks one record at a time never gets past its first call.
+class AllAtOnce(Judge):
+    def __init__(self, replies, resolved=OPUS):
+        super().__init__(replies, resolved)
+        calls = sum(len(STATEMENTS) for kept in replies.values() for said in kept.values() if said is not None)
+        self.held = threading.Barrier(calls, timeout=STUCK_SECONDS)
+
+    def run(self, args, where=None, env=None):
+        if [str(a) for a in args[:2]] == ["claude", "-p"]:
+            self.held.wait()
+        return super().run(args, where, env)
+
+
+def test_the_judge_reads_every_record_of_every_sheet_at_once(source, tmp_path):
+    status, out, err, _ = scored(source, tmp_path, one_run_each(ALL_YES), judging=AllAtOnce)
+
+    assert (status, "| Records found, of 2 | 2.0 | 2 to 2 | 2.0 | 2 to 2 | +0.0 |" in out.splitlines()) == (
+        0, True), err + out
 
 
 def test_a_run_with_no_sheet_is_listed_as_failed_with_what_its_output_says(two_arms):
