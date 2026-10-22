@@ -2,6 +2,7 @@
 
 import json
 import re
+from pathlib import Path
 from typing import NamedTuple
 
 from runner import session_changes
@@ -14,20 +15,45 @@ OTHER = {"opus": "fable", "fable": "opus"}
 ANSWER = re.compile(r"^\W*S(\d+)\W*:\s*(yes|no|unknown)\b[ \t,.:;-]*(.*)$", re.IGNORECASE | re.MULTILINE)
 QUESTION = re.compile(r"\bQuestion\b", re.IGNORECASE)
 
-PROMPT = """You judge whether an Answer sheet holds what one decision record says.
+# A sheet is longer than Windows allows a command line, so it reaches the judge in a file.
+BRIEF_FILE = "judge-brief.md"
 
-The record is "{title}". It is split into Statements, each tagged with its kind:
-
-{statements}
+BRIEF = """You judge whether an Answer sheet holds what one decision record says.
 
 The sheet below holds Drafts of decision records and Questions. A Question is a decision the sheet
 found and could not explain, so a Question holds the decision it names, and never a reason for it.
 
-{sheet}
+{sheet}"""
 
-For each Statement, first reason about whether one Draft or Question says the same thing, in any
-words. A Draft or Question that says something near it but not the same does not hold it. Then end
-your answer with one line per Statement, and nothing after them, in this form:
+PROMPT = """The record is "{title}". It is split into Statements, each tagged with its kind:
+
+{statements}
+
+First name the record's core choice: the one or two decision Statements its title states. Find the
+Drafts and Questions that make that choice, if any do. They make the core choice only when, alone or
+together, they hold each of those Statements themselves, and a Draft about the same part of the code
+that makes some other choice does not. Then reason about each Statement in turn.
+
+A decision Statement is held when a Draft or Question makes the same choice, in any words and with
+less detail. A number, a name, a file, an example or a step the Statement adds need not be on the
+sheet when the choice it belongs to is.
+
+The record's other decision Statements are parts of its core choice: what the choice leaves as it
+was, what else changes to fit it, how it is carried out or checked, and what would change it later.
+When the sheet makes the core choice, the Draft or Question that makes it holds each of these parts
+too, unless the sheet makes another choice for that part. A record is a choice at one time, and the
+sheet tells the history to now: a change the sheet tells as made later, in place of a part, is that
+part's later history and not another choice, so the part is still held. The record's status
+Statements tell what changed after it, so a part the sheet chooses otherwise is later history too
+when a status Statement tells that change.
+
+A decision Statement is not held when the sheet makes another choice, or makes no Draft or Question
+of the record's core choice.
+
+A reason, rejected or status Statement is held only when a Draft says the same thing, in any words.
+A Draft that says something near it but not the same does not hold it, and a Question holds none.
+
+Then end your answer with one line per Statement, and nothing after them, in this form:
 
 S1: yes Draft D3
 S2: no
@@ -79,14 +105,21 @@ def verdicts(said, count):
     return [found.get(number, Verdict(UNKNOWN, "")) for number in range(1, count + 1)]
 
 
-def prompt_for(title, statements, sheet):
+def write_brief(folder, sheet):
+    path = Path(folder) / BRIEF_FILE
+    path.write_text(BRIEF.format(sheet=sheet), encoding="utf-8")
+    return path
+
+
+def prompt_for(title, statements):
     listed = "\n".join("S{} ({}): {}".format(at, statement["kind"], statement["says"])
                        for at, statement in enumerate(statements, start=1))
-    return PROMPT.format(title=title, statements=listed, sheet=sheet)
+    return PROMPT.format(title=title, statements=listed)
 
 
-def ask(runner, alias, where, title, statements, sheet):
-    ran = runner.run(["claude", "-p", prompt_for(title, statements, sheet), "--model", alias,
+def ask(runner, alias, where, briefed, title, statements):
+    ran = runner.run(["claude", "-p", prompt_for(title, statements), "--model", alias,
+                      "--system-prompt-file", Path(briefed).as_posix(),
                       "--output-format", "json", "--tools", "", "--no-session-persistence"],
                      where, session_changes())
     held = result_of(ran.out)

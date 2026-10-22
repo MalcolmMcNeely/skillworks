@@ -126,9 +126,10 @@ class Judged(NamedTuple):
 def judged_all(runner, alias, scored, records):
     models, judged = set(), []
     for run in scored:
-        part = judged_part(run.sheet)
+        briefed = judge.write_brief(run.folder, judged_part(run.sheet))
         for record, said in records.items():
-            model, verdicts = judge.ask(runner, alias, run.folder.as_posix(), said["title"], said["statements"], part)
+            model, verdicts = judge.ask(runner, alias, run.folder.as_posix(), briefed, said["title"],
+                                        said["statements"])
             models.add(model or "no model named")
             judged.append(Judged(run, record, said["statements"], verdicts))
     return models, judged

@@ -246,11 +246,25 @@ def test_the_judge_reads_every_sheet_once_per_held_out_record(two_arms):
         for title in ("Keep one Clock", "Split the stores")]
 
 
+def brief_of(args):
+    return Path(args[args.index("--system-prompt-file") + 1]).read_text(encoding="utf-8")
+
+
 def test_the_judge_is_given_the_decisions_and_questions_of_the_sheet_and_no_other_section(two_arms):
     _, _, _, judge = two_arms
-    prompt = judge.asked[0][judge.asked[0].index("-p") + 1]
+    brief = brief_of(judge.asked[0])
 
-    assert [part in prompt for part in ("### Draft D1:", "### Question D2:", "### Draft W1:")] == [True, True, False]
+    assert [part in brief for part in ("### Draft D1:", "### Question D2:", "### Draft W1:")] == [True, True, False]
+
+
+# Windows refuses a command line longer than 32,767 characters, and the Decisions of a real sheet run to 100 KB.
+def test_a_sheet_longer_than_a_windows_command_line_reaches_the_judge(source, tmp_path):
+    held = "Studio reads one Clock. " * 2000
+    long = SHEET.format("old run-1").replace("Studio reads one Clock.\n", held + "\n")
+
+    _, _, _, judge = scored(source, tmp_path, one_run_each(ALL_YES), sheets={("old", "run-1"): long})
+
+    assert (held in brief_of(judge.asked[0]), max(len(arg) for arg in judge.asked[0]) < 32767) == (True, True)
 
 
 def test_the_judge_is_given_the_statements_of_its_record(two_arms):

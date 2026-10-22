@@ -225,7 +225,7 @@ the new one. A run takes about two hours and stops at three, so a comparison tak
 then the judge reads every sheet. The harness prints the table, old against new with the spread over
 the runs.
 
-The runs are kept under `tools/backfill_evals/runs/`, which git ignores, one folder per comparison.
+The runs are kept under `tools/backfill_evals/.runs/`, which git ignores, one folder per comparison.
 To judge them again without a run, after the judge prompt changes or the judge model moves:
 
 ```

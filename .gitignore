@@ -40,7 +40,7 @@ docs/research/
 prototypes/
 
 # Backfill evals runs. A sheet is 300 KB and a comparison keeps six, so they stay on the machine that ran them.
-tools/backfill_evals/runs/
+tools/backfill_evals/.runs/
 
 # Python bytecode and test caches. Rebuilt on every run, per-machine.
 __pycache__/

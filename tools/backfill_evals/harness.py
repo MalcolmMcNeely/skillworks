@@ -12,8 +12,8 @@ from stop import Stop, misuse, refusal
 
 USAGE = "usage: harness.py compare [<old ref> [<new ref>]]\n       harness.py score <comparison>\n"
 
-# Git ignores it, because a sheet is 300 KB and a comparison keeps six.
-RUNS = blind_clone.HERE / "runs"
+# Git ignores it, as a comparison keeps six 300 KB sheets, and the dot stops pytest running a kept Blind clone's tests.
+RUNS = blind_clone.HERE / ".runs"
 TOOLS = ("claude", "uv", "git")
 
 
