@@ -27,7 +27,7 @@
     {"kind": "reason", "says": "The Collector is there for the seam: dropping noisy events, renaming fields and fanning out to a second sink later are all collector config, invisible to Claude Code and to Studio."},
     {"kind": "reason", "says": "The old containers must go because Aspire's Loki wants port 3100, which the old one holds."},
     {"kind": "reason", "says": "Nothing is emitted until ~/.claude/settings.json carries the OTEL_* variables, which is why Studio writes them."},
-    {"kind": "rejected", "says": "A single store was the tempting alternative and was not chosen; its pull is that two stores have to be joined on skill name and time in C#, which is the cost of the split."},
+    {"kind": "rejected", "says": "A single store was the tempting alternative and was not chosen; the two stores join on skill name and time in C#, not in a database, which is the cost of the split."},
     {"kind": "rejected", "says": "Grafana is not part of this, because Studio is the dashboard and a second UI over the same data is waste."}
   ]
 }

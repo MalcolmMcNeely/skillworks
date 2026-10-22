@@ -1,7 +1,7 @@
 {
   "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
   "title": "An eval judge is another model, and one judge reads both arms",
-  "commits": ["960dab87635b1cdbce7923e6184216b8079e23ef"],
+  "commits": [],
   "statements": [
     {"kind": "decision", "says": "The judge that says whether a sheet holds a Statement is an Opus when the backfill ran on a Fable, and a Fable when it ran on an Opus."},
     {"kind": "decision", "says": "The harness asks for the judge by alias and records the model id it was given beside every number."},

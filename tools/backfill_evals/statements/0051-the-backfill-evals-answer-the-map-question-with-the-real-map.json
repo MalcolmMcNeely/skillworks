@@ -1,7 +1,7 @@
 {
   "split-on": "3d0f04e42ee0e30db613f9e0b35376fec69c25645c16a163073c6f74afcf3592",
   "title": "The backfill evals answer the map question with the real map",
-  "commits": ["10044802f7737c865d92f8b397fc3d7979dc21be"],
+  "commits": [],
   "statements": [
     {"kind": "decision", "says": "A headless Context backfill run in a Blind clone resumes the Session with an answer to the map question."},
     {"kind": "decision", "says": "The harness answers the map question with the real map's three contexts, Studio, Architecture and Loop, and their folders."},

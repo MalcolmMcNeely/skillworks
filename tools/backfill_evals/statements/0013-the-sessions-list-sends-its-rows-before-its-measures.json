@@ -35,9 +35,10 @@
     {"kind": "rejected", "says": "One line per read was rejected, because Faults sums two reads and a reader would watch the number climb without knowing which it had reached."},
     {"kind": "rejected", "says": "A fixed order for the Measures was rejected, because the API would hold finished work back to buy an order a test could read top to bottom."},
     {"kind": "rejected", "says": "Sorting while the answer arrives was rejected, because a reader who sorted on a Measure that had not landed would watch the table settle twice."},
-    {"kind": "status", "says": "It replaces the one-page answer of the record in which the Sessions list answers as one page, and rests on that record's midnight rule."},
+    {"kind": "status", "says": "It builds on the record in which the Sessions list answers as one page, and that record's midnight rule stands."},
     {"kind": "status", "says": "A correction takes the Trace store Depth read out of the gate: where it falls short the rows stand un-narrowed, and the Gap says the table was not narrowed by a Depth it could not read."},
     {"kind": "status", "says": "A correction says Figure is a word of its own, how a Measure is written for a reader, so Figure leaves Avoid under Measure and never joins the banned words."},
-    {"kind": "status", "says": "The read of the whole span is replaced by the record in which the list reads newest activity first, fifty rows at a time, with no span and no column sort, and the midnight rule stands."}
+    {"kind": "status", "says": "The read of the whole span is replaced by the record in which the list reads newest activity first, fifty rows at a time, with no span and no column sort, and the midnight rule stands."},
+    {"kind": "reason", "says": "Loki refused the totals of a week of Sessions, which is why the list moved to newest activity first, fifty rows at a time, with no span and no column sort."}
   ]
 }

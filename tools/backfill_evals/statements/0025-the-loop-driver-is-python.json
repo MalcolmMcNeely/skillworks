@@ -39,6 +39,6 @@
     {"kind": "rejected", "says": "Cutting the number of spawns, such as copying one template repository per case, was rejected as too small, because the tax is spread through the suite rather than gathered in the fixture."},
     {"kind": "rejected", "says": "Node rather than Python was rejected, because Node only half fits the rules today, and half fitting is what keeps a gap invisible."},
     {"kind": "rejected", "says": "Node was also rejected because it cannot start npm.cmd or aspire.cmd on Windows, and land-ticket runs four npm commands."},
-    {"kind": "status", "says": "It corrects the earlier record that made Loop a third context, which said Loop's code is shell and node: it is shell and Python."}
+    {"kind": "status", "says": "It corrects the earlier record that said Loop's code is shell and node: it is shell and Python."}
   ]
 }
