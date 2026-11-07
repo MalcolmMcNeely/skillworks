@@ -83,6 +83,7 @@ The Dev loop has two stages, and one command starts each:
 ```
 /skillworks:grill                argue the design out, and publish the spec
 /skillworks:spec-loop <spec#>    build it, ticket by ticket, while nobody watches
+/loop-view                       open the pane that shows where each running loop is
 ```
 
 **The Grill.** Claude asks you about the design one question at a time, each with the answer it

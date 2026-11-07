@@ -42,5 +42,6 @@ Each page below holds one part of the loop, in the order a run takes them.
 | [The Export](the-loop/export.md) | Who the Export is for, the three branches, what goes onto your branch and what is left out, and what the loop prints. |
 | [When a step fails](the-loop/stops.md) | What stops the loop and what each stop line says, how to restart with the Keep, and when to rerun with `--bypass`. |
 | [Reading a run](the-loop/reading-a-run.md) | What each line of the log says, and what a dry run prints. |
+| [Watching a run](the-loop/watching-a-run.md) | What the loop pane shows, when it opens by itself, and the `/loop-view` command. |
 | [The stage map](the-loop/stage-map.md) | Which Steering files each stage loads, and where your team can change what the stage does. |
 | [Sessions](the-loop/sessions.md) | Which calls start a Fresh Session and which resume the build Session, and what carries from one Session to the next. |

@@ -5,6 +5,7 @@ Part of [the Dev loop](../the-loop.md).
 The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output sits beside it.
 The Position is `.spec-loop/<spec>/position.json`, beside the log. It holds where the loop is now, and
 the driver writes over it each time the loop moves on.
+The loop pane reads the Position to show where each loop is, as [Watching a run](watching-a-run.md) says.
 Each line starts with the date and the time it was written, in UTC, so the runs of two days in one
 log can be told apart. A line that goes on from the line above it, such as a `Denial:` line, has no
 date or time of its own.

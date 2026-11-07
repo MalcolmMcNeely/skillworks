@@ -4677,7 +4677,8 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
                                       "the-loop/full-run.md", "the-loop/export.md",
                                       "the-loop/stops.md",
-                                      "the-loop/reading-a-run.md", "the-loop/stage-map.md",
+                                      "the-loop/reading-a-run.md", "the-loop/watching-a-run.md",
+                                      "the-loop/stage-map.md",
                                       "the-loop/sessions.md"]
 
 

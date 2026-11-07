@@ -28,6 +28,8 @@ node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
 claude plugin validate plugins/skillworks
 
+claude plugin test plugins/skillworks
+
 cd src/Skillworks.Studio.Web
 npm run typecheck
 npm run lint
@@ -47,6 +49,9 @@ evals' Statement files are checked there, against the records and the commits at
 `claude plugin validate` reads each skill's frontmatter with the parser Claude Code uses at runtime.
 Claude Code drops a skill whose frontmatter does not parse, so this check goes red on it. A Plugin
 with only warnings, such as no version or no author, leaves it green.
+`claude plugin test` runs the tests of the Plugin's mod, the `*.test.ts` files beside its hooks module
+in `plugins/skillworks/hooks/`. They run against the Claude Code you have installed, on
+the host and not in the Linux image, so a Claude Code release that moves the mod API turns them red.
 
 ### The script tests
 

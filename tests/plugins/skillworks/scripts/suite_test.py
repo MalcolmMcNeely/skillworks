@@ -326,6 +326,9 @@ PLUGIN = "plugins/skillworks"
 # Claude Code drops a skill whose frontmatter does not parse, and only its own parser says so.
 PLUGIN_CHECK_COMMAND = ["claude", "plugin", "validate", PLUGIN]
 
+# The mod tests run against the Claude Code installed, so they catch an API that moved.
+MOD_TESTS_COMMAND = ["claude", "plugin", "test", PLUGIN]
+
 
 # Whether the front end is installed differs between checkouts, so the install is left out.
 # git answers nothing, so no file is copied and no Proof of a made-up pass reaches this clone.
@@ -340,6 +343,7 @@ def test_this_repo_s_suite_file_runs_the_checks_the_contributing_page_names(runn
     assert run_by(runner)[0] == ["docker", "info"]
     assert sorted((" ".join(call.args), call.where) for call in made_by(runner)[1:]
                   if call.args[0] != "docker" and call.args[:2] != ["npm", "ci"]) == [
+        (" ".join(MOD_TESTS_COMMAND), ROOT.as_posix()),
         (" ".join(PLUGIN_CHECK_COMMAND), ROOT.as_posix()),
         (" ".join(DOCKER_TESTS_COMMAND), ROOT.as_posix()),
         (f"dotnet test {ARCHITECTURE_TESTS}", ROOT.as_posix()),
@@ -1762,8 +1766,8 @@ def test_what_the_docker_tests_ignore_leaves_the_files_they_read():
         assert not any(read == path or read.startswith(path + "/") for path in DOCKER_TESTS_IGNORE), read
 
 
-def plugin_checks():
-    return [entry for entry in this_repo_s_checks() if entry["command"] == PLUGIN_CHECK_COMMAND]
+def plugin_checks(command=PLUGIN_CHECK_COMMAND):
+    return [entry for entry in this_repo_s_checks() if entry["command"] == command]
 
 
 def test_this_repo_s_suite_validates_the_plugin_with_claude_code_on_the_host():
@@ -1778,6 +1782,18 @@ def test_this_repo_s_plugin_check_ignores_only_what_it_cannot_read():
     assert sorted(ignored_by(plugin_checks())) == sorted(PLUGIN_CHECK_IGNORE)
 
 
+def test_this_repo_s_suite_runs_the_mod_tests_with_claude_code_on_the_host():
+    checks = plugin_checks(MOD_TESTS_COMMAND)
+
+    assert len(checks) == 1
+    assert checks[0]["folder"] == "."
+    assert "image" not in checks[0]
+
+
+def test_this_repo_s_mod_tests_ignore_only_what_the_plugin_check_ignores():
+    assert sorted(ignored_by(plugin_checks(MOD_TESTS_COMMAND))) == sorted(PLUGIN_CHECK_IGNORE)
+
+
 def test_what_the_plugin_check_ignores_leaves_the_plugin():
     assert not any(PLUGIN == path or PLUGIN.startswith(path + "/") for path in PLUGIN_CHECK_IGNORE)
 
@@ -1786,7 +1802,8 @@ def test_only_the_docker_script_and_plugin_checks_ignore_anything():
     ignoring = [entry["command"] for entry in this_repo_s_checks() if "ignores" in entry]
 
     assert sorted(ignoring, key=" ".join) == sorted(
-        [DOCKER_TESTS_COMMAND, SCRIPT_TESTS_COMMAND, PLUGIN_CHECK_COMMAND], key=" ".join)
+        [DOCKER_TESTS_COMMAND, SCRIPT_TESTS_COMMAND, PLUGIN_CHECK_COMMAND, MOD_TESTS_COMMAND],
+        key=" ".join)
 
 
 @pytest.mark.this_repo
@@ -1850,7 +1867,7 @@ def checks_section(doc, heading):
 
 
 def test_the_contributing_page_lists_every_check_of_this_repo_s_suite():
-    assert len(this_repo_s_checks()) == 9
+    assert len(this_repo_s_checks()) == 10
     checks = checks_section("docs/CONTRIBUTING.md", "## Checks").split("```")[1].replace('"', "")
 
     for entry in this_repo_s_checks():
