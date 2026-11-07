@@ -11,7 +11,7 @@ started in another terminal shows there too.
 The pane has one block for each loop. A block shows:
 
 - The spec, and what the loop does now: cutting tickets, building tickets, the full run, the drift
-  check, the Name check, finished or stopped.
+  check, the Name check, finished, stopped or gone.
 - The time left, when the driver knows it, and the counts of Choices and Denials so far.
 - Each ticket of the spec. `✓` is a ticket that Landed, `▶` is the ticket the loop builds now, and
   `·` is a ticket still to come.
@@ -34,7 +34,7 @@ Spec #589 · building tickets
 The pane reads the Position, `.spec-loop/<spec>/position.json`, every few seconds. It never reads
 `loop.log`, and it shows no log lines. [Reading a run](reading-a-run.md) says what the log holds.
 
-## Finished and stopped
+## Finished, stopped and gone
 
 A loop that is **finished** reached its end, and every ticket is on the Target branch. Its block says
 `finished`.
@@ -42,6 +42,21 @@ A loop that is **finished** reached its end, and every ticket is on the Target b
 A loop that is **stopped** ended early. Its block says `stopped`, and shows the stop line and the path
 to the log, such as `Log: .spec-loop/589/loop.log`. [When a step fails](stops.md) says what each stop
 line means and how to restart.
+
+A loop that is **gone** has a driver that died before it could write its end. The driver writes a
+heartbeat time into the Position every 30 seconds while it runs. When that time is more than 2
+minutes old, and the loop is not finished or stopped, its block says `gone`. Read `loop.log` to see
+the last step it reached.
+
+## Clear
+
+A loop that ended, as finished, stopped or gone, stays in the pane until you clear it. So you do not
+miss a stop while you are away. Its block has a `Clear` button, and a block of a running loop has
+none.
+
+Press `Clear` to take the block out of the pane. The mod keeps the clear against that run of the
+driver, so the same run does not come back in your next Session. When you start that spec again, the
+new run shows in the pane.
 
 ## When the pane opens
 

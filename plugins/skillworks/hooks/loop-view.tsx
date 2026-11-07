@@ -3,6 +3,11 @@ import type { EngineInterface, Register } from 'claude-code'
 const PANE = 'loop-view'
 const TITLE = 'Spec loops'
 const POLL_MS = 3000
+// The driver beats every 30 seconds, so four missed beats is a driver that died and not one that is slow.
+const GONE_MS = 120_000
+const CLEARED = 'cleared'
+// The store holds every plugin's values in one file with a 4 MiB cap, so the oldest clears go first.
+const CLEARS_KEPT = 500
 
 type TicketRow = { number: string; title: string; landed: boolean }
 
@@ -17,6 +22,7 @@ type TicketNow = {
 type Position = {
   spec: string
   run: string
+  heartbeat: string
   doing: string
   tickets: TicketRow[]
   ticket: TicketNow | null
@@ -52,13 +58,27 @@ async function positions($: EngineInterface, root: string): Promise<Position[]> 
   return found.sort((a, b) => Number(a.spec) - Number(b.spec))
 }
 
-function isLive(loop: Position): boolean {
-  return loop.doing !== 'finished' && loop.doing !== 'stopped'
+function wroteItsEnd(loop: Position): boolean {
+  return loop.doing === 'finished' || loop.doing === 'stopped'
+}
+
+function hasEnded(loop: Position, now: number): boolean {
+  return wroteItsEnd(loop) || isGone(loop, now)
+}
+
+function isGone(loop: Position, now: number): boolean {
+  return !wroteItsEnd(loop) && now - Date.parse(loop.heartbeat) > GONE_MS
+}
+
+async function clearsKept($: EngineInterface): Promise<string[]> {
+  const kept = await $.store.get(CLEARED)
+  return Array.isArray(kept) ? kept.filter((run): run is string => typeof run === 'string') : []
 }
 
 export const register: Register = on => {
   let loops: Position[] = []
   let now = 0
+  let cleared = new Set<string>()
   const seen = new Set<string>()
 
   on('session.start', async ($, e, next) => {
@@ -66,11 +86,12 @@ export const register: Register = on => {
     if (!e.isInteractive) return next(e)
 
     await $.command.register({ name: PANE, description: 'Open the pane that shows where each running loop is' })
+    cleared = new Set(await clearsKept($))
     const root = `${e.cwd}/.spec-loop`
     const poll = async () => {
-      loops = await positions($, root)
+      loops = (await positions($, root)).filter(loop => !cleared.has(loop.run))
       now = await $.clock.now()
-      const fresh = loops.filter(loop => isLive(loop) && !seen.has(loop.run))
+      const fresh = loops.filter(loop => !hasEnded(loop, now) && !seen.has(loop.run))
       for (const loop of loops) seen.add(loop.run)
       // Only a run not seen before opens it, so a pane the developer closed stays closed.
       if (fresh.length > 0) void $.ui.open({ id: PANE, title: TITLE })
@@ -87,7 +108,13 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Button, Text } = $.ui.resolve(e)
+    const clear = async (run: string) => {
+      cleared.add(run)
+      loops = loops.filter(loop => loop.run !== run)
+      $.ui.invalidate('ui.render')
+      await $.store.set(CLEARED, [...cleared].slice(-CLEARS_KEPT))
+    }
     return (
       <Box flexDirection="column">
         {loops.length === 0 && <Text dimColor>No loop has a Position in this clone.</Text>}
@@ -97,8 +124,11 @@ export const register: Register = on => {
           const left = loop.seconds_left == null ? '' : `~${span(loop.seconds_left * 1000)} left · `
           return (
             <Box flexDirection="column">
-              <Text bold>Spec #{loop.spec} · {DOING[loop.doing] ?? loop.doing}</Text>
+              <Text bold>Spec #{loop.spec} · {isGone(loop, now) ? 'gone' : DOING[loop.doing] ?? loop.doing}</Text>
               <Text dimColor>{left}{loop.choices} Choices · {loop.denials} Denials</Text>
+              {hasEnded(loop, now) && (
+                <Button key={`clear-${loop.run}`} label="Clear" onPress={() => clear(loop.run)} />
+              )}
               {loop.stop && <Text color="red">{loop.stop.line}</Text>}
               {loop.stop && <Text>Log: {loop.stop.log}</Text>}
               {loop.tickets.map(row => (

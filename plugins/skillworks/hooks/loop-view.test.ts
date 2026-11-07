@@ -76,6 +76,7 @@ function cloneHolding(on: On, positions: Record<string, Position>) {
 
 function claudeCode(on: On, isInteractive = true) {
   const pane = { isOpen: false }
+  mock.store(on)
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('ui.open', () => {
     pane.isOpen = true
@@ -284,6 +285,137 @@ test('in a headless session the mod opens no pane', async ($, on) => {
 
   // Assert
   expect(pane.isOpen).toBe(false)
+})
+
+test('a running loop whose heartbeat is older than 2 minutes shows as gone', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running({ heartbeat: '2026-11-07T17:07:59Z' }) })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($))[0]).toBe('Spec #589 · gone')
+})
+
+test('a running loop whose heartbeat stops moving shows as gone once 2 minutes pass', async ($, on) => {
+  // Arrange
+  const clock = mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() })
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+
+  // Act
+  await clock.advance(120_000)
+
+  // Assert
+  expect((await lines($))[0]).toBe('Spec #589 · gone')
+})
+
+test('a running loop with a heartbeat under 2 minutes old shows as running', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running({ heartbeat: '2026-11-07T17:08:01Z' }) })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($))[0]).toBe('Spec #589 · building tickets')
+})
+
+async function clearButtons($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const found = await ui.findAll({ type: 'Button', text: 'Clear' })
+  await ui.unmount()
+  return found
+}
+
+async function clearedByTheDeveloper($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const button = await ui.find({ type: 'Button', text: 'Clear' })
+  await ui.press({ key: button?.key ?? '' })
+  await ui.unmount()
+}
+
+const GONE = running({ heartbeat: '2026-11-07T17:07:59Z' })
+
+test('a finished, a stopped and a gone loop each carry a Clear button', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, {
+    '589': FINISHED,
+    '600': { ...STOPPED, spec: '600', run: 'run-c' },
+    '601': { ...GONE, spec: '601', run: 'run-d' },
+  })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await clearButtons($)).toHaveLength(3)
+})
+
+test('a running loop carries no Clear button', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await clearButtons($)).toHaveLength(0)
+})
+
+test('a loop the developer cleared leaves the pane', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': STOPPED })
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+
+  // Act
+  await clearedByTheDeveloper($)
+
+  // Assert
+  expect(await lines($)).toEqual(['No loop has a Position in this clone.'])
+})
+
+test('a cleared run stays out of the pane in a new Session', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': STOPPED })
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+  await clearedByTheDeveloper($)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await lines($)).toEqual(['No loop has a Position in this clone.'])
+})
+
+test('a new run of a cleared spec shows in the pane again', async ($, on) => {
+  // Arrange
+  const clock = mock.clock(on, { now: NOW })
+  const { positions } = cloneHolding(on, { '589': STOPPED })
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+  await clearedByTheDeveloper($)
+
+  // Act
+  positions['589'] = running({ run: 'run-b' })
+  await clock.advance(3_000)
+
+  // Assert
+  expect((await lines($))[0]).toBe('Spec #589 · building tickets')
 })
 
 test('a running ticket shows its spec, its tickets, and its steps with the time in the step', async ($, on) => {
