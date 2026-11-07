@@ -33,6 +33,41 @@ team lends its own repo, the Steering branch and the Target branches sit on the 
 
 Your branch lives in your checkout. The Export writes onto it there and never pushes it.
 
+## Your flow
+
+Setup makes the Steering branch once. Then, for each spec:
+
+1. Update your default branch, and cut your branch from it:
+   `git switch -c feature/PROJ-12/slug origin/<your default branch>`.
+2. Start the grill on your branch, with `/skillworks:grill`. Stay on your branch until the grill
+   settles its first word or ADR.
+3. The grill cuts the Target branch, `skillworks/spec/feature/PROJ-12/slug`, and works on it from
+   then on. When it settles nothing, `/skillworks:to-spec` cuts it at the end, before it publishes
+   the spec.
+4. Run the loop with `spec-loop <spec>`. It runs on the Target branch, and Exports onto your branch
+   when the spec is done.
+5. Push your branch to your team's remote, with the command the `END` line names.
+6. Open the pull request from your branch, the way your team's host does.
+
+## The grill's cut
+
+The grill cuts the Target branch with one command, `cut-target-branch`, run on your branch. It does
+the same steps in every run:
+
+1. It rebases the Steering branch's own commits onto the commit your branch sits on, and
+   force-pushes the result to `origin`. So every ticket is built and tested against the code your
+   branch starts from.
+2. It cuts `skillworks/spec/<your branch>` from the Steering branch, pushes it to `origin`, and
+   switches to it. A word the grill just settled comes with it, and is committed there.
+
+With `export` on, the grill and `/skillworks:to-spec` open no pull request, and make no `gh` call to
+find the default branch. The spec names `skillworks/spec/<your branch>` as its branch, under
+`## Branch` with the `github` Tracker or as `branch` with the `files` Tracker, so the loop finds its
+Target branch there.
+
+When the rebase conflicts, the command pushes nothing and cuts nothing, and the grill stops and names
+each file. [When a step fails](stops.md) says how to mend it.
+
 ## What goes in
 
 The Export runs once, after [the full run](full-run.md) passes and the spec closes, and before `END`.

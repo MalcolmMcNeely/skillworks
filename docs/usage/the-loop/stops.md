@@ -197,6 +197,28 @@ STOP  the Name re-check finds 1 rename not made on spec #200 after the rename ti
 The loop built the rename once and it is still owed. Make it in a ticket of your own, and run the loop
 again.
 
+**The Steering branch does not rebase.** With `export` on, the grill cuts the spec's Target branch
+before the loop starts, by the `cut-target-branch` command, as [the Export](export.md#the-grills-cut)
+says. The command first rebases the Steering branch, `skillworks/steering`, onto the commit your
+branch sits on. When that rebase conflicts, the command aborts it and pushes nothing. The Steering
+branch stays as it was, on `origin` and in your checkout, and no Target branch is cut. The grill
+stops there, and names each file the rebase stopped on:
+
+```
+FAIL  the Steering branch skillworks/steering does not rebase onto 1f0a3c8e5b22, so nothing was pushed and no Target branch was cut. Mend these files on skillworks/steering so they apply, push it, and run cut-target-branch again:
+  CLAUDE.md
+```
+
+The cause is most often a Steering file your team changed on the default branch, such as the
+`CLAUDE.md` the Steering adds its imports to. Fix it once:
+
+1. Switch to `skillworks/steering`, and rebase it onto your branch by hand:
+   `git rebase <your branch>`.
+2. Mend each file the line names, so it holds your team's change and the Steering's. Then
+   `git rebase --continue`.
+3. Push it with `git push --force-with-lease origin skillworks/steering`.
+4. Switch back to your branch, and start the grill again.
+
 **A ticket's change does not apply in the Export.** With `export` on, [the Export](export.md) runs
 after the full run passes and the spec closes. It builds every commit before it moves your branch.
 When a ticket's change does not apply onto your branch, the Export moves nothing. The `LEFT` list is

@@ -24,7 +24,7 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 6. In `spec` mode, do the second part of [The spec's branch](#the-specs-branch).
 
-7. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In `spec` mode, report the pull request's URL too.
+7. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In `spec` mode, report the pull request's URL too. With `export` on there is no pull request, so report the Target branch and the Export branch.
 
 ## The counted shape
 
@@ -64,6 +64,8 @@ The spec is a folder in `.specs/`. The command writes its frontmatter: `status: 
 
 In `spec` mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
 
+With `export` set to `true` in `docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
+
 **First part, before the spec is published.** Find the branch.
 
 - If the grill settled a word or an ADR, it already created `spec/<slug>` and a draft pull request. Use that branch. `git branch --show-current` names it when this session is still on it.
@@ -95,6 +97,25 @@ With `github`, the pull request's body names the spec with a closing keyword, so
   gh pr view "spec/<slug>" --json number,body
   gh api -X PATCH "repos/{owner}/{repo}/pulls/<number>" -f body="<the body, then Closes #<spec>>"
   ```
+
+## The spec's branch with the Export
+
+With `export` set to `true` in `docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. Name it last when you publish, in place of `spec/<slug>`.
+
+**First part, before the spec is published.** Find the Target branch.
+
+- If the grill settled a word or an ADR, it already cut the Target branch. Use that branch. `git branch --show-current` names it when this session is still on it.
+- If the grill settled nothing, the branch this session is on is the Export branch. Stay on it and run `cut-target-branch`, the one command that cuts the Target branch:
+
+  ```bash
+  cut-target-branch
+  ```
+
+  It rebases the Steering branch onto the commit the Export branch sits on and pushes it to `origin`. Then it cuts the Target branch from the Steering branch, pushes it, and switches to it. Run no git step of your own to make either branch, so the steps are the same in every run.
+
+  When the command says the Steering branch does not rebase, stop here. It pushed nothing and cut nothing, so publish no spec. Name each file it lists to the developer, and say that they mend those files on `skillworks/steering`, push it, and start again on the Export branch.
+
+**Second part:** there is none. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the Export branch, after the loop Exports onto it.
 
 <spec-template>
 

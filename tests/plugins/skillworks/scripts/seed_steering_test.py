@@ -1030,6 +1030,46 @@ def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_spec_mode
     assert "`.specs/`" in to_spec
 
 
+def under_heading(text, heading):
+    return text.split("\n" + heading + "\n", 1)[1].split("\n#", 1)[0]
+
+
+EXPORT_BRANCH_SECTIONS = [("domain-modeling", "### The spec's branch with the Export"),
+                          ("to-spec", "## The spec's branch with the Export")]
+
+
+@pytest.mark.parametrize("skill, heading", EXPORT_BRANCH_SECTIONS)
+def test_with_the_export_the_target_branch_is_cut_from_the_steering_branch_by_the_command(skill, heading):
+    text = under_heading(skill_text(skill), heading)
+
+    for named in ["`export`", "`cut-target-branch`", "`skillworks/spec/<the Export branch>`",
+                  "`skillworks/steering`", "Open no pull request"]:
+        assert named in text, named
+
+
+@pytest.mark.parametrize("skill, heading", EXPORT_BRANCH_SECTIONS)
+def test_with_the_export_no_git_step_and_no_gh_call_is_run_by_hand(skill, heading):
+    text = under_heading(skill_text(skill), heading)
+
+    assert [line for line in text.split("\n")
+            if line.startswith(("gh ", "git ", "default=")) or "gh pr" in line or "gh api" in line] == []
+
+
+@pytest.mark.parametrize("skill, heading", EXPORT_BRANCH_SECTIONS)
+def test_with_the_export_a_steering_branch_that_does_not_rebase_stops_the_grill(skill, heading):
+    text = under_heading(skill_text(skill), heading)
+
+    assert "does not rebase" in text and "stop" in text.lower()
+
+
+@pytest.mark.parametrize("skill, heading", [("domain-modeling", "### The spec's branch"),
+                                            ("to-spec", "## The spec's branch")])
+def test_the_spec_branch_without_the_export_sends_the_export_case_to_its_own_section(skill, heading):
+    text = under_heading(skill_text(skill), heading)
+
+    assert "With `export` set to `true`" in text and "with the Export" in text
+
+
 def spec_template(to_spec):
     return to_spec.split("<spec-template>", 1)[1].split("</spec-template>", 1)[0]
 
@@ -1732,7 +1772,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 12
+    assert len(commands) == 13
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed

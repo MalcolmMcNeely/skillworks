@@ -88,6 +88,8 @@ So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push
 
 In `spec` mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. A protected default branch refuses a direct push, so no word or ADR goes there.
 
+With `export` set to `true` in `docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
+
 **The first word or ADR settled** creates the branch. The slug is short, in kebab case, and comes from the design's subject. Cut it from the newest default branch, commit the settled file on it, push it, and open a draft pull request to the default branch:
 
 ```bash
@@ -103,3 +105,21 @@ gh pr create --draft --base "$default" --head "spec/<slug>" --title "<the design
 No spec exists yet, so the body names none. `to-spec` adds the closing keyword when it publishes the spec.
 
 **Every later word or ADR** goes to the same branch. Stay on `spec/<slug>`, pull, and push there.
+
+### The spec's branch with the Export
+
+With `export` set to `true` in `docs/agents/loop.json`, the loop later Exports the spec's work onto the branch this session is on when the first word or ADR settles. That branch is the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`.
+
+**The first word or ADR settled** creates the Target branch. Stay on the Export branch, leave the settled file uncommitted, and run `cut-target-branch`, the one command that cuts it:
+
+```bash
+cut-target-branch
+```
+
+It rebases the Steering branch onto the commit the Export branch sits on and pushes it to `origin`. Then it cuts the Target branch from the Steering branch, pushes it, and switches to it. The settled file comes with it. Commit the file there, with its prefix, and push. Run no git step of your own to make either branch, so the steps are the same in every run.
+
+Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the Export branch, after the loop Exports onto it.
+
+When the command says the Steering branch does not rebase, stop the grill there. It pushed nothing and cut nothing. Name each file it lists to the developer, and say that they mend those files on `skillworks/steering`, push it, and start again on the Export branch.
+
+**Every later word or ADR** goes to the same Target branch. Stay on it, pull, and push there.

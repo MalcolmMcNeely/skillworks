@@ -43,5 +43,17 @@ protection. With `spec`:
   to open the pull request from the spec's branch on your host, or mark it ready for review.
 - The pull request's body closes the spec, so the spec closes when the pull request merges.
 
+**`spec` with `export` on.** With `"export": true` in `docs/agents/loop.json`, `spec` mode works for
+[the Export](export.md), and three things change:
+
+- The Target branch is `skillworks/spec/<your branch>`, such as
+  `skillworks/spec/feature/PROJ-12/slug`, and not `spec/<slug>`. Your branch is the one you started
+  the grill on.
+- The grill cuts it from the Steering branch, `skillworks/steering`, and not from the default branch.
+  The `cut-target-branch` command first brings the Steering branch onto the commit your branch sits
+  on. When the grill settled nothing, `/skillworks:to-spec` cuts it the same way.
+- The grill and `/skillworks:to-spec` open no pull request, and the loop marks none ready. You open
+  the one pull request, from your own branch, after the loop Exports onto it.
+
 Every other part of [the Dev loop](../the-loop.md) is the same for both kinds. Where it says the
 Target branch, read the branch name you set, or `spec/<slug>`.
