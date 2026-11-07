@@ -1864,6 +1864,12 @@ def test_setup_asks_whether_the_work_goes_to_a_team_that_does_not_use_skillworks
     assert "With `no`, setup runs as it always has" in question
 
 
+def test_setup_reads_an_earlier_export_answer_from_the_steering_branch_on_origin():
+    question = setup_section(EXPORT_QUESTION)
+
+    assert "git show origin/skillworks/steering:docs/agents/loop.json" in question
+
+
 def test_with_the_export_and_the_files_tracker_setup_tells_the_developer_to_own_origin_first():
     question = setup_section(EXPORT_QUESTION)
     told = [paragraph for paragraph in question.split("\n\n") if "`files`" in paragraph and "`origin`" in paragraph]

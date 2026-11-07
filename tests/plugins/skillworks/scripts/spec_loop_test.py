@@ -5867,15 +5867,21 @@ def test_the_end_line_names_the_export_branch_and_its_push(exporting):
     assert log[ended + 2] == "Push it with: git push origin {}".format(EXPORT_BRANCH)
 
 
-def test_with_export_on_no_pull_request_is_marked_ready_and_no_pr_line_is_written(
-        exporting, runner):
+def test_with_export_on_no_pull_request_is_marked_ready(exporting, runner):
     given_a_run_that_exports(exporting)
 
     ran = exporting.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert pull_request_calls(runner) == []
-    assert "READY" not in exporting.log()
+    assert (pull_request_calls(runner), "READY" in exporting.log()) == ([], False)
+
+
+def test_with_export_on_no_pr_line_is_written(exporting):
+    given_a_run_that_exports(exporting)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
     assert "PR  " not in exporting.log()
 
 

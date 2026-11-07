@@ -156,8 +156,8 @@ class Export:
                 if self.git("apply", "--cached", "--check", "--include=" + literal_glob(name), patch).status != 0]
 
     # Each commit's own change is applied, so a ticket brings its edit and never a whole file.
-    def apply(self, commit, held):
-        patch = (Path(held) / "change.patch").as_posix()
+    def apply(self, commit, scratch):
+        patch = (Path(scratch) / "change.patch").as_posix()
         self.must("git would not read the change of " + commit.short,
                   "diff", "--binary", "--full-index", "--no-renames", "--output=" + patch,
                   commit.hash + "^", commit.hash, "--", ".", ":(exclude).specs",
@@ -167,9 +167,9 @@ class Export:
         if self.git("apply", "--cached", "--binary", patch).status != 0:
             raise DoesNotApply(self.not_applying(patch))
 
-    def committed(self, parent, commits, subject, source, held):
+    def committed(self, parent, commits, subject, source, scratch):
         for commit in commits:
-            self.apply(commit, held)
+            self.apply(commit, scratch)
         tree = self.must("git would not write the tree of " + source, "write-tree")
         if tree == self.must("git would not read the tree of " + parent, "rev-parse", parent + "^{tree}"):
             return parent, None
@@ -224,13 +224,13 @@ class Export:
 
         written = []
         parent = tip
-        with tempfile.TemporaryDirectory() as held:
-            self.env = {"GIT_INDEX_FILE": (Path(held) / "index").as_posix()}
+        with tempfile.TemporaryDirectory() as scratch:
+            self.env = {"GIT_INDEX_FILE": (Path(scratch) / "index").as_posix()}
             try:
                 self.must("git would not read the Export branch " + branch, "read-tree", tip)
                 for commits, subject, source in parts:
                     try:
-                        parent, made = self.committed(parent, commits, subject, source, held)
+                        parent, made = self.committed(parent, commits, subject, source, scratch)
                     except DoesNotApply as failed:
                         return Exported(branch, tip, [], left, self.left_files,
                                         NotApplied(source, failed.files))

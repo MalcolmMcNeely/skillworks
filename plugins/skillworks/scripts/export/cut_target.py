@@ -65,8 +65,8 @@ class Cut:
 
     # Rebased in a worktree of its own, so the developer's checkout and the file the grill settled stay as they are.
     def rebased(self, steering, tip):
-        with tempfile.TemporaryDirectory() as held:
-            aside = (Path(held) / "steering").as_posix()
+        with tempfile.TemporaryDirectory() as scratch:
+            aside = (Path(scratch) / "steering").as_posix()
             self.must("git would not open a worktree for the Steering branch",
                       "worktree", "add", "--quiet", "--detach", aside, steering)
             try:

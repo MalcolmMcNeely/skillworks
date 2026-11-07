@@ -38,7 +38,7 @@ The outputs:
 
 ### First, ask where the work goes
 
-Ask the developer one question before anything is written: will the work go to a team that does not use Skillworks? Offer two answers, `no` and `yes`. Suggest `no`, so the common answer is one keypress. If `export` in `docs/agents/loop.json` is already `true`, an answer from an earlier run, suggest `yes` instead.
+Ask the developer one question before anything is written: will the work go to a team that does not use Skillworks? Offer two answers, `no` and `yes`. Suggest `no`, so the common answer is one keypress. With the Export, `loop.json` lives on the Steering branch and never on the developer's own branch, so read an earlier run's answer there: run `git fetch origin skillworks/steering`, and when it succeeds and `git show origin/skillworks/steering:docs/agents/loop.json` holds `"export": true`, suggest `yes` instead.
 
 With `no`, setup runs as it always has, on the branch the developer is on. Go on to step 1, and skip every part below that says "With the Export".
 

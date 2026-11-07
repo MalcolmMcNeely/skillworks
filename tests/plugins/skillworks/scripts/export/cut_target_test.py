@@ -75,28 +75,57 @@ def test_a_steering_branch_behind_the_export_branch_is_moved_onto_its_commit_and
             git(work.repo.origin, "log", "-1", "--format=%s", moved).strip()) == (tip, "Steering")
 
 
-def test_the_target_branch_is_cut_from_the_moved_steering_branch_pushed_and_checked_out(work):
+def test_the_target_branch_on_origin_starts_at_the_moved_steering_branch(work):
     work.commit("feature.txt", "the team's newest work", "The team's newest work")
     work.start_export_branch()
 
     ran = work.run()
 
     assert ran.status == 0, said(ran)
-    assert (work.on_origin(TARGET), work.head(), git(work.repo.work, "branch", "--show-current").strip()) == (
-        work.on_origin(STEERING),) * 2 + (TARGET,)
+    assert work.on_origin(TARGET) == work.on_origin(STEERING)
 
 
-def test_a_steering_branch_whose_rebase_conflicts_is_left_as_it_was_and_each_conflicting_file_is_named(work):
-    before = work.on_origin(STEERING)
-    work.commit(LOOP, '{"export": false}', "The team's own loop file")
-    work.commit("notes.txt", "the team's notes", "The team's notes")
+def test_the_session_is_left_on_the_target_branch(work):
+    work.commit("feature.txt", "the team's newest work", "The team's newest work")
     work.start_export_branch()
 
     ran = work.run()
 
-    assert (ran.status, LOOP in ran.err, work.on_origin(STEERING), work.head(STEERING),
-            work.has_on_origin(TARGET), git(work.repo.work, "branch", "--show-current").strip()) == (
-        1, True, before, before, False, EXPORT), said(ran)
+    assert ran.status == 0, said(ran)
+    assert git(work.repo.work, "branch", "--show-current").strip() == TARGET
+
+
+def given_a_steering_rebase_that_conflicts(work):
+    before = work.on_origin(STEERING)
+    work.commit(LOOP, '{"export": false}', "The team's own loop file")
+    work.commit("notes.txt", "the team's notes", "The team's notes")
+    work.start_export_branch()
+    return before
+
+
+def test_a_conflicting_steering_rebase_leaves_the_steering_branch_as_it_was(work):
+    before = given_a_steering_rebase_that_conflicts(work)
+
+    ran = work.run()
+
+    assert (work.on_origin(STEERING), work.head(STEERING)) == (before, before), said(ran)
+
+
+def test_a_conflicting_steering_rebase_cuts_no_target_branch(work):
+    given_a_steering_rebase_that_conflicts(work)
+
+    ran = work.run()
+
+    assert (work.has_on_origin(TARGET), git(work.repo.work, "branch", "--show-current").strip()) == (
+        False, EXPORT), said(ran)
+
+
+def test_a_conflicting_steering_rebase_names_each_conflicting_file(work):
+    given_a_steering_rebase_that_conflicts(work)
+
+    ran = work.run()
+
+    assert (ran.status, LOOP in ran.err) == (1, True), said(ran)
 
 
 def test_the_uncommitted_file_the_grill_just_settled_comes_along_onto_the_target_branch(work):
