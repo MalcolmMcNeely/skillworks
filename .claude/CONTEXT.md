@@ -281,6 +281,12 @@ Suite. Setup copies a starting version into the repo as files, and the team owns
 A skill reads a fact about one repo from its Steering and never carries it.
 _Avoid_: Config, guidance, policy
 
+**Steering branch**:
+A long-lived branch that is the default branch plus the Steering, kept only on the loop's own remote.
+When a team Exports, each spec's Target branch is cut from it, so the loop has its Steering and the
+Export branch never holds any.
+_Avoid_: Base branch, setup branch, skillworks branch
+
 **Suite**:
 The checks a repo names for the loop to run before a ticket Lands. The repo owns the list, so each
 team says what green means for its own code. A Suite ends one of two ways that are never confused: it
