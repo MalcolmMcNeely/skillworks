@@ -86,6 +86,8 @@ The Dev loop has two stages, and one command starts each:
 /loop-view                       open the pane that shows where each running loop is
 ```
 
+![A spec loop running beside the chat, with its tickets and the steps of the current ticket in the pane](docs/assets/loop-view.png)
+
 **The Grill.** Claude asks you about the design one question at a time, each with the answer it
 recommends. It looks up facts in the code itself, so you only make decisions. Claude writes each
 word and decision to your repo as soon as it settles. When no question is left, Claude sums up the
