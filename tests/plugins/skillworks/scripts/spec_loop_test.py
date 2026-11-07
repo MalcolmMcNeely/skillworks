@@ -5893,6 +5893,71 @@ def test_an_export_branch_checked_out_in_the_main_checkout_has_its_files_follow(
     assert (exporting.repo.work / "built.txt").is_file()
 
 
+# A left-out hand commit edits base.txt first, so the ticket's edit of it finds other text on the Export branch.
+def a_hand_edit_to_base(work):
+    (Path(work) / "base.txt").write_text("a hand edit\n", encoding="utf-8", newline="\n")
+    commit_as(work, TEST, "A hand edit to base")
+
+
+def given_a_ticket_whose_change_does_not_apply(loop):
+    return given_a_run_that_exports(loop, landed=("base.txt", "landed.txt"),
+                                    before_landing=a_hand_edit_to_base)
+
+
+def test_a_ticket_whose_change_does_not_apply_leaves_the_export_branch_where_it_was(exporting):
+    given_a_ticket_whose_change_does_not_apply(exporting)
+    before = git(exporting.repo.work, "rev-parse", EXPORT_BRANCH)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 1, said(ran)
+    assert git(exporting.repo.work, "rev-parse", EXPORT_BRANCH) == before
+
+
+def test_the_stop_for_a_change_that_does_not_apply_names_the_ticket_and_each_file(exporting):
+    given_a_ticket_whose_change_does_not_apply(exporting)
+
+    exporting.run(SPEC)
+
+    assert stop_lines(exporting)[-1] == (
+        "STOP  the change of #161 does not apply to the Export branch {} in base.txt, so the Export "
+        "moved nothing. Every ticket's code is still on {}.".format(EXPORT_BRANCH, EXPORT_TARGET))
+
+
+# The Suite change comes after the commit that does not apply, so only a list read before the build holds it.
+def test_the_list_of_what_the_export_left_out_is_in_the_log_after_the_stop(exporting):
+    left = given_a_ticket_whose_change_does_not_apply(exporting)
+    work = exporting.repo.work
+    the_suite_changed(work)
+    commit_as(work, ADA, "The Suite too\n\nTicket: #161")
+    git(work, "push", "--quiet", "origin", EXPORT_TARGET)
+
+    exporting.run(SPEC)
+
+    listed_out = lines_under(exporting, "LEFT  the Export left out 5 commits and 1 file of "
+                             + EXPORT_TARGET)
+    assert [line.split()[0] for line in listed_out[:3]] + [listed_out[-1].strip()] == [
+        left["steering"], left["hand"], left["claim"], "docs/agents/suite.json, from #161"]
+
+
+def test_a_stop_in_the_export_writes_no_end_line(exporting):
+    given_a_ticket_whose_change_does_not_apply(exporting)
+
+    exporting.run(SPEC)
+
+    assert [line for line in exporting.log().split("\n") if unstamped(line).startswith("END")] == []
+
+
+def test_a_stop_in_the_export_leaves_every_ticket_s_commits_on_the_target_branch(exporting):
+    given_a_ticket_whose_change_does_not_apply(exporting)
+
+    exporting.run(SPEC)
+
+    trailers = git(exporting.repo.origin, "log", "--format=%(trailers:key=Ticket,valueonly)",
+                   EXPORT_TARGET).split()
+    assert {"#161", "#168"} <= set(trailers)
+
+
 def test_with_export_off_the_export_branch_does_not_move(not_exporting):
     given_a_run_that_exports(not_exporting)
     before = git(not_exporting.repo.work, "rev-parse", EXPORT_BRANCH)

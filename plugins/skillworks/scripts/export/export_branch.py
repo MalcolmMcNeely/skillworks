@@ -44,12 +44,29 @@ class LeftFile(NamedTuple):
     source: str
 
 
+class NotApplied(NamedTuple):
+    source: str
+    files: list
+
+
 class Exported(NamedTuple):
     branch: str
     tip: str
     written: list
     left: list
     left_files: list
+    not_applied: NotApplied | None
+
+
+class DoesNotApply(Exception):
+    def __init__(self, files):
+        super().__init__(files)
+        self.files = files
+
+
+# A pathspec glob, so a file whose name holds a glob character still names itself alone.
+def literal_glob(name):
+    return "".join("\\" + c if c in "\\*?[" else c for c in name)
 
 
 def export_branch_of(target):
@@ -131,9 +148,15 @@ class Export:
             if LeftFile(name, source) not in self.left_files:
                 self.left_files.append(LeftFile(name, source))
 
+    # Each file is tried alone, so the stop names every file that does not apply and none that does.
+    def not_applying(self, patch):
+        names = [line.split("\t", 2)[2] for line in self.file_names(
+            "git would not read the files of " + patch, "apply", "--numstat", patch)]
+        return [name for name in names
+                if self.git("apply", "--cached", "--check", "--include=" + literal_glob(name), patch).status != 0]
+
     # Each commit's own change is applied, so a ticket brings its edit and never a whole file.
-    def apply(self, commit, source, held):
-        self.note_left_files(commit, source)
+    def apply(self, commit, held):
         patch = (Path(held) / "change.patch").as_posix()
         self.must("git would not read the change of " + commit.short,
                   "diff", "--binary", "--full-index", "--no-renames", "--output=" + patch,
@@ -141,12 +164,12 @@ class Export:
                   *(":(exclude,literal)" + name for name in self.steering_files))
         if Path(patch).stat().st_size == 0:
             return
-        self.must("the change of {} from {} does not apply to the Export branch".format(commit.short, source),
-                  "apply", "--cached", "--binary", patch)
+        if self.git("apply", "--cached", "--binary", patch).status != 0:
+            raise DoesNotApply(self.not_applying(patch))
 
     def committed(self, parent, commits, subject, source, held):
         for commit in commits:
-            self.apply(commit, source, held)
+            self.apply(commit, held)
         tree = self.must("git would not write the tree of " + source, "write-tree")
         if tree == self.must("git would not read the tree of " + parent, "rev-parse", parent + "^{tree}"):
             return parent, None
@@ -194,6 +217,11 @@ class Export:
             (commits, self.tracker.title(ticket).removeprefix("TICKET: "), self.tracker.named(ticket))
             for ticket, commits in tickets.items()]
 
+        # Read before any commit is built, so a stop still lists every file the Export would leave out.
+        for commits, _, source in parts:
+            for commit in commits:
+                self.note_left_files(commit, source)
+
         written = []
         parent = tip
         with tempfile.TemporaryDirectory() as held:
@@ -201,14 +229,18 @@ class Export:
             try:
                 self.must("git would not read the Export branch " + branch, "read-tree", tip)
                 for commits, subject, source in parts:
-                    parent, made = self.committed(parent, commits, subject, source, held)
+                    try:
+                        parent, made = self.committed(parent, commits, subject, source, held)
+                    except DoesNotApply as failed:
+                        return Exported(branch, tip, [], left, self.left_files,
+                                        NotApplied(source, failed.files))
                     if made:
                         written.append(made)
             finally:
                 self.env = None
         if parent != tip:
             self.move(branch, tip, parent)
-        return Exported(branch, tip, written, left, self.left_files)
+        return Exported(branch, tip, written, left, self.left_files, None)
 
 
 def export(runner, where, target, tracker, spec, spec_title):

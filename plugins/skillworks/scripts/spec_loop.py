@@ -1701,6 +1701,12 @@ class Loop:
             how_many(len(done.left_files), "file", "files"), self.target,
             "".join("\n      {} {}".format(commit.short, commit.subject) for commit in done.left),
             "".join("\n      {}, from {}".format(left.path, left.source) for left in done.left_files)))
+        # No Session is handed the conflict, because it would change code after the full run proved it.
+        if done.not_applied:
+            raise stop("STOP  the change of {} does not apply to the Export branch {} in {}, so the Export "
+                       "moved nothing. Every ticket's code is still on {}.".format(
+                           done.not_applied.source, done.branch, ", ".join(done.not_applied.files),
+                           self.target))
         self.say("END   spec {} complete. The Export is on {}.".format(self.spec_named(), done.branch))
         self.say("      Review it with: git log --oneline {}..{}".format(done.tip[:12], done.branch))
         self.say("      Push it with: " + self.push_command(done.branch))

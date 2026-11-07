@@ -92,3 +92,24 @@ remote, so the line names `<your team's remote>` in its place.
 
 With `export` on, the loop marks no pull request ready and prints no `PR` line. The only pull request
 is the one you open from your branch.
+
+## When a ticket's change does not apply
+
+A ticket's change can fail to apply onto your branch. Most often a left-out commit, such as a hand
+fix, changed the same file before the ticket did. The Export then moves nothing, and your branch
+stays on the commit it held. The `LEFT` list is still written, so the list is in the log whether the
+Export wrote your branch or stopped. Then the loop stops before `END`, with a `STOP` line that names
+the ticket and each file that did not apply:
+
+```
+2026-09-28 18:52:31 LEFT  the Export left out 3 commits and 1 file of skillworks/spec/feature/PROJ-12/slug
+      5c0e1b7 Steering for a team that does not use Skillworks
+      e44f2a9 A hand fix with no trailer
+      0b7d3c6 Close spec 200
+      docs/agents/suite.json, from #202
+2026-09-28 18:52:31 STOP  the change of #203 does not apply to the Export branch feature/PROJ-12/slug in src/app.py, so the Export moved nothing. Every ticket's code is still on skillworks/spec/feature/PROJ-12/slug.
+```
+
+The Target branch keeps every ticket's code, so no work is lost. No Session is handed the conflict,
+because a Session would change code after the full run proved it. [When a step fails](stops.md)
+says what to do next.
