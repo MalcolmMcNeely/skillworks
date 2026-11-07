@@ -56,21 +56,32 @@ checked out, its files move with it.
 Every other commit after the tip of your branch is left out: the Steering commit, the bookkeeping
 commits, and any commit made by hand.
 
+A file that a left-out commit created, and that does not exist at the tip of your branch, is left out
+too. The Suite file is one: the Steering commit created it. When a ticket changed such a file, the
+Export leaves that change out of the ticket's commit and keeps the rest. So the Steering can never
+come back to your branch through a ticket. A change to a file that exists at the tip of your branch
+stays in the ticket's commit.
+
+A ticket whose only changes were under `.specs/`, or in left-out files, gets no commit. Your branch
+holds no empty commit.
+
 ## What the loop prints
 
 The log gets an `EXPORT` line for each commit the Export wrote, with its hash, its subject and where
-it came from. A `LEFT` line counts the commits it left out, and lists each one below it with its
-hash and its subject. Then the `END` line names your branch, and the lines below it say how to read
-the branch and how to push it:
+it came from. A `LEFT` line counts the commits and the files it left out. Below it, it lists each
+commit with its hash and its subject, then each file with the ticket whose change it left out. So you
+never lose a hand fix or a change without knowing. Then the `END` line names your branch, and the
+lines below it say how to read the branch and how to push it:
 
 ```
 2026-09-28 18:52:31 EXPORT 7d2e9a1 A developer hands a team work with no trace of it, from the grill
 2026-09-28 18:52:31 EXPORT 3b8c0f4 Preflight checks for uv, from #202
 2026-09-28 18:52:31 EXPORT a91e5d2 The loop log names each step, from #203
-2026-09-28 18:52:31 LEFT  the Export left out 3 commits of skillworks/spec/feature/PROJ-12/slug
+2026-09-28 18:52:31 LEFT  the Export left out 3 commits and 1 file of skillworks/spec/feature/PROJ-12/slug
       5c0e1b7 Steering for a team that does not use Skillworks
       e44f2a9 A hand fix with no trailer
       0b7d3c6 Close spec 200
+      docs/agents/suite.json, from #202
 2026-09-28 18:52:31 END   spec #200 complete. The Export is on feature/PROJ-12/slug.
       Review it with: git log --oneline 1f0a3c8e5b22..feature/PROJ-12/slug
       Push it with: git push origin feature/PROJ-12/slug

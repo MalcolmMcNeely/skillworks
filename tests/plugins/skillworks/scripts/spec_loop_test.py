@@ -5693,8 +5693,11 @@ def commit_as(where, author, message, *files):
     return git(where, "rev-parse", "--short", "HEAD").strip()
 
 
+LANDED = ("landed.txt", ".specs/158/161.md")
+
+
 # The Suite commit holds the Steering the case wrote, so it stands as the Steering commit.
-def given_a_run_that_exports(loop):
+def given_a_run_that_exports(loop, landed=LANDED, before_landing=None):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET + ONE_OPEN_TICKET)
     tracker.body = COUNTED + "\n## Branch\n\n`{}`\n".format(EXPORT_TARGET)
     sessions = given_sessions_that_report(loop)
@@ -5704,7 +5707,9 @@ def given_a_run_that_exports(loop):
     commit_as(work, ADA, "ADR: a decision", "docs/adr/0001-a-decision.md")
     left["hand"] = commit_as(work, TEST, "A hand fix with no trailer", "hand.txt")
     left["claim"] = commit_as(work, TEST, "Claim #168", ".specs/158/168.md")
-    commit_as(work, ADA, "Already done\n\nTicket: #161", "landed.txt", ".specs/158/161.md")
+    if before_landing:
+        before_landing(work)
+    commit_as(work, ADA, "Already done\n\nTicket: #161", *landed)
     left["report"] = commit_as(work, TEST, "Drift report for #158", ".specs/158/drift.md")
     git(work, "push", "--quiet", "origin", EXPORT_TARGET)
     sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
@@ -5775,9 +5780,72 @@ def test_the_steering_the_hand_and_the_bookkeeping_commits_are_left_out_and_list
 
     exporting.run(SPEC)
 
-    listed_out = lines_under(exporting, "LEFT  the Export left out 4 commits of " + EXPORT_TARGET)
+    listed_out = lines_under(exporting, "LEFT  the Export left out 4 commits and 0 files of "
+                             + EXPORT_TARGET)
     assert [line.split()[0] for line in listed_out] == [
         left["steering"], left["hand"], left["claim"], left["report"]]
+
+
+# The case's own run stays green only while the Suite still holds a check, so the change keeps it.
+def the_suite_changed(work):
+    write_suite(work, project_suite()[0], runs=1)
+
+
+def test_a_ticket_s_change_to_the_suite_the_steering_created_is_left_out_of_its_commit(exporting):
+    given_a_run_that_exports(exporting, before_landing=the_suite_changed)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(exporting.repo.work, "show", "--name-only", "--format=", EXPORT_BRANCH + "~1").split() == [
+        "landed.txt"]
+
+
+def test_a_suite_change_left_out_of_a_ticket_s_commit_is_listed_with_its_ticket(exporting):
+    given_a_run_that_exports(exporting, before_landing=the_suite_changed)
+
+    exporting.run(SPEC)
+
+    listed_out = lines_under(exporting, "LEFT  the Export left out 4 commits and 1 file of "
+                             + EXPORT_TARGET)
+    assert listed_out[-1].strip() == "docs/agents/suite.json, from #161"
+
+
+# The imports stay, so the run reads the same rules after the change.
+def the_suite_and_claude_md_changed(work):
+    the_suite_changed(work)
+    with (Path(work) / "CLAUDE.md").open("a", encoding="utf-8", newline="\n") as claude:
+        claude.write("\nA line the ticket added.\n")
+
+
+def test_each_steering_file_left_out_of_a_ticket_s_commit_is_listed_on_a_line_of_its_own(exporting):
+    given_a_run_that_exports(exporting, before_landing=the_suite_and_claude_md_changed)
+
+    exporting.run(SPEC)
+
+    listed_out = lines_under(exporting, "LEFT  the Export left out 4 commits and 2 files of "
+                             + EXPORT_TARGET)
+    assert [line.strip() for line in listed_out[-2:]] == [
+        "CLAUDE.md, from #161", "docs/agents/suite.json, from #161"]
+
+
+def test_a_ticket_that_changed_specs_alone_gets_no_commit_and_the_others_still_do(exporting):
+    given_a_run_that_exports(exporting, landed=(".specs/158/161.md",))
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert [line.strip() for line in exported(exporting, "%s")] == [
+        "A spec to plan", "The dry run prints the plan"]
+
+
+def test_a_ticket_s_change_to_a_file_on_the_export_branch_stays_in_its_commit(exporting):
+    given_a_run_that_exports(exporting, landed=("base.txt",))
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(exporting.repo.work, "show", EXPORT_BRANCH + ":base.txt") == "base.txt\n"
 
 
 def test_the_export_pushes_nothing(exporting):

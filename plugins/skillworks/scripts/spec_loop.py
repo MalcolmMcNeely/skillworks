@@ -1696,9 +1696,11 @@ class Loop:
                       self.spec_title)
         for written in done.written:
             self.say("EXPORT {} {}, from {}".format(written.short, written.subject, written.source))
-        self.say("LEFT  the Export left out {} of {}{}".format(
-            how_many(len(done.left), "commit", "commits"), self.target,
-            "".join("\n      {} {}".format(commit.short, commit.subject) for commit in done.left)))
+        self.say("LEFT  the Export left out {} and {} of {}{}{}".format(
+            how_many(len(done.left), "commit", "commits"),
+            how_many(len(done.left_files), "file", "files"), self.target,
+            "".join("\n      {} {}".format(commit.short, commit.subject) for commit in done.left),
+            "".join("\n      {}, from {}".format(left.path, left.source) for left in done.left_files)))
         self.say("END   spec {} complete. The Export is on {}.".format(self.spec_named(), done.branch))
         self.say("      Review it with: git log --oneline {}..{}".format(done.tip[:12], done.branch))
         self.say("      Push it with: " + self.push_command(done.branch))

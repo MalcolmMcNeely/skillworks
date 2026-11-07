@@ -39,11 +39,17 @@ class Written(NamedTuple):
     source: str
 
 
+class LeftFile(NamedTuple):
+    path: str
+    source: str
+
+
 class Exported(NamedTuple):
     branch: str
     tip: str
     written: list
     left: list
+    left_files: list
 
 
 def export_branch_of(target):
@@ -60,6 +66,8 @@ class Export:
         self.tracker = tracker
         self.spec = spec
         self.env = None
+        self.steering_files = []
+        self.left_files = []
 
     def git(self, *args):
         return self.runner.run(["git", "-C", self.where] + [str(a) for a in args], None, self.env)
@@ -97,12 +105,40 @@ class Export:
                 left.append(commit)
         return grill, tickets, left
 
+    # The -z goes straight after the command, because after a "--" git reads it as a path.
+    def file_names(self, why, command, *args):
+        return [name for name in self.must(why, command, "-z", *args).split("\0") if name]
+
+    # A file only a left-out commit brought in is Steering, so no ticket's change can carry it back.
+    def created_by(self, left, tip):
+        on_tip = set(self.file_names("git would not list the files of the Export branch",
+                                     "ls-tree", "-r", "--name-only", tip))
+        created = []
+        for commit in left:
+            for name in self.file_names("git would not read the change of " + commit.short,
+                                        "diff-tree", "--root", "-r", "--no-commit-id", "--name-only",
+                                        "--no-renames", "--diff-filter=A", commit.hash):
+                if name not in on_tip and name not in created:
+                    created.append(name)
+        return created
+
+    def note_left_files(self, commit, source):
+        if not self.steering_files:
+            return
+        for name in self.file_names("git would not read the change of " + commit.short,
+                                    "diff", "--name-only", "--no-renames", commit.hash + "^", commit.hash,
+                                    "--", *(":(literal)" + name for name in self.steering_files)):
+            if LeftFile(name, source) not in self.left_files:
+                self.left_files.append(LeftFile(name, source))
+
     # Each commit's own change is applied, so a ticket brings its edit and never a whole file.
     def apply(self, commit, source, held):
+        self.note_left_files(commit, source)
         patch = (Path(held) / "change.patch").as_posix()
         self.must("git would not read the change of " + commit.short,
                   "diff", "--binary", "--full-index", "--no-renames", "--output=" + patch,
-                  commit.hash + "^", commit.hash, "--", ".", ":(exclude).specs")
+                  commit.hash + "^", commit.hash, "--", ".", ":(exclude).specs",
+                  *(":(exclude,literal)" + name for name in self.steering_files))
         if Path(patch).stat().st_size == 0:
             return
         self.must("the change of {} from {} does not apply to the Export branch".format(commit.short, source),
@@ -153,6 +189,7 @@ class Export:
         tip = self.must("the Export branch {} is not a branch in this checkout".format(branch),
                         "rev-parse", "--verify", "--quiet", "refs/heads/" + branch + "^{commit}")
         grill, tickets, left = self.grouped(self.commits_after(tip, target))
+        self.steering_files = self.created_by(left, tip)
         parts = ([(grill, spec_title.removeprefix("SPEC: "), GRILL)] if grill else []) + [
             (commits, self.tracker.title(ticket).removeprefix("TICKET: "), self.tracker.named(ticket))
             for ticket, commits in tickets.items()]
@@ -171,7 +208,7 @@ class Export:
                 self.env = None
         if parent != tip:
             self.move(branch, tip, parent)
-        return Exported(branch, tip, written, left)
+        return Exported(branch, tip, written, left, self.left_files)
 
 
 def export(runner, where, target, tracker, spec, spec_title):

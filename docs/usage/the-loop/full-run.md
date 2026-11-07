@@ -57,7 +57,7 @@ marks no pull request ready. The log ends like this:
 ```
 2026-09-28 18:52:30 FULL  skillworks/spec/feature/PROJ-12/slug at 4c1d9e2 passed the whole Suite
 2026-09-28 18:52:31 EXPORT 3b8c0f4 Preflight checks for uv, from #202
-2026-09-28 18:52:31 LEFT  the Export left out 1 commit of skillworks/spec/feature/PROJ-12/slug
+2026-09-28 18:52:31 LEFT  the Export left out 1 commit and 0 files of skillworks/spec/feature/PROJ-12/slug
       5c0e1b7 Steering for a team that does not use Skillworks
 2026-09-28 18:52:31 END   spec #200 complete. The Export is on feature/PROJ-12/slug.
       Review it with: git log --oneline 1f0a3c8e5b22..feature/PROJ-12/slug
