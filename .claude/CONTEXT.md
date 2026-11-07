@@ -119,6 +119,17 @@ Edit. It is a record and never a judgement: an axis that edits is doing its job,
 loop. What an Edit cannot be is silent.
 _Avoid_: Record, change, diff
 
+**Export**:
+Building, from the ticket commits of one spec, a branch that holds only the work: one commit for each
+ticket, with no trailer, no `.specs/` and none of the loop's own commits. It starts where the Target
+branch left the default branch, and it never pushes.
+_Avoid_: Strip, scrub, clean-up, squash
+
+**Export branch**:
+The branch an Export writes. A person names it, pushes it and opens the pull request from it. The
+Target branch stays as the loop left it.
+_Avoid_: Clean branch, PR branch, release branch
+
 **Flake**:
 A check that went red on one run of a Suite and passed on a later run of the same Suite, on the same
 inputs. Nothing changed between the two, so the red was not the code's. A Flake counts as green, and
