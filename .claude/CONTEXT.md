@@ -235,6 +235,12 @@ machine as on a quiet one, so a test that acts while the code runs first waits o
 the code is where the act needs it.
 _Avoid_: Ordering, interleaving, timing
 
+**Position**:
+Where a running loop is now: the spec, the ticket, the step it is on, and how far through the run it
+has come. The driver writes over it each time the loop moves on, so it holds the present and nothing
+before it. The Journal is what keeps the past.
+_Avoid_: Progress, status, state
+
 **Proof**:
 A check that passed on one exact set of its inputs, kept by the Suite. A check whose inputs match a
 Proof is not run again, so work already proved costs nothing a second time. A Proof knows only what
