@@ -1,8 +1,10 @@
 import json
 import os
+from pathlib import Path
 
 from conftest import ROOT
 from spec_loop_test import (A_BLOCKED, A_CHOICE, A_DENIED_COMMAND, FINISH, ONE_OPEN_TICKET, SPEC,
+                            TWO_OPEN_TICKETS,
                             a_denied_command, all_of, closed, committed, full_run_tree,
                             given_a_session_that_was_denied, given_a_spec_axis_that_says,
                             given_sessions_that_report, given_the_tracker_holds, loop)
@@ -153,6 +155,94 @@ def test_a_dry_run_leaves_no_position(loop):
     loop.run(SPEC, "--dry-run")
 
     assert not (loop.records() / "position.json").exists()
+
+
+HEARTBEAT = 30
+
+
+def given_two_tickets_that_land(loop):
+    tracker = given_the_tracker_holds(loop, TWO_OPEN_TICKETS)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    sessions.then["implement 169 --finish"] = all_of(
+        committed(loop.runner, "169"), closed(tracker, "169"))
+    # The first build's file is already on the Target branch, so the second build writes its own.
+    sessions.then["implement 169 --stop-after-tests"] = lambda: (
+        Path(loop.runner.where) / "built-169.txt").write_text("built\n", encoding="utf-8")
+    return sessions
+
+
+def test_with_time_held_still_the_heartbeat_does_not_move_while_a_step_runs(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    seen = []
+    read_while(sessions, "review-standards", loop, seen)
+    read_while(sessions, "review-spec", loop, seen)
+
+    loop.run(SPEC)
+
+    assert {each["heartbeat"] for each in seen} == {"2026-01-01T00:00:00Z"}
+
+
+def test_with_time_moved_past_the_heartbeat_while_a_step_runs_the_position_holds_a_later_heartbeat_and_the_same_step(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    seen = []
+
+    def moved_on_while_held():
+        seen.append(position_of(loop))
+        loop.clock.move(HEARTBEAT + 1)
+        seen.append(position_of(loop))
+    sessions.then["review-standards"] = moved_on_while_held
+
+    loop.run(SPEC)
+
+    before, after = seen
+    assert {**after, "heartbeat": before["heartbeat"]} == before and (
+        after["heartbeat"] == "2026-01-01T00:00:30Z")
+
+
+def test_the_step_started_time_is_read_off_the_clock(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    seen = []
+    sessions.then["review-standards"] = lambda: loop.clock.move(100)
+    read_while(sessions, "review-spec", loop, seen)
+
+    loop.run(SPEC)
+
+    assert seen[0]["ticket"]["step_started"] == "2026-01-01T00:01:40Z"
+
+
+def test_the_time_left_is_measured_on_the_clock(loop):
+    sessions = given_two_tickets_that_land(loop)
+    seen = []
+    sessions.then["review-standards 168"] = lambda: loop.clock.move(600)
+    read_while(sessions, "review-standards 169", loop, seen)
+
+    loop.run(SPEC)
+
+    assert seen[0]["seconds_left"] == 600
+
+
+def test_after_a_finished_run_the_heartbeat_is_no_longer_written(loop):
+    given_a_run_that_lands(loop)
+    loop.run(SPEC)
+    last = position_of(loop)
+
+    loop.clock.move(HEARTBEAT * 3)
+
+    assert position_of(loop) == last and last["doing"] == "finished"
+
+
+def test_after_a_stopped_run_the_heartbeat_is_no_longer_written(loop):
+    given_a_build_that_is_blocked(loop)
+    loop.run(SPEC)
+    last = position_of(loop)
+
+    loop.clock.move(HEARTBEAT * 3)
+
+    assert position_of(loop) == last and last["doing"] == "stopped"
 
 
 def test_reading_a_run_names_the_position_file_beside_the_log():

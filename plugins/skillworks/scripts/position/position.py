@@ -2,7 +2,6 @@
 
 import json
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 
 POSITION = "position.json"
@@ -18,9 +17,12 @@ STOPPED = "stopped"
 # Read by the pane in a language of its own, so the form is one any date parser takes.
 TIME_FORM = "%Y-%m-%dT%H:%M:%SZ"
 
+# Often enough that a pane reading a heartbeat older than two minutes as gone never misreads a live loop.
+HEARTBEAT_SECONDS = 30
 
-def now():
-    return datetime.now(timezone.utc).strftime(TIME_FORM)
+
+def position_time(moment):
+    return moment.strftime(TIME_FORM)
 
 
 # Renamed into place, so a reader that opens the file between two writes never reads half of one.

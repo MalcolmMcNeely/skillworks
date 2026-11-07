@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 import spec_loop
+from clock.held_clock import HeldClock
 from conftest import Ran, RecordingRunner, Repo, git, write_steering
 from spec_loop_test import Sessions, given_a_suite_that_passes
 from steering.target_branch import LOOP_FILE
@@ -97,7 +98,8 @@ def run_loop(runner, checkout, *flags):
     write_steering(checkout)
     out, err = io.StringIO(), io.StringIO()
     with contextlib.chdir(checkout):
-        status = spec_loop.main([SPEC, *flags], runner, out, err, lambda seconds: None)
+        status = spec_loop.main([SPEC, *flags], runner, out, err, lambda seconds: None,
+                                HeldClock())
     return Ran(status, out.getvalue(), err.getvalue())
 
 

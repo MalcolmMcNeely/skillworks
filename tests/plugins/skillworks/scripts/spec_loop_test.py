@@ -15,6 +15,7 @@ import land_ticket
 import seed_steering
 import spec_loop
 import ticket_worktree
+from clock.held_clock import HeldClock
 from conftest import (ROOT, SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch, no_wait,
                       project_suite, write_loop, write_steering, write_suite)
 from output.streams import speaking_any_character
@@ -40,11 +41,12 @@ class Driver:
         self.runner = runner
         # Recorded rather than waited out, so the claim can be read without spending its seconds.
         self.waits = []
+        self.clock = HeldClock()
 
     def run(self, *args):
         out, err = io.StringIO(), io.StringIO()
         status = spec_loop.main(
-            [str(a) for a in args], self.runner, out, err, self.waits.append)
+            [str(a) for a in args], self.runner, out, err, self.waits.append, self.clock)
         return Ran(status, out.getvalue(), err.getvalue())
 
     def records(self):
@@ -2332,7 +2334,7 @@ def test_a_landing_red_with_a_character_the_code_page_lacks_ends_with_its_fail_l
     out = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
     speaking_any_character(out)
 
-    spec_loop.main([SPEC], runner, out, io.StringIO(), loop.waits.append)
+    spec_loop.main([SPEC], runner, out, io.StringIO(), loop.waits.append, loop.clock)
     out.flush()
 
     assert "FAIL  #168 did not reach main." in out.buffer.getvalue().decode("utf-8")
@@ -4895,7 +4897,8 @@ class Beside:
     def run(self, loop, args):
         try:
             self.status = spec_loop.main(
-                [str(a) for a in args], loop.runner, self.out, self.err, loop.waits.append)
+                [str(a) for a in args], loop.runner, self.out, self.err, loop.waits.append,
+                loop.clock)
         finally:
             # A loop that ended without the line must fail the case, not hang it.
             self.out.seen.set()

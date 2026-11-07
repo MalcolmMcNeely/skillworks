@@ -29,15 +29,16 @@ import io
 import json
 import os
 import sys
+import threading
 import time
 import traceback
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, NamedTuple
 
 import land_ticket
 import ticket_worktree
+from clock.clock import Clock
 from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items, with_readme
@@ -48,8 +49,8 @@ from count.verdicts import VERDICTS, read_verdicts
 from export.export_branch import export
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
-from position.position import (BUILDING, CUTTING, DRIFT_CHECK, FINISHED, NAME_CHECK, POSITION,
-                               STOPPED, now, written_whole)
+from position.position import (BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBEAT_SECONDS,
+                               NAME_CHECK, POSITION, STOPPED, position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
 from seed_steering import missing_steering
@@ -332,10 +333,6 @@ def lines_opening(path, opening):
 STAMP_FORM = "%Y-%m-%d %H:%M:%S"
 
 
-def stamp():
-    return datetime.now(timezone.utc).strftime(STAMP_FORM)
-
-
 def written(path, text):
     Path(path).write_text(text, encoding="utf-8", newline="\n")
 
@@ -480,12 +477,13 @@ def told_plan():
 
 
 class Loop:
-    def __init__(self, runner, spec, out, err, wait, permission_mode):
+    def __init__(self, runner, spec, out, err, wait, permission_mode, clock):
         self.runner = runner
         self.spec = spec
         self.out = out
         self.err = err
         self.wait = wait
+        self.clock = clock
         self.permission_mode = permission_mode
         self.log_dir = Path(".spec-loop") / spec
         self.log = self.log_dir / "loop.log"
@@ -539,13 +537,18 @@ class Loop:
         self.denied = 0
         self.stop_line = None
 
+        # The heartbeat writes from a thread of its own, so the two writers take turns at the file.
+        self.position_turn = threading.Lock()
+        self.last_position = None
+        self.stop_heartbeat = None
+
     # --- the Position --------------------------------------------------------
 
     def position_now(self):
         return {
             "spec": self.spec,
             "run": self.run_id,
-            "heartbeat": now(),
+            "heartbeat": position_time(self.clock.now()),
             "doing": self.doing,
             "tickets": self.spec_tickets,
             "ticket": self.ticket_now,
@@ -565,8 +568,31 @@ class Loop:
     def moved(self, doing=None):
         if doing is not None:
             self.doing = doing
+        # Stopped before the last write, so no beat lands after it and the end stays the end.
+        if doing in (FINISHED, STOPPED):
+            self.heartbeat_stopped()
         if self.writes_position:
-            written_whole(self.log_dir / POSITION, self.position_now())
+            position = self.position_now()
+            with self.position_turn:
+                written_whole(self.log_dir / POSITION, position)
+                # A copy, because the driver's own thread goes on changing the tickets it names.
+                self.last_position = json.loads(json.dumps(position))
+
+    def heartbeat_started(self):
+        self.stop_heartbeat = self.clock.every(HEARTBEAT_SECONDS, self.beat)
+
+    def heartbeat_stopped(self):
+        if self.stop_heartbeat is not None:
+            self.stop_heartbeat()
+            self.stop_heartbeat = None
+
+    # The last Position again with the time alone made new, so a long step still shows a live loop.
+    def beat(self):
+        with self.position_turn:
+            if self.last_position is None:
+                return
+            self.last_position["heartbeat"] = position_time(self.clock.now())
+            written_whole(self.log_dir / POSITION, self.last_position)
 
     def read_spec_tickets(self):
         rows = self.tracker.ticket_rows(self.spec)
@@ -586,7 +612,7 @@ class Loop:
     def on_step(self, name):
         if self.ticket_now is not None:
             self.ticket_now["step"] = name
-            self.ticket_now["step_started"] = now()
+            self.ticket_now["step_started"] = position_time(self.clock.now())
         self.moved()
 
     def landed_now(self, ticket):
@@ -606,7 +632,10 @@ class Loop:
         self.out.write(said)
 
     def say(self, said):
-        self.wrote("{} {}\n".format(stamp(), said))
+        self.wrote("{} {}\n".format(self.stamp(), said))
+
+    def stamp(self):
+        return self.clock.now().strftime(STAMP_FORM)
 
     def named(self, ticket):
         return self.tracker.named(ticket)
@@ -864,7 +893,7 @@ class Loop:
 
     # Only ever added to, so an attempt a Nudge, a second fix or a rerun came after is still read.
     def add_to_journal(self, ran, held, step, attempt, failed, ticket=None, spec_step=None):
-        entry = {"at": stamp(), "ticket": ticket, "spec_step": spec_step, "step": step,
+        entry = {"at": self.stamp(), "ticket": ticket, "spec_step": spec_step, "step": step,
                  "attempt": attempt, "status": ran.status, "failed": failed,
                  "denials": len(denials(held)), "blocked": blocked_line(held) or None,
                  "choices": lines_opening(held, "CHOSE"),
@@ -991,7 +1020,7 @@ class Loop:
 
     # A file of its own for each, so a later run, or a later loop on the spec, never writes over one.
     def stamped(self, named):
-        named += "-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        named += "-" + self.clock.now().strftime("%Y%m%dT%H%M%S%fZ")
         held = self.log_dir / (named + ".out")
         again = 1
         while held.exists():
@@ -1350,7 +1379,7 @@ class Loop:
         if not self.job_worktree:
             raise stop("FAIL  {} got no worktree to be built in.".format(self.named(ticket)))
         self.ticket_base = self.git(self.job_worktree, "rev-parse", "HEAD").out.strip()
-        started = time.time()
+        started = self.clock.now()
 
         self.build_and_land(ticket)
         self.landed.append(ticket)
@@ -1362,7 +1391,7 @@ class Loop:
                 self.named(ticket), self.job_worktree))
 
         # A skipped ticket never reaches here, so nobody else's work is in the mean.
-        self.timed_seconds += int(time.time() - started)
+        self.timed_seconds += int((self.clock.now() - started).total_seconds())
         self.timed_tickets += 1
         self.mean_seconds = self.timed_seconds // self.timed_tickets
         self.say("DONE  {}  {}".format(self.named(ticket), landed_at))
@@ -1827,6 +1856,7 @@ class Loop:
         self.preflight()
         if dry:
             return self.dry_run()
+        self.heartbeat_started()
 
         self.read_shape()
         self.keep_leftovers()
@@ -1888,11 +1918,11 @@ def arguments(argv):
     return spec, "--dry-run" in rest, mode
 
 
-def main(argv, runner, out, err, wait):
+def main(argv, runner, out, err, wait, clock):
     loop = None
     try:
         spec, dry, mode = arguments(argv)
-        loop = Loop(runner, spec, out, err, wait, mode)
+        loop = Loop(runner, spec, out, err, wait, mode, clock)
         loop.run(dry)
         loop.list_what_sessions_wrote()
         loop.moved(FINISHED)
@@ -1920,9 +1950,13 @@ def main(argv, runner, out, err, wait):
         loop.list_what_sessions_wrote()
         loop.stopped_on(said)
         return REFUSED
+    finally:
+        # An interrupt passes both handlers, and a beat after it would show a dead loop as live.
+        if loop is not None:
+            loop.heartbeat_stopped()
 
 
 if __name__ == "__main__":
     speaking_any_character(sys.stdout)
     speaking_any_character(sys.stderr)
-    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep))
+    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep, Clock()))

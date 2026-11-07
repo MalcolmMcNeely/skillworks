@@ -11,6 +11,7 @@ from typing import NamedTuple
 
 import land_ticket
 import spec_loop
+from clock.held_clock import HeldClock
 from conftest import PLUGIN, ROOT, Ran, RecordingRunner
 from runner import Subprocess
 
@@ -106,7 +107,7 @@ def driver_lines():
 
     with tempfile.TemporaryDirectory() as folder:
         loop = spec_loop.Loop(runner, SPEC, io.StringIO(), io.StringIO(), lambda seconds: None,
-                              "acceptEdits")
+                              "acceptEdits", HeldClock())
         # Where the driver logs what it says is not what this proves.
         loop.log = Path(folder) / "loop.log"
         # This checkout's loop.json names the Tracker whose lines are proved.
