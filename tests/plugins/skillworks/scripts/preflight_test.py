@@ -50,6 +50,7 @@ class Work:
         self.rules = {}
         self.protections = {}
         self.target("main")
+        self.domain_docs("# Domain Docs\n\n```yaml\nadr-folder: docs/adr\n```\n")
         self.install("skillworks")
         runner.stub("gh", does=self.gh)
         runner.stub("claude", does=self.claude)
@@ -59,6 +60,9 @@ class Work:
         loop.parent.mkdir(parents=True, exist_ok=True)
         loop.write_text(json.dumps({"tracker": tracker, "target-branch": branch}, indent=2) + "\n",
                         encoding="utf-8", newline="\n")
+
+    def domain_docs(self, text):
+        (self.repo / "docs" / "agents" / "domain.md").write_text(text, encoding="utf-8", newline="\n")
 
     def loop_file(self, text):
         (self.repo / "docs" / "agents" / "loop.json").write_text(text, encoding="utf-8", newline="\n")
@@ -334,6 +338,27 @@ def test_a_loop_file_with_no_target_branch_fails(work):
 
     assert ran.status == 1, said(ran)
     assert "FAIL  docs/agents/loop.json names no target-branch." in ran.err
+
+
+def test_domain_docs_that_name_no_adr_folder_fail_naming_setup(work):
+    work.domain_docs("# Domain Docs\n\nNo settings yet.\n")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert "FAIL  docs/agents/domain.md " in ran.err
+    assert "adr-folder" in ran.err
+    assert "/skillworks:skillworks-setup" in ran.err
+    assert "label ready-for-agent" not in ran.out
+
+
+def test_the_adr_folder_the_domain_docs_name_is_reported(work):
+    work.domain_docs("# Domain Docs\n\n```yaml\nadr-folder: docs/decisions\n```\n")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    adr-folder docs/decisions" in ran.out
 
 
 def test_a_loop_file_with_no_tracker_fails(work):

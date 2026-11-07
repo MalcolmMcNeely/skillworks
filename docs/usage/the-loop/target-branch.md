@@ -8,7 +8,8 @@ answer.
 
 **A branch name**, such as `main`, `master` or `develop`. That branch is the Target branch for every
 ticket of every spec. The loop cuts each Job branch from it, Lands each ticket on it, and pushes to it
-straight away. The grill pushes each word and ADR to it as they settle.
+straight away. The grill pushes each word and ADR to it as they settle, each ADR in the folder
+`adr-folder` names.
 
 ```json
 { "target-branch": "main" }

@@ -9,6 +9,7 @@ from pathlib import Path
 from configuration.checks import check_configuration
 from output.streams import speaking_any_character
 from runner import Subprocess
+from steering.adr_folder import adr_folder
 from steering.export import export_on
 from steering.rule_imports import RULES_FOLDER, missing_import
 from steering.target_branch import SPEC_MODE, target_setting, tracker_setting
@@ -73,6 +74,7 @@ class Preflight:
         self.tracker = tracker_setting(self.top)
         self.target = target_setting(self.top)
         export_on(self.top)
+        ok(self.out, "adr-folder " + adr_folder(self.top))
         self.check_claude()
         self.origin = self.check_origin()
 

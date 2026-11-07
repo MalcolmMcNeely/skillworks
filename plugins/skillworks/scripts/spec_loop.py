@@ -54,6 +54,7 @@ from position.position import (BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBE
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
 from seed_steering import missing_steering
+from steering.adr_folder import missing_adr_folder
 from steering.export import export_on
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
@@ -1073,7 +1074,7 @@ class Loop:
         self.exports = export_on(self.root)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")
-        missing = missing_steering(self.root) or missing_import(self.root)
+        missing = missing_steering(self.root) or missing_import(self.root) or missing_adr_folder(self.root)
         if missing:
             raise stop("ABORT " + missing)
         reason = self.tracker.connect()

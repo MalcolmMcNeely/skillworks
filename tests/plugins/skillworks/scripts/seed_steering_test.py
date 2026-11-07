@@ -337,6 +337,34 @@ def test_the_rules_arrive_with_their_settings_empty(repo, runner):
     assert "doc-comments: false" in settings_block(rules / "comments.md")
 
 
+def test_the_domain_docs_arrive_naming_docs_adr_as_the_adr_folder(repo, runner):
+    run_seed(runner, repo.work)
+
+    assert settings_block(repo.work / WHERE["domain.md"]) == ["adr-folder: docs/adr"]
+
+
+# Each context sits under src/ in the trees, so an ADR folder below that line belongs to a context.
+def under_src(text):
+    trees = [block for block in re.findall(r"```\n(.*?)```", text, re.DOTALL) if "/\n" in block]
+    return [line for tree in trees for line in tree.split("src/", 1)[-1].splitlines() if "src/" in tree]
+
+
+@pytest.mark.parametrize("page", [SETUP / "seeds" / "domain.md", SKILLS / "domain-modeling" / "SKILL.md"])
+def test_a_folder_tree_holds_no_adr_folder_under_a_context(page):
+    lines = under_src(page.read_text(encoding="utf-8"))
+
+    assert lines
+    assert [line for line in lines if "adr" in line] == []
+
+
+def test_the_domain_docs_seed_names_the_setting_and_not_a_fixed_folder_for_a_reader():
+    text = seeded("domain.md")
+    read_these = text.split("## Before exploring, read these\n", 1)[1].split("\n## ", 1)[0]
+
+    assert "`adr-folder`" in read_these
+    assert "`docs/adr/`" not in read_these
+
+
 def test_a_seed_already_there_is_kept_and_its_difference_shown(repo, runner):
     edited = repo.work / "docs" / "agents" / "issue-tracker.md"
     edited.parent.mkdir(parents=True)

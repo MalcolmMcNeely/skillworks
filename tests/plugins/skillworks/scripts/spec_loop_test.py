@@ -545,6 +545,19 @@ def test_a_missing_steering_file_stops_the_dry_run_naming_the_file_and_setup(loo
     assert "DRY" not in ran.out
 
 
+def test_domain_docs_that_name_no_adr_folder_stop_the_dry_run_naming_setup(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    (loop.repo.work / "docs" / "agents" / "domain.md").write_text("# Domain Docs\n", encoding="utf-8",
+                                                                   newline="\n")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert "ABORT docs/agents/domain.md has no YAML block at its end, so it names no adr-folder." in said(ran)
+    assert "/skillworks:skillworks-setup" in said(ran)
+    assert "DRY" not in ran.out
+
+
 def test_a_repo_holding_every_seeded_file_passes_the_steering_check(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 

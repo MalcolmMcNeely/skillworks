@@ -133,7 +133,7 @@ are there to answer.
 | The three reports, and each Edit | The driver puts them in the `fix` prompt. |
 | The commits | They sit on the Job branch. |
 | The Closing note | It is on the ticket when the ticket closes. |
-| What is pushed to the repo | Such as the glossary and the ADRs. |
+| What is pushed to the repo | Such as the glossary, and the ADRs in the folder `adr-folder` names. |
 
 Nothing else carries. That is why a grill pushes each word and ADR the moment it settles: a
 decision that stays in the grill's Session is lost to every Session after it.

@@ -3,6 +3,7 @@
 import re
 from pathlib import PurePosixPath
 
+from steering.yaml_block import last_yaml_span
 from stop import refusal
 
 MAP_FILE = "CONTEXT-MAP.md"
@@ -33,12 +34,10 @@ def list_key(name):
 
 def with_empty_lists(rule, names):
     lines = rule.rstrip("\n").split("\n")
-    fences = [at for at, line in enumerate(lines) if line.strip().startswith("```")]
-    opens = [at for at in fences if lines[at].strip() == "```yaml"]
-    if not opens:
+    span = last_yaml_span(lines)
+    if span is None:
         return None
-    start = opens[-1] + 1
-    end = next((at for at in fences if at > start), len(lines))
+    start, end = span
     at = next((at for at in range(start, end) if lines[at].startswith("banned-words:")), None)
     if at is None:
         return None

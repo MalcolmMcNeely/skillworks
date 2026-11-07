@@ -146,6 +146,17 @@ which writes the file again:
 ABORT docs/agents/review-standards.md is missing, and setup seeds it. Run /skillworks:skillworks-setup to write it again.
 ```
 
+**No ADR folder.** Before any ticket, and before a dry run prints its plan, the script reads
+`adr-folder` from the YAML block at the end of `docs/agents/domain.md`. It names the one folder every
+new ADR goes to. A missing file, a missing block, a missing `adr-folder` and an empty one each stop
+the loop, so no ADR is written to a folder nobody chose. The fix is to run setup, which asks where
+your ADRs go and writes the answer. Setup's preflight stops the same way, with `FAIL` in place of
+`ABORT`:
+
+```
+ABORT docs/agents/domain.md names no adr-folder. Run /skillworks:skillworks-setup to choose the folder new ADRs go to.
+```
+
 **A spec with no commit to read.** Before the drift check, the drift re-check and the Name check, the
 script looks up the spec's commits the way `spec-commits` does. Every Landed ticket's commit names its
 ticket in a `Ticket:` trailer, so a spec with no such commit after the base commit and no closed

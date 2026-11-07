@@ -22,7 +22,7 @@ before. [Steering](../steering.md) lists the setting.
 | Branch | Its name | What it holds |
 |---|---|---|
 | The Steering branch | `skillworks/steering` | The Steering: `loop.json`, the Suite, the rules and the imports in `CLAUDE.md`. Each Target branch is cut from it. |
-| The Target branch | `skillworks/spec/<your branch>` | Everything the loop did for one spec: the grill's words and ADRs, the tickets' commits, the bookkeeping commits and the Steering. |
+| The Target branch | `skillworks/spec/<your branch>` | Everything the loop did for one spec: the grill's words, its ADRs in the folder `adr-folder` names, the tickets' commits, the bookkeeping commits and the Steering. |
 | The Export branch | Your branch, such as `feature/PROJ-12/slug` | The work alone. You cut it, start the grill on it, and push it when the Export is done. |
 
 The Steering branch and the Target branches live on `origin`. With the `files` Tracker, `origin` can

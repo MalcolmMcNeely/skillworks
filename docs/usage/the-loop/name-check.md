@@ -14,7 +14,8 @@ brought in, the Gap ticket's too. The script opens one more worktree and runs
   the spec's whole diff. A commit with no `Ticket:` trailer is not read, and neither is another
   spec's work;
 - the glossary of each context those commits touch. `docs/agents/domain.md` says where your
-  glossaries are, and the Name check finds them through it.
+  glossaries are, and the Name check finds them through it. Its `adr-folder` names your ADR folder,
+  which the Name check does not read.
 
 It lists two kinds of finding, and each one is a rename:
 
