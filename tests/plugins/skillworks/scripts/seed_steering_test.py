@@ -389,12 +389,17 @@ def test_this_repo_holds_the_adr_shape_file_with_the_seeds_text():
     assert (ROOT / "docs" / "agents" / "adr-format.md").read_text(encoding="utf-8") == seeded("adr-format.md")
 
 
-def adr_format_page():
-    return (SKILLS / "domain-modeling" / "ADR-FORMAT.md").read_text(encoding="utf-8")
+def adr_writing_page():
+    return (SKILLS / "domain-modeling" / "WRITING-ADRS.md").read_text(encoding="utf-8")
+
+
+def test_domain_modeling_points_at_the_page_on_writing_adrs_and_no_page_named_for_the_adr_format():
+    assert "[WRITING-ADRS.md](./WRITING-ADRS.md)" in skill_text("domain-modeling")
+    assert not (SKILLS / "domain-modeling" / "ADR-FORMAT.md").exists()
 
 
 def test_domain_modeling_reads_the_adr_shape_from_steering_and_the_folder_from_the_setting():
-    page = adr_format_page()
+    page = adr_writing_page()
 
     assert "`docs/agents/adr-format.md`" in page
     assert "`adr-folder`" in page
@@ -405,7 +410,7 @@ def test_domain_modeling_reads_the_adr_shape_from_steering_and_the_folder_from_t
 
 
 def test_domain_modeling_numbers_a_new_adr_at_the_folders_width():
-    numbering = section(adr_format_page(), "Numbering")
+    numbering = section(adr_writing_page(), "Numbering")
 
     assert "one above the highest" in numbering
     assert "digit count" in numbering
@@ -413,7 +418,7 @@ def test_domain_modeling_numbers_a_new_adr_at_the_folders_width():
 
 
 def test_domain_modeling_keeps_when_to_offer_an_adr():
-    offer = section(adr_format_page(), "When to offer an ADR")
+    offer = section(adr_writing_page(), "When to offer an ADR")
 
     for test in ("**Hard to reverse**", "**Surprising without context**", "**The result of a real trade-off**"):
         assert test in offer, test
@@ -2181,7 +2186,7 @@ STEERING_READERS = {
                   "spec-names/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
                   "codebase-design/DESIGN-IT-TWICE.md", "context-backfill/SKILL.md",
                   "improve-codebase-architecture/SKILL.md"],
-    "adr-format.md": ["domain-modeling/ADR-FORMAT.md", "context-backfill/SKILL.md",
+    "adr-format.md": ["domain-modeling/WRITING-ADRS.md", "context-backfill/SKILL.md",
                       "improve-codebase-architecture/SKILL.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],

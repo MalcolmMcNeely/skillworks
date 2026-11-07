@@ -1,4 +1,4 @@
-# ADR Format
+# Writing ADRs
 
 Every new ADR goes to the one folder that `adr-folder` names, in the YAML block at the end of `docs/agents/domain.md`, whatever context it is about. Create that folder lazily — only when the first ADR is needed.
 
