@@ -20,7 +20,7 @@ The outputs:
 |---|---|
 | The `ready-for-agent` label, with `github` only | `/skillworks:to-spec` and `/skillworks:to-tickets` apply it, and `gh issue create` fails on a label that does not exist. Nothing in the loop reads it. |
 | `docs/agents/rules/*.md` | The five rules: comments, determinism, file placement, testing and words. The review axes read them. The testing rule holds the team's taste in tests and has no settings. The settings that name what a rule judges start empty, so nothing is judged until the team fills them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the words rule's `skip-folders`. The others ship with a default the team can change: `doc-comments`, `clock`, `max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`, `banned-folder-names` and `name-map`. |
-| `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. |
+| `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. The YAML block at the end of `domain.md` holds `adr-folder`, the one folder every new ADR goes to. Setup asks for it. |
 | `docs/agents/adr-format.md` | The ADR shape: the template and the optional sections every new ADR fills. It starts with the Skillworks shape, and a team edits it so new ADRs look like the ones it keeps. |
 | `docs/agents/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the baseline for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no baseline. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
@@ -61,6 +61,8 @@ When `skillworks/steering` is already a branch, here or on `origin`, an earlier 
 Steps 1 to 6 then run on the Steering branch. After step 1, write `"export": true` and `"target-branch": "spec"` into `docs/agents/loop.json`, and change no other key.
 
 ### 1. Seed the Steering
+
+Before you run it, read `adr-folder` from the YAML block at the end of `docs/agents/domain.md`, where the file is there and names one. That is an earlier run's answer, and step 4 suggests it. Read it first, because the seed writes `docs/adr` into a file that names none, and that default is not the team's answer.
 
 ```bash
 seed-steering
@@ -136,7 +138,15 @@ With the Export, ask nothing here, and write `spec`. The Export works only with 
 
 ### 4. Point CLAUDE.md at the docs
 
-Add this block to `CLAUDE.md`. Create the file if it is missing. If the block is already there, update it in place — never append a second copy. Leave every other section alone.
+First ask the team where its ADRs go. Every new ADR goes to this one folder, whatever context it is about, and the Domain docs line below names it. Suggest one folder, the first of these that holds:
+
+1. The folder `adr-folder` names in `docs/agents/domain.md`, as you read it before step 1. So a second run keeps the team's answer.
+2. Else a folder that holds numbered Markdown files and has `adr` or `decision` in its path. A numbered file is named `<number>-<slug>.md`, such as `0001-event-sourced-orders.md`. Match `adr` and `decision` in any letter case. List every such folder you find, and suggest the one with the most files.
+3. Else `docs/adr`.
+
+Write the answer into `adr-folder` in the YAML block at the end of `docs/agents/domain.md`, and change no other line. Write it as a path from the repo root, with no `/` at its end. Where the file has no YAML block at its end, add one that holds `adr-folder` alone. Preflight in step 5 stops while the setting is missing or empty.
+
+Then add this block to `CLAUDE.md`. Create the file if it is missing. If the block is already there, update it in place — never append a second copy. Leave every other section alone.
 
 ```markdown
 ## Agent skills
@@ -147,7 +157,7 @@ GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `CONTEXT.md` and `<adr-folder>/` at the repo root. See `docs/agents/domain.md`.
 
 ### Steering
 
@@ -168,7 +178,13 @@ The imports are what load the rules, so keep one for each file in `docs/agents/r
 
 With `files`, write the Issue tracker line as: committed files in `.specs/`, one folder per spec and one file per ticket. See `docs/agents/issue-tracker.md`, under The files Tracker.
 
-If the repo has `CONTEXT-MAP.md`, write the Domain docs line as multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context.
+If the repo has `CONTEXT-MAP.md`, write the Domain docs line as multi-context, in the words Context backfill writes when it switches the line:
+
+```
+Multi-context: `CONTEXT-MAP.md` and `<adr-folder>/` at the repo root, and one `CONTEXT.md` per context. See `docs/agents/domain.md`.
+```
+
+Write the folder `adr-folder` names in place of `<adr-folder>`, in either line, such as `docs/architecture-decision-log/`.
 
 If the repo has `AGENTS.md` and no `CLAUDE.md`, edit `AGENTS.md` instead. Never create the one that is missing when the other exists.
 

@@ -73,9 +73,10 @@ says.
    you that `.specs/` is committed and must never be gitignored.
 3. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `spec`. It
    writes your answer into `target-branch` in `docs/agents/loop.json`.
-4. **Point `CLAUDE.md` at the docs.** Setup adds an `## Agent skills` block that names your Tracker,
-   your tracker docs and your domain docs, and imports the five rules: comments, determinism, file
-   placement, testing and words.
+4. **Point `CLAUDE.md` at the docs.** Setup asks where your ADRs go, and writes your answer into
+   `adr-folder` in `docs/agents/domain.md`. Then it adds an `## Agent skills` block that names your
+   Tracker, your tracker docs and your domain docs, with the folder `adr-folder` names, and imports
+   the five rules: comments, determinism, file placement, testing and words.
 5. **Preflight.** `skillworks-preflight` checks the tools, the remote, the Target branch
    `docs/agents/loop.json` names, and that `CLAUDE.md` imports each rule. With `github`, it checks the
    `gh` login too, and then creates the `ready-for-agent` label on GitHub. With `files`, it needs no
@@ -101,9 +102,9 @@ in step 6.
 
 ## The questions setup asks
 
-Setup asks five things on a clean repo: whether the work goes to a team that does not use
-Skillworks, your Tracker, your Target branch, whether commits credit Claude, and the one yes it
-needs. With a yes to the first, it asks no Target branch. It asks more only where your repo already holds an answer of its
+Setup asks six things on a clean repo: whether the work goes to a team that does not use
+Skillworks, your Tracker, your Target branch, where your ADRs go, whether commits credit Claude, and
+the one yes it needs. With a yes to the first, it asks no Target branch. It asks more only where your repo already holds an answer of its
 own.
 
 | Question | When setup asks it |
@@ -111,6 +112,7 @@ own.
 | Will the work go to a team that does not use Skillworks? | Always, first. Setup suggests no, so the common answer is one keypress. If `origin` already holds `skillworks/steering`, and its `docs/agents/loop.json` sets `export` to `true`, setup suggests yes. With yes and the `files` Tracker, setup tells you to make `origin` a remote of your own first, such as a bare repo on your machine, so the loop's pushes do not reach your team's remote by mistake. [Work for a team that does not use Skillworks](#work-for-a-team-that-does-not-use-skillworks) says what yes does. |
 | Which Tracker does your team use? | Always. Setup suggests `github` when `origin` names `github.com`, and `files` otherwise, so the common answer is one keypress. If `tracker` in `docs/agents/loop.json` already names another answer, setup suggests that one. |
 | Which is your Target branch? | Always, unless you answered yes to the first question. Then setup asks nothing and writes `spec`. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `spec` for one pull request per spec. If `docs/agents/loop.json` already names another answer, setup suggests that one. |
+| Where do your ADRs go? | Always. Setup writes your answer into `adr-folder` in `docs/agents/domain.md`, and every new ADR goes to that one folder. It suggests one folder. On a second run, it suggests the folder `adr-folder` already names, so your answer survives. Else it looks for folders that hold numbered Markdown files, such as `0001-event-sourced-orders.md`, and have `adr` or `decision` in their path. It lists every one it finds, and suggests the one with the most files. Else it suggests `docs/adr`. A repo set up before this question existed stops at preflight until setup runs again, and one run clears the stop. |
 | Should commits and pull requests credit Claude? | Always. On a first run setup suggests `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/agents/loop.json` already names an answer, setup suggests that one. [Credit for Claude](#credit-for-claude) says what each answer does. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push`, `gh issue close` and `tracker-publish` with no prompt. That is the point, and also the risk. |
 | Which side of this overlap do you keep, yours or the Seed's? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and asks once for each overlap. |
@@ -130,7 +132,7 @@ Review these before you commit them.
 | `docs/agents/rules/testing.md` | The testing rule: your team's taste in tests. It has no settings. |
 | `docs/agents/rules/words.md` | The words rule. `banned-words` and `skip-folders` start empty. |
 | `docs/agents/issue-tracker.md` | How the skills read and write each Tracker: the `gh` calls for `github`, and the `.specs/` files for `files`. The ticket shape, and the two conventions the loop leans on. |
-| `docs/agents/domain.md` | Where your glossary and your ADRs live. |
+| `docs/agents/domain.md` | Where your glossary and your ADRs live. `adr-folder` holds your answer on where new ADRs go. |
 | `docs/agents/adr-format.md` | The shape of an ADR: its template and its optional sections. It starts with the Skillworks shape. |
 | `docs/agents/placement-checks.md` | The commands that prove placement. It starts with none. |
 | `docs/agents/review-standards.md` | What the `standards` review checks: the code smells, and your team's own checks. It starts with no check of your own. |

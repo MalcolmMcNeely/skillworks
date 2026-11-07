@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import seed_steering
 from conftest import PLUGIN, ROOT, Ran, Repo, git, launch
+from context_backfill.context_map import MULTI_CONTEXT
 from suite import Suite
 from tracker.files import CLOSING_NOTE
 from tracker.reading import DRIFT_REPORT, NAME_REPORT
@@ -2711,6 +2712,52 @@ def test_the_claude_md_pointer_imports_each_rule():
     lines = pointer[0].splitlines()
     for rule in RULES:
         assert "@docs/agents/rules/{}".format(rule) in lines, rule
+
+
+POINTER_STEP = "### 4. Point CLAUDE.md at the docs"
+
+
+def test_setup_suggests_the_adr_folder_the_domain_docs_name_then_one_it_finds_then_docs_adr():
+    step = " ".join(setup_section(POINTER_STEP).split())
+    named = step.index("1. The folder `adr-folder` names in `docs/agents/domain.md`")
+    found = step.index("2. Else a folder that holds numbered Markdown files and has `adr` or `decision` in its path.")
+    default = step.index("3. Else `docs/adr`.")
+
+    assert named < found < default
+    assert "List every such folder you find, and suggest the one with the most files." in step
+
+
+def test_setup_reads_an_earlier_adr_folder_before_the_seed_writes_its_default():
+    step = " ".join(setup_section("### 1. Seed the Steering").split())
+
+    assert "Before you run it, read `adr-folder` from the YAML block at the end of `docs/agents/domain.md`" in step
+    assert "the seed writes `docs/adr` into a file that names none" in step
+
+
+def test_setup_writes_the_adr_folder_answer_into_the_domain_docs_yaml_block():
+    step = " ".join(setup_section(POINTER_STEP).split())
+
+    assert ("Write the answer into `adr-folder` in the YAML block at the end of `docs/agents/domain.md`, "
+            "and change no other line.") in step
+
+
+def test_the_claude_md_domain_docs_lines_name_the_adr_folder_in_the_words_context_backfill_writes():
+    step = setup_section(POINTER_STEP)
+    pointer = re.findall(r"```markdown\n(.*?)```", step, re.DOTALL)[0]
+
+    assert "Single-context: `CONTEXT.md` and `<adr-folder>/` at the repo root. See `docs/agents/domain.md`." in pointer
+    assert MULTI_CONTEXT.format("<adr-folder>") in step
+    assert "docs/adr/" not in step
+    assert "Write the folder `adr-folder` names in place of `<adr-folder>`" in step
+
+
+def test_the_setup_page_lists_the_adr_folder_among_the_questions_setup_asks():
+    questions = SETUP_PAGE.read_text(encoding="utf-8").split("## The questions setup asks", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in questions.splitlines() if line.startswith("| Where do your ADRs go? |")]
+
+    assert len(rows) == 1
+    for words in ("`adr-folder`", "`adr` or `decision`", "the most files", "`docs/adr`", "On a second run"):
+        assert words in rows[0], words
 
 
 def test_the_report_names_the_folder_each_steering_file_lives_in():
