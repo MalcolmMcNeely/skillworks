@@ -7,17 +7,17 @@ from typing import NamedTuple, Optional
 from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET_FILE, WORD, bold_name, read_sheet,
                                            references, what_is_left)
 from context_backfill.context_map import MAP_FILE, contexts_of, map_edits
+from steering.adr_folder import adr_folder
 from steering.target_branch import LOOP_FILE, SPEC_MODE, target_setting
 from stop import refusal
 
 GLOSSARY_FILE = "CONTEXT.md"
-ADR_FOLDER = "docs/adr"
 LANGUAGE = "## Language"
 WORD_LINE = re.compile(r"^\*\*(.+?)\*\*:")
 ADR_NAME = re.compile(r"^(\d+)-.*\.md$")
 PART = "#### "
-STATUS = "Status: "
-SUPERSEDES = "This supersedes "
+SUPERSEDED_BY_BELOW = "Status: superseded by the decision below"
+SUPERSEDES_ABOVE = "This supersedes the decision above."
 SPEC_BRANCH = "spec/context-backfill"
 PULL_REQUEST_TITLE = "Context backfill"
 PULL_REQUEST_BODY = ("The words, the map and the ADRs Context backfill recovered from the history, as the Answer "
@@ -155,19 +155,31 @@ def write_words(top, glossary, title, words, out):
     return written
 
 
-def next_number(folder):
-    numbers = [int(found.group(1)) for found in (ADR_NAME.match(path.name) for path in folder.glob("*.md")) if found]
-    return max(numbers, default=0) + 1
+class Numbering(NamedTuple):
+    first: int
+    width: int
+
+    def of(self, number):
+        return "{:0{}d}".format(number, self.width)
+
+
+# A new ADR sorts in its place only when it is padded as wide as the team's own.
+def numbering(folder):
+    held = [found.group(1) for found in (ADR_NAME.match(path.name) for path in folder.glob("*.md")) if found]
+    if not held:
+        return Numbering(1, 4)
+    highest = max(held, key=int)
+    return Numbering(int(highest) + 1, len(highest))
 
 
 def slug(title):
     return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "decision"
 
 
-def write_adr(top, number, title, text, evidence):
-    folder = Path(top) / ADR_FOLDER
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / "{:04d}-{}.md".format(number, slug(title))
+def write_adr(top, folder, number, title, text, evidence):
+    where = Path(top) / folder
+    where.mkdir(parents=True, exist_ok=True)
+    path = where / "{}-{}.md".format(number, slug(title))
     refs = references(evidence) or evidence
     path.write_text("# {}\n\n{}\n\nRecovered from history: {}\n".format(title, text, ", ".join(refs)),
                     encoding="utf-8", newline="\n")
@@ -186,26 +198,24 @@ def parts_of(text):
 
 # The sheet is written before the numbers exist, so the numbers that tie the pair together are written here.
 def superseded(text, by):
-    kept = [line for line in text.split("\n") if not line.startswith(STATUS)]
-    return "{}superseded by ADR-{:04d}\n\n{}".format(STATUS, by, "\n".join(kept).strip("\n"))
+    return text.replace(SUPERSEDED_BY_BELOW, "Status: superseded by ADR-" + by)
 
 
 def superseding(text, old):
-    if text.startswith(SUPERSEDES):
-        text = text.split(". ", 1)[1] if ". " in text else ""
-    return "{}ADR {:04d}. {}".format(SUPERSEDES, old, text).rstrip()
+    return text.replace(SUPERSEDES_ABOVE, "This supersedes ADR {}.".format(old))
 
 
-def write_decisions(runner, top, entry):
+def write_decisions(runner, top, folder, entry):
     parts = parts_of(entry.text)
-    number = next_number(Path(top) / ADR_FOLDER)
+    numbers = numbering(Path(top) / folder)
+    first, second = numbers.of(numbers.first), numbers.of(numbers.first + 1)
     if len(parts) != 2:
-        return [commit(runner, top, (write_adr(top, number, entry.title, entry.text, entry.evidence),),
+        return [commit(runner, top, (write_adr(top, folder, first, entry.title, entry.text, entry.evidence),),
                        "ADR: " + entry.title)]
     (old_title, old_text), (new_title, new_text) = parts
-    return [commit(runner, top, (write_adr(top, number, old_title, superseded(old_text, number + 1),
+    return [commit(runner, top, (write_adr(top, folder, first, old_title, superseded(old_text, second),
                                            entry.evidence),), "ADR: " + old_title),
-            commit(runner, top, (write_adr(top, number + 1, new_title, superseding(new_text, number),
+            commit(runner, top, (write_adr(top, folder, second, new_title, superseding(new_text, first),
                                            entry.evidence),), "ADR: " + new_title)]
 
 
@@ -258,6 +268,7 @@ def apply(runner, top, scratch, out):
     map_entry, contexts = map_of(top, taken)
     groups = glossaries(top, taken, contexts)
     edits = map_edits(Path(top), map_entry) if map_entry else {}
+    folder = adr_folder(top) if any(entry.letter == DECISION for entry in taken) else None
     destination = destination_of(runner, top)
     if taken:
         branch_off(runner, top, destination)
@@ -274,7 +285,7 @@ def apply(runner, top, scratch, out):
         if written:
             made.append(commit(runner, top, (glossary,), "Glossary: {} in {}".format(words_of(written), glossary)))
     for entry in (entry for entry in taken if entry.letter == DECISION):
-        made += write_decisions(runner, top, entry)
+        made += write_decisions(runner, top, folder, entry)
     rewritten = what_is_left(sheet)
     path.write_text(rewritten, encoding="utf-8", newline="\n")
     left = [entry.name for entry in read_sheet(rewritten).entries]

@@ -84,7 +84,7 @@ Write nothing in the repo during the passes. Every file a pass writes is in `.co
 - Use the words Context backfill, Draft, Answer, Answer sheet and Question for those things, and no other words for them.
 - Never write a reason the history does not give. A why is a quote or a close paraphrase of a commit body, a ticket, a pull request or a thread, and it names its source. Where no source gives a why, say that no source gives one.
 - Quote each piece of evidence with its reference: a commit by its short hash and subject, a ticket or a pull request by its number, a spec by its path, and a code line by its path and line number.
-- Read an existing `CONTEXT.md`, `CONTEXT-MAP.md` and `docs/adr/` as evidence. Never offer again what they already hold, and never change them.
+- Read an existing `CONTEXT.md`, `CONTEXT-MAP.md` and the folder `adr-folder` names in `docs/agents/domain.md` as evidence. Never offer again what they already hold, and never change them.
 
 ### The shape pass
 
@@ -193,10 +193,10 @@ context-backfill apply
 
 It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the sheet, never the text a pass wrote, so a Draft the person edited is written as edited:
 
-- An accepted map goes into `CONTEXT-MAP.md` at the repo root. In the same commit it adds an empty banned-words list, written `[]`, to `docs/agents/rules/words.md` for each context the map names, and switches the Domain docs line in `CLAUDE.md` to multi-context. It edits nothing else in Steering, and never adds a word to a banned-words list.
+- An accepted map goes into `CONTEXT-MAP.md` at the repo root. In the same commit it adds an empty banned-words list, written `[]`, to `docs/agents/rules/words.md` for each context the map names, and switches the Domain docs line in `CLAUDE.md` to multi-context, naming the folder `adr-folder` names. It edits nothing else in Steering, and never adds a word to a banned-words list.
 - Each accepted word goes into the glossary, in alphabetical order, with its `_Avoid_` line and never with its evidence. Without a map, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, at the path the map gives it. It creates the file when there is none.
-- Each accepted decision goes into `docs/adr/`, numbered one above the highest number there, with the title as its heading and the Draft's text as its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
-- An accepted reversal goes in as two ADRs with two numbers in a row, each titled by its `####` heading, and each ending with the same `Recovered from history:` line. The old decision comes first, with the status line `Status: superseded by ADR-<new number>`. The new decision comes second, and its first sentence is `This supersedes ADR <old number>.`
+- Each accepted decision goes into the folder that `adr-folder` names, in the YAML block at the end of `docs/agents/domain.md`. Its number is one above the highest leading number of any `<number>-<slug>.md` file in that folder, padded to the digit count of the file with the highest number. An empty or missing folder gives `0001`, and a number held twice causes no stop. The title is its heading and the Draft's text, exactly as accepted, is its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
+- An accepted reversal goes in as two ADRs with two numbers in a row, each titled by its `####` heading, and each ending with the same `Recovered from history:` line. The old decision comes first, and the new decision second. In place, wherever the text puts them, `Status: superseded by the decision below` becomes `Status: superseded by ADR-<new number>`, and `This supersedes the decision above.` becomes `This supersedes ADR <old number>.`, each number at the folder's width. Nothing else in the text changes.
 - A Question whose `Reason:` line holds a reason comes back on the rewritten sheet as a decision Draft under Decisions, with the Question's text, the reason as its why, the same evidence and a blank `Answer:` line. No ADR is written from it in this run. A Question whose `Reason:` line is `?` or blank stays a Question.
 - Each rejected Draft is dropped, and is written nowhere.
 - A word, a map or an ADR already in the repo is never changed.
@@ -205,7 +205,7 @@ It makes one `Glossary:` commit for the map and its Steering edits, naming the m
 
 It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a decision Draft for each written reason. It prints what is left.
 
-If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in `spec` mode, on the default branch or `spec/context-backfill`, when an accepted word names a context no map holds, and when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change. A refusal after the commits says the commits are made and names the command that sends them.
+If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in `spec` mode, on the default branch or `spec/context-backfill`, when an accepted word names a context no map holds, when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change, and when an accepted map or decision needs the ADR folder and `docs/agents/domain.md` names no `adr-folder`. A refusal after the commits says the commits are made and names the command that sends them.
 
 ### Talk the `?` lines through
 

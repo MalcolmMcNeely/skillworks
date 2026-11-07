@@ -64,7 +64,13 @@ class History:
         loop = where / "docs" / "agents" / "loop.json"
         loop.parent.mkdir(parents=True, exist_ok=True)
         loop.write_text(json.dumps({"tracker": tracker, "target-branch": "main"}), encoding="utf-8")
+        name_the_adr_folder(where, "docs/adr")
         return where
+
+
+def name_the_adr_folder(where, folder):
+    (where / "docs" / "agents" / "domain.md").write_text(
+        "# Domain Docs\n\n```yaml\nadr-folder: {}\n```\n".format(folder), encoding="utf-8", newline="\n")
 
 
 ANN = ("Ann", "ann@example.invalid")
@@ -364,6 +370,68 @@ def test_an_accepted_adr_takes_the_next_number_and_ends_with_where_it_was_recove
         "Recovered from history: commit 9c1d2e3, pull request #20\n")
 
 
+TEAM_FOLDER = "docs/architecture-decision-log"
+
+
+def one_decision(title="Read the log once"):
+    return sheet(decisions=decision(1, title, "The log is read once per run, because gh is slow.", "accept",
+                                    'commit 6f7a8b9 "Cache the log"'))
+
+
+def team_folder_holding(history, *names):
+    history.commit("The team's decisions", ANN, "2022-03-01T10:00:00+00:00",
+                   {"{}/{}".format(TEAM_FOLDER, name): "# A decision\n" for name in names})
+    history.push()
+
+
+def adrs_in(where, folder):
+    return sorted(path.name for path in (where / folder).glob("*.md"))
+
+
+def test_an_accepted_adr_lands_in_the_folder_the_domain_docs_name(history, checkout, runner):
+    team_folder_holding(history, "0000-record-decisions.md", "0001-use-python.md")
+    git(checkout, "pull", "--quiet", "origin", "main")
+    name_the_adr_folder(checkout, TEAM_FOLDER)
+    mark(checkout, one_decision())
+
+    apply(runner, checkout)
+
+    assert (adrs_in(checkout, TEAM_FOLDER), (checkout / "docs" / "adr").exists()) == (
+        ["0000-record-decisions.md", "0001-use-python.md", "0002-read-the-log-once.md"], False)
+
+
+def test_a_folder_that_numbers_to_three_digits_gives_a_three_digit_number(history, checkout, runner):
+    team_folder_holding(history, "001-record-decisions.md", "041-use-python.md")
+    git(checkout, "pull", "--quiet", "origin", "main")
+    name_the_adr_folder(checkout, TEAM_FOLDER)
+    mark(checkout, one_decision())
+
+    apply(runner, checkout)
+
+    assert adrs_in(checkout, TEAM_FOLDER)[-1] == "042-read-the-log-once.md"
+
+
+def test_an_empty_folder_gives_0001(checkout, runner):
+    (checkout / TEAM_FOLDER).mkdir(parents=True)
+    name_the_adr_folder(checkout, TEAM_FOLDER)
+    mark(checkout, one_decision())
+
+    apply(runner, checkout)
+
+    assert adrs_in(checkout, TEAM_FOLDER) == ["0001-read-the-log-once.md"]
+
+
+def test_a_folder_that_holds_a_number_twice_gives_one_above_the_highest(history, checkout, runner):
+    team_folder_holding(history, "0001-use-python.md", "0002-use-sqlite.md", "0002-use-uv.md")
+    git(checkout, "pull", "--quiet", "origin", "main")
+    name_the_adr_folder(checkout, TEAM_FOLDER)
+    mark(checkout, one_decision())
+
+    ran = apply(runner, checkout)
+
+    assert (ran.status, adrs_in(checkout, TEAM_FOLDER)[-1]) == (0, "0003-read-the-log-once.md")
+
+
 REVERSAL = ("#### Keep the dates in SQLite\nStatus: superseded by the decision below\n"
             "The dates live in SQLite, because one file is all a laptop needs.\n\n"
             "#### Keep the dates in Postgres\n"
@@ -380,12 +448,51 @@ def test_an_accepted_reversal_takes_two_numbers_in_a_row_the_old_marked_supersed
 
     assert (read(grown_checkout, "docs/adr/0003-keep-the-dates-in-sqlite.md"),
             read(grown_checkout, "docs/adr/0004-keep-the-dates-in-postgres.md")) == (
-        "# Keep the dates in SQLite\n\nStatus: superseded by ADR-0004\n\n"
+        "# Keep the dates in SQLite\n\nStatus: superseded by ADR-0004\n"
         "The dates live in SQLite, because one file is all a laptop needs.\n\n"
         "Recovered from history: commit 4b5c6d7, issue #31\n",
         "# Keep the dates in Postgres\n\n"
         "This supersedes ADR 0003. The dates moved to Postgres, because two readers wrote at once.\n\n"
         "Recovered from history: commit 4b5c6d7, issue #31\n")
+
+
+NYGARD_REVERSAL = (
+    "#### Keep the dates in SQLite\n"
+    "## Context\n\nOne laptop reads the dates.\n\n"
+    "## Decision\n\nThe dates live in SQLite.\n\n"
+    "## Status\n\nStatus: superseded by the decision below\n\n"
+    "## Consequences\n\nOne file to copy.\n\n"
+    "#### Keep the dates in Postgres\n"
+    "## Context\n\nTwo readers wrote at once.\n\n"
+    "## Decision\n\nThe dates move to Postgres. This supersedes the decision above.\n\n"
+    "## Status\n\nAccepted\n\n"
+    "## Consequences\n\nA server to run.")
+
+
+def test_a_reversal_in_a_nygard_shape_gets_its_numbered_references_in_place_at_the_folders_width(
+        history, checkout, runner):
+    team_folder_holding(history, "006-use-python.md")
+    git(checkout, "pull", "--quiet", "origin", "main")
+    name_the_adr_folder(checkout, TEAM_FOLDER)
+    mark(checkout, sheet(decisions=decision(
+        1, "SQLite gave way to Postgres", NYGARD_REVERSAL, "accept", 'commit 4b5c6d7 "Add SQLite"')))
+
+    apply(runner, checkout)
+
+    assert (read(checkout, TEAM_FOLDER + "/007-keep-the-dates-in-sqlite.md"),
+            read(checkout, TEAM_FOLDER + "/008-keep-the-dates-in-postgres.md")) == (
+        "# Keep the dates in SQLite\n\n"
+        "## Context\n\nOne laptop reads the dates.\n\n"
+        "## Decision\n\nThe dates live in SQLite.\n\n"
+        "## Status\n\nStatus: superseded by ADR-008\n\n"
+        "## Consequences\n\nOne file to copy.\n\n"
+        "Recovered from history: commit 4b5c6d7\n",
+        "# Keep the dates in Postgres\n\n"
+        "## Context\n\nTwo readers wrote at once.\n\n"
+        "## Decision\n\nThe dates move to Postgres. This supersedes ADR 007.\n\n"
+        "## Status\n\nAccepted\n\n"
+        "## Consequences\n\nA server to run.\n\n"
+        "Recovered from history: commit 4b5c6d7\n")
 
 
 def test_each_adr_of_a_reversal_gets_its_own_commit(grown, grown_checkout, runner):
@@ -632,6 +739,7 @@ def first_change(history, subject_start):
 
 def test_an_accepted_map_is_written_with_an_empty_list_per_context_and_the_multi_context_line_in_one_commit(
         steered, steered_checkout, runner):
+    name_the_adr_folder(steered_checkout, TEAM_FOLDER)
     mark(steered_checkout, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
 
     apply(runner, steered_checkout)
@@ -644,7 +752,8 @@ def test_an_accepted_map_is_written_with_an_empty_list_per_context_and_the_multi
          ["CLAUDE.md", "CONTEXT-MAP.md", "docs/agents/rules/words.md"]),
         CONTEXT_MAP,
         "banned-words:\n  reader: []\n  web: []\nskip-folders: []\n```\n",
-        "Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context. "
+        "Multi-context: `CONTEXT-MAP.md` and `docs/architecture-decision-log/` at the repo root, and one "
+        "`CONTEXT.md` per context. "
         "See `docs/agents/domain.md`.")
 
 

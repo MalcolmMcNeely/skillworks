@@ -3,6 +3,7 @@
 import re
 from pathlib import PurePosixPath
 
+from steering.adr_folder import adr_folder
 from steering.yaml_block import last_yaml_span
 from stop import refusal
 
@@ -10,7 +11,7 @@ MAP_FILE = "CONTEXT-MAP.md"
 WORDS_RULE = "docs/agents/rules/words.md"
 STEERING_FILES = ("CLAUDE.md", "AGENTS.md")
 DOMAIN_DOCS = "### Domain docs"
-MULTI_CONTEXT = ("Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per "
+MULTI_CONTEXT = ("Multi-context: `CONTEXT-MAP.md` and `{}/` at the repo root, and one `CONTEXT.md` per "
                  "context. See `docs/agents/domain.md`.")
 CONTEXT_LINE = re.compile(r"^\s*[-*]\s*\[([^\]]+)\]\(([^)\s]+)\)")
 LIST_KEY = re.compile(r"^(\s+)([^\s:][^:]*):")
@@ -60,19 +61,20 @@ def with_empty_lists(rule, names):
     return "\n".join(lines[:last + 1] + added + lines[last + 1:]) + "\n"
 
 
-def with_multi_context(steering):
+def with_multi_context(steering, folder):
     lines = steering.rstrip("\n").split("\n")
     if DOMAIN_DOCS not in lines:
         return None
+    line = MULTI_CONTEXT.format(folder.rstrip("/"))
     heading = lines.index(DOMAIN_DOCS)
     at = next((at for at in range(heading + 1, len(lines)) if lines[at].strip()), None)
     if at is None or lines[at].startswith("#"):
-        lines[heading + 1:heading + 1] = ["", MULTI_CONTEXT]
+        lines[heading + 1:heading + 1] = ["", line]
     else:
         # A hand-wrapped line runs on below, and a switch of its first line alone would strand the rest.
         end = next((below for below in range(at, len(lines))
                     if not lines[below].strip() or lines[below].startswith("#")), len(lines))
-        lines[at:end] = [MULTI_CONTEXT]
+        lines[at:end] = [line]
     return "\n".join(lines) + "\n"
 
 
@@ -93,9 +95,11 @@ def map_edits(top, entry):
         raise refusal("The map needs an empty banned-words list for each context, and {} holds no banned-words "
                       "setting this can add to. Run /skillworks:skillworks-setup, then run this again. Nothing "
                       "was written.".format(WORDS_RULE))
+    folder = adr_folder(top)
     name = steering_file(top)
     steering_path = top / name
-    steering = with_multi_context(steering_path.read_text(encoding="utf-8")) if steering_path.is_file() else None
+    steering = (with_multi_context(steering_path.read_text(encoding="utf-8"), folder)
+                if steering_path.is_file() else None)
     if steering is None:
         raise refusal("The map needs the Domain docs line in {} to say multi-context, and {} has no {} section. "
                       "Run /skillworks:skillworks-setup, then run this again. Nothing was written.".format(

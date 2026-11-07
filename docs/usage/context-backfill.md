@@ -234,7 +234,7 @@ writes the text that is on the sheet, so a Draft you edited is written as you ed
 |---|---|
 | `accept` on the map | `CONTEXT-MAP.md` at the repo root, as the sheet holds it. Two Steering files change with it, as the next section says. |
 | `accept` on a word | The glossary, in alphabetical order, with its `_Avoid_` line and no evidence. With one glossary, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, where the map says that context lives. The file is created when there is none. |
-| `accept` on a decision | A new ADR in `docs/adr/`, numbered one above the highest number there, with the Draft's title as its heading and its text as its body. |
+| `accept` on a decision | A new ADR in the folder `adr-folder` names, at the end of `docs/agents/domain.md`. Its number is one above the highest number there, padded as wide as the file with the highest number, so `041` is followed by `042`. An empty folder starts at `0001`. The Draft's title is its heading, and its text is the body, exactly as accepted. |
 | `reject` | Nowhere. The Draft is dropped. |
 | `?` or blank | Nowhere yet. The Draft stays on the sheet. |
 
@@ -250,12 +250,15 @@ where to check it. A word, a map or an ADR already in the repo is never changed.
 ### How a reversal is written
 
 An accepted reversal is written as two ADRs with two numbers in a row, each with its own `ADR:`
-commit. With `0002` the highest number in `docs/adr/`, the example above is written as:
+commit. With `0002` the highest number in the `adr-folder`, the example above is written as:
 
 - `0003-keep-the-dates-in-sqlite.md`, the old decision, with the status line
   `Status: superseded by ADR-0004`.
 - `0004-keep-the-dates-in-postgres.md`, the new decision, whose first sentence is
   `This supersedes ADR 0003.`
+
+Each phrase is swapped in place, where the text puts it, and the rest of the text is written as
+accepted. In a folder that numbers to three digits, the numbers are three digits too.
 
 Both end with the same `Recovered from history:` line. A search for the old choice finds why it
 lost.
@@ -277,7 +280,8 @@ map:
   map names. The words rule wants a list for every context in the map, so a map with no lists would
   turn the Suite red.
 - The Domain docs line in `CLAUDE.md` says multi-context, in the words setup writes for a repo with a
-  map. Every Session reads that line to find the glossaries.
+  map, and it names the folder `adr-folder` names. Every Session reads that line to find the
+  glossaries and the ADRs.
 
 Nothing else in Steering changes. No word is ever added to a banned-words list: a word joins a list
 when the team decides the code must stop using it, and that is not the backfill's call.
