@@ -18,14 +18,14 @@ use with nobody watching.
 <!-- stage map -->
 | Stage | Always loads | Loads on demand | What your team can change |
 |---|---|---|---|
-| The grill | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `adr-format.md`, `surfaces.md` | The glossary and the ADRs. The grill writes them as words and decisions settle, each ADR in the shape `adr-format.md` gives. The Surfaces in `surfaces.md`, which decide what the grill asks once the design is settled. |
+| The grill | `CLAUDE.md` and the rules | `domain.md`, your glossary, the folder `adr-folder` names, `adr-format.md`, `surfaces.md` | The glossary and the ADRs. The grill writes them as words and decisions settle, each ADR in the shape `adr-format.md` gives. The Surfaces in `surfaces.md`, which decide what the grill asks once the design is settled. |
 | The gate | The same Session as the grill | Nothing more | Nothing in a file. Your yes or no is the lever. |
-| The spec | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `docs/adr/`, `surfaces.md` | The glossary and the ADRs, which give the spec its words and its decisions. The Surfaces in `surfaces.md`, which name the Surfaces section of the spec. |
-| The tickets | `CLAUDE.md` and the rules | `issue-tracker.md`, `domain.md`, your glossary, `docs/adr/` | "The ticket shape" in `issue-tracker.md`: the size of a ticket, its title and its sections. The glossary and the ADRs, which give the tickets their words. |
+| The spec | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, the folder `adr-folder` names, `surfaces.md` | The glossary and the ADRs, which give the spec its words and its decisions. The Surfaces in `surfaces.md`, which name the Surfaces section of the spec. |
+| The tickets | `CLAUDE.md` and the rules | `issue-tracker.md`, `domain.md`, your glossary, the folder `adr-folder` names | "The ticket shape" in `issue-tracker.md`: the size of a ticket, its title and its sections. The glossary and the ADRs, which give the tickets their words. |
 | `build` | `CLAUDE.md` and the rules | `domain.md`, your glossary, and `suite.json` when it runs `skillworks-suite` | The rules the change must meet, and the checks in `suite.json`. |
 | `standards` | `CLAUDE.md` and the rules | `domain.md`, your glossary, `review-standards.md` | The rules, and the smells, your checks and "Do not report" in `review-standards.md`. |
 | `spec` | `CLAUDE.md` and the rules | `issue-tracker.md`, `surfaces.md`, `review-spec.md` | "The ticket shape" in `issue-tracker.md`, because the review judges the change by the ticket. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. Your checks and "Do not report" in `review-spec.md`. |
-| `architecture` | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `review-architecture.md`, `placement-checks.md` | `file-placement.md`, the failures, your checks and "Do not report" in `review-architecture.md`, and the commands in `placement-checks.md`. |
+| `architecture` | `CLAUDE.md` and the rules | `domain.md`, your glossary, the folder `adr-folder` names, `review-architecture.md`, `placement-checks.md` | `file-placement.md`, the failures, your checks and "Do not report" in `review-architecture.md`, and the commands in `placement-checks.md`. |
 | `fix` | `CLAUDE.md` and the rules | Nothing more. It acts on the three reports. | The rules the fix must meet. |
 | `sweep` | `CLAUDE.md` and the rules | Nothing more. `comments.md` is already loaded. | The keep and cut table in `comments.md`, and `doc-comments`. |
 | `suite` | Nothing. No Session runs. | `suite.json`, and each Dockerfile a check names as its `image` | Every check, its `ready`, its `ignores`, its `image`, and `runs`. |

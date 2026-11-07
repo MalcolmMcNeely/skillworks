@@ -464,6 +464,16 @@ def test_the_backfill_page_says_adrs_go_to_the_setting_in_the_teams_shape_at_the
     assert "docs/adr/" not in page
 
 
+@pytest.mark.parametrize("page", ["README.md", "the-loop/stage-map.md", "the-loop/sessions.md",
+                                  "the-loop/target-branch.md", "the-loop/export.md",
+                                  "the-loop/name-check.md", "the-loop/the-grill.md"])
+def test_a_user_docs_page_that_names_the_adr_folder_names_the_setting_and_not_a_fixed_path(page):
+    text = (ROOT / "docs" / "usage" / page).read_text(encoding="utf-8")
+
+    assert "`adr-folder`" in text
+    assert "docs/adr/" not in text
+
+
 def test_a_seed_already_there_is_kept_and_its_difference_shown(repo, runner):
     edited = repo.work / "docs" / "agents" / "issue-tracker.md"
     edited.parent.mkdir(parents=True)
