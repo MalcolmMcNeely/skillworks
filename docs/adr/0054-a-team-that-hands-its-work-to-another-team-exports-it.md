@@ -9,8 +9,11 @@ developer leaves.
 `"export": true` in `docs/agents/loop.json` switches it on, with `target-branch` set to `spec`. It is
 off by default. Setup asks whether the work goes to a team that does not use Skillworks. With yes,
 it writes the Steering onto a Steering branch, `skillworks/steering`, pushed only to `origin`, and
-the developer's own branches never hold a Steering file. So `origin` is a remote of the developer's
-own, such as a bare repo on their machine, and the team's remote is another.
+the developer's own branches never hold a Steering file. With the `files` Tracker, `origin` can be a
+remote of the developer's own, such as a bare repo on their machine, and the team never sees the
+loop's branches. The `github` Tracker needs `origin` to be the GitHub repo whose Issues it uses, so
+when the team lends its own, the Steering branch and the Target branches sit on the team's remote
+under `skillworks/`. They never merge, and the team needs nothing to work beside them.
 
 The developer cuts their branch from the default branch and starts the grill on it. When it settles
 the first word or ADR, the grill brings the Steering branch onto the commit that branch sits on,
