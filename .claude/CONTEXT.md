@@ -121,13 +121,14 @@ _Avoid_: Record, change, diff
 
 **Export**:
 Building, from the ticket commits of one spec, a branch that holds only the work: one commit for each
-ticket, with no trailer, no `.specs/` and none of the loop's own commits. It starts where the Target
-branch left the default branch, and it never pushes.
+ticket, with no trailer, no `.specs/` and none of the loop's own commits. It runs once, after the
+spec closes, and it never pushes.
 _Avoid_: Strip, scrub, clean-up, squash
 
 **Export branch**:
-The branch an Export writes. A person names it, pushes it and opens the pull request from it. The
-Target branch stays as the loop left it.
+The developer's own branch, cut from the default branch, that the grill starts on and the Export
+writes onto. The developer pushes it and opens the pull request from it. The Target branch stays as
+the loop left it.
 _Avoid_: Clean branch, PR branch, release branch
 
 **Flake**:
