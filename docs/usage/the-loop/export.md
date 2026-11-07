@@ -35,19 +35,25 @@ Your branch lives in your checkout. The Export writes onto it there and never pu
 
 ## Your flow
 
-Setup makes the Steering branch once. Then, for each spec:
+1. Run setup once, with `/skillworks:skillworks-setup`, and answer yes when it asks whether the work
+   goes to a team that does not use Skillworks. It makes the Steering branch from your default
+   branch, writes the Steering there, pushes it to `origin`, and switches you back.
+   [Setup](../setup.md#work-for-a-team-that-does-not-use-skillworks) says more. With the `files`
+   Tracker, make `origin` a remote of your own first.
 
-1. Update your default branch, and cut your branch from it:
+Then, for each spec:
+
+2. Update your default branch, and cut your branch from it:
    `git switch -c feature/PROJ-12/slug origin/<your default branch>`.
-2. Start the grill on your branch, with `/skillworks:grill`. Stay on your branch until the grill
+3. Start the grill on your branch, with `/skillworks:grill`. Stay on your branch until the grill
    settles its first word or ADR.
-3. The grill cuts the Target branch, `skillworks/spec/feature/PROJ-12/slug`, and works on it from
+4. The grill cuts the Target branch, `skillworks/spec/feature/PROJ-12/slug`, and works on it from
    then on. When it settles nothing, `/skillworks:to-spec` cuts it at the end, before it publishes
    the spec.
-4. Run the loop with `spec-loop <spec>`. It runs on the Target branch, and Exports onto your branch
+5. Run the loop with `spec-loop <spec>`. It runs on the Target branch, and Exports onto your branch
    when the spec is done.
-5. Push your branch to your team's remote, with the command the `END` line names.
-6. Open the pull request from your branch, the way your team's host does.
+6. Push your branch to your team's remote, with the command the `END` line names.
+7. Open the pull request from your branch, the way your team's host does.
 
 ## The grill's cut
 

@@ -23,7 +23,7 @@ The outputs:
 | `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. |
 | `docs/agents/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the baseline for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no baseline. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
-| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. |
+| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. `export` is `true` when the work goes to a team that does not use Skillworks, and `false` otherwise. Setup asks first. |
 | `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
 | `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
@@ -35,6 +35,29 @@ The outputs:
 | `"autoMemoryEnabled": false` in `.claude/settings.json` | Every Load comes from the repository. Claude Code keeps memory files under `~/.claude`, on the machine and outside the repository, and loads them into every session. With memory on, one commit steers two machines differently, and a run cannot be read back from what the repository holds. With it off, one commit steers every machine the same way. The memory files stay on disk, so removing the line brings them back. |
 
 ## Process
+
+### First, ask where the work goes
+
+Ask the developer one question before anything is written: will the work go to a team that does not use Skillworks? Offer two answers, `no` and `yes`. Suggest `no`, so the common answer is one keypress. If `export` in `docs/agents/loop.json` is already `true`, an answer from an earlier run, suggest `yes` instead.
+
+With `no`, setup runs as it always has, on the branch the developer is on. Go on to step 1, and skip every part below that says "With the Export".
+
+With `yes`, the loop Exports each finished spec onto the developer's own branch, with no trace of the Plugin. The Steering lives on the Steering branch, `skillworks/steering`, and never on the developer's own branches. Each spec's Target branch is cut from it.
+
+With `yes`, ask for the Tracker now, as step 2 says, because the next paragraph turns on it. Step 2 then writes that answer and asks nothing again.
+
+With `yes` and the `files` Tracker, tell the developer to make `origin` a remote of their own before setup goes on, such as a bare repo on their machine with the default branch pushed to it. The loop pushes every claim, every Target branch and the Steering branch to `origin`, so with the team's remote as `origin` those pushes reach the team by mistake. If `origin` is not yet theirs, stop setup here: they make it theirs, and run setup again.
+
+With `yes`, the working tree must be clean, so that the Steering commit holds the files setup writes and nothing else. If it is not, stop, and ask the developer to commit or set aside their change first. Note the branch the developer is on, with `git branch --show-current`. Then read the default branch from `git ls-remote --symref origin HEAD`, and move onto the Steering branch:
+
+```bash
+git fetch origin
+git switch -c skillworks/steering origin/<the default branch>
+```
+
+When `skillworks/steering` is already a branch, here or on `origin`, an earlier run made it, so switch to it with `git switch skillworks/steering` instead.
+
+Steps 1 to 6 then run on the Steering branch. After step 1, write `"export": true` and `"target-branch": "spec"` into `docs/agents/loop.json`, and change no other key.
 
 ### 1. Seed the Steering
 
@@ -81,7 +104,7 @@ seed-steering --settled docs/agents/domain.md
 
 Give the `--keep` and `--settled` choices in one run when both are due. A choice that names no overlap, or a `--settled` for a file that has a base copy, is refused, and nothing is written.
 
-The user reviews every changed file before they commit. Setup commits nothing.
+The user reviews every changed file before they commit. Setup commits nothing, except the Steering commit on the Steering branch with the Export.
 
 Expect a permission prompt here on a first run. The allowlist that would clear it is written in step 6, which has not happened yet.
 
@@ -107,6 +130,8 @@ The Target branch is the branch the loop Lands each ticket on. Ask the team whic
 Offer one other answer: `spec`. With `spec`, each spec gets a branch of its own, `spec/<slug>`, and the team reviews the spec as one pull request to the default branch. The loop marks the pull request ready for review, and a person merges it. Pick `spec` when the default branch is protected, or when the team reviews its work through pull requests.
 
 Write the answer into `target-branch` in `docs/agents/loop.json`, and change no other key.
+
+With the Export, ask nothing here, and write `spec`. The Export works only with `spec`, because the loop reads the developer's branch from the name of the spec's Target branch.
 
 ### 4. Point CLAUDE.md at the docs
 
@@ -198,12 +223,29 @@ Leave `.claude/settings.local.json` alone. Do not read it and do not change it. 
 
 Write nothing under `~/.claude`.
 
+### Then, with the Export, commit the Steering branch
+
+With `no`, skip this part: setup commits nothing.
+
+With the Export, the Steering lives on the Steering branch alone, so setup commits it there. Show the developer each file setup wrote or changed, and ask them to review it first. Then commit, push, and go back:
+
+```bash
+git add -A
+git commit -m "Steering for a team that does not use Skillworks"
+git push -u origin skillworks/steering
+git switch <the branch they were on>
+```
+
+The push names `skillworks/steering` alone, so nothing else reaches `origin`. The branch the developer is back on holds no Steering file, because setup wrote none there. Setup never writes a Steering file onto it, and never commits on it.
+
 ### 7. Report
 
 Say what was written and what was kept. Say where each Steering file lives:
 
 - `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
 - `docs/agents/`: `issue-tracker.md`, `domain.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
+
+With the Export, say that the Steering is committed on `skillworks/steering` and pushed to `origin`, and that the developer is back on their own branch, which holds no Steering file. Say that a later change to the Steering, such as the Suite the next step fills in, is made and committed on `skillworks/steering`, and pushed there.
 
 Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude. Then tell them what the team fills in before the loop can finish a ticket:
 

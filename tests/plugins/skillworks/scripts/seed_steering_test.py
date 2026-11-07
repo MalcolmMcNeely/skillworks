@@ -1851,6 +1851,71 @@ def test_setup_writes_no_output_style(repo, runner):
     assert "outputStyle" not in (SETUP / "SKILL.md").read_text(encoding="utf-8")
 
 
+EXPORT_QUESTION = "### First, ask where the work goes"
+STEERING_COMMIT = "### Then, with the Export, commit the Steering branch"
+
+
+def test_setup_asks_whether_the_work_goes_to_a_team_that_does_not_use_skillworks_before_it_seeds():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+    question = setup_section(EXPORT_QUESTION)
+
+    assert text.index(EXPORT_QUESTION) < text.index("### 1. Seed the Steering")
+    assert "a team that does not use Skillworks" in question
+    assert "With `no`, setup runs as it always has" in question
+
+
+def test_with_the_export_and_the_files_tracker_setup_tells_the_developer_to_own_origin_first():
+    question = setup_section(EXPORT_QUESTION)
+    told = [paragraph for paragraph in question.split("\n\n") if "`files`" in paragraph and "`origin`" in paragraph]
+
+    assert len(told) == 1
+    assert "a remote of their own" in told[0]
+    assert "before" in told[0]
+
+
+def test_with_the_export_setup_writes_the_steering_on_the_steering_branch_cut_from_the_default_branch():
+    question = setup_section(EXPORT_QUESTION)
+
+    for named in ["`skillworks/steering`", "git switch -c skillworks/steering origin/<the default branch>",
+                  "`\"export\": true`", "`\"target-branch\": \"spec\"`"]:
+        assert named in question, named
+
+
+def test_with_the_export_setup_asks_no_target_branch_and_writes_spec():
+    step = setup_section("### 3. Ask for the Target branch")
+
+    assert "With the Export, ask nothing here, and write `spec`." in step
+
+
+def test_with_the_export_setup_commits_and_pushes_the_steering_branch_and_switches_back():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+    commit = setup_section(STEERING_COMMIT)
+
+    assert text.index("### 6. Write the settings") < text.index(STEERING_COMMIT) < text.index("### 7. Report")
+    for named in ["git push -u origin skillworks/steering", "git switch <the branch they were on>",
+                  "no Steering file"]:
+        assert named in commit, named
+
+
+def test_the_setup_page_holds_the_export_question_and_the_advice_to_own_origin():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+    questions = page.split("## The questions setup asks", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in questions.splitlines()
+            if line.startswith("| Will the work go to a team that does not use Skillworks? |")]
+
+    assert len(rows) == 1
+    assert "`files`" in rows[0] and "a remote of your own" in rows[0]
+    assert "`skillworks/steering`" in page
+
+
+def test_the_export_page_names_setup_as_the_first_step_of_the_flow():
+    page = (ROOT / "docs" / "usage" / "the-loop" / "export.md").read_text(encoding="utf-8")
+    flow = page.split("## Your flow", 1)[1].split("\n## ", 1)[0]
+    first = [line for line in flow.splitlines() if line.startswith("1. ")]
+
+    assert len(first) == 1 and "/skillworks:skillworks-setup" in first[0]
+
+
 # Each is a name only this repository uses, so finding one means a seed was copied, not written.
 THIS_REPO = ["Skillworks.", "slnx", "Studio", "Dashboard", "Loki", "Aspire", "dotnet", "npm",
              "dependency-cruiser", "ADR 00", "../adr/", "tests/plugins", "NSubstitute"]
