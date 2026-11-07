@@ -48,6 +48,9 @@ from count.verdicts import VERDICTS, read_verdicts
 from export.export_branch import export
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
+from position.position import (BUILDING, CUTTING, DRIFT_CHECK, FINISHED, NAME_CHECK, POSITION,
+                               STOPPED, now, written_whole)
+from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
 from seed_steering import missing_steering
 from steering.export import export_on
@@ -398,11 +401,16 @@ def loaded(written_by_session, command, args):
 
 
 # The ticket now running counts as remaining, so the estimate never flatters the run.
-def progress_suffix(position, total, mean):
-    said = "{}/{}".format(position, total)
-    if mean is None:
+def seconds_left(place, total, mean):
+    return None if mean is None else mean * (total - place + 1)
+
+
+def place_suffix(place, total, mean):
+    said = "{}/{}".format(place, total)
+    left = seconds_left(place, total, mean)
+    if left is None:
         return said
-    return said + "  ~{}m left".format((mean * (total - position + 1) + 30) // 60)
+    return said + "  ~{}m left".format((left + 30) // 60)
 
 
 # Said rather than left to be worked out, so a flake is read off the log afterwards.
@@ -497,7 +505,7 @@ class Loop:
 
         self.job_worktree = ""
         self.ticket_base = ""
-        self.position = 0
+        self.place = 0
 
         # Not being None is also the record that the loop has already been round.
         self.red_suite = None
@@ -520,6 +528,77 @@ class Loop:
         self.timed_tickets = 0
         self.timed_seconds = 0
         self.mean_seconds = None
+
+        # New for each run, so the pane tells a rerun of a spec from the run it already showed.
+        self.run_id = str(uuid.uuid4())
+        # A dry run moves nothing, so it leaves no Position for the pane to show.
+        self.writes_position = False
+        self.doing = None
+        self.spec_tickets = []
+        self.ticket_now = None
+        self.denied = 0
+        self.stop_line = None
+
+    # --- the Position --------------------------------------------------------
+
+    def position_now(self):
+        return {
+            "spec": self.spec,
+            "run": self.run_id,
+            "heartbeat": now(),
+            "doing": self.doing,
+            "tickets": self.spec_tickets,
+            "ticket": self.ticket_now,
+            "at": self.place or None,
+            "of": self.ticket_count or None,
+            "seconds_left": seconds_left(self.place, self.ticket_count, self.mean_seconds)
+            if self.place else None,
+            "choices": sum(1 for opening, _ in self.listed if opening == "CHOSE"),
+            "denials": self.denied,
+            "stop": None if self.stop_line is None else {
+                "line": self.stop_line,
+                "log": self.log.relative_to(self.root).as_posix()
+                if self.log.is_relative_to(self.root) else self.log.as_posix()},
+        }
+
+    # Written over whole at every move, so it holds the present and the Journal keeps the past.
+    def moved(self, doing=None):
+        if doing is not None:
+            self.doing = doing
+        if self.writes_position:
+            written_whole(self.log_dir / POSITION, self.position_now())
+
+    def read_spec_tickets(self):
+        rows = self.tracker.ticket_rows(self.spec)
+        self.spec_tickets = [{"number": number, "title": title, "landed": state == "closed"}
+                             for number, state, title in rows]
+        self.ticket_count = len(self.spec_tickets)
+
+    def filed(self, ticket, title):
+        self.spec_tickets.append({"number": ticket, "title": title, "landed": False})
+
+    def started(self, ticket, title):
+        self.ticket_now = {"number": ticket, "title": title,
+                           "steps": [step.name for step in STEPS] + ["land"],
+                           "step": None, "step_started": None}
+        self.moved(BUILDING)
+
+    def on_step(self, name):
+        if self.ticket_now is not None:
+            self.ticket_now["step"] = name
+            self.ticket_now["step_started"] = now()
+        self.moved()
+
+    def landed_now(self, ticket):
+        for row in self.spec_tickets:
+            if row["number"] == ticket:
+                row["landed"] = True
+        self.ticket_now = None
+        self.moved()
+
+    def stopped_on(self, said):
+        self.stop_line = said
+        self.moved(STOPPED)
 
     # The log first, so a line already seen on the terminal is always in the log too.
     def wrote(self, said):
@@ -764,6 +843,7 @@ class Loop:
     # Said for a passing result too, so a Denial the Session found a way round still shows.
     def say_denials(self, who, result):
         named = denials(result)
+        self.denied += len(named)
         said = "DENY  {}{}".format(who, how_many(len(named), "Denial", "Denials"))
         if len(named) > DENIALS_SHOWN:
             said += ", and the first {} follow".format(DENIALS_SHOWN)
@@ -822,7 +902,8 @@ class Loop:
         reasons = self.step_file(ticket, step.name, "err")
         self.say("STEP  {} {:<13}{}".format(
             self.named(ticket), step.name,
-            progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
+            place_suffix(self.place, self.ticket_count, self.mean_seconds)))
+        self.on_step(step.name)
 
         # Built before the session starts, so two axes out of three never reach the fix step.
         prompt, reason = self.step_body(ticket, step)
@@ -936,7 +1017,8 @@ class Loop:
         held = self.step_file(ticket, step.name, "out")
         self.say("STEP  {} {:<13}{}".format(
             self.named(ticket), step.name,
-            progress_suffix(self.position, self.ticket_count, self.mean_seconds)))
+            place_suffix(self.place, self.ticket_count, self.mean_seconds)))
+        self.on_step(step.name)
 
         # The red that sent the loop round is why it ran again, so a second run adds to the record.
         if self.red_suite is None:
@@ -976,7 +1058,7 @@ class Loop:
         if state != "open":
             raise stop("ABORT spec {} is {}. The loop needs it open.".format(self.spec_named(), state))
 
-        self.ticket_count = len(self.tracker.tickets(self.spec))
+        self.read_spec_tickets()
 
     # Before the first ticket, so a spec whose Verdicts could never be counted costs no build.
     def read_shape(self):
@@ -1014,6 +1096,7 @@ class Loop:
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
+        self.moved(CUTTING)
         result = self.run_clean_session(
             "cut", "Cut", self.cut_asks(),
             Recorded(CUT_RECORDED, lambda: self.tracker.tickets(self.spec), self.cut_owed()),
@@ -1021,7 +1104,8 @@ class Loop:
         shown = str(field(result, "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
-        self.ticket_count = len(self.tracker.tickets(self.spec))
+        self.read_spec_tickets()
+        self.moved(BUILDING)
         if self.ticket_count == 0:
             raise self.stop_naming_denials("STOP  spec {} still has no tickets after the Cut, so "
                                    "nothing was built. See {}".format(
@@ -1212,6 +1296,7 @@ class Loop:
     def land(self, ticket, session):
         held = self.step_file(ticket, "land", "out")
         written(held, "")
+        self.on_step("land")
 
         def heard(line):
             appended(held, line + "\n")
@@ -1254,7 +1339,9 @@ class Loop:
                      "it.".format(self.named(ticket), type(failed).__name__, failed))
 
     def run_ticket(self, ticket):
-        self.say("START {} {}".format(self.named(ticket), self.tracker.title(ticket)))
+        title = self.tracker.title(ticket)
+        self.say("START {} {}".format(self.named(ticket), title))
+        self.started(ticket, title)
 
         self.red_suite = None
         self.green_suite = None
@@ -1279,6 +1366,7 @@ class Loop:
         self.timed_tickets += 1
         self.mean_seconds = self.timed_seconds // self.timed_tickets
         self.say("DONE  {}  {}".format(self.named(ticket), landed_at))
+        self.landed_now(ticket)
 
     def run_tickets(self):
         while True:
@@ -1294,7 +1382,7 @@ class Loop:
                 continue
 
             # Counts closed tickets, not this run's, so a rerun starts at its real place.
-            self.position = self.ticket_count - len(open_tickets) + 1
+            self.place = self.ticket_count - len(open_tickets) + 1
             self.run_ticket(ticket)
 
     # --- the full run --------------------------------------------------------
@@ -1306,6 +1394,7 @@ class Loop:
         landed = ", ".join(self.named(ticket) for ticket in self.landed)
         self.say("FULL  {} landed in this run, so the whole Suite runs on the newest origin/{} "
                  "with no Proofs and no images".format(landed, self.target))
+        self.moved(DOING_FULL_RUN)
 
         held = self.stamped(FULL_RUN)
         written(held, "")
@@ -1427,6 +1516,7 @@ class Loop:
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
         named = "drift-gaps" if asked else "drift"
+        self.moved(DRIFT_CHECK)
         self.say_scope("drift re-check" if asked else "drift check", base)
         if asked:
             self.say("DRIFT the Gap ticket is closed. Checking {} against spec {} again.".format(
@@ -1514,6 +1604,7 @@ class Loop:
             self.say("GAP   " + gap_said(gap))
         title, body = gap_ticket(gaps)
         ticket = self.tracker.file_ticket(self.spec, title, body)
+        self.filed(ticket, title)
         self.ticket_count += 1
         self.say("FILED {} under spec {} builds {}, so the loop goes round once".format(
             self.named(ticket), self.spec_named(), how_many(len(gaps), "Gap", "Gaps")))
@@ -1531,6 +1622,7 @@ class Loop:
 
     # After the Gap round, so it sees every name the spec brought in, the Gap build's too.
     def check_names(self, base):
+        self.moved(NAME_CHECK)
         self.say_scope("Name check", base)
         self.say("NAMES checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
@@ -1572,6 +1664,7 @@ class Loop:
                          "the spec use most. A person settles the word.".format(name_of(said)))
         title, body = rename_ticket(renames)
         ticket = self.tracker.file_ticket(self.spec, title, body)
+        self.filed(ticket, title)
         self.ticket_count += 1
         self.say("FILED {} under spec {} makes {}, so the loop builds it and checks each one".format(
             self.named(ticket), self.spec_named(), how_many(len(renames), "rename", "renames")))
@@ -1579,6 +1672,7 @@ class Loop:
 
     # The rename ticket's diff alone, so the check that each rename was made has a small context.
     def check_renames(self, base, ticket, renames):
+        self.moved(NAME_CHECK)
         self.say("NAMES the rename ticket {} is closed. Checking it made each rename on spec "
                  "{}.".format(self.named(ticket), self.spec_named()))
         result = self.run_clean_session(
@@ -1728,6 +1822,7 @@ class Loop:
         self.log = self.log_dir / "loop.log"
         self.journal = self.log_dir / "journal.jsonl"
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.writes_position = not dry
 
         self.preflight()
         if dry:
@@ -1751,6 +1846,7 @@ class Loop:
 
         self.say("LOOP  spec {} from {} ({}) in {} mode".format(
             self.spec_named(), base, self.tracker.repo, self.permission_mode))
+        self.moved(BUILDING if self.ticket_count else CUTTING)
 
         # After the shape, so a spec the drift check could never count costs no Cut.
         if self.ticket_count == 0:
@@ -1799,6 +1895,7 @@ def main(argv, runner, out, err, wait):
         loop = Loop(runner, spec, out, err, wait, mode)
         loop.run(dry)
         loop.list_what_sessions_wrote()
+        loop.moved(FINISHED)
         return 0
     except Stop as stopped:
         if stopped.status == MISUSED or loop is None:
@@ -1807,6 +1904,7 @@ def main(argv, runner, out, err, wait):
             # A refusal from a script the loop reads ends its line itself, and say ends it again.
             loop.say(stopped.said.rstrip("\n"))
             loop.list_what_sessions_wrote()
+            loop.stopped_on(stopped.said.rstrip("\n"))
         return stopped.status
     except Exception as failed:
         if loop is None:
@@ -1815,10 +1913,12 @@ def main(argv, runner, out, err, wait):
         loop.log_dir.mkdir(parents=True, exist_ok=True)
         appended(loop.log, held)
         err.write(held)
-        loop.say("FAIL  the driver met an error it did not expect, {}: {}. The traceback is above "
-                 "in {}. Rerun with: spec-loop {}".format(
-                     type(failed).__name__, failed, loop.log.as_posix(), loop.spec))
+        said = ("FAIL  the driver met an error it did not expect, {}: {}. The traceback is above "
+                "in {}. Rerun with: spec-loop {}".format(
+                    type(failed).__name__, failed, loop.log.as_posix(), loop.spec))
+        loop.say(said)
         loop.list_what_sessions_wrote()
+        loop.stopped_on(said)
         return REFUSED
 
 

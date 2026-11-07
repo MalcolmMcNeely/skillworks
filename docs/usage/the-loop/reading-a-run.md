@@ -3,6 +3,8 @@
 Part of [the Dev loop](../the-loop.md).
 
 The log is `.spec-loop/<spec>/loop.log`. Every step's result and error output sits beside it.
+The Position is `.spec-loop/<spec>/position.json`, beside the log. It holds where the loop is now, and
+the driver writes over it each time the loop moves on.
 Each line starts with the date and the time it was written, in UTC, so the runs of two days in one
 log can be told apart. A line that goes on from the line above it, such as a `Denial:` line, has no
 date or time of its own.
@@ -191,7 +193,7 @@ with no commit to read, as [When a step fails](stops.md) shows. It comes last, a
 full run's lines, in place of `END`, and only a `LIST` can follow it. `END` comes only on
 [a clean finish](full-run.md#a-clean-finish).
 
-The position counts closed tickets, so a restarted run starts at its real place. The time left is the
+The count on a `STEP` line counts closed tickets, so a restarted run starts at its real place. The time left is the
 mean of the tickets this run has finished, with the one now running counted as still to do.
 
 Expect a long run. A ticket can take from half an hour to a few hours.
