@@ -345,6 +345,24 @@ def test_a_loop_file_with_no_tracker_fails(work):
     assert "FAIL  docs/agents/loop.json names no tracker." in ran.err
 
 
+def test_export_with_a_named_target_branch_fails_and_says_it_needs_spec(work):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": "main", "export": True}))
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert 'FAIL  docs/agents/loop.json says export, and export works only with "target-branch": "spec"' in ran.err
+    assert "label ready-for-agent" not in ran.out
+
+
+def test_export_in_spec_mode_passes(work):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": "spec", "export": True}))
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+
+
 def test_a_target_branch_split_across_lines_passes(work):
     work.loop_file('{\n  "tracker": "github",\n  "target-branch":\n    "main"\n}\n')
 

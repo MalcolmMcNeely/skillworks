@@ -39,6 +39,7 @@ Each page below holds one part of the loop, in the order a run takes them.
 | [The drift check](the-loop/drift-check.md) | How the finished work is judged against the spec: the Verdicts, the count and the Gap round. |
 | [The Name check](the-loop/name-check.md) | How the names the spec brought in are judged: the Name report, the rename ticket and the Name re-check. |
 | [The full run](the-loop/full-run.md) | What the whole Suite proves once the checks at the end are done, and what has to be true before the loop writes `END`. |
+| [The Export](the-loop/export.md) | Who the Export is for, the three branches, what goes onto your branch and what is left out, and what the loop prints. |
 | [When a step fails](the-loop/stops.md) | What stops the loop and what each stop line says, how to restart with the Keep, and when to rerun with `--bypass`. |
 | [Reading a run](the-loop/reading-a-run.md) | What each line of the log says, and what a dry run prints. |
 | [The stage map](the-loop/stage-map.md) | Which Steering files each stage loads, and where your team can change what the stage does. |

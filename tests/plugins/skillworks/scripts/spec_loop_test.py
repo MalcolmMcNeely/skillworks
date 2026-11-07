@@ -191,10 +191,12 @@ class Tracker:
             number = asked.split(" ")[1].rsplit("/", 1)[-1]
             return Ran(0, "closed\n" if number in self.closed else "open\n", "")
         if asked.endswith("--jq .title"):
-            return Ran(0, "SPEC: A spec to plan\n", "")
+            number = asked.split(" ")[1].rsplit("/", 1)[-1]
+            titled = [row[2] for row in self.tickets if row[0] == number]
+            return Ran(0, (titled[0] if titled else "SPEC: A spec to plan") + "\n", "")
         if asked == "api repos/owner/repo/issues/{} --jq .body".format(SPEC):
             return Ran(0, self.body, "")
-        if asked == "pr ready " + SPEC_BRANCH:
+        if asked.startswith("pr ready "):
             return self.ready
         if asked == "issue view {} --json comments --jq .comments[-1].body".format(SPEC):
             return Ran(0, self.newest_comment(), "")
@@ -4671,7 +4673,8 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
-                                      "the-loop/full-run.md", "the-loop/stops.md",
+                                      "the-loop/full-run.md", "the-loop/export.md",
+                                      "the-loop/stops.md",
                                       "the-loop/reading-a-run.md", "the-loop/stage-map.md",
                                       "the-loop/sessions.md"]
 
@@ -5641,6 +5644,204 @@ def test_with_a_branch_name_the_driver_touches_no_pull_request(loop, runner):
     assert call_asking(runner, "/skillworks:spec-drift") is not None
     assert pull_request_calls(runner) == []
     assert "READY" not in loop.log()
+
+
+# --- the Export -------------------------------------------------------------
+
+EXPORT_BRANCH = "feature/PROJ-12/slug"
+EXPORT_TARGET = "skillworks/spec/" + EXPORT_BRANCH
+
+GRACE = "Grace <grace@example.invalid>"
+ADA = "Ada <ada@example.invalid>"
+TEST = "Test <test@example.invalid>"
+
+
+def write_export_loop(top, export):
+    path = Path(top) / "docs" / "agents" / "loop.json"
+    path.write_text(json.dumps({"tracker": "github", "target-branch": "spec", "export": export}),
+                    encoding="utf-8", newline="\n")
+
+
+def exporting_repo(tmp_path, runner, monkeypatch, export):
+    repo = Repo(tmp_path)
+    git(repo.work, "branch", EXPORT_BRANCH)
+    git(repo.work, "checkout", "--quiet", "-b", EXPORT_TARGET)
+    git(repo.work, "push", "--quiet", "origin", EXPORT_TARGET)
+    repo.target = EXPORT_TARGET
+    driven = driver_in(repo, runner, monkeypatch)
+    write_export_loop(repo.work, export)
+    return driven
+
+
+@pytest.fixture
+def exporting(tmp_path, runner, monkeypatch):
+    return exporting_repo(tmp_path, runner, monkeypatch, True)
+
+
+@pytest.fixture
+def not_exporting(tmp_path, runner, monkeypatch):
+    return exporting_repo(tmp_path, runner, monkeypatch, False)
+
+
+def commit_as(where, author, message, *files):
+    for name in files:
+        path = Path(where) / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(name + "\n", encoding="utf-8", newline="\n")
+    git(where, "add", "-A")
+    git(where, "commit", "--quiet", "--author", author, "-m", message)
+    return git(where, "rev-parse", "--short", "HEAD").strip()
+
+
+# The Suite commit holds the Steering the case wrote, so it stands as the Steering commit.
+def given_a_run_that_exports(loop):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET + ONE_OPEN_TICKET)
+    tracker.body = COUNTED + "\n## Branch\n\n`{}`\n".format(EXPORT_TARGET)
+    sessions = given_sessions_that_report(loop)
+    work = loop.repo.work
+    left = {"steering": git(work, "rev-parse", "--short", "HEAD").strip()}
+    commit_as(work, GRACE, "Glossary: a word", "CONTEXT.md")
+    commit_as(work, ADA, "ADR: a decision", "docs/adr/0001-a-decision.md")
+    left["hand"] = commit_as(work, TEST, "A hand fix with no trailer", "hand.txt")
+    left["claim"] = commit_as(work, TEST, "Claim #168", ".specs/158/168.md")
+    commit_as(work, ADA, "Already done\n\nTicket: #161", "landed.txt", ".specs/158/161.md")
+    left["report"] = commit_as(work, TEST, "Drift report for #158", ".specs/158/drift.md")
+    git(work, "push", "--quiet", "origin", EXPORT_TARGET)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    return left
+
+
+def exported(loop, *fields):
+    return git(loop.repo.work, "log", "--reverse", "--format=" + "%x1f".join(fields) + "%x1e",
+               "main.." + EXPORT_BRANCH).split("\x1e")[:-1]
+
+
+def test_the_export_writes_the_grill_commit_then_each_ticket_in_land_order(exporting):
+    given_a_run_that_exports(exporting)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert [line.strip() for line in exported(exporting, "%s")] == [
+        "A spec to plan", "Already done", "The dry run prints the plan"]
+
+
+def test_each_export_commit_has_a_subject_alone_and_no_trailer(exporting):
+    given_a_run_that_exports(exporting)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert [message.strip("\n") for message in exported(exporting, "%B")] == [
+        "A spec to plan", "Already done", "The dry run prints the plan"]
+
+
+def test_each_export_commit_is_authored_by_the_author_of_its_first_commit(exporting):
+    given_a_run_that_exports(exporting)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert [line.strip() for line in exported(exporting, "%an <%ae>")] == [GRACE, ADA, TEST]
+
+
+def test_the_export_branch_holds_the_work_and_nothing_under_specs_or_from_a_left_out_commit(
+        exporting):
+    given_a_run_that_exports(exporting)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(exporting.repo.work, "ls-tree", "-r", "--name-only", EXPORT_BRANCH).split() == [
+        "CONTEXT.md", "base.txt", "built.txt", "docs/adr/0001-a-decision.md", "landed.txt"]
+
+
+def test_the_log_has_an_export_line_for_each_commit_written(exporting):
+    given_a_run_that_exports(exporting)
+
+    exporting.run(SPEC)
+
+    written = git(exporting.repo.work, "log", "--reverse", "--format=%h", "main.." + EXPORT_BRANCH)
+    lines = [unstamped(line) for line in exporting.log().split("\n")
+             if unstamped(line).startswith("EXPORT")]
+    assert lines == ["EXPORT {} A spec to plan, from the grill".format(written.split()[0]),
+                     "EXPORT {} Already done, from #161".format(written.split()[1]),
+                     "EXPORT {} The dry run prints the plan, from #168".format(written.split()[2])]
+
+
+def test_the_steering_the_hand_and_the_bookkeeping_commits_are_left_out_and_listed_by_hash(
+        exporting):
+    left = given_a_run_that_exports(exporting)
+
+    exporting.run(SPEC)
+
+    listed_out = lines_under(exporting, "LEFT  the Export left out 4 commits of " + EXPORT_TARGET)
+    assert [line.split()[0] for line in listed_out] == [
+        left["steering"], left["hand"], left["claim"], left["report"]]
+
+
+def test_the_export_pushes_nothing(exporting):
+    given_a_run_that_exports(exporting)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(exporting.repo.origin, "branch", "--list", EXPORT_BRANCH).strip() == ""
+
+
+def test_the_end_line_names_the_export_branch_and_its_push(exporting):
+    given_a_run_that_exports(exporting)
+
+    exporting.run(SPEC)
+
+    log = [unstamped(line).strip() for line in exporting.log().split("\n")]
+    ended = log.index("END   spec #158 complete. The Export is on {}.".format(EXPORT_BRANCH))
+    assert log[ended + 2] == "Push it with: git push origin {}".format(EXPORT_BRANCH)
+
+
+def test_with_export_on_no_pull_request_is_marked_ready_and_no_pr_line_is_written(
+        exporting, runner):
+    given_a_run_that_exports(exporting)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert pull_request_calls(runner) == []
+    assert "READY" not in exporting.log()
+    assert "PR  " not in exporting.log()
+
+
+def test_an_export_branch_checked_out_in_the_main_checkout_has_its_files_follow(exporting):
+    given_a_run_that_exports(exporting)
+    git(exporting.repo.work, "checkout", "--quiet", EXPORT_BRANCH)
+    # The Steering left with the Target branch, and the loop still reads it from this checkout.
+    write_steering(exporting.repo.work)
+    write_export_loop(exporting.repo.work, True)
+
+    ran = exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(exporting.repo.work, "status", "--porcelain", "--untracked-files=no").strip() == ""
+    assert (exporting.repo.work / "built.txt").is_file()
+
+
+def test_with_export_off_the_export_branch_does_not_move(not_exporting):
+    given_a_run_that_exports(not_exporting)
+    before = git(not_exporting.repo.work, "rev-parse", EXPORT_BRANCH)
+
+    ran = not_exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert git(not_exporting.repo.work, "rev-parse", EXPORT_BRANCH) == before
+
+
+def test_with_export_off_the_run_marks_the_pull_request_ready_as_today(not_exporting, runner):
+    given_a_run_that_exports(not_exporting)
+
+    ran = not_exporting.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert pull_request_calls(runner) == [["gh", "pr", "ready", EXPORT_TARGET]]
 
 
 # --- the claim --------------------------------------------------------------

@@ -115,6 +115,22 @@ After the last ticket, the drift check adds its own lines, then the Name check, 
 2026-09-28 18:52:31 END   spec #200 complete. Every ticket is on master.
 ```
 
+With `export` on, [the Export](export.md) runs after the full run and before `END`. It writes an
+`EXPORT` line for each commit it wrote onto your branch, then a `LEFT` line that counts the commits it
+left out and lists each one by its hash. The `END` line names your branch, and the line under it
+names the command that pushes it:
+
+```
+2026-09-28 18:52:31 EXPORT 7d2e9a1 A developer hands a team work with no trace of it, from the grill
+2026-09-28 18:52:31 EXPORT 3b8c0f4 Preflight checks for uv, from #202
+2026-09-28 18:52:31 LEFT  the Export left out 2 commits of skillworks/spec/feature/PROJ-12/slug
+      5c0e1b7 Steering for a team that does not use Skillworks
+      e44f2a9 A hand fix with no trailer
+2026-09-28 18:52:31 END   spec #200 complete. The Export is on feature/PROJ-12/slug.
+      Review it with: git log --oneline 1f0a3c8e5b22..feature/PROJ-12/slug
+      Push it with: git push origin feature/PROJ-12/slug
+```
+
 A full run with a Flake names the check, the file that keeps its red output, and the worktree it
 leaves:
 

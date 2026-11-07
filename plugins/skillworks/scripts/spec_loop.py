@@ -45,10 +45,12 @@ from count.rename_ticket import rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
 from count.verdicts import VERDICTS, read_verdicts
+from export.export_branch import export
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
 from seed_steering import missing_steering
+from steering.export import export_on
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
@@ -484,6 +486,7 @@ class Loop:
         self.root = Path.cwd()
         self.target = ""
         self.spec_mode = False
+        self.exports = False
         self.tracker = None
         self.spec_title = ""
         self.ticket_count = 0
@@ -956,6 +959,7 @@ class Loop:
 
     def preflight(self):
         self.tracker = tracker_for(self.runner, self.root, self.spec)
+        self.exports = export_on(self.root)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")
         missing = missing_steering(self.root) or missing_import(self.root)
@@ -1677,6 +1681,28 @@ class Loop:
         self.say("PR    open the pull request from {} on your host, or mark it ready for review "
                  "if it is open. A person reviews and merges it.".format(self.target))
 
+    # --- the Export ----------------------------------------------------------
+
+    # With the github Tracker, origin is the team's own repo, and with files it is the developer's.
+    def push_command(self, branch):
+        remote = "origin" if self.tracker.marks_pull_requests else "<your team's remote>"
+        return "git push {} {}".format(remote, branch)
+
+    # The driver alone, after the full run and the close, so only work the whole Suite proved is written.
+    def run_export(self):
+        if not fetch_origin(self.runner, self.root.as_posix(), self.target, self.err, self.wait):
+            raise stop("ABORT could not fetch {} from origin, so nothing was exported".format(self.target))
+        done = export(self.runner, self.root.as_posix(), self.target, self.tracker, self.spec,
+                      self.spec_title)
+        for written in done.written:
+            self.say("EXPORT {} {}, from {}".format(written.short, written.subject, written.source))
+        self.say("LEFT  the Export left out {} of {}{}".format(
+            how_many(len(done.left), "commit", "commits"), self.target,
+            "".join("\n      {} {}".format(commit.short, commit.subject) for commit in done.left)))
+        self.say("END   spec {} complete. The Export is on {}.".format(self.spec_named(), done.branch))
+        self.say("      Review it with: git log --oneline {}..{}".format(done.tip[:12], done.branch))
+        self.say("      Push it with: " + self.push_command(done.branch))
+
     # --- the whole run -------------------------------------------------------
 
     def read_target(self):
@@ -1738,6 +1764,8 @@ class Loop:
 
         # Reached only with every Verdict Done or In step, every rename Done and the full run green.
         self.close_spec()
+        if self.exports:
+            return self.run_export()
         if self.spec_mode:
             self.hand_over()
         self.say("END   spec {} complete. Every ticket is on {}.".format(
