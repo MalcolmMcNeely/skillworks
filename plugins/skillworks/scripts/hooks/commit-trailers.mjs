@@ -63,18 +63,23 @@ function answer(output) {
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", ...output } }));
 }
 
-function creditAnswer(cwd) {
+function loopSettings(cwd) {
   let dir = resolve(cwd);
   while (!existsSync(join(dir, ".git"))) {
-    if (dirname(dir) === dir) return undefined;
+    if (dirname(dir) === dir) return {};
     dir = dirname(dir);
   }
   try {
-    const chosen = JSON.parse(readFileSync(join(dir, "docs", "agents", "loop.json"), "utf8"))["co-authored-by"];
-    return chosen === "show" || chosen === "hide" ? chosen : undefined;
+    const held = JSON.parse(readFileSync(join(dir, "docs", "agents", "loop.json"), "utf8"));
+    return held !== null && typeof held === "object" ? held : {};
   } catch {
-    return undefined;
+    return {};
   }
+}
+
+function answerIn(settings, key) {
+  const chosen = settings[key];
+  return chosen === "show" || chosen === "hide" ? chosen : undefined;
 }
 
 // The rules sit in the repo's config and not before commit, where they would stop the team's allow rules matching.
@@ -108,22 +113,24 @@ async function writeRules(cwd) {
   }
 }
 
-function judge(source, tool, sessionId, ticket, credit) {
+function judge(source, tool, sessionId, ticket, credit, sessionTrailer) {
   const powerShell = tool === "PowerShell";
   const { places, hidden } = powerShell ? powerShellCommits(source) : bashCommits(source);
   if (hidden) return { deny: powerShell ? PLAIN_POWERSHELL : PLAIN };
   if (places.length === 0) return {};
   if (credit && TYPED_CREDIT.test(source)) return { deny: NO_TYPED_CREDIT };
-  if (typeof sessionId !== "string" || !/^[A-Za-z0-9-]+$/.test(sessionId)) {
+  const showSession = sessionTrailer !== "hide";
+  if (showSession && (typeof sessionId !== "string" || !/^[A-Za-z0-9-]+$/.test(sessionId))) {
     return { deny: `The hook was handed no Session id it can write, so it cannot add the ${SESSION_KEY} trailer.` };
   }
   if (!/^[A-Za-z0-9#/._-]*$/.test(ticket)) {
     return { deny: `The ${TICKET_VARIABLE} variable holds a value the hook cannot write, so it cannot add the Ticket trailer.` };
   }
   const quote = (value) => (powerShell ? `'${value}'` : `"${value}"`);
-  const trailers = [`--trailer ${quote(`${SESSION_KEY}: ${sessionId}`)}`];
+  const trailers = showSession ? [`--trailer ${quote(`${SESSION_KEY}: ${sessionId}`)}`] : [];
   if (credit === "show") trailers.unshift(`--trailer ${quote(CREDIT)}`);
   if (ticket) trailers.unshift(`--trailer ${quote(`Ticket: ${ticket}`)}`);
+  if (trailers.length === 0) return {};
   const added = trailers.join(" ");
   let rewritten = source;
   for (const { at, beforeEndOfOptions } of places.sort((a, b) => b.at - a.at)) {
@@ -359,8 +366,15 @@ const cwd = typeof payload.cwd === "string" ? payload.cwd : process.cwd();
 
 let verdict;
 try {
-  const credit = creditAnswer(cwd);
-  verdict = judge(command, payload.tool_name, payload.session_id, process.env[TICKET_VARIABLE] ?? "", credit);
+  const settings = loopSettings(cwd);
+  verdict = judge(
+    command,
+    payload.tool_name,
+    payload.session_id,
+    process.env[TICKET_VARIABLE] ?? "",
+    answerIn(settings, "co-authored-by"),
+    answerIn(settings, "session-trailer"),
+  );
 } catch {
   // An unreadable command may still hold a commit, and a commit without its Session trailer is the miss this hook prevents.
   verdict = COMMIT_IN_TEXT.test(command) ? { deny: PLAIN } : {};

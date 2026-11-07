@@ -119,13 +119,21 @@ async function repository() {
   return { dir: dir.replaceAll("\\", "/"), run, runPowerShell, git };
 }
 
-async function creditRepository(answer) {
+async function steeredRepository(chosen) {
   const repo = await repository();
   await mkdir(join(repo.dir, "docs", "agents"), { recursive: true });
   const settings = { tracker: "github", "target-branch": "main" };
-  if (answer) settings["co-authored-by"] = answer;
+  for (const [key, answer] of Object.entries(chosen)) if (answer) settings[key] = answer;
   await writeFile(join(repo.dir, "docs", "agents", "loop.json"), JSON.stringify(settings));
   return repo;
+}
+
+function creditRepository(answer) {
+  return steeredRepository({ "co-authored-by": answer });
+}
+
+function sessionTrailerRepository(answer, credit = undefined) {
+  return steeredRepository({ "session-trailer": answer, "co-authored-by": credit });
 }
 
 function credits(repo) {
@@ -536,6 +544,83 @@ for (const answer of ["show", "hide", undefined]) {
     assert.ok(credits(repo).includes("Ada <ada@example.invalid>"), credits(repo).join("\n"));
   });
 }
+
+test("a commit carries no Session trailer when the team chose to hide it", async () => {
+  // Arrange
+  const repo = await sessionTrailerRepository("hide");
+  const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "#582", repo.dir);
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(sessions(repo), []);
+});
+
+test("a commit with no Session id is not denied when the team chose to hide the Session trailer", async () => {
+  // Arrange
+  const repo = await sessionTrailerRepository("hide");
+
+  // Act
+  const answer = await answerTo('git add -A && git commit -m "Fix the thing"', null, "Bash", "", repo.dir);
+
+  // Assert
+  assert.notEqual(answer?.permissionDecision, "deny");
+});
+
+test("a commit with no Session id is still denied when the team chose to show the Session trailer", async () => {
+  // Arrange
+  const repo = await sessionTrailerRepository("show");
+
+  // Act
+  const answer = await answerTo('git add -A && git commit -m "Fix the thing"', null, "Bash", "", repo.dir);
+
+  // Assert
+  assert.equal(answer.permissionDecision, "deny");
+});
+
+for (const [state, answer] of [
+  ["chose to show it", "show"],
+  ["gave no answer", undefined],
+]) {
+  test(`a commit carries its Session trailer when the team ${state}`, async () => {
+    // Arrange
+    const repo = await sessionTrailerRepository(answer);
+    const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+
+    // Act
+    repo.run(command);
+
+    // Assert
+    assert.deepEqual(sessions(repo), [SESSION]);
+  });
+}
+
+for (const answer of ["show", "hide"]) {
+  test(`a commit keeps its Ticket and Claude's credit with the Session trailer set to ${answer}`, async () => {
+    // Arrange
+    const repo = await sessionTrailerRepository(answer, "show");
+    const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "#582", repo.dir);
+
+    // Act
+    repo.run(command);
+
+    // Assert
+    assert.deepEqual({ tickets: tickets(repo), credits: credits(repo) }, { tickets: ["#582"], credits: [CREDIT] });
+  });
+}
+
+test("a PowerShell commit carries no Session trailer when the team chose to hide it", { skip: NO_PWSH }, async () => {
+  // Arrange
+  const repo = await sessionTrailerRepository("hide", "show");
+  const command = await rewritten('git add -A; git commit -m "Fix the thing"', SESSION, "PowerShell", "#582", repo.dir);
+
+  // Act
+  await repo.runPowerShell(command);
+
+  // Assert
+  assert.deepEqual({ sessions: sessions(repo), tickets: tickets(repo) }, { sessions: [], tickets: ["#582"] });
+});
 
 const TYPED_CREDITS = [
   [

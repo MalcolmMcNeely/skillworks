@@ -2,6 +2,7 @@
 # The worktree script, run against a throwaway repository.
 
 import io
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -245,6 +246,49 @@ def test_a_held_keep_names_every_recorded_session_in_order(repo, runner):
     assert ran.status == 0
     assert ran.out == record("ticket-164", "ticket-164-kept-1", "held")
     assert sessions_named(repo, "ticket-164-kept-1") == ["first-session", "second-session"]
+
+
+def given_session_trailer(repo, answer):
+    path = repo.work / LOOP_FILE
+    settings = json.loads(path.read_text(encoding="utf-8"))
+    settings["session-trailer"] = answer
+    path.write_text(json.dumps(settings), encoding="utf-8", newline="\n")
+
+
+def test_a_held_keep_names_no_session_when_the_team_hides_the_session_trailer(repo, runner):
+    given_session_trailer(repo, "hide")
+    given_job(repo, runner, 158, "ticket-164")
+    tree = repo.tree(158, "ticket-164")
+    given_sessions(tree, "first-session")
+    given_held(tree)
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert ran.status == 0
+    assert ran.out == record("ticket-164", "ticket-164-kept-1", "held")
+    assert sessions_named(repo, "ticket-164-kept-1") == []
+
+
+def test_a_held_keep_with_no_record_warns_of_nothing_when_the_team_hides_the_session_trailer(repo, runner):
+    given_session_trailer(repo, "hide")
+    given_job(repo, runner, 158, "ticket-164")
+    given_held(repo.tree(158, "ticket-164"))
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert "warn" not in ran.err
+
+
+def test_a_held_keep_names_its_session_when_the_team_shows_the_session_trailer(repo, runner):
+    given_session_trailer(repo, "show")
+    given_job(repo, runner, 158, "ticket-164")
+    tree = repo.tree(158, "ticket-164")
+    given_sessions(tree, "first-session")
+    given_held(tree)
+
+    run_worktree(runner, "keep", repo.work, 158)
+
+    assert sessions_named(repo, "ticket-164-kept-1") == ["first-session"]
 
 
 def test_a_held_keep_names_a_session_that_already_committed(repo, runner):

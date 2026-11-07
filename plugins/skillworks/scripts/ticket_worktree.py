@@ -37,6 +37,7 @@ from typing import NamedTuple
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
+from steering.session_trailer import session_trailer
 from steering.target_branch import target_branch_for
 from stop import Stop, is_a_number, misuse, refusal
 
@@ -261,9 +262,10 @@ class Worktrees:
                 # A line ending alone stages to nothing, and git refuses to commit that.
                 if self.git(tree, "diff", "--cached", "--quiet").status != 0:
                     state = "held"
-                    sessions = self.recorded_sessions(tree)
+                    hidden = session_trailer(self.checkout) == "hide"
+                    sessions = [] if hidden else self.recorded_sessions(tree)
                     # Losing the work costs more than losing the Session's name.
-                    if not sessions:
+                    if not sessions and not hidden:
                         self.err.write(
                             "warn  {} has no record of a Session, so its Keep names none.\n".format(
                                 tree.as_posix()))
