@@ -418,6 +418,51 @@ def test_domain_modeling_keeps_when_to_offer_an_adr():
         assert test in offer, test
 
 
+def paragraphs_naming(text, name):
+    return [paragraph for paragraph in text.split("\n\n") if name in paragraph]
+
+
+def test_context_backfill_drafts_each_adr_in_the_teams_shape():
+    paragraphs = paragraphs_naming(skill_text("context-backfill"), "`docs/agents/adr-format.md`")
+
+    assert any("ADR Draft" in paragraph and "`adr-folder`" in paragraph for paragraph in paragraphs)
+
+
+def test_context_backfill_puts_the_reversal_phrases_wherever_the_shape_puts_a_status():
+    paragraphs = paragraphs_naming(skill_text("context-backfill"), "wherever the shape puts a status")
+
+    assert len(paragraphs) == 1
+    assert "`Status: superseded by the decision below`" in paragraphs[0]
+    assert "`This supersedes the decision above.`" in paragraphs[0]
+
+
+def test_the_architecture_review_reads_and_writes_adrs_in_the_setting_and_the_shape():
+    text = skill_text("improve-codebase-architecture")
+
+    assert "`adr-folder`" in text
+    assert "`docs/agents/domain.md`" in text
+    assert "`docs/agents/adr-format.md`" in text
+    assert "numbered one above the highest" in " ".join(text.split())
+
+
+@pytest.mark.parametrize("page", ["context-backfill/SKILL.md", "improve-codebase-architecture/SKILL.md",
+                                  "review-changes/architecture.md", "what-next/SKILL.md"])
+def test_a_skill_that_reads_or_writes_adrs_names_the_setting_and_not_a_fixed_folder(page):
+    text = (SKILLS / page).read_text(encoding="utf-8")
+
+    assert "docs/adr" not in text
+    assert "`adr-folder`" in text
+
+
+def test_the_backfill_page_says_adrs_go_to_the_setting_in_the_teams_shape_at_the_folders_width():
+    page = " ".join((ROOT / "docs" / "usage" / "context-backfill.md").read_text(encoding="utf-8").split())
+
+    assert "`docs/agents/adr-format.md`" in page
+    assert "`adr-folder`" in page
+    assert "padded as wide as the file with the highest number" in page
+    assert "docs/adr/" not in page
+
+
 def test_a_seed_already_there_is_kept_and_its_difference_shown(repo, runner):
     edited = repo.work / "docs" / "agents" / "issue-tracker.md"
     edited.parent.mkdir(parents=True)
@@ -1404,8 +1449,9 @@ def test_the_stage_map_names_the_surfaces_file_for_each_stage_that_reads_it(stag
     assert "`surfaces.md`" in stage_map_row(stage)
 
 
-def test_the_stage_map_shows_the_grill_loading_the_adr_shape_file():
-    assert "`adr-format.md`" in stage_map_row("The grill")
+@pytest.mark.parametrize("stage", ["The grill", "Context backfill"])
+def test_the_stage_map_shows_each_adr_writer_loading_the_adr_shape_file(stage):
+    assert "`adr-format.md`" in stage_map_row(stage)
 
 
 def test_the_grill_page_says_a_settled_adr_goes_to_the_setting_in_the_teams_shape():
@@ -2122,8 +2168,10 @@ STEERING_READERS = {
                          "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
                   "spec-names/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
-                  "codebase-design/DESIGN-IT-TWICE.md"],
-    "adr-format.md": ["domain-modeling/ADR-FORMAT.md"],
+                  "codebase-design/DESIGN-IT-TWICE.md", "context-backfill/SKILL.md",
+                  "improve-codebase-architecture/SKILL.md"],
+    "adr-format.md": ["domain-modeling/ADR-FORMAT.md", "context-backfill/SKILL.md",
+                      "improve-codebase-architecture/SKILL.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],
     "review-architecture.md": ["review-changes/architecture.md"],

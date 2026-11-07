@@ -161,6 +161,10 @@ The heading names the kind and the number: `M` for the map, `W` for a word and `
 decision. The `Context:` line is there only with a map. The text between it and `Evidence:` is the
 text that will be written into the repo.
 
+The run writes each decision Draft in your team's shape: the template and the optional sections in
+`docs/agents/adr-format.md`. The run also reads the ADRs already in the folder `adr-folder` names,
+so what you accept looks like the rest of your ADRs.
+
 A reversal, a decision that was later undone, is one Draft that holds two ADRs: the old one, marked
 superseded, and the new one that names it. One Answer covers both. Each ADR sits under a `####`
 heading, which is the title it is written with:
@@ -180,7 +184,8 @@ Evidence:
 ```
 
 The ADRs have no numbers yet, so the status line and the first sentence say "the decision below"
-and "the decision above". The second run puts the numbers in.
+and "the decision above". The run puts these two phrases wherever your shape puts a status, such
+as under a `## Status` heading. The second run puts the numbers in.
 
 ### Marking the sheet
 
@@ -234,7 +239,7 @@ writes the text that is on the sheet, so a Draft you edited is written as you ed
 |---|---|
 | `accept` on the map | `CONTEXT-MAP.md` at the repo root, as the sheet holds it. Two Steering files change with it, as the next section says. |
 | `accept` on a word | The glossary, in alphabetical order, with its `_Avoid_` line and no evidence. With one glossary, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, where the map says that context lives. The file is created when there is none. |
-| `accept` on a decision | A new ADR in the folder `adr-folder` names, at the end of `docs/agents/domain.md`. Its number is one above the highest number there, padded as wide as the file with the highest number, so `041` is followed by `042`. An empty folder starts at `0001`. The Draft's title is its heading, and its text is the body, exactly as accepted. |
+| `accept` on a decision | A new ADR in the folder `adr-folder` names, at the end of `docs/agents/domain.md`. Its number is one above the highest number there, padded as wide as the file with the highest number, so `041` is followed by `042`. An empty folder starts at `0001`. The Draft's title is its heading, and its text is the body, exactly as accepted, in the team's shape. |
 | `reject` | Nowhere. The Draft is dropped. |
 | `?` or blank | Nowhere yet. The Draft stays on the sheet. |
 

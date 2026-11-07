@@ -36,6 +36,7 @@ use with nobody watching.
 | The Name check | `CLAUDE.md` and the rules | `issue-tracker.md`, `domain.md`, your glossary | The glossary, which decides the word a moved name or a concept named two ways should take. |
 | The rename ticket | What each step above loads, since it is built through them | The same as each step | The glossary, whose word each rename takes. The script writes the ticket from a fixed template, out of the Name report's lines. |
 | The full run | Nothing. No Session runs. | `suite.json` | The checks in `suite.json`. |
+| Context backfill | `CLAUDE.md` and the rules | `loop.json`, `domain.md`, your glossary, the folder `adr-folder` names, `adr-format.md`, `suite.json` | The shape in `adr-format.md`, which each ADR Draft fills. `adr-folder` in `domain.md`, which says where each accepted ADR goes. It runs once after setup and never in the loop. |
 
 The rules' settings load into every Session, but each one is enforced only once a check exists that
 reads it. Until then, `build` and `fix` follow them as prose, and the reviews judge the change by

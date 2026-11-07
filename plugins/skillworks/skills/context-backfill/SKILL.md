@@ -122,7 +122,7 @@ Judge each change by the three tests of an ADR. All three must be true:
 2. **Surprising without context.** A reader who looks at the code would wonder why it was done that way.
 3. **The result of a real trade-off.** There were real alternatives, and one was picked for a reason.
 
-A change that passes the three tests and has a written reason becomes an ADR Draft: a title, then one to three sentences that say what was decided and why. A change that passes the three tests and has no written reason becomes a Question, and never a Draft: say what changed and when, with its evidence, and leave the why open.
+A change that passes the three tests and has a written reason becomes an ADR Draft: a title, then a body in the shape `docs/agents/adr-format.md` gives, which says what was decided and why. The team owns that shape, so read the file before the pass, and read the ADRs already in the folder `adr-folder` names to see how the team fills it. If `docs/agents/adr-format.md` is missing, stop, and tell the person that `/skillworks:skillworks-setup` writes it. A change that passes the three tests and has no written reason becomes a Question, and never a Draft: say what changed and when, with its evidence, and leave the why open.
 
 A change that fails a test never reaches the sheet. List it under `## Failed a test`, one line each: the change, its commit, and the test it fails.
 
@@ -132,7 +132,7 @@ Write the Drafts, the Questions and that list into `decisions.md`, each Draft an
 
 Find the decisions that were later undone. A reversal rarely says revert. Its signals are a dependency removed after it was added, a folder deleted or renamed back, a setting put back, and a later thread that names the old choice.
 
-A reversal becomes one Draft that holds two ADRs. The old decision has a status line that says it is superseded by the new one. The new decision's first sentence says it supersedes the old one. One Answer covers the pair. Where `decisions.md` holds a Draft for either side of the pair, the reversal Draft takes its place.
+A reversal becomes one Draft that holds two ADRs, each in the shape `docs/agents/adr-format.md` gives. The old decision is marked superseded by the new one, and the new decision names the old one it supersedes. The sheet pass says where each mark goes. One Answer covers the pair. Where `decisions.md` holds a Draft for either side of the pair, the reversal Draft takes its place.
 
 A reversal with no written reason for either side is a Question, as in the decisions pass.
 
@@ -148,7 +148,7 @@ The sheet has four sections, in this order: `## Words`, `## Decisions`, `## Ques
 - Under the heading comes an `Answer:` line, left blank for the person to mark. With a map, a `Context:` line follows it and names the context that claims the Draft. Then comes the Draft's text, exactly as it will be written into the repo. Then comes an `Evidence:` list that quotes each commit, ticket or code line with its reference.
 - A Question is a `### Question Q<n>: <title>` heading with a `Reason:` line in place of the `Answer:` line, left blank for the person to write the reason on, or `?`. Its text says what changed and when, and never why.
 - With a map, the map is the first Draft under Words, its `Answer:` already `accept` from the talk, and the person may change it. Its text is the map as `CONTEXT-MAP.md` will hold it, with each context, where it lives, and one sentence on what it is. Without a map, there is no map Draft.
-- A reversal's text holds both ADRs: under a `####` heading for each, the old decision first, with its status line, and the new decision second. Each `####` heading is the title its ADR is written with. Neither ADR has a number yet, so write the old one's status line as `Status: superseded by the decision below`, and begin the new one with `This supersedes the decision above.` The second run puts the numbers in.
+- A reversal's text holds both ADRs: under a `####` heading for each, the old decision first and the new decision second, each in the shape `docs/agents/adr-format.md` gives. Each `####` heading is the title its ADR is written with. Neither ADR has a number yet, so put two fixed phrases wherever the shape puts a status: `Status: superseded by the decision below` in the old one, and `This supersedes the decision above.` in the new one. A shape with no place for a status takes the old one's phrase as the line under its heading, and the new one's as its first sentence. Write each phrase exactly, because the second run finds it by its words and swaps in the numbers.
 - In each section, put the strongest evidence first: more signals, and a reason written at the time, before fewer.
 - A Draft with one signal and no written reason goes under Thin, and not under Words or Decisions.
 
