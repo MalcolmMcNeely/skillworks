@@ -83,7 +83,7 @@ class Export:
         self.tracker = tracker
         self.spec = spec
         self.env = None
-        self.steering_files = []
+        self.left_out_files = []
         self.left_files = []
 
     def git(self, *args):
@@ -126,7 +126,7 @@ class Export:
     def file_names(self, why, command, *args):
         return [name for name in self.must(why, command, "-z", *args).split("\0") if name]
 
-    # A file only a left-out commit brought in is Steering, so no ticket's change can carry it back.
+    # A file only a left-out commit brought in is left out too, so no ticket's change can carry it back.
     def created_by(self, left, tip):
         on_tip = set(self.file_names("git would not list the files of the Export branch",
                                      "ls-tree", "-r", "--name-only", tip))
@@ -140,11 +140,11 @@ class Export:
         return created
 
     def note_left_files(self, commit, source):
-        if not self.steering_files:
+        if not self.left_out_files:
             return
         for name in self.file_names("git would not read the change of " + commit.short,
                                     "diff", "--name-only", "--no-renames", commit.hash + "^", commit.hash,
-                                    "--", *(":(literal)" + name for name in self.steering_files)):
+                                    "--", *(":(literal)" + name for name in self.left_out_files)):
             if LeftFile(name, source) not in self.left_files:
                 self.left_files.append(LeftFile(name, source))
 
@@ -161,7 +161,7 @@ class Export:
         self.must("git would not read the change of " + commit.short,
                   "diff", "--binary", "--full-index", "--no-renames", "--output=" + patch,
                   commit.hash + "^", commit.hash, "--", ".", ":(exclude).specs",
-                  *(":(exclude,literal)" + name for name in self.steering_files))
+                  *(":(exclude,literal)" + name for name in self.left_out_files))
         if Path(patch).stat().st_size == 0:
             return
         if self.git("apply", "--cached", "--binary", patch).status != 0:
@@ -212,7 +212,7 @@ class Export:
         tip = self.must("the Export branch {} is not a branch in this checkout".format(branch),
                         "rev-parse", "--verify", "--quiet", "refs/heads/" + branch + "^{commit}")
         grill, tickets, left = self.grouped(self.commits_after(tip, target))
-        self.steering_files = self.created_by(left, tip)
+        self.left_out_files = self.created_by(left, tip)
         parts = ([(grill, spec_title.removeprefix("SPEC: "), GRILL)] if grill else []) + [
             (commits, self.tracker.title(ticket).removeprefix("TICKET: "), self.tracker.named(ticket))
             for ticket, commits in tickets.items()]
