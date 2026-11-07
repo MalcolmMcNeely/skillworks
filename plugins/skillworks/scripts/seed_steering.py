@@ -21,6 +21,7 @@ PLACES = {
     "words.md": "docs/agents/rules/words.md",
     "issue-tracker.md": "docs/agents/issue-tracker.md",
     "domain.md": "docs/agents/domain.md",
+    "adr-format.md": "docs/agents/adr-format.md",
     "placement-checks.md": "docs/agents/placement-checks.md",
     "review-standards.md": "docs/agents/review-standards.md",
     "review-architecture.md": "docs/agents/review-architecture.md",

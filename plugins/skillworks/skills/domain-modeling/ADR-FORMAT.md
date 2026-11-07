@@ -1,30 +1,16 @@
 # ADR Format
 
-ADRs live in `docs/adr/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`, etc.
+Every new ADR goes to the one folder that `adr-folder` names, in the YAML block at the end of `docs/agents/domain.md`, whatever context it is about. Create that folder lazily — only when the first ADR is needed.
 
-Create the `docs/adr/` directory lazily — only when the first ADR is needed.
+## Shape
 
-## Template
+The team owns what an ADR looks like. Read `docs/agents/adr-format.md` for the template and the optional sections, and write each new ADR in that shape.
 
-```md
-# {Short title of the decision}
-
-{1-3 sentences: what's the context, what did we decide, and why.}
-```
-
-That's it. An ADR can be a single paragraph. The value is in recording *that* a decision was made and *why* — not in filling out sections.
-
-## Optional sections
-
-Only include these when they add genuine value. Most ADRs won't need them.
-
-- **Status** frontmatter (`proposed | accepted | deprecated | superseded by ADR-NNNN`) — useful when decisions are revisited
-- **Considered Options** — only when the rejected alternatives are worth remembering
-- **Consequences** — only when non-obvious downstream effects need to be called out
+If `docs/agents/adr-format.md` is missing, stop. Tell the user that the file is missing, that `/skillworks:skillworks-setup` writes it, and that no ADR was written.
 
 ## Numbering
 
-Scan `docs/adr/` for the highest existing number and increment by one.
+A new ADR is named `<number>-<slug>.md`. Its number is one above the highest leading number of any `<number>-<slug>.md` file in the folder, padded to the digit count of the file with the highest number: after `041` comes `042`, and after `0007` comes `0008`. An empty or missing folder starts at `0001`.
 
 ## When to offer an ADR
 

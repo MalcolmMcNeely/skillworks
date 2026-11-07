@@ -18,7 +18,7 @@ use with nobody watching.
 <!-- stage map -->
 | Stage | Always loads | Loads on demand | What your team can change |
 |---|---|---|---|
-| The grill | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `surfaces.md` | The glossary and the ADRs. The grill writes them as words and decisions settle. The Surfaces in `surfaces.md`, which decide what the grill asks once the design is settled. |
+| The grill | `CLAUDE.md` and the rules | `domain.md`, your glossary, `docs/adr/`, `adr-format.md`, `surfaces.md` | The glossary and the ADRs. The grill writes them as words and decisions settle, each ADR in the shape `adr-format.md` gives. The Surfaces in `surfaces.md`, which decide what the grill asks once the design is settled. |
 | The gate | The same Session as the grill | Nothing more | Nothing in a file. Your yes or no is the lever. |
 | The spec | `CLAUDE.md` and the rules | `issue-tracker.md`, your glossary, `docs/adr/`, `surfaces.md` | The glossary and the ADRs, which give the spec its words and its decisions. The Surfaces in `surfaces.md`, which name the Surfaces section of the spec. |
 | The tickets | `CLAUDE.md` and the rules | `issue-tracker.md`, `domain.md`, your glossary, `docs/adr/` | "The ticket shape" in `issue-tracker.md`: the size of a ticket, its title and its sections. The glossary and the ADRs, which give the tickets their words. |

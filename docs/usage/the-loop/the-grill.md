@@ -11,9 +11,13 @@ have not made yet waits for that decision.
 Finding facts is never your job. A question that needs a fact from the code or the Tracker goes to a
 sub-agent. The decisions are yours. The lookups are not.
 
-Your glossary, `CONTEXT.md`, and your ADRs in `docs/adr/` are edited the moment a word or a decision
-settles, not at the end. Every Session after this one starts with an empty context, and can only find
-those decisions in the repo.
+Your glossary, `CONTEXT.md`, and your ADRs are edited the moment a word or a decision settles, not at
+the end. Every Session after this one starts with an empty context, and can only find those decisions
+in the repo.
+
+A settled ADR goes to the folder `adr-folder` names, in `docs/agents/domain.md`, in the shape
+`docs/agents/adr-format.md` gives. Its number is one above the highest in that folder, as wide as the
+file with the highest number.
 
 When no design question is left, the grill walks your Surfaces: the places in
 `docs/agents/surfaces.md` a change can have to reach besides its code. It asks about one Surface at a

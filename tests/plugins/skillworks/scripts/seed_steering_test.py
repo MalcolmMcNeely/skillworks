@@ -21,6 +21,7 @@ WHERE = {
     "words.md": "docs/agents/rules/words.md",
     "issue-tracker.md": "docs/agents/issue-tracker.md",
     "domain.md": "docs/agents/domain.md",
+    "adr-format.md": "docs/agents/adr-format.md",
     "placement-checks.md": "docs/agents/placement-checks.md",
     "review-standards.md": "docs/agents/review-standards.md",
     "review-architecture.md": "docs/agents/review-architecture.md",
@@ -363,6 +364,58 @@ def test_the_domain_docs_seed_names_the_setting_and_not_a_fixed_folder_for_a_rea
 
     assert "`adr-folder`" in read_these
     assert "`docs/adr/`" not in read_these
+
+
+def test_the_adr_format_seed_holds_the_skillworks_template_and_optional_sections():
+    text = seeded("adr-format.md")
+    template = section(text, "Template")
+    optional = section(text, "Optional sections")
+
+    assert "# {Short title of the decision}" in template
+    assert "{1-3 sentences: what's the context, what did we decide, and why.}" in template
+    for name in ("**Status**", "**Considered Options**", "**Consequences**"):
+        assert name in optional, name
+
+
+def test_an_empty_repo_gets_the_adr_shape_file(repo, runner):
+    ran = run_seed(runner, repo.work)
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / "docs" / "agents" / "adr-format.md").read_text(encoding="utf-8") == seeded("adr-format.md")
+
+
+def test_this_repo_holds_the_adr_shape_file_with_the_seeds_text():
+    assert (ROOT / "docs" / "agents" / "adr-format.md").read_text(encoding="utf-8") == seeded("adr-format.md")
+
+
+def adr_format_page():
+    return (SKILLS / "domain-modeling" / "ADR-FORMAT.md").read_text(encoding="utf-8")
+
+
+def test_domain_modeling_reads_the_adr_shape_from_steering_and_the_folder_from_the_setting():
+    page = adr_format_page()
+
+    assert "`docs/agents/adr-format.md`" in page
+    assert "`adr-folder`" in page
+    assert "`docs/agents/domain.md`" in page
+    assert "## Template" not in page
+    assert "## Optional sections" not in page
+    assert "docs/adr" not in page
+
+
+def test_domain_modeling_numbers_a_new_adr_at_the_folders_width():
+    numbering = section(adr_format_page(), "Numbering")
+
+    assert "one above the highest" in numbering
+    assert "digit count" in numbering
+    assert "`0001`" in numbering
+
+
+def test_domain_modeling_keeps_when_to_offer_an_adr():
+    offer = section(adr_format_page(), "When to offer an ADR")
+
+    for test in ("**Hard to reverse**", "**Surprising without context**", "**The result of a real trade-off**"):
+        assert test in offer, test
 
 
 def test_a_seed_already_there_is_kept_and_its_difference_shown(repo, runner):
@@ -1351,6 +1404,28 @@ def test_the_stage_map_names_the_surfaces_file_for_each_stage_that_reads_it(stag
     assert "`surfaces.md`" in stage_map_row(stage)
 
 
+def test_the_stage_map_shows_the_grill_loading_the_adr_shape_file():
+    assert "`adr-format.md`" in stage_map_row("The grill")
+
+
+def test_the_grill_page_says_a_settled_adr_goes_to_the_setting_in_the_teams_shape():
+    page = (ROOT / "docs" / "usage" / "the-loop" / "the-grill.md").read_text(encoding="utf-8")
+    paragraphs = [paragraph for paragraph in page.split("\n\n") if "`docs/agents/adr-format.md`" in paragraph]
+
+    assert len(paragraphs) == 1
+    assert "`adr-folder`" in paragraphs[0]
+
+
+def test_the_steering_page_has_a_row_for_the_adr_shape_file():
+    rows = [line for line in STEERING_PAGE.read_text(encoding="utf-8").splitlines()
+            if line.startswith("| `adr-format.md` |")]
+
+    assert len(rows) == 1
+    assert "template" in rows[0]
+    assert "grill" in rows[0]
+    assert "Skillworks shape" in rows[0]
+
+
 def test_the_tickets_keep_each_surface_inside_the_ticket_that_needs_it():
     to_tickets = skill_text("to-tickets")
 
@@ -1957,7 +2032,7 @@ THIS_REPO = ["Skillworks.", "slnx", "Studio", "Dashboard", "Loki", "Aspire", "do
 
 def test_the_seeds_carry_no_fact_about_this_repo():
     names = sorted(WHERE)
-    assert len(names) == 14
+    assert len(names) == 15
     for name in names:
         text = seeded(name)
         for fact in THIS_REPO:
@@ -2048,6 +2123,7 @@ STEERING_READERS = {
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
                   "spec-names/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
                   "codebase-design/DESIGN-IT-TWICE.md"],
+    "adr-format.md": ["domain-modeling/ADR-FORMAT.md"],
     "placement-checks.md": ["review-changes/architecture.md", "architecture-tests/SKILL.md"],
     "review-standards.md": ["review-changes/standards.md"],
     "review-architecture.md": ["review-changes/architecture.md"],

@@ -545,6 +545,17 @@ def test_a_missing_steering_file_stops_the_dry_run_naming_the_file_and_setup(loo
     assert "DRY" not in ran.out
 
 
+def test_a_repo_with_no_adr_shape_file_stops_the_dry_run_as_missing_steering(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    (loop.repo.work / "docs" / "agents" / "adr-format.md").unlink()
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert ("ABORT docs/agents/adr-format.md is missing, and setup seeds it. "
+            "Run /skillworks:skillworks-setup to write it again.") in said(ran)
+
+
 def test_domain_docs_that_name_no_adr_folder_stop_the_dry_run_naming_setup(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     (loop.repo.work / "docs" / "agents" / "domain.md").write_text("# Domain Docs\n", encoding="utf-8",

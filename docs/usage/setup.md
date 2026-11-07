@@ -131,6 +131,7 @@ Review these before you commit them.
 | `docs/agents/rules/words.md` | The words rule. `banned-words` and `skip-folders` start empty. |
 | `docs/agents/issue-tracker.md` | How the skills read and write each Tracker: the `gh` calls for `github`, and the `.specs/` files for `files`. The ticket shape, and the two conventions the loop leans on. |
 | `docs/agents/domain.md` | Where your glossary and your ADRs live. |
+| `docs/agents/adr-format.md` | The shape of an ADR: its template and its optional sections. It starts with the Skillworks shape. |
 | `docs/agents/placement-checks.md` | The commands that prove placement. It starts with none. |
 | `docs/agents/review-standards.md` | What the `standards` review checks: the code smells, and your team's own checks. It starts with no check of your own. |
 | `docs/agents/review-architecture.md` | What the `architecture` review checks: the failures of placement, and your team's own checks. It starts with no check of your own. |
