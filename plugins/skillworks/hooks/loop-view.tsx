@@ -34,8 +34,76 @@ type Position = {
   stop: { line: string; log: string } | null
 }
 
-// The driver writes "cutting" because the Position names what it does, and the pane says to what.
-const DOING: Record<string, string> = { cutting: 'cutting tickets' }
+type Shown = { name: string; hint: string }
+
+// The pane speaks to someone who has not read the docs, so each name is plain and each hint says what
+// the step does. The driver's own names stay in the log and the Position.
+const STEP: Record<string, Shown> = {
+  build: { name: 'build', hint: 'Writes failing tests, then the code that passes them. Commits nothing.' },
+  standards: {
+    name: 'review: standards',
+    hint: 'Reviews the change against your rules. Fixes what it can, and reports the rest.',
+  },
+  spec: {
+    name: 'review: spec',
+    hint: 'Reviews the change against the ticket and the spec. Fixes what it can, and reports the rest.',
+  },
+  architecture: {
+    name: 'review: architecture',
+    hint: 'Reviews where the change sits and which way it points. Fixes what it can, and reports the rest.',
+  },
+  fix: {
+    name: 'review fixes',
+    hint: 'The build Session reads the three review reports and fixes what they left. Where two disagree, it picks one.',
+  },
+  sweep: {
+    name: 'comment sweep',
+    hint: 'Cuts each new comment that only repeats the code. Comments the change did not write stay.',
+  },
+  suite: { name: 'suite', hint: 'The script runs the checks in docs/agents/suite.json. No Session runs.' },
+  finish: {
+    name: 'close ticket and commit',
+    hint: 'The build Session commits the change and closes the ticket. It does not push.',
+  },
+  land: {
+    name: 'rebase, verify, and push',
+    hint: 'The script rebases the ticket onto the newest Target branch, runs the Suite again, then pushes.',
+  },
+}
+
+const GONE = 'gone'
+
+const DOING: Record<string, Shown> = {
+  cutting: { name: 'cutting tickets', hint: 'A Session splits the spec into tickets. This happens once per spec.' },
+  'building tickets': {
+    name: 'building tickets',
+    hint: 'The loop takes each ticket through the same steps, one ticket at a time.',
+  },
+  'drift check': {
+    name: 'the drift check',
+    hint: 'A new Session checks that the finished work does what the spec asked.',
+  },
+  'Name check': {
+    name: 'the Name check',
+    hint: 'A new Session checks the new names in the code against the glossary in CONTEXT.md.',
+  },
+  'full run': {
+    name: 'the full run',
+    hint: 'The script runs every check again on the newest Target branch. It ignores saved Proofs.',
+  },
+  finished: { name: 'finished', hint: 'Every ticket is on the Target branch.' },
+  stopped: { name: 'stopped', hint: 'The loop ended early. The red line below says why. The log has the detail.' },
+  [GONE]: { name: GONE, hint: 'The script quit before it wrote an end. Read loop.log for the last step it reached.' },
+}
+
+// A driver newer than the Plugin can write a name the pane has no words for, so it shows as written.
+function shown(table: Record<string, Shown>, name: string): Shown {
+  return table[name] ?? { name, hint: '' }
+}
+
+function count(n: number, one: string): string {
+  return `${n} ${n === 1 ? one : `${one}s`}`
+}
 
 function span(ms: number): string {
   const minutes = Math.floor(Math.max(0, ms) / 60000)
@@ -121,11 +189,13 @@ export const register: Register = on => {
         {loops.map(loop => {
           const ticket = loop.ticket
           const stepAt = ticket?.step ? ticket.steps.indexOf(ticket.step) : -1
+          const doing = shown(DOING, isGone(loop, now) ? GONE : loop.doing)
           const left = loop.seconds_left == null ? '' : `~${span(loop.seconds_left * 1000)} left · `
           return (
             <Box flexDirection="column">
-              <Text bold>Spec #{loop.spec} · {isGone(loop, now) ? 'gone' : DOING[loop.doing] ?? loop.doing}</Text>
-              <Text dimColor>{left}{loop.choices} Choices · {loop.denials} Denials</Text>
+              <Text bold>Spec #{loop.spec} · {doing.name}</Text>
+              {!ticket && doing.hint && <Text dimColor>{doing.hint}</Text>}
+              <Text dimColor>{left}{count(loop.choices, 'Choice')} · {count(loop.denials, 'Denial')}</Text>
               {hasEnded(loop, now) && (
                 <Button key={`clear-${loop.run}`} label="Clear" onPress={() => clear(loop.run)} />
               )}
@@ -133,16 +203,26 @@ export const register: Register = on => {
               {loop.stop && <Text>Log: {loop.stop.log}</Text>}
               {loop.tickets.map(row => (
                 <Text color={row.landed ? 'green' : row.number === ticket?.number ? 'yellow' : undefined}>
-                  {row.landed ? '✓' : row.number === ticket?.number ? '▶' : '·'} #{row.number} {row.title}
+                  {row.landed ? '✓ Landed ' : row.number === ticket?.number ? '▶ now    ' : '· to come'} #{row.number} {row.title}
                 </Text>
               ))}
-              {ticket && <Text bold>#{ticket.number}, ticket {loop.at} of {loop.of}</Text>}
-              {ticket?.steps.map((step, k) => (
-                <Text color={k === stepAt ? 'yellow' : k < stepAt ? 'green' : undefined} dimColor={k > stepAt}>
-                  {k < stepAt ? '✓' : k === stepAt ? '▶' : '○'} {step}
-                  {k === stepAt && ticket.step_started ? `  ${span(now - Date.parse(ticket.step_started))} in step` : ''}
-                </Text>
-              ))}
+              {ticket && <Text bold>Ticket {loop.at} of {loop.of}: #{ticket.number}</Text>}
+              {ticket?.steps.map((step, k) => {
+                const { name, hint } = shown(STEP, step)
+                return (
+                  <Box flexDirection="column">
+                    <Text color={k === stepAt ? 'yellow' : k < stepAt ? 'green' : undefined} dimColor={k > stepAt}>
+                      {k < stepAt ? '✓' : k === stepAt ? '▶' : '○'} {name}
+                      {k === stepAt && ticket.step_started ? `  ${span(now - Date.parse(ticket.step_started))} in step` : ''}
+                    </Text>
+                    {k === stepAt && hint && (
+                      <Box marginLeft={2}>
+                        <Text dimColor>{hint}</Text>
+                      </Box>
+                    )}
+                  </Box>
+                )
+              })}
             </Box>
           )
         })}

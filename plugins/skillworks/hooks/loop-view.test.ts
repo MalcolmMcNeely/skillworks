@@ -147,9 +147,10 @@ test('a finished loop shows as finished, with no step', async ($, on) => {
   // Assert
   expect(await lines($)).toEqual([
     'Spec #589 · finished',
-    '2 Choices · 1 Denials',
-    '✓ #590 TICKET: The driver writes a Position',
-    '✓ #592 TICKET: A pane shows every running loop',
+    'Every ticket is on the Target branch.',
+    '2 Choices · 1 Denial',
+    '✓ Landed  #590 TICKET: The driver writes a Position',
+    '✓ Landed  #592 TICKET: A pane shows every running loop',
   ])
 })
 
@@ -418,7 +419,7 @@ test('a new run of a cleared spec shows in the pane again', async ($, on) => {
   expect((await lines($))[0]).toBe('Spec #589 · building tickets')
 })
 
-test('a running ticket shows its spec, its tickets, and its steps with the time in the step', async ($, on) => {
+test('a running ticket shows each step by its plain name, with a hint under the step it is on', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })
   cloneHolding(on, { '589': running() })
@@ -430,14 +431,65 @@ test('a running ticket shows its spec, its tickets, and its steps with the time 
   // Assert
   expect(await lines($)).toEqual([
     'Spec #589 · building tickets',
-    '~1h 5m left · 2 Choices · 1 Denials',
-    '✓ #590 TICKET: The driver writes a Position',
-    '▶ #592 TICKET: A pane shows every running loop',
-    '· #593 TICKET: Clear a loop that ended',
-    '#592, ticket 2 of 3',
+    '~1h 5m left · 2 Choices · 1 Denial',
+    '✓ Landed  #590 TICKET: The driver writes a Position',
+    '▶ now     #592 TICKET: A pane shows every running loop',
+    '· to come #593 TICKET: Clear a loop that ended',
+    'Ticket 2 of 3: #592',
     '✓ build',
-    '▶ standards  4m in step',
-    '○ spec',
-    '○ land',
+    '▶ review: standards  4m in step',
+    'Reviews the change against your rules. Fixes what it can, and reports the rest.',
+    '○ review: spec',
+    '○ rebase, verify, and push',
   ])
+})
+
+test('a loop between tickets shows what it does now, with a hint', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running({ doing: 'drift check', ticket: null, at: null, of: null }) })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($)).slice(0, 2)).toEqual([
+    'Spec #589 · the drift check',
+    'A new Session checks that the finished work does what the spec asked.',
+  ])
+})
+
+test('a step the pane has no name for shows as the driver names it, with no hint', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  const ticket = {
+    number: '592',
+    title: 'TICKET: A pane shows every running loop',
+    steps: ['build', 'deploy'],
+    step: 'deploy',
+    step_started: '2026-11-07T17:06:00Z',
+  }
+  cloneHolding(on, { '589': running({ ticket }) })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  const shown = await lines($)
+  expect(shown.slice(shown.indexOf('▶ deploy  4m in step'))).toEqual(['▶ deploy  4m in step'])
+})
+
+test('a single Choice and a single Denial read in the singular', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': { ...FINISHED, choices: 1 } })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await lines($)).toContain('1 Choice · 1 Denial')
 })
