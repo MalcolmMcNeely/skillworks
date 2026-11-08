@@ -159,6 +159,7 @@ skip-folders:
   - venv
   - site-packages
   - .handoff
+  - types
 banned-folder-names:
   - utils
   - helpers
