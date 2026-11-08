@@ -24,9 +24,9 @@ Every step but `suite` is a Session of its own, run inside the ticket's worktree
 | Step | What it does |
 |---|---|
 | `build` | Builds the change test-first, and leaves it uncommitted. |
-| `standards` | Reviews the change against your rules, and fixes what it finds. |
-| `spec` | Reviews the change against the ticket and the spec, and each Surface the spec names for the ticket, and fixes what it finds. |
-| `architecture` | Reviews where the change sits and which way it points, and fixes what it finds. |
+| `standards` | Reviews the change against your rules. It fixes what it can, and reports the rest. |
+| `spec` | Reviews the change against the ticket and the spec, and each Surface the spec names for the ticket. It fixes what it can, and reports the rest. |
+| `architecture` | Reviews where the change sits and which way it points. It fixes what it can, and reports the rest. |
 | `fix` | Reads all three reports at once, settles any disagreement, and fixes what is left. |
 | `sweep` | Cuts the comments the change wrote back to what your rules keep. A comment the change did not touch stays as it is. |
 | `suite` | The script runs your Suite. No Session is asked. |
