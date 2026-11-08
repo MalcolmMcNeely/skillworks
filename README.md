@@ -98,8 +98,8 @@ loop stops.
 ticket in a worktree of its own:
 
 1. A Session builds the change, test-first.
-2. Three fresh Sessions review it, and each fixes what it finds: against your rules, against the
-   spec, and for where the code sits.
+2. Three fresh Sessions review it: against your rules, against the spec, and for where the code
+   sits. Each fixes what it can, and reports the rest.
 3. A Session reads all three reports and fixes what is left. Then a Session cuts the comments back
    to what your rules keep.
 4. The script runs your Suite, the checks that decide green for your repo. A red Suite goes back to
