@@ -32,6 +32,7 @@ from typing import NamedTuple
 
 from output.streams import speaking_any_character
 from runner import Subprocess
+from steering.steering_file import at_steering
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: skillworks-suite [--fresh | --image <Dockerfile> -- <command>]\n"
@@ -166,11 +167,11 @@ def keyed_entry(entry):
     return json.dumps({field: entry.get(field) for field in KEYED}, sort_keys=True)
 
 
-def image_of(entry, tree):
+def image_of(entry, held):
     if "image" not in entry:
         return None
     image = entry["image"]
-    if not isinstance(image, str) or not image or not (tree / image).is_file():
+    if not isinstance(image, str) or not image or not held(image):
         raise Unreadable("an image that is not a Dockerfile in the repo")
     return image
 
@@ -207,12 +208,40 @@ class Suite:
         self.now = now
         self.fresh = fresh
 
-    def read(self):
+    # An Export branch holds no Steering on disk, so its Suite file is the Steering branch's.
+    def from_steering(self, path):
+        tree = self.tree.as_posix()
+        shown = self.runner.run(["git", "-C", tree, "show", at_steering(path)], tree)
+        return shown.out if shown.status == 0 else None
+
+    def holds(self, path):
+        if (self.tree / path).is_file():
+            return True
+        tree = self.tree.as_posix()
+        return self.runner.run(["git", "-C", tree, "cat-file", "-t", at_steering(path)], tree).out.strip() == "blob"
+
+    # Docker builds from the Dockerfile's folder, so the whole folder comes off the Steering branch.
+    def steering_folder(self, folder, stage):
+        tree = self.tree.as_posix()
+        listed = self.runner.run(["git", "-C", tree, "ls-tree", "-r", "--name-only", at_steering(folder)], tree)
+        for name in listed.out.splitlines():
+            held = self.from_steering(posixpath.join(folder, name))
+            if held is not None:
+                (Path(stage) / name).parent.mkdir(parents=True, exist_ok=True)
+                (Path(stage) / name).write_text(held, encoding="utf-8", newline="")
+
+    def suite_text(self):
         path = self.tree / SUITE_FILE
-        if not path.is_file():
+        if path.is_file():
+            return path.read_text(encoding="utf-8")
+        held = self.from_steering(SUITE_FILE)
+        if held is None:
             raise Unreadable("no such file")
+        return held
+
+    def read(self):
         try:
-            parsed = json.loads(path.read_text(encoding="utf-8"))
+            parsed = json.loads(self.suite_text())
         except ValueError as fault:
             raise Unreadable("it is not JSON: {}".format(fault))
         if not isinstance(parsed, dict):
@@ -232,7 +261,7 @@ class Suite:
                 ready = Ready(command_of(ready), str(ready.get("message", "")),
                               ready.get("unless"))
             # Read in fresh mode too, so a Suite file that names a missing image is never green.
-            image = image_of(entry, self.tree)
+            image = image_of(entry, self.holds)
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
                                 None if self.fresh else image, ignores_of(entry),
                                 keyed_entry(entry)))
@@ -266,6 +295,11 @@ class Suite:
             if name not in digests:
                 digests[name] = hashlib.sha256(path.read_bytes()).hexdigest()
             key.update("\0{}\0{}".format(name, digests[name]).encode("utf-8"))
+        # Off the disk, the image's folder is no input git lists, so a Steering change to it is folded in here.
+        if check.image and not (self.tree / check.image).is_file():
+            tree = self.tree.as_posix()
+            folder = self.runner.run(["git", "-C", tree, "rev-parse", at_steering(posixpath.dirname(check.image))], tree)
+            key.update("\0{}\0{}".format(check.image, folder.out.strip()).encode("utf-8"))
         return key.hexdigest()
 
     def keys_of(self, wanted, proofs):
@@ -399,12 +433,22 @@ class Suite:
                           "docker said:\n{}".format(failed, image, ran.out + ran.err).rstrip("\n"))
         return ran
 
+    def built(self, image):
+        dockerfile = self.tree / image
+        if dockerfile.is_file():
+            return self.build(dockerfile)
+        with tempfile.TemporaryDirectory() as folder:
+            self.steering_folder(posixpath.dirname(image), folder)
+            return self.build(Path(folder) / posixpath.basename(image))
+
+    def build(self, dockerfile):
+        return self.runner.run(["docker", "build", "--quiet", "--file", dockerfile.as_posix(),
+                                dockerfile.parent.as_posix()], self.tree.as_posix())
+
     # Every check here names one image, and a file any of them reads is copied, so none misses it.
     def contained(self, checks, command, workdir):
         tree = self.tree.as_posix()
-        dockerfile = self.tree / checks[0].image
-        built = self.runner.run(["docker", "build", "--quiet", "--file", dockerfile.as_posix(),
-                                 dockerfile.parent.as_posix()], tree)
+        built = self.built(checks[0].image)
         if built.status != 0:
             return "build the image", built
         # The copy is the Proof's inputs and no more, so what was proved is what was tested.
