@@ -241,6 +241,11 @@ has come. The driver writes over it each time the loop moves on, so it holds the
 before it. The Journal is what keeps the past.
 _Avoid_: Progress, status, state
 
+**PR mode**:
+The way a team works when it reviews each spec as one pull request. The developer makes the branch and
+opens the pull request. Skillworks does neither.
+_Avoid_: Spec mode
+
 **Proof**:
 A check that passed on one exact set of its inputs, kept by the Suite. A check whose inputs match a
 Proof is not run again, so work already proved costs nothing a second time. A Proof knows only what
@@ -308,8 +313,8 @@ Surface is left out of step without anyone deciding it.
 _Avoid_: Axis, touchpoint, artefact
 
 **Target branch**:
-The branch a ticket Lands on. It is `main` for a team that pushes straight to it. For a team that
-reviews each spec as one pull request, it is that spec's own branch.
+The branch a ticket Lands on. It is `main` for a team that pushes straight to it. In PR mode, it is the
+branch the developer started the design on, or with the Export, a branch the loop cuts from it.
 _Avoid_: Runway, trunk, base branch
 
 **Tracker**:
