@@ -11,9 +11,9 @@ from real_binaries import (CLAUDE, COMMIT_SESSION, FORCED, GH, GH_FIELDS, NOWHER
 from runner import Subprocess
 
 # A line the driver stops building is the drift this set catches, so a count moves only on purpose.
-GH_LINES = 13
+GH_LINES = 15
 GH_FIELD_LINES = 2
-CLAUDE_LINES = 3
+CLAUDE_LINES = 2
 
 # One past the longest command line Windows will start, so the input could never ride as an argument.
 LONGER_THAN_A_COMMAND_LINE = "x" * 32768

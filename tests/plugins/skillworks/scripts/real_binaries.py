@@ -57,9 +57,11 @@ class Line(NamedTuple):
         at = self.args.index("--json")
         return self.args[:at + 1] + [NO_SUCH_FIELD] + self.args[at + 2:]
 
+    # claude turns down --session-id beside --resume unless the resume forks.
     def resumed_from_nowhere(self):
         if "--resume" not in self.args:
-            return self.args + ["--resume", NOWHERE]
+            forked = ["--fork-session"] if "--session-id" in self.args else []
+            return self.args + ["--resume", NOWHERE] + forked
         at = self.args.index("--resume")
         return self.args[:at + 1] + [NOWHERE] + self.args[at + 2:]
 
