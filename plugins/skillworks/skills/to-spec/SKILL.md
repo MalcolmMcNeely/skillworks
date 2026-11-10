@@ -18,9 +18,9 @@ When `docs/agents/loop.json` is missing on disk, this session is on an Export br
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
 
-2. Sketch out the seams at which you're going to test the feature. Pick them by the team's testing rule, `docs/agents/rules/testing.md`, which says how high and how few they are. Write them into the spec's Testing Decisions.
+2. Sketch out the seams at which you're going to test the feature. Pick them by the team's testing rule, `steering-file docs/agents/rules/testing.md`, which says how high and how few they are. Write them into the spec's Testing Decisions.
 
-3. Read `tracker` and `target-branch` in `docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `spec` means the spec gets a branch of its own; see [The spec's branch](#the-specs-branch) and do its first part now.
+3. Read `tracker` and `target-branch` in `steering-file docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `spec` means the spec gets a branch of its own; see [The spec's branch](#the-specs-branch) and do its first part now.
 
 4. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
 
@@ -68,7 +68,7 @@ The spec is a folder in `.specs/`. The command writes its frontmatter: `status: 
 
 In `spec` mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
 
-With `export` set to `true` in `docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
+With `export` set to `true` in `steering-file docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
 
 **First part, before the spec is published.** Find the branch.
 
@@ -104,7 +104,7 @@ With `github`, the pull request's body names the spec with a closing keyword, so
 
 ## The spec's branch with the Export
 
-With `export` set to `true` in `docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. Name it last when you publish, in place of `spec/<slug>`.
+With `export` set to `true` in `steering-file docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. Name it last when you publish, in place of `spec/<slug>`.
 
 **First part, before the spec is published.** Find the Target branch.
 
@@ -156,13 +156,13 @@ Exception: if a prototype produced a snippet that encodes a decision more precis
 
 ## Surfaces
 
-For each Surface in `docs/agents/surfaces.md` the change touches, one list item that opens with the Surface's name in bold, then its path, then the requirement the grill captured: what the Surface has to say once the change Lands. Point at the Surface by its path, and do not copy its content. Leave out a Surface the change does not touch. With no Surface touched, or no Surfaces file, write "None" and nothing else.
+For each Surface in `steering-file docs/agents/surfaces.md` the change touches, one list item that opens with the Surface's name in bold, then its path, then the requirement the grill captured: what the Surface has to say once the change Lands. Point at the Surface by its path, and do not copy its content. Leave out a Surface the change does not touch. With no Surface touched, or no Surfaces file, so that `steering-file` ends with a non-zero status, write "None" and nothing else.
 
 <surface-example>
 - **The user docs** (`docs/usage/`): the accounts page says how old a balance can be before it is marked.
 </surface-example>
 
-When `docs/agents/surfaces.md` holds a Surface headed `## The README`, outside a code fence, name the README here and nowhere else in the spec: never in a user story, an implementation decision or a testing decision. Its item is the only route by which the loop changes the README, so a README named anywhere else becomes an edit nobody asked for. With no README Surface, the README is any other file.
+When `steering-file docs/agents/surfaces.md` holds a Surface headed `## The README`, outside a code fence, name the README here and nowhere else in the spec: never in a user story, an implementation decision or a testing decision. Its item is the only route by which the loop changes the README, so a README named anywhere else becomes an edit nobody asked for. With no README Surface, the README is any other file.
 
 ## Testing Decisions
 

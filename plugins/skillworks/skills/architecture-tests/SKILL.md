@@ -5,13 +5,13 @@ description: Turn the rules in docs/agents/rules/ into architecture tests the te
 
 # Architecture tests
 
-The rules in `docs/agents/rules/` are data a test enforces. Until a test reads them, they are prose an agent may or may not follow. This skill writes those tests into the team's repo. The team owns them from then on, like any other test.
+The rules in `steering-file docs/agents/rules/` are data a test enforces. Until a test reads them, they are prose an agent may or may not follow. This skill writes those tests into the team's repo. The team owns them from then on, like any other test.
 
 The Plugin ships no checker. Every test this skill writes is either a common tool for the language, set up to read the rule, or a starter test in the team's own language that reads the rule's YAML and checks the files.
 
 [REFERENCE.md](REFERENCE.md) maps each rule to the common tools for each language, and names the rules that need a starter test. Read it before you propose anything.
 
-If `docs/agents/rules/`, `docs/agents/suite.json` or `docs/agents/placement-checks.md` is missing, stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
+If `steering-file docs/agents/rules/`, `steering-file docs/agents/suite.json` or `steering-file docs/agents/placement-checks.md` ends with a non-zero status, that file is missing, so stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
 
 ## On an Export branch
 
@@ -19,7 +19,7 @@ When `docs/agents/loop.json` is missing on disk, this session is on an Export br
 
 ## 1. Read the rules and find the languages
 
-Read each rule in `docs/agents/rules/`, and the YAML block at its end. The settings are what a test checks: a starter test reads them from the rule at every run, and never copies them, so a changed setting changes what the test checks.
+Read each rule in `steering-file docs/agents/rules/`, and the YAML block at its end. The settings are what a test checks: a starter test reads them from the rule at every run, and never copies them, so a changed setting changes what the test checks.
 
 Read `CONTEXT-MAP.md` where the repo has one, because a rule reaches only the code the map gives it.
 
@@ -29,7 +29,7 @@ Python and Java tools are not in the reference yet. For a repo in either, offer 
 
 ## 2. Ask which rules to enforce
 
-Show the user a table: each rule, the settings it reads, and for each language the tool or starter test the reference names. Mark each rule that already has a test, from the tables in `docs/agents/placement-checks.md` and the checks in `docs/agents/suite.json`. Mark too each rule that a tool the repo already runs holds, such as a boundary rule in a lint config, even where no table names it yet. That rule needs wiring in, not writing again.
+Show the user a table: each rule, the settings it reads, and for each language the tool or starter test the reference names. Mark each rule that already has a test, from the tables in `steering-file docs/agents/placement-checks.md` and the checks in `steering-file docs/agents/suite.json`. Mark too each rule that a tool the repo already runs holds, such as a boundary rule in a lint config, even where no table names it yet. That rule needs wiring in, not writing again.
 
 Ask which rules the team wants enforced. Offer every rule that has no test yet, and recommend the ones whose settings are filled in. A rule whose settings are empty, such as `slices: []`, judges nothing, so its test proves nothing until the team fills them.
 
@@ -69,7 +69,7 @@ Each write below is one the team approves, so show it before you make it.
 
 The team runs this skill again when the repo gains a language or a rule. A rerun tests only what is new:
 
-- Find the rules and languages that no row of `docs/agents/placement-checks.md` covers yet.
+- Find the rules and languages that no row of `steering-file docs/agents/placement-checks.md` covers yet.
 - Keep every existing test as it is. The team owns it, so an edit to it is the team's, and a rerun is not a reason to rewrite it.
 - Offer the new rules and the new languages, and go through steps 3 to 5 for each one the team picks.
 

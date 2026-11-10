@@ -32,11 +32,11 @@ Run the check from the repo root:
 context-backfill check
 ```
 
-It reads `docs/agents/loop.json` for the Tracker and the Target branch, fetches the Target branch from origin, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit.
+It reads the Tracker and the Target branch from the loop settings on disk, fetches the Target branch from origin, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit.
 
 If it refuses, show the person the refusal and the command it names, and stop. A shallow clone is mended by the unshallow fetch, and a partial clone by a full clone. Do not read the history of a clone it refused: the part it holds would read as the whole.
 
-If `docs/agents/loop.json` is missing, the check says so. Tell the person that `/skillworks:skillworks-setup` writes it, and stop.
+If the loop settings are missing, the check says so. Tell the person that `/skillworks:skillworks-setup` writes it, and stop.
 
 ## Show the fit
 
@@ -88,7 +88,7 @@ Write nothing in the repo during the passes. Every file a pass writes is in `.co
 - Use the words Context backfill, Draft, Answer, Answer sheet and Question for those things, and no other words for them.
 - Never write a reason the history does not give. A why is a quote or a close paraphrase of a commit body, a ticket, a pull request or a thread, and it names its source. Where no source gives a why, say that no source gives one.
 - Quote each piece of evidence with its reference: a commit by its short hash and subject, a ticket or a pull request by its number, a spec by its path, and a code line by its path and line number.
-- Read an existing `CONTEXT.md`, `CONTEXT-MAP.md` and the folder `adr-folder` names in `docs/agents/domain.md` as evidence. Never offer again what they already hold, and never change them.
+- Read an existing `CONTEXT.md`, `CONTEXT-MAP.md` and the folder `adr-folder` names in `steering-file docs/agents/domain.md` as evidence. Never offer again what they already hold, and never change them.
 
 ### The shape pass
 
@@ -126,7 +126,7 @@ Judge each change by the three tests of an ADR. All three must be true:
 2. **Surprising without context.** A reader who looks at the code would wonder why it was done that way.
 3. **The result of a real trade-off.** There were real alternatives, and one was picked for a reason.
 
-A change that passes the three tests and has a written reason becomes an ADR Draft: a title, then a body in the shape `docs/agents/adr-format.md` gives, which says what was decided and why. The team owns that shape, so read the file before the pass, and read the ADRs already in the folder `adr-folder` names to see how the team fills it. If `docs/agents/adr-format.md` is missing, stop, and tell the person that `/skillworks:skillworks-setup` writes it. A change that passes the three tests and has no written reason becomes a Question, and never a Draft: say what changed and when, with its evidence, and leave the why open.
+A change that passes the three tests and has a written reason becomes an ADR Draft: a title, then a body in the shape `steering-file docs/agents/adr-format.md` gives, which says what was decided and why. The team owns that shape, so read the file before the pass, and read the ADRs already in the folder `adr-folder` names to see how the team fills it. If `steering-file docs/agents/adr-format.md` ends with a non-zero status, the file is missing, so stop, and tell the person that `/skillworks:skillworks-setup` writes it. A change that passes the three tests and has no written reason becomes a Question, and never a Draft: say what changed and when, with its evidence, and leave the why open.
 
 A change that fails a test never reaches the sheet. List it under `## Failed a test`, one line each: the change, its commit, and the test it fails.
 
@@ -136,7 +136,7 @@ Write the Drafts, the Questions and that list into `decisions.md`, each Draft an
 
 Find the decisions that were later undone. A reversal rarely says revert. Its signals are a dependency removed after it was added, a folder deleted or renamed back, a setting put back, and a later thread that names the old choice.
 
-A reversal becomes one Draft that holds two ADRs, each in the shape `docs/agents/adr-format.md` gives. The old decision is marked superseded by the new one, and the new decision names the old one it supersedes. The sheet pass says where each mark goes. One Answer covers the pair. Where `decisions.md` holds a Draft for either side of the pair, the reversal Draft takes its place.
+A reversal becomes one Draft that holds two ADRs, each in the shape `steering-file docs/agents/adr-format.md` gives. The old decision is marked superseded by the new one, and the new decision names the old one it supersedes. The sheet pass says where each mark goes. One Answer covers the pair. Where `decisions.md` holds a Draft for either side of the pair, the reversal Draft takes its place.
 
 A reversal with no written reason for either side is a Question, as in the decisions pass.
 
@@ -152,7 +152,7 @@ The sheet has four sections, in this order: `## Words`, `## Decisions`, `## Ques
 - Under the heading comes an `Answer:` line, left blank for the person to mark. With a map, a `Context:` line follows it and names the context that claims the Draft. Then comes the Draft's text, exactly as it will be written into the repo. Then comes an `Evidence:` list that quotes each commit, ticket or code line with its reference.
 - A Question is a `### Question Q<n>: <title>` heading with a `Reason:` line in place of the `Answer:` line, left blank for the person to write the reason on, or `?`. Its text says what changed and when, and never why.
 - With a map, the map is the first Draft under Words, its `Answer:` already `accept` from the talk, and the person may change it. Its text is the map as `CONTEXT-MAP.md` will hold it, with each context, where it lives, and one sentence on what it is. Without a map, there is no map Draft.
-- A reversal's text holds both ADRs: under a `####` heading for each, the old decision first and the new decision second, each in the shape `docs/agents/adr-format.md` gives. Each `####` heading is the title its ADR is written with. Neither ADR has a number yet, so put two fixed phrases wherever the shape puts a status: `Status: superseded by the decision below` in the old one, and `This supersedes the decision above.` in the new one. A shape with no place for a status takes the old one's phrase as the line under its heading, and the new one's as its first sentence. Write each phrase exactly, because the second run finds it by its words and swaps in the numbers.
+- A reversal's text holds both ADRs: under a `####` heading for each, the old decision first and the new decision second, each in the shape `steering-file docs/agents/adr-format.md` gives. Each `####` heading is the title its ADR is written with. Neither ADR has a number yet, so put two fixed phrases wherever the shape puts a status: `Status: superseded by the decision below` in the old one, and `This supersedes the decision above.` in the new one. A shape with no place for a status takes the old one's phrase as the line under its heading, and the new one's as its first sentence. Write each phrase exactly, because the second run finds it by its words and swaps in the numbers.
 - In each section, put the strongest evidence first: more signals, and a reason written at the time, before fewer.
 - A Draft with one signal and no written reason goes under Thin, and not under Words or Decisions.
 
@@ -199,7 +199,7 @@ It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the
 
 - An accepted map goes into `CONTEXT-MAP.md` at the repo root. In the same commit it adds an empty banned-words list, written `[]`, to `docs/agents/rules/words.md` for each context the map names, and switches the Domain docs line in `CLAUDE.md` to multi-context, naming the folder `adr-folder` names. It edits nothing else in Steering, and never adds a word to a banned-words list.
 - Each accepted word goes into the glossary, in alphabetical order, with its `_Avoid_` line and never with its evidence. Without a map, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, at the path the map gives it. It creates the file when there is none.
-- Each accepted decision goes into the folder that `adr-folder` names, in the YAML block at the end of `docs/agents/domain.md`. Its number is one above the highest leading number of any `<number>-<slug>.md` file in that folder, padded to the digit count of the file with the highest number. An empty or missing folder gives `0001`, and a number held twice causes no stop. The title is its heading and the Draft's text, exactly as accepted, is its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
+- Each accepted decision goes into the folder that `adr-folder` names, in the YAML block at the end of `steering-file docs/agents/domain.md`. Its number is one above the highest leading number of any `<number>-<slug>.md` file in that folder, padded to the digit count of the file with the highest number. An empty or missing folder gives `0001`, and a number held twice causes no stop. The title is its heading and the Draft's text, exactly as accepted, is its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
 - An accepted reversal goes in as two ADRs with two numbers in a row, each titled by its `####` heading, and each ending with the same `Recovered from history:` line. The old decision comes first, and the new decision second. In place, wherever the text puts them, `Status: superseded by the decision below` becomes `Status: superseded by ADR-<new number>`, and `This supersedes the decision above.` becomes `This supersedes ADR <old number>.`, each number at the folder's width. Nothing else in the text changes.
 - A Question whose `Reason:` line holds a reason comes back on the rewritten sheet as a decision Draft under Decisions, with the Question's text, the reason as its why, the same evidence and a blank `Answer:` line. No ADR is written from it in this run. A Question whose `Reason:` line is `?` or blank stays a Question.
 - Each rejected Draft is dropped, and is written nowhere.
@@ -209,7 +209,7 @@ It makes one `Glossary:` commit for the map and its Steering edits, naming the m
 
 It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a decision Draft for each written reason. It prints what is left.
 
-If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in `spec` mode, on the default branch or `spec/context-backfill`, when an accepted word names a context no map holds, when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change, and when an accepted map or decision needs the ADR folder and `docs/agents/domain.md` names no `adr-folder`. A refusal after the commits says the commits are made and names the command that sends them.
+If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in `spec` mode, on the default branch or `spec/context-backfill`, when an accepted word names a context no map holds, when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change, and when an accepted map or decision needs the ADR folder and `steering-file docs/agents/domain.md` names no `adr-folder`. A refusal after the commits says the commits are made and names the command that sends them.
 
 ### Talk the `?` lines through
 
@@ -223,7 +223,7 @@ Apply each Answer as it is given: write it on the Draft's `Answer:` line, or on 
 
 When nothing is left on the sheet, say so, and say that deleting `.context-backfill/` starts over. When lines are left that the person did not answer, name them, and say that they type this command again once they are marked.
 
-Then name the next step. Read `docs/agents/suite.json`:
+Then name the next step. Read `steering-file docs/agents/suite.json`:
 
 - When it names no check, the next step is `/skillworks:architecture-tests`, which turns the rules into tests the team owns.
 - When it names a check, the next step is the first loop: `/skillworks:grill`, then `/skillworks:spec-loop <spec#>`.

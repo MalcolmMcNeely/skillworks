@@ -39,7 +39,7 @@ If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The ma
 │       └── CONTEXT.md
 ```
 
-Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. The trees show `docs/adr/`, but every new ADR goes to the folder `adr-folder` names in `docs/agents/domain.md`. If that folder does not exist, create it when the first ADR is needed.
+Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. The trees show `docs/adr/`, but every new ADR goes to the folder `adr-folder` names in `steering-file docs/agents/domain.md`. If that folder does not exist, create it when the first ADR is needed.
 
 ## During the session
 
@@ -81,7 +81,7 @@ More than one person runs agent work against a repo at once, and a conversation 
 
 So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push it to the Target branch. Never hold them to the end of the session.
 
-- **Find the Target branch.** Read `target-branch` in `docs/agents/loop.json`. A branch name is the Target branch. The word `spec` means the design gets a branch of its own; see [The spec's branch](#the-specs-branch).
+- **Find the Target branch.** Read `target-branch` in `steering-file docs/agents/loop.json`. A branch name is the Target branch. The word `spec` means the design gets a branch of its own; see [The spec's branch](#the-specs-branch).
 - **Stage by path.** Stage only the file you settled. Work in progress elsewhere in the tree is never swept into a glossary commit.
 - **Prefix the subject line.** `Glossary:` for a `CONTEXT.md` change, `ADR:` for an ADR, so the log says which kind of change it was without anyone opening it.
 - **Pull, then push.** A push onto a branch a teammate has moved is rejected, so pull first and push the rebased commit. Read what the pull brings down: when a teammate's change touches ground this session already settled, say so. What to re-ask is then a question for this session.
@@ -90,7 +90,7 @@ So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push
 
 In `spec` mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. A protected default branch refuses a direct push, so no word or ADR goes there.
 
-With `export` set to `true` in `docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
+With `export` set to `true` in `steering-file docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
 
 **The first word or ADR settled** creates the branch. The slug is short, in kebab case, and comes from the design's subject. Cut it from the newest default branch, commit the settled file on it, push it, and open a draft pull request to the default branch:
 
@@ -110,7 +110,7 @@ No spec exists yet, so the body names none. `to-spec` adds the closing keyword w
 
 ### The spec's branch with the Export
 
-With `export` set to `true` in `docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. The grill cut it before its first question, so this session is already on it.
+With `export` set to `true` in `steering-file docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. The grill cut it before its first question, so this session is already on it.
 
 **Every word or ADR** goes to that Target branch. Stay on it, pull, and push there.
 

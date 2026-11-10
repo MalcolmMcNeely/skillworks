@@ -1,6 +1,6 @@
 # The rules, and what can test each one
 
-One section per rule file in `docs/agents/rules/`, and one row per rule, with the settings it reads. Each row names the common tool for TypeScript, .NET and Go where one fits, and the starter test where none does.
+One section per rule file in `steering-file docs/agents/rules/`, and one row per rule, with the settings it reads. Each row names the common tool for TypeScript, .NET and Go where one fits, and the starter test where none does.
 
 A **starter test** is a test the team writes in its own language and runs in its own test runner. It reads the rule's YAML block at every run, walks the files the rule reaches, and skips the `skip-folders` of `file-placement.md` and any folder with its own `.git`. The rules any language checks the same way need one: folder size, banned folder names, the name map, where tests sit, and banned words.
 

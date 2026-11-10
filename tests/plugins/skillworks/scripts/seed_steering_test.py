@@ -401,9 +401,9 @@ def test_domain_modeling_points_at_the_page_on_writing_adrs_and_no_page_named_fo
 def test_domain_modeling_reads_the_adr_shape_from_steering_and_the_folder_from_the_setting():
     page = adr_writing_page()
 
-    assert "`docs/agents/adr-format.md`" in page
+    assert read_of("docs/agents/adr-format.md") in page
     assert "`adr-folder`" in page
-    assert "`docs/agents/domain.md`" in page
+    assert read_of("docs/agents/domain.md") in page
     assert "## Template" not in page
     assert "## Optional sections" not in page
     assert "docs/adr" not in page
@@ -429,7 +429,7 @@ def paragraphs_naming(text, name):
 
 
 def test_context_backfill_drafts_each_adr_in_the_teams_shape():
-    paragraphs = paragraphs_naming(skill_text("context-backfill"), "`docs/agents/adr-format.md`")
+    paragraphs = paragraphs_naming(skill_text("context-backfill"), read_of("docs/agents/adr-format.md"))
 
     assert any("ADR Draft" in paragraph and "`adr-folder`" in paragraph for paragraph in paragraphs)
 
@@ -446,8 +446,8 @@ def test_the_architecture_review_reads_and_writes_adrs_in_the_setting_and_the_sh
     text = skill_text("improve-codebase-architecture")
 
     assert "`adr-folder`" in text
-    assert "`docs/agents/domain.md`" in text
-    assert "`docs/agents/adr-format.md`" in text
+    assert read_of("docs/agents/domain.md") in text
+    assert read_of("docs/agents/adr-format.md") in text
     assert "numbered one above the highest" in " ".join(text.split())
 
 
@@ -1144,9 +1144,8 @@ def read_of(path):
     return "`steering-file {}`".format(path)
 
 
-# The design skills still name a path bare until they read it through steering-file too.
 def names_steering(text, path):
-    return "`{}`".format(path) in text or read_of(path) in text
+    return read_of(path) in text
 
 
 AXIS_FILE_OF = {
@@ -1302,7 +1301,7 @@ def test_the_spec_template_has_a_surfaces_section_for_what_the_grill_captured():
 
     assert "Surfaces" in headings
     assert headings.index("Surfaces") > headings.index("Implementation Decisions")
-    assert "`{}`".format(WHERE["surfaces.md"]) in surfaces_section
+    assert read_of(WHERE["surfaces.md"]) in surfaces_section
     assert "the grill captured" in surfaces_section
 
 
@@ -1517,7 +1516,7 @@ def test_the_grill_names_the_surfaces_file_and_the_four_rules_for_asking():
     grill = skill_text("grill")
     walk = grill.split("Surfaces", 1)[1].split("\n### ", 1)[0]
 
-    assert "`{}`".format(WHERE["surfaces.md"]) in walk
+    assert read_of(WHERE["surfaces.md"]) in walk
     for rule in ("one Surface at a time", "never present the list", "does not touch", "requirement",
                  "never copy"):
         assert rule in walk, rule
@@ -1745,7 +1744,7 @@ def test_spec_names_ends_a_command_that_refuses_twice_on_the_blocked_line_under_
 def test_tdd_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     tdd = skill_text("tdd")
 
-    assert "read `docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs." in tdd
+    assert "read `steering-file docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs." in tdd
     assert "CONTEXT.md" not in tdd
 
 
@@ -1761,7 +1760,7 @@ def codebase_design_pages():
 def test_codebase_design_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     pages = codebase_design_pages()
 
-    assert ("read `docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs."
+    assert ("read `steering-file docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs."
             in pages["DESIGN-IT-TWICE.md"])
     assert [name for name, text in pages.items() if "CONTEXT.md" in text] == []
 
@@ -1769,7 +1768,7 @@ def test_codebase_design_finds_the_glossary_through_the_domain_docs_and_names_no
 def test_codebase_design_lets_the_testing_rule_win_where_the_two_differ_on_what_to_fake():
     categories = codebase_design_pages()["DEEPENING.md"].split("\n## Dependency categories\n", 1)[1].split("\n## ", 1)[0]
 
-    assert ("Where `docs/agents/rules/testing.md` exists and rules differently on what to fake or mock, "
+    assert ("Where `steering-file docs/agents/rules/testing.md` prints the rule and it rules differently on what to fake or mock, "
             "the rule wins.") in categories
 
 
@@ -1836,24 +1835,24 @@ def test_to_tickets_ends_a_command_that_stops_twice_on_one_fault_on_the_blocked_
 
 
 def test_tdd_stops_when_the_testing_rule_is_missing():
-    assert stops("tdd", "`docs/agents/rules/testing.md`")
+    assert stops("tdd", read_of("docs/agents/rules/testing.md"))
 
 
 def test_tdd_stops_when_the_domain_docs_are_missing():
-    assert stops("tdd", "`docs/agents/domain.md`")
+    assert stops("tdd", read_of("docs/agents/domain.md"))
 
 
 def test_tdd_begins_its_report_with_a_blocked_line_under_the_loop_when_a_steering_file_it_reads_is_missing():
     assert stops("tdd", "`BLOCKED`", "Under the spec loop", "begin your report",
-                 "`docs/agents/rules/testing.md`", "`docs/agents/domain.md`")
+                 read_of("docs/agents/rules/testing.md"), read_of("docs/agents/domain.md"))
 
 
 def test_the_comment_sweep_stops_when_the_comments_rule_is_missing():
-    assert stops("comment-sweep", "`docs/agents/rules/comments.md`")
+    assert stops("comment-sweep", read_of("docs/agents/rules/comments.md"))
 
 
 def test_the_comment_sweep_begins_its_report_with_a_blocked_line_under_the_loop_when_the_comments_rule_is_missing():
-    assert stops("comment-sweep", "`docs/agents/rules/comments.md`", "`BLOCKED`", "Under the spec loop")
+    assert stops("comment-sweep", read_of("docs/agents/rules/comments.md"), "`BLOCKED`", "Under the spec loop")
 
 
 SPEC_DRIFT_READS = [read_of(WHERE[name])
@@ -3245,8 +3244,9 @@ def test_the_architecture_tests_skill_can_be_invoked_by_the_model_and_states_the
     assert "disable-model-invocation" not in text
     assert "(REFERENCE.md)" in text
     assert "/skillworks:tdd" in text
-    for place in [WHERE["suite.json"], WHERE["placement-checks.md"], ".claude/settings.json", "docs/agents/rules/"]:
+    for place in [WHERE["suite.json"], WHERE["placement-checks.md"], ".claude/settings.json"]:
         assert "`{}`".format(place) in text, place
+    assert read_of("docs/agents/rules/") in text
     assert "`ignores`" in text
     assert "`when`" not in text
     assert "never quietly weakened" in text
@@ -3477,3 +3477,56 @@ def test_a_steering_path_read_past_steering_file_is_caught():
     text = "Read `steering-file docs/agents/domain.md`, then `docs/agents/loop.json`."
 
     assert steering_read_past_steering_file(text) == ["docs/agents/loop.json"]
+
+
+DESIGN_AND_HAND_RUN_SKILLS = ["grill", "to-spec", "domain-modeling", "tdd", "codebase-design",
+                              "improve-codebase-architecture", "comment-sweep", "architecture-tests",
+                              "context-backfill"]
+
+DESIGN_AND_HAND_RUN_PAGES = sorted(str(page.relative_to(SKILLS)).replace("\\", "/")
+                                   for skill in DESIGN_AND_HAND_RUN_SKILLS
+                                   for page in (SKILLS / skill).glob("*.md"))
+
+# These ask where this branch is and not what the Steering says, so they test the disk on purpose.
+DISK_CHECK = re.compile(r"`docs/agents/loop\.json` is (?:missing )?on disk")
+
+# A skill that writes Steering stops on an Export branch first, so each write lands on a branch that holds the file.
+STEERING_WRITES = {
+    "architecture-tests/SKILL.md": ["Add the test's command to `docs/agents/suite.json`",
+                                    "Fill both tables in `docs/agents/placement-checks.md`"],
+    "context-backfill/SKILL.md": ["an empty banned-words list, written `[]`, to `docs/agents/rules/words.md`"],
+}
+
+
+def without_front_matter(text):
+    return text.split("---\n", 2)[2] if text.startswith("---\n") else text
+
+
+def reads_of_steering(page):
+    text = DISK_CHECK.sub("", without_front_matter((SKILLS / page).read_text(encoding="utf-8")))
+    for write in STEERING_WRITES.get(page, []):
+        text = text.replace(write, "")
+    return text
+
+
+def test_each_design_or_hand_run_skill_has_its_skill_page_swept():
+    missing = [skill for skill in DESIGN_AND_HAND_RUN_SKILLS
+               if "{}/SKILL.md".format(skill) not in DESIGN_AND_HAND_RUN_PAGES]
+
+    assert missing == []
+
+
+def test_each_steering_write_a_design_skill_names_is_still_in_its_page():
+    for page, writes in STEERING_WRITES.items():
+        text = (SKILLS / page).read_text(encoding="utf-8")
+        for write in writes:
+            assert write in text, "{} no longer writes {}".format(page, write)
+
+
+@pytest.mark.parametrize("page", DESIGN_AND_HAND_RUN_PAGES)
+def test_a_design_or_hand_run_skill_reads_each_steering_path_through_steering_file(page):
+    assert steering_read_past_steering_file(reads_of_steering(page)) == []
+
+
+def test_a_disk_check_of_the_export_branch_is_no_steering_read():
+    assert DISK_CHECK.sub("", "When `docs/agents/loop.json` is missing on disk, stop.") == "When , stop."

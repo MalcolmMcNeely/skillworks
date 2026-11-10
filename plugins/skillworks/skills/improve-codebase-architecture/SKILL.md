@@ -12,7 +12,7 @@ Surface architectural friction and propose **deepening opportunities** — refac
 This command is _informed_ by the project's domain model and built on a shared design vocabulary:
 
 - Call the Skill tool with "skillworks:codebase-design" for the architecture vocabulary (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) and its principles (the deletion test, "the interface is the test surface", "one adapter = hypothetical seam, two = real"). Use these terms exactly in every suggestion — don't drift into "component," "service," "API," or "boundary."
-- The domain language in `CONTEXT.md` gives names to good seams; ADRs in the folder `adr-folder` names, in the YAML block at the end of `docs/agents/domain.md`, record decisions this command should not re-litigate.
+- The domain language in `CONTEXT.md` gives names to good seams; ADRs in the folder `adr-folder` names, in the YAML block at the end of `steering-file docs/agents/domain.md`, record decisions this command should not re-litigate.
 - It surveys the whole codebase for candidates. **`/skillworks:review-architecture`** does a different job: it reviews one change, as an axis of `/skillworks:review-changes` and a step of `/skillworks:spec-loop`. If the user wants a change reviewed, send them there.
 
 ## Process
@@ -69,5 +69,5 @@ Side effects happen inline as decisions crystallize — call the Skill tool with
 
 - **Naming a deepened module after a concept not in `CONTEXT.md`?** Add the term to `CONTEXT.md`. Create the file lazily if it doesn't exist.
 - **Sharpening a fuzzy term during the conversation?** Update `CONTEXT.md` right there.
-- **User rejects the candidate with a load-bearing reason?** Offer an ADR, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing — skip ephemeral reasons ("not worth it right now") and self-evident ones. Write an accepted ADR into the folder `adr-folder` names, numbered one above the highest number there at the folder's width, or `0001` in an empty folder, in the shape `docs/agents/adr-format.md` gives.
+- **User rejects the candidate with a load-bearing reason?** Offer an ADR, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing — skip ephemeral reasons ("not worth it right now") and self-evident ones. Write an accepted ADR into the folder `adr-folder` names, numbered one above the highest number there at the folder's width, or `0001` in an empty folder, in the shape `steering-file docs/agents/adr-format.md` gives.
 - **Want to explore alternative interfaces for the deepened module?** Call the Skill tool with "skillworks:codebase-design" and use its design-it-twice parallel sub-agent pattern.

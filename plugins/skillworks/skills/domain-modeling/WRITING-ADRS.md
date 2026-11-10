@@ -1,12 +1,12 @@
 # Writing ADRs
 
-Every new ADR goes to the one folder that `adr-folder` names, in the YAML block at the end of `docs/agents/domain.md`, whatever context it is about. Create that folder lazily — only when the first ADR is needed.
+Every new ADR goes to the one folder that `adr-folder` names, in the YAML block at the end of `steering-file docs/agents/domain.md`, whatever context it is about. Create that folder lazily — only when the first ADR is needed.
 
 ## Shape
 
-The team owns what an ADR looks like. Read `docs/agents/adr-format.md` for the template and the optional sections, and write each new ADR in that shape.
+The team owns what an ADR looks like. Read `steering-file docs/agents/adr-format.md` for the template and the optional sections, and write each new ADR in that shape.
 
-If `docs/agents/adr-format.md` is missing, stop. Tell the user that the file is missing, that `/skillworks:skillworks-setup` writes it, and that no ADR was written.
+If `steering-file docs/agents/adr-format.md` ends with a non-zero status, the file is missing, so stop. Tell the user that the file is missing, that `/skillworks:skillworks-setup` writes it, and that no ADR was written.
 
 ## Numbering
 
