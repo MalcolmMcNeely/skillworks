@@ -14,7 +14,8 @@
 # it uses, or the seam a test needs is already past.
 #
 # `where` is the folder the program runs in. `env` changes the environment it gets:
-# a name set to None is taken away, and any other value is put in.
+# a name set to None is taken away, and any other value is put in. `stdin` is text the
+# program reads as its input.
 
 import os
 import shutil
@@ -81,7 +82,7 @@ class Subprocess:
     def found(self, name):
         return shutil.which(name) is not None
 
-    def run(self, args, where=None, env=None):
+    def run(self, args, where=None, env=None, stdin=None):
         args = [str(a) for a in args]
         # Windows reads PATHEXT and CreateProcess does not, so npm, which is npm.CMD, is lost.
         found = shutil.which(args[0])
@@ -93,6 +94,7 @@ class Subprocess:
             [found] + args[1:],
             cwd=where,
             env=self.environment(env),
+            input=stdin,
             capture_output=True,
             # Named rather than taken from the machine, so the same bytes read the same way anywhere.
             encoding="utf-8",

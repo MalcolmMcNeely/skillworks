@@ -1,16 +1,22 @@
 # The only set that needs either program installed, so `conftest.py` keeps it out of the fast run.
 # Neither program may do what its line asks, and `real_binaries.py` says how each one is stopped.
 
+import hashlib
+
 import pytest
 
 from real_binaries import (CLAUDE, COMMIT_SESSION, FORCED, GH, GH_FIELDS, NOWHERE, PROJECT_STYLE, SKILL,
                            Line, committed_by_claude, init_event, listed, report,
                            started_with_the_plugin, usage_of)
+from runner import Subprocess
 
 # A line the driver stops building is the drift this set catches, so a count moves only on purpose.
 GH_LINES = 13
 GH_FIELD_LINES = 2
 CLAUDE_LINES = 3
+
+# One past the longest command line Windows will start, so the input could never ride as an argument.
+LONGER_THAN_A_COMMAND_LINE = "x" * 32768
 
 
 # A table gone short leaves the cases below silent rather than red, so it is counted before them.
@@ -90,3 +96,14 @@ def test_a_commit_the_real_claude_makes_with_the_plugin_names_its_session(tmp_pa
     assert log.status == 0, "claude made no commit:\n" + ran.out + ran.err
     assert log.out.split() == [COMMIT_SESSION], (
         "the commit names no Session, or the wrong one:\n" + log.out + "\n" + ran.out + ran.err)
+
+
+def blob_id(text):
+    data = text.encode("utf-8")
+    return hashlib.sha1(b"blob " + str(len(data)).encode() + bytes(1) + data).hexdigest()
+
+
+def test_a_real_program_reads_the_whole_of_an_input_longer_than_a_command_line(tmp_path):
+    ran = Subprocess().run(["git", "hash-object", "--stdin"], tmp_path, stdin=LONGER_THAN_A_COMMAND_LINE)
+
+    assert ran.out.strip() == blob_id(LONGER_THAN_A_COMMAND_LINE)

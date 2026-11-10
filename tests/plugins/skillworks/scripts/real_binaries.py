@@ -32,6 +32,7 @@ REAL = Subprocess()
 class Line(NamedTuple):
     args: list
     env: dict
+    stdin: str = None
 
     def program(self):
         return self.args[0]
@@ -64,7 +65,7 @@ class Line(NamedTuple):
 
     # Where a program runs is not what is proved, so every line runs in this checkout.
     def started(self, asked):
-        return REAL.run(asked, ROOT.as_posix(), self.env)
+        return REAL.run(asked, ROOT.as_posix(), self.env, self.stdin)
 
 
 # Only enough for the driver to carry on to the next line it builds.
@@ -91,7 +92,7 @@ def answer(args):
 def once(calls):
     kept, seen = [], set()
     for call in calls:
-        line = Line(call.args, call.env)
+        line = Line(call.args, call.env, call.stdin)
         if line.whole() in seen:
             continue
         seen.add(line.whole())

@@ -664,13 +664,15 @@ class Loop:
         return ["--session-id", session]
 
     # Only a Session started for a ticket names one, so the hook tags no commit of the Cut or a check.
+    # The prompt goes on stdin, because Windows ends a command line at 32,767 characters.
     def claude_p(self, prompt, *rest, ticket=None):
         rest = [str(a) for a in rest] or self.new_session()
         return self.runner.run(
-            ["claude", "-p", prompt] + rest
+            ["claude", "-p"] + rest
             + ["--permission-mode", self.permission_mode, "--output-format", "json"] + MAY_READ_THE_PLUGIN,
             self.job_worktree,
-            session_changes(self.tracker.trailer(ticket) if ticket else None))
+            session_changes(self.tracker.trailer(ticket) if ticket else None),
+            stdin=prompt)
 
     # A path comes back on stdout, so a reason takes stderr, and the log too for a background run.
     def worktree(self, command, job=""):

@@ -223,6 +223,7 @@ class Call(NamedTuple):
     args: list
     where: str
     env: dict
+    stdin: str = None
 
 
 class RecordingRunner:
@@ -236,9 +237,10 @@ class RecordingRunner:
         self.hidden = set()
 
     # Most cases read the words alone, and the whole call is there for the few that do not.
+    # Input a program reads follows its words, so a case reads a prompt as the last word.
     @property
     def calls(self):
-        return [call.args for call in self.made]
+        return [call.args if call.stdin is None else call.args + [call.stdin] for call in self.made]
 
     # A stub that writes a file needs the folder its call runs in.
     @property
@@ -263,10 +265,10 @@ class RecordingRunner:
     def stub(self, name, says="", status=0, does=None):
         self.stubs[name] = (says, status, does)
 
-    def run(self, args, where=None, env=None):
+    def run(self, args, where=None, env=None, stdin=None):
         args = [str(a) for a in args]
-        self.made.append(Call(args, where, env))
-        line = " ".join(args)
+        self.made.append(Call(args, where, env, stdin))
+        line = " ".join(self.calls[-1])
         for refusal in self.refusals:
             mark, says, times = refusal
             if times == 0 or mark not in line:
@@ -286,7 +288,7 @@ class RecordingRunner:
                     return answered
             return Ran(status, says, "")
         assert args[0] not in NEVER_REAL, "this case would have started " + args[0] + " for real"
-        return self.real.run(args, where, env)
+        return self.real.run(args, where, env, stdin)
 
     def built(self, mark):
         return [call for call in self.calls if mark in " ".join(call)]

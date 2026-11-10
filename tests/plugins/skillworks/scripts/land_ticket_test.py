@@ -1147,7 +1147,7 @@ def test_the_other_side_is_handed_over_under_the_heading_the_skill_looks_for(rep
     run_land(runner, repo.work, 166, "session-abc")
 
     [resolving] = runner.started("claude")
-    assert heading_the_resolve_skill_looks_for() in resolving[resolving.index("-p") + 1].split("\n")
+    assert heading_the_resolve_skill_looks_for() in resolving[-1].split("\n")
 
 
 def test_the_resolving_session_gets_the_environment_every_driver_session_gets(

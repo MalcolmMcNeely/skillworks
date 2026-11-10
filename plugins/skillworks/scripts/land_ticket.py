@@ -297,12 +297,14 @@ class Landing:
         ).format(t=self.named, u=self.upstream, b=self.target, w=self.worktree,
                  f="\n".join(conflicted), r=rest)
 
+    # The prompt goes on stdin, because Windows ends a command line at 32,767 characters.
     def resolve_call(self, prompt):
         return self.runner.run(
-            ["claude", "-p", prompt, "--resume", self.session,
+            ["claude", "-p", "--resume", self.session,
              "--permission-mode", self.permission_mode, "--output-format", "json"] + MAY_READ_THE_PLUGIN,
             self.worktree,
-            session_changes(self.tracker.trailer(self.ticket)))
+            session_changes(self.tracker.trailer(self.ticket)),
+            stdin=prompt)
 
     def resolve_conflict(self, base, refused):
         conflicted = self.unmerged()

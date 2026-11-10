@@ -84,11 +84,11 @@ class Racing(RecordingRunner):
         super().__init__()
         self.before_push = None
 
-    def run(self, args, where=None, env=None):
+    def run(self, args, where=None, env=None, stdin=None):
         if "push" in [str(a) for a in args] and self.before_push is not None:
             first, self.before_push = self.before_push, None
             first()
-        return super().run(args, where, env)
+        return super().run(args, where, env, stdin)
 
 
 # A run with a claude that answers nothing stops at the build, after its claim has reached origin.
@@ -379,7 +379,7 @@ def status_on_remote(repo, path):
 
 
 def asked_of_claude(driver):
-    return [call[2] for call in driver.runner.started("claude")]
+    return [call[-1] for call in driver.runner.started("claude")]
 
 
 def test_a_landed_tickets_commit_holds_its_code_its_close_and_its_closing_note(driver):
@@ -418,7 +418,7 @@ def test_each_session_started_for_the_ticket_is_handed_its_trailer_by_spec_and_n
     assert ran.status == 0, said(ran)
     # The Plugin's hook reads this name, so it is written out here and not imported.
     handed = [(call.env or {}).get("SKILLWORKS_TICKET") for call in driver.runner.made
-              if call.args[0] == "claude" and REFERENCE in call.args[2].split("\n", 1)[0]]
+              if call.args[0] == "claude" and REFERENCE in call.stdin.split("\n", 1)[0]]
     assert handed
     assert set(handed) == {REFERENCE}
 

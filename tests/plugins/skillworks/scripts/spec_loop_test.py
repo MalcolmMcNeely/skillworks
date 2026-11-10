@@ -210,8 +210,8 @@ class Tracker:
 
     # Each judge posts its report as it runs, so the newest comment is the last judge's.
     def newest_comment(self):
-        judges = [call[2] for call in self.runner.calls
-                  if call[0] == "claude" and call[2].startswith(JUDGES)]
+        judges = [call[-1] for call in self.runner.calls
+                  if call[0] == "claude" and call[-1].startswith(JUDGES)]
         if judges and judges[-1].startswith(NAME_CHECK):
             return self.name_report
         return self.drift_report
@@ -261,9 +261,9 @@ class Sessions:
 
     def answer(self):
         called = self.runner.calls[-1]
-        if not called[2].startswith("/"):
+        if not called[-1].startswith("/"):
             return self.answer_nudge(called)
-        asked = called[2]
+        asked = called[-1]
         command = asked.split()[0]
         args = asked[len(command):]
         args = args[1:] if args.startswith(" ") else args
@@ -314,7 +314,7 @@ class Sessions:
         session = called[called.index("--resume") + 1]
         step = self.steps[session]
         with (self.folder / (session + ".jsonl")).open("a", encoding="utf-8", newline="\n") as file:
-            file.write(json.dumps({"type": "user", "message": {"content": called[2]}}) + "\n")
+            file.write(json.dumps({"type": "user", "message": {"content": called[-1]}}) + "\n")
         if step in self.writes_when_nudged:
             name, text = self.writes_when_nudged[step]
             (Path(self.runner.where) / name).write_text(text, encoding="utf-8", newline="\n")
@@ -402,24 +402,24 @@ def session_calls(runner):
 
 # A Nudge asks in words and a step asks for a command, so the slash tells the two apart.
 def step_calls(runner):
-    return [call for call in session_calls(runner) if call[2].startswith("/")]
+    return [call for call in session_calls(runner) if call[-1].startswith("/")]
 
 
 def call_asking(runner, mark):
     for call in session_calls(runner):
-        if call[2].startswith(mark):
+        if call[-1].startswith(mark):
             return call
     return None
 
 
 def prompt_asking(runner, mark):
     call = call_asking(runner, mark)
-    return "" if call is None else call[2]
+    return "" if call is None else call[-1]
 
 
 # The circuit runs a step a second time, so a case reads them all and picks the one it means.
 def prompts_asking(runner, mark):
-    return [call[2] for call in session_calls(runner) if call[2].startswith(mark)]
+    return [call[-1] for call in session_calls(runner) if call[-1].startswith(mark)]
 
 
 # The command is the prompt's first line, and the words every Session is told follow it.
@@ -454,8 +454,8 @@ def every_call_at(runner, mark):
 
 
 def implement_flags(runner):
-    return [call[2].split()[2] for call in session_calls(runner)
-            if call[2].startswith("/skillworks:implement 168 ")]
+    return [call[-1].split()[2] for call in session_calls(runner)
+            if call[-1].startswith("/skillworks:implement 168 ")]
 
 
 # --- reading the plan -------------------------------------------------------
@@ -894,7 +894,7 @@ def test_a_spec_with_no_tickets_has_them_cut_before_the_first_ticket(loop, runne
 
     loop.run(SPEC)
 
-    assert [call[2].split()[0:2] for call in step_calls(runner)[:2]] == [
+    assert [call[-1].split()[0:2] for call in step_calls(runner)[:2]] == [
         [CUT_TICKETS, SPEC], ["/skillworks:implement", "168"]]
 
 
@@ -961,8 +961,8 @@ def test_a_cut_nudge_resumes_the_cut_s_own_session_in_the_cut_s_worktree(loop, r
     loop.run(SPEC)
 
     made = [call for call in runner.made if call.args[0] == "claude"]
-    cut = next(call for call in made if call.args[2].startswith(CUT_TICKETS))
-    nudges = [call for call in made if not call.args[2].startswith("/")]
+    cut = next(call for call in made if call.stdin.startswith(CUT_TICKETS))
+    nudges = [call for call in made if not call.stdin.startswith("/")]
     assert [(call.args[call.args.index("--resume") + 1], call.where) for call in nudges] == [
         (id_given(cut.args), cut.where)] * 2
 
@@ -973,7 +973,7 @@ def test_a_cut_nudge_names_what_is_missing_and_the_command_that_records_it(loop,
 
     loop.run(SPEC)
 
-    assert nudge_calls(runner)[0][2].split("\n") == [
+    assert nudge_calls(runner)[0][-1].split("\n") == [
         CUT_OWED, BACKGROUND_LINE, CHOICE_LINE, ""]
 
 
@@ -1385,6 +1385,17 @@ def id_given(call):
     return call[call.index("--session-id") + 1]
 
 
+# Windows ends a command line at 32,767 characters, and a fix step's prompt holds three reports.
+def test_every_session_reads_its_prompt_on_stdin_and_not_from_its_command_line(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    made = [call for call in runner.made if call.args[0] == "claude"]
+    assert made and all(call.stdin and call.stdin not in call.args for call in made)
+
+
 def test_every_new_session_is_given_an_id_of_its_own(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
@@ -1587,7 +1598,7 @@ def given_an_axis_that_stops_short(sessions, axis, *nudged):
 
 
 def nudge_calls(runner):
-    return [call for call in session_calls(runner) if not call[2].startswith("/")]
+    return [call for call in session_calls(runner) if not call[-1].startswith("/")]
 
 
 def nudge_lines(loop):
@@ -1702,8 +1713,8 @@ def test_a_nudge_runs_as_the_session_it_resumes_ran(loop, runner):
     loop.run(SPEC)
 
     made = [call for call in runner.made if call.args[0] == "claude"]
-    first = next(call for call in made if call.args[2].startswith("/skillworks:review-spec"))
-    for nudge in (call for call in made if not call.args[2].startswith("/")):
+    first = next(call for call in made if call.stdin.startswith("/skillworks:review-spec"))
+    for nudge in (call for call in made if not call.stdin.startswith("/")):
         assert nudge.args[-4:] == first.args[-4:]
         assert nudge.env == first.env
         assert nudge.where == first.where
@@ -1715,7 +1726,7 @@ def test_a_review_nudge_names_what_is_owed_then_the_background_then_the_finding(
 
     loop.run(SPEC)
 
-    asked = nudge_calls(runner)[0][2].split("\n")
+    asked = nudge_calls(runner)[0][-1].split("\n")
     assert "## Architecture" in asked[0]
     assert asked[1:] == [BACKGROUND_LINE, FINDING_LINE, ""]
 
@@ -1726,7 +1737,7 @@ def test_a_review_nudge_asks_for_a_finding_and_never_invites_a_choice(loop, runn
 
     loop.run(SPEC)
 
-    asked = nudge_calls(runner)[0][2]
+    asked = nudge_calls(runner)[0][-1]
     assert "report it as a finding" in asked and "make it yourself" not in asked
 
 
@@ -1901,7 +1912,7 @@ def test_a_ticket_trailer_nudge_says_git_reads_only_the_last_paragraph(loop, run
 
     loop.run(SPEC)
 
-    assert "last paragraph" in nudge_calls(runner)[0][2].split("\n")[0]
+    assert "last paragraph" in nudge_calls(runner)[0][-1].split("\n")[0]
 
 
 def test_a_finish_that_left_the_tree_unclean_is_nudged(loop, runner):
@@ -1936,7 +1947,7 @@ def test_a_build_nudge_names_what_it_owes_then_the_background_then_the_choice(lo
 
     loop.run(SPEC)
 
-    asked = nudge_calls(runner)[0][2].split("\n")
+    asked = nudge_calls(runner)[0][-1].split("\n")
     assert "changed nothing" in asked[0]
     assert asked[1:] == [BACKGROUND_LINE, CHOICE_LINE, ""]
 
@@ -1947,7 +1958,7 @@ def test_a_build_nudge_still_tells_it_to_make_the_choice_and_write_a_chose_line(
 
     loop.run(SPEC)
 
-    asked = nudge_calls(runner)[0][2]
+    asked = nudge_calls(runner)[0][-1]
     assert "make it yourself" in asked and "write a `CHOSE` line" in asked
 
 
@@ -1958,7 +1969,7 @@ def test_a_finish_nudge_tells_it_to_close_the_ticket_with_the_question_and_answe
 
     loop.run(SPEC)
 
-    asked = nudge_calls(runner)[0][2]
+    asked = nudge_calls(runner)[0][-1]
     assert ("close the ticket, with the question and the build's answer in the Closing note"
             in asked)
 
@@ -1969,7 +1980,7 @@ def test_a_finish_nudge_names_each_failed_check_on_a_line_of_its_own(loop, runne
 
     loop.run(SPEC)
 
-    asked = nudge_calls(runner)[0][2].split("\n")
+    asked = nudge_calls(runner)[0][-1].split("\n")
     assert "not committed" in asked[0]
     assert "uncommitted changes" in asked[1]
     assert "#168 is still open" in asked[2]
@@ -2571,8 +2582,8 @@ def test_every_step_session_is_told_to_check_its_work_with_skillworks_suite(loop
     assert ran.status == 1
     assert len(step_calls(runner)) == 7
     for call in step_calls(runner):
-        assert "run `skillworks-suite`" in call[2], call[2]
-        assert "In this loop the driver runs the whole Suite" in call[2], call[2]
+        assert "run `skillworks-suite`" in call[-1], call[-1]
+        assert "In this loop the driver runs the whole Suite" in call[-1], call[-1]
 
 
 # One step owns the gate, so a Session cannot report a result the driver never saw.
@@ -3360,7 +3371,7 @@ def test_every_step_session_names_the_session_that_started_the_driver(loop, runn
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    asked = [call[2].split()[0] for call in step_calls(runner)]
+    asked = [call[-1].split()[0] for call in step_calls(runner)]
     assert asked == ["/skillworks:" + name for name in (
         "implement", "review-standards", "review-spec", "review-architecture",
         "implement", "comment-sweep", "implement")]
@@ -3388,12 +3399,12 @@ TICKET_VARIABLE = "SKILLWORKS_TICKET"
 
 def trailers_handed(runner, mark):
     return [(call.env or {}).get(TICKET_VARIABLE, "unset") for call in runner.made
-            if call.args[0] == "claude" and call.args[2].startswith(mark)]
+            if call.args[0] == "claude" and call.stdin.startswith(mark)]
 
 
 def trailers_handed_for(runner, ticket):
     return [(call.env or {}).get(TICKET_VARIABLE) for call in runner.made
-            if call.args[0] == "claude" and call.args[2].split()[1:2] == [ticket]]
+            if call.args[0] == "claude" and call.stdin.split()[1:2] == [ticket]]
 
 
 # The one a developer's shell set is taken away and not left, so a Session names no ticket by accident.
@@ -3420,7 +3431,7 @@ def test_every_nudge_is_handed_the_trailer_of_the_ticket_it_works_on(loop, runne
     loop.run(SPEC)
 
     nudged = [(call.env or {}).get(TICKET_VARIABLE) for call in runner.made
-              if call.args[0] == "claude" and not call.args[2].startswith("/")]
+              if call.args[0] == "claude" and not call.stdin.startswith("/")]
     assert nudged
     assert set(nudged) == {"#168"}
 
@@ -3504,7 +3515,7 @@ def test_a_spec_with_no_commit_after_the_base_stops_before_any_check_and_stays_o
     assert ran.status == 1
     assert ("STOP  spec #{} has no commit after the base commit {} whose Ticket: trailer names one "
             "of its tickets").format(SPEC, base_of(loop)) in loop.log()
-    assert [call for call in session_calls(runner) if call[2].startswith(JUDGES)] == []
+    assert [call for call in session_calls(runner) if call[-1].startswith(JUDGES)] == []
     assert "END" not in loop.log()
 
 
@@ -3751,8 +3762,8 @@ def test_the_gap_ticket_is_built_through_every_step_and_lands(loop, runner):
     ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
 
     assert ran.status == 0, said(ran)
-    asked = [call[2].split()[0] for call in step_calls(runner)
-             if call[2].split()[1:2] == [GAP_TICKET]]
+    asked = [call[-1].split()[0] for call in step_calls(runner)
+             if call[-1].split()[1:2] == [GAP_TICKET]]
     assert asked == ["/skillworks:" + name for name in (
         "implement", "review-standards", "review-spec", "review-architecture", "implement",
         "implement")]
@@ -3864,7 +3875,7 @@ def test_the_name_check_runs_after_the_gap_round(loop, runner):
     ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
 
     assert ran.status == 0, said(ran)
-    judged = [call[2].split()[0] for call in session_calls(runner) if call[2].startswith(JUDGES)]
+    judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
     assert judged == ["/skillworks:spec-drift", "/skillworks:spec-drift", NAME_CHECK]
 
 
@@ -3872,7 +3883,7 @@ def test_the_name_check_names_the_session_that_started_the_driver(loop, runner, 
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
     named_back(loop, NO_RENAMES)
 
-    assert session_calls(runner)[-1][2].startswith(NAME_CHECK)
+    assert session_calls(runner)[-1][-1].startswith(NAME_CHECK)
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
 
@@ -3990,8 +4001,8 @@ def test_the_rename_ticket_is_built_through_every_step_after_the_gap_round(loop,
     ran = renamed_in_a_round(loop, rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
 
     assert ran.status == 0, said(ran)
-    asked = [call[2].split()[0] for call in step_calls(runner)
-             if call[2].split()[1:2] == [RENAME_TICKET]]
+    asked = [call[-1].split()[0] for call in step_calls(runner)
+             if call[-1].split()[1:2] == [RENAME_TICKET]]
     assert asked == ["/skillworks:" + name for name in (
         "implement", "review-standards", "review-spec", "review-architecture", "implement",
         "implement")]
@@ -4117,14 +4128,14 @@ def test_a_drift_check_that_recorded_no_report_still_stops_the_loop_after_the_la
 def test_a_drift_check_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
     drifted(loop, "Looks good to me.\n")
 
-    assert nudge_calls(runner)[0][2].split("\n") == [
+    assert nudge_calls(runner)[0][-1].split("\n") == [
         DRIFT_OWED, BACKGROUND_LINE, FINDING_LINE, ""]
 
 
 def test_a_drift_check_nudge_asks_for_the_verdict_and_never_invites_a_choice(loop, runner):
     drifted(loop, "Looks good to me.\n")
 
-    asked = nudge_calls(runner)[0][2]
+    asked = nudge_calls(runner)[0][-1]
     assert "give the Verdict" in asked and "make it yourself" not in asked
 
 
@@ -4132,8 +4143,8 @@ def test_a_drift_check_nudge_resumes_the_check_s_own_session_in_its_worktree(loo
     drifted(loop, "Looks good to me.\n")
 
     made = [call for call in runner.made if call.args[0] == "claude"]
-    check = next(call for call in made if call.args[2].startswith("/skillworks:spec-drift"))
-    nudges = [call for call in made if not call.args[2].startswith("/")]
+    check = next(call for call in made if call.stdin.startswith("/skillworks:spec-drift"))
+    nudges = [call for call in made if not call.stdin.startswith("/")]
     assert [(call.args[call.args.index("--resume") + 1], call.where) for call in nudges] == [
         (id_given(check.args), check.where)] * 2
 
@@ -4191,14 +4202,14 @@ def test_a_name_check_that_recorded_no_report_still_stops_the_loop_after_the_las
 def test_a_name_check_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
     named_back(loop, "Looks good to me.\n")
 
-    assert nudge_calls(runner)[0][2].split("\n") == [
+    assert nudge_calls(runner)[0][-1].split("\n") == [
         NAMES_OWED, BACKGROUND_LINE, FINDING_LINE, ""]
 
 
 def test_a_name_check_nudge_asks_for_the_verdict_and_never_invites_a_choice(loop, runner):
     named_back(loop, "Looks good to me.\n")
 
-    asked = nudge_calls(runner)[0][2]
+    asked = nudge_calls(runner)[0][-1]
     assert "give the Verdict" in asked and "make it yourself" not in asked
 
 
@@ -5162,7 +5173,7 @@ def test_the_full_run_runs_once_and_last_after_the_drift_check_and_its_count(loo
     assert log.count("FULL  #168 landed in this run") == 1
     assert log.index("DRIFT") < log.index("COUNT") < log.index("FULL  #168 landed in this run")
     drift = next(at for at, call in enumerate(runner.made)
-                 if call.args[0] == "claude" and call.args[2].startswith("/skillworks:spec-drift"))
+                 if call.args[0] == "claude" and call.stdin.startswith("/skillworks:spec-drift"))
     full = next(at for at, call in enumerate(runner.made)
                 if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
     assert drift < full
@@ -5202,7 +5213,7 @@ def test_the_full_run_runs_once_and_last_after_the_gap_round(loop, runner):
     log = loop.log()
     assert log.index("DONE  #169") < log.index("COUNT the re-check") < log.index("FULL  #168, #169")
     re_check = max(at for at, call in enumerate(runner.made) if call.args[0] == "claude"
-                   and call.args[2].startswith("/skillworks:spec-drift"))
+                   and call.stdin.startswith("/skillworks:spec-drift"))
     full = next(at for at, call in enumerate(runner.made)
                 if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
     assert re_check < full
@@ -5217,7 +5228,7 @@ def test_the_full_run_runs_after_the_name_check(loop, runner):
     log = loop.log()
     assert log.index("NAMES no rename is owed") < log.index("FULL  #168 landed in this run")
     names = next(at for at, call in enumerate(runner.made)
-                 if call.args[0] == "claude" and call.args[2].startswith(NAME_CHECK))
+                 if call.args[0] == "claude" and call.stdin.startswith(NAME_CHECK))
     full = next(at for at, call in enumerate(runner.made)
                 if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
     assert names < full
@@ -5245,7 +5256,7 @@ def test_a_rename_not_made_still_gets_the_full_run_once_and_last_and_writes_no_e
     assert "FULL  #168, #169 landed in this run" in log
     assert "END" not in log
     name_re_check = max(at for at, call in enumerate(runner.made) if call.args[0] == "claude"
-                       and call.args[2].startswith(NAME_CHECK))
+                       and call.stdin.startswith(NAME_CHECK))
     full = next(at for at, call in enumerate(runner.made)
                 if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
     assert name_re_check < full
