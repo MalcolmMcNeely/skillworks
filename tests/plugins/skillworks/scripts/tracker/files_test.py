@@ -211,8 +211,8 @@ def test_a_spec_folder_only_in_the_main_checkout_is_not_read(driver):
     assert "cannot read" in said(ran)
 
 
-def test_in_spec_mode_the_tickets_are_read_from_the_branch_the_spec_names(driver):
-    write_loop(driver.repo.work, "spec")
+def test_in_pr_mode_the_tickets_are_read_from_the_branch_the_spec_names(driver):
+    write_loop(driver.repo.work, "pr")
     # A stale copy on another branch names the spec's branch and not its own, so it is not read.
     driver.push({
         FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
@@ -289,8 +289,8 @@ def test_two_loops_racing_for_one_ticket_build_different_tickets(driver):
     assert claimed_on_remote(driver.repo, "02-close-in-worktree") == ME
 
 
-def test_in_spec_mode_a_claim_reaches_the_branch_the_spec_names(driver):
-    write_loop(driver.repo.work, "spec")
+def test_in_pr_mode_a_claim_reaches_the_branch_the_spec_names(driver):
+    write_loop(driver.repo.work, "pr")
     driver.push({
         FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -302,8 +302,8 @@ def test_in_spec_mode_a_claim_reaches_the_branch_the_spec_names(driver):
     assert claimed_on_remote(driver.repo, "01-read-loop-json", SPEC_BRANCH) == ME
 
 
-def test_in_spec_mode_a_spec_that_names_no_branch_stops_the_dry_run(driver):
-    write_loop(driver.repo.work, "spec")
+def test_in_pr_mode_a_spec_that_names_no_branch_stops_the_dry_run(driver):
+    write_loop(driver.repo.work, "pr")
     driver.push({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -315,8 +315,8 @@ def test_in_spec_mode_a_spec_that_names_no_branch_stops_the_dry_run(driver):
     assert "branch in its spec.md frontmatter" in said(ran)
 
 
-def test_in_spec_mode_the_stop_for_a_spec_that_names_no_branch_says_the_grill_writes_it(driver):
-    write_loop(driver.repo.work, "spec")
+def test_in_pr_mode_the_stop_for_a_spec_that_names_no_branch_says_the_grill_writes_it(driver):
+    write_loop(driver.repo.work, "pr")
     driver.push({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -502,7 +502,7 @@ def test_a_red_full_run_after_every_verdict_done_leaves_the_spec_open(driver):
 def given_sessions_that_finish_on_the_spec_branch(driver):
     git(driver.repo.work, "checkout", "--quiet", "-b", SPEC_BRANCH)
     driver.repo.target = SPEC_BRANCH
-    write_loop(driver.repo.work, "spec")
+    write_loop(driver.repo.work, "pr")
     write_files(driver.repo.work, {
         FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -515,7 +515,7 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     return sessions
 
 
-def test_in_spec_mode_the_run_ends_at_the_close_and_never_calls_gh(driver):
+def test_in_pr_mode_the_run_ends_at_the_close_and_never_calls_gh(driver):
     given_sessions_that_finish_on_the_spec_branch(driver)
 
     ran = driver.run()
@@ -526,7 +526,7 @@ def test_in_spec_mode_the_run_ends_at_the_close_and_never_calls_gh(driver):
     assert "CLOSE spec 7" in ran.out
 
 
-def test_in_spec_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_branch(driver):
+def test_in_pr_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_branch(driver):
     given_sessions_that_finish_on_the_spec_branch(driver)
 
     ran = driver.run()
@@ -794,7 +794,7 @@ def test_a_filed_ticket_that_loses_a_race_for_its_number_reads_again(driver):
     assert tracker.title("4") == "TICKET: Build the Gaps"
 
 
-def test_in_spec_mode_a_filed_ticket_reaches_the_branch_the_spec_names(driver):
+def test_in_pr_mode_a_filed_ticket_reaches_the_branch_the_spec_names(driver):
     driver.push({
         FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),

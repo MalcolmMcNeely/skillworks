@@ -100,7 +100,7 @@ The ticket's Session closes its own ticket, in the same commit as its code.
 | `status` | `spec.md` and each ticket | `open` or `closed`. | `to-spec` and `to-tickets` write `open`. The loop closes it. |
 | `blocked-by` | Each ticket | The numbers of the tickets in the same spec that must close first. | `to-tickets`. |
 | `claimed-by` | Each ticket | The `user.email` of the loop that took the ticket. | The loop. Leave it empty. |
-| `branch` | `spec.md`, when `target-branch` says `spec` | The spec's own branch, `spec/<slug>`. | `to-spec`. |
+| `branch` | `spec.md`, when `target-branch` says `pr` | The spec's own branch, `spec/<slug>`. | `to-spec`. |
 
 You can edit a file by hand, like any other file. Push the edit to the Target branch, because the
 loop reads the files there and not in your checkout.
@@ -121,7 +121,7 @@ loop reads the files there and not in your checkout.
 - **Closing the spec.** After the last ticket and the drift check, the loop sets `status: closed` in
   `spec.md` and pushes it. Do not close a spec by hand while a loop runs on it.
 
-With `spec` as your Target branch, the spec's folder sits on `spec/<slug>`. So its pull request
+With `pr` as your Target branch, the spec's folder sits on `spec/<slug>`. So its pull request
 carries the spec and its code together.
 
 ## Why `.specs/` is committed

@@ -39,7 +39,7 @@ Tell the user the log path: `.spec-loop/<spec-number>/loop.log`.
 
 When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which tickets closed.
 
-Each ticket Lands on its Target branch. `target-branch` in `steering-file docs/agents/loop.json` names it for every spec, or says `spec`, and then each spec names its own branch under `## Branch` and is reviewed as one pull request.
+Each ticket Lands on its Target branch. `target-branch` in `steering-file docs/agents/loop.json` names it for every spec, or says `pr`, and then each spec names its own branch under `## Branch` and is reviewed as one pull request.
 
 Name each Departure first, then each Choice and each Hand check, from the list at the end of the log to the user, one by one, before any close offer and at an early stop as well.
 
@@ -47,9 +47,9 @@ Name each Departure first, then each Choice and each Hand check, from the list a
 
 Unrequested work never stops the loop, and the driver writes a `NOTE  Unrequested:` line for each item. Name each of those items to the user, one by one, before any close offer, so they read them at the moment they decide. Then:
 
-- **With the files Tracker**, make no offer. The driver closed the spec itself after the full run, by a commit on the Target branch, and its `CLOSE` line in the log says so. Say that. The driver never calls `gh` with the files Tracker, so with `spec` it marks no pull request ready: its `PR` line names the spec's branch. Tell the user to open the pull request from that branch on their host, or mark it ready for review if it is open, and that a person reviews and merges it.
+- **With the files Tracker**, make no offer. The driver closed the spec itself after the full run, by a commit on the Target branch, and its `CLOSE` line in the log says so. Say that. The driver never calls `gh` with the files Tracker, so with `pr` it marks no pull request ready: its `PR` line names the spec's branch. Tell the user to open the pull request from that branch on their host, or mark it ready for review if it is open, and that a person reviews and merges it.
 - **With the GitHub Tracker and a branch name**, make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.
-- **With the GitHub Tracker and `spec`**, make no offer. The driver has marked the spec's pull request ready for review, and its `READY` line in the log says so. Say that a person reviews and merges it. Never merge it, and never close the spec: the pull request closes the spec when it merges, so the spec is done only when its code is on the default branch.
+- **With the GitHub Tracker and `pr`**, make no offer. The driver has marked the spec's pull request ready for review, and its `READY` line in the log says so. Say that a person reviews and merges it. Never merge it, and never close the spec: the pull request closes the spec when it merges, so the spec is done only when its code is on the default branch.
 
 **Anything else is an early stop.** The script stops on the first failure. Say what failed and give the log path. The close offer belongs to a clean finish alone. The failed ticket stays open, with the reason in the log and the session's stderr beside it. Its worktree stays too, so the broken state can be read; the log names the path. The fix is a human one, unless the stop names Denials, as below.
 

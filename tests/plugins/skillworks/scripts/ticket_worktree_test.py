@@ -88,9 +88,9 @@ def test_a_job_is_branched_from_the_newest_origin_master_when_master_is_the_targ
     assert git(tree, "rev-parse", "--abbrev-ref", "HEAD").strip() == "spec-loop/158/ticket-164"
 
 
-# Only the driver has read the spec, so in spec mode the Target branch is handed in.
-def test_in_spec_mode_a_job_is_branched_from_the_newest_spec_branch_it_is_handed(repo, runner):
-    write_loop(repo.work, "spec")
+# Only the driver has read the spec, so in PR mode the Target branch is handed in.
+def test_in_pr_mode_a_job_is_branched_from_the_newest_spec_branch_it_is_handed(repo, runner):
+    write_loop(repo.work, "pr")
     git(repo.work, "push", "--quiet", "origin", "main:spec/target-branch")
     other = repo.other_checkout()
     git(other, "checkout", "--quiet", "-b", "spec/target-branch", "origin/spec/target-branch")
@@ -109,8 +109,8 @@ def test_in_spec_mode_a_job_is_branched_from_the_newest_spec_branch_it_is_handed
 
 
 # A person cutting a job after an early stop has only the spec's number, so the tracker is asked.
-def test_by_hand_in_spec_mode_a_job_is_branched_from_the_newest_branch_the_spec_names(repo, runner):
-    write_loop(repo.work, "spec")
+def test_by_hand_in_pr_mode_a_job_is_branched_from_the_newest_branch_the_spec_names(repo, runner):
+    write_loop(repo.work, "pr")
     git(repo.work, "push", "--quiet", "origin", "main:spec/target-branch")
     other = repo.other_checkout()
     git(other, "checkout", "--quiet", "-b", "spec/target-branch", "origin/spec/target-branch")
@@ -127,8 +127,8 @@ def test_by_hand_in_spec_mode_a_job_is_branched_from_the_newest_branch_the_spec_
     assert (tree / "landed.txt").is_file()
 
 
-def test_by_hand_in_spec_mode_no_spec_prints_the_usage_that_names_it(repo, runner):
-    write_loop(repo.work, "spec")
+def test_by_hand_in_pr_mode_no_spec_prints_the_usage_that_names_it(repo, runner):
+    write_loop(repo.work, "pr")
 
     ran = run_worktree(runner, "open", repo.work, "", "ticket-164")
 

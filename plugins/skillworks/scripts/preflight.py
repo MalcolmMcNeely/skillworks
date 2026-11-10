@@ -12,7 +12,7 @@ from runner import Subprocess
 from steering.adr_folder import adr_folder
 from steering.export import export_on
 from steering.rule_imports import RULES_FOLDER, missing_import
-from steering.target_branch import SPEC_MODE, target_setting, tracker_setting
+from steering.target_branch import PR_MODE, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: skillworks-preflight [--check-only]\n"
@@ -114,7 +114,7 @@ class Preflight:
         origin = self.git("remote", "get-url", "origin")
         if origin.status == 0 and origin.out.strip():
             return origin.out.strip()
-        first = self.git("branch", "--show-current").out.strip() if self.target == SPEC_MODE else self.target
+        first = self.git("branch", "--show-current").out.strip() if self.target == PR_MODE else self.target
         raise refusal("no 'origin' remote. The loop lands every ticket by pushing to it. "
                       "A bare repo on a shared drive is enough:\n"
                       "  git init --bare <shared-drive>/<repo>.git\n"
@@ -128,12 +128,12 @@ class Preflight:
             raise refusal("could not read origin ({}): {}".format(self.origin, (listed.err + listed.out).strip()))
         rows = [line.split() for line in listed.out.splitlines()]
         heads = {row[1] for row in rows if len(row) >= 2 and row[0] != "ref:"}
-        if self.target == SPEC_MODE:
+        if self.target == PR_MODE:
             named = [row[1] for row in rows if len(row) >= 3 and row[0] == "ref:" and row[2] == "HEAD"]
             default = named[0].removeprefix("refs/heads/") if named else ""
             if not default or "refs/heads/" + default not in heads:
                 raise refusal("origin names no default branch, and each spec's pull request merges into it.")
-            ok(self.out, "target-branch spec, each reviewed into " + default)
+            ok(self.out, "target-branch pr, each reviewed into " + default)
         else:
             if "refs/heads/" + self.target not in heads:
                 raise refusal("the Target branch {} in docs/agents/loop.json is not on origin.".format(self.target))
@@ -160,12 +160,12 @@ class Preflight:
             raise refusal("Issues are disabled on {}. Enable them in repo settings.".format(self.repo))
         ok(self.out, "issues enabled")
 
-        if self.target == SPEC_MODE:
+        if self.target == PR_MODE:
             default = held.get("default_branch", "")
             if not self.on_remote(default):
                 raise refusal("the default branch {} is not on {}, and each spec's pull request merges into it.".format(
                     default, self.repo))
-            ok(self.out, "target-branch spec, each reviewed into " + default)
+            ok(self.out, "target-branch pr, each reviewed into " + default)
             landing = "a spec's branch"
         else:
             if not self.on_remote(self.target):
@@ -178,8 +178,8 @@ class Preflight:
             raise refusal("{} may not push to {}, so the loop cannot land a ticket on {}.".format(
                 self.login, self.repo, landing))
 
-        # In spec mode a pull request, not a push, reaches the default branch, so its protection stops nothing the loop does.
-        if self.target != SPEC_MODE:
+        # In PR mode a pull request, not a push, reaches the default branch, so its protection stops nothing the loop does.
+        if self.target != PR_MODE:
             self.takes_direct_push(self.target)
 
     def on_remote(self, branch):

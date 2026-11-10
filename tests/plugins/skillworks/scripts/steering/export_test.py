@@ -16,7 +16,7 @@ def given_loop(top, held):
 
 @pytest.mark.parametrize("answer", [True, False])
 def test_the_answer_in_the_loop_file_is_read(tmp_path, answer):
-    given_loop(tmp_path, {"tracker": "github", "target-branch": "spec", "export": answer})
+    given_loop(tmp_path, {"tracker": "github", "target-branch": "pr", "export": answer})
 
     assert export_on(tmp_path) is answer
 
@@ -27,19 +27,29 @@ def test_a_loop_file_with_no_answer_reads_as_off(tmp_path):
     assert export_on(tmp_path) is False
 
 
-def test_export_with_a_named_target_branch_stops_and_says_it_needs_spec(tmp_path):
+def test_export_with_a_named_target_branch_stops_and_says_it_needs_pr(tmp_path):
     given_loop(tmp_path, {"tracker": "github", "target-branch": "main", "export": True})
 
     with pytest.raises(Stop) as stopped:
         export_on(tmp_path)
 
     assert stopped.value.status == REFUSED
-    assert 'export works only with "target-branch": "spec"' in stopped.value.said
+    assert 'export works only with "target-branch": "pr"' in stopped.value.said
+
+
+def test_export_with_an_old_spec_value_stops_and_says_to_write_pr(tmp_path):
+    given_loop(tmp_path, {"tracker": "github", "target-branch": "spec", "export": True})
+
+    with pytest.raises(Stop) as stopped:
+        export_on(tmp_path)
+
+    assert stopped.value.status == REFUSED
+    assert '"pr"' in stopped.value.said
 
 
 @pytest.mark.parametrize("answer", ["true", "yes", 1, None])
 def test_an_answer_that_is_neither_true_nor_false_stops_and_names_both(tmp_path, answer):
-    given_loop(tmp_path, {"tracker": "github", "target-branch": "spec", "export": answer})
+    given_loop(tmp_path, {"tracker": "github", "target-branch": "pr", "export": answer})
 
     with pytest.raises(Stop) as stopped:
         export_on(tmp_path)

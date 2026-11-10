@@ -370,22 +370,33 @@ def test_a_loop_file_with_no_tracker_fails(work):
     assert "FAIL  docs/agents/loop.json names no tracker." in ran.err
 
 
-def test_export_with_a_named_target_branch_fails_and_says_it_needs_spec(work):
+def test_export_with_a_named_target_branch_fails_and_says_it_needs_pr(work):
     work.loop_file(json.dumps({"tracker": "github", "target-branch": "main", "export": True}))
 
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert 'FAIL  docs/agents/loop.json says export, and export works only with "target-branch": "spec"' in ran.err
+    assert 'FAIL  docs/agents/loop.json says export, and export works only with "target-branch": "pr"' in ran.err
     assert "label ready-for-agent" not in ran.out
 
 
-def test_export_in_spec_mode_passes(work):
-    work.loop_file(json.dumps({"tracker": "github", "target-branch": "spec", "export": True}))
+def test_export_in_pr_mode_passes(work):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": "pr", "export": True}))
 
     ran = preflight(work)
 
     assert ran.status == 0, said(ran)
+
+
+def test_an_old_spec_value_fails_before_any_check_of_the_remote_and_says_to_write_pr(work):
+    work.target("spec")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert ('FAIL  docs/agents/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, '
+            'write "target-branch": "pr" in docs/agents/loop.json.') in ran.err
+    assert "gh authenticated" not in ran.out
 
 
 def test_a_target_branch_split_across_lines_passes(work):
@@ -439,20 +450,20 @@ def test_a_target_branch_other_than_the_default_branch_passes(work):
     assert "ok    target-branch main" in ran.out
 
 
-def test_in_spec_mode_a_protected_default_branch_passes(work):
-    work.target("spec")
+def test_in_pr_mode_a_protected_default_branch_passes(work):
+    work.target("pr")
     work.rules["main"] = ["pull_request", "required_status_checks"]
     work.protect("enforced", "pull_request", "required_status_checks")
 
     ran = preflight(work)
 
     assert ran.status == 0, said(ran)
-    assert "ok    target-branch spec, each reviewed into main" in ran.out
+    assert "ok    target-branch pr, each reviewed into main" in ran.out
     assert "label ready-for-agent" in ran.out
 
 
-def test_in_spec_mode_a_default_branch_missing_on_the_remote_fails(work):
-    work.target("spec")
+def test_in_pr_mode_a_default_branch_missing_on_the_remote_fails(work):
+    work.target("pr")
     work.branches = set()
 
     ran = preflight(work)
@@ -461,8 +472,8 @@ def test_in_spec_mode_a_default_branch_missing_on_the_remote_fails(work):
     assert "FAIL  the default branch main is not on owner/repo" in ran.err
 
 
-def test_in_spec_mode_a_repo_that_refuses_this_login_a_push_fails(work):
-    work.target("spec")
+def test_in_pr_mode_a_repo_that_refuses_this_login_a_push_fails(work):
+    work.target("pr")
     work.may_push = False
 
     ran = preflight(work)
@@ -656,19 +667,19 @@ def test_with_the_files_tracker_a_target_branch_missing_on_the_remote_fails_nami
     assert "FAIL  the Target branch master in docs/agents/loop.json is not on origin." in ran.err
 
 
-def test_with_the_files_tracker_in_spec_mode_the_default_branch_of_the_remote_passes(work):
-    work.target("spec", tracker="files")
+def test_with_the_files_tracker_in_pr_mode_the_default_branch_of_the_remote_passes(work):
+    work.target("pr", tracker="files")
     work.serve(GITLAB, "main")
     work.runner.hide("gh")
 
     ran = preflight(work)
 
     assert ran.status == 0, said(ran)
-    assert "ok    target-branch spec, each reviewed into main" in ran.out
+    assert "ok    target-branch pr, each reviewed into main" in ran.out
 
 
-def test_with_the_files_tracker_in_spec_mode_a_remote_with_no_default_branch_fails(work):
-    work.target("spec", tracker="files")
+def test_with_the_files_tracker_in_pr_mode_a_remote_with_no_default_branch_fails(work):
+    work.target("pr", tracker="files")
     work.serve(GITLAB, "main")
     git(work.root / "remote.git", "symbolic-ref", "HEAD", "refs/heads/gone")
     work.runner.hide("gh")

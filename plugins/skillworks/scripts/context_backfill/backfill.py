@@ -14,7 +14,7 @@ from export.steering_write import refuse_on_an_export_branch
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.target_branch import LOOP_FILE, SPEC_MODE, target_setting, tracker_setting
+from steering.target_branch import LOOP_FILE, PR_MODE, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 from tracker.files import SPEC_FILE, SPECS, TICKETS, number_of
 from tracker.github import GH_QUIET
@@ -99,12 +99,12 @@ def refuse_part_of_a_history(runner, top):
 
 def target_of(runner, top):
     named = target_setting(top)
-    if named != SPEC_MODE:
+    if named != PR_MODE:
         return named
     # Each spec names its own branch, and the history a repo grew on is the one origin opens on.
     found = git(runner, top, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
     if found.status != 0:
-        raise refusal("{} says spec, and origin names no default branch to read the history from. "
+        raise refusal("{} says pr, and origin names no default branch to read the history from. "
                       "Name it, then run this again:\n  git remote set-head origin --auto".format(LOOP_FILE))
     return found.out.strip().removeprefix("origin/")
 

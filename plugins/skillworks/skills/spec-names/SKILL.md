@@ -19,7 +19,7 @@ A third argument, the rename ticket, makes this the Name re-check: see [The Name
 
 Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
 
-`tracker` in `steering-file docs/agents/loop.json` names the Tracker, and `steering-file docs/agents/issue-tracker.md` says how to record the report with each one. The Target branch is `target-branch` in `steering-file docs/agents/loop.json`. When that says `spec`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files. In `spec` mode, read the spec for that branch name and for nothing more.
+`tracker` in `steering-file docs/agents/loop.json` names the Tracker, and `steering-file docs/agents/issue-tracker.md` says how to record the report with each one. The Target branch is `target-branch` in `steering-file docs/agents/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files. In PR mode, read the spec for that branch name and for nothing more.
 
 If `steering-file docs/agents/loop.json`, `steering-file docs/agents/issue-tracker.md` or `steering-file docs/agents/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the loop reads that line and stops at once.
 
@@ -39,7 +39,7 @@ Two things, and nothing else. A small context keeps the judge sharp, and one fin
 
 2. **The glossary of each context the spec's commits touch.** `steering-file docs/agents/domain.md` says where this repo keeps its glossaries. Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file. Read each glossary on `origin/<target>`. Under the spec loop, this checkout was just cut from `origin/<target>`, so the glossary file in the checkout holds that text: read it with the Read tool. In a hand run the checkout may be behind, so read it with `git -C . show origin/<target>:<path>`.
 
-Read nothing else: not the spec, not its tickets, not the drift report, and not the code outside the spec's commits. A name is judged by what the spec's commits make it mean and by what the glossary says it means. Three reads go beyond the two: the Steering files this skill reads through `steering-file`, the spec's branch name in `spec` mode, and the search in [What you list](#what-you-list) that shows a name still stands.
+Read nothing else: not the spec, not its tickets, not the drift report, and not the code outside the spec's commits. A name is judged by what the spec's commits make it mean and by what the glossary says it means. Three reads go beyond the two: the Steering files this skill reads through `steering-file`, the spec's branch name in PR mode, and the search in [What you list](#what-you-list) that shows a name still stands.
 
 ## What you list
 

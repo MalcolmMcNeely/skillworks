@@ -38,7 +38,7 @@ const STEERING_CLAUDE = [
 
 const STEERING = {
   "CLAUDE.md": STEERING_CLAUDE,
-  "docs/agents/loop.json": '{ "tracker": "github", "target-branch": "spec", "export": true }\n',
+  "docs/agents/loop.json": '{ "tracker": "github", "target-branch": "pr", "export": true }\n',
   "docs/agents/rules/comments.md": "# Comments\n\nA comment records why.\n\n@more/doc-comments.md\n",
   "docs/agents/rules/more/doc-comments.md": "# Doc comments\n\nNo file has doc comments.\n",
   "docs/agents/rules/testing.md": "# Testing\n\nTests are integration style.\n",

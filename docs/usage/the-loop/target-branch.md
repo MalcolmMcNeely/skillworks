@@ -19,16 +19,16 @@ Pick a branch name when your team pushes straight to that branch. Your GitHub lo
 push to it with no pull request and no status check. The preflight tests this, and stops if the push
 would be refused.
 
-**`spec`**. Each spec gets a branch of its own, `spec/<slug>`, and that branch is its Target branch.
-Your team reviews the whole spec as one pull request to your default branch.
+**`pr`**, for PR mode. Each spec gets a branch of its own, `spec/<slug>`, and that branch is its
+Target branch. Your team reviews the whole spec as one pull request to your default branch.
 
 ```json
-{ "target-branch": "spec" }
+{ "target-branch": "pr" }
 ```
 
-Pick `spec` when your default branch is protected, or when your team reviews its work through pull
+Pick `pr` when your default branch is protected, or when your team reviews its work through pull
 requests. The preflight checks that the default branch is on the remote, and does not care about its
-protection. With `spec`:
+protection. With `pr`:
 
 - The grill makes `spec/<slug>` from the newest default branch when it settles the first word or ADR.
   It pushes it, and opens a draft pull request to the default branch. Each later word and ADR goes to
@@ -44,7 +44,7 @@ protection. With `spec`:
   to open the pull request from the spec's branch on your host, or mark it ready for review.
 - The pull request's body closes the spec, so the spec closes when the pull request merges.
 
-**`spec` with `export` on.** With `"export": true` in `docs/agents/loop.json`, `spec` mode works for
+**`pr` with `export` on.** With `"export": true` in `docs/agents/loop.json`, PR mode works for
 [the Export](export.md), and three things change:
 
 - The Target branch is `skillworks/spec/<your branch>`, such as
@@ -59,3 +59,9 @@ protection. With `spec`:
 
 Every other part of [the Dev loop](../the-loop.md) is the same for both kinds. Where it says the
 Target branch, read the branch name you set, or `spec/<slug>`.
+
+## An old `"spec"`
+
+PR mode was called spec mode, and its value was `"spec"`. The loop, the preflight and every script
+that reads `target-branch` now refuse `"target-branch": "spec"`, and nothing reads it as `"pr"`. To
+go on, write `"target-branch": "pr"` in `docs/agents/loop.json`.

@@ -47,7 +47,7 @@ flowchart TD
     count -- "a Contradicts" --> last["Full Suite run, once"] --> stop(["The loop stops"])
     full -- red --> stop
     full -- green --> clean["A clean finish<br/>END, and the spec closes with files"]
-    clean -- "spec mode" --> ready["Mark the pull request<br/>ready for review"]
+    clean -- "PR mode" --> ready["Mark the pull request<br/>ready for review"]
     clean -- "export on" --> export["The Export<br/>onto your own branch, never pushed"]
 ```
 
@@ -74,6 +74,6 @@ the script never disagree. Before it offers to close the spec, it names each Unr
 the `NOTE` lines.
 
 Closing the spec is where a person says the work is done. With a branch name, a person closes it by
-hand after a clean finish. With `spec`, the loop marks the spec's pull request ready for review, and
+hand after a clean finish. With `pr`, the loop marks the spec's pull request ready for review, and
 the spec closes when a person merges it. With the files Tracker, the loop closes the spec itself on a
-clean finish, and with `spec` it leaves the pull request to you.
+clean finish, and with `pr` it leaves the pull request to you.

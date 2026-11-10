@@ -44,7 +44,7 @@ words and ADRs written on the way, and what was ruled out. Then it asks you to c
 On your yes, `/skillworks:to-spec` runs. With `github`, it publishes a `SPEC:` issue with the
 `ready-for-agent` label. With `files`, it writes the spec's folder in `.specs/` and pushes it. It
 commits and pushes what the interview changed on disk to the Target branch, and it reports the spec's
-number. With `spec`, the spec names its own branch: under `## Branch` in the issue, or as `branch` in
+number. With `pr`, the spec names its own branch: under `## Branch` in the issue, or as `branch` in
 `spec.md`. Its Surfaces section holds the requirement the grill captured for each Surface the change
 touches.
 

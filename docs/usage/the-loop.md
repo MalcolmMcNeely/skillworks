@@ -30,7 +30,7 @@ Each page below holds one part of the loop, in the order a run takes them.
 
 | Page | What it answers |
 |---|---|
-| [The Target branch](the-loop/target-branch.md) | Which branch a ticket Lands on, and how to choose between a branch name and `spec`. |
+| [The Target branch](the-loop/target-branch.md) | Which branch a ticket Lands on, and how to choose between a branch name and `pr`. |
 | [The Tracker](the-loop/tracker.md) | Where your specs and tickets live, and how the `files` Tracker keeps them in `.specs/`. |
 | [Stage one: settle the design](the-loop/the-grill.md) | What the grill asks, what your yes at the gate consents to, and the shape of the spec it publishes. |
 | [The tickets](the-loop/tickets.md) | How the Cut makes the tickets, how a ticket is picked and claimed, and where it is built. |

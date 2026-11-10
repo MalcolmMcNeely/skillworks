@@ -107,13 +107,13 @@ NO_RENAMES = name_report()
 
 # The checkout sits on the spec's branch, so what a case commits there reaches it and not main.
 @pytest.fixture
-def spec_mode(tmp_path, runner, monkeypatch):
+def pr_mode(tmp_path, runner, monkeypatch):
     repo = Repo(tmp_path)
     git(repo.work, "checkout", "--quiet", "-b", SPEC_BRANCH)
     git(repo.work, "push", "--quiet", "origin", SPEC_BRANCH)
     repo.target = SPEC_BRANCH
     driven = driver_in(repo, runner, monkeypatch)
-    write_loop(repo.work, "spec")
+    write_loop(repo.work, "pr")
     return driven
 
 
@@ -566,6 +566,18 @@ def test_domain_docs_that_name_no_adr_folder_stop_the_dry_run_naming_setup(loop)
     assert ran.status == 1
     assert "ABORT docs/agents/domain.md has no YAML block at its end, so it names no adr-folder." in said(ran)
     assert "/skillworks:skillworks-setup" in said(ran)
+    assert "DRY" not in ran.out
+
+
+def test_an_old_spec_value_stops_the_dry_run_and_says_to_write_pr(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    write_loop(loop.repo.work, "spec")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert ('docs/agents/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, '
+            'write "target-branch": "pr" in docs/agents/loop.json.') in said(ran)
     assert "DRY" not in ran.out
 
 
@@ -4729,10 +4741,16 @@ def test_the_target_branch_page_explains_both_kinds_of_target_branch():
     text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
 
     assert text.startswith("# The Target branch\n")
-    for named in ["`docs/agents/loop.json`", "`target-branch`", "`spec`", "`spec/<slug>`"]:
+    for named in ["`docs/agents/loop.json`", "`target-branch`", "`pr`", "`spec/<slug>`"]:
         assert named in text, named
     assert "Pick a branch name when" in text
-    assert "Pick `spec` when" in text
+    assert "Pick `pr` when" in text
+
+
+def test_the_target_branch_page_says_an_old_spec_value_is_refused_and_how_to_fix_it():
+    text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
+
+    assert 'write `"target-branch": "pr"` in `docs/agents/loop.json`' in text
 
 
 def test_the_tracker_page_explains_the_files_tracker_beside_github():
@@ -5605,73 +5623,73 @@ def pull_request_calls(runner):
     return [call for call in runner.started("gh") if call[1] == "pr"]
 
 
-def test_in_spec_mode_a_ticket_is_cut_from_and_lands_on_the_spec_branch_and_not_main(spec_mode):
-    given_a_run_that_lands(spec_mode)
-    suite_commit = git(spec_mode.repo.origin, "rev-parse", SPEC_BRANCH).strip()
-    main = git(spec_mode.repo.origin, "rev-parse", "main").strip()
+def test_in_pr_mode_a_ticket_is_cut_from_and_lands_on_the_spec_branch_and_not_main(pr_mode):
+    given_a_run_that_lands(pr_mode)
+    suite_commit = git(pr_mode.repo.origin, "rev-parse", SPEC_BRANCH).strip()
+    main = git(pr_mode.repo.origin, "rev-parse", "main").strip()
 
-    ran = spec_mode.run(SPEC)
+    ran = pr_mode.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert git(spec_mode.repo.origin, "log", "-1", "--format=%s", SPEC_BRANCH).strip() == "Built"
-    assert git(spec_mode.repo.origin, "rev-parse", SPEC_BRANCH + "^").strip() == suite_commit
-    assert git(spec_mode.repo.origin, "rev-parse", "main").strip() == main
-    assert "Every ticket is on {}.".format(SPEC_BRANCH) in spec_mode.log()
+    assert git(pr_mode.repo.origin, "log", "-1", "--format=%s", SPEC_BRANCH).strip() == "Built"
+    assert git(pr_mode.repo.origin, "rev-parse", SPEC_BRANCH + "^").strip() == suite_commit
+    assert git(pr_mode.repo.origin, "rev-parse", "main").strip() == main
+    assert "Every ticket is on {}.".format(SPEC_BRANCH) in pr_mode.log()
 
 
-def test_in_spec_mode_the_pull_request_is_marked_ready_after_the_drift_check(spec_mode, runner):
-    given_a_run_that_lands(spec_mode)
+def test_in_pr_mode_the_pull_request_is_marked_ready_after_the_drift_check(pr_mode, runner):
+    given_a_run_that_lands(pr_mode)
 
-    ran = spec_mode.run(SPEC)
+    ran = pr_mode.run(SPEC)
 
     assert ran.status == 0, said(ran)
     assert pull_request_calls(runner) == [["gh", "pr", "ready", SPEC_BRANCH]]
     assert call_at(runner, "/skillworks:spec-drift") < call_at(runner, "pr ready")
     assert "READY the pull request from {} is ready for review".format(
-        SPEC_BRANCH) in spec_mode.log()
+        SPEC_BRANCH) in pr_mode.log()
 
 
-def test_in_spec_mode_the_driver_never_merges_the_pull_request(spec_mode, runner):
-    given_a_run_that_lands(spec_mode)
+def test_in_pr_mode_the_driver_never_merges_the_pull_request(pr_mode, runner):
+    given_a_run_that_lands(pr_mode)
 
-    ran = spec_mode.run(SPEC)
+    ran = pr_mode.run(SPEC)
 
     assert ran.status == 0, said(ran)
     assert [call for call in runner.started("gh") if "merge" in call] == []
     assert [call[2] for call in pull_request_calls(runner)] == ["ready"]
 
 
-def test_in_spec_mode_a_pull_request_that_would_not_be_marked_ready_stops_and_names_the_command(
-        spec_mode):
-    tracker = given_a_run_that_lands(spec_mode)
+def test_in_pr_mode_a_pull_request_that_would_not_be_marked_ready_stops_and_names_the_command(
+        pr_mode):
+    tracker = given_a_run_that_lands(pr_mode)
     tracker.ready = Ran(1, "", "no pull requests found for branch \"{}\"\n".format(SPEC_BRANCH))
 
-    ran = spec_mode.run(SPEC)
+    ran = pr_mode.run(SPEC)
 
     assert ran.status == 1
     assert "gh pr ready {}".format(SPEC_BRANCH) in said(ran)
     assert "no pull requests found" in said(ran)
 
 
-def test_in_spec_mode_a_spec_that_names_no_branch_stops_before_a_ticket_is_claimed(
-        spec_mode, runner):
-    tracker = given_the_tracker_holds(spec_mode, ONE_OPEN_TICKET)
+def test_in_pr_mode_a_spec_that_names_no_branch_stops_before_a_ticket_is_claimed(
+        pr_mode, runner):
+    tracker = given_the_tracker_holds(pr_mode, ONE_OPEN_TICKET)
     tracker.body = COUNTED
 
-    ran = spec_mode.run(SPEC)
+    ran = pr_mode.run(SPEC)
 
     assert ran.status == 1
-    assert "names no branch under ## Branch" in spec_mode.log()
+    assert "names no branch under ## Branch" in pr_mode.log()
     assert not runner.built("issue edit")
 
 
-def test_in_spec_mode_the_stop_for_a_spec_that_names_no_branch_says_the_grill_writes_it(spec_mode):
-    tracker = given_the_tracker_holds(spec_mode, ONE_OPEN_TICKET)
+def test_in_pr_mode_the_stop_for_a_spec_that_names_no_branch_says_the_grill_writes_it(pr_mode):
+    tracker = given_the_tracker_holds(pr_mode, ONE_OPEN_TICKET)
     tracker.body = COUNTED
 
-    spec_mode.run(SPEC)
+    pr_mode.run(SPEC)
 
-    assert "/skillworks:grill writes it" in spec_mode.log()
+    assert "/skillworks:grill writes it" in pr_mode.log()
 
 
 def test_with_a_branch_name_the_driver_touches_no_pull_request(loop, runner):
@@ -5697,7 +5715,7 @@ TEST = "Test <test@example.invalid>"
 
 def write_export_loop(top, export):
     path = Path(top) / "docs" / "agents" / "loop.json"
-    path.write_text(json.dumps({"tracker": "github", "target-branch": "spec", "export": export}),
+    path.write_text(json.dumps({"tracker": "github", "target-branch": "pr", "export": export}),
                     encoding="utf-8", newline="\n")
 
 

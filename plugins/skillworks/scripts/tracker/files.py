@@ -20,7 +20,7 @@ STATUS = "status"
 CLOSED = "closed"
 CLOSING_NOTE = "## Closing note"
 
-# Every remote branch at once, because in spec mode the spec's own folder says which one is its.
+# Every remote branch at once, because in PR mode the spec's own folder says which one is its.
 EVERY_BRANCH = "*"
 
 # Enough for several loops starting at once, few enough that a remote refusing for another reason cannot spin.
@@ -166,7 +166,7 @@ class Files:
     # The remote may be GitLab or a bare repo, and gh may be missing, so a person opens the request.
     marks_pull_requests = False
 
-    # A target of None is spec mode, where each spec's frontmatter names its own branch.
+    # A target of None is PR mode, where each spec's frontmatter names its own branch.
     def __init__(self, runner, where, target, spec=None, wait=time.sleep):
         self.runner = runner
         self.where = str(where)

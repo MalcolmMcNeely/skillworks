@@ -644,18 +644,18 @@ def test_with_a_named_target_branch_no_pull_request_is_asked_for(checkout, runne
     assert runner.started("gh") == []
 
 
-def in_spec_mode(where):
+def in_pr_mode(where):
     (where / "docs" / "agents" / "loop.json").write_text(
-        json.dumps({"tracker": "github", "target-branch": "spec"}), encoding="utf-8")
+        json.dumps({"tracker": "github", "target-branch": "pr"}), encoding="utf-8")
 
 
 def asked_for_pull_requests(runner):
     return [call for call in runner.started("gh") if call[1:3] == ["pr", "create"]]
 
 
-def test_in_spec_mode_the_commits_reach_a_branch_of_their_own_and_the_default_branch_is_untouched(
+def test_in_pr_mode_the_commits_reach_a_branch_of_their_own_and_the_default_branch_is_untouched(
         history, checkout, runner):
-    in_spec_mode(checkout)
+    in_pr_mode(checkout)
     before = git(history.origin, "rev-parse", "main")
     mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
     runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
@@ -666,8 +666,8 @@ def test_in_spec_mode_the_commits_reach_a_branch_of_their_own_and_the_default_br
         "Glossary: 1 word in CONTEXT.md", before)
 
 
-def test_in_spec_mode_one_draft_pull_request_is_asked_for_the_branch(checkout, runner):
-    in_spec_mode(checkout)
+def test_in_pr_mode_one_draft_pull_request_is_asked_for_the_branch(checkout, runner):
+    in_pr_mode(checkout)
     mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
     runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
 
@@ -677,9 +677,9 @@ def test_in_spec_mode_one_draft_pull_request_is_asked_for_the_branch(checkout, r
             for call in asked_for_pull_requests(runner)] == [("main", "spec/context-backfill", True)]
 
 
-def test_in_spec_mode_a_second_apply_pushes_to_the_same_branch_and_asks_for_no_second_pull_request(
+def test_in_pr_mode_a_second_apply_pushes_to_the_same_branch_and_asks_for_no_second_pull_request(
         history, checkout, runner):
-    in_spec_mode(checkout)
+    in_pr_mode(checkout)
     mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")
                          + word(2, "Batch", "Fifty tickets.", "?")))
     runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")

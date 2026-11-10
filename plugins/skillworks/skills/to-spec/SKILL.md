@@ -20,15 +20,15 @@ When `docs/agents/loop.json` is missing on disk, this session is on an Export br
 
 2. Sketch out the seams at which you're going to test the feature. Pick them by the team's testing rule, `steering-file docs/agents/rules/testing.md`, which says how high and how few they are. Write them into the spec's Testing Decisions.
 
-3. Read `tracker` and `target-branch` in `steering-file docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `spec` means the spec gets a branch of its own; see [The spec's branch](#the-specs-branch) and do its first part now.
+3. Read `tracker` and `target-branch` in `steering-file docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `pr` means the spec gets a branch of its own; see [The spec's branch](#the-specs-branch) and do its first part now.
 
 4. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
 
 5. Write the spec using the template below. The spec title should begin with "SPEC:". Keep the three counted sections in the shape [The counted shape](#the-counted-shape) gives. Then publish it as [Publishing the spec](#publishing-the-spec) says.
 
-6. In `spec` mode, do the second part of [The spec's branch](#the-specs-branch).
+6. In PR mode, do the second part of [The spec's branch](#the-specs-branch).
 
-7. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In `spec` mode, report the pull request's URL too. With `export` on there is no pull request, so report the Target branch and the Export branch.
+7. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In PR mode, report the pull request's URL too. With `export` on there is no pull request, so report the Target branch and the Export branch.
 
 ## The counted shape
 
@@ -45,11 +45,11 @@ An item runs over several lines when its later lines are indented, so a nested l
 `tracker-publish` writes the spec with either Tracker, from one file and one command.
 
 1. Write the spec with the Write tool to `.spec-loop/drafts/<slug>.md` in this checkout. The slug is short and in kebab case. Its first line is `# SPEC: <title>`, and the template's sections follow. Leave out the `## Branch` section and any frontmatter, because the command writes them. Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder, so no skill that publishes asks for a permission the loop cannot give.
-2. Publish it. In `spec` mode, name the spec's branch last:
+2. Publish it. In PR mode, name the spec's branch last:
 
    ```bash
    tracker-publish spec <slug> .spec-loop/drafts/<slug>.md                 # target-branch names a branch
-   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md spec/<slug>     # target-branch says spec
+   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md spec/<slug>     # target-branch says pr
    ```
 
 3. It prints the number, a tab, and then the issue's URL with `github` or the folder with `files`, such as `8	.specs/0008-local-tracker`. With `files`, pull the branch, so the checkout holds the folder too.
@@ -58,15 +58,15 @@ When the command fails, run it again. It files nothing twice.
 
 ### With `github`
 
-The command files one issue. Its title is the `# SPEC: ` heading, its body is the text below that heading, and it carries the `ready-for-agent` label. In `spec` mode it writes the `## Branch` section at the top of the body, from the branch named. Above all of it, the body opens with a hidden line that holds a hash of the title and the body. The command first looks for an open `ready-for-agent` issue whose body opens with the same hidden line. When it finds one, it files nothing and prints that issue's number and URL, so a run after a network failure never files a second spec. A spec with the same title as an open spec and a different body gets an issue of its own, and the command names each open spec with that title. The command writes a note on stderr when it finds the spec already filed, and when another open spec shares the title. Tell the developer each note it writes.
+The command files one issue. Its title is the `# SPEC: ` heading, its body is the text below that heading, and it carries the `ready-for-agent` label. In PR mode it writes the `## Branch` section at the top of the body, from the branch named. Above all of it, the body opens with a hidden line that holds a hash of the title and the body. The command first looks for an open `ready-for-agent` issue whose body opens with the same hidden line. When it finds one, it files nothing and prints that issue's number and URL, so a run after a network failure never files a second spec. A spec with the same title as an open spec and a different body gets an issue of its own, and the command names each open spec with that title. The command writes a note on stderr when it finds the spec already filed, and when another open spec shares the title. Tell the developer each note it writes.
 
 ### With `files`
 
-The spec is a folder in `.specs/`. The command writes its frontmatter: `status: open`, and in `spec` mode `branch`, so the folder sits on that branch and the pull request carries the spec and its code together. The command numbers the spec one above the highest number on the remote, and pushes the folder at once. Two specs written at once get two numbers: the remote refuses the second push, and the command reads again and takes the next number. In `spec` mode each spec pushes to a branch of its own, so the same push also holds the number on the remote as `refs/skillworks/specs/<number>`, and a second spec cannot take it. It writes through an index of its own, so it never touches the checkout.
+The spec is a folder in `.specs/`. The command writes its frontmatter: `status: open`, and in PR mode `branch`, so the folder sits on that branch and the pull request carries the spec and its code together. The command numbers the spec one above the highest number on the remote, and pushes the folder at once. Two specs written at once get two numbers: the remote refuses the second push, and the command reads again and takes the next number. In PR mode each spec pushes to a branch of its own, so the same push also holds the number on the remote as `refs/skillworks/specs/<number>`, and a second spec cannot take it. It writes through an index of its own, so it never touches the checkout.
 
 ## The spec's branch
 
-In `spec` mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
+In PR mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
 
 With `export` set to `true` in `steering-file docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
 

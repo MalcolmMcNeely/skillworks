@@ -8,7 +8,7 @@ from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET
                                            references, what_is_left)
 from context_backfill.context_map import MAP_FILE, contexts_of, map_edits
 from steering.adr_folder import adr_folder
-from steering.target_branch import LOOP_FILE, SPEC_MODE, target_setting
+from steering.target_branch import LOOP_FILE, PR_MODE, target_setting
 from stop import refusal
 
 GLOSSARY_FILE = "CONTEXT.md"
@@ -87,7 +87,7 @@ class Destination(NamedTuple):
 def default_of(runner, top):
     found = git(runner, top, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
     if found.status != 0:
-        raise refusal("{} says spec, and origin names no default branch to cut {} from. Name it, then run "
+        raise refusal("{} says pr, and origin names no default branch to cut {} from. Name it, then run "
                       "this again:\n  git remote set-head origin --auto".format(LOOP_FILE, SPEC_BRANCH))
     return found.out.strip().removeprefix("origin/")
 
@@ -95,20 +95,20 @@ def default_of(runner, top):
 def destination_of(runner, top):
     branch = target_setting(top)
     here = git(runner, top, "symbolic-ref", "--quiet", "--short", "HEAD").out.strip()
-    if branch != SPEC_MODE:
+    if branch != PR_MODE:
         if here != branch:
             raise refusal("The Target branch is {}, and this checkout is on {}. Switch to {}, then run this "
                           "again. Nothing was written.".format(branch, here or "no branch", branch))
         return Destination(branch, here)
     default_branch = default_of(runner, top)
     if here not in (default_branch, SPEC_BRANCH):
-        raise refusal("{} says spec, so the work goes on {}, cut from {}, and this checkout is on {}. Switch to "
+        raise refusal("{} says pr, so the work goes on {}, cut from {}, and this checkout is on {}. Switch to "
                       "{}, then run this again. Nothing was written.".format(
                           LOOP_FILE, SPEC_BRANCH, default_branch, here or "no branch", default_branch))
     return Destination(SPEC_BRANCH, here, default_branch)
 
 
-# A protected default branch refuses a direct push, so in spec mode the work goes on a branch of its own.
+# A protected default branch refuses a direct push, so in PR mode the work goes on a branch of its own.
 def branch_off(runner, top, destination):
     if destination.default_branch is None or destination.here == SPEC_BRANCH:
         return

@@ -12,9 +12,9 @@ branch. You push that branch and open the pull request.
 ## Switch it on
 
 `"export": true` in `docs/agents/loop.json` switches the Export on. It works only with
-`"target-branch": "spec"`, because the loop reads the name of your branch from the name of the
-spec's Target branch. The preflight and the loop stop when `export` is on with a named Target
-branch, and say why. A `loop.json` with no `export` reads as `false`, and the loop runs as it did
+`"target-branch": "pr"`, because the loop reads the name of your branch from the name of the
+spec's Target branch. The preflight and the loop stop when `export` is on with any other Target
+branch, and say to write `"pr"`. A `loop.json` with no `export` reads as `false`, and the loop runs as it did
 before. [Steering](../steering.md) lists the setting.
 
 ## The three branches

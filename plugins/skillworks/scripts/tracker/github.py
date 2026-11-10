@@ -84,7 +84,7 @@ class GitHub:
     close_names_commits = True
     marks_pull_requests = True
 
-    # The Target branch, or None in spec mode, where each spec names its own.
+    # The Target branch, or None in PR mode, where each spec names its own.
     def __init__(self, runner, where, repo=THIS_REPO, target=None):
         self.runner = runner
         self.where = str(where)

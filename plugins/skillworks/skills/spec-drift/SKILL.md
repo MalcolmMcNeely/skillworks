@@ -27,7 +27,7 @@ Every ticket Lands straight on the Target branch, and its Job branch goes when i
 
 The **spec's commits** are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. A commit with no `Ticket:` trailer is never one of them, whoever made it, and neither is a commit that names another spec's ticket. Other loops and hand commits Land on the same Target branch, so the range from the base commit holds work that is not this spec's.
 
-The Target branch is `target-branch` in `steering-file docs/agents/loop.json`. When that says `spec`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
+The Target branch is `target-branch` in `steering-file docs/agents/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
 
 If `steering-file docs/agents/loop.json`, `steering-file docs/agents/issue-tracker.md`, `steering-file docs/agents/surfaces.md` or `steering-file docs/agents/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
 

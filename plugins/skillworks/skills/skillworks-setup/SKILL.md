@@ -24,12 +24,12 @@ The outputs:
 | `docs/agents/adr-format.md` | The ADR shape: the template and the optional sections every new ADR fills. It starts with the Skillworks shape, and a team edits it so new ADRs look like the ones it keeps. |
 | `docs/agents/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the baseline for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no baseline. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
 | `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
-| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. `export` is `true` when the work goes to a team that does not use Skillworks, and `false` otherwise. Setup asks first. |
+| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `pr` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. `export` is `true` when the work goes to a team that does not use Skillworks, and `false` otherwise. Setup asks first. |
 | `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
 | `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. The block is a Seed: `seed-agent-skills` builds it, and a second run merges a person's edits. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
-| The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of a `spec` Target branch among them. It lets a skill read its own files, with `Read(~/.claude/plugins/**)` and, when the Marketplace folder sits outside the repo, a read rule for that folder, because a Session run by hand would stop to ask on a read outside the repo. The driver gives a loop Session its own read rule. It names no tool the Suite runs: those are the team's to add. |
+| The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of PR mode among them. It lets a skill read its own files, with `Read(~/.claude/plugins/**)` and, when the Marketplace folder sits outside the repo, a read rule for that folder, because a Session run by hand would stop to ask on a read outside the repo. The driver gives a loop Session its own read rule. It names no tool the Suite runs: those are the team's to add. |
 | An `attribution` block in `.claude/settings.json`, rewritten from `co-authored-by` every time setup runs | Claude Code credits Claude on each commit and pull request unless `attribution` says otherwise. Its commit credit is always off, because the Plugin's hook adds the credit line when `co-authored-by` says `show`. Its pull request credit is off for `hide` only. The block follows the answer in `loop.json`, so a block someone edited by hand comes back into step. |
 | Three trailer rules in `.git/config`, written by the Plugin's hook and not by setup, on the first commit it rewrites in each clone | `trailer.Skillworks-Session.ifExists=addIfDifferent`, `trailer.Co-Authored-By.ifExists=addIfDifferent` and `trailer.Ticket.ifExists=replace`. They make a typed `Ticket` line give way to the hook's, and keep an amend by the same Session from adding a line twice. They sit in the config and not in the command, so a team's allow rule for `git commit` still matches. Setup writes nothing for them. |
 | `"promptCacheTtl": "1h"` and `"subagentPromptCacheTtl": "1h"` in `.claude/settings.json` | A loop Session waits on the Suite and on its sub-agents for longer than the default five minutes of prompt cache. With one hour, each ticket reads its prompt from a warm cache and does not pay for a cold one. |
@@ -58,7 +58,7 @@ git switch -c skillworks/steering origin/<the default branch>
 
 When `skillworks/steering` is already a branch, here or on `origin`, an earlier run made it, so switch to it with `git switch skillworks/steering` instead.
 
-Steps 1 to 6 then run on the Steering branch. After step 1, write `"export": true` and `"target-branch": "spec"` into `docs/agents/loop.json`, and change no other key.
+Steps 1 to 6 then run on the Steering branch. After step 1, write `"export": true` and `"target-branch": "pr"` into `docs/agents/loop.json`, and change no other key.
 
 ### 1. Seed the Steering
 
@@ -136,11 +136,11 @@ With `files`, tell the team that `.specs/` is committed and cannot be gitignored
 
 The Target branch is the branch the loop Lands each ticket on. Ask the team which one it is, and suggest the remote's default branch, so the common answer is one keypress. `seed-steering` has already written that branch into `docs/agents/loop.json`. If `target-branch` there names another value, a team's answer from an earlier run, suggest that one instead.
 
-Offer one other answer: `spec`. With `spec`, each spec gets a branch of its own, `spec/<slug>`, and the team reviews the spec as one pull request to the default branch. The loop marks the pull request ready for review, and a person merges it. Pick `spec` when the default branch is protected, or when the team reviews its work through pull requests.
+Offer one other answer: `pr`. With `pr`, each spec gets a branch of its own, `spec/<slug>`, and the team reviews the spec as one pull request to the default branch. The loop marks the pull request ready for review, and a person merges it. Pick `pr` when the default branch is protected, or when the team reviews its work through pull requests.
 
 Write the answer into `target-branch` in `docs/agents/loop.json`, and change no other key.
 
-With the Export, ask nothing here, and write `spec`. The Export works only with `spec`, because the loop reads the developer's branch from the name of the spec's Target branch.
+With the Export, ask nothing here, and write `pr`. The Export works only with `pr`, because the loop reads the developer's branch from the name of the spec's Target branch.
 
 ### 4. Point CLAUDE.md at the docs
 
@@ -179,9 +179,9 @@ skillworks-preflight
 
 It reads the Tracker and the Target branch from `docs/agents/loop.json`, and checks that `CLAUDE.md` imports each rule in `docs/agents/rules/`. It warns, and does not fail, when another enabled plugin also forces an output style. Safe to run again.
 
-With `github`, it checks `gh`, the login, that `origin` is GitHub, and the Target branch. A branch name must be on the remote and must take a direct push from this login. With `spec`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label.
+With `github`, it checks `gh`, the login, that `origin` is GitHub, and the Target branch. A branch name must be on the remote and must take a direct push from this login. With `pr`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label.
 
-With `files`, it needs no `gh` and creates no label. It checks that `origin` exists and holds the Target branch, or with `spec`, the remote's default branch.
+With `files`, it needs no `gh` and creates no label. It checks that `origin` exists and holds the Target branch, or with `pr`, the remote's default branch.
 
 It runs after the Tracker and the Target branch are written, because it reads `loop.json`, and after the `CLAUDE.md` block is written, because it refuses a rule with no import. Expect a permission prompt here too on a first run.
 

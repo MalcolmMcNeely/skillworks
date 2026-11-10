@@ -132,8 +132,8 @@ def test_the_checkout_and_the_tracker_are_left_as_they_were(history):
     assert state() == before
 
 
-def test_in_spec_mode_the_specs_own_branch_is_read(history):
-    on_files(history.repo, "spec")
+def test_in_pr_mode_the_specs_own_branch_is_read(history):
+    on_files(history.repo, "pr")
     history.move_to("spec/local-tracker")
     base = history.commit("The tickets of spec 7",
                           files={**four_tickets(), FOLDER + "/spec.md": spec_file(branch="spec/local-tracker")})
@@ -212,8 +212,8 @@ def test_with_github_nothing_but_reads_reaches_gh(history):
     assert issues.unanswered == []
 
 
-def test_with_github_in_spec_mode_the_branch_the_spec_names_is_read(history):
-    on_github(history.repo, "spec")
+def test_with_github_in_pr_mode_the_branch_the_spec_names_is_read(history):
+    on_github(history.repo, "pr")
     SubIssues(history.runner, "468", ["469"], branch="spec/pull-request")
     base = history.commit("Spec 468 starts")
     history.move_to("spec/pull-request")

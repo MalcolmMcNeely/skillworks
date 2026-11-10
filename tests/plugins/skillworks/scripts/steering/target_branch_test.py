@@ -4,7 +4,7 @@ import pytest
 
 from conftest import ROOT
 from stop import REFUSED, Stop
-from steering.target_branch import (LOOP_FILE, in_spec_mode, target_branch, target_branch_for, tracker_for,
+from steering.target_branch import (LOOP_FILE, in_pr_mode, target_branch, target_branch_for, tracker_for,
                                     tracker_setting)
 from tracker.github import GitHub
 
@@ -40,8 +40,8 @@ def test_a_loop_file_with_no_target_branch_stops_and_names_the_setting(tmp_path)
     assert "target-branch" in stopped.value.said
 
 
-def test_in_spec_mode_no_spec_stops_and_says_one_is_needed(tmp_path):
-    write_loop(tmp_path, {"target-branch": "spec"})
+def test_in_pr_mode_no_spec_stops_and_says_one_is_needed(tmp_path):
+    write_loop(tmp_path, {"target-branch": "pr"})
 
     with pytest.raises(Stop) as stopped:
         target_branch(tmp_path)
@@ -50,28 +50,48 @@ def test_in_spec_mode_no_spec_stops_and_says_one_is_needed(tmp_path):
     assert "no spec was given" in stopped.value.said
 
 
-def test_spec_mode_is_told_apart_from_a_branch_name(tmp_path):
-    write_loop(tmp_path, {"target-branch": "spec"})
-    assert in_spec_mode(tmp_path)
+def test_pr_mode_is_told_apart_from_a_branch_name(tmp_path):
+    write_loop(tmp_path, {"target-branch": "pr"})
+    assert in_pr_mode(tmp_path)
 
     write_loop(tmp_path, {"target-branch": "master"})
-    assert not in_spec_mode(tmp_path)
+    assert not in_pr_mode(tmp_path)
 
 
-def test_a_missing_loop_file_stops_the_question_of_spec_mode_too(tmp_path):
+def test_an_old_spec_value_is_refused_and_the_fix_is_to_write_pr(tmp_path):
+    write_loop(tmp_path, {"target-branch": "spec"})
+
     with pytest.raises(Stop) as stopped:
-        in_spec_mode(tmp_path)
+        in_pr_mode(tmp_path)
+
+    assert stopped.value.status == REFUSED
+    assert "spec mode is now PR mode" in stopped.value.said
+    assert 'write "target-branch": "pr" in docs/agents/loop.json' in stopped.value.said
+
+
+def test_an_old_spec_value_is_never_read_as_a_branch_name(tmp_path):
+    write_loop(tmp_path, {"target-branch": "spec"})
+
+    with pytest.raises(Stop) as stopped:
+        target_branch(tmp_path)
+
+    assert "spec mode is now PR mode" in stopped.value.said
+
+
+def test_a_missing_loop_file_stops_the_question_of_pr_mode_too(tmp_path):
+    with pytest.raises(Stop) as stopped:
+        in_pr_mode(tmp_path)
 
     assert "seed-steering" in stopped.value.said
 
 
 SPEC_BODY = "## Problem Statement\n\nWords.\n\n## Branch\n\n`spec/target-branch`\n"
 
-SPEC_MODE_ON_GITHUB = {"tracker": "github", "target-branch": "spec"}
+PR_MODE_ON_GITHUB = {"tracker": "github", "target-branch": "pr"}
 
 
-def test_by_hand_in_spec_mode_the_spec_is_asked_of_the_tracker_for_its_branch(tmp_path, runner):
-    write_loop(tmp_path, SPEC_MODE_ON_GITHUB)
+def test_by_hand_in_pr_mode_the_spec_is_asked_of_the_tracker_for_its_branch(tmp_path, runner):
+    write_loop(tmp_path, PR_MODE_ON_GITHUB)
     runner.stub("gh", says=SPEC_BODY)
 
     assert target_branch_for(runner, tmp_path, "282") == "spec/target-branch"
@@ -86,7 +106,7 @@ def test_by_hand_a_branch_name_asks_the_tracker_nothing(tmp_path, runner):
 
 
 def test_by_hand_a_tracker_that_will_not_answer_stops_and_names_the_spec(tmp_path, runner):
-    write_loop(tmp_path, SPEC_MODE_ON_GITHUB)
+    write_loop(tmp_path, PR_MODE_ON_GITHUB)
     runner.stub("gh", status=1)
 
     with pytest.raises(Stop) as stopped:
@@ -96,8 +116,8 @@ def test_by_hand_a_tracker_that_will_not_answer_stops_and_names_the_spec(tmp_pat
     assert "#282" in stopped.value.said
 
 
-def test_by_hand_in_spec_mode_no_spec_stops_before_the_tracker_is_asked(tmp_path, runner):
-    write_loop(tmp_path, {"target-branch": "spec"})
+def test_by_hand_in_pr_mode_no_spec_stops_before_the_tracker_is_asked(tmp_path, runner):
+    write_loop(tmp_path, {"target-branch": "pr"})
 
     with pytest.raises(Stop) as stopped:
         target_branch_for(runner, tmp_path, None)
@@ -106,8 +126,8 @@ def test_by_hand_in_spec_mode_no_spec_stops_before_the_tracker_is_asked(tmp_path
     assert not runner.started("gh")
 
 
-def test_by_hand_in_spec_mode_the_spec_is_asked_of_the_tracker_it_is_handed(tmp_path, runner):
-    write_loop(tmp_path, {"target-branch": "spec"})
+def test_by_hand_in_pr_mode_the_spec_is_asked_of_the_tracker_it_is_handed(tmp_path, runner):
+    write_loop(tmp_path, {"target-branch": "pr"})
     runner.stub("gh", says=SPEC_BODY)
 
     assert target_branch_for(runner, tmp_path, "282", GitHub(runner, tmp_path)) == "spec/target-branch"

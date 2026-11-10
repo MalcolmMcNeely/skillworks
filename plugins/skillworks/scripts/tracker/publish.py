@@ -8,7 +8,7 @@ from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.target_branch import SPEC_MODE, target_setting, tracker_setting
+from steering.target_branch import PR_MODE, target_setting, tracker_setting
 from stop import Stop, is_a_number, misuse, refusal
 from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
                            TICKETS, Files, as_numbers, frontmatter, heading, number_of,
@@ -39,7 +39,7 @@ def opened(runner, where, spec, wait):
         raise refusal("{} is not inside a git repo.".format(where))
     top = found.out.strip()
     named = target_setting(top)
-    target = None if named == SPEC_MODE else named
+    target = None if named == PR_MODE else named
     if tracker_setting(top) == "files":
         tracker = Files(runner, top, target, spec, wait)
     else:
@@ -99,13 +99,13 @@ def github_spec(body, branch):
 
 
 def publish_spec(tracker, slug, body, branch, out, err):
-    in_spec_mode = tracker.target is None
+    in_pr_mode = tracker.target is None
     if not SLUG.fullmatch(slug):
         raise refusal("The slug {} is not kebab case, such as local-tracker.".format(slug))
-    if in_spec_mode and not branch:
-        raise refusal("docs/agents/loop.json says spec, so the spec goes on a branch of its own. "
+    if in_pr_mode and not branch:
+        raise refusal("docs/agents/loop.json says pr, so the spec goes on a branch of its own. "
                       "Name it after the body file.")
-    if not in_spec_mode and branch:
+    if not in_pr_mode and branch:
         raise refusal("docs/agents/loop.json names the Target branch {}, so the spec goes there, "
                       "and no branch is named.".format(tracker.target))
     if isinstance(tracker, GitHub):
@@ -115,18 +115,18 @@ def publish_spec(tracker, slug, body, branch, out, err):
         raise refusal("The body already opens with frontmatter. tracker-publish writes it, so "
                       "leave it out.")
     branch = branch or tracker.target
-    fields = [STATUS + ": open"] + (["branch: " + branch] if in_spec_mode else [])
+    fields = [STATUS + ": open"] + (["branch: " + branch] if in_pr_mode else [])
     text = "\n".join([FENCE] + fields + [FENCE, "", ""]) + body
     for _ in range(PUSH_ATTEMPTS):
-        tracker.fetched(EVERY_BRANCH if in_spec_mode else branch)
+        tracker.fetched(EVERY_BRANCH if in_pr_mode else branch)
         parent = tip(tracker, branch)
-        if in_spec_mode:
+        if in_pr_mode:
             number = max(highest(tracker, every_branch(tracker)), highest_reserved(tracker)) + 1
         else:
             number = highest(tracker, [parent]) + 1
         folder = "{}/{:04d}-{}".format(SPECS, number, slug)
-        # In spec mode two specs push to two branches and neither is refused, so the number is held on one ref too.
-        reserved = [RESERVED + str(number)] if in_spec_mode else []
+        # In PR mode two specs push to two branches and neither is refused, so the number is held on one ref too.
+        reserved = [RESERVED + str(number)] if in_pr_mode else []
         if tracker.pushed(branch, parent, {folder + "/" + SPEC_FILE: text},
                           "Write spec {}: {}".format(number, heading(body, slug)),
                           "Spec {}".format(number), reserved):

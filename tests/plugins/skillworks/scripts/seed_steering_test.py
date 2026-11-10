@@ -261,14 +261,14 @@ def test_a_loop_file_already_there_is_kept_and_its_difference_shown(repo, runner
     make_master_the_default(repo)
     held = repo.work / "docs" / "agents" / "loop.json"
     held.parent.mkdir(parents=True)
-    held.write_text('{\n  "target-branch": "spec"\n}\n', encoding="utf-8", newline="\n")
+    held.write_text('{\n  "target-branch": "pr"\n}\n', encoding="utf-8", newline="\n")
 
     ran = run_seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
-    assert held.read_text(encoding="utf-8") == '{\n  "target-branch": "spec"\n}\n'
+    assert held.read_text(encoding="utf-8") == '{\n  "target-branch": "pr"\n}\n'
     assert "kept docs/agents/loop.json, which differs from the seed:\n" in ran.out
-    assert '-  "target-branch": "spec"\n' in ran.out
+    assert '-  "target-branch": "pr"\n' in ran.out
     assert '+  "target-branch": "master",\n' in ran.out
 
 
@@ -1272,7 +1272,7 @@ def test_to_tickets_publishes_to_the_files_tracker_and_no_scratch_folder():
     assert "`status: open`" in to_tickets
 
 
-def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_spec_mode():
+def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_pr_mode():
     to_spec = skill_text("to-spec")
 
     assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md" in to_spec
@@ -2178,7 +2178,7 @@ def test_setup_asks_for_the_target_branch_and_never_requires_main():
     step = setup_section("### 3. Ask for the Target branch")
 
     assert "suggest the remote's default branch" in step
-    assert "Offer one other answer: `spec`." in step
+    assert "Offer one other answer: `pr`." in step
     assert "`target-branch`" in step
     assert "`main`" not in text
 
@@ -2226,14 +2226,14 @@ def test_with_the_export_setup_writes_the_steering_on_the_steering_branch_cut_fr
     question = setup_section(EXPORT_QUESTION)
 
     for named in ["`skillworks/steering`", "git switch -c skillworks/steering origin/<the default branch>",
-                  "`\"export\": true`", "`\"target-branch\": \"spec\"`"]:
+                  "`\"export\": true`", "`\"target-branch\": \"pr\"`"]:
         assert named in question, named
 
 
-def test_with_the_export_setup_asks_no_target_branch_and_writes_spec():
+def test_with_the_export_setup_asks_no_target_branch_and_writes_pr():
     step = setup_section("### 3. Ask for the Target branch")
 
-    assert "With the Export, ask nothing here, and write `spec`." in step
+    assert "With the Export, ask nothing here, and write `pr`." in step
 
 
 def test_with_the_export_setup_commits_and_pushes_the_steering_branch_and_switches_back():
@@ -2263,6 +2263,30 @@ def test_the_export_page_names_setup_as_the_first_step_of_the_flow():
     first = [line for line in flow.splitlines() if line.startswith("1. ")]
 
     assert len(first) == 1 and "/skillworks:skillworks-setup" in first[0]
+
+
+def test_the_export_page_says_the_export_needs_pr():
+    page = (ROOT / "docs" / "usage" / "the-loop" / "export.md").read_text(encoding="utf-8")
+
+    assert '`"target-branch": "pr"`' in page
+
+
+OLD_SPEC_VALUE = re.compile(r'"target-branch":\s*"spec"|`target-branch` (?:is|says) `spec`|target-branch says spec')
+
+
+def test_no_skill_or_seed_names_spec_as_a_value_of_the_target_branch():
+    pages = list((ROOT / "plugins" / "skillworks" / "skills").rglob("*.md"))
+    named = [path.relative_to(ROOT).as_posix() for path in pages
+             if OLD_SPEC_VALUE.search(path.read_text(encoding="utf-8"))]
+
+    assert ROOT / "plugins" / "skillworks" / "skills" / "to-spec" / "SKILL.md" in pages and named == []
+
+
+def test_the_stops_page_says_an_old_spec_value_is_refused_and_how_to_fix_it():
+    page = " ".join(STOPS_PAGE.read_text(encoding="utf-8").split())
+
+    assert '`"target-branch": "spec"`' in page
+    assert 'write `"target-branch": "pr"` in `docs/agents/loop.json`' in page
 
 
 # Each is a name only this repository uses, so finding one means a seed was copied, not written.
@@ -3207,7 +3231,7 @@ def test_the_setup_page_lists_the_target_branch_among_the_questions_setup_asks()
     rows = [line for line in questions.splitlines() if line.startswith("| Which is your Target branch? |")]
 
     assert len(rows) == 1
-    assert "`spec`" in rows[0]
+    assert "`pr`" in rows[0]
     assert "default branch" in rows[0]
 
 
@@ -3223,7 +3247,7 @@ def test_the_steering_page_describes_the_loop_file():
 
     assert len(rows) == 1
     assert "`target-branch`" in rows[0]
-    assert "`spec`" in rows[0]
+    assert "`pr`" in rows[0]
 
 
 def test_the_steering_page_names_the_credit_answer_in_the_loop_file():

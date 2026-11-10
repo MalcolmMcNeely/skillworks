@@ -890,11 +890,11 @@ def test_a_landing_on_master_that_lost_a_race_waits_for_the_turn_and_then_lands_
 SPEC_BRANCH = "spec/target-branch"
 
 
-# The checkout says spec, and only the driver has read the spec, so the branch is handed in.
+# The checkout says pr, and only the driver has read the spec, so the branch is handed in.
 @pytest.fixture
-def spec_mode(tmp_path):
+def pr_mode(tmp_path):
     made = landing_repo(tmp_path, "main")
-    write_loop(made.work, "spec")
+    write_loop(made.work, "pr")
     git(made.work, "commit", "--quiet", "-am", "The loop reviews each spec as one pull request")
     git(made.work, "push", "--quiet", "origin", "main:" + SPEC_BRANCH)
     git(made.work, "fetch", "--quiet", "origin")
@@ -906,73 +906,73 @@ def spec_branch_of(repo):
     return git(repo.origin, "rev-parse", SPEC_BRANCH).strip()
 
 
-def test_in_spec_mode_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_on_the_spec_branch(
-        spec_mode, runner, other_loops):
-    commit_for_ticket(spec_mode, 163)
-    head = head_of(spec_mode)
-    base = spec_branch_of(spec_mode)
-    main = git(spec_mode.origin, "rev-parse", "main").strip()
+def test_in_pr_mode_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_on_the_spec_branch(
+        pr_mode, runner, other_loops):
+    commit_for_ticket(pr_mode, 163)
+    head = head_of(pr_mode)
+    base = spec_branch_of(pr_mode)
+    main = git(pr_mode.origin, "rev-parse", "main").strip()
     runner.refuse("push --quiet origin HEAD:" + SPEC_BRANCH, LOST_RACE, times=1)
     held = []
     out = Heard(WAITS, {"lost a race to " + SPEC_BRANCH: lambda: held.append(
-        other_loops(spec_mode, how="grab"))})
+        other_loops(pr_mode, how="grab"))})
 
-    landing = Beside(runner, out, spec_mode.work, 163, target=SPEC_BRANCH)
+    landing = Beside(runner, out, pr_mode.work, 163, target=SPEC_BRANCH)
     heard = landing.heard()
 
     assert held[0].said == "held"
     assert "#163 waits for the Turn, which spec #200 ticket #199 holds" in heard
-    assert spec_branch_of(spec_mode) == base
+    assert spec_branch_of(pr_mode) == base
 
     held[0].let_go()
     ran = landing.ended()
 
     assert ran.status == 0, report(ran)
     assert "landed on {} as {} in 2 tries".format(SPEC_BRANCH, head[:7]) in report(ran)
-    assert spec_branch_of(spec_mode) == head
-    assert git(spec_mode.origin, "rev-parse", "main").strip() == main
+    assert spec_branch_of(pr_mode) == head
+    assert git(pr_mode.origin, "rev-parse", "main").strip() == main
 
 
 SPEC_BODY = "## Problem Statement\n\nWords.\n\n## Branch\n\n`{}`\n".format(SPEC_BRANCH)
 
 
 # A person landing after an early stop has only the spec's number, so the tracker is asked.
-def test_by_hand_in_spec_mode_a_ticket_given_its_spec_lands_on_the_branch_the_spec_names(
-        spec_mode, runner):
+def test_by_hand_in_pr_mode_a_ticket_given_its_spec_lands_on_the_branch_the_spec_names(
+        pr_mode, runner):
     runner.stub("gh", says=SPEC_BODY)
-    commit_for_ticket(spec_mode, 163)
-    head = head_of(spec_mode)
-    main = git(spec_mode.origin, "rev-parse", "main").strip()
+    commit_for_ticket(pr_mode, 163)
+    head = head_of(pr_mode)
+    main = git(pr_mode.origin, "rev-parse", "main").strip()
 
-    ran = run_land(runner, spec_mode.work, 163, "--spec", 282)
+    ran = run_land(runner, pr_mode.work, 163, "--spec", 282)
 
     assert ran.status == 0, report(ran)
     assert "landed on " + SPEC_BRANCH in report(ran)
-    assert spec_branch_of(spec_mode) == head
-    assert git(spec_mode.origin, "rev-parse", "main").strip() == main
+    assert spec_branch_of(pr_mode) == head
+    assert git(pr_mode.origin, "rev-parse", "main").strip() == main
 
 
-def test_by_hand_in_spec_mode_a_ticket_given_its_spec_and_a_session_lands(spec_mode, runner):
+def test_by_hand_in_pr_mode_a_ticket_given_its_spec_and_a_session_lands(pr_mode, runner):
     runner.stub("gh", says=SPEC_BODY)
-    commit_for_ticket(spec_mode, 163)
-    head = head_of(spec_mode)
+    commit_for_ticket(pr_mode, 163)
+    head = head_of(pr_mode)
 
-    ran = run_land(runner, spec_mode.work, 163, "session-abc", "--spec", 282)
+    ran = run_land(runner, pr_mode.work, 163, "session-abc", "--spec", 282)
 
     assert ran.status == 0, report(ran)
-    assert spec_branch_of(spec_mode) == head
+    assert spec_branch_of(pr_mode) == head
 
 
-def test_by_hand_in_spec_mode_a_ticket_with_no_spec_stops_and_says_how_to_name_it(
-        spec_mode, runner):
-    commit_for_ticket(spec_mode, 163)
-    base = spec_branch_of(spec_mode)
+def test_by_hand_in_pr_mode_a_ticket_with_no_spec_stops_and_says_how_to_name_it(
+        pr_mode, runner):
+    commit_for_ticket(pr_mode, 163)
+    base = spec_branch_of(pr_mode)
 
-    ran = run_land(runner, spec_mode.work, 163)
+    ran = run_land(runner, pr_mode.work, 163)
 
     assert ran.status == 1
     assert "--spec <spec-number>" in report(ran)
-    assert spec_branch_of(spec_mode) == base
+    assert spec_branch_of(pr_mode) == base
     assert not runner.started("gh")
 
 

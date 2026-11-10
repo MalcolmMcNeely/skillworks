@@ -131,8 +131,8 @@ def test_a_body_that_brings_its_own_frontmatter_is_turned_down(writer):
     assert writer.folders() == []
 
 
-def test_in_spec_mode_the_folder_is_on_the_specs_branch_and_names_it(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_the_folder_is_on_the_specs_branch_and_names_it(writer):
+    write_loop(writer.repo.work, "pr")
     writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
 
     ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
@@ -144,8 +144,8 @@ def test_in_spec_mode_the_folder_is_on_the_specs_branch_and_names_it(writer):
     assert writer.tracker("1", target=None).branch_of("1") == SPEC_BRANCH
 
 
-def test_in_spec_mode_the_number_counts_the_specs_on_every_branch(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_the_number_counts_the_specs_on_every_branch(writer):
+    write_loop(writer.repo.work, "pr")
     writer.push({".specs/0004-elsewhere/spec.md": spec_file(branch="spec/elsewhere")},
                 branch="spec/elsewhere")
     writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
@@ -156,8 +156,8 @@ def test_in_spec_mode_the_number_counts_the_specs_on_every_branch(writer):
     assert ".specs/0005-local-tracker" in writer.folders(SPEC_BRANCH)
 
 
-def test_in_spec_mode_two_specs_written_at_once_on_two_branches_end_with_two_numbers(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_two_specs_written_at_once_on_two_branches_end_with_two_numbers(writer):
+    write_loop(writer.repo.work, "pr")
     writer.push({"base.txt": "base\nrival branch\n"}, branch="spec/rival")
     writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
     rival = Writer(writer.repo, Racing(), writer.scratch / "rival")
@@ -173,8 +173,8 @@ def test_in_spec_mode_two_specs_written_at_once_on_two_branches_end_with_two_num
     assert writer.tracker("2", target=None).branch_of("2") == SPEC_BRANCH
 
 
-def test_in_spec_mode_a_number_reserved_with_no_folder_left_is_not_taken_again(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_a_number_reserved_with_no_folder_left_is_not_taken_again(writer):
+    write_loop(writer.repo.work, "pr")
     writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
     head = git(writer.repo.origin, "rev-parse", "main").strip()
     git(writer.repo.origin, "update-ref", publish.RESERVED + "3", head)
@@ -185,8 +185,8 @@ def test_in_spec_mode_a_number_reserved_with_no_folder_left_is_not_taken_again(w
     assert ran.out == "4\t.specs/0004-local-tracker\n"
 
 
-def test_in_spec_mode_a_spec_with_no_branch_is_turned_down(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_a_spec_with_no_branch_is_turned_down(writer):
+    write_loop(writer.repo.work, "pr")
 
     ran = writer.spec()
 
@@ -194,8 +194,8 @@ def test_in_spec_mode_a_spec_with_no_branch_is_turned_down(writer):
     assert "branch" in ran.err
 
 
-def test_in_spec_mode_a_branch_not_on_the_remote_is_turned_down(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_a_branch_not_on_the_remote_is_turned_down(writer):
+    write_loop(writer.repo.work, "pr")
 
     ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
 
@@ -232,8 +232,8 @@ def test_tickets_are_pushed_into_the_specs_folder_and_the_tracker_reads_them(wri
     assert writer.on_remote(".specs/0001-local-tracker/tickets/03-claim.md") == three_tickets()["03-claim.md"]
 
 
-def test_in_spec_mode_tickets_reach_the_specs_branch(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_tickets_reach_the_specs_branch(writer):
+    write_loop(writer.repo.work, "pr")
     writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
     writer.spec("local-tracker", BODY, SPEC_BRANCH)
 
@@ -334,8 +334,8 @@ def test_a_drift_report_without_its_heading_is_turned_down(writer):
     assert writer.tracker("1").drift_report("1") == ""
 
 
-def test_in_spec_mode_a_drift_report_reaches_the_specs_branch(writer):
-    write_loop(writer.repo.work, "spec")
+def test_in_pr_mode_a_drift_report_reaches_the_specs_branch(writer):
+    write_loop(writer.repo.work, "pr")
     writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
     writer.spec("local-tracker", BODY, SPEC_BRANCH)
 
@@ -573,8 +573,8 @@ def test_on_github_a_second_run_with_the_same_spec_files_nothing_twice_and_says_
     assert "already filed as #401" in ran.err
 
 
-def test_on_github_in_spec_mode_the_branch_section_is_written_from_the_branch_named(writer):
-    specs = specs_on_github(writer, "spec")
+def test_on_github_in_pr_mode_the_branch_section_is_written_from_the_branch_named(writer):
+    specs = specs_on_github(writer, "pr")
 
     ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
 
@@ -586,8 +586,8 @@ def test_on_github_in_spec_mode_the_branch_section_is_written_from_the_branch_na
     assert spec_branch(body) == SPEC_BRANCH
 
 
-def test_on_github_in_spec_mode_a_spec_that_holds_its_own_branch_section_is_turned_down(writer):
-    specs = specs_on_github(writer, "spec")
+def test_on_github_in_pr_mode_a_spec_that_holds_its_own_branch_section_is_turned_down(writer):
+    specs = specs_on_github(writer, "pr")
     body = "# SPEC: A local tracker\n\n## Branch\n\nspec/other\n\n## Problem Statement\n"
 
     ran = writer.spec("local-tracker", body, SPEC_BRANCH)
@@ -597,8 +597,8 @@ def test_on_github_in_spec_mode_a_spec_that_holds_its_own_branch_section_is_turn
     assert specs.filed == []
 
 
-def test_on_github_in_spec_mode_a_spec_with_no_branch_is_turned_down(writer):
-    specs = specs_on_github(writer, "spec")
+def test_on_github_in_pr_mode_a_spec_with_no_branch_is_turned_down(writer):
+    specs = specs_on_github(writer, "pr")
 
     ran = writer.spec()
 

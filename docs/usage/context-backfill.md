@@ -230,7 +230,7 @@ blank sheet.
 ## The second run
 
 Type the command again once the sheet is marked. The run that finds at least one Answer on the
-sheet is the second run. Run it on the Target branch, or on the default branch in `spec` mode. It
+sheet is the second run. Run it on the Target branch, or on the default branch in PR mode. It
 writes the text that is on the sheet, so a Draft you edited is written as you edited it.
 
 ### What it writes
@@ -310,10 +310,10 @@ commits it made, then pulls with rebase and pushes them.
 | `target-branch` | Where the commits go |
 |---|---|
 | A branch name, such as `main` | Straight onto that branch. No pull request is opened. |
-| `spec` | Onto a branch of their own, `spec/context-backfill`, cut from the default branch. The default branch is not touched. The first push opens a draft pull request from that branch to the default branch. |
+| `pr` | Onto a branch of their own, `spec/context-backfill`, cut from the default branch. The default branch is not touched. The first push opens a draft pull request from that branch to the default branch. |
 
-A protected default branch refuses a direct push, and `spec` mode is how a team works with one. That
-is why the commits never go to the default branch in `spec` mode. Every later apply, such as the one
+A protected default branch refuses a direct push, and PR mode is how a team works with one. That
+is why the commits never go to the default branch in PR mode. Every later apply, such as the one
 for an Answer you give in talk, goes to the same branch and opens no second pull request. Merge the
 pull request when you are ready for the words and ADRs to reach the default branch.
 
@@ -326,7 +326,7 @@ The run writes nothing when:
 
 - The sheet has no Answer on it. It tells you to mark the sheet.
 - An `Answer:` line holds a word that is not `accept`, `reject` or `?`.
-- The checkout is not on the Target branch. In `spec` mode, the checkout is not on the default
+- The checkout is not on the Target branch. In PR mode, the checkout is not on the default
   branch or on `spec/context-backfill`.
 - An accepted word names a context that no map holds, on the sheet or in the repo.
 - An accepted map names no context, or setup has not written the words rule or the Domain docs

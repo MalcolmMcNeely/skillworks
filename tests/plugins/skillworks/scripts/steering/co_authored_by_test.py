@@ -60,12 +60,12 @@ def test_the_answer_is_written_to_the_loop_file_beside_every_other_setting(repo,
 
 def test_the_loop_file_keeps_its_layout_and_only_the_answer_changes(repo):
     loop_file(repo).write_bytes(b'{\r\n    "tracker": "files",\r\n    "co-authored-by": "show",\r\n'
-                                b'    "target-branch": "spec"\r\n}\r\n')
+                                b'    "target-branch": "pr"\r\n}\r\n')
 
     run_co_authored_by(repo.work, "hide")
 
     assert loop_file(repo).read_bytes() == (b'{\r\n    "tracker": "files",\r\n    "co-authored-by": "hide",\r\n'
-                                            b'    "target-branch": "spec"\r\n}\r\n')
+                                            b'    "target-branch": "pr"\r\n}\r\n')
 
 
 def test_hide_writes_empty_strings_for_commits_and_pull_requests_and_leaves_every_other_key(repo):

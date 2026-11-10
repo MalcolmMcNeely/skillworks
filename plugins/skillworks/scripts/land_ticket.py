@@ -7,7 +7,7 @@
 #   land-ticket <worktree> <ticket-number> [session-id] [--spec <spec-number>]
 #   land-ticket --plan
 #
-# In spec mode a landing run by hand names its spec, which names the Target branch.
+# In PR mode a landing run by hand names its spec, which names the Target branch.
 #
 # Exits 0 once the ticket's commit is on the remote's Target branch. Exits non-zero with
 # the reason on stderr, having pushed nothing.
@@ -42,7 +42,7 @@ from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
-from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
+from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
 from tracker.reading import listed
@@ -505,9 +505,9 @@ class Landing:
             top = self.main_checkout()
             self.tracker = self.tracker or tracker_for(self.runner, top, self.spec)
         if not self.target:
-            if self.spec is None and in_spec_mode(top):
+            if self.spec is None and in_pr_mode(top):
                 raise self.die(
-                    "{t} cannot be landed, because in spec mode each spec names its own Target "
+                    "{t} cannot be landed, because in PR mode each spec names its own Target "
                     "branch and no spec was given. Nothing was pushed. Name the spec with: "
                     "land-ticket {w} {n} [session-id] --spec <spec-number>".format(
                         t=self.named, n=self.ticket, w=self.worktree))
@@ -637,7 +637,7 @@ def permission_mode_set():
 
 
 # The driver hands in the mode of its run, so the resolving Session never falls back to the default.
-# It hands in the Target branch too, since in spec mode only the driver has read the spec.
+# It hands in the Target branch too, since in PR mode only the driver has read the spec.
 # A Flake goes to the driver when it asks, so the loop keeps the red output a hand run only notes.
 # The resolving Session's result goes to the driver too, which keeps every Session result.
 def main(argv, runner, out, err, wait, permission_mode=None, target=None, tracker=None,

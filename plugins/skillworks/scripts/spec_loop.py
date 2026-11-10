@@ -58,7 +58,7 @@ from steering.adr_folder import missing_adr_folder
 from steering.export import export_on
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
-from steering.target_branch import in_spec_mode, target_branch_for, tracker_for
+from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite
 from tracker.reading import FLAKES, listed
@@ -492,7 +492,7 @@ class Loop:
 
         self.root = Path.cwd()
         self.target = ""
-        self.spec_mode = False
+        self.pr_mode = False
         self.exports = False
         self.tracker = None
         self.spec_title = ""
@@ -1073,6 +1073,7 @@ class Loop:
 
     def preflight(self):
         self.tracker = tracker_for(self.runner, self.root, self.spec)
+        self.pr_mode = in_pr_mode(self.root)
         self.exports = export_on(self.root)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")
@@ -1788,7 +1789,7 @@ class Loop:
             self.say("CLOSE spec {} is closed on {} as {}".format(
                 self.spec_named(), self.target, closed_at))
 
-    # --- the pull request, in spec mode --------------------------------------
+    # --- the pull request, in PR mode ----------------------------------------
 
     # Ready and never merged, so a person reviews the spec before it reaches the default branch.
     def mark_ready(self):
@@ -1840,7 +1841,6 @@ class Loop:
     # --- the whole run -------------------------------------------------------
 
     def read_target(self):
-        self.spec_mode = in_spec_mode(self.root)
         return target_branch_for(self.runner, self.root, self.spec, self.tracker)
 
     def run(self, dry):
@@ -1903,7 +1903,7 @@ class Loop:
         self.close_spec()
         if self.exports:
             return self.run_export()
-        if self.spec_mode:
+        if self.pr_mode:
             self.hand_over()
         self.say("END   spec {} complete. Every ticket is on {}.".format(
             self.spec_named(), self.target))
