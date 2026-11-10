@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+from export.steering_write import refuse_on_an_export_branch
 from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.allowlist import member
@@ -94,6 +95,7 @@ def main(argv, runner, out, err):
         found = runner.run(["git", "-C", argv[0], "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(argv[0]))
+        refuse_on_an_export_branch(found.out.strip())
         out.write(settle(found.out.strip(), argv[1]))
         return 0
     except Stop as stop:

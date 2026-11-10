@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from context_backfill.applying import apply
+from export.steering_write import refuse_on_an_export_branch
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
@@ -426,6 +427,7 @@ def main(argv, runner, out, err, wait, where=None):
     try:
         if len(argv) != 1 or argv[0] not in COMMANDS:
             raise misuse(USAGE)
+        refuse_on_an_export_branch(top_of(runner, where))
         COMMANDS[argv[0]](runner, where, out, wait)
         return 0
     except Stop as stop:

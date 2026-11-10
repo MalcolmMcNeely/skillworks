@@ -94,6 +94,11 @@ Nothing fetches. The session reads `origin/skillworks/steering` as your last fet
 starts offline and with no wait on the remote. When the Steering changes on another machine, run a
 plain `git fetch`, then start a new session.
 
+A skill or a command that writes Steering, such as `/skillworks:architecture-tests` or
+`set-co-authored-by`, stops on your branch and writes nothing. A Steering change is made on
+`skillworks/steering`, so it never lands on your branch.
+[A Steering write on your own branch](stops.md) says what to do.
+
 ## What goes in
 
 The Export runs once, after [the full run](full-run.md) passes and the spec closes, and before `END`.

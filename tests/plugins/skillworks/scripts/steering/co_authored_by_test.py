@@ -237,6 +237,18 @@ def test_a_missing_loop_file_is_refused_with_the_command_that_writes_it_and_noth
     assert not settings_file(repo).exists()
 
 
+def test_on_an_export_branch_the_command_names_the_steering_branch_and_writes_nothing(repo):
+    loop_file(repo).unlink()
+    team_settings(repo)
+    before = settings_file(repo).read_bytes()
+
+    ran = launch("set-co-authored-by", "show", where=repo.work)
+
+    assert ran.status == 1
+    assert "skillworks/steering" in ran.err
+    assert settings_file(repo).read_bytes() == before and not loop_file(repo).exists()
+
+
 def test_a_loop_file_that_is_not_json_is_refused_and_nothing_is_written(repo):
     loop_file(repo).write_text('{"tracker": ', encoding="utf-8", newline="\n")
 

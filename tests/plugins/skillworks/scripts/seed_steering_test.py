@@ -1231,6 +1231,26 @@ def test_on_an_export_branch_domain_modeling_and_to_spec_stop_and_send_the_devel
     assert "stop" in text.lower() and "/skillworks:grill" in text
 
 
+STEERING_WRITERS = ["architecture-tests", "context-backfill"]
+
+
+@pytest.mark.parametrize("skill", STEERING_WRITERS)
+def test_a_skill_that_writes_steering_stops_on_an_export_branch_and_names_the_steering_branch(skill):
+    text = under_heading(skill_text(skill), "## On an Export branch")
+
+    for named in ["`docs/agents/loop.json` is missing on disk", "Stop here", "`skillworks/steering`", "push"]:
+        assert named in text, named
+
+
+@pytest.mark.parametrize("skill", STEERING_WRITERS)
+def test_a_skill_that_writes_steering_stops_before_anything_it_runs(skill):
+    text = skill_text(skill)
+    headings = [line for line in text.split("\n") if line.startswith("## ")]
+
+    assert headings[0] == "## On an Export branch"
+    assert "```" not in text.split("## On an Export branch", 1)[0]
+
+
 def test_no_skill_but_the_grill_names_the_cut_command():
     naming = sorted(str(page.relative_to(SKILLS)).replace("\\", "/") for page in SKILLS.rglob("*.md")
                     if "cut-target-branch" in page.read_text(encoding="utf-8"))

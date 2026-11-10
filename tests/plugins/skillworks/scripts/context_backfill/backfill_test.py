@@ -810,3 +810,26 @@ def test_a_gitignore_with_no_last_newline_gets_the_line_on_a_line_of_its_own(his
     check(runner, full)
 
     assert (full / ".gitignore").read_text(encoding="utf-8") == "bin/\n.context-backfill/\n"
+
+
+def test_on_an_export_branch_the_check_names_the_steering_branch_and_writes_nothing(history, runner):
+    where = history.clone("export")
+    (where / "docs" / "agents" / "loop.json").unlink()
+
+    ran = check(runner, where)
+
+    assert ran.status == 1
+    assert "skillworks/steering" in ran.err
+    assert not (where / ".gitignore").exists() and not (where / ".context-backfill").exists()
+
+
+def test_on_an_export_branch_the_apply_names_the_steering_branch_and_writes_nothing(checkout, runner):
+    mark(checkout, sheet(words=word(1, "Reader", "The part that turns a file into dates.", "accept", "Parser")))
+    (checkout / "docs" / "agents" / "loop.json").unlink()
+    before = git(checkout, "rev-parse", "HEAD")
+
+    ran = apply(runner, checkout)
+
+    assert ran.status == 1
+    assert "skillworks/steering" in ran.err
+    assert not (checkout / "CONTEXT.md").exists() and git(checkout, "rev-parse", "HEAD") == before

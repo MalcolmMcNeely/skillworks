@@ -223,6 +223,26 @@ An earlier grill cut it. It can be a grill to resume, or a spec already done. De
 2. Start a new Claude Code session there. A session keeps the Steering it loaded when it started.
 3. Go on there, with `/skillworks:grill` for a grill to resume.
 
+**A Steering write on your own branch.** With `export` on, your own branch holds no Steering, as
+[the Export](export.md#a-session-on-your-own-branch) says. A skill or a command that writes Steering
+sees that `docs/agents/loop.json` is missing on disk, and it stops before it writes anything. The
+skills are `/skillworks:architecture-tests` and `/skillworks:context-backfill`. The commands are
+`set-co-authored-by`, `allow-commands` and `context-backfill`:
+
+```
+FAIL  docs/agents/loop.json is missing on disk, so this branch holds no Steering. With the Export, a Steering change is made on skillworks/steering: switch to it, run this there, and push. Without the Export, run seed-steering to write it. Nothing was written.
+```
+
+Make the change on the Steering branch:
+
+1. Switch to it: `git switch skillworks/steering`.
+2. Start a new Claude Code session there, and run the skill or the command again.
+3. Commit, and push it with `git push origin skillworks/steering`.
+4. Switch back to your branch. The next grill cuts its Target branch from the new Steering.
+
+Setup is not stopped. With the Export, it switches to `skillworks/steering` itself before it
+writes anything.
+
 **The Steering branch does not rebase.** With `export` on, the grill cuts the spec's Target branch
 at its start, by the `cut-target-branch` command, as [the Export](export.md#the-grills-cut)
 says. The command first rebases the Steering branch, `skillworks/steering`, onto the commit your

@@ -13,6 +13,10 @@ The Plugin ships no checker. Every test this skill writes is either a common too
 
 If `docs/agents/rules/`, `docs/agents/suite.json` or `docs/agents/placement-checks.md` is missing, stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
 
+## On an Export branch
+
+When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. This skill writes Steering, and a Steering change never lands on that branch. Stop here, and write nothing. Tell the developer to switch to `skillworks/steering`, run this skill there, and push. On any other branch, go on.
+
 ## 1. Read the rules and find the languages
 
 Read each rule in `docs/agents/rules/`, and the YAML block at its end. The settings are what a test checks: a starter test reads them from the rule at every run, and never copies them, so a changed setting changes what the test checks.
