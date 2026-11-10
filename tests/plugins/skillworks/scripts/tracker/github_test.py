@@ -174,6 +174,15 @@ def test_in_pr_mode_a_spec_is_closed_as_completed_with_a_comment_naming_its_bran
     assert close.endswith(" --reason completed")
 
 
+def test_with_the_export_the_close_comment_names_the_export_branch_for_the_pull_request(runner):
+    runner.stub("gh", says="## Branch\n\n`skillworks/spec/feature/x`\n")
+
+    github(runner).close_spec("158")
+
+    [close] = [line for line in asked(runner) if line.startswith("issue close")]
+    assert "Open the pull request from `feature/x`" in close
+
+
 def test_in_pr_mode_a_spec_that_would_not_close_is_refused_with_what_gh_said(runner):
     def answer():
         if runner.calls[-1][1:3] == ["issue", "close"]:
