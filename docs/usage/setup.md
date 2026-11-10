@@ -263,7 +263,8 @@ no `CONTEXT.md` and no `CONTEXT-MAP.md`. [Context backfill](context-backfill.md)
     report names any entry still missing, because the loop can hit a Denial on that command.
 
 Run it again when your team adds a language or a rule. A second run tests only what is new, and keeps
-every test you already have.
+every test you already have. It also names each test that still reads a dropped value of a setting,
+such as `doc-comments: true` or `false`. Change that value and that test by hand.
 
 ## Run setup again
 

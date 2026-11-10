@@ -71,8 +71,9 @@ The team runs this skill again when the repo gains a language or a rule. A rerun
 
 - Find the rules and languages that no row of `steering-file docs/agents/placement-checks.md` covers yet.
 - Keep every existing test as it is. The team owns it, so an edit to it is the team's, and a rerun is not a reason to rewrite it.
+- Name each existing test that reads a dropped value of a setting, with the file and the value it reads. The values dropped now are `true` and `false` of `doc-comments`: `false` is now `none`, and `true` is now `code`. Change no test. The team changes the value in its rule, and its own test, by hand.
 - Offer the new rules and the new languages, and go through steps 3 to 5 for each one the team picks.
 
 ## Report
 
-End with a table: each rule the team picked, the test that proves it, the command the Suite runs, and whether it is green. Under it, name each breach the code has today, and each rule left to the team, with the reason. Name each allowlist entry still missing from `.claude/settings.json`, and say that the loop can hit a Denial on that command until the entry is there.
+End with a table: each rule the team picked, the test that proves it, the command the Suite runs, and whether it is green. Under it, name each breach the code has today, and each rule left to the team, with the reason. On a rerun, name each test that reads a dropped value, and the value it reads. Name each allowlist entry still missing from `.claude/settings.json`, and say that the loop can hit a Denial on that command until the entry is there.
