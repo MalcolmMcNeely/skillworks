@@ -261,8 +261,9 @@ than putting a fake on `PATH`.
 _Avoid_: Spawn, shell, executor
 
 **Seed**:
-The Plugin's starting version of one Steering file. Setup copies it into the repo, and keeps a copy of
-the Seed it copied beside it, so a later run can tell the team's edits from a Seed that moved on.
+The Plugin's starting version of one Steering file, or of the `## Agent skills` block in `CLAUDE.md`.
+Setup writes it into the repo, built from the team's answers where it needs them, and keeps a copy of
+the Seed it wrote beside it, so a later run can tell the team's edits from a Seed that moved on.
 _Avoid_: Template, default, stub
 
 **Session**:
