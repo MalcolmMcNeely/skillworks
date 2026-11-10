@@ -3451,14 +3451,6 @@ def test_implement_runs_the_suite_by_its_command_in_a_hand_run():
     assert read_of(WHERE["suite.json"]) in running
 
 
-LOOP_AND_REVIEW_PAGES = [
-    "implement/SKILL.md", "review-changes/SKILL.md", "review-changes/standards.md", "review-changes/spec.md",
-    "review-changes/architecture.md", "review-standards/SKILL.md", "review-spec/SKILL.md",
-    "review-architecture/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md", "to-tickets/SKILL.md",
-    "spec-loop/SKILL.md", "resolve-conflict/SKILL.md", "what-next/SKILL.md", "what-next/PHASE-BOUNDARIES.md",
-    "what-next/SMART-AND-DUMB-ZONES.md",
-]
-
 READ_THROUGH_STEERING_FILE = re.compile(r"steering-file (docs/agents/[\w./*<>-]*)")
 
 
@@ -3468,24 +3460,10 @@ def steering_read_past_steering_file(text):
     return [match.group(0) for match in STEERING_PATH.finditer(text) if match.start() not in through]
 
 
-@pytest.mark.parametrize("page", LOOP_AND_REVIEW_PAGES)
-def test_a_loop_or_review_skill_reads_each_steering_path_through_steering_file(page):
-    assert steering_read_past_steering_file((SKILLS / page).read_text(encoding="utf-8")) == []
-
-
-def test_a_steering_path_read_past_steering_file_is_caught():
-    text = "Read `steering-file docs/agents/domain.md`, then `docs/agents/loop.json`."
-
-    assert steering_read_past_steering_file(text) == ["docs/agents/loop.json"]
-
-
-DESIGN_AND_HAND_RUN_SKILLS = ["grill", "to-spec", "domain-modeling", "tdd", "codebase-design",
-                              "improve-codebase-architecture", "comment-sweep", "architecture-tests",
-                              "context-backfill"]
-
-DESIGN_AND_HAND_RUN_PAGES = sorted(str(page.relative_to(SKILLS)).replace("\\", "/")
-                                   for skill in DESIGN_AND_HAND_RUN_SKILLS
-                                   for page in (SKILLS / skill).glob("*.md"))
+# Setup keeps its own Export route and runs where the Steering is on disk, and the Seeds under it never change.
+SKILL_PAGES = sorted(str(page.relative_to(SKILLS)).replace("\\", "/")
+                     for page in SKILLS.rglob("*")
+                     if page.is_file() and page.relative_to(SKILLS).parts[0] != "skillworks-setup")
 
 # These ask where this branch is and not what the Steering says, so they test the disk on purpose.
 DISK_CHECK = re.compile(r"`docs/agents/loop\.json` is (?:missing )?on disk")
@@ -3509,23 +3487,29 @@ def reads_of_steering(page):
     return text
 
 
-def test_each_design_or_hand_run_skill_has_its_skill_page_swept():
-    missing = [skill for skill in DESIGN_AND_HAND_RUN_SKILLS
-               if "{}/SKILL.md".format(skill) not in DESIGN_AND_HAND_RUN_PAGES]
+def test_the_sweep_reaches_every_plugin_skill_but_setup():
+    swept = {page.split("/", 1)[0] for page in SKILL_PAGES}
+    skills = {folder.name for folder in SKILLS.iterdir() if folder.is_dir()}
 
-    assert missing == []
+    assert skills - swept == {"skillworks-setup"}
 
 
-def test_each_steering_write_a_design_skill_names_is_still_in_its_page():
+def test_each_steering_write_a_skill_names_is_still_in_its_page():
     for page, writes in STEERING_WRITES.items():
         text = (SKILLS / page).read_text(encoding="utf-8")
         for write in writes:
             assert write in text, "{} no longer writes {}".format(page, write)
 
 
-@pytest.mark.parametrize("page", DESIGN_AND_HAND_RUN_PAGES)
-def test_a_design_or_hand_run_skill_reads_each_steering_path_through_steering_file(page):
+@pytest.mark.parametrize("page", SKILL_PAGES)
+def test_a_plugin_skill_reads_each_steering_path_through_steering_file(page):
     assert steering_read_past_steering_file(reads_of_steering(page)) == []
+
+
+def test_a_steering_path_read_past_steering_file_is_caught():
+    text = "Read `steering-file docs/agents/domain.md`, then `docs/agents/loop.json`."
+
+    assert steering_read_past_steering_file(text) == ["docs/agents/loop.json"]
 
 
 def test_a_disk_check_of_the_export_branch_is_no_steering_read():

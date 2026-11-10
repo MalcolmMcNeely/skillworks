@@ -90,6 +90,10 @@ that starts on your branch gets its Steering from the local `origin/skillworks/s
   hold it.
 - Nothing is written to your branch. It stays free of every Steering file.
 
+Every skill reads its Steering through `steering-file`, so the skills you run by hand work on your
+branch. `/skillworks:tdd`, `/skillworks:review-changes` and `/skillworks:comment-sweep` read the
+rules and the Tracker as they do on the Target branch, so you can do small work there with no spec.
+
 Nothing fetches. The session reads `origin/skillworks/steering` as your last fetch left it, so it
 starts offline and with no wait on the remote. When the Steering changes on another machine, run a
 plain `git fetch`, then start a new session.
