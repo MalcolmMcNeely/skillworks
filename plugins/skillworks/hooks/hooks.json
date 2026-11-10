@@ -36,6 +36,12 @@
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/session-watch.mjs"],
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/export-steering.mjs"],
+            "timeout": 5
           }
         ]
       }

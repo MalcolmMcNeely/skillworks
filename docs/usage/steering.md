@@ -39,6 +39,9 @@ each one with an `@` import:
 So `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md` load into every
 Session, and into every step of the loop. Keep them short, because every Session pays for each line.
 
+With [the Export](the-loop/export.md#a-session-on-your-own-branch), a Session on your own branch reads
+the Steering from the Steering branch, because your branch holds none of it.
+
 The preflight checks that each rule in `docs/agents/rules/` still has its import. Without that check,
 one deleted line would turn a rule off without a word. A new rule you add to the folder needs a new
 import line in `CLAUDE.md`, or the preflight stops. The loop runs the same check, so it stops too,

@@ -74,6 +74,23 @@ Target branch there.
 When the rebase conflicts, the command pushes nothing and cuts nothing, and the grill stops and names
 each file. [When a step fails](stops.md) says how to mend it.
 
+## A session on your own branch
+
+Your branch holds no Steering, so its `CLAUDE.md` has no rules and no Tracker. A Claude Code session
+that starts on your branch gets its Steering from the local `origin/skillworks/steering` instead:
+
+- When a session starts, the Plugin gives it the `CLAUDE.md` of `origin/skillworks/steering`, and
+  each file that `CLAUDE.md` imports with `@`. So the session has the rules, the Tracker and the
+  domain docs, the same as a session on the Target branch.
+- The session is told to read each path under `docs/agents/` with `steering-file <path>`. That
+  command prints the file from disk, or from `origin/skillworks/steering` when your branch does not
+  hold it.
+- Nothing is written to your branch. It stays free of every Steering file.
+
+Nothing fetches. The session reads `origin/skillworks/steering` as your last fetch left it, so it
+starts offline and with no wait on the remote. When the Steering changes on another machine, run a
+plain `git fetch`, then start a new session.
+
 ## What goes in
 
 The Export runs once, after [the full run](full-run.md) passes and the spec closes, and before `END`.
