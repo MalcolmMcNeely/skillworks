@@ -60,7 +60,7 @@ def built(top, tracker, folder, contexts):
                         imports="".join("@{}/{}\n".format(RULES_FOLDER, rule) for rule in rules))
 
 
-class Held:
+class Split:
     def __init__(self, before, block, gap, after):
         self.before = before
         self.block = block
@@ -75,11 +75,11 @@ class Held:
         return self.before.rstrip("\n") + "\n\n" + block
 
 
-def held_in(text):
+def split_at_block(text):
     lines = text.splitlines(keepends=True)
     start = next((at for at, line in enumerate(lines) if line.rstrip() == HEADING), None)
     if start is None:
-        return Held(text, None, "", "")
+        return Split(text, None, "", "")
     end = next((at for at in range(start + 1, len(lines)) if lines[at].startswith("## ")), len(lines))
     last = end
     while last > start + 1 and not lines[last - 1].strip():
@@ -87,7 +87,7 @@ def held_in(text):
     block = "".join(lines[start:last])
     if not block.endswith("\n"):
         block += "\n"
-    return Held("".join(lines[:start]), block, "".join(lines[last:end]), "".join(lines[end:]))
+    return Split("".join(lines[:start]), block, "".join(lines[last:end]), "".join(lines[end:]))
 
 
 def weigh(top, wanted, choices, settled):
@@ -95,10 +95,10 @@ def weigh(top, wanted, choices, settled):
     target = top / place
     base = top / BASES / BASE_NAME
     text = target.read_text(encoding="utf-8") if target.is_file() else ""
-    held = held_in(text)
+    split = split_at_block(text)
     was = base.read_text(encoding="utf-8") if base.is_file() else None
     chosen = {number: choice for (where, number), choice in choices.items() if where == place}
-    weighed = merge.weigh(place, was, held.block, wanted, chosen, place in settled)
+    weighed = merge.weigh(place, was, split.block, wanted, chosen, place in settled)
     unused = sorted(choice for choice in choices if choice[0] != place or choice[1] not in weighed.used)
     if unused:
         raise refusal("{}:{} names no overlap. Nothing was written.".format(*unused[0]))
@@ -107,7 +107,7 @@ def weigh(top, wanted, choices, settled):
                       .format(sorted(settled)[0]))
     writes = []
     if weighed.text is not None:
-        writes.append((target, held.with_block(weighed.text)))
+        writes.append((target, split.with_block(weighed.text)))
     if weighed.base is not None:
         writes.append((base, weighed.base))
     return Outcome(weighed.done, weighed.would, shown=weighed.shown, writes=writes, asks=ASKS.get(weighed.asks))
