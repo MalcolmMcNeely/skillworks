@@ -100,7 +100,7 @@ def refuse_part_of_a_history(runner, top):
                       "there:\n  git clone {}".format(url))
 
 
-def target_of(runner, top):
+def history_branch_of(runner, top):
     named = target_setting(top)
     if named != PR_MODE:
         return named
@@ -238,7 +238,7 @@ def check(runner, where, out, wait):
     top = top_of(runner, where)
     refuse_part_of_a_history(runner, top)
     tracker = tracker_setting(top)
-    branch = target_of(runner, top)
+    branch = history_branch_of(runner, top)
     said = io.StringIO()
     if not fetch_origin(runner, top, branch, said, wait):
         raise refusal("origin/{} could not be fetched, so there is no history to read. git said:\n{}".format(
@@ -411,7 +411,7 @@ def history(runner, where, out):
     top = top_of(runner, where)
     refuse_part_of_a_history(runner, top)
     tracker = tracker_setting(top)
-    branch = target_of(runner, top)
+    branch = history_branch_of(runner, top)
     ref = "origin/" + branch
     write_log(runner, top, ref)
     write_renames(runner, top, ref)

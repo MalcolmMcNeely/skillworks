@@ -1333,7 +1333,7 @@ def test_in_pr_mode_context_backfill_refuses_a_branch_that_cannot_hold_a_design_
 
     for named in ["PR mode", "the branch this session starts on", "refuses, and writes nothing",
                   "on the default branch, on a branch under `skillworks/` and on no branch",
-                  "the history is read from is the default branch"]:
+                  "In PR mode the history is read from the default branch, and not from the Target branch"]:
         assert named in text, named
 
 

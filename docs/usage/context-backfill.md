@@ -16,7 +16,8 @@ the loop.
 ## The check
 
 The first thing the command does is check the clone. It reads the Tracker and the Target branch
-from `docs/agents/loop.json`, fetches the Target branch from origin, and reads its history.
+from `docs/agents/loop.json`, fetches from origin the branch it reads the history from, and reads
+that history. In PR mode that branch is the default branch, and not the Target branch.
 
 ### A clone it refuses
 
@@ -58,7 +59,7 @@ Scratch folder: .context-backfill/, added to .gitignore
 
 | Line | What it counts |
 |---|---|
-| Commits | The commits on the Target branch. |
+| Commits | The commits on the branch it reads the history from. |
 | First, Last | The dates of the oldest and the newest of them. |
 | Authors | The people who wrote them, one for each email address. |
 | With a body | The commits whose message says more than its subject. A trailer alone, such as `Ticket: #14`, is no body. |

@@ -32,9 +32,9 @@ Run the check from the repo root:
 context-backfill check
 ```
 
-It reads the Tracker and the Target branch from the loop settings on disk, fetches the Target branch from origin, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit.
+It reads the Tracker and the Target branch from the loop settings on disk, fetches from origin the branch it reads the history from, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit.
 
-When `target-branch` is `pr`, this is PR mode. The work goes on the branch this session starts on, the developer's own branch. So every command of this skill refuses, and writes nothing, on the default branch, on a branch under `skillworks/` and on no branch. In PR mode the Target branch the history is read from is the default branch.
+When `target-branch` is `pr`, this is PR mode. The work goes on the branch this session starts on, the developer's own branch. So every command of this skill refuses, and writes nothing, on the default branch, on a branch under `skillworks/` and on no branch. In PR mode the history is read from the default branch, and not from the Target branch.
 
 If it refuses, show the person the refusal and the command it names, and stop. A shallow clone is mended by the unshallow fetch, and a partial clone by a full clone. Do not read the history of a clone it refused: the part it holds would read as the whole.
 
@@ -42,7 +42,7 @@ If the loop settings are missing, the check says so. Tell the person that `/skil
 
 ## Show the fit
 
-On a full clone the check prints the fit: the commits on the Target branch, the first and last dates, the authors, the share of commits with a body beyond the subject, the share that names a ticket, the tickets the Tracker can reach, and the code roots and languages. Show the person the fit as it was printed.
+On a full clone the check prints the fit: the commits on the branch it reads the history from, the first and last dates, the authors, the share of commits with a body beyond the subject, the share that names a ticket, the tickets the Tracker can reach, and the code roots and languages. Show the person the fit as it was printed.
 
 A low share with a body or naming a ticket means few reasons were written down at the time, so the Answer sheet will hold more Questions and fewer Drafts.
 
