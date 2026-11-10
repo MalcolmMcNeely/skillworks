@@ -93,6 +93,13 @@ A file whose name matches a pattern in `test-files` is a test. Its subject drops
 any aspect, so `BlobRepository.Lease.Tests.cs` tests `BlobRepository`. It holds `partial
 BlobRepositoryTests`, and the other aspect files of that test class hold the other parts.
 
+`test-placement` says whether a check judges where a test sits. It takes one of two values:
+
+- `mirror`, the default: a test sits where the list below says.
+- `free`: a test may sit in any folder, such as one named for the area it tests. No check judges
+  where a test sits, and no check reads `test-roots`, so that setting does nothing. A test is still a
+  test: `test-files` still decides which files are tests, and every other rule still judges them.
+
 - Test folders mirror the folders of the code files they test. A C# test in project `X.Tests` sits at
   the same relative path as the code file it tests in project `X`.
 - A front-end test sits beside the code file it tests.
@@ -125,8 +132,8 @@ Each pattern in `name-map` is a name with `*` at the start or the end, such as `
 
 Every setting here is enforced only once a check exists that reads it: `slices`, `concerns`,
 `max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names`,
-`name-map` and `test-roots`. Until then, an agent reads them as prose. `/skillworks:architecture-tests`
-adds the checks.
+`name-map`, `test-roots` and `test-placement`. Until then, an agent reads them as prose.
+`/skillworks:architecture-tests` adds the checks.
 
 ```yaml
 slices: []
@@ -166,4 +173,5 @@ banned-folder-names:
 name-map:
   "*Queries": Queries
 test-roots: {}
+test-placement: mirror
 ```

@@ -213,6 +213,66 @@ public sealed partial class ArchitectureCheckTests
         Assert.Empty(tree.Breaches());
     }
 
+    [Fact]
+    public void A_test_that_does_not_mirror_its_code_file_is_not_a_breach_when_tests_sit_free()
+    {
+        using var tree = new RulesTree()
+            .Set(RulesTree.PlacementFile, "test-placement", "free")
+            .Write("src/App/App.csproj", ProjectFile)
+            .Write("src/App/Shared/Timers/Clock.cs", TypeIn("App.Shared.Timers", "Clock"))
+            .Write("tests/App.Tests/App.Tests.csproj", ProjectFile)
+            .Write("tests/App.Tests/Watch/Clock.Tests.cs", TypeIn("App.Tests.Watch", "ClockTests"))
+            .Write("web/src/skills/lib/format.test.ts");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_test_beneath_a_test_root_that_mirrors_nothing_is_not_a_breach_when_tests_sit_free()
+    {
+        using var tree = ShellTree()
+            .Set(RulesTree.PlacementFile, "test-placement", "free")
+            .Write("scripts/spec-loop.sh", Script)
+            .Write("tests/scripts/watch/tail.test.sh", Script);
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Fact]
+    public void A_test_in_a_banned_folder_is_a_breach_when_tests_sit_free()
+    {
+        using var tree = new RulesTree()
+            .Set(RulesTree.PlacementFile, "test-placement", "free")
+            .Write("web/src/skills/utils/format.test.ts");
+
+        Assert.Equal([("banned-folder-names", "web/src/skills/utils")], tree.Breaches());
+    }
+
+    [Fact]
+    public void A_folder_of_too_many_tests_is_a_breach_when_tests_sit_free()
+    {
+        using var tree = new RulesTree()
+            .Set(RulesTree.PlacementFile, "test-placement", "free")
+            .Set(RulesTree.PlacementFile, "max-types-per-folder", "2");
+        foreach (var name in new[] { "alarm", "clock", "snooze" })
+            tree.Write($"web/src/skills/lib/{name}.test.ts");
+
+        Assert.Equal([("max-types-per-folder", "web/src/skills/lib")], tree.Breaches());
+    }
+
+    [Theory]
+    [InlineData("loose")]
+    [InlineData("true")]
+    public void A_test_placement_value_outside_the_two_is_a_breach_that_names_the_value(string value)
+    {
+        using var tree = new RulesTree().Set(RulesTree.PlacementFile, "test-placement", value);
+
+        var breach = Assert.Single(tree.Check().Breaches);
+
+        Assert.Equal(("rules-file", RulesTree.PlacementFile), (breach.Rule, breach.Path));
+        Assert.Contains($"`{value}`", breach.Message);
+    }
+
     private const string Script = "#!/usr/bin/env bash\n";
 
     private static RulesTree ShellTree() =>

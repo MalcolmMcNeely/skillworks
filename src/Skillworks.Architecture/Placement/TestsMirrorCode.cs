@@ -8,6 +8,9 @@ internal static class TestsMirrorCode
 
     public static IEnumerable<Breach> Check(string root, IReadOnlyList<string> sourceFiles, PlacementRules rules)
     {
+        if (rules.TestPlacement == TestPlacement.Free)
+            yield break;
+
         var tests = sourceFiles.Where(file => rules.IsTestFile(Path.GetFileName(file))).ToList();
 
         var codeFiles = sourceFiles

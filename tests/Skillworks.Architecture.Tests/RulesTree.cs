@@ -39,6 +39,7 @@ public sealed class RulesTree : IDisposable
             ["banned-folder-names"] = "[utils, helpers, common, misc]",
             ["name-map"] = "{\"*Queries\": Queries}",
             ["test-roots"] = "{}",
+            ["test-placement"] = "mirror",
         },
         [CommentsFile] = new()
         {

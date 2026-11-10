@@ -46,7 +46,7 @@ adds those checks.
 
 | Rule | The settings a check enforces |
 |---|---|
-| `file-placement.md` | `slices`, `concerns`, `max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names`, `name-map`, `test-roots` |
+| `file-placement.md` | `slices`, `concerns`, `max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names`, `name-map`, `test-roots`, `test-placement` |
 | `determinism.md` | `clock`, `contexts` |
 | `words.md` | `banned-words`, `skip-folders` |
 | `comments.md` | `doc-comments` |

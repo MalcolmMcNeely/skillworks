@@ -12,7 +12,8 @@ internal sealed record PlacementRules(
     IReadOnlyList<string> SkipFolders,
     IReadOnlyList<string> BannedFolderNames,
     IReadOnlyDictionary<string, string> NameMap,
-    IReadOnlyDictionary<string, string> TestRoots)
+    IReadOnlyDictionary<string, string> TestRoots,
+    TestPlacement TestPlacement)
 {
     public const string RelativePath = "docs/agents/rules/file-placement.md";
 
@@ -35,6 +36,7 @@ internal sealed record PlacementRules(
             "test-roots",
             "a map from a test folder to the folder it mirrors, such as {tests/scripts: scripts}",
             IsFolderPath);
+        var testPlacement = file.RequireOneOf<TestPlacement>("test-placement");
 
         return new(
             slices,
@@ -45,7 +47,8 @@ internal sealed record PlacementRules(
             skipFolders,
             bannedFolderNames,
             nameMap,
-            testRoots);
+            testRoots,
+            testPlacement);
     }
 
     public string SharedFolderName(bool frontEnd) => InCase(Shared, frontEnd);

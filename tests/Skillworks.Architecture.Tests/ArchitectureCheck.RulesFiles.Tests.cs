@@ -40,6 +40,7 @@ public sealed partial class ArchitectureCheckTests
     [InlineData(PlacementFile, "banned-folder-names")]
     [InlineData(PlacementFile, "name-map")]
     [InlineData(PlacementFile, "test-roots")]
+    [InlineData(PlacementFile, "test-placement")]
     [InlineData(CommentsFile, "doc-comments")]
     [InlineData(WordsFile, "banned-words")]
     [InlineData(WordsFile, "skip-folders")]
@@ -114,6 +115,16 @@ public sealed partial class ArchitectureCheckTests
     public void Each_doc_comments_value_is_accepted(string value)
     {
         using var tree = new RulesTree().Set(CommentsFile, "doc-comments", value);
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Theory]
+    [InlineData("mirror")]
+    [InlineData("free")]
+    public void Each_test_placement_value_is_accepted(string value)
+    {
+        using var tree = new RulesTree().Set(PlacementFile, "test-placement", value);
 
         Assert.Empty(tree.Breaches());
     }

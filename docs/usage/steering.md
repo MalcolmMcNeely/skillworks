@@ -61,8 +61,8 @@ The settings that name what a rule judges start empty, so nothing is judged unti
 them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the words rule's
 `skip-folders`. The others ship with a default your team can change: `doc-comments`, `clock`,
 `max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`,
-`banned-folder-names` and `name-map`. `doc-comments` takes `none`, `code` or `all`, and ships as
-`none`. In both `skip-folders` lists, an entry with no `/`, such as `bin`, skips every folder of
+`banned-folder-names`, `name-map` and `test-placement`. `doc-comments` takes `none`, `code` or
+`all`, and ships as `none`. `test-placement` takes `mirror` or `free`, and ships as `mirror`. In both `skip-folders` lists, an entry with no `/`, such as `bin`, skips every folder of
 that name. An entry with a `/`, such as `src/Data/Migrations`, is a path from the repo root: it
 skips that one folder and everything beneath it, and uses `/` on every OS.
 
@@ -70,7 +70,7 @@ skips that one folder and everything beneath it, and uses `/` on every OS.
 |---|---|---|---|
 | `comments.md` | Says which comments earn their place, and where doc comments may go. Its keep and cut table is your team's taste in comments. | Every Session. The `sweep` step judges each comment the change wrote by its table. The `standards` review reads it too. | The table, the prose, and `doc-comments`: `none` lets no source file carry doc comments, `code` lets code files carry them and not test files, and `all` lets any source file carry them. The check turns down any other value, `true` and `false` among them, and names the value it found. |
 | `determinism.md` | Says how code reads time, and how a test keeps the order of events: before it acts while the code runs, it waits on a fact that shows the code is ready. So a test that fails means the code is wrong. | Every Session. The `standards` review judges the change by it. No check reads the Order of events section, so only the `standards` review judges it. | The prose, `clock` (the type your code reads time through), and `contexts` (which parts of the code the rule judges). |
-| `file-placement.md` | Says where each file goes: folder shape, file names, where tests sit, and how many types a folder holds. | Every Session. The `architecture` review judges the change by it. | Every setting: the Slices, the folder size, the name map, the test file patterns, the folders to skip and the banned folder names. |
+| `file-placement.md` | Says where each file goes: folder shape, file names, where tests sit, and how many types a folder holds. | Every Session. The `architecture` review judges the change by it. | Every setting: the Slices, the folder size, the name map, the test file patterns, the folders to skip, the banned folder names, and `test-placement`: `mirror` makes each test mirror the code file it tests, and `free` lets a test sit in any folder, so no check judges where it sits and `test-roots` does nothing. The check turns down any other value, and names the value it found. |
 | `testing.md` | Holds your team's taste in tests: what to mock and what not to, the fake library your tests use, when a stand-in written by hand is right, one logical assertion per test, test names that say what and not how, and how high and how few the seams are. It has no settings. | Every Session, and `tdd` when it writes a test. The `standards` review is its only judge, because no check reads it. | All of its prose. |
 | `words.md` | Lists the words that lost against a glossary word, one list per context. No source file uses a word that lost. | Every Session. The `standards` review judges the change by it. | The lists. A word joins a list when your glossary settles it and the code reaches for the loser again. |
 
