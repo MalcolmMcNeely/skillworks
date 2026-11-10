@@ -107,3 +107,11 @@ def test_a_real_program_reads_the_whole_of_an_input_longer_than_a_command_line(t
     ran = Subprocess().run(["git", "hash-object", "--stdin"], tmp_path, stdin=LONGER_THAN_A_COMMAND_LINE)
 
     assert ran.out.strip() == blob_id(LONGER_THAN_A_COMMAND_LINE)
+
+
+def test_a_real_program_reads_each_line_of_its_input_as_the_driver_wrote_it(tmp_path):
+    written = "603 --stop-after-tests\n\nthe rest of the prompt\n"
+
+    ran = Subprocess().run(["git", "hash-object", "--stdin"], tmp_path, stdin=written)
+
+    assert ran.out.strip() == blob_id(written)

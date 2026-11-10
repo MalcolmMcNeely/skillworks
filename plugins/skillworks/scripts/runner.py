@@ -77,6 +77,12 @@ def session_changes(trailer=None):
     return changes
 
 
+# Named rather than taken from the machine, so the same bytes read the same way anywhere. The line
+# endings fold to "\n" as a text pipe folded them, because the callers split output on "\n".
+def read(output):
+    return output.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+
+
 class Subprocess:
     # Finding a program is the first half of reaching one, so a test answers for this too.
     def found(self, name):
@@ -90,17 +96,16 @@ class Subprocess:
             return Ran(NOT_FOUND, "", args[0] + ": not found\n")
 
         # A wait short enough to catch a wedged session is short enough to kill an honest hour-long one.
+        # Bytes, because a text pipe on Windows writes each "\n" as "\r\n", and a Session would then
+        # read its command's arguments with a "\r" the driver never wrote.
         done = subprocess.run(
             [found] + args[1:],
             cwd=where,
             env=self.environment(env),
-            input=stdin,
+            input=None if stdin is None else stdin.encode("utf-8"),
             capture_output=True,
-            # Named rather than taken from the machine, so the same bytes read the same way anywhere.
-            encoding="utf-8",
-            errors="replace",
         )
-        return Ran(done.returncode, done.stdout, done.stderr)
+        return Ran(done.returncode, read(done.stdout), read(done.stderr))
 
     def environment(self, env):
         if not env:
