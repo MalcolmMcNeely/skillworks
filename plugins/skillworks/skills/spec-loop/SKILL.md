@@ -13,7 +13,7 @@ The argument is the spec's number: its issue number with the GitHub Tracker, or 
 
 Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
 
-Once the spec is known, typing the command is the whole of the user's consent. Ask nothing else until step 3, and there only the close offer, which a spec reviewed as a pull request never gets.
+Once the spec is known, typing the command is the whole of the user's consent. Ask nothing else until step 3, and there only the close offer, which a spec in PR mode never gets.
 
 ## Process
 
@@ -47,9 +47,9 @@ Name each Departure first, then each Choice and each Hand check, from the list a
 
 Unrequested work never stops the loop, and the driver writes a `NOTE  Unrequested:` line for each item. Name each of those items to the user, one by one, before any close offer, so they read them at the moment they decide. Then:
 
-- **With the files Tracker**, make no offer. The driver closed the spec itself after the full run, by a commit on the Target branch, and its `CLOSE` line in the log says so. Say that. The driver never calls `gh` with the files Tracker, so with `pr` it marks no pull request ready: its `PR` line names the spec's branch. Tell the user to open the pull request from that branch on their host, or mark it ready for review if it is open, and that a person reviews and merges it.
+- **With the files Tracker**, make no offer. The driver closed the spec itself after the full run, by a commit on the Target branch, and its `CLOSE` line in the log says so. Say that. With `pr`, its `PR` line names the spec's branch. Tell the user to open the pull request from that branch, and that a person reviews and merges it.
 - **With the GitHub Tracker and a branch name**, make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.
-- **With the GitHub Tracker and `pr`**, make no offer. The driver has marked the spec's pull request ready for review, and its `READY` line in the log says so. Say that a person reviews and merges it. Never merge it, and never close the spec: the pull request closes the spec when it merges, so the spec is done only when its code is on the default branch.
+- **With the GitHub Tracker and `pr`**, make no offer. The driver closed the spec issue itself after the full run, with a comment, and its `CLOSE` line in the log says so. Say that. Its `PR` line names the spec's branch. Tell the user to open the pull request from that branch, and that a person reviews and merges it. Never open, mark or merge the pull request yourself: the developer opens it, by the team's own rules.
 
 **Anything else is an early stop.** The script stops on the first failure. Say what failed and give the log path. The close offer belongs to a clean finish alone. The failed ticket stays open, with the reason in the log and the session's stderr beside it. Its worktree stays too, so the broken state can be read; the log names the path. The fix is a human one, unless the stop names Denials, as below.
 

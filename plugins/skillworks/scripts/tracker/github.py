@@ -82,7 +82,8 @@ def spec_branch(spec):
 class GitHub:
     # A Session closes the issue naming its commits, and a rebase at Land replaces them.
     close_names_commits = True
-    marks_pull_requests = True
+    # origin is the team's own repo, so an Export branch is pushed there.
+    export_remote = "origin"
 
     # The Target branch, or None in PR mode, where each spec names its own.
     def __init__(self, runner, where, repo=THIS_REPO, target=None):
@@ -139,9 +140,20 @@ class GitHub:
         return ("Ticket #{} is still open. Close it with a comment saying what was done and "
                 "which tests prove it.\n".format(ticket))
 
-    # A person closes a GitHub spec, or its pull request does as it merges.
+    # In PR mode no pull request body names the spec, so the loop closes it.
     def close_spec(self, spec):
-        return ""
+        if self.target is not None:
+            return ""
+        branch = self.branch_of(spec)
+        closed = self.gh("issue", "close", spec, "--comment",
+                         "Every ticket of this spec is on `{0}`, and the full run of the Suite passed "
+                         "on it. Open the pull request from `{0}`. A person reviews and merges "
+                         "it.".format(branch), "--reason", "completed")
+        if closed.status != 0:
+            raise refusal("GitHub would not close spec #{0}. Close it with: gh issue close {0} "
+                          "--reason completed\ngh said:\n{1}".format(
+                              spec, (closed.out + closed.err).rstrip("\n")))
+        return "on GitHub, with a comment"
 
     def title(self, issue):
         return self.field(issue, ".title").out.strip()

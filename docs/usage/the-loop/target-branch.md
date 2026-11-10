@@ -43,11 +43,11 @@ protection. With `pr`:
   reads it there. It cuts no branch and opens no pull request.
 - Each ticket Lands on your branch exactly as it would on a branch name. Blocking, the push race and
   the Turn work the same. A closed ticket still means its code is on its Target branch.
-- After the drift check, the loop marks the pull request ready for review, and stops. It never merges.
-  A person reviews it and merges it.
-- With the files Tracker, the loop never calls `gh`. It closes the spec, and its last lines tell you
-  to open the pull request from the spec's branch on your host, or mark it ready for review.
-- You open the one pull request, from your branch. Skillworks opens none.
+- After the drift check and the full run, the loop closes the spec, with either Tracker. Its last
+  lines tell you to open the pull request from your branch. It marks no pull request ready and never
+  merges. A person reviews it and merges it.
+- You open the one pull request, from your branch. Skillworks opens none, and you write no closing
+  keyword such as `Closes #<spec>` in it.
 
 **`pr` with `export` on.** With `"export": true` in `docs/agents/loop.json`, PR mode works for
 [the Export](export.md), and three things change:

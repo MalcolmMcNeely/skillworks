@@ -533,8 +533,17 @@ def test_in_pr_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_branch
 
     assert ran.status == 0, said(ran)
     last = "\n".join(ran.out.rstrip("\n").split("\n")[-3:])
-    assert "open the pull request from {}".format(SPEC_BRANCH) in last
-    assert "mark it ready for review" in last
+    assert "PR    open the pull request from {}. A person reviews and merges it.".format(
+        SPEC_BRANCH) in last
+
+
+def test_in_pr_mode_the_run_writes_no_closing_keyword_for_the_pull_request(driver):
+    given_sessions_that_finish_on_the_spec_branch(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert "Closes #" not in ran.out
 
 
 # The Seed's Surfaces hold the README, so the drift check judges it on every spec.

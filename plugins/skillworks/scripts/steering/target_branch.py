@@ -46,10 +46,11 @@ def tracker_setting(top):
 
 def tracker_for(runner, top, spec=None):
     where = Path(top).as_posix()
-    if tracker_setting(top) == "github":
-        return GitHub(runner, where)
     named = target_setting(top)
-    return Files(runner, where, None if named == PR_MODE else named, spec)
+    target = None if named == PR_MODE else named
+    if tracker_setting(top) == "github":
+        return GitHub(runner, where, target=target)
+    return Files(runner, where, target, spec)
 
 
 def in_pr_mode(top):

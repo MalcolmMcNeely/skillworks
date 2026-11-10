@@ -2209,6 +2209,12 @@ def test_the_allowlist_grants_no_pull_request_create_because_the_developer_opens
     assert [entry for entry in allowed if entry.startswith("Bash(gh pr create")] == []
 
 
+def test_the_allowlist_grants_no_pull_request_ready_because_the_loop_marks_none():
+    allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
+
+    assert [entry for entry in allowed if entry.startswith("Bash(gh pr ready")] == []
+
+
 def test_setup_asks_for_the_tracker_and_suggests_one_from_the_remote():
     step = setup_section("### 2. Ask for the Tracker")
 
@@ -2745,6 +2751,22 @@ def test_spec_loop_names_each_unrequested_item_before_the_close_offer():
     assert skill.index("`NOTE  Unrequested:`") < named < skill.index("make one offer")
 
 
+def test_spec_loop_says_no_pull_request_is_marked_ready_or_closes_the_spec():
+    skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert [said for said in ("ready for review", "`READY`", "the pull request closes the spec")
+            if said in skill] == []
+
+
+def test_spec_loop_in_pr_mode_tells_the_user_to_open_the_pull_request_with_either_tracker():
+    skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
+
+    told = [line for line in skill.splitlines()
+            if line.startswith(("- **With the files Tracker**", "- **With the GitHub Tracker and `pr`**"))]
+    assert [("its `CLOSE` line" in line, "open the pull request from that branch" in line)
+            for line in told] == [(True, True), (True, True)]
+
+
 def test_spec_loop_names_each_departure_first_then_each_choice_and_hand_check_before_the_close_offer_and_at_a_stop():
     skill = (SKILLS / "spec-loop" / "SKILL.md").read_text(encoding="utf-8")
 
@@ -2842,7 +2864,7 @@ def test_the_full_run_page_holds_the_full_run_and_a_clean_finish():
 def test_the_full_run_page_shows_the_end_of_a_run_in_its_chart_beside_a_clean_finish():
     chart = full_run_chart()
 
-    for node in ['drift["Drift check', 'clean["A clean finish', 'ready["Mark the pull request']:
+    for node in ['drift["Drift check', 'clean["A clean finish', 'hint["A hint: open the pull request']:
         assert node in chart, node
 
 

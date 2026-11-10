@@ -35,6 +35,9 @@ Every step but `suite` is a Session of its own, run inside the ticket's worktree
 The three reviews start Fresh. A review that resumed the build Session would mark its own work. `fix`
 and `finish` resume the build Session, because they act on the code it wrote.
 
+No step opens, marks or merges a pull request. In PR mode, [the end of the run](full-run.md) prints
+a hint to open the pull request from the Target branch, and you open it.
+
 With a README Surface, `spec` removes any README edit the README item does not ask for. An edit
 stays only when the spec's README item asks it of this ticket, or the ticket itself asks for it, as
 a Gap ticket and a rename ticket do. So a build cannot add to the README on its own. With no README

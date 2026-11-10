@@ -144,7 +144,7 @@ class Tracker:
         self.tickets = tickets
         self.closed = set()
         self.body = NAMES_ITS_BRANCH
-        self.ready = Ran(0, "", "")
+        self.spec_close = Ran(0, "", "")
         # A drift check that found everything done, so only a case about the count reads a stop.
         self.drift_report = drift_report()
         # A Name check that found no rename, so only a case about the names reads a stop.
@@ -198,8 +198,8 @@ class Tracker:
             return Ran(0, (titled[0] if titled else "SPEC: A spec to plan") + "\n", "")
         if asked == "api repos/owner/repo/issues/{} --jq .body".format(SPEC):
             return Ran(0, self.body, "")
-        if asked.startswith("pr ready "):
-            return self.ready
+        if asked.startswith("issue close {} ".format(SPEC)):
+            return self.spec_close
         if asked == "issue view {} --json comments --jq .comments[-1].body".format(SPEC):
             return Ran(0, self.newest_comment(), "")
         # The body file is gone once gh returns, so it is read while the call is made.
@@ -5637,38 +5637,54 @@ def test_in_pr_mode_a_ticket_is_cut_from_and_lands_on_the_spec_branch_and_not_ma
     assert "Every ticket is on {}.".format(SPEC_BRANCH) in pr_mode.log()
 
 
-def test_in_pr_mode_the_pull_request_is_marked_ready_after_the_drift_check(pr_mode, runner):
+def test_in_pr_mode_the_run_ends_with_the_hint_to_open_the_pull_request_from_the_spec_branch(
+        pr_mode):
     given_a_run_that_lands(pr_mode)
 
     ran = pr_mode.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert pull_request_calls(runner) == [["gh", "pr", "ready", SPEC_BRANCH]]
-    assert call_at(runner, "/skillworks:spec-drift") < call_at(runner, "pr ready")
-    assert "READY the pull request from {} is ready for review".format(
+    assert "PR    open the pull request from {}. A person reviews and merges it.".format(
         SPEC_BRANCH) in pr_mode.log()
 
 
-def test_in_pr_mode_the_driver_never_merges_the_pull_request(pr_mode, runner):
+def test_in_pr_mode_the_driver_touches_no_pull_request(pr_mode, runner):
     given_a_run_that_lands(pr_mode)
 
     ran = pr_mode.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert [call for call in runner.started("gh") if "merge" in call] == []
-    assert [call[2] for call in pull_request_calls(runner)] == ["ready"]
+    assert pull_request_calls(runner) == []
 
 
-def test_in_pr_mode_a_pull_request_that_would_not_be_marked_ready_stops_and_names_the_command(
-        pr_mode):
+def test_in_pr_mode_the_run_writes_no_closing_keyword_for_the_pull_request(pr_mode):
+    given_a_run_that_lands(pr_mode)
+
+    ran = pr_mode.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert "Closes #" not in pr_mode.log()
+
+
+def test_in_pr_mode_the_spec_is_closed_after_the_drift_check(pr_mode, runner):
+    given_a_run_that_lands(pr_mode)
+
+    ran = pr_mode.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert call_at(runner, "/skillworks:spec-drift") < call_at(runner, "gh issue close {} ".format(SPEC))
+    assert "CLOSE spec #{} is closed".format(SPEC) in pr_mode.log()
+
+
+def test_in_pr_mode_a_spec_that_would_not_close_stops_and_says_how_to_close_it(pr_mode):
     tracker = given_a_run_that_lands(pr_mode)
-    tracker.ready = Ran(1, "", "no pull requests found for branch \"{}\"\n".format(SPEC_BRANCH))
+    tracker.spec_close = Ran(1, "", "HTTP 403\n")
 
     ran = pr_mode.run(SPEC)
 
     assert ran.status == 1
-    assert "gh pr ready {}".format(SPEC_BRANCH) in said(ran)
-    assert "no pull requests found" in said(ran)
+    assert "gh issue close {}".format(SPEC) in said(ran)
+    assert "HTTP 403" in said(ran)
 
 
 def test_in_pr_mode_a_spec_that_names_no_branch_stops_before_a_ticket_is_claimed(
@@ -5701,6 +5717,15 @@ def test_with_a_branch_name_the_driver_touches_no_pull_request(loop, runner):
     assert call_asking(runner, "/skillworks:spec-drift") is not None
     assert pull_request_calls(runner) == []
     assert "READY" not in loop.log()
+
+
+def test_with_a_branch_name_the_driver_leaves_the_spec_issue_open(loop, runner):
+    given_a_run_that_lands(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert call_at(runner, "gh issue close {} ".format(SPEC)) == -1
 
 
 # --- the Export -------------------------------------------------------------
@@ -6031,13 +6056,13 @@ def test_with_export_off_the_export_branch_does_not_move(not_exporting):
     assert git(not_exporting.repo.work, "rev-parse", EXPORT_BRANCH) == before
 
 
-def test_with_export_off_the_run_marks_the_pull_request_ready_as_today(not_exporting, runner):
+def test_with_export_off_the_run_ends_with_the_hint_to_open_the_pull_request(not_exporting):
     given_a_run_that_exports(not_exporting)
 
     ran = not_exporting.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert pull_request_calls(runner) == [["gh", "pr", "ready", EXPORT_TARGET]]
+    assert "PR    open the pull request from {}.".format(EXPORT_TARGET) in not_exporting.log()
 
 
 # --- the claim --------------------------------------------------------------

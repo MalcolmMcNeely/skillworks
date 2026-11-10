@@ -70,9 +70,6 @@ FLAGS = ("--dry-run", "--bypass")
 
 BYPASS_MODE = "bypassPermissions"
 
-# gh asks at a terminal, and a loop run has nobody at one.
-GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
-
 FULL_RUN = ticket_worktree.FULL_RUN
 
 
@@ -645,10 +642,6 @@ class Loop:
         return self.tracker.spec_named(self.spec)
 
     # --- the programs this reaches -------------------------------------------
-
-    # A pull request is GitHub's own and no Tracker's, so it is the one thing asked of gh here.
-    def gh(self, *args):
-        return self.runner.run(["gh"] + [str(a) for a in args], self.root.as_posix(), GH_QUIET)
 
     def git(self, repo, *args):
         return self.runner.run(["git", "-C", as_git_path(repo)] + [str(a) for a in args])
@@ -1784,36 +1777,21 @@ class Loop:
 
     # After the drift check, so no spec is closed before its work was read against it.
     def close_spec(self):
-        closed_at = self.tracker.close_spec(self.spec)
-        if closed_at:
-            self.say("CLOSE spec {} is closed on {} as {}".format(
-                self.spec_named(), self.target, closed_at))
+        closed = self.tracker.close_spec(self.spec)
+        if closed:
+            self.say("CLOSE spec {} is closed {}".format(self.spec_named(), closed))
 
     # --- the pull request, in PR mode ----------------------------------------
 
-    # Ready and never merged, so a person reviews the spec before it reaches the default branch.
-    def mark_ready(self):
-        marked = self.gh("pr", "ready", self.target)
-        if marked.status != 0:
-            raise stop("FAIL  the pull request from {} was not marked ready for review. Mark it "
-                       "with: gh pr ready {}\n      gh said: {}".format(
-                           self.target, self.target, (marked.out + marked.err).strip()))
-        self.say("READY the pull request from {} is ready for review. A person reviews and "
-                 "merges it.".format(self.target))
-
+    # The developer opens it, so its title, body and labels follow the team's own rules.
     def hand_over(self):
-        if self.tracker.marks_pull_requests:
-            self.mark_ready()
-            return
-        self.say("PR    open the pull request from {} on your host, or mark it ready for review "
-                 "if it is open. A person reviews and merges it.".format(self.target))
+        self.say("PR    open the pull request from {}. A person reviews and merges it.".format(
+            self.target))
 
     # --- the Export ----------------------------------------------------------
 
-    # With the github Tracker, origin is the team's own repo, and with files it is the developer's.
     def push_command(self, branch):
-        remote = "origin" if self.tracker.marks_pull_requests else "<your team's remote>"
-        return "git push {} {}".format(remote, branch)
+        return "git push {} {}".format(self.tracker.export_remote, branch)
 
     # The driver alone, after the full run and the close, so only work the whole Suite proved is written.
     def run_export(self):

@@ -46,13 +46,26 @@ flowchart TD
     made -- no --> last
     count -- "a Contradicts" --> last["Full Suite run, once"] --> stop(["The loop stops"])
     full -- red --> stop
-    full -- green --> clean["A clean finish<br/>END, and the spec closes with files"]
-    clean -- "PR mode" --> ready["Mark the pull request<br/>ready for review"]
+    full -- green --> clean["A clean finish<br/>END, and the spec closes with files or in PR mode"]
+    clean -- "PR mode" --> hint["A hint: open the pull request<br/>from the Target branch"]
     clean -- "export on" --> export["The Export<br/>onto your own branch, never pushed"]
 ```
 
+In PR mode, with either Tracker, the log ends like this:
+
+```
+2026-09-28 18:52:30 FULL  feature/PROJ-12/slug at 4c1d9e2 passed the whole Suite
+2026-09-28 18:52:31 CLOSE spec #200 is closed on GitHub, with a comment
+2026-09-28 18:52:31 PR    open the pull request from feature/PROJ-12/slug. A person reviews and merges it.
+2026-09-28 18:52:31 END   spec #200 complete. Every ticket is on feature/PROJ-12/slug.
+      Review it with: git log --oneline 1f0a3c8e5b22..origin/feature/PROJ-12/slug
+```
+
+The loop opens no pull request and marks none ready, and it writes no `Closes #<spec>` line for its
+body. You open the pull request, with the title, body and labels your team's rules ask for.
+
 With `export` on, [the Export](export.md) runs after the spec closes and before `END`, and the loop
-marks no pull request ready. The log ends like this:
+prints no `PR` hint. The log ends like this:
 
 ```
 2026-09-28 18:52:30 FULL  skillworks/spec/feature/PROJ-12/slug at 4c1d9e2 passed the whole Suite
@@ -67,13 +80,13 @@ marks no pull request ready. The log ends like this:
 The script decides a clean finish, and nothing else does. A clean finish is every Verdict Done or In
 step, no rename owed in [the Name report](name-check.md) or every rename Done in [the Name
 re-check](name-check.md#the-name-re-check), and [the full run](#the-full-run) green. Only then does the script write
-its `END` line, and with the files Tracker only then does it close the spec. A Gap left after the
+its `END` line, and with the files Tracker or in PR mode only then does it close the spec. A Gap left after the
 round, a Contradicts, a rename not made or a red full run stops the loop before either.
 `/skillworks:spec-loop` reads the `END` line and does not judge the report itself, so the skill and
 the script never disagree. Before it offers to close the spec, it names each Unrequested item from
 the `NOTE` lines.
 
 Closing the spec is where a person says the work is done. With a branch name, a person closes it by
-hand after a clean finish. With `pr`, the loop marks the spec's pull request ready for review, and
-the spec closes when a person merges it. With the files Tracker, the loop closes the spec itself on a
-clean finish, and with `pr` it leaves the pull request to you.
+hand after a clean finish. With `pr`, the loop closes the spec itself on a clean finish, with a
+comment on the spec issue, and leaves the pull request to you. With the files Tracker, the loop
+closes the spec itself on a clean finish, with either Target branch.

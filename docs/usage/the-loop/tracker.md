@@ -121,8 +121,10 @@ loop reads the files there and not in your checkout.
 - **Closing the spec.** After the last ticket and the drift check, the loop sets `status: closed` in
   `spec.md` and pushes it. Do not close a spec by hand while a loop runs on it.
 
-With `pr` as your Target branch, the spec's folder sits on the branch you started the grill on. So
-its pull request carries the spec and its code together.
+With `pr` as your Target branch, the spec's folder sits on the branch you started the grill on, and
+`branch` in its `spec.md` names that branch. So its pull request carries the spec and its code
+together. The loop closes the spec itself, with either Tracker, so you write no closing keyword such
+as `Closes #<spec>` in the pull request.
 
 ## Why `.specs/` is committed
 

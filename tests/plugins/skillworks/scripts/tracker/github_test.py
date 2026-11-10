@@ -155,11 +155,36 @@ def test_a_commit_names_its_issue_by_number_alone(runner):
     assert github(runner).reference("168") == "168"
 
 
-def test_a_spec_is_left_for_a_person_or_its_pull_request_to_close(runner):
+def test_on_a_named_target_branch_a_spec_is_left_for_a_person_to_close(runner):
     runner.stub("gh")
+    tracker = GitHub(runner, "/checkout", "owner/repo", target="main")
 
-    assert github(runner).close_spec("158") == ""
+    assert tracker.close_spec("158") == ""
     assert asked(runner) == []
+
+
+def test_in_pr_mode_a_spec_is_closed_as_completed_with_a_comment_naming_its_branch(runner):
+    runner.stub("gh", says="## Branch\n\n`spec/x`\n")
+
+    github(runner).close_spec("158")
+
+    [close] = [line for line in asked(runner) if line.startswith("issue close")]
+    assert close.startswith("issue close 158 --comment ")
+    assert "spec/x" in close
+    assert close.endswith(" --reason completed")
+
+
+def test_in_pr_mode_a_spec_that_would_not_close_is_refused_with_what_gh_said(runner):
+    def answer():
+        if runner.calls[-1][1:3] == ["issue", "close"]:
+            return Ran(1, "", "HTTP 403\n")
+        return Ran(0, "## Branch\n\n`spec/x`\n", "")
+    runner.stub("gh", does=answer)
+
+    with pytest.raises(Stop) as refused:
+        github(runner).close_spec("158")
+
+    assert "HTTP 403" in refused.value.said
 
 
 def test_the_body_of_a_spec_is_read_whole(runner):

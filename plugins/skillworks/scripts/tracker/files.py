@@ -163,8 +163,8 @@ def as_numbers(value):
 class Files:
     # The close is in the commit that Lands, so no rebase can leave it naming a commit on no branch.
     close_names_commits = False
-    # The remote may be GitLab or a bare repo, and gh may be missing, so a person opens the request.
-    marks_pull_requests = False
+    # origin is the developer's own remote, and the team's may be another.
+    export_remote = "<your team's remote>"
 
     # A target of None is PR mode, where each spec's frontmatter names its own branch.
     def __init__(self, runner, where, target, spec=None, wait=time.sleep):
@@ -413,7 +413,8 @@ class Files:
                 spec, folder + "/" + SPEC_FILE, lambda text: with_field(text, STATUS, CLOSED),
                 "Close spec {}".format(spec), "The close of spec {}".format(spec))
             if commit:
-                return self.git("rev-parse", "--short", commit).out.strip()
+                return "on {} as {}".format(
+                    branch, self.git("rev-parse", "--short", commit).out.strip())
         raise refusal("The close of spec {} lost to another push {} times in a row. Set status: "
                       "closed in its spec.md by hand.".format(spec, PUSH_ATTEMPTS))
 
