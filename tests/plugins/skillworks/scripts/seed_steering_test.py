@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import seed_steering
 from conftest import PLUGIN, ROOT, Ran, Repo, git, launch
-from context_backfill.context_map import MULTI_CONTEXT
+from seeds import agent_skills
 from suite import Suite
 from tracker.files import CLOSING_NOTE
 from tracker.reading import DRIFT_REPORT, NAME_REPORT
@@ -2115,7 +2115,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 14
+    assert len(commands) == 15
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -2405,7 +2405,8 @@ def test_a_seed_no_page_reads_is_caught():
 STEERING_PATH = re.compile(r"docs/agents/[\w./*<>-]*")
 
 PATHS_SETUP_WRITES = set(seed_steering.PLACES.values()) | {
-    "docs/agents/", RULES_FOLDER, RULES_FOLDER + "*.md", seed_steering.BASES + "/"}
+    "docs/agents/", RULES_FOLDER, RULES_FOLDER + "*.md", seed_steering.BASES + "/",
+    seed_steering.BASES + "/" + agent_skills.BASE_NAME}
 
 
 # A page that points at a file setup never writes sends a team's session to a file that is not there.
@@ -2899,16 +2900,21 @@ def test_the_steering_page_names_the_cache_keys():
     assert "`subagentPromptCacheTtl`" in row
 
 
-def test_the_claude_md_pointer_imports_each_rule():
-    pointer = re.findall(r"```markdown\n(.*?)```", setup_section("### 4. Point CLAUDE.md at the docs"), re.DOTALL)
-
-    assert len(pointer) == 1
-    lines = pointer[0].splitlines()
-    for rule in RULES:
-        assert "@docs/agents/rules/{}".format(rule) in lines, rule
-
-
 POINTER_STEP = "### 4. Point CLAUDE.md at the docs"
+
+
+def test_setup_builds_the_claude_md_block_with_seed_agent_skills_after_it_settles_the_adr_folder():
+    step = " ".join(setup_section(POINTER_STEP).split())
+
+    assert step.index("Write the answer into `adr-folder`") < step.index("seed-agent-skills --tracker")
+    assert "--adr-folder <adr-folder> --contexts <single|multi>" in step
+
+
+def test_the_setup_skill_holds_none_of_the_claude_md_blocks_text():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+
+    for words in ("### Issue tracker", "### Domain docs", "Single-context:", "Multi-context:", "@docs/agents/rules/"):
+        assert words not in text, words
 
 
 def test_setup_suggests_the_adr_folder_the_domain_docs_name_then_one_it_finds_then_docs_adr():
@@ -2935,14 +2941,21 @@ def test_setup_writes_the_adr_folder_answer_into_the_domain_docs_yaml_block():
             "and change no other line.") in step
 
 
-def test_the_claude_md_domain_docs_lines_name_the_adr_folder_in_the_words_context_backfill_writes():
-    step = setup_section(POINTER_STEP)
-    pointer = re.findall(r"```markdown\n(.*?)```", step, re.DOTALL)[0]
+def test_setup_puts_each_question_on_the_block_to_the_developer_with_a_blend_and_writes_nothing_itself():
+    step = " ".join(setup_section(POINTER_STEP).split())
 
-    assert "Single-context: `CONTEXT.md` and `<adr-folder>/` at the repo root. See `docs/agents/domain.md`." in pointer
-    assert MULTI_CONTEXT.format("<adr-folder>") in step
-    assert "docs/adr/" not in step
-    assert "Write the folder `adr-folder` names in place of `<adr-folder>`" in step
+    assert "so you write none of it yourself" in step
+    assert "show the `yours` side, the `seed` side, and a blend you write to fit the repo" in step
+    assert "--blend CLAUDE.md:2=" in step
+    assert "--settled CLAUDE.md" in step
+    assert "Ask every question before you change anything." in step
+
+
+def test_setup_says_a_second_run_merges_the_claude_md_block():
+    step = setup_section("### 5. Preflight and labels")
+
+    assert "a second run of setup merges it" in step
+    assert "in place" not in step
 
 
 def test_the_setup_page_lists_the_adr_folder_among_the_questions_setup_asks():

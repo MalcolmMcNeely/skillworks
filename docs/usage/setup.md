@@ -74,9 +74,10 @@ says.
 3. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `spec`. It
    writes your answer into `target-branch` in `docs/agents/loop.json`.
 4. **Point `CLAUDE.md` at the docs.** Setup asks where your ADRs go, and writes your answer into
-   `adr-folder` in `docs/agents/domain.md`. Then it adds an `## Agent skills` block that names your
-   Tracker, your tracker docs and your domain docs, with the folder `adr-folder` names, and imports
-   the five rules: comments, determinism, file placement, testing and words.
+   `adr-folder` in `docs/agents/domain.md`. Then `seed-agent-skills` builds the `## Agent skills`
+   block from your answers. The block names your Tracker, your tracker docs and your domain docs, with
+   the folder `adr-folder` names, and imports each rule in `docs/agents/rules/`. The block is a Seed,
+   so on a second run the script merges it with your edits, as it merges a Steering file.
 5. **Preflight.** `skillworks-preflight` checks the tools, the remote, the Target branch
    `docs/agents/loop.json` names, and that `CLAUDE.md` imports each rule. With `github`, it checks the
    `gh` login too, and then creates the `ready-for-agent` label on GitHub. With `files`, it needs no
@@ -115,8 +116,8 @@ own.
 | Where do your ADRs go? | Always. Setup writes your answer into `adr-folder` in `docs/agents/domain.md`, and every new ADR goes to that one folder. It suggests one folder. On a second run, it suggests the folder `adr-folder` already names, so your answer survives. Else it looks for folders that hold numbered Markdown files, such as `0001-event-sourced-orders.md`, and have `adr` or `decision` in their path. It lists every one it finds, and suggests the one with the most files. Else it suggests `docs/adr`. A repo set up before this question existed stops at preflight until setup runs again, and one run clears the stop. |
 | Should commits and pull requests credit Claude? | Always. On a first run setup suggests `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/agents/loop.json` already names an answer, setup suggests that one. [Credit for Claude](#credit-for-claude) says what each answer does. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push`, `gh issue close` and `tracker-publish` with no prompt. That is the point, and also the risk. |
-| Which do you keep for this overlap: yours, the Seed's, or a blend? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and a blend of the two that the agent writes to fit your repo. It asks once for each overlap, and the script writes the one you pick. |
-| Which lines of the newer Seed do you want? | When a Steering file differs from its Seed and has no base copy, because your repo was set up before base copies existed. Setup shows the difference and changes the file only by the lines you pick. |
+| Which do you keep for this overlap: yours, the Seed's, or a blend? | On a second run, when your edit and the newer Seed's change touch the same lines, in a Steering file or in the `## Agent skills` block. Setup shows both sides, and a blend of the two that the agent writes to fit your repo. It asks once for each overlap, and the script writes the one you pick. |
+| Which lines of the newer Seed do you want? | When a Steering file, or the `## Agent skills` block, differs from its Seed and has no base copy, because your repo was set up before base copies existed. Setup shows the difference and changes the file only by the lines you pick. |
 | Which Marketplace, or which Plugin setting, do you keep? | When `.claude/settings.json` already names the `skillworks` Marketplace or the Plugin with another value. Setup shows both. |
 | Keep auto-memory on, or turn it off? | When `.claude/settings.json` says `"autoMemoryEnabled": true`. With memory on, memory files on each machine steer the loop, so it runs differently from one machine to the next. Setup never changes it without asking. |
 
@@ -141,9 +142,9 @@ Review these before you commit them.
 | `docs/agents/suite.json` | Your Suite. It starts with no checks, and the loop stops until you add one. |
 | `docs/agents/loop.json` | The loop's settings. `tracker` holds your answer, `github` or `files`. `target-branch` starts as your remote's default branch. `co-authored-by` holds your answer on the credit for Claude, `show` or `hide`, and starts as `hide`. |
 | `docs/agents/surfaces.md` | The places a change can have to reach besides its code. It starts with the README and the user docs. |
-| `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. Setup keeps these, and a second run reads them. Do not edit them. |
+| `docs/agents/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. `agent-skills.md` is the base copy of the `## Agent skills` block, exactly as setup last wrote it. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. Each machine has its own, and nobody commits them. Setup also creates `.handoff/`, where `handoff` saves. `.context-backfill/` holds the Answer sheet of the [Context backfill](context-backfill.md). |
-| `CLAUDE.md` | The `## Agent skills` block. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
+| `CLAUDE.md` | The `## Agent skills` block. A second run merges the block with your edits to it. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
 | `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. An `attribution` block, which setup rewrites from `co-authored-by` each time it runs. On a second run, setup adds a cache key that is missing and keeps one your team set. |
 
 Setup writes nothing under `~/.claude`, and it leaves `.claude/settings.local.json` alone.
@@ -300,6 +301,12 @@ Seed's change to fit your repo, and shows it beside both sides. If you pick it, 
 blend in place of the overlap, and the base copy takes the new Seed. The agent writes nothing into
 your file itself.
 
+The `## Agent skills` block merges like a Steering file. Setup compares the block in `CLAUDE.md` with
+its base copy, `docs/agents/.seeds/agent-skills.md`, and with the block your answers build today. It
+says what it did in the same outcome lines, names the block by its file, and asks the same questions,
+with a blend for an overlap. The block runs from its heading to the next `## ` heading, and setup
+changes nothing outside it.
+
 Setup writes a deleted Steering file again. Every step of the loop needs its file, so a file never
 stays deleted. To use less of a file, empty it down, and keep the file.
 
@@ -316,8 +323,9 @@ Setup commits nothing. Review each changed file before you commit.
 
 - **The label.** With `github`, a label that is there is left alone.
 - **`.gitignore`.** Setup adds only the working folders it does not name yet. It never adds one twice.
-- **`CLAUDE.md`.** Setup updates the `## Agent skills` block in place. It never adds a second copy,
-  and it leaves every other section alone.
+- **`CLAUDE.md`.** Setup merges your edits to the `## Agent skills` block, as
+  [Each Steering file](#each-steering-file) says. It writes a deleted block again, never adds a second
+  copy, and leaves every other section alone.
 - **`.claude/settings.json`.** Setup adds the allowlist entries that are missing and removes none. It
   rewrites the `attribution` block from `co-authored-by` in `docs/agents/loop.json`. It adds `promptCacheTtl` or `subagentPromptCacheTtl`
   where one is missing, and keeps a value your team set. It sets `autoMemoryEnabled` to `false` where

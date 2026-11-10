@@ -1,12 +1,13 @@
 # Each file is weighed against the base copy setup last wrote, so a newer Plugin's Seed replaces only what a team never edited.
 
-import re
 import sys
 from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
 from seeds import merge
+from seeds.answers import took_an_answer
+from seeds.outcome import ASKS, BASES, Outcome, report, write
 from stop import Stop, misuse, refusal
 
 USAGE = ("usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... "
@@ -32,8 +33,6 @@ PLACES = {
     "surfaces.md": "docs/agents/surfaces.md",
 }
 
-BASES = "docs/agents/.seeds"
-
 # A copy must match its Seed byte for byte, so it cannot carry a header, and this README speaks for it.
 BASES_README = """# Base copies
 
@@ -50,16 +49,6 @@ HANDOFF = ".handoff/"
 
 WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/", ".context-backfill/"]
 
-CHOICE = re.compile(r"^(.+):([0-9]+)=(yours|seed)$")
-
-BLEND = re.compile(r"^(.+?):([0-9]+)=(.+)$")
-
-CHOOSE = "--keep <file>:<overlap>=yours|seed or --blend <file>:<overlap>=<blend file> for each overlap"
-
-SETTLE = "--settled <file> for each file that differs from its seed"
-
-ASKS = {merge.ASKS_OVERLAP: CHOOSE, merge.ASKS_SETTLE: SETTLE}
-
 
 # Beside PLACES, so a new Seed is checked the day it is seeded and the loop never stops in the middle of a ticket for it.
 def missing_steering(top):
@@ -68,22 +57,6 @@ def missing_steering(top):
             return ("{} is missing, and setup seeds it. "
                     "Run /skillworks:skillworks-setup to write it again.".format(place))
     return None
-
-
-class Outcome:
-    def __init__(self, done, would=None, shown=(), writes=(), asks=None, used=(), makes=()):
-        self.done = done
-        self.would = would or done
-        self.shown = list(shown)
-        self.writes = list(writes)
-        self.makes = list(makes)
-        self.asks = asks
-        self.used = set(used)
-
-
-def write(path, text):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8", newline="\n")
 
 
 def default_branch(runner, top):
@@ -170,54 +143,17 @@ def next_step(runner, top):
     return "next step: /skillworks:architecture-tests\n"
 
 
-def blended(path):
-    try:
-        return merge.Blend(Path(path).read_text(encoding="utf-8"))
-    except OSError:
-        raise refusal("the blend file {} cannot be read. Nothing was written.".format(path))
-
-
 def parsed(argv):
     where, choices, settled = None, {}, set()
     rest = iter(argv)
     for arg in rest:
-        if arg == "--keep":
-            found = CHOICE.match(next(rest, ""))
-            if not found:
-                raise misuse(USAGE)
-            choices[(found.group(1), int(found.group(2)))] = found.group(3)
-        elif arg == "--blend":
-            found = BLEND.match(next(rest, ""))
-            if not found:
-                raise misuse(USAGE)
-            choices[(found.group(1), int(found.group(2)))] = blended(found.group(3))
-        elif arg == "--settled":
-            place = next(rest, "")
-            if not place or place.startswith("--"):
-                raise misuse(USAGE)
-            settled.add(place)
-        elif where is None and not arg.startswith("--"):
+        if took_an_answer(arg, rest, choices, settled, USAGE):
+            continue
+        if where is None and not arg.startswith("--"):
             where = arg
         else:
             raise misuse(USAGE)
     return where or ".", choices, settled
-
-
-# A run that stops for a question writes nothing, so no Steering file is left half-merged while the team decides.
-def report(outcomes, step, out):
-    asking = [ask for ask in (CHOOSE, SETTLE) if any(outcome.asks == ask for outcome in outcomes)]
-    for outcome in outcomes:
-        out.write(outcome.would if asking else outcome.done)
-        out.writelines(outcome.shown)
-        if not asking:
-            for path, text in outcome.writes:
-                write(path, text)
-            for path in outcome.makes:
-                path.mkdir(parents=True, exist_ok=True)
-    if asking:
-        out.write("Nothing was written. Run again with {}.\n".format(" and ".join(asking)))
-    else:
-        out.write(step)
 
 
 def main(argv, runner, out, err):

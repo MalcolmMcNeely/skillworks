@@ -27,7 +27,7 @@ The outputs:
 | `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `spec` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. `export` is `true` when the work goes to a team that does not use Skillworks, and `false` otherwise. Setup asks first. |
 | `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
 | `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. |
-| A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. |
+| A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. The block is a Seed: `seed-agent-skills` builds it, and a second run merges a person's edits. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
 | The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes, the pull request calls of a `spec` Target branch among them. It lets a skill read its own files, with `Read(~/.claude/plugins/**)` and, when the Marketplace folder sits outside the repo, a read rule for that folder, because a Session run by hand would stop to ask on a read outside the repo. The driver gives a loop Session its own read rule. It names no tool the Suite runs: those are the team's to add. |
 | An `attribution` block in `.claude/settings.json`, rewritten from `co-authored-by` every time setup runs | Claude Code credits Claude on each commit and pull request unless `attribution` says otherwise. Its commit credit is always off, because the Plugin's hook adds the credit line when `co-authored-by` says `show`. Its pull request credit is off for `hide` only. The block follows the answer in `loop.json`, so a block someone edited by hand comes back into step. |
@@ -152,47 +152,24 @@ First ask the team where its ADRs go. Every new ADR goes to this one folder, wha
 
 Write the answer into `adr-folder` in the YAML block at the end of `docs/agents/domain.md`, and change no other line. Write it as a path from the repo root, with no `/` at its end. Where the file has no YAML block at its end, add one that holds `adr-folder` alone. Preflight in step 5 stops while the setting is missing or empty.
 
-Then add this block to `CLAUDE.md`. Create the file if it is missing. If the block is already there, update it in place — never append a second copy. Leave every other section alone.
+Then build the `## Agent skills` block in `CLAUDE.md`. The block is a Seed, and a script builds it from your answers, so you write none of it yourself:
 
-```markdown
-## Agent skills
-
-### Issue tracker
-
-GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. See `docs/agents/issue-tracker.md`.
-
-### Domain docs
-
-Single-context: `CONTEXT.md` and `<adr-folder>/` at the repo root. See `docs/agents/domain.md`.
-
-### Steering
-
-The rules in `docs/agents/rules/`, the review files in `docs/agents/`, and the Suite in `docs/agents/suite.json`. The team owns them.
-
-### Rules
-
-The rules load into every session through these imports. Each one lives in `docs/agents/rules/`.
-
-@docs/agents/rules/comments.md
-@docs/agents/rules/determinism.md
-@docs/agents/rules/file-placement.md
-@docs/agents/rules/testing.md
-@docs/agents/rules/words.md
+```bash
+seed-agent-skills --tracker <github|files> --adr-folder <adr-folder> --contexts <single|multi>
 ```
 
-The imports are what load the rules, so keep one for each file in `docs/agents/rules/`. An import path is relative to `CLAUDE.md`.
+Give the Tracker from step 2, and the folder `adr-folder` names. Give `--contexts multi` when the repo has `CONTEXT-MAP.md` at its root, and `--contexts single` otherwise. The script imports each rule file in `docs/agents/rules/`, and writes the multi-context Domain docs line in the words Context backfill writes when it switches the line.
 
-With `files`, write the Issue tracker line as: committed files in `.specs/`, one folder per spec and one file per ticket. See `docs/agents/issue-tracker.md`, under The files Tracker.
+The block runs from its heading to the next `## ` heading, or to the end of the file. The script changes nothing outside it. It keeps a base copy of the block in `docs/agents/.seeds/agent-skills.md`, and on a later run it weighs the block as step 1 weighs a Steering file. It prints the same outcome lines and the same diffs, and names the block by its file, such as `CLAUDE.md`. A missing block, or a missing file, is `wrote`. If the repo has `AGENTS.md` and no `CLAUDE.md`, the script uses `AGENTS.md`, and it never creates the one that is missing when the other exists.
 
-If the repo has `CONTEXT-MAP.md`, write the Domain docs line as multi-context, in the words Context backfill writes when it switches the line:
+When a line says `asks` or `kept ..., which differs from the seed`, the script has written nothing. Put each question to the user as step 1 does: for each overlap, show the `yours` side, the `seed` side, and a blend you write to fit the repo, and ask which of the three to keep. For a block with no base copy, show the diff, change the block only by the lines they pick, and then settle it. Ask every question before you change anything. Then run it again with the same answers and every choice at once:
 
+```bash
+seed-agent-skills --tracker github --adr-folder docs/adr --contexts single --keep CLAUDE.md:1=yours --blend CLAUDE.md:2=/tmp/claude-2.md
+seed-agent-skills --tracker github --adr-folder docs/adr --contexts single --settled CLAUDE.md
 ```
-Multi-context: `CONTEXT-MAP.md` and `<adr-folder>/` at the repo root, and one `CONTEXT.md` per context. See `docs/agents/domain.md`.
-```
 
-Write the folder `adr-folder` names in place of `<adr-folder>`, in either line, such as `docs/architecture-decision-log/`.
-
-If the repo has `AGENTS.md` and no `CLAUDE.md`, edit `AGENTS.md` instead. Never create the one that is missing when the other exists.
+A choice or a blend that names no overlap, or a `--settled` for a block that has a base copy, is refused, and nothing is written.
 
 ### 5. Preflight and labels
 
@@ -208,7 +185,7 @@ With `files`, it needs no `gh` and creates no label. It checks that `origin` exi
 
 It runs after the Tracker and the Target branch are written, because it reads `loop.json`, and after the `CLAUDE.md` block is written, because it refuses a rule with no import. Expect a permission prompt here too on a first run.
 
-If it fails, stop and report. Every step below assumes the remote works, and with `github` a working `gh`, and the script is what proves that. The `CLAUDE.md` block step 4 wrote is safe to leave: a second run of setup updates it in place, so the team fixes the fault and runs setup again.
+If it fails, stop and report. Every step below assumes the remote works, and with `github` a working `gh`, and the script is what proves that. The `CLAUDE.md` block step 4 wrote is safe to leave: a second run of setup merges it, so the team fixes the fault and runs setup again.
 
 ### 6. Write the settings
 
