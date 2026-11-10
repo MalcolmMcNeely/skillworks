@@ -295,7 +295,7 @@ class Suite:
             if name not in digests:
                 digests[name] = hashlib.sha256(path.read_bytes()).hexdigest()
             key.update("\0{}\0{}".format(name, digests[name]).encode("utf-8"))
-        # Off the disk, the image's folder is no input git lists, so a Steering change to it is folded in here.
+        # Off the disk, the image's folder is no input git lists, so a Steering change to it would leave a stale Proof.
         if check.image and not (self.tree / check.image).is_file():
             tree = self.tree.as_posix()
             folder = self.runner.run(["git", "-C", tree, "rev-parse", at_steering(posixpath.dirname(check.image))], tree)
