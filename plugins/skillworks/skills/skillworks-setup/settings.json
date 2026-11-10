@@ -33,6 +33,7 @@
       "Bash(tracker-publish:*)",
       "Bash(spec-commits:*)",
       "Bash(cut-target-branch:*)",
+      "Bash(steering-file:*)",
       "Bash(spec-loop-counts:*)",
       "Bash(context-backfill:*)",
       "Read(~/.claude/plugins/**)"

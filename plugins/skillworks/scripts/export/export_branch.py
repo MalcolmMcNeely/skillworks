@@ -8,6 +8,8 @@ from stop import refusal
 
 PREFIX = "skillworks/spec/"
 
+STEERING = "skillworks/steering"
+
 GRILL_SUBJECTS = ("Glossary:", "ADR:")
 
 GRILL = "the grill"

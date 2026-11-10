@@ -7,7 +7,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from export.export_branch import PREFIX
+from export.export_branch import PREFIX, STEERING
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
@@ -15,7 +15,6 @@ from stop import Stop, misuse, refusal
 
 USAGE = "usage: cut-target-branch\n"
 
-STEERING = "skillworks/steering"
 
 # Neither branch may share a first part with an Export branch, because git cannot hold x and x/... at once.
 OWN = "skillworks/"

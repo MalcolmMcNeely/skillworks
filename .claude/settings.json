@@ -38,7 +38,8 @@
       "Bash(docker:*)",
       "Bash(mkdir:*)",
       "Bash(tracker-publish:*)",
-      "Bash(spec-commits:*)"
+      "Bash(spec-commits:*)",
+      "Bash(steering-file:*)"
     ]
   },
   "env": {
