@@ -34,6 +34,8 @@ context-backfill check
 
 It reads the Tracker and the Target branch from the loop settings on disk, fetches the Target branch from origin, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit.
 
+When `target-branch` is `pr`, this is PR mode. The work goes on the branch this session starts on, the developer's own branch. So every command of this skill refuses, and writes nothing, on the default branch, on a branch under `skillworks/` and on no branch. In PR mode the Target branch the history is read from is the default branch.
+
 If it refuses, show the person the refusal and the command it names, and stop. A shallow clone is mended by the unshallow fetch, and a partial clone by a full clone. Do not read the history of a clone it refused: the part it holds would read as the whole.
 
 If the loop settings are missing, the check says so. Tell the person that `/skillworks:skillworks-setup` writes it, and stop.
@@ -189,7 +191,7 @@ Then stop. Change nothing in the repo.
 
 ### Apply the sheet
 
-Run the apply from the repo root, on the Target branch. When `target-branch` is `pr`, run it on the default branch, or on `spec/context-backfill` once an earlier apply made it:
+Run the apply from the repo root, on the Target branch. In PR mode, run it on the branch this session started on:
 
 ```bash
 context-backfill apply
@@ -205,11 +207,11 @@ It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the
 - Each rejected Draft is dropped, and is written nowhere.
 - A word, a map or an ADR already in the repo is never changed.
 
-It makes one `Glossary:` commit for the map and its Steering edits, naming the map, then one `Glossary:` commit for each glossary file, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title, so a reversal makes two. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch. When `target-branch` is `pr`, a protected default branch would refuse the push, so it commits on `spec/context-backfill`, cut from the default branch, pushes that branch, and on the first push opens a draft pull request to the default branch. A later apply goes to the same branch and opens no second pull request.
+It makes one `Glossary:` commit for the map and its Steering edits, naming the map, then one `Glossary:` commit for each glossary file, naming the file and the number of words, then one `ADR:` commit for each ADR, with its title, so a reversal makes two. It stages by path, so other work in the tree stays out of every commit. It prints the commits it made, then pulls with rebase and pushes to the Target branch. In PR mode, it commits on the branch it started on and pushes that branch. It cuts no branch of its own and opens no pull request. Its last line is the hint the loop ends with, `PR    open the pull request from <branch>`, naming that branch. Show the person that line: the developer opens the pull request, so its title, body and labels follow the team's own rules.
 
 It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a decision Draft for each written reason. It prints what is left.
 
-If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in PR mode, on the default branch or `spec/context-backfill`, when an accepted word names a context no map holds, when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change, and when an accepted map or decision needs the ADR folder and `steering-file docs/agents/domain.md` names no `adr-folder`. A refusal after the commits says the commits are made and names the command that sends them.
+If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in PR mode, is on the default branch, on a branch under `skillworks/` or on no branch, when an accepted word names a context no map holds, when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change, and when an accepted map or decision needs the ADR folder and `steering-file docs/agents/domain.md` names no `adr-folder`. A refusal after the commits says the commits are made and names the command that sends them.
 
 ### Talk the `?` lines through
 

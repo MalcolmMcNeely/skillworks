@@ -649,47 +649,129 @@ def in_pr_mode(where):
         json.dumps({"tracker": "github", "target-branch": "pr"}), encoding="utf-8")
 
 
-def asked_for_pull_requests(runner):
-    return [call for call in runner.started("gh") if call[1:3] == ["pr", "create"]]
+DEVELOPERS_BRANCH = "feature/ab-12/backfill"
 
 
-def test_in_pr_mode_the_commits_reach_a_branch_of_their_own_and_the_default_branch_is_untouched(
-        history, checkout, runner):
-    in_pr_mode(checkout)
+def on_the_developers_branch(where):
+    in_pr_mode(where)
+    git(where, "switch", "--quiet", "-c", DEVELOPERS_BRANCH)
+
+
+def branches_on(origin):
+    return sorted(git(origin, "for-each-ref", "--format=%(refname:short)", "refs/heads").split())
+
+
+def test_in_pr_mode_the_commits_reach_the_branch_it_started_on_and_no_branch_is_cut(history, checkout, runner):
+    on_the_developers_branch(checkout)
     before = git(history.origin, "rev-parse", "main")
     mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
-    runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
 
     apply(runner, checkout)
 
-    assert (subjects(history.origin, "spec/context-backfill")[0], git(history.origin, "rev-parse", "main")) == (
-        "Glossary: 1 word in CONTEXT.md", before)
+    assert (subjects(history.origin, DEVELOPERS_BRANCH)[0], git(history.origin, "rev-parse", "main"),
+            branches_on(history.origin), git(checkout, "branch", "--show-current").strip()) == (
+        "Glossary: 1 word in CONTEXT.md", before, sorted(["main", DEVELOPERS_BRANCH]), DEVELOPERS_BRANCH)
 
 
-def test_in_pr_mode_one_draft_pull_request_is_asked_for_the_branch(checkout, runner):
-    in_pr_mode(checkout)
+def test_in_pr_mode_no_pull_request_is_opened(checkout, runner):
+    on_the_developers_branch(checkout)
     mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
-    runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
 
     apply(runner, checkout)
 
-    assert [(call[call.index("--base") + 1], call[call.index("--head") + 1], "--draft" in call)
-            for call in asked_for_pull_requests(runner)] == [("main", "spec/context-backfill", True)]
+    assert [call for call in runner.started("gh") if call[1:2] == ["pr"]] == []
 
 
-def test_in_pr_mode_a_second_apply_pushes_to_the_same_branch_and_asks_for_no_second_pull_request(
-        history, checkout, runner):
-    in_pr_mode(checkout)
+def test_in_pr_mode_the_apply_ends_with_the_hint_to_open_the_pull_request_from_its_branch(checkout, runner):
+    on_the_developers_branch(checkout)
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
+
+    ran = apply(runner, checkout)
+
+    assert ran.out.splitlines()[-1] == (
+        "PR    open the pull request from {}. A person reviews and merges it.".format(DEVELOPERS_BRANCH))
+
+
+def test_in_pr_mode_a_second_apply_pushes_to_the_same_branch(history, checkout, runner):
+    on_the_developers_branch(checkout)
     mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")
                          + word(2, "Batch", "Fifty tickets.", "?")))
-    runner.reply("pr create", "https://github.invalid/owner/repo/pull/30\n")
     apply(runner, checkout)
     mark(checkout, sheet(words=word(2, "Batch", "Fifty tickets.", "accept")))
 
     apply(runner, checkout)
 
-    assert (subjects(history.origin, "spec/context-backfill")[:2], len(asked_for_pull_requests(runner))) == (
-        ["Glossary: 1 word in CONTEXT.md", "Glossary: 1 word in CONTEXT.md"], 1)
+    assert subjects(history.origin, DEVELOPERS_BRANCH)[:2] == [
+        "Glossary: 1 word in CONTEXT.md", "Glossary: 1 word in CONTEXT.md"]
+
+
+def onto_the_default_branch(where):
+    pass
+
+
+def onto_a_branch_of_the_loop(where):
+    git(where, "switch", "--quiet", "-c", "skillworks/spec/ab-12")
+
+
+def onto_no_branch(where):
+    git(where, "switch", "--quiet", "--detach")
+
+
+BRANCHES_THAT_CANNOT_HOLD_A_DESIGN = {
+    "the default branch": (onto_the_default_branch, "main is the default branch"),
+    "a branch of the loop": (onto_a_branch_of_the_loop, "belongs to the loop"),
+    "no branch": (onto_no_branch, "on no branch"),
+}
+
+
+@pytest.mark.parametrize("onto", BRANCHES_THAT_CANNOT_HOLD_A_DESIGN, ids=list(BRANCHES_THAT_CANNOT_HOLD_A_DESIGN))
+def test_in_pr_mode_the_apply_on_a_branch_that_cannot_hold_a_design_is_refused_and_writes_nothing(
+        history, checkout, runner, onto):
+    in_pr_mode(checkout)
+    switch, why = BRANCHES_THAT_CANNOT_HOLD_A_DESIGN[onto]
+    switch(checkout)
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
+    before = (git(checkout, "rev-parse", "HEAD"), branches_on(history.origin))
+
+    ran = apply(runner, checkout)
+
+    assert (ran.status, why in ran.err, "Nothing was written." in ran.err, (checkout / "CONTEXT.md").exists(),
+            (git(checkout, "rev-parse", "HEAD"), branches_on(history.origin))) == (1, True, True, False, before)
+
+
+@pytest.mark.parametrize("onto", BRANCHES_THAT_CANNOT_HOLD_A_DESIGN, ids=list(BRANCHES_THAT_CANNOT_HOLD_A_DESIGN))
+def test_in_pr_mode_the_check_on_a_branch_that_cannot_hold_a_design_is_refused_and_writes_nothing(
+        history, runner, onto):
+    where = history.clone("full")
+    in_pr_mode(where)
+    switch, why = BRANCHES_THAT_CANNOT_HOLD_A_DESIGN[onto]
+    switch(where)
+    runner.stub("gh", says="0\t0\n")
+
+    ran = check(runner, where)
+
+    assert (ran.status, why in ran.err, (where / ".gitignore").exists(), (where / ".context-backfill").exists()) == (
+        1, True, False, False)
+
+
+def test_in_pr_mode_the_history_is_read_from_the_default_branch(history, runner):
+    where = history.clone("full")
+    on_the_developers_branch(where)
+    for name, value in (("user.name", "Test"), ("user.email", "test@example.invalid"), ("commit.gpgsign", "false")):
+        git(where, "config", name, value)
+    (where / "only-here.txt").write_text("not on main\n", encoding="utf-8")
+    git(where, "add", "only-here.txt")
+    git(where, "commit", "--quiet", "-m", "Work only the developer's branch holds")
+    git(where, "push", "--quiet", "-u", "origin", DEVELOPERS_BRANCH)
+    runner.stub("gh", says="0\t0\n")
+    check(runner, where)
+    runner.reply("auth status", "", status=1)
+
+    ran = history_of(runner, where)
+
+    log = scratch(where, "log.txt")
+    assert ("The history of origin/main" in ran.out, "Add the parser" in log,
+            "Work only the developer's branch holds" in log) == (True, True, False)
 
 
 CONTEXT_MAP = ("# Context Map\n\n## Contexts\n\n"

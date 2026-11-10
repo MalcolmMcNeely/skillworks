@@ -38,6 +38,7 @@ from typing import Callable, NamedTuple
 
 import land_ticket
 import ticket_worktree
+from branches.open_the_pull_request import open_the_pull_request
 from clock.clock import Clock
 from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
@@ -1783,10 +1784,8 @@ class Loop:
 
     # --- the pull request, in PR mode ----------------------------------------
 
-    # The developer opens it, so its title, body and labels follow the team's own rules.
     def hand_over(self):
-        self.say("PR    open the pull request from {}. A person reviews and merges it.".format(
-            self.target))
+        self.say(open_the_pull_request(self.target))
 
     # --- the Export ----------------------------------------------------------
 

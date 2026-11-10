@@ -31,6 +31,11 @@ history would say the half was the whole. The refusal names the command that men
 A partial clone fetches each old file only when it is read, so reading its history would take
 hours. A full clone reads the same history in seconds.
 
+In PR mode, `"target-branch": "pr"`, the check also refuses a branch that cannot hold a design: the
+default branch, a branch under `skillworks/`, and no branch. Make a branch of your own, switch to
+it, and start the backfill there. The work goes on that branch, and the history is still read from
+the default branch.
+
 ### The fit
 
 On a full clone the check prints the fit: how much history there is, and how much of it carries a
@@ -230,8 +235,9 @@ blank sheet.
 ## The second run
 
 Type the command again once the sheet is marked. The run that finds at least one Answer on the
-sheet is the second run. Run it on the Target branch, or on the default branch in PR mode. It
-writes the text that is on the sheet, so a Draft you edited is written as you edited it.
+sheet is the second run. Run it on the Target branch, or in PR mode on your own branch, the one you
+started on. It writes the text that is on the sheet, so a Draft you edited is written as you edited
+it.
 
 ### What it writes
 
@@ -310,12 +316,19 @@ commits it made, then pulls with rebase and pushes them.
 | `target-branch` | Where the commits go |
 |---|---|
 | A branch name, such as `main` | Straight onto that branch. No pull request is opened. |
-| `pr` | Onto a branch of their own, `spec/context-backfill`, cut from the default branch. The default branch is not touched. The first push opens a draft pull request from that branch to the default branch. |
+| `pr` | Onto the branch you started it on, your own branch. It cuts no branch and opens no pull request. |
 
-A protected default branch refuses a direct push, and PR mode is how a team works with one. That
-is why the commits never go to the default branch in PR mode. Every later apply, such as the one
-for an Answer you give in talk, goes to the same branch and opens no second pull request. Merge the
-pull request when you are ready for the words and ADRs to reach the default branch.
+In PR mode you make the branch, by your team's own rule, and you start the backfill on it. The
+commits go to that branch, and the default branch is not touched. Every later apply, such as the
+one for an Answer you give in talk, goes to the same branch. The run ends with the same line as the
+loop:
+
+```
+PR    open the pull request from feature/PROJ-12/backfill. A person reviews and merges it.
+```
+
+You open the pull request, so its title, body and labels follow your team's own rules. The history
+is still read from the default branch.
 
 It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a
 decision Draft for each reason you wrote under a Question.
@@ -326,8 +339,10 @@ The run writes nothing when:
 
 - The sheet has no Answer on it. It tells you to mark the sheet.
 - An `Answer:` line holds a word that is not `accept`, `reject` or `?`.
-- The checkout is not on the Target branch. In PR mode, the checkout is not on the default
-  branch or on `spec/context-backfill`.
+- The checkout is not on the Target branch. In PR mode, the checkout is on a branch that cannot
+  hold a design: the default branch, a branch under `skillworks/`, or no branch. The check and the
+  history refuse these too, so nothing is written there. [When a step fails](the-loop/stops.md)
+  shows each refusal, under A branch that cannot hold a design.
 - An accepted word names a context that no map holds, on the sheet or in the repo.
 - An accepted map names no context, or setup has not written the words rule or the Domain docs
   line the map has to change.

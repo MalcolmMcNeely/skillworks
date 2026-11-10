@@ -2,13 +2,15 @@
 
 import re
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
+from branches.open_the_pull_request import open_the_pull_request
+from branches.own_branch import own_branch
 from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET_FILE, WORD, bold_name, read_sheet,
                                            references, what_is_left)
 from context_backfill.context_map import MAP_FILE, contexts_of, map_edits
 from steering.adr_folder import adr_folder
-from steering.target_branch import LOOP_FILE, PR_MODE, target_setting
+from steering.target_branch import PR_MODE, target_setting
 from stop import refusal
 
 GLOSSARY_FILE = "CONTEXT.md"
@@ -18,10 +20,7 @@ ADR_NAME = re.compile(r"^(\d+)-.*\.md$")
 PART = "#### "
 SUPERSEDED_BY_BELOW = "Status: superseded by the decision below"
 SUPERSEDES_ABOVE = "This supersedes the decision above."
-SPEC_BRANCH = "spec/context-backfill"
-PULL_REQUEST_TITLE = "Context backfill"
-PULL_REQUEST_BODY = ("The words, the map and the ADRs Context backfill recovered from the history, as the Answer "
-                     "sheet accepted them.")
+NOTHING_WRITTEN = "Nothing was written."
 
 
 def git(runner, where, *args):
@@ -80,42 +79,18 @@ def glossaries(top, taken, contexts):
 
 class Destination(NamedTuple):
     branch: str
-    here: str
-    default_branch: Optional[str] = None
-
-
-def default_of(runner, top):
-    found = git(runner, top, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
-    if found.status != 0:
-        raise refusal("{} says pr, and origin names no default branch to cut {} from. Name it, then run "
-                      "this again:\n  git remote set-head origin --auto".format(LOOP_FILE, SPEC_BRANCH))
-    return found.out.strip().removeprefix("origin/")
+    in_pr_mode: bool
 
 
 def destination_of(runner, top):
     branch = target_setting(top)
+    if branch == PR_MODE:
+        return Destination(own_branch(runner, top, NOTHING_WRITTEN), True)
     here = git(runner, top, "symbolic-ref", "--quiet", "--short", "HEAD").out.strip()
-    if branch != PR_MODE:
-        if here != branch:
-            raise refusal("The Target branch is {}, and this checkout is on {}. Switch to {}, then run this "
-                          "again. Nothing was written.".format(branch, here or "no branch", branch))
-        return Destination(branch, here)
-    default_branch = default_of(runner, top)
-    if here not in (default_branch, SPEC_BRANCH):
-        raise refusal("{} says pr, so the work goes on {}, cut from {}, and this checkout is on {}. Switch to "
-                      "{}, then run this again. Nothing was written.".format(
-                          LOOP_FILE, SPEC_BRANCH, default_branch, here or "no branch", default_branch))
-    return Destination(SPEC_BRANCH, here, default_branch)
-
-
-# A protected default branch refuses a direct push, so in PR mode the work goes on a branch of its own.
-def branch_off(runner, top, destination):
-    if destination.default_branch is None or destination.here == SPEC_BRANCH:
-        return
-    ran = git(runner, top, "switch", "--quiet", "-c", SPEC_BRANCH)
-    if ran.status != 0:
-        raise refusal("git would not make {}. git said:\n{}\nSwitch to it when it holds earlier backfill work, "
-                      "then run this again. Nothing was written.".format(SPEC_BRANCH, said_by(ran)))
+    if here != branch:
+        raise refusal("The Target branch is {}, and this checkout is on {}. Switch to {}, then run this "
+                      "again. {}".format(branch, here or "no branch", branch, NOTHING_WRITTEN))
+    return Destination(branch, False)
 
 
 def names_in(held):
@@ -234,28 +209,18 @@ def on_origin(runner, top, branch):
 
 def push(runner, top, destination, out):
     branch = destination.branch
-    first_push = destination.default_branch is not None and not on_origin(runner, top, branch)
-    source = destination.default_branch if first_push else branch
-    for args in (("pull", "--quiet", "--rebase", "--autostash", "origin", source),
-                 ("push", "--quiet", "-u", "origin", branch)):
+    # A developer's branch may not be on origin yet, and then there is nothing to pull.
+    pull = ("pull", "--quiet", "--rebase", "--autostash", "origin", branch)
+    steps = ((pull,) if on_origin(runner, top, branch) else ()) + (("push", "--quiet", "-u", "origin", branch),)
+    for args in steps:
         ran = git(runner, top, *args)
         if ran.status != 0:
             raise refusal("The commits are made, and git would not send them to origin/{}. git said:\n{}\n"
                           "Mend it, then run: git pull --rebase origin {} && git push -u origin {}".format(
-                              branch, said_by(ran), source, branch))
+                              branch, said_by(ran), branch, branch))
     out.write("Pushed to origin/{}.\n".format(branch))
-    if first_push:
-        open_pull_request(runner, top, destination, out)
-
-
-def open_pull_request(runner, top, destination, out):
-    ran = runner.run(["gh", "pr", "create", "--draft", "--base", destination.default_branch, "--head",
-                      destination.branch, "--title", PULL_REQUEST_TITLE, "--body", PULL_REQUEST_BODY], top)
-    if ran.status != 0:
-        raise refusal("The commits are on origin/{}, and gh would not open the draft pull request. gh said:\n{}\n"
-                      "Mend it, then run: gh pr create --draft --base {} --head {}".format(
-                          destination.branch, said_by(ran), destination.default_branch, destination.branch))
-    out.write("Opened a draft pull request: {}\n".format(ran.out.strip()))
+    if destination.in_pr_mode:
+        out.write(open_the_pull_request(branch) + "\n")
 
 
 def words_of(count):
@@ -270,8 +235,6 @@ def apply(runner, top, scratch, out):
     edits = map_edits(Path(top), map_entry) if map_entry else {}
     folder = adr_folder(top) if any(entry.letter == DECISION for entry in taken) else None
     destination = destination_of(runner, top)
-    if taken:
-        branch_off(runner, top, destination)
     if any(entry.letter == MAP for entry in taken) and not map_entry:
         out.write("{} is already there, so it was left as it is.\n".format(MAP_FILE))
     made = []

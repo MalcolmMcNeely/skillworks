@@ -227,6 +227,11 @@ neither writes anything. The command ends its line with `Nothing was written.`:
 FAIL  this checkout is on trunk, and trunk is the default branch. Make a branch of your own, switch to it, and start again. Nothing was written.
 ```
 
+`/skillworks:context-backfill` refuses the same three branches in PR mode, with the same line. Each
+of its commands, `context-backfill check`, `context-backfill history` and `context-backfill apply`,
+checks the branch first, so none of them writes a file, makes a commit or pushes on a refused
+branch.
+
 With `export` on, the `cut-target-branch` command checks the branch you are on before it cuts
 anything, as [the Export](export.md#the-grills-cut) says, and ends its line with `Nothing was cut.`
 Both refuse the same three branches, and cut nothing and push nothing. The default branch, which they

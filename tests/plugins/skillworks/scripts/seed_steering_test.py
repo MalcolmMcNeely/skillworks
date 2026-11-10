@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import seed_steering
+from branches.open_the_pull_request import open_the_pull_request
 from conftest import PLUGIN, ROOT, Ran, Repo, git, launch
 from seeds import agent_skills
 from suite import Suite
@@ -1327,7 +1328,25 @@ def test_in_pr_mode_no_git_step_and_no_gh_call_cuts_a_branch_or_opens_a_pull_req
     assert git_and_gh_lines(text) == []
 
 
-@pytest.mark.parametrize("named", ["spec/<slug>", "gh pr create", ".default_branch"])
+def test_in_pr_mode_context_backfill_refuses_a_branch_that_cannot_hold_a_design_and_reads_the_default_branch():
+    text = " ".join(under_heading(skill_text("context-backfill"), "## Check the clone").split())
+
+    for named in ["PR mode", "the branch this session starts on", "refuses, and writes nothing",
+                  "on the default branch, on a branch under `skillworks/` and on no branch",
+                  "the history is read from is the default branch"]:
+        assert named in text, named
+
+
+def test_in_pr_mode_the_backfill_apply_cuts_no_branch_opens_no_pull_request_and_ends_with_the_loops_hint():
+    text = under_heading(skill_text("context-backfill"), "### Apply the sheet")
+
+    for named in ["run it on the branch this session started on", "commits on the branch it started on",
+                  "cuts no branch of its own and opens no pull request",
+                  "`{}`".format(open_the_pull_request("<branch>").split(".")[0])]:
+        assert named in text, named
+
+
+@pytest.mark.parametrize("named", ["spec/<slug>", "spec/context-backfill", "gh pr create", ".default_branch"])
 def test_no_skill_cuts_a_spec_branch_opens_a_pull_request_or_asks_gh_for_the_default_branch(named):
     walked = {str(page.relative_to(SKILLS)).replace("\\", "/"): page.read_text(encoding="utf-8")
               for page in SKILLS.rglob("*.md")}

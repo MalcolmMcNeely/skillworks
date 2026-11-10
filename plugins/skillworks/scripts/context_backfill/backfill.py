@@ -9,17 +9,20 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-from context_backfill.applying import apply
+from branches.own_branch import default_branch, own_branch
+from context_backfill.applying import NOTHING_WRITTEN, apply
 from export.steering_write import refuse_on_an_export_branch
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.target_branch import LOOP_FILE, PR_MODE, target_setting, tracker_setting
+from steering.target_branch import PR_MODE, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 from tracker.files import SPEC_FILE, SPECS, TICKETS, number_of
 from tracker.github import GH_QUIET
 
 USAGE = "usage: context-backfill check\n       context-backfill history\n       context-backfill apply\n"
+
+NOTHING_READ = "Nothing was read."
 
 SCRATCH = ".context-backfill"
 FIT_FILE = "fit.md"
@@ -102,11 +105,13 @@ def target_of(runner, top):
     if named != PR_MODE:
         return named
     # Each spec names its own branch, and the history a repo grew on is the one origin opens on.
-    found = git(runner, top, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
-    if found.status != 0:
-        raise refusal("{} says pr, and origin names no default branch to read the history from. "
-                      "Name it, then run this again:\n  git remote set-head origin --auto".format(LOOP_FILE))
-    return found.out.strip().removeprefix("origin/")
+    return default_branch(runner, top, NOTHING_READ)
+
+
+# In PR mode the work goes on the developer's own branch, so a branch that cannot hold it stops every command.
+def refuse_a_branch_that_cannot_hold_a_design(runner, top):
+    if target_setting(top) == PR_MODE:
+        own_branch(runner, top, NOTHING_WRITTEN)
 
 
 class Commit(NamedTuple):
@@ -427,7 +432,9 @@ def main(argv, runner, out, err, wait, where=None):
     try:
         if len(argv) != 1 or argv[0] not in COMMANDS:
             raise misuse(USAGE)
-        refuse_on_an_export_branch(top_of(runner, where))
+        top = top_of(runner, where)
+        refuse_on_an_export_branch(top)
+        refuse_a_branch_that_cannot_hold_a_design(runner, top)
         COMMANDS[argv[0]](runner, where, out, wait)
         return 0
     except Stop as stop:
