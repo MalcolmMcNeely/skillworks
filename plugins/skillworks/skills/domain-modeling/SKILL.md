@@ -7,6 +7,10 @@ description: Build and sharpen a project's domain model. Use when discussing cod
 
 Actively build and sharpen the project's domain model as you design. This is the *active* discipline — challenging terms, inventing edge-case scenarios, and writing the glossary and decisions down the moment they crystallise. (Merely *reading* `CONTEXT.md` for vocabulary is not this skill — that's a one-line habit any skill can do. This skill is for when you're changing the model, not just consuming it.)
 
+## On an Export branch
+
+When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering and takes no word or ADR. Stop here, and write nothing. Tell the developer to start the design with `/skillworks:grill`, which cuts the spec's Target branch before its first question. On a Target branch, go on.
+
 ## File structure
 
 Most repos have a single context:
@@ -106,18 +110,8 @@ No spec exists yet, so the body names none. `to-spec` adds the closing keyword w
 
 ### The spec's branch with the Export
 
-With `export` set to `true` in `docs/agents/loop.json`, the loop later Exports the spec's work onto the branch this session is on when the first word or ADR settles. That branch is the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`.
+With `export` set to `true` in `docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. The grill cut it before its first question, so this session is already on it.
 
-**The first word or ADR settled** creates the Target branch. Stay on the Export branch, leave the settled file uncommitted, and run `cut-target-branch`, the one command that cuts it:
-
-```bash
-cut-target-branch
-```
-
-It rebases the Steering branch onto the commit the Export branch sits on and pushes it to `origin`. Then it cuts the Target branch from the Steering branch, pushes it, and switches to it. The settled file comes with it. Commit the file there, with its prefix, and push. Run no git step of your own to make either branch, so the steps are the same in every run.
+**Every word or ADR** goes to that Target branch. Stay on it, pull, and push there.
 
 Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the Export branch, after the loop Exports onto it.
-
-When the command says the Steering branch does not rebase, stop the grill there. It pushed nothing and cut nothing. Name each file it lists to the developer, and say that they mend those files on `skillworks/steering`, push it, and start again on the Export branch.
-
-**Every later word or ADR** goes to the same Target branch. Stay on it, pull, and push there.

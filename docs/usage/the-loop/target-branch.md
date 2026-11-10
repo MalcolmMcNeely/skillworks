@@ -50,9 +50,10 @@ protection. With `spec`:
 - The Target branch is `skillworks/spec/<your branch>`, such as
   `skillworks/spec/feature/PROJ-12/slug`, and not `spec/<slug>`. Your branch is the one you started
   the grill on.
-- The grill cuts it from the Steering branch, `skillworks/steering`, and not from the default branch.
-  The `cut-target-branch` command first brings the Steering branch onto the commit your branch sits
-  on. When the grill settled nothing, `/skillworks:to-spec` cuts it the same way.
+- The grill cuts it from the Steering branch, `skillworks/steering`, and not from the default branch,
+  at its start, before its first question. The `cut-target-branch` command first brings the
+  Steering branch onto the commit your branch sits on. `/skillworks:to-spec` and
+  `/skillworks:domain-modeling` never cut it.
 - The grill and `/skillworks:to-spec` open no pull request, and the loop marks none ready. You open
   the one pull request, from your own branch, after the loop Exports onto it.
 

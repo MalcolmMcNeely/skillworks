@@ -11,12 +11,34 @@ Drive a design from the first question to a published spec.
 
 ## Process
 
-### 1. Interview under both disciplines
+### 1. Cut the Target branch on an Export branch
+
+When `docs/agents/loop.json` is on disk, skip this step.
+
+When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. Cut the spec's Target branch before the first question, so the whole design runs on a branch that holds the Steering. Run `cut-target-branch`, the one command that cuts it:
+
+```bash
+cut-target-branch
+```
+
+It rebases the Steering branch, `skillworks/steering`, onto the commit the Export branch sits on and pushes it to `origin`. Then it cuts the Target branch, `skillworks/spec/<the Export branch>`, from the Steering branch, pushes it, and switches to it. Run no git step of your own to make either branch, so the steps are the same in every run.
+
+Then go on to step 2, as on any branch. Read nothing more after the cut: the session already holds the Steering, because it was loaded when the session started.
+
+Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the Export branch, after the loop Exports onto it.
+
+When the command refuses, it cut nothing, so stop the grill there. Ask no question. Pass on what the command said, and add one thing by its cause:
+
+- When the Target branch already exists, add that the developer switches to that branch and starts a new session there.
+- When the Steering branch does not rebase, the refusal names each file. Add that the developer mends those files on `skillworks/steering`, pushes it, and starts again on the Export branch.
+- When no Steering branch is on `origin`, add nothing. The refusal says how to make one.
+
+### 2. Interview under both disciplines
 
 Call the Skill tool with "skillworks:grilling", then with "skillworks:domain-modeling". The first owns the questions, the
 second owns the words. Both run on every round.
 
-### 2. Walk the Surfaces when the frontier is empty
+### 3. Walk the Surfaces when the frontier is empty
 
 A Surface is a place a change can have to reach besides the code that does the work, such as the
 README or the user docs. `docs/agents/surfaces.md` lists the team's Surfaces, one `##` section each,
@@ -31,7 +53,7 @@ The design is settled now, so each question can fit it. Walk the Surfaces by fou
   the change Lands, shaped by the Surface's "What to capture".
 - Point at a Surface's content by its path, and never copy it into the answer.
 
-An answer that reopens the design goes back to step 1 as the next round.
+An answer that reopens the design goes back to step 2 as the next round.
 
 The README Surface is the Surface whose heading is `## The README`, outside a code fence. When the
 team has one, ask its question as any other. When the answer is that the change deserves README text
@@ -39,7 +61,7 @@ beyond what its "What to capture" allows, capture only what the limit allows, an
 the gate: it goes into the spec's Out of Scope as "the README: a focused session". Nothing in the loop
 builds that session, so file no issue for it.
 
-### 3. Sum up
+### 4. Sum up
 
 Sum up the shape that was settled:
 
@@ -57,13 +79,13 @@ This is the one gate. Every question before it is about the design, and everythi
 unattended, so the summary is what the developer consents to. It carries every decision the spec
 will be built from.
 
-### 4. On yes, write the spec
+### 5. On yes, write the spec
 
 Call the Skill tool with "skillworks:to-spec". Then end with the spec number it publishes and the
 next command, `/skillworks:spec-loop <n>` with that number, and name no other skill.
 
 On no, the frontier was not empty. Take what the developer said as the next round and go back to
-step 1.
+step 2.
 
 ## When a pull lands on settled ground
 

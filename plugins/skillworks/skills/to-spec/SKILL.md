@@ -10,6 +10,10 @@ This skill takes the current conversation context and codebase understanding and
 
 The issue tracker should have been provided to you. If not, tell the user to run `/skillworks:skillworks-setup`.
 
+## On an Export branch
+
+When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. Stop here, and publish no spec. Tell the developer to start with `/skillworks:grill`, which cuts the spec's Target branch before its first question. On a Target branch, go on.
+
 ## Process
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
@@ -104,16 +108,7 @@ With `export` set to `true` in `docs/agents/loop.json`, the loop later Exports t
 
 **First part, before the spec is published.** Find the Target branch.
 
-- If the grill settled a word or an ADR, it already cut the Target branch. Use that branch. `git branch --show-current` names it when this session is still on it.
-- If the grill settled nothing, the branch this session is on is the Export branch. Stay on it and run `cut-target-branch`, the one command that cuts the Target branch:
-
-  ```bash
-  cut-target-branch
-  ```
-
-  It rebases the Steering branch onto the commit the Export branch sits on and pushes it to `origin`. Then it cuts the Target branch from the Steering branch, pushes it, and switches to it. Run no git step of your own to make either branch, so the steps are the same in every run.
-
-  When the command says the Steering branch does not rebase, stop here. It pushed nothing and cut nothing, so publish no spec. Name each file it lists to the developer, and say that they mend those files on `skillworks/steering`, push it, and start again on the Export branch.
+The grill cut the Target branch before its first question, so this session is on it. Use that branch. `git branch --show-current` names it.
 
 **Second part:** there is none. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the Export branch, after the loop Exports onto it.
 

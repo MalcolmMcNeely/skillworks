@@ -1180,12 +1180,70 @@ EXPORT_BRANCH_SECTIONS = [("domain-modeling", "### The spec's branch with the Ex
                           ("to-spec", "## The spec's branch with the Export")]
 
 
+def grill_cut(grill):
+    return grill.split("\n### 1. ", 1)[1].split("\n### ", 1)[0]
+
+
+def git_and_gh_lines(text):
+    return [line for line in text.split("\n")
+            if line.startswith(("gh ", "git ", "default=")) or "gh pr" in line or "gh api" in line]
+
+
+def test_the_grills_first_step_cuts_the_target_branch_when_loop_json_is_missing_on_disk():
+    grill = skill_text("grill")
+    steps = grill_steps(grill)
+    cut = grill_cut(grill)
+
+    assert "Target branch" in steps[0]
+    assert "Interview" in steps[1]
+    for named in ["`docs/agents/loop.json` is missing on disk", "before the first question",
+                  "`cut-target-branch`", "`skillworks/spec/<the Export branch>`", "`skillworks/steering`",
+                  "Open no pull request"]:
+        assert named in cut, named
+
+
+def test_the_grill_runs_no_git_step_and_no_gh_call_by_hand_for_the_cut():
+    cut = grill_cut(skill_text("grill"))
+
+    assert git_and_gh_lines(cut) == []
+
+
+def test_an_existing_target_branch_stops_the_grill_with_a_switch_and_a_new_session():
+    cut = grill_cut(skill_text("grill"))
+    existing = [line for line in cut.split("\n") if "already exists" in line]
+
+    assert len(existing) == 1
+    assert "switches to that branch" in existing[0] and "starts a new session there" in existing[0]
+
+
+def test_a_steering_branch_that_does_not_rebase_or_is_not_on_origin_stops_the_grill_with_no_question():
+    cut = grill_cut(skill_text("grill"))
+
+    assert "does not rebase" in cut and "no Steering branch is on `origin`" in cut
+    assert "stop the grill" in cut and "Ask no question" in cut
+
+
+@pytest.mark.parametrize("skill", ["domain-modeling", "to-spec"])
+def test_on_an_export_branch_domain_modeling_and_to_spec_stop_and_send_the_developer_to_the_grill(skill):
+    text = under_heading(skill_text(skill), "## On an Export branch")
+
+    assert "`docs/agents/loop.json` is missing on disk" in text
+    assert "stop" in text.lower() and "/skillworks:grill" in text
+
+
+def test_no_skill_but_the_grill_names_the_cut_command():
+    naming = sorted(str(page.relative_to(SKILLS)).replace("\\", "/") for page in SKILLS.rglob("*.md")
+                    if "cut-target-branch" in page.read_text(encoding="utf-8"))
+
+    assert naming == ["grill/SKILL.md"]
+
+
 @pytest.mark.parametrize("skill, heading", EXPORT_BRANCH_SECTIONS)
-def test_with_the_export_the_target_branch_is_cut_from_the_steering_branch_by_the_command(skill, heading):
+def test_with_the_export_the_target_branch_the_grill_cut_takes_every_later_change(skill, heading):
     text = under_heading(skill_text(skill), heading)
 
-    for named in ["`export`", "`cut-target-branch`", "`skillworks/spec/<the Export branch>`",
-                  "`skillworks/steering`", "Open no pull request"]:
+    for named in ["`export`", "`skillworks/spec/<the Export branch>`", "`skillworks/steering`",
+                  "Open no pull request"]:
         assert named in text, named
 
 
@@ -1193,15 +1251,7 @@ def test_with_the_export_the_target_branch_is_cut_from_the_steering_branch_by_th
 def test_with_the_export_no_git_step_and_no_gh_call_is_run_by_hand(skill, heading):
     text = under_heading(skill_text(skill), heading)
 
-    assert [line for line in text.split("\n")
-            if line.startswith(("gh ", "git ", "default=")) or "gh pr" in line or "gh api" in line] == []
-
-
-@pytest.mark.parametrize("skill, heading", EXPORT_BRANCH_SECTIONS)
-def test_with_the_export_a_steering_branch_that_does_not_rebase_stops_the_grill(skill, heading):
-    text = under_heading(skill_text(skill), heading)
-
-    assert "does not rebase" in text and "stop" in text.lower()
+    assert git_and_gh_lines(text) == []
 
 
 @pytest.mark.parametrize("skill, heading", [("domain-modeling", "### The spec's branch"),
@@ -1430,8 +1480,8 @@ def test_the_grill_walks_the_surfaces_after_the_design_questions_and_before_the_
     walk = [step for step in steps if "Surfaces" in step]
 
     assert len(walk) == 1
-    assert steps.index(walk[0]) == 1
-    assert "sum up" in steps[2].lower()
+    assert "Interview" in steps[steps.index(walk[0]) - 1]
+    assert "sum up" in steps[steps.index(walk[0]) + 1].lower()
 
 
 def test_the_grill_names_the_surfaces_file_and_the_four_rules_for_asking():

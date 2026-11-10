@@ -208,8 +208,23 @@ STOP  the Name re-check finds 1 rename not made on spec #200 after the rename ti
 The loop built the rename once and it is still owed. Make it in a ticket of your own, and run the loop
 again.
 
+**The Target branch already exists.** With `export` on, the grill cuts the spec's Target branch
+at its start, before its first question, by the `cut-target-branch` command, as
+[the Export](export.md#the-grills-cut) says. When `skillworks/spec/<your branch>` is already in your
+checkout or on `origin`, the command cuts nothing, and the grill stops and asks no question:
+
+```
+FAIL  the Target branch skillworks/spec/feature/PROJ-12/slug is already on origin. Switch to it and go on there. Nothing was cut.
+```
+
+An earlier grill cut it. It can be a grill to resume, or a spec already done. Decide which:
+
+1. Switch to it: `git switch skillworks/spec/<your branch>`.
+2. Start a new Claude Code session there. A session keeps the Steering it loaded when it started.
+3. Go on there, with `/skillworks:grill` for a grill to resume.
+
 **The Steering branch does not rebase.** With `export` on, the grill cuts the spec's Target branch
-before the loop starts, by the `cut-target-branch` command, as [the Export](export.md#the-grills-cut)
+at its start, by the `cut-target-branch` command, as [the Export](export.md#the-grills-cut)
 says. The command first rebases the Steering branch, `skillworks/steering`, onto the commit your
 branch sits on. When that rebase conflicts, the command aborts it and pushes nothing. The Steering
 branch stays as it was, on `origin` and in your checkout, and no Target branch is cut. The grill
