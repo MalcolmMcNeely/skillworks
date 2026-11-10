@@ -92,7 +92,7 @@ internal sealed record PlacementRules(
 
     public string SubjectOf(string path) => NameOf(Path.GetFileName(path)).Subject;
 
-    public bool IsSkipped(string folderName) => SkipFolders.Contains(folderName, StringComparer.Ordinal);
+    public bool IsSkipped(string folderPath) => SkippedFolders.Holds(SkipFolders, folderPath);
 
     public bool IsBanned(string folderName) => BannedFolderNames.Contains(folderName, StringComparer.OrdinalIgnoreCase);
 

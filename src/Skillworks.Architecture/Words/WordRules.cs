@@ -15,6 +15,5 @@ internal sealed record WordRules(
                 "a map from a context name to the words that lost, such as {studio: [Widget]}"),
             file.RequireList("skip-folders"));
 
-    public bool Skips(string path) =>
-        path.Split('/')[..^1].Any(folder => SkipFolders.Contains(folder, StringComparer.Ordinal));
+    public bool Skips(string path) => SkippedFolders.HoldAnyFolderAbove(SkipFolders, path);
 }

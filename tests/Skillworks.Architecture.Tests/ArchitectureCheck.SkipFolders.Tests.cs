@@ -29,4 +29,16 @@ public sealed partial class ArchitectureCheckTests
 
         Assert.Equal([("banned-folder-names", "src/App/bin/utils")], tree.Breaches());
     }
+
+    [Fact]
+    public void A_skip_folder_path_skips_only_that_folder_and_everything_beneath_it()
+    {
+        using var tree = new RulesTree()
+            .Set(PlacementFile, "skip-folders", "[src/App.Data/Migrations, bin, obj, node_modules]")
+            .Write("src/App.Data/Migrations/utils/Initial.cs")
+            .Write("src/App.Data/Migrations/Old/helpers/Seed.cs")
+            .Write("tests/App.Tests/Migrations/utils/Seed.cs");
+
+        Assert.Equal([("banned-folder-names", "tests/App.Tests/Migrations/utils")], tree.Breaches());
+    }
 }

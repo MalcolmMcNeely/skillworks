@@ -21,6 +21,10 @@ C# and TypeScript share one shape: Slices first, Concerns beneath.
   two reasons: nobody writes its code by hand, or it is transient and belongs to one machine, so no
   one else will ever read what is in it. Judging either would let the same commit pass on one
   machine and fail on the next.
+- An entry in `skip-folders` with no `/`, such as `bin`, skips every folder of that name, at any
+  depth. An entry with a `/`, such as `src/Data/Migrations`, is a path from the repo root. It skips
+  that one folder and everything beneath it, so a folder of the same name elsewhere is still judged.
+  The path uses `/` on every OS and matches the folder's path exactly.
 - A folder with its own `.git`, such as an agent's worktree, is another checkout. These rules skip it
   too.
 

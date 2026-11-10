@@ -32,7 +32,7 @@ Python and Java tools were not weighed. A repo in either gets a starter test.
 | Folder size. `max-types-per-folder` | — | — | — | No folder holds more different subjects among its source files than `max-types-per-folder` |
 | Name map. `name-map` | — | — | — | A subject that matches a pattern in `name-map` sits in that pattern's folder |
 | Banned folder names. `banned-folder-names` | — | — | — | No folder is named for an entry in `banned-folder-names`, in any letter case |
-| What every starter test reads. `source-files`, `skip-folders` | — | — | — | Read by every starter test above: the file kinds it counts, and the folders it skips |
+| What every starter test reads. `source-files`, `skip-folders` | — | — | — | Read by every starter test above: the file kinds it counts, and the folders it skips. A `skip-folders` entry with no `/` skips every folder of that name, at any depth. An entry with a `/` is a path from the repo root: it skips that one folder and everything beneath it, matches the folder's path exactly, and uses `/` on every OS |
 
 ## `determinism.md`
 
@@ -45,7 +45,7 @@ Python and Java tools were not weighed. A repo in either gets a starter test.
 
 | Rule | TypeScript | .NET | Go | Starter test |
 |---|---|---|---|---|
-| No source file uses a word that lost. `banned-words`, `skip-folders` | — | — | — | Each source file, in the whole of its text, holds no entry of the list for the context that claims it, in any letter case, with the words of a name run together by nothing, an underscore, a hyphen or one space. It skips the `skip-folders` of `words.md` as well as those of `file-placement.md`, so it never reads `node_modules` |
+| No source file uses a word that lost. `banned-words`, `skip-folders` | — | — | — | Each source file, in the whole of its text, holds no entry of the list for the context that claims it, in any letter case, with the words of a name run together by nothing, an underscore, a hyphen or one space. It skips the `skip-folders` of `words.md` as well as those of `file-placement.md`, so it never reads `node_modules`. In both lists, an entry with a `/` is a path from the repo root, as in the row for what every starter test reads |
 
 ## `comments.md`
 

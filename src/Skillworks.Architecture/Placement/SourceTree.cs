@@ -15,11 +15,11 @@ internal static class SourceTree
             sourceFiles.AddRange(Directory
                 .EnumerateFiles(folder, "*", EveryEntry)
                 .Where(file => rules.IsSourceFile(Path.GetFileName(file)))
-                .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/')));
+                .Select(file => PathFromRoot(root, file)));
 
             foreach (var subfolder in Directory.EnumerateDirectories(folder, "*", EveryEntry))
             {
-                if (!rules.IsSkipped(Path.GetFileName(subfolder)) && !IsRepository(subfolder))
+                if (!rules.IsSkipped(PathFromRoot(root, subfolder)) && !IsRepository(subfolder))
                     folders.Push(subfolder);
             }
         }
@@ -55,6 +55,8 @@ internal static class SourceTree
         found[folder] = nearest;
         return nearest;
     }
+
+    private static string PathFromRoot(string root, string path) => Path.GetRelativePath(root, path).Replace('\\', '/');
 
     // A worktree or a clone inside the root is another checkout, which answers to its own rules.
     private static bool IsRepository(string folder) => Path.Exists(Path.Combine(folder, ".git"));

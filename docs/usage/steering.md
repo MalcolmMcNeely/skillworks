@@ -62,7 +62,9 @@ them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the 
 `skip-folders`. The others ship with a default your team can change: `doc-comments`, `clock`,
 `max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`,
 `banned-folder-names` and `name-map`. `doc-comments` takes `none`, `code` or `all`, and ships as
-`none`.
+`none`. In both `skip-folders` lists, an entry with no `/`, such as `bin`, skips every folder of
+that name. An entry with a `/`, such as `src/Data/Migrations`, is a path from the repo root: it
+skips that one folder and everything beneath it, and uses `/` on every OS.
 
 | File | What it does | What reads it | What your team can change |
 |---|---|---|---|

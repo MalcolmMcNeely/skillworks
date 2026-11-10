@@ -160,6 +160,18 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
+    public void A_skipped_folder_path_in_the_words_file_leaves_a_same_named_folder_elsewhere_judged()
+    {
+        using var tree = new RulesTree()
+            .Set(WordsFile, "skip-folders", "[src/Watch/sketches]")
+            .Write("src/Watch/sketches/Clock.cs", "// The Widget ticks.\npublic sealed class Clock;\n")
+            .Write("src/Watch/sketches/old/Alarm.cs", "// The Widget rings.\npublic sealed class Alarm;\n")
+            .Write("src/Sessions/sketches/Clock.cs", "// The Widget ticks.\npublic sealed class Clock;\n");
+
+        Assert.Equal([("banned-words", "src/Sessions/sketches/Clock.cs")], tree.Breaches());
+    }
+
+    [Fact]
     public void The_banned_words_come_from_the_words_file()
     {
         using var tree = new RulesTree()

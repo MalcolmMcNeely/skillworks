@@ -27,6 +27,11 @@ the rest on its own, and one joins its list on the day the code reaches for it a
 A folder in `skip-folders` holds a record of a question already answered. Its words are history, and
 history is not renamed, so this rule skips it. The placement rules still judge it.
 
+An entry in `skip-folders` with no `/`, such as `drafts`, skips every folder of that name, at any
+depth. An entry with a `/`, such as `docs/drafts`, is a path from the repo root. It skips that one
+folder and everything beneath it, so a folder of the same name elsewhere is still judged. The path
+uses `/` on every OS and matches the folder's path exactly.
+
 Settling a new word adds the winner to the context's glossary with the loser under _Avoid_. The
 loser joins that context's list on the day the code reaches for it again.
 
