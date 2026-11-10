@@ -94,6 +94,10 @@ Every skill reads its Steering through `steering-file`, so the skills you run by
 branch. `/skillworks:tdd`, `/skillworks:review-changes` and `/skillworks:comment-sweep` read the
 rules and the Tracker as they do on the Target branch, so you can do small work there with no spec.
 
+`skillworks-suite` reads the Suite file the same way, and the Dockerfile of each check that names an
+image, so the Suite runs on your branch too. A commit Claude makes on your branch gets no trailer and
+no credit line from the Plugin, and a `Ticket` line you type stays as you typed it.
+
 Nothing fetches. The session reads `origin/skillworks/steering` as your last fetch left it, so it
 starts offline and with no wait on the remote. When the Steering changes on another machine, run a
 plain `git fetch`, then start a new session.

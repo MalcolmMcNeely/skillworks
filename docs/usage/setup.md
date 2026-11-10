@@ -207,7 +207,9 @@ Claude Code's `attribution` block in `.claude/settings.json` from the answer.
 - **Setup never writes `.claude/settings.local.json`.** It is gitignored, so a loop worktree never
   sees it, and the choice is your team's and not one developer's.
 
-The `Skillworks-Session` trailer stays on every commit, whichever you answer.
+The `Skillworks-Session` trailer stays on every commit, whichever you answer. With the Export, a
+commit on your own branch is the one exception: it gets no trailer, as [the Export](the-loop/export.md)
+says.
 
 ## What your team fills in
 

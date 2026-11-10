@@ -15,6 +15,9 @@ const TICKET_VARIABLE = "SKILLWORKS_TICKET";
 
 const CREDIT_KEY = "Co-Authored-By";
 
+// Read as the last fetch left it, because the hook has 5 seconds and no time to fetch.
+const STEERING_REF = "refs/remotes/origin/skillworks/steering";
+
 // Fixed, because the hook is never told the model, and the Session trailer leads to the Session that records it.
 const CREDIT = `${CREDIT_KEY}: Claude <noreply@anthropic.com>`;
 
@@ -63,17 +66,39 @@ function answer(output) {
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", ...output } }));
 }
 
-function loopSettings(cwd) {
+function repoRoot(cwd) {
   let dir = resolve(cwd);
   while (!existsSync(join(dir, ".git"))) {
-    if (dirname(dir) === dir) return {};
+    if (dirname(dir) === dir) return undefined;
     dir = dirname(dir);
   }
+  return dir;
+}
+
+function loopFile(root) {
+  return join(root, "docs", "agents", "loop.json");
+}
+
+function loopSettings(root) {
+  if (root === undefined) return {};
   try {
-    const held = JSON.parse(readFileSync(join(dir, "docs", "agents", "loop.json"), "utf8"));
+    const held = JSON.parse(readFileSync(loopFile(root), "utf8"));
     return held !== null && typeof held === "object" ? held : {};
   } catch {
     return {};
+  }
+}
+
+// A team's branch may forbid trailers, and the Steering branch's loop.json speaks only for the loop's branches.
+async function onAnExportBranch(root) {
+  if (root === undefined || existsSync(loopFile(root))) return false;
+  try {
+    await promisify(execFile)("git", ["-C", root, "rev-parse", "--verify", "--quiet", `${STEERING_REF}^{commit}`], {
+      windowsHide: true,
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -364,9 +389,12 @@ if (typeof command !== "string") process.exit(0);
 
 const cwd = typeof payload.cwd === "string" ? payload.cwd : process.cwd();
 
+const root = repoRoot(cwd);
+if (await onAnExportBranch(root)) process.exit(0);
+
 let verdict;
 try {
-  const settings = loopSettings(cwd);
+  const settings = loopSettings(root);
   verdict = judge(
     command,
     payload.tool_name,

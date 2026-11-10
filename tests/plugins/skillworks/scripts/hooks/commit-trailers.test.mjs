@@ -128,6 +128,22 @@ async function steeredRepository(chosen) {
   return repo;
 }
 
+// The Steering branch is left only as origin/skillworks/steering, as the Export leaves the developer's branch.
+async function exportRepository() {
+  const repo = await repository();
+  repo.git("add", "-A");
+  repo.git("commit", "--quiet", "-m", "Steering");
+  repo.git("update-ref", "refs/remotes/origin/skillworks/steering", "HEAD");
+  await writeFile(join(repo.dir, "work.txt"), "more work\n");
+  return repo;
+}
+
+// With no command handed back, Claude Code runs the one that was typed.
+async function asRun(command, session, ticket, cwd) {
+  const answer = await answerTo(command, session, "Bash", ticket, cwd);
+  return answer?.updatedInput?.command ?? command;
+}
+
 function creditRepository(answer) {
   return steeredRepository({ "co-authored-by": answer });
 }
@@ -620,6 +636,42 @@ test("a PowerShell commit carries no Session trailer when the team chose to hide
 
   // Assert
   assert.deepEqual({ sessions: sessions(repo), tickets: tickets(repo) }, { sessions: [], tickets: ["#582"] });
+});
+
+test("a commit on an Export branch carries no Session trailer", async () => {
+  // Arrange
+  const repo = await exportRepository();
+  const command = await asRun('git add -A && git commit -m "Fix the thing"', SESSION, "", repo.dir);
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(sessions(repo), []);
+});
+
+test("a Ticket typed on an Export branch stays as typed, whatever ticket the Session was handed", async () => {
+  // Arrange
+  const repo = await exportRepository();
+  const typed = 'git add -A && git commit -m "Fix the thing" -m "Ticket: PROJ-12"';
+  const command = await asRun(typed, SESSION, "#254", repo.dir);
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(tickets(repo), ["PROJ-12"]);
+});
+
+test("a commit inside bash -c on an Export branch is not denied", async () => {
+  // Arrange
+  const repo = await exportRepository();
+
+  // Act
+  const answer = await answerTo('bash -c "git commit -m x"', SESSION, "Bash", "", repo.dir);
+
+  // Assert
+  assert.equal(answer?.permissionDecision, undefined);
 });
 
 const TYPED_CREDITS = [
