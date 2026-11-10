@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # Review: Architecture
 
-The argument is the ticket, named as its Tracker names it: `docs/agents/issue-tracker.md` says how each Tracker names its tickets. The ticket is the first word of the argument. Any text after it comes from the driver, and it still holds.
+The argument is the ticket, named as its Tracker names it: `steering-file docs/agents/issue-tracker.md` says how each Tracker names its tickets. The ticket is the first word of the argument. Any text after it comes from the driver, and it still holds.
 
 `/skillworks:review-architecture 168`
 `/skillworks:review-architecture 7/2`

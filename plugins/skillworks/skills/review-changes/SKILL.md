@@ -28,7 +28,9 @@ Each axis keeps its steps in an axis file in this skill's folder, `${CLAUDE_SKIL
 | Spec | `spec.md` |
 | Architecture | `architecture.md` |
 
-`docs/agents/issue-tracker.md` says how this repo names and reads a ticket. If it is missing, stop. Tell the user that it is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed.
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
+
+`steering-file docs/agents/issue-tracker.md` says how this repo names and reads a ticket. If that ends with a non-zero status, the file is missing, so stop. Tell the user that it is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed.
 
 ## Pin the fixed point
 
@@ -44,7 +46,7 @@ Before going further, confirm the fixed point resolves (`git rev-parse <fixed-po
 
 Look for the ticket or spec the change was built for, in this order:
 
-1. The `Ticket:` trailer on the commits, read back as `docs/agents/issue-tracker.md` says. Fetch the ticket and its parent spec through the same docs.
+1. The `Ticket:` trailer on the commits, read back as `steering-file docs/agents/issue-tracker.md` says. Fetch the ticket and its parent spec through the same docs.
 2. An issue number, or a ticket named as its Tracker names it, passed as this skill's argument. An uncommitted change carries no trailer, so this is where its ticket comes from.
 3. With neither, ask the user which ticket or spec the change was built for. If they say there isn't one, skip the Spec sub-agent and note that in the report.
 

@@ -14,22 +14,24 @@ Code that follows every rule can still build the wrong thing. That is the failur
 
 ## What to read
 
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
+
 ### The ticket
 
 Read the ticket in full, its acceptance criteria included. Read its parent spec too, because a criterion often only makes sense against the job the spec named.
 
-`tracker` in `docs/agents/loop.json` names the Tracker, and `docs/agents/issue-tracker.md` says how to read each one. Read through those docs, and make no call of your own that they do not name.
+`tracker` in `steering-file docs/agents/loop.json` names the Tracker, and `steering-file docs/agents/issue-tracker.md` says how to read each one. Read through those docs, and make no call of your own that they do not name.
 
 - **GitHub**: the ticket issue, and the spec issue its parent names.
 - **Files**: the ticket's file and the `spec.md` of the folder it sits in. The loop runs this step inside the ticket's worktree, so read both there.
 
 ### The review file
 
-This axis always reads its review file, `docs/agents/review-spec.md`. Read it yourself. It holds the team's own checks and a "Do not report" list. The team edits that file, so this file holds no check of its own. It is the only review file this axis reads.
+This axis always reads its review file, `steering-file docs/agents/review-spec.md`. Read it yourself. It holds the team's own checks and a "Do not report" list. The team edits that file, so this file holds no check of its own. It is the only review file this axis reads.
 
 Apply each team check only to the paths it names. A check that names no paths covers the whole change. A team check is a hard breach or a judgement call, as the check says. Skip every path and every kind of finding that "Do not report" names.
 
-If `docs/agents/review-spec.md` is missing, stop. Review nothing and edit nothing. Tell the user that `docs/agents/review-spec.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
+If `steering-file docs/agents/review-spec.md` ends with a non-zero status, the file is missing, so stop. Review nothing and edit nothing. Tell the user that the review file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
 
 ### The change
 
@@ -53,11 +55,11 @@ Three kinds of finding, and every one of them quotes the ticket line it turns on
 
 Walk the acceptance criteria one at a time. A criterion with no evidence in the diff is a finding, not a pass.
 
-Then walk the Surfaces. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each Surface the change touches, with what it has to say once the change Lands. Check the change against each Surface the spec names for this ticket: one the ticket names, or one this ticket's change reaches. Open the Surface at the path the spec gives, or at its "Where it lives" in `docs/agents/surfaces.md`, and read whether it says what this change needs. A Surface left out of step is a Missing or partial finding, and quotes the Surfaces section line it turns on. A spec whose Surfaces section says "None", or that has none, adds nothing here.
+Then walk the Surfaces. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each Surface the change touches, with what it has to say once the change Lands. Check the change against each Surface the spec names for this ticket: one the ticket names, or one this ticket's change reaches. Open the Surface at the path the spec gives, or at its "Where it lives" in `steering-file docs/agents/surfaces.md`, and read whether it says what this change needs. A Surface left out of step is a Missing or partial finding, and quotes the Surfaces section line it turns on. A spec whose Surfaces section says "None", or that has none, adds nothing here.
 
-Then walk the README, when the team has a README Surface: the Surface in `docs/agents/surfaces.md` whose heading is `## The README`, outside a code fence. Its "Where it lives" gives the README's path. The loop changes the README only as it is asked, so every README edit in the change must be one that the spec's README item asks of this ticket, or that the ticket itself asks for. A Gap ticket and a rename ticket each ask for their own README edits, so their edits stand. Any other README edit is a Not asked for finding, and quotes the README line it adds or changes. In loop mode, remove it, and put the README back as it was at `HEAD` for that edit. Without a README Surface, the README is any other file, and this walk adds nothing.
+Then walk the README, when the team has a README Surface: the Surface in `steering-file docs/agents/surfaces.md` whose heading is `## The README`, outside a code fence. Its "Where it lives" gives the README's path. The loop changes the README only as it is asked, so every README edit in the change must be one that the spec's README item asks of this ticket, or that the ticket itself asks for. A Gap ticket and a rename ticket each ask for their own README edits, so their edits stand. Any other README edit is a Not asked for finding, and quotes the README line it adds or changes. In loop mode, remove it, and put the README back as it was at `HEAD` for that edit. Without a README Surface, the README is any other file, and this walk adds nothing.
 
-Then walk the team checks in `docs/agents/review-spec.md`. A breach of one is a finding. Name the check and quote the hunk it turns on.
+Then walk the team checks in `steering-file docs/agents/review-spec.md`. A breach of one is a finding. Name the check and quote the hunk it turns on.
 
 Two things are out of scope, because reporting them makes the axis noise:
 

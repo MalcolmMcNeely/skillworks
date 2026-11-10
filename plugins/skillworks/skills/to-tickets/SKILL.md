@@ -9,9 +9,11 @@ disable-model-invocation: true
 
 Break a spec into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-Read `docs/agents/issue-tracker.md`. Its section "The ticket shape" is the team's taste in tickets: their size, their title and the template each one fills. Read it before step 3, and shape every ticket by it.
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
 
-If `docs/agents/issue-tracker.md` or `docs/agents/domain.md`, which step 2 reads, is missing, or the tracker docs hold no section "The ticket shape", stop. Tell the user which is missing, the file or the section, that `/skillworks:skillworks-setup` writes it, and that no ticket was made. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
+Read `steering-file docs/agents/issue-tracker.md`. Its section "The ticket shape" is the team's taste in tickets: their size, their title and the template each one fills. Read it before step 3, and shape every ticket by it.
+
+If `steering-file docs/agents/issue-tracker.md` or `steering-file docs/agents/domain.md`, which step 2 reads, ends with a non-zero status, so the file is missing, or the tracker docs hold no section "The ticket shape", stop. Tell the user which is missing, the file or the section, that `/skillworks:skillworks-setup` writes it, and that no ticket was made. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
 
 ## Process
 
@@ -21,7 +23,7 @@ Work from whatever is already in the conversation context. If the user passes a 
 
 ### 2. Explore the codebase
 
-Read `docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs. Then, if you have not already explored the codebase, do so to understand the current state of the code. Ticket titles and descriptions use the glossary's vocabulary, and respect the ADRs in the area you're touching.
+Read `steering-file docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs. Then, if you have not already explored the codebase, do so to understand the current state of the code. Ticket titles and descriptions use the glossary's vocabulary, and respect the ADRs in the area you're touching.
 
 Look for opportunities to prefactor the code to make the implementation easier. "Make the change easy, then make the easy change."
 

@@ -1123,7 +1123,7 @@ def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
 
 
 def test_to_tickets_reads_the_tracker_docs_by_their_path_from_the_repo_root():
-    assert ('Read `docs/agents/issue-tracker.md`. Its section "The ticket shape"'
+    assert ('Read `steering-file docs/agents/issue-tracker.md`. Its section "The ticket shape"'
             in (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8"))
 
 
@@ -1131,13 +1131,22 @@ def test_to_tickets_reads_the_tracker_docs_by_their_path_from_the_repo_root():
 def test_to_tickets_finds_the_glossary_through_the_domain_docs_in_a_step_it_may_not_skip():
     to_tickets = (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8")
 
-    assert ("\n### 2. Explore the codebase\n\nRead `docs/agents/domain.md`: it says where this repo keeps its "
+    assert ("\n### 2. Explore the codebase\n\nRead `steering-file docs/agents/domain.md`: it says where this repo keeps its "
             "glossary and its ADRs.") in to_tickets
     assert "CONTEXT.md" not in to_tickets
 
 
 def skill_text(skill):
     return (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+
+
+def read_of(path):
+    return "`steering-file {}`".format(path)
+
+
+# The design skills still name a path bare until they read it through steering-file too.
+def names_steering(text, path):
+    return "`{}`".format(path) in text or read_of(path) in text
 
 
 AXIS_FILE_OF = {
@@ -1660,14 +1669,14 @@ def test_spec_drift_reads_the_spec_commits_and_judges_the_target_branch_as_it_st
 def test_spec_drift_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     spec_drift = skill_text("spec-drift")
 
-    assert "`docs/agents/domain.md` says where this repo keeps its glossaries." in spec_drift
+    assert "`steering-file docs/agents/domain.md` says where this repo keeps its glossaries." in spec_drift
     assert "CONTEXT.md" not in spec_drift
 
 
 # A hand run with the files Tracker fetches as the tracker docs say, so the ban holds only where the driver fetched.
 def test_spec_drift_runs_no_fetch_of_its_own_under_the_loop_alone():
     assert ("Under the spec loop, run no `git fetch` of your own, even where "
-            "`docs/agents/issue-tracker.md` names one.") in skill_text("spec-drift")
+            "`steering-file docs/agents/issue-tracker.md` names one.") in skill_text("spec-drift")
 
 
 def test_spec_drift_says_its_report_is_recorded_when_the_command_prints_where_it_went():
@@ -1709,7 +1718,7 @@ def test_spec_names_reads_only_the_spec_commits_and_the_glossary_and_records_a_n
 def test_spec_names_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     spec_names = skill_text("spec-names")
 
-    assert "`docs/agents/domain.md` says where this repo keeps its glossaries." in spec_names
+    assert "`steering-file docs/agents/domain.md` says where this repo keeps its glossaries." in spec_names
     assert "CONTEXT.md" not in spec_names
 
 
@@ -1718,7 +1727,7 @@ def test_spec_names_keeps_the_steering_files_it_names_outside_both_read_fences()
     spec_names = skill_text("spec-names")
     fence = [paragraph for paragraph in spec_names.split("\n\n") if paragraph.startswith("Read nothing else")]
 
-    assert ["the files under `docs/agents/` that this skill names" in paragraph for paragraph in fence] == [True]
+    assert ["the Steering files this skill reads through `steering-file`" in paragraph for paragraph in fence] == [True]
     assert ("The same three reads go beyond the two as in [What you read](#what-you-read)."
             in section(spec_names, "The Name re-check"))
 
@@ -1793,29 +1802,29 @@ REVIEW_FILE_OF = {
 
 def test_each_axis_stops_when_its_review_file_is_missing():
     for skill, name in REVIEW_FILE_OF.items():
-        assert says_stop(axis_text(skill), "`{}`".format(WHERE[name])), skill
+        assert says_stop(axis_text(skill), read_of(WHERE[name])), skill
 
 
 def test_each_axis_begins_its_loop_mode_report_with_a_blocked_line_when_its_review_file_is_missing():
     for skill, name in REVIEW_FILE_OF.items():
-        assert says_stop(axis_text(skill), "`{}`".format(WHERE[name]), "`BLOCKED`", "In loop mode"), skill
+        assert says_stop(axis_text(skill), read_of(WHERE[name]), "`BLOCKED`", "In loop mode"), skill
 
 
 def test_review_changes_stops_when_the_tracker_docs_are_missing():
-    assert stops("review-changes", "`docs/agents/issue-tracker.md`")
+    assert stops("review-changes", read_of("docs/agents/issue-tracker.md"))
 
 
 def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing():
-    assert stops("to-tickets", "`docs/agents/issue-tracker.md`", '"The ticket shape"')
+    assert stops("to-tickets", read_of("docs/agents/issue-tracker.md"), '"The ticket shape"')
 
 
 def test_to_tickets_stops_when_the_domain_docs_are_missing():
-    assert stops("to-tickets", "`docs/agents/domain.md`")
+    assert stops("to-tickets", read_of("docs/agents/domain.md"))
 
 
 def test_to_tickets_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_file_or_the_ticket_shape_is_missing():
     assert stops("to-tickets", "`BLOCKED`", "Under the spec loop", "begin your last message",
-                 "`docs/agents/issue-tracker.md`", "`docs/agents/domain.md`", '"The ticket shape"')
+                 read_of("docs/agents/issue-tracker.md"), read_of("docs/agents/domain.md"), '"The ticket shape"')
 
 
 def test_to_tickets_ends_a_command_that_stops_twice_on_one_fault_on_the_blocked_line_under_the_loop():
@@ -1847,7 +1856,7 @@ def test_the_comment_sweep_begins_its_report_with_a_blocked_line_under_the_loop_
     assert stops("comment-sweep", "`docs/agents/rules/comments.md`", "`BLOCKED`", "Under the spec loop")
 
 
-SPEC_DRIFT_READS = ["`{}`".format(WHERE[name])
+SPEC_DRIFT_READS = [read_of(WHERE[name])
                     for name in ("loop.json", "issue-tracker.md", "surfaces.md", "domain.md")]
 
 
@@ -1859,7 +1868,7 @@ def test_spec_drift_begins_its_last_message_with_a_blocked_line_under_the_loop_w
     assert stops("spec-drift", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_DRIFT_READS)
 
 
-SPEC_NAMES_READS = ["`{}`".format(WHERE[name]) for name in ("loop.json", "issue-tracker.md", "domain.md")]
+SPEC_NAMES_READS = [read_of(WHERE[name]) for name in ("loop.json", "issue-tracker.md", "domain.md")]
 
 
 def test_spec_names_stops_when_a_steering_file_it_reads_is_missing():
@@ -1873,7 +1882,7 @@ def test_spec_names_begins_its_last_message_with_a_blocked_line_under_the_loop_w
 def test_implement_stops_on_the_blocked_line_when_a_steering_file_it_reads_is_missing():
     before = section(skill_text("implement"), "Before you start")
 
-    assert says_stop(before, "`BLOCKED`", *("`{}`".format(WHERE[name])
+    assert says_stop(before, "`BLOCKED`", *(read_of(WHERE[name])
                                            for name in ("loop.json", "issue-tracker.md", "suite.json")))
 
 
@@ -2235,8 +2244,8 @@ def test_the_axis_files_name_each_steering_file_by_its_path_from_the_repo_root()
     for skill, names in STEERING_NAMED.items():
         text = axis_text(skill)
         for name in names:
-            assert "`{}`".format(WHERE[name]) in text, "{} names {}".format(skill, name)
-            assert "`{}`](".format(WHERE[name]) not in text, "{} links {}".format(skill, name)
+            assert read_of(WHERE[name]) in text, "{} names {}".format(skill, name)
+            assert "{}](".format(read_of(WHERE[name])) not in text, "{} links {}".format(skill, name)
 
 
 RULES_FOLDER = "docs/agents/rules/"
@@ -2273,12 +2282,12 @@ def test_every_page_that_reads_a_steering_file_names_it_by_its_path_from_the_rep
     for seed, pages in STEERING_READERS.items():
         for page in pages:
             text = (SKILLS / page).read_text(encoding="utf-8")
-            assert "`{}`".format(WHERE[seed]) in text, "{} names {}".format(page, seed)
+            assert names_steering(text, WHERE[seed]), "{} names {}".format(page, seed)
 
 
 def test_every_page_that_reads_the_rules_folder_names_it_by_its_path_from_the_repo_root():
     for page in RULES_FOLDER_READERS:
-        assert "`{}`".format(RULES_FOLDER) in (SKILLS / page).read_text(encoding="utf-8"), page
+        assert names_steering((SKILLS / page).read_text(encoding="utf-8"), RULES_FOLDER), page
 
 
 # A rule needs no page of its own, because the Standards axis reads every file in the rules folder.
@@ -2322,7 +2331,7 @@ def test_a_steering_path_setup_does_not_seed_is_caught():
 TEAM_CHECK_STEP = {
     "review-standards": "3. Every breach of a team check. Name the check and quote the hunk.",
     "review-architecture": "5. Does anything the change added breach a team check?",
-    "review-spec": "Then walk the team checks in `docs/agents/review-spec.md`. A breach of one is a finding.",
+    "review-spec": "Then walk the team checks in `steering-file docs/agents/review-spec.md`. A breach of one is a finding.",
 }
 
 
@@ -2330,7 +2339,7 @@ TEAM_CHECK_STEP = {
 def test_each_axis_holds_the_change_to_each_team_check_on_the_paths_the_check_names(skill):
     text = axis_text(skill)
 
-    assert "axis always reads its review file, `{}`".format(WHERE[REVIEW_FILE_OF[skill]]) in text
+    assert "axis always reads its review file, {}".format(read_of(WHERE[REVIEW_FILE_OF[skill]])) in text
     assert "Apply each team check only to the paths it names. A check that names no paths covers the whole change." in text
     assert TEAM_CHECK_STEP[skill] in text
 
@@ -2348,13 +2357,14 @@ def test_the_architecture_axis_reads_its_review_file_before_it_skips_and_never_s
 
 
 def test_the_standards_axis_reads_every_file_in_the_rules_folder():
-    assert "Read every file in `{}`.".format(RULES_FOLDER) in axis_text("review-standards")
+    assert "Read every file {} lists, each with `steering-file <path>`.".format(read_of(RULES_FOLDER)) in axis_text(
+        "review-standards")
 
 
 def test_the_standards_axis_finds_the_glossary_through_the_domain_doc_and_reports_a_word_it_rejects():
     text = axis_text("review-standards")
 
-    assert "`{}` says where this repo keeps its glossaries.".format(WHERE["domain.md"]) in text
+    assert "{} says where this repo keeps its glossaries.".format(read_of(WHERE["domain.md"])) in text
     assert "A word the glossary rejects is a finding on this axis." in text
 
 
@@ -2474,7 +2484,7 @@ def test_what_next_names_review_changes_and_the_three_review_files():
 
     assert "/skillworks:review-changes" in text
     for names in STEERING_NAMED.values():
-        assert "`{}`".format(WHERE[names[-1]]) in text, names
+        assert read_of(WHERE[names[-1]]) in text, names
 
 
 def test_what_next_names_skillsmith_among_the_skills_for_any_time():
@@ -3374,7 +3384,7 @@ def test_implement_reads_the_suite_from_the_suite_file():
     text = (SKILLS / "implement" / "SKILL.md").read_text(encoding="utf-8")
 
     assert "README.md" not in text
-    assert "`{}`".format(WHERE["suite.json"]) in text
+    assert read_of(WHERE["suite.json"]) in text
 
 
 def test_implement_builds_with_skillworks_suite_and_leaves_the_loop_s_suite_to_the_driver():
@@ -3431,11 +3441,39 @@ def test_implement_ends_its_refusal_of_a_blocked_ticket_on_the_blocked_line():
 def test_implement_s_building_names_the_suite_file_by_its_path():
     building = section(skill_text("implement"), "Building")
 
-    assert "`{}`".format(WHERE["suite.json"]) in building
+    assert read_of(WHERE["suite.json"]) in building
 
 
 def test_implement_runs_the_suite_by_its_command_in_a_hand_run():
     running = section(skill_text("implement"), "Running the suite")
 
     assert "Run `skillworks-suite` with no arguments" in running
-    assert "`{}`".format(WHERE["suite.json"]) in running
+    assert read_of(WHERE["suite.json"]) in running
+
+
+LOOP_AND_REVIEW_PAGES = [
+    "implement/SKILL.md", "review-changes/SKILL.md", "review-changes/standards.md", "review-changes/spec.md",
+    "review-changes/architecture.md", "review-standards/SKILL.md", "review-spec/SKILL.md",
+    "review-architecture/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md", "to-tickets/SKILL.md",
+    "spec-loop/SKILL.md", "resolve-conflict/SKILL.md", "what-next/SKILL.md", "what-next/PHASE-BOUNDARIES.md",
+    "what-next/SMART-AND-DUMB-ZONES.md",
+]
+
+READ_THROUGH_STEERING_FILE = re.compile(r"steering-file (docs/agents/[\w./*<>-]*)")
+
+
+# An Export branch holds no Steering on disk, so a path read any other way is a file that is not there.
+def steering_read_past_steering_file(text):
+    through = {match.start(1) for match in READ_THROUGH_STEERING_FILE.finditer(text)}
+    return [match.group(0) for match in STEERING_PATH.finditer(text) if match.start() not in through]
+
+
+@pytest.mark.parametrize("page", LOOP_AND_REVIEW_PAGES)
+def test_a_loop_or_review_skill_reads_each_steering_path_through_steering_file(page):
+    assert steering_read_past_steering_file((SKILLS / page).read_text(encoding="utf-8")) == []
+
+
+def test_a_steering_path_read_past_steering_file_is_caught():
+    text = "Read `steering-file docs/agents/domain.md`, then `docs/agents/loop.json`."
+
+    assert steering_read_past_steering_file(text) == ["docs/agents/loop.json"]

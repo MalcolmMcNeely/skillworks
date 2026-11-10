@@ -11,16 +11,18 @@ from steering import steering_file
 
 STEERING = "skillworks/steering"
 SURFACES = "docs/agents/surfaces.md"
+RULES = "docs/agents/rules/"
 
 
 class Work:
     def __init__(self, repo):
         self.repo = repo
 
-    def on_steering(self, name, text):
+    def on_steering(self, *files):
         git(self.repo.work, "switch", "--quiet", "-c", STEERING)
-        (self.repo.work / name).parent.mkdir(parents=True, exist_ok=True)
-        self.repo.write_commit(self.repo.work, name, text, "Steering")
+        for name, text in zip(files[::2], files[1::2]):
+            (self.repo.work / name).parent.mkdir(parents=True, exist_ok=True)
+            self.repo.write_commit(self.repo.work, name, text, "Steering")
         git(self.repo.work, "push", "--quiet", "-u", "origin", STEERING)
         git(self.repo.work, "switch", "--quiet", "main")
 
@@ -72,6 +74,23 @@ def test_a_file_in_neither_place_prints_nothing_and_fails_with_one_line(work):
     ran = work.run(SURFACES)
 
     assert (ran.status != 0, ran.out, len(ran.err.splitlines())) == (True, "", 1), ran.err
+
+
+def test_a_folder_on_disk_prints_the_path_of_each_file_in_it(work):
+    work.on_disk(RULES + "words.md", "# Words")
+    work.on_disk(RULES + "comments.md", "# Comments")
+
+    ran = work.run(RULES)
+
+    assert (ran.status, ran.out) == (0, RULES + "comments.md\n" + RULES + "words.md\n"), ran.err
+
+
+def test_a_folder_missing_on_disk_prints_the_path_of_each_file_in_it_on_the_steering_branch(work):
+    work.on_steering(RULES + "words.md", "# Words", RULES + "comments.md", "# Comments")
+
+    ran = work.run(RULES)
+
+    assert (ran.status, ran.out) == (0, RULES + "comments.md\n" + RULES + "words.md\n"), ran.err
 
 
 def test_a_steering_change_on_origin_is_not_read_until_a_fetch_brings_it(work):

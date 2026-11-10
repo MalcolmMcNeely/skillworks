@@ -6,11 +6,13 @@ Two other axes run beside this one, each in a session of its own. Spec asks whet
 
 ## Two modes
 
-**Loop mode** is how the loop's review step runs this axis, through `/skillworks:review-standards`. The argument is the ticket, named as its Tracker names it: `docs/agents/issue-tracker.md` says how each Tracker names its tickets. The change is the working tree. This axis edits what it finds, as "Fix what you find" says.
+**Loop mode** is how the loop's review step runs this axis, through `/skillworks:review-standards`. The argument is the ticket, named as its Tracker names it: `steering-file docs/agents/issue-tracker.md` says how each Tracker names its tickets. The change is the working tree. This axis edits what it finds, as "Fix what you find" says.
 
 **Report-only mode** is how `/skillworks:review-changes` runs this axis, in a sub-agent. The caller hands over the diff command, the `--stat -M` command, the commit list, and the ticket or spec. Read the change from those commands, and not from the working tree. This axis reports what it finds and edits nothing, so skip "Fix what you find". Every other section holds in both modes.
 
 ## What to read
+
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
 
 ### The change
 
@@ -26,17 +28,17 @@ If the diff is empty, there is nothing to review. Say so under the `## Standards
 
 ### The standards
 
-Read every file in `docs/agents/rules/`. The agent wrote this code under those rules, so the review holds it to the same ones. Read any other file the repo uses to say how code is written, such as a `CODING_STANDARDS.md` or a `CONTRIBUTING.md`.
+Read every file `steering-file docs/agents/rules/` lists, each with `steering-file <path>`. The agent wrote this code under those rules, so the review holds it to the same ones. Read any other file the repo uses to say how code is written, such as a `CODING_STANDARDS.md` or a `CONTRIBUTING.md`.
 
-Then read the glossary that claims the changed files. `docs/agents/domain.md` says where this repo keeps its glossaries. Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file. A word the glossary rejects is a finding on this axis.
+Then read the glossary that claims the changed files. `steering-file docs/agents/domain.md` says where this repo keeps its glossaries. Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file. A word the glossary rejects is a finding on this axis.
 
 ## The review file
 
-On top of what the repo writes down, this axis always reads its review file, `docs/agents/review-standards.md`. Read it yourself. It holds the smells list and the rules that bind it, the team's own checks, and a "Do not report" list. The team edits that file, so this file holds none of its own. It is the only review file this axis reads.
+On top of what the repo writes down, this axis always reads its review file, `steering-file docs/agents/review-standards.md`. Read it yourself. It holds the smells list and the rules that bind it, the team's own checks, and a "Do not report" list. The team edits that file, so this file holds none of its own. It is the only review file this axis reads.
 
 Apply each team check only to the paths it names. A check that names no paths covers the whole change. Skip every path and every kind of finding that "Do not report" names.
 
-If `docs/agents/review-standards.md` is missing, stop. Review nothing and edit nothing. Tell the user that `docs/agents/review-standards.md` is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
+If `steering-file docs/agents/review-standards.md` ends with a non-zero status, the file is missing, so stop. Review nothing and edit nothing. Tell the user that the review file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
 
 ## What to report
 
