@@ -811,6 +811,106 @@ def test_a_choice_written_wrong_prints_the_usage(repo, runner, choice):
     assert ran.err == seed_steering.USAGE
 
 
+BLENDS = {
+    "domain.md": {
+        "blend": "# Our Domain Docs\n",
+        "blended": seeded("domain.md").replace("# Domain Docs\n", "# Our Domain Docs\n"),
+    },
+    "suite.json": {
+        "blend": '  "runs": 4,\n',
+        "blended": '{\n  "runs": 4,\n  "checks": []\n}\n',
+    },
+}
+
+
+def blend_file(tmp_path, text):
+    path = tmp_path / "blend.txt"
+    path.write_text(text, encoding="utf-8", newline="\n")
+    return path
+
+
+def run_seed_blending(runner, where, place, number, path, *flags):
+    return run_seed(runner, where, "--blend", "{}:{}={}".format(place, number, path), *flags)
+
+
+@pytest.mark.parametrize("seed", sorted(ACROSS))
+def test_an_overlap_answered_with_a_blend_takes_the_blends_text_and_the_base_copy_takes_the_seed(
+        repo, runner, tmp_path, seed):
+    edited_on_both_sides(repo, runner, seed, ACROSS[seed])
+    place = WHERE[seed]
+
+    ran = run_seed_blending(runner, repo.work, place, 1, blend_file(tmp_path, BLENDS[seed]["blend"]))
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / place).read_text(encoding="utf-8") == BLENDS[seed]["blended"]
+    assert (repo.work / BASES / seed).read_text(encoding="utf-8") == seeded(seed)
+    assert "merged {}".format(place) in ran.out
+
+
+def test_a_blend_with_no_newline_at_its_end_still_ends_its_line(repo, runner, tmp_path):
+    edited_on_both_sides(repo, runner, "domain.md", ACROSS["domain.md"])
+    place = WHERE["domain.md"]
+
+    ran = run_seed_blending(runner, repo.work, place, 1, blend_file(tmp_path, "# Our Domain Docs"))
+
+    assert ran.status == 0, ran.err
+    assert (repo.work / place).read_text(encoding="utf-8") == BLENDS["domain.md"]["blended"]
+
+
+def test_a_blend_that_names_no_overlap_is_refused_and_nothing_is_written(repo, runner, tmp_path):
+    run_seed(runner, repo.work)
+    before = on_disk(repo.work)
+
+    ran = run_seed_blending(runner, repo.work, "docs/agents/domain.md", 1, blend_file(tmp_path, "# Ours\n"))
+
+    assert ran.status == 1
+    assert "docs/agents/domain.md:1" in ran.err
+    assert on_disk(repo.work) == before
+
+
+def test_a_blend_whose_file_is_missing_is_refused_and_nothing_is_written(repo, runner, tmp_path):
+    edited_on_both_sides(repo, runner, "domain.md", ACROSS["domain.md"])
+    before = on_disk(repo.work)
+
+    ran = run_seed_blending(runner, repo.work, WHERE["domain.md"], 1, tmp_path / "missing.txt")
+
+    assert ran.status == 1
+    assert "missing.txt" in ran.err
+    assert on_disk(repo.work) == before
+
+
+def test_a_blend_beside_a_keep_and_a_settled_choice_in_one_run_is_honoured_with_them(repo, runner, tmp_path):
+    edited_on_both_sides(repo, runner, "domain.md", ACROSS["domain.md"])
+    edited_on_both_sides(repo, runner, "suite.json", ACROSS["suite.json"])
+    (repo.work / BASES / "testing.md").unlink()
+    seed_steering.write(repo.work / WHERE["testing.md"], "# Our own testing rule\n")
+
+    ran = run_seed_blending(runner, repo.work, WHERE["domain.md"], 1,
+                            blend_file(tmp_path, BLENDS["domain.md"]["blend"]),
+                            "--keep", "{}:1=seed".format(WHERE["suite.json"]),
+                            "--settled", WHERE["testing.md"])
+
+    assert ran.status == 0, ran.err
+    assert {place: (repo.work / place).read_text(encoding="utf-8")
+            for place in (WHERE["domain.md"], WHERE["suite.json"], WHERE["testing.md"])} == {
+        WHERE["domain.md"]: BLENDS["domain.md"]["blended"],
+        WHERE["suite.json"]: seeded("suite.json"),
+        WHERE["testing.md"]: "# Our own testing rule\n",
+    }
+
+
+@pytest.mark.parametrize("choice", ["docs/agents/domain.md:1", "docs/agents/domain.md:1=", "docs/agents/domain.md=x"])
+def test_a_blend_written_wrong_prints_the_usage(repo, runner, choice):
+    ran = run_seed(runner, repo.work, "--blend", choice)
+
+    assert ran.status == 64
+    assert ran.err == seed_steering.USAGE
+
+
+def test_the_usage_names_the_blend():
+    assert "--blend <file>:<overlap>=<blend file>" in seed_steering.USAGE
+
+
 def test_the_issue_tracker_seed_holds_the_two_conventions():
     tracker = seeded("issue-tracker.md")
 
@@ -3028,6 +3128,22 @@ def test_the_seed_step_names_each_outcome_the_questions_and_the_review_before_co
     assert "--settled " in step
     assert "before you change anything" in step
     assert "before they commit" in step
+
+
+def test_the_seed_step_offers_a_blend_beside_yours_and_the_seed_for_each_overlap():
+    step = setup_section("### 1. Seed the Steering")
+
+    assert "show the `yours` side, the `seed` side, and a blend you write to fit the repo" in step
+    assert "seed-steering --blend docs/agents/domain.md:1=" in step
+    assert "You write nothing into the Steering file yourself" in step
+
+
+def test_the_setup_page_offers_a_blend_for_an_overlap_in_the_questions_and_the_merge():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+    questions, again = page.split("## Run setup again", 1)
+
+    assert "| Which do you keep for this overlap: yours, the Seed's, or a blend? |" in questions
+    assert "a blend" in again.split("### Each Steering file", 1)[1].split("\n### ", 1)[0]
 
 
 def test_the_seed_step_and_the_setup_page_say_a_file_with_no_base_copy_holds_every_change():

@@ -115,7 +115,7 @@ own.
 | Where do your ADRs go? | Always. Setup writes your answer into `adr-folder` in `docs/agents/domain.md`, and every new ADR goes to that one folder. It suggests one folder. On a second run, it suggests the folder `adr-folder` already names, so your answer survives. Else it looks for folders that hold numbered Markdown files, such as `0001-event-sourced-orders.md`, and have `adr` or `decision` in their path. It lists every one it finds, and suggests the one with the most files. Else it suggests `docs/adr`. A repo set up before this question existed stops at preflight until setup runs again, and one run clears the stop. |
 | Should commits and pull requests credit Claude? | Always. On a first run setup suggests `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/agents/loop.json` already names an answer, setup suggests that one. [Credit for Claude](#credit-for-claude) says what each answer does. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push`, `gh issue close` and `tracker-publish` with no prompt. That is the point, and also the risk. |
-| Which side of this overlap do you keep, yours or the Seed's? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and asks once for each overlap. |
+| Which do you keep for this overlap: yours, the Seed's, or a blend? | On a second run, when your edit and the newer Seed's change touch the same lines. Setup shows both sides, and a blend of the two that the agent writes to fit your repo. It asks once for each overlap, and the script writes the one you pick. |
 | Which lines of the newer Seed do you want? | When a Steering file differs from its Seed and has no base copy, because your repo was set up before base copies existed. Setup shows the difference and changes the file only by the lines you pick. |
 | Which Marketplace, or which Plugin setting, do you keep? | When `.claude/settings.json` already names the `skillworks` Marketplace or the Plugin with another value. Setup shows both. |
 | Keep auto-memory on, or turn it off? | When `.claude/settings.json` says `"autoMemoryEnabled": true`. With memory on, memory files on each machine steer the loop, so it runs differently from one machine to the next. Setup never changes it without asking. |
@@ -283,7 +283,7 @@ tell your edits from the Plugin's. It says what it did to each file in one line:
 | `kept ..., the same as the seed, and brought its base copy up to the seed` | Your file is the same as the Seed, and its base copy is an older Seed. | Replaces the base copy with the Seed. |
 | `kept ..., the same as the seed, and wrote its base copy` | Your file is the same as the Seed, and has no base copy. | Writes the base copy. |
 | `merged` | You edited the file, and the Seed moved on in other lines. | Applies the Seed's change, keeps your edit, and shows the change. |
-| `asks` | Your edit and the Seed's change touch the same lines. | Shows both sides and asks which to keep. |
+| `asks` | Your edit and the Seed's change touch the same lines. | Shows both sides and a blend of the two, and asks which to keep. |
 | `kept ..., which differs from the seed` | The file has no base copy, because your repo was set up before base copies existed. | Shows the difference, and asks which lines to take. |
 | `kept ..., as you settled it` | You decided on a file with no base copy. | Keeps the file as you left it, and writes its base copy. |
 
@@ -294,6 +294,11 @@ The labels on a shown change say what each side holds:
 | `updated` | `old-seed/`: the old Seed, which you never edited | `new-seed/`: the new Seed |
 | `merged` | `yours/`: your file | `merged/`: your file with the Seed's change applied |
 | `kept ..., which differs from the seed` | `yours/`: your file | `seed/`: the current Seed |
+
+An overlap can take a blend in place of either side. The agent writes a blend of your edit and the
+Seed's change to fit your repo, and shows it beside both sides. If you pick it, the script writes the
+blend in place of the overlap, and the base copy takes the new Seed. The agent writes nothing into
+your file itself.
 
 Setup writes a deleted Steering file again. Every step of the loop needs its file, so a file never
 stays deleted. To use less of a file, empty it down, and keep the file.

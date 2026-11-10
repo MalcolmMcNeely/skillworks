@@ -21,6 +21,18 @@ class Weighed:
         self.allows_settled = allows_settled
 
 
+class Blend:
+    def __init__(self, text):
+        self.lines = text.splitlines(keepends=True)
+        # The blend stands in for whole lines, so a last line with no newline would run into the line after the overlap.
+        if self.lines and not self.lines[-1].endswith("\n"):
+            self.lines[-1] += "\n"
+
+
+def taken(chosen, sides):
+    return chosen.lines if isinstance(chosen, Blend) else sides[chosen]
+
+
 class Hunk:
     def __init__(self, start, end, lines, side):
         self.start = start
@@ -72,7 +84,7 @@ def merge(was, held, wanted, chosen):
             merged += sides[SEED]
         else:
             overlaps.append(sides)
-            merged += sides[chosen.get(len(overlaps), YOURS)]
+            merged += taken(chosen.get(len(overlaps), YOURS), sides)
     return "".join(merged + base[at:]), overlaps
 
 

@@ -93,10 +93,16 @@ Show the user each outcome line and each diff under it. The labels on a diff say
 | `merged` | `yours/`: the team's file | `merged/`: the team's file with the seed's change applied |
 | `kept ..., which differs from the seed` | `yours/`: the team's file | `seed/`: the current seed |
 
-When a line says `asks` or `kept ..., which differs from the seed`, the script has written nothing, and every other line says what it would do. No file changes until every question is answered. Put each overlap to the user: show the `yours` side and the `seed` side, and ask which to keep. Ask every question before you change anything. Then run it again with one choice per overlap:
+When a line says `asks` or `kept ..., which differs from the seed`, the script has written nothing, and every other line says what it would do. No file changes until every question is answered. Put each overlap to the user: show the `yours` side, the `seed` side, and a blend you write to fit the repo, and ask which of the three to keep. Ask every question before you change anything. Then run it again with one choice per overlap:
 
 ```bash
 seed-steering --keep docs/agents/domain.md:1=yours --keep docs/agents/domain.md:2=seed
+```
+
+For a blend, write its text to a file outside the repo, and name the overlap and that file. The script writes the text in place of the overlap's lines. You write nothing into the Steering file yourself:
+
+```bash
+seed-steering --blend docs/agents/domain.md:1=/tmp/domain-1.md
 ```
 
 When a line says `kept ..., which differs from the seed`, treat the file as edited. Show the user the diff, and change the file only by the lines they pick. When they have decided, even to take no lines, give the file back so the script writes its base copy, and the merge works from the next run on:
@@ -105,7 +111,7 @@ When a line says `kept ..., which differs from the seed`, treat the file as edit
 seed-steering --settled docs/agents/domain.md
 ```
 
-Give the `--keep` and `--settled` choices in one run when both are due. A choice that names no overlap, or a `--settled` for a file that has a base copy, is refused, and nothing is written.
+Give the `--keep`, `--blend` and `--settled` choices in one run when they are due. A choice or a blend that names no overlap, or a `--settled` for a file that has a base copy, is refused, and nothing is written.
 
 The user reviews every changed file before they commit. Setup commits nothing, except the Steering commit on the Steering branch with the Export.
 

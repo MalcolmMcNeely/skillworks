@@ -9,7 +9,8 @@ from runner import Subprocess
 from seeds import merge
 from stop import Stop, misuse, refusal
 
-USAGE = "usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... [--settled <file>]...\n"
+USAGE = ("usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... "
+         "[--blend <file>:<overlap>=<blend file>]... [--settled <file>]...\n")
 
 SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "seeds"
 
@@ -51,11 +52,13 @@ WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/", ".context-backf
 
 CHOICE = re.compile(r"^(.+):([0-9]+)=(yours|seed)$")
 
-KEEP = "--keep <file>:<overlap>=yours|seed for each overlap"
+BLEND = re.compile(r"^(.+?):([0-9]+)=(.+)$")
+
+CHOOSE = "--keep <file>:<overlap>=yours|seed or --blend <file>:<overlap>=<blend file> for each overlap"
 
 SETTLE = "--settled <file> for each file that differs from its seed"
 
-ASKS = {merge.ASKS_OVERLAP: KEEP, merge.ASKS_SETTLE: SETTLE}
+ASKS = {merge.ASKS_OVERLAP: CHOOSE, merge.ASKS_SETTLE: SETTLE}
 
 
 # Beside PLACES, so a new Seed is checked the day it is seeded and the loop never stops in the middle of a ticket for it.
@@ -106,7 +109,7 @@ def weigh(top, default, name, place, choices, settled):
     base = top / BASES / name
     was = base.read_text(encoding="utf-8") if base.exists() else None
     held = target.read_text(encoding="utf-8") if target.exists() else None
-    chosen = {number: keep for (where, number), keep in choices.items() if where == place}
+    chosen = {number: choice for (where, number), choice in choices.items() if where == place}
     weighed = merge.weigh(place, was, held, wanted, chosen, place in settled)
     writes = [(path, text) for path, text in ((target, weighed.text), (base, weighed.base)) if text is not None]
     used = {(place, number) for number in weighed.used} | ({place} if weighed.allows_settled else set())
@@ -167,6 +170,13 @@ def next_step(runner, top):
     return "next step: /skillworks:architecture-tests\n"
 
 
+def blended(path):
+    try:
+        return merge.Blend(Path(path).read_text(encoding="utf-8"))
+    except OSError:
+        raise refusal("the blend file {} cannot be read. Nothing was written.".format(path))
+
+
 def parsed(argv):
     where, choices, settled = None, {}, set()
     rest = iter(argv)
@@ -176,6 +186,11 @@ def parsed(argv):
             if not found:
                 raise misuse(USAGE)
             choices[(found.group(1), int(found.group(2)))] = found.group(3)
+        elif arg == "--blend":
+            found = BLEND.match(next(rest, ""))
+            if not found:
+                raise misuse(USAGE)
+            choices[(found.group(1), int(found.group(2)))] = blended(found.group(3))
         elif arg == "--settled":
             place = next(rest, "")
             if not place or place.startswith("--"):
@@ -190,7 +205,7 @@ def parsed(argv):
 
 # A run that stops for a question writes nothing, so no Steering file is left half-merged while the team decides.
 def report(outcomes, step, out):
-    asking = [ask for ask in (KEEP, SETTLE) if any(outcome.asks == ask for outcome in outcomes)]
+    asking = [ask for ask in (CHOOSE, SETTLE) if any(outcome.asks == ask for outcome in outcomes)]
     for outcome in outcomes:
         out.write(outcome.would if asking else outcome.done)
         out.writelines(outcome.shown)
