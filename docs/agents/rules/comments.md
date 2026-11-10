@@ -51,9 +51,10 @@ anywhere else opens a value, so `QUERY = """`, and the mark that closes it, are 
 
 `doc-comments` decides where they go:
 
-- `false`: no file has doc comments. The names of types and members document the code.
-- `true`: code files may carry doc comments, and test files keep to ordinary comments.
+- `none`: no source file has doc comments. The names of types and members document the code.
+- `code`: code files may carry doc comments, and test files keep to ordinary comments.
+- `all`: any source file may carry doc comments, test files too.
 
 ```yaml
-doc-comments: false
+doc-comments: none
 ```

@@ -51,12 +51,13 @@ anywhere else opens a value, so `QUERY = """`, and the mark that closes it, are 
 
 `doc-comments` decides where they go:
 
-- `false`: no file has doc comments. The names of types and members document the code.
-- `true`: code files may carry doc comments, and test files keep to ordinary comments.
+- `none`: no source file has doc comments. The names of types and members document the code.
+- `code`: code files may carry doc comments, and test files keep to ordinary comments.
+- `all`: any source file may carry doc comments, test files too.
 
-`doc-comments` is enforced only once a check exists that reads it. Until then, an agent and a comment
-sweep read it as prose. `/skillworks:architecture-tests` adds the check.
+`none` is the default. `doc-comments` is enforced only once a check exists that reads it. Until
+then, an agent and a comment sweep read it as prose. `/skillworks:architecture-tests` adds the check.
 
 ```yaml
-doc-comments: false
+doc-comments: none
 ```

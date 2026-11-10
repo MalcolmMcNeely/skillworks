@@ -17,7 +17,13 @@ internal static class DocComments
     {
         foreach (var file in sourceFiles)
         {
-            if (comments.DocComments && !placement.IsTestFile(Path.GetFileName(file)))
+            var allowed = comments.DocComments switch
+            {
+                DocCommentFiles.All => true,
+                DocCommentFiles.Code => !placement.IsTestFile(Path.GetFileName(file)),
+                _ => false,
+            };
+            if (allowed)
                 continue;
 
             var lines = LinesOfDocComments(file, File.ReadAllText(Path.Combine(root, file)));

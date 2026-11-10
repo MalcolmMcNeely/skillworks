@@ -102,9 +102,20 @@ public sealed partial class ArchitectureCheckTests
     {
         using var tree = new RulesTree().Write(
             CommentsFile,
-            "# Rules\n\n```yaml\ndoc-comments: false\n```\n\nMore text.\n\n```yaml\ndoc-comments: true\n```\n");
+            "# Rules\n\n```yaml\ndoc-comments: none\n```\n\nMore text.\n\n```yaml\ndoc-comments: code\n```\n");
 
         Assert.Equal([("rules-file", CommentsFile)], tree.Breaches());
+    }
+
+    [Theory]
+    [InlineData("none")]
+    [InlineData("code")]
+    [InlineData("all")]
+    public void Each_doc_comments_value_is_accepted(string value)
+    {
+        using var tree = new RulesTree().Set(CommentsFile, "doc-comments", value);
+
+        Assert.Empty(tree.Breaches());
     }
 
     [Fact]

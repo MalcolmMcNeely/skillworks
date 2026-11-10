@@ -42,7 +42,7 @@ public sealed class RulesTree : IDisposable
         },
         [CommentsFile] = new()
         {
-            ["doc-comments"] = "false",
+            ["doc-comments"] = "none",
         },
         [WordsFile] = new()
         {

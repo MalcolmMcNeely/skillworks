@@ -337,7 +337,7 @@ def test_the_rules_arrive_with_their_settings_empty(repo, runner):
     determinism = settings_block(rules / "determinism.md")
     assert "contexts: []" in determinism
     assert "clock: TimeProvider" in determinism
-    assert "doc-comments: false" in settings_block(rules / "comments.md")
+    assert "doc-comments: none" in settings_block(rules / "comments.md")
 
 
 def test_the_domain_docs_arrive_naming_docs_adr_as_the_adr_folder(repo, runner):

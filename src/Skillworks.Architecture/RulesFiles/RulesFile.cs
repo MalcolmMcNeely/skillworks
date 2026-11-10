@@ -85,6 +85,25 @@ internal sealed class RulesFile
                 : null)
         ?? false;
 
+    public T RequireOneOf<T>(string key)
+        where T : struct, Enum
+    {
+        var values = Enum.GetValues<T>();
+        var names = values.Select(value => value.ToString().ToLowerInvariant()).ToArray();
+        var shape = names.Length == 1
+            ? $"`{names[0]}`"
+            : $"{string.Join(", ", names[..^1].Select(name => $"`{name}`"))} or `{names[^1]}`";
+
+        return Read<T?>(
+                key,
+                shape,
+                node => node is YamlScalarNode { Value: var text } && Array.IndexOf(names, text) is var at and >= 0
+                    ? values[at]
+                    : null,
+                node => node is YamlScalarNode { Value: var text } ? $"`{text}`" : "a list or a map")
+            ?? default;
+    }
+
     private void Parse(string text)
     {
         var blocks = YamlBlock.Matches(text);
@@ -126,7 +145,7 @@ internal sealed class RulesFile
         }
     }
 
-    private T? Read<T>(string key, string shape, Func<YamlNode, T?> parse)
+    private T? Read<T>(string key, string shape, Func<YamlNode, T?> parse, Func<YamlNode, string>? found = null)
     {
         if (_settings is null)
             return default;
@@ -139,7 +158,7 @@ internal sealed class RulesFile
 
         var value = parse(node);
         if (value is null)
-            Add($"Set `{key}` to {shape}.");
+            Add(found is null ? $"Set `{key}` to {shape}." : $"Set `{key}` to {shape}, not {found(node)}.");
 
         return value;
     }

@@ -51,5 +51,5 @@ Python and Java tools were not weighed. A repo in either gets a starter test.
 
 | Rule | TypeScript | .NET | Go | Starter test |
 |---|---|---|---|---|
-| Doc comments go where the setting says. `doc-comments` | — | — | — | With `false`, no source file holds a doc comment. With `true`, no test file does. A doc comment is what the rule says it is in each language |
+| Doc comments go where the setting says. `doc-comments` | — | — | — | With `none`, no source file holds a doc comment. With `code`, no test file does. With `all`, any source file may. Any other value, `true` and `false` among them, fails and names the value it found. A doc comment is what the rule says it is in each language |
 | A comment records why | — | — | — | Left to the team: whether a comment says why is judgement, which `/skillworks:comment-sweep` and review make |

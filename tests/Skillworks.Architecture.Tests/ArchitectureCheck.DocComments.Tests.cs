@@ -140,10 +140,54 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void A_doc_comment_in_a_code_file_is_not_a_breach_when_doc_comments_are_allowed()
+    public void A_doc_comment_in_a_test_file_is_a_breach_when_no_file_may_hold_one()
     {
         using var tree = new RulesTree()
-            .Set(CommentsFile, "doc-comments", "true")
+            .Set(CommentsFile, "doc-comments", "none")
+            .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n")
+            .Write("web/src/format.ts")
+            .Write("web/src/format.test.ts", "/** Formats a moment. */\nit('formats', () => {});\n");
+
+        Assert.Equal(
+            [
+                ("doc-comments", "tests/App.Tests/Clock.Tests.cs"),
+                ("doc-comments", "web/src/format.test.ts"),
+            ],
+            tree.Breaches());
+    }
+
+    [Fact]
+    public void A_doc_comment_in_any_source_file_is_not_a_breach_when_every_file_may_hold_one()
+    {
+        using var tree = new RulesTree()
+            .Set(CommentsFile, "doc-comments", "all")
+            .Write("src/App/Clock.cs", "/// <summary>Tells the time.</summary>\npublic sealed class Clock;\n")
+            .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n")
+            .Write("web/src/format.ts", "/** Formats a moment. */\nexport const format = 1;\n")
+            .Write("web/src/format.test.ts", "/** Formats a moment. */\nit('formats', () => {});\n");
+
+        Assert.Empty(tree.Breaches());
+    }
+
+    [Theory]
+    [InlineData("true")]
+    [InlineData("false")]
+    [InlineData("sometimes")]
+    public void A_doc_comments_value_outside_the_three_is_a_breach_that_names_the_value(string value)
+    {
+        using var tree = new RulesTree().Set(CommentsFile, "doc-comments", value);
+
+        var breach = Assert.Single(tree.Check().Breaches);
+
+        Assert.Equal(("rules-file", CommentsFile), (breach.Rule, breach.Path));
+        Assert.Contains($"`{value}`", breach.Message);
+    }
+
+    [Fact]
+    public void A_doc_comment_in_a_code_file_is_not_a_breach_when_code_files_may_hold_one()
+    {
+        using var tree = new RulesTree()
+            .Set(CommentsFile, "doc-comments", "code")
             .Write("src/App/Clock.cs", "/// <summary>Tells the time.</summary>\npublic sealed class Clock;\n")
             .Write("web/src/format.ts", "/** Formats a moment. */\nexport const format = 1;\n")
             .Write("tests/App.Tests/Clock.Tests.cs")
@@ -155,10 +199,10 @@ public sealed partial class ArchitectureCheckTests
     }
 
     [Fact]
-    public void A_doc_comment_in_a_test_file_is_a_breach_when_doc_comments_are_allowed()
+    public void A_doc_comment_in_a_test_file_is_a_breach_when_code_files_may_hold_one()
     {
         using var tree = new RulesTree()
-            .Set(CommentsFile, "doc-comments", "true")
+            .Set(CommentsFile, "doc-comments", "code")
             .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n")
             .Write("web/src/format.ts")
             .Write("web/src/format.test.ts", "/** Formats a moment. */\nit('formats', () => {});\n")
@@ -178,7 +222,7 @@ public sealed partial class ArchitectureCheckTests
     public void The_test_files_come_from_the_placement_file()
     {
         using var tree = new RulesTree()
-            .Set(CommentsFile, "doc-comments", "true")
+            .Set(CommentsFile, "doc-comments", "code")
             .Set(PlacementFile, "test-files", "[\"*Spec.cs\"]")
             .Write("tests/App.Tests/ClockSpec.cs", "/// <summary>Tells the time.</summary>\npublic sealed class ClockTests;\n")
             .Write("tests/App.Tests/Clock.Tests.cs", "/// <summary>Tells the time.</summary>\npublic sealed partial class Clock;\n");

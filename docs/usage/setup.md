@@ -128,7 +128,7 @@ Review these before you commit them.
 
 | File | What it holds |
 |---|---|
-| `docs/agents/rules/comments.md` | The comments rule. `doc-comments` ships as `false`. |
+| `docs/agents/rules/comments.md` | The comments rule. `doc-comments` ships as `none`. |
 | `docs/agents/rules/determinism.md` | The determinism rule. `contexts` starts empty. `clock` ships as `TimeProvider`. |
 | `docs/agents/rules/file-placement.md` | The file placement rule. `slices`, `concerns` and `test-roots` start empty. `max-types-per-folder`, `source-files`, `test-files`, `skip-folders`, `banned-folder-names` and `name-map` ship with a default. |
 | `docs/agents/rules/testing.md` | The testing rule: your team's taste in tests. It has no settings. |
