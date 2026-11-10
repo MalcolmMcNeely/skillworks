@@ -71,6 +71,11 @@ find the default branch. The spec names `skillworks/spec/<your branch>` as its b
 `## Branch` with the `github` Tracker or as `branch` with the `files` Tracker, so the loop finds its
 Target branch there.
 
+The command cuts only from a branch of your own. It refuses the default branch, a branch under
+`skillworks/`, and no branch at all, so it cuts nothing and pushes nothing, and the grill stops. It
+finds the default branch from `origin/HEAD` through git, with no `gh` call, and it never checks your
+branch name against a pattern. Make a branch of your own, switch to it, and start again.
+
 When the Target branch already exists, the command cuts nothing, and the grill stops. Switch to
 that branch, and start a new session there.
 

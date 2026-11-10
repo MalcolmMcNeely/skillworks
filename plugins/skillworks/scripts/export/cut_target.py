@@ -7,6 +7,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from branches.own_branch import own_branch
 from export.export_branch import PREFIX, STEERING
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
@@ -14,10 +15,6 @@ from runner import Subprocess
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: cut-target-branch\n"
-
-
-# Neither branch may share a first part with an Export branch, because git cannot hold x and x/... at once.
-OWN = "skillworks/"
 
 
 class Cut:
@@ -34,17 +31,6 @@ class Cut:
         if ran.status != 0:
             raise refusal("{}. git said:\n{}".format(why, (ran.out + ran.err).rstrip("\n")))
         return ran.out.strip()
-
-    def export_branch(self):
-        branch = self.must("git would not name the branch this checkout is on", "branch", "--show-current")
-        if not branch:
-            raise refusal("this checkout is on no branch. Switch to the branch the Export writes onto, "
-                          "then run cut-target-branch again. Nothing was cut.")
-        if branch.startswith(OWN):
-            raise refusal("this checkout is on {}, and a branch under {} belongs to the loop. Switch to the "
-                          "branch the Export writes onto, then run cut-target-branch again. Nothing was "
-                          "cut.".format(branch, OWN))
-        return branch
 
     def refuse_a_cut_target(self, target):
         if self.git("rev-parse", "--verify", "--quiet", "refs/heads/" + target).status == 0:
@@ -93,7 +79,7 @@ class Cut:
         self.must("git would not move the local " + STEERING, "update-ref", "refs/heads/" + STEERING, after)
 
     def run(self, out):
-        branch = self.export_branch()
+        branch = own_branch(self.runner, self.where, "Nothing was cut.")
         target = PREFIX + branch
         self.refuse_a_cut_target(target)
         tip = self.must("git would not read the tip of " + branch, "rev-parse", "HEAD")

@@ -147,6 +147,62 @@ def test_a_branch_under_the_plugins_own_prefix_is_refused_as_an_export_branch(wo
     assert (ran.status, "skillworks/" in ran.err) == (1, True), said(ran)
 
 
+def test_the_default_branch_is_refused_with_what_to_do(work):
+    ran = work.run()
+
+    assert (ran.status, "Make a branch of your own, switch to it, and start again" in ran.err) == (1, True), said(ran)
+
+
+def test_the_default_branch_cuts_and_pushes_nothing(work):
+    before = work.on_origin(STEERING)
+
+    ran = work.run()
+
+    assert (work.on_origin(STEERING), work.has_on_origin("skillworks/spec/main"),
+            git(work.repo.work, "branch", "--show-current").strip()) == (before, False, "main"), said(ran)
+
+
+def test_the_default_branch_is_the_one_origin_head_names(work):
+    git(work.repo.work, "switch", "--quiet", "-c", "trunk")
+    git(work.repo.work, "push", "--quiet", "origin", "trunk")
+    git(work.repo.work, "remote", "set-head", "origin", "trunk")
+
+    ran = work.run()
+
+    assert (ran.status, "trunk is the default branch" in ran.err) == (1, True), said(ran)
+
+
+def test_an_origin_that_names_no_default_branch_is_refused_with_how_to_name_it(work):
+    work.start_export_branch()
+    git(work.repo.origin, "symbolic-ref", "HEAD", "refs/heads/gone")
+
+    ran = work.run()
+
+    assert (ran.status, "git remote set-head origin --auto" in ran.err) == (1, True), said(ran)
+
+
+def test_the_default_branch_is_found_with_no_gh_call(work, runner):
+    work.run()
+
+    assert runner.started("gh") == []
+
+
+def test_no_branch_is_refused_with_what_to_do(work):
+    git(work.repo.work, "switch", "--quiet", "--detach")
+
+    ran = work.run()
+
+    assert (ran.status, "Make a branch of your own, switch to it, and start again" in ran.err) == (1, True), said(ran)
+
+
+def test_a_branch_under_the_plugins_own_prefix_is_refused_with_what_to_do(work):
+    git(work.repo.work, "switch", "--quiet", "-c", "skillworks/spec/feature")
+
+    ran = work.run()
+
+    assert "Make a branch of your own, switch to it, and start again" in ran.err, said(ran)
+
+
 def test_the_command_cuts_the_target_branch_from_the_branch_the_caller_is_on(work):
     work.start_export_branch()
 
