@@ -19,8 +19,10 @@ Pick a branch name when your team pushes straight to that branch. Your GitHub lo
 push to it with no pull request and no status check. The preflight tests this, and stops if the push
 would be refused.
 
-**`pr`**, for PR mode. Each spec gets a branch of its own, `spec/<slug>`, and that branch is its
-Target branch. Your team reviews the whole spec as one pull request to your default branch.
+**`pr`**, for PR mode. You make the branch and open the pull request. For each spec you make a
+branch of your own, named by your team's own rule, and start the grill on it. That branch is the
+spec's Target branch. Your team reviews the whole spec as one pull request from it to your default
+branch.
 
 ```json
 { "target-branch": "pr" }
@@ -30,25 +32,28 @@ Pick `pr` when your default branch is protected, or when your team reviews its w
 requests. The preflight checks that the default branch is on the remote, and does not care about its
 protection. With `pr`:
 
-- The grill makes `spec/<slug>` from the newest default branch when it settles the first word or ADR.
-  It pushes it, and opens a draft pull request to the default branch. Each later word and ADR goes to
-  that branch.
-- When the grill settled nothing, `/skillworks:to-spec` makes the branch and the draft pull request.
-- `/skillworks:to-spec` writes the branch name into the spec, under `## Branch`. The loop reads it
-  there.
-- Each ticket Lands on `spec/<slug>` exactly as it would on a branch name. Blocking, the push race and
+- You make the branch, switch to it, and start the grill there. Skillworks never checks its name
+  against a pattern, so your team's own tools stay the one judge of it.
+- Before its first question, the grill checks the branch with the `own-branch` command. It stops on
+  the default branch, on a branch under `skillworks/` and on no branch, asks no question and writes
+  nothing. `/skillworks:to-spec` checks the branch the same way, and publishes no spec there. See
+  [When a step fails](stops.md), under A branch that cannot hold a design.
+- The grill commits each word and ADR on your branch as they settle, and pushes it there.
+- `/skillworks:to-spec` publishes the spec with your branch as its branch, under `## Branch`. The loop
+  reads it there. It cuts no branch and opens no pull request.
+- Each ticket Lands on your branch exactly as it would on a branch name. Blocking, the push race and
   the Turn work the same. A closed ticket still means its code is on its Target branch.
 - After the drift check, the loop marks the pull request ready for review, and stops. It never merges.
   A person reviews it and merges it.
 - With the files Tracker, the loop never calls `gh`. It closes the spec, and its last lines tell you
   to open the pull request from the spec's branch on your host, or mark it ready for review.
-- The pull request's body closes the spec, so the spec closes when the pull request merges.
+- You open the one pull request, from your branch. Skillworks opens none.
 
 **`pr` with `export` on.** With `"export": true` in `docs/agents/loop.json`, PR mode works for
 [the Export](export.md), and three things change:
 
 - The Target branch is `skillworks/spec/<your branch>`, such as
-  `skillworks/spec/feature/PROJ-12/slug`, and not `spec/<slug>`. Your branch is the one you started
+  `skillworks/spec/feature/PROJ-12/slug`, and not your branch itself. Your branch is the one you started
   the grill on.
 - The grill cuts it from the Steering branch, `skillworks/steering`, and not from the default branch,
   at its start, before its first question. The `cut-target-branch` command first brings the
@@ -58,7 +63,7 @@ protection. With `pr`:
   the one pull request, from your own branch, after the loop Exports onto it.
 
 Every other part of [the Dev loop](../the-loop.md) is the same for both kinds. Where it says the
-Target branch, read the branch name you set, or `spec/<slug>`.
+Target branch, read the branch name you set, or the branch you started the grill on.
 
 ## An old `"spec"`
 

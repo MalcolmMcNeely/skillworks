@@ -20,15 +20,13 @@ When `docs/agents/loop.json` is missing on disk, this session is on an Export br
 
 2. Sketch out the seams at which you're going to test the feature. Pick them by the team's testing rule, `steering-file docs/agents/rules/testing.md`, which says how high and how few they are. Write them into the spec's Testing Decisions.
 
-3. Read `tracker` and `target-branch` in `steering-file docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `pr` means the spec gets a branch of its own; see [The spec's branch](#the-specs-branch) and do its first part now.
+3. Read `tracker` and `target-branch` in `steering-file docs/agents/loop.json`. A branch name is the Target branch for this spec. The word `pr` means PR mode; see [The spec's branch](#the-specs-branch) and check the branch now.
 
 4. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
 
 5. Write the spec using the template below. The spec title should begin with "SPEC:". Keep the three counted sections in the shape [The counted shape](#the-counted-shape) gives. Then publish it as [Publishing the spec](#publishing-the-spec) says.
 
-6. In PR mode, do the second part of [The spec's branch](#the-specs-branch).
-
-7. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In PR mode, report the pull request's URL too. With `export` on there is no pull request, so report the Target branch and the Export branch.
+6. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In PR mode, report the branch the spec was published with. With `export` on, report the Target branch and the Export branch.
 
 ## The counted shape
 
@@ -48,8 +46,8 @@ An item runs over several lines when its later lines are indented, so a nested l
 2. Publish it. In PR mode, name the spec's branch last:
 
    ```bash
-   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md                 # target-branch names a branch
-   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md spec/<slug>     # target-branch says pr
+   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md                                   # target-branch names a branch
+   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md <the branch own-branch printed>   # target-branch says pr
    ```
 
 3. It prints the number, a tab, and then the issue's URL with `github` or the folder with `files`, such as `8	.specs/0008-local-tracker`. With `files`, pull the branch, so the checkout holds the folder too.
@@ -66,45 +64,23 @@ The spec is a folder in `.specs/`. The command writes its frontmatter: `status: 
 
 ## The spec's branch
 
-In PR mode the spec is reviewed as one pull request, and its Target branch is `spec/<slug>`. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
+In PR mode the spec's Target branch is the branch this session is on: the developer's own branch, which the developer made by the team's own rule. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
 
 With `export` set to `true` in `steering-file docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
 
-**First part, before the spec is published.** Find the branch.
+**Before anything is written**, check the branch. Run `own-branch`, the one command that checks it, so the steps are the same in every run:
 
-- If the grill settled a word or an ADR, it already created `spec/<slug>` and a draft pull request. Use that branch. `git branch --show-current` names it when this session is still on it.
-- If the grill settled nothing, create the branch. The slug is short, in kebab case, and comes from the design's subject. Cut it from the newest default branch and push it. With `files`, the remote may not be on GitHub, so read the default branch from `git remote show origin`, on its `HEAD branch:` line, and not from `gh`:
+```bash
+own-branch
+```
 
-  ```bash
-  default=$(gh api "repos/{owner}/{repo}" --jq .default_branch)                  # github
-  default=$(git remote show origin | sed -n 's/.*HEAD branch: //p')              # files
-  git fetch origin "$default"
-  git switch -c "spec/<slug>" "origin/$default"
-  git push -u origin "spec/<slug>"
-  ```
+It prints the branch. Commit and push on it, and name it last when you publish. When it refuses, the branch cannot hold a design: it is the default branch, a branch under `skillworks/`, or no branch. Then stop: publish no spec, and write nothing. Pass on what it said, which tells the developer what to do.
 
-**Second part, after the spec is published and the work pushed.** With `files` there is no issue for the pull request to close, because the loop closes the spec in its folder. Open a draft pull request to the default branch the way the remote's host does, with `gh pr create --draft` and no closing line when the host is GitHub. Skip the rest of this part.
-
-With `github`, the pull request's body names the spec with a closing keyword, so a merge closes the spec. Ticket commits never carry one, so this body is the only thing that closes the spec.
-
-- If no pull request exists for the branch, open a draft one to the default branch:
-
-  ```bash
-  gh pr create --draft --base "$default" --head "spec/<slug>" --title "<the spec's title, without SPEC:>" --body "Closes #<spec>"
-  ```
-
-  A branch with no commit beyond the default branch cannot open a pull request. Push an empty commit that names the spec first: `git commit --allow-empty -m "Open the pull request for spec #<spec>"`.
-
-- If the grill already opened one, add the closing keyword to its body. Read the body, and write it back with `Closes #<spec>` on a line of its own at the end:
-
-  ```bash
-  gh pr view "spec/<slug>" --json number,body
-  gh api -X PATCH "repos/{owner}/{repo}/pulls/<number>" -f body="<the body, then Closes #<spec>>"
-  ```
+**After the spec is published** there is nothing more to do here. Cut no branch. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request from their own branch after the loop Lands the spec's tickets on it.
 
 ## The spec's branch with the Export
 
-With `export` set to `true` in `steering-file docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. Name it last when you publish, in place of `spec/<slug>`.
+With `export` set to `true` in `steering-file docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. Name it last when you publish.
 
 **First part, before the spec is published.** Find the Target branch.
 

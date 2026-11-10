@@ -4741,7 +4741,7 @@ def test_the_target_branch_page_explains_both_kinds_of_target_branch():
     text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
 
     assert text.startswith("# The Target branch\n")
-    for named in ["`docs/agents/loop.json`", "`target-branch`", "`pr`", "`spec/<slug>`"]:
+    for named in ["`docs/agents/loop.json`", "`target-branch`", "`pr`", "You make the branch and open the pull request"]:
         assert named in text, named
     assert "Pick a branch name when" in text
     assert "Pick `pr` when" in text

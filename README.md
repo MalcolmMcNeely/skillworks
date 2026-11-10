@@ -110,8 +110,8 @@ When the last ticket lands, a drift check reads the whole spec against what was 
 builds any Gap it finds as one more ticket. Then the whole Suite runs once more. You come back to a
 finished spec, or to a log that says where the loop stopped and why.
 
-The Target branch is a branch you push to, such as `main`. Or it is a branch for each spec, and your
-team reviews the spec as one pull request. The specs and tickets live in GitHub Issues, or in Markdown
+The Target branch is a branch you push to, such as `main`. Or it is your own branch for each spec, and
+you open the one pull request from it. The specs and tickets live in GitHub Issues, or in Markdown
 files committed to your repo.
 
 Skillworks is built this way. Its specs and tickets are its

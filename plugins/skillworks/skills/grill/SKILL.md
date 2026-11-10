@@ -11,9 +11,25 @@ Drive a design from the first question to a published spec.
 
 ## Process
 
-### 1. Cut the Target branch on an Export branch
+### 1. Find the Target branch
 
-When `docs/agents/loop.json` is on disk, skip this step.
+When `docs/agents/loop.json` is missing on disk, follow [On an Export branch](#on-an-export-branch).
+
+When it is on disk, read `target-branch` and `export` in `steering-file docs/agents/loop.json`:
+
+- A branch name is the Target branch. Go on to step 2.
+- `pr` with `export` set to `true`: the grill cut the Target branch on the Export branch, and this session is on it. Go on to step 2.
+- `pr` without the Export is PR mode. The Target branch is the branch this session is on: the developer's own branch, which the developer made by the team's own rule. Check it before the first question. Run `own-branch`, the one command that checks it, so the steps are the same in every run:
+
+  ```bash
+  own-branch
+  ```
+
+  It prints the branch, and the grill writes every word and ADR there. When it refuses, the branch cannot hold a design: it is the default branch, a branch under `skillworks/`, or no branch. Then stop the grill there. Ask no question, and write nothing. Pass on what it said, which tells the developer what to do.
+
+In PR mode cut no branch, open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from their own branch, after the loop Lands the spec's tickets on it.
+
+#### On an Export branch
 
 When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. Cut the spec's Target branch before the first question, so the whole design runs on a branch that holds the Steering. Run `cut-target-branch`, the one command that cuts it:
 

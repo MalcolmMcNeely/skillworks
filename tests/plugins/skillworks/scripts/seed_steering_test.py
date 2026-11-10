@@ -1276,8 +1276,71 @@ def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_pr_mode()
     to_spec = skill_text("to-spec")
 
     assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md" in to_spec
-    assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md spec/<slug>" in to_spec
+    assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md <the branch own-branch printed>" in to_spec
     assert "`.specs/`" in to_spec
+
+
+PR_MODE_BRANCH_SECTIONS = [("domain-modeling", "### The spec's branch"), ("to-spec", "## The spec's branch")]
+
+
+def test_in_pr_mode_the_grill_runs_the_branch_check_before_its_first_question():
+    first = grill_cut(skill_text("grill"))
+
+    for named in ["PR mode", "`own-branch`", "before the first question"]:
+        assert named in first, named
+
+
+def test_on_a_refused_branch_the_grill_asks_no_question_and_writes_nothing():
+    first = grill_cut(skill_text("grill"))
+    refused = first.split("`own-branch`", 1)[1].split("\n#### ", 1)[0]
+
+    for named in ["refuses", "Ask no question", "write nothing", "Pass on what it said"]:
+        assert named in refused, named
+
+
+def test_in_pr_mode_to_spec_runs_the_branch_check_and_publishes_nothing_on_a_refusal():
+    text = under_heading(skill_text("to-spec"), "## The spec's branch")
+
+    for named in ["`own-branch`", "refuses", "publish no spec", "write nothing"]:
+        assert named in text, named
+
+
+def test_only_the_grill_and_to_spec_run_the_branch_check():
+    naming = sorted(str(page.relative_to(SKILLS)).replace("\\", "/") for page in SKILLS.rglob("*.md")
+                    if "own-branch" in page.read_text(encoding="utf-8"))
+
+    assert naming == ["grill/SKILL.md", "to-spec/SKILL.md"]
+
+
+@pytest.mark.parametrize("skill, heading", PR_MODE_BRANCH_SECTIONS)
+def test_in_pr_mode_the_specs_branch_is_the_developers_branch_the_session_is_on(skill, heading):
+    text = under_heading(skill_text(skill), heading)
+
+    for named in ["the branch this session is on", "the developer's own branch", "Open no pull request"]:
+        assert named in text, named
+
+
+@pytest.mark.parametrize("skill, heading", PR_MODE_BRANCH_SECTIONS)
+def test_in_pr_mode_no_git_step_and_no_gh_call_cuts_a_branch_or_opens_a_pull_request(skill, heading):
+    text = under_heading(skill_text(skill), heading)
+
+    assert git_and_gh_lines(text) == []
+
+
+@pytest.mark.parametrize("named", ["spec/<slug>", "gh pr create", ".default_branch"])
+def test_no_skill_cuts_a_spec_branch_opens_a_pull_request_or_asks_gh_for_the_default_branch(named):
+    walked = {str(page.relative_to(SKILLS)).replace("\\", "/"): page.read_text(encoding="utf-8")
+              for page in SKILLS.rglob("*.md")}
+    naming = sorted(name for name, text in walked.items() if named in text)
+
+    assert ("grill/SKILL.md" in walked, naming) == (True, [])
+
+
+def test_to_spec_reports_the_branch_in_pr_mode():
+    [report] = re.findall(r"^\d+\. Report .*$", skill_text("to-spec"), re.MULTILINE)
+
+    assert "In PR mode, report the branch the spec was published with" in report
+    assert "pull request's URL" not in report
 
 
 def under_heading(text, heading):
@@ -2115,7 +2178,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 15
+    assert len(commands) == 16
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -2133,11 +2196,17 @@ def test_the_allowlist_lets_a_skill_read_the_files_of_an_installed_plugin():
     assert "Read(~/.claude/plugins/**)" in allowed
 
 
-def test_the_allowlist_names_the_pull_request_commands_of_a_spec_target_branch():
+def test_the_allowlist_keeps_the_pull_request_commands_a_review_reads_with():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
 
-    for command in ["gh pr create", "gh pr ready", "gh pr view"]:
+    for command in ["gh pr view", "gh pr diff"]:
         assert "Bash({}:*)".format(command) in allowed
+
+
+def test_the_allowlist_grants_no_pull_request_create_because_the_developer_opens_it():
+    allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
+
+    assert [entry for entry in allowed if entry.startswith("Bash(gh pr create")] == []
 
 
 def test_setup_asks_for_the_tracker_and_suggests_one_from_the_remote():
@@ -2181,6 +2250,12 @@ def test_setup_asks_for_the_target_branch_and_never_requires_main():
     assert "Offer one other answer: `pr`." in step
     assert "`target-branch`" in step
     assert "`main`" not in text
+
+
+def test_setup_describes_pr_as_the_developer_making_the_branch_and_opening_the_pull_request():
+    step = setup_section("### 3. Ask for the Target branch")
+
+    assert "you make the branch and open the pull request" in step
 
 
 def test_setup_writes_no_output_style(repo, runner):

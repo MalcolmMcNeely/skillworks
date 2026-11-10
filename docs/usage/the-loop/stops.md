@@ -218,10 +218,19 @@ STOP  the Name re-check finds 1 rename not made on spec #200 after the rename ti
 The loop built the rename once and it is still owed. Make it in a ticket of your own, and run the loop
 again.
 
-**A branch that cannot hold a design.** A design goes on a branch of your own. With `export` on,
-the `cut-target-branch` command checks the branch you are on before it cuts anything, as [the
-Export](export.md#the-grills-cut) says. It refuses three branches, and cuts nothing and pushes
-nothing. The default branch, which it finds from `origin/HEAD`:
+**A branch that cannot hold a design.** A design goes on a branch of your own. In PR mode the grill
+runs the `own-branch` command before its first question, and `/skillworks:to-spec` runs it before it
+publishes. On a refusal the grill asks no question, `/skillworks:to-spec` publishes no spec, and
+neither writes anything. The command ends its line with `Nothing was written.`:
+
+```
+FAIL  this checkout is on trunk, and trunk is the default branch. Make a branch of your own, switch to it, and start again. Nothing was written.
+```
+
+With `export` on, the `cut-target-branch` command checks the branch you are on before it cuts
+anything, as [the Export](export.md#the-grills-cut) says, and ends its line with `Nothing was cut.`
+Both refuse the same three branches, and cut nothing and push nothing. The default branch, which they
+find from `origin/HEAD`:
 
 ```
 FAIL  this checkout is on trunk, and trunk is the default branch. Make a branch of your own, switch to it, and start again. Nothing was cut.
@@ -241,7 +250,7 @@ FAIL  this checkout is on no branch. Make a branch of your own, switch to it, an
 
 Make your branch the way your team names its branches, such as
 `git switch -c feature/PROJ-12/slug origin/<your default branch>`, and start again. Skillworks never
-checks the name. When `origin` names no default branch, the command stops and says to run
+checks the name. When `origin` names no default branch, each command stops and says to run
 `git remote set-head origin --auto`.
 
 **The Target branch already exists.** With `export` on, the grill cuts the spec's Target branch
