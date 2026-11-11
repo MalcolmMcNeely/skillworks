@@ -18,6 +18,12 @@ every Question, and a place for an Answer on each line. It lives in the scratch 
 can hand it to the teammate who was there, and nothing on it reaches the repo until it is applied.
 _Avoid_: Review file, report, checklist, worksheet
 
+**Baseline**:
+The check of the Target branch, as it stands before the spec changes it, that a run makes before the
+Cut: the machine is ready for the Suite, and the team's quick command passes. A red Baseline is not
+the spec's to mend, so the loop stops and no Session is asked.
+_Avoid_: Precheck, target build, health check
+
 **Blind clone**:
 A clone of this repo at a pinned commit with its glossaries, its map and its ADRs scrubbed from
 every commit, and every commit line and file that named them blanked, so a skill run in it reads the
