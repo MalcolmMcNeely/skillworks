@@ -11,12 +11,13 @@ ASKS = {merge.ASKS_OVERLAP: CHOOSE, merge.ASKS_SETTLE: SETTLE}
 
 
 class Outcome:
-    def __init__(self, done, would=None, shown=(), writes=(), asks=None, used=(), makes=()):
+    def __init__(self, done, would=None, shown=(), writes=(), asks=None, used=(), makes=(), does=()):
         self.done = done
         self.would = would or done
         self.shown = list(shown)
         self.writes = list(writes)
         self.makes = list(makes)
+        self.does = list(does)
         self.asks = asks
         self.used = set(used)
 
@@ -33,6 +34,8 @@ def report(outcomes, step, out):
         out.write(outcome.would if asking else outcome.done)
         out.writelines(outcome.shown)
         if not asking:
+            for do in outcome.does:
+                do()
             for path, text in outcome.writes:
                 write(path, text)
             for path in outcome.makes:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
-from seeds import merge
+from seeds import merge, old_folder
 from seeds.answers import took_an_answer
 from seeds.outcome import ASKS, BASES, Outcome, report, write
 from steering.rule_imports import RULES_FOLDER
@@ -68,12 +68,12 @@ def default_branch(runner, top):
                   "Nothing was written.")
 
 
-def weigh(top, default, name, place, choices, settled):
+def weigh(top, default, name, place, choices, settled, moving):
     wanted = (SEEDS / name).read_text(encoding="utf-8").replace(DEFAULT_BRANCH_PLACEHOLDER, default)
     target = top / place
     base = top / BASES / name
-    was = base.read_text(encoding="utf-8") if base.exists() else None
-    held = target.read_text(encoding="utf-8") if target.exists() else None
+    was = moving.read(top, "{}/{}".format(BASES, name))
+    held = moving.read(top, place)
     chosen = {number: choice for (where, number), choice in choices.items() if where == place}
     weighed = merge.weigh(place, was, held, wanted, chosen, place in settled)
     writes = [(path, text) for path, text in ((target, weighed.text), (base, weighed.base)) if text is not None]
@@ -82,13 +82,14 @@ def weigh(top, default, name, place, choices, settled):
                    asks=ASKS.get(weighed.asks), used=used)
 
 
-def seed(top, default, choices, settled):
-    outcomes = []
-    readme = top / BASES / "README.md"
-    if not readme.exists():
-        outcomes.append(Outcome("wrote {}/README.md\n".format(BASES), "would write {}/README.md\n".format(BASES),
-                                writes=[(readme, BASES_README)]))
-    outcomes += [weigh(top, default, name, place, choices, settled) for name, place in PLACES.items()]
+def seed(runner, top, default, choices, settled):
+    moving = old_folder.planned(top, PLACES.values())
+    outcomes = moving.outcomes(runner, top)
+    readme = "{}/README.md".format(BASES)
+    if moving.read(top, readme) is None:
+        outcomes.append(Outcome("wrote {}\n".format(readme), "would write {}\n".format(readme),
+                                writes=[(top / readme, BASES_README)]))
+    outcomes += [weigh(top, default, name, place, choices, settled, moving) for name, place in PLACES.items()]
     used = set().union(*(outcome.used for outcome in outcomes))
     unused = sorted(choice for choice in choices if choice not in used)
     if unused:
@@ -155,7 +156,7 @@ def main(argv, runner, out, err):
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        report(seed(top, default_branch(runner, top), choices, settled) + ignore_working_folders(top) + make_handoff_folder(top),
+        report(seed(runner, top, default_branch(runner, top), choices, settled) + ignore_working_folders(top) + make_handoff_folder(top),
                next_step(runner, top), out)
         return 0
     except Stop as stop:

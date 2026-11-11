@@ -321,6 +321,27 @@ setup can merge it like any other file.
 
 Setup commits nothing. Review each changed file before you commit.
 
+### A repo set up in `docs/agents/`
+
+Setup used to write the Steering in `docs/agents/`. Other tools write there too, so the Steering now
+lives in `docs/skillworks/`, and setup moves a repo's Steering from `docs/agents/` to
+`docs/skillworks/` for you.
+
+- **When it moves.** `docs/agents/` holds a Steering file, and `docs/skillworks/` holds none. When
+  both folders hold Steering files, setup moves nothing.
+- **What it moves.** Only the Skillworks files: each Steering file, the base copies in
+  `docs/agents/.seeds/`, and each file in `docs/agents/` that `suite.json` names, such as a
+  Dockerfile. It changes those paths in `suite.json`, and changes each `@docs/agents/...` import in
+  `CLAUDE.md` to the new path. A file git tracks moves with `git mv`, so git sees a rename.
+- **What it leaves.** Every other file in `docs/agents/` stays where it is, so another tool still
+  finds its files. Nothing is left at a path setup moved.
+- **What it says.** Setup lists each file it moved, by its old and its new path, as
+  `moved docs/agents/domain.md to docs/skillworks/domain.md`. Read the list, and put back any file
+  another tool still needs.
+
+A run that stops for a question moves nothing yet. It lists each move as `would move`, and makes it
+on the run that has every answer.
+
 ### The other outputs
 
 - **The label.** With `github`, a label that is there is left alone.

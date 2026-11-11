@@ -70,6 +70,8 @@ seed-steering
 
 It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet, and creates `.handoff/` when it is missing. It ends with a `next step:` line, which the report in step 7 names. `loop.json` is written with the remote's default branch as its `target-branch`.
 
+A repo set up before the Steering folder carried the Plugin's name holds its Steering in `docs/agents/`. When `docs/agents/` holds a Steering file and `docs/skillworks/` holds none, `seed-steering` moves the Steering first. It moves each Steering file, the base copies in `docs/agents/.seeds/`, and each file in `docs/agents/` that `suite.json` names, with `git mv` for a file git tracks. It changes those paths in `suite.json`, and changes each `@docs/agents/...` import of a moved file in `CLAUDE.md` to its new path. Every other file in `docs/agents/` stays, so another tool still finds it, and nothing is left at a path it moved. It prints one `moved <old path> to <new path>` line for each file. Show the user every one, so they can put back a file another tool still needs. When both folders hold Steering files, it moves nothing.
+
 It keeps a base copy of each seed in `docs/skillworks/.seeds/`, exactly as it copied it. On a later run it weighs three versions of each file: the base copy, the team's file and the current seed. It prints one line per file:
 
 | Outcome | What happened |
