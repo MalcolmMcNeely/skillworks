@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-RULES_FOLDER = "docs/agents/rules"
+from steering.steering_file import STEERING_FOLDER
+
+RULES_FOLDER = STEERING_FOLDER + "/rules"
 
 
 # A rule loads into a session only through its @ import in CLAUDE.md, so a deleted line turns it off in silence.

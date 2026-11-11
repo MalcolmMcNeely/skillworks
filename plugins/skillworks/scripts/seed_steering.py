@@ -8,6 +8,8 @@ from runner import Subprocess
 from seeds import merge
 from seeds.answers import took_an_answer
 from seeds.outcome import ASKS, BASES, Outcome, report, write
+from steering.rule_imports import RULES_FOLDER
+from steering.steering_file import STEERING_FOLDER
 from stop import Stop, misuse, refusal
 
 USAGE = ("usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... "
@@ -15,23 +17,13 @@ USAGE = ("usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... 
 
 SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "seeds"
 
-PLACES = {
-    "comments.md": "docs/agents/rules/comments.md",
-    "determinism.md": "docs/agents/rules/determinism.md",
-    "file-placement.md": "docs/agents/rules/file-placement.md",
-    "testing.md": "docs/agents/rules/testing.md",
-    "words.md": "docs/agents/rules/words.md",
-    "issue-tracker.md": "docs/agents/issue-tracker.md",
-    "domain.md": "docs/agents/domain.md",
-    "adr-format.md": "docs/agents/adr-format.md",
-    "placement-checks.md": "docs/agents/placement-checks.md",
-    "review-standards.md": "docs/agents/review-standards.md",
-    "review-architecture.md": "docs/agents/review-architecture.md",
-    "review-spec.md": "docs/agents/review-spec.md",
-    "suite.json": "docs/agents/suite.json",
-    "loop.json": "docs/agents/loop.json",
-    "surfaces.md": "docs/agents/surfaces.md",
-}
+RULES = ("comments.md", "determinism.md", "file-placement.md", "testing.md", "words.md")
+
+FILES = ("issue-tracker.md", "domain.md", "adr-format.md", "placement-checks.md", "review-standards.md",
+         "review-architecture.md", "review-spec.md", "suite.json", "loop.json", "surfaces.md")
+
+PLACES = {**{name: "{}/{}".format(RULES_FOLDER, name) for name in RULES},
+          **{name: "{}/{}".format(STEERING_FOLDER, name) for name in FILES}}
 
 # A copy must match its Seed byte for byte, so it cannot carry a header, and this README speaks for it.
 BASES_README = """# Base copies
@@ -40,8 +32,8 @@ Setup keeps these files. Each one is the Seed exactly as setup last copied it in
 under the Seed's own name. A later run of setup compares it with your file and with the Plugin's
 current Seed, to tell your edits from the Plugin's.
 
-These copies are not to be edited. Edit the Steering file in `docs/agents/` instead.
-"""
+These copies are not to be edited. Edit the Steering file in `{}/` instead.
+""".format(STEERING_FOLDER)
 
 DEFAULT_BRANCH_PLACEHOLDER = "<default-branch>"
 

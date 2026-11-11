@@ -12,7 +12,7 @@ from runner import Subprocess
 from steering.adr_folder import adr_folder
 from steering.export import export_on
 from steering.rule_imports import RULES_FOLDER, missing_import
-from steering.target_branch import PR_MODE, target_setting, tracker_setting
+from steering.target_branch import LOOP_FILE, PR_MODE, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: skillworks-preflight [--check-only]\n"
@@ -136,7 +136,7 @@ class Preflight:
             ok(self.out, "target-branch pr, each reviewed into " + default)
         else:
             if "refs/heads/" + self.target not in heads:
-                raise refusal("the Target branch {} in docs/agents/loop.json is not on origin.".format(self.target))
+                raise refusal("the Target branch {} in {} is not on origin.".format(self.target, LOOP_FILE))
             ok(self.out, "target-branch " + self.target)
 
     def check_github(self):
@@ -149,7 +149,7 @@ class Preflight:
 
         if "github.com" not in self.origin:
             raise refusal("origin is not GitHub: {}. The github Tracker needs a GitHub remote. With any other "
-                          "remote, set \"tracker\": \"files\" in docs/agents/loop.json.".format(self.origin))
+                          "remote, set \"tracker\": \"files\" in {}.".format(self.origin, LOOP_FILE))
 
         self.repo = self.gh("repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
         ok(self.out, "repo " + self.repo)
@@ -169,8 +169,8 @@ class Preflight:
             landing = "a spec's branch"
         else:
             if not self.on_remote(self.target):
-                raise refusal("the Target branch {} in docs/agents/loop.json is not on {}.".format(
-                    self.target, self.repo))
+                raise refusal("the Target branch {} in {} is not on {}.".format(
+                    self.target, LOOP_FILE, self.repo))
             ok(self.out, "target-branch " + self.target)
             landing = self.target
 

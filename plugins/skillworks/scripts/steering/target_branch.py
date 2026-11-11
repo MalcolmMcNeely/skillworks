@@ -3,11 +3,12 @@
 import json
 from pathlib import Path
 
+from steering.steering_file import STEERING_FOLDER
 from stop import refusal
 from tracker.files import Files
 from tracker.github import GitHub
 
-LOOP_FILE = "docs/agents/loop.json"
+LOOP_FILE = STEERING_FOLDER + "/loop.json"
 PR_MODE = "pr"
 # Read as a branch name, an old "spec" would land every ticket on a branch called spec.
 OLD_SPEC_VALUE = "spec"

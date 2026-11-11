@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-SURFACES_FILE = "docs/agents/surfaces.md"
+from steering.steering_file import STEERING_FOLDER
+
+SURFACES_FILE = STEERING_FOLDER + "/surfaces.md"
 
 HEADING = "## The README"
 WHERE = "- **Where it lives:**"

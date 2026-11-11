@@ -1,6 +1,7 @@
 from seeds import merge
+from steering.steering_file import STEERING_FOLDER
 
-BASES = "docs/agents/.seeds"
+BASES = STEERING_FOLDER + "/.seeds"
 
 CHOOSE = "--keep <file>:<overlap>=yours|seed or --blend <file>:<overlap>=<blend file> for each overlap"
 

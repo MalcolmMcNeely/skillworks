@@ -5,11 +5,12 @@ import { existsSync } from "node:fs";
 import { join, posix } from "node:path";
 import { text } from "node:stream/consumers";
 import { promisify } from "node:util";
+import { STEERING_FOLDER } from "./steering-folder.mjs";
 
 // Read as the last fetch left it and never fetched, so a session starts offline and with no wait on the remote.
 const STEERING_REF = "refs/remotes/origin/skillworks/steering";
 
-const LINE = "This branch holds no Steering. Read each path under `docs/agents/` with `steering-file <path>`.";
+const LINE = `This branch holds no Steering. Read each path under \`${STEERING_FOLDER}/\` with \`steering-file <path>\`.`;
 
 // Claude Code follows imports this many hops deep and no deeper.
 const MAX_HOPS = 5;
@@ -31,7 +32,7 @@ try {
 async function steeringFor(cwd) {
   const git = async (...args) => (await run("git", ["-C", cwd, ...args], { maxBuffer: 16 * 1024 * 1024 })).stdout;
   const root = (await git("rev-parse", "--show-toplevel")).trim();
-  if (existsSync(join(root, "docs", "agents", "loop.json"))) return undefined;
+  if (existsSync(join(root, STEERING_FOLDER, "loop.json"))) return undefined;
   try {
     await git("rev-parse", "--verify", "--quiet", `${STEERING_REF}^{commit}`);
   } catch {

@@ -2,10 +2,11 @@
 
 from pathlib import Path
 
+from steering.steering_file import STEERING_FOLDER
 from steering.yaml_block import last_yaml_span
 from stop import refusal
 
-DOMAIN_FILE = "docs/agents/domain.md"
+DOMAIN_FILE = STEERING_FOLDER + "/domain.md"
 
 KEY = "adr-folder"
 

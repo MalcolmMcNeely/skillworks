@@ -32,11 +32,11 @@ from typing import NamedTuple
 
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.steering_file import at_steering
+from steering.steering_file import STEERING_FOLDER, at_steering
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: skillworks-suite [--fresh | --image <Dockerfile> -- <command>]\n"
-SUITE_FILE = "docs/agents/suite.json"
+SUITE_FILE = STEERING_FOLDER + "/suite.json"
 REPO_IN_IMAGE = "/repo"
 PROOFS = "skillworks/proofs"
 # Only these make a check what it is, so an edit to another check leaves this one's Proofs standing.

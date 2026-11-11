@@ -3,16 +3,17 @@
 import re
 from pathlib import PurePosixPath
 
-from steering.adr_folder import adr_folder
+from steering.adr_folder import DOMAIN_FILE, adr_folder
+from steering.rule_imports import RULES_FOLDER
 from steering.yaml_block import last_yaml_span
 from stop import refusal
 
 MAP_FILE = "CONTEXT-MAP.md"
-WORDS_RULE = "docs/agents/rules/words.md"
+WORDS_RULE = RULES_FOLDER + "/words.md"
 STEERING_FILES = ("CLAUDE.md", "AGENTS.md")
 DOMAIN_DOCS = "### Domain docs"
 MULTI_CONTEXT = ("Multi-context: `CONTEXT-MAP.md` and `{}/` at the repo root, and one `CONTEXT.md` per "
-                 "context. See `docs/agents/domain.md`.")
+                 "context. See `" + DOMAIN_FILE + "`.")
 CONTEXT_LINE = re.compile(r"^\s*[-*]\s*\[([^\]]+)\]\(([^)\s]+)\)")
 LIST_KEY = re.compile(r"^(\s+)([^\s:][^:]*):")
 

@@ -11,7 +11,9 @@ from runner import Subprocess
 from seeds import merge
 from seeds.answers import took_an_answer
 from seeds.outcome import ASKS, BASES, Outcome, report
+from steering.adr_folder import DOMAIN_FILE
 from steering.rule_imports import RULES_FOLDER
+from steering.steering_file import STEERING_FOLDER
 from stop import Stop, misuse, refusal
 
 USAGE = ("usage: seed-agent-skills --tracker github|files --adr-folder <folder> --contexts single|multi "
@@ -23,12 +25,12 @@ BASE_NAME = "agent-skills.md"
 
 TRACKERS = {
     "github": ("GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. "
-               "See `docs/agents/issue-tracker.md`."),
+               "See `{}/issue-tracker.md`.".format(STEERING_FOLDER)),
     "files": ("Committed files in `.specs/`, one folder per spec and one file per ticket. "
-              "See `docs/agents/issue-tracker.md`, under The files Tracker."),
+              "See `{}/issue-tracker.md`, under The files Tracker.".format(STEERING_FOLDER)),
 }
 
-SINGLE_CONTEXT = "Single-context: `CONTEXT.md` and `{}/` at the repo root. See `docs/agents/domain.md`."
+SINGLE_CONTEXT = "Single-context: `CONTEXT.md` and `{}/` at the repo root. See `" + DOMAIN_FILE + "`."
 
 DOMAIN_DOCS = {"single": SINGLE_CONTEXT, "multi": MULTI_CONTEXT}
 
@@ -44,18 +46,18 @@ BLOCK = """{heading}
 
 ### Steering
 
-The rules in `docs/agents/rules/`, the review files in `docs/agents/`, and the Suite in `docs/agents/suite.json`. The team owns them.
+The rules in `{rules}/`, the review files in `{steering}/`, and the Suite in `{steering}/suite.json`. The team owns them.
 
 ### Rules
 
-The rules load into every session through these imports. Each one lives in `docs/agents/rules/`.
+The rules load into every session through these imports. Each one lives in `{rules}/`.
 
 {imports}"""
 
 
 def built(top, tracker, folder, contexts):
     rules = sorted(path.name for path in (top / RULES_FOLDER).glob("*.md") if path.is_file())
-    return BLOCK.format(heading=HEADING, tracker=TRACKERS[tracker],
+    return BLOCK.format(heading=HEADING, tracker=TRACKERS[tracker], rules=RULES_FOLDER, steering=STEERING_FOLDER,
                         domain=DOMAIN_DOCS[contexts].format(folder.rstrip("/")),
                         imports="".join("@{}/{}\n".format(RULES_FOLDER, rule) for rule in rules))
 

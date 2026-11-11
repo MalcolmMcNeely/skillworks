@@ -8,7 +8,7 @@ from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.target_branch import PR_MODE, target_setting, tracker_setting
+from steering.target_branch import LOOP_FILE, PR_MODE, target_setting, tracker_setting
 from stop import Stop, is_a_number, misuse, refusal
 from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
                            TICKETS, Files, as_numbers, frontmatter, heading, number_of,
@@ -103,11 +103,11 @@ def publish_spec(tracker, slug, body, branch, out, err):
     if not SLUG.fullmatch(slug):
         raise refusal("The slug {} is not kebab case, such as local-tracker.".format(slug))
     if in_pr_mode and not branch:
-        raise refusal("docs/agents/loop.json says pr, so the spec goes on a branch of its own. "
-                      "Name it after the body file.")
+        raise refusal("{} says pr, so the spec goes on a branch of its own. "
+                      "Name it after the body file.".format(LOOP_FILE))
     if not in_pr_mode and branch:
-        raise refusal("docs/agents/loop.json names the Target branch {}, so the spec goes there, "
-                      "and no branch is named.".format(tracker.target))
+        raise refusal("{} names the Target branch {}, so the spec goes there, "
+                      "and no branch is named.".format(LOOP_FILE, tracker.target))
     if isinstance(tracker, GitHub):
         out.write("{}\t{}\n".format(*tracker.file_spec(*github_spec(body, branch), err)))
         return
