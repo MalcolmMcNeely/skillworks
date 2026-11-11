@@ -10,8 +10,8 @@ from runner import Subprocess
 from steering import steering_file
 
 STEERING = "skillworks/steering"
-SURFACES = "docs/agents/surfaces.md"
-RULES = "docs/agents/rules/"
+SURFACES = "docs/skillworks/surfaces.md"
+RULES = "docs/skillworks/rules/"
 
 
 class Work:
@@ -68,8 +68,17 @@ def test_a_file_on_disk_and_on_the_steering_branch_is_printed_from_disk(work):
     assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
 
 
+def test_a_team_file_at_the_old_steering_path_does_not_hide_the_steering_branchs_file(work):
+    work.on_steering(SURFACES, "# Surfaces\n\nThe Steering copy.")
+    work.on_disk("docs/agents/surfaces.md", "# Surfaces\n\nThe team's own file.\n")
+
+    ran = work.run(SURFACES)
+
+    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe Steering copy.\n"), ran.err
+
+
 def test_a_file_in_neither_place_prints_nothing_and_fails_with_one_line(work):
-    work.on_steering("docs/agents/loop.json", "{}")
+    work.on_steering("docs/skillworks/loop.json", "{}")
 
     ran = work.run(SURFACES)
 

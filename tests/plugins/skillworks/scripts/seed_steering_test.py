@@ -16,21 +16,21 @@ SKILLS = PLUGIN / "skills"
 SETUP = SKILLS / "skillworks-setup"
 
 WHERE = {
-    "comments.md": "docs/agents/rules/comments.md",
-    "determinism.md": "docs/agents/rules/determinism.md",
-    "file-placement.md": "docs/agents/rules/file-placement.md",
-    "testing.md": "docs/agents/rules/testing.md",
-    "words.md": "docs/agents/rules/words.md",
-    "issue-tracker.md": "docs/agents/issue-tracker.md",
-    "domain.md": "docs/agents/domain.md",
-    "adr-format.md": "docs/agents/adr-format.md",
-    "placement-checks.md": "docs/agents/placement-checks.md",
-    "review-standards.md": "docs/agents/review-standards.md",
-    "review-architecture.md": "docs/agents/review-architecture.md",
-    "review-spec.md": "docs/agents/review-spec.md",
-    "suite.json": "docs/agents/suite.json",
-    "loop.json": "docs/agents/loop.json",
-    "surfaces.md": "docs/agents/surfaces.md",
+    "comments.md": "docs/skillworks/rules/comments.md",
+    "determinism.md": "docs/skillworks/rules/determinism.md",
+    "file-placement.md": "docs/skillworks/rules/file-placement.md",
+    "testing.md": "docs/skillworks/rules/testing.md",
+    "words.md": "docs/skillworks/rules/words.md",
+    "issue-tracker.md": "docs/skillworks/issue-tracker.md",
+    "domain.md": "docs/skillworks/domain.md",
+    "adr-format.md": "docs/skillworks/adr-format.md",
+    "placement-checks.md": "docs/skillworks/placement-checks.md",
+    "review-standards.md": "docs/skillworks/review-standards.md",
+    "review-architecture.md": "docs/skillworks/review-architecture.md",
+    "review-spec.md": "docs/skillworks/review-spec.md",
+    "suite.json": "docs/skillworks/suite.json",
+    "loop.json": "docs/skillworks/loop.json",
+    "surfaces.md": "docs/skillworks/surfaces.md",
 }
 
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/", ".context-backfill/"]
@@ -76,11 +76,17 @@ def test_an_empty_repo_gets_no_file_under_an_old_baseline_name(repo, runner):
 
     assert ran.status == 0, ran.err
     for old in OLD_BASELINES:
-        assert not (repo.work / "docs" / "agents" / old).exists(), old
+        assert not (repo.work / "docs" / "skillworks" / old).exists(), old
         assert old not in ran.out, old
 
 
-BASES = "docs/agents/.seeds"
+def test_an_empty_repo_gets_nothing_under_docs_agents(repo, runner):
+    ran = run_seed(runner, repo.work)
+
+    assert (ran.status, (repo.work / "docs" / "agents").exists()) == (0, False), ran.err
+
+
+BASES = "docs/skillworks/.seeds"
 
 
 def test_an_empty_repo_gets_an_exact_base_copy_of_every_seed_it_was_written(repo, runner):
@@ -122,7 +128,7 @@ def test_a_second_run_leaves_the_base_folder_readme_as_it_is(repo, runner):
 
 
 def test_a_seed_already_there_with_no_base_copy_gets_none(repo, runner):
-    edited = repo.work / "docs" / "agents" / "domain.md"
+    edited = repo.work / "docs" / "skillworks" / "domain.md"
     edited.parent.mkdir(parents=True)
     edited.write_text("# Our own domain notes\n", encoding="utf-8", newline="\n")
 
@@ -130,7 +136,7 @@ def test_a_seed_already_there_with_no_base_copy_gets_none(repo, runner):
 
     assert ran.status == 0, ran.err
     assert edited.read_text(encoding="utf-8") == "# Our own domain notes\n"
-    assert "kept docs/agents/domain.md, which differs from the seed:\n" in ran.out
+    assert "kept docs/skillworks/domain.md, which differs from the seed:\n" in ran.out
     assert not (repo.work / BASES / "domain.md").exists()
 
 
@@ -207,7 +213,7 @@ def test_a_file_with_no_base_copy_the_same_as_the_seed_gets_one(repo, runner):
 
     assert ran.status == 0, ran.err
     assert (repo.work / BASES / "domain.md").read_text(encoding="utf-8") == seeded("domain.md")
-    assert "kept docs/agents/domain.md, the same as the seed, and wrote its base copy\n" in ran.out
+    assert "kept docs/skillworks/domain.md, the same as the seed, and wrote its base copy\n" in ran.out
 
 
 def test_a_file_with_no_base_copy_settled_by_taking_the_whole_seed_gets_one(repo, runner):
@@ -225,10 +231,10 @@ def test_a_settling_that_names_no_file_without_a_base_copy_is_refused_and_nothin
     seed_steering.write(repo.work / WHERE["domain.md"], "# Our own domain notes\n")
     before = on_disk(repo.work)
 
-    ran = run_seed_settling(runner, repo.work, "docs/agents/domain.md")
+    ran = run_seed_settling(runner, repo.work, "docs/skillworks/domain.md")
 
     assert ran.status == 1
-    assert "docs/agents/domain.md" in ran.err
+    assert "docs/skillworks/domain.md" in ran.err
     assert "Nothing was written." in ran.err
     assert on_disk(repo.work) == before
 
@@ -253,14 +259,14 @@ def test_the_loop_file_names_the_remotes_default_branch_as_the_target_branch(rep
     ran = run_seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
-    loop = json.loads((repo.work / "docs" / "agents" / "loop.json").read_text(encoding="utf-8"))
+    loop = json.loads((repo.work / "docs" / "skillworks" / "loop.json").read_text(encoding="utf-8"))
     assert loop == {"tracker": "github", "target-branch": "master", "co-authored-by": "hide",
                     "session-trailer": "show", "export": False}
 
 
 def test_a_loop_file_already_there_is_kept_and_its_difference_shown(repo, runner):
     make_master_the_default(repo)
-    held = repo.work / "docs" / "agents" / "loop.json"
+    held = repo.work / "docs" / "skillworks" / "loop.json"
     held.parent.mkdir(parents=True)
     held.write_text('{\n  "target-branch": "pr"\n}\n', encoding="utf-8", newline="\n")
 
@@ -268,7 +274,7 @@ def test_a_loop_file_already_there_is_kept_and_its_difference_shown(repo, runner
 
     assert ran.status == 0, ran.err
     assert held.read_text(encoding="utf-8") == '{\n  "target-branch": "pr"\n}\n'
-    assert "kept docs/agents/loop.json, which differs from the seed:\n" in ran.out
+    assert "kept docs/skillworks/loop.json, which differs from the seed:\n" in ran.out
     assert '-  "target-branch": "pr"\n' in ran.out
     assert '+  "target-branch": "master",\n' in ran.out
 
@@ -296,18 +302,18 @@ def test_a_repo_with_no_origin_is_told_how_to_add_a_bare_one(repo, runner):
     assert "git push origin main\n" in ran.err
 
 
-def test_every_seed_lands_under_docs_agents_and_the_rules_in_its_rules_folder(repo, runner):
+def test_every_seed_lands_under_docs_skillworks_and_the_rules_in_its_rules_folder(repo, runner):
     run_seed(runner, repo.work)
 
     assert not (repo.work / ".claude" / "rules").exists()
     assert sorted(seed_steering.PLACES) == sorted(WHERE)
     for seed, place in seed_steering.PLACES.items():
-        assert place.startswith("docs/agents/"), place
-        assert (place == "docs/agents/rules/" + seed) == (seed in RULES), place
+        assert place.startswith("docs/skillworks/"), place
+        assert (place == "docs/skillworks/rules/" + seed) == (seed in RULES), place
 
 
 def test_a_rule_already_in_the_rules_folder_is_kept_and_its_difference_shown(repo, runner):
-    edited = repo.work / "docs" / "agents" / "rules" / "words.md"
+    edited = repo.work / "docs" / "skillworks" / "rules" / "words.md"
     edited.parent.mkdir(parents=True)
     edited.write_text("# Our own words\n", encoding="utf-8", newline="\n")
 
@@ -315,9 +321,9 @@ def test_a_rule_already_in_the_rules_folder_is_kept_and_its_difference_shown(rep
 
     assert ran.status == 0, ran.err
     assert edited.read_text(encoding="utf-8") == "# Our own words\n"
-    assert "kept docs/agents/rules/words.md, which differs from the seed:\n" in ran.out
+    assert "kept docs/skillworks/rules/words.md, which differs from the seed:\n" in ran.out
     assert "-# Our own words\n" in ran.out
-    assert "wrote docs/agents/rules/words.md" not in ran.out
+    assert "wrote docs/skillworks/rules/words.md" not in ran.out
 
 
 def test_the_seeds_folder_holds_the_listed_seeds_and_nothing_else():
@@ -326,7 +332,7 @@ def test_the_seeds_folder_holds_the_listed_seeds_and_nothing_else():
 
 def test_the_rules_arrive_with_their_settings_empty(repo, runner):
     run_seed(runner, repo.work)
-    rules = repo.work / "docs" / "agents" / "rules"
+    rules = repo.work / "docs" / "skillworks" / "rules"
 
     placement = settings_block(rules / "file-placement.md")
     assert "slices: []" in placement
@@ -383,11 +389,11 @@ def test_an_empty_repo_gets_the_adr_shape_file(repo, runner):
     ran = run_seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
-    assert (repo.work / "docs" / "agents" / "adr-format.md").read_text(encoding="utf-8") == seeded("adr-format.md")
+    assert (repo.work / "docs" / "skillworks" / "adr-format.md").read_text(encoding="utf-8") == seeded("adr-format.md")
 
 
 def test_this_repo_holds_the_adr_shape_file_with_the_seeds_text():
-    assert (ROOT / "docs" / "agents" / "adr-format.md").read_text(encoding="utf-8") == seeded("adr-format.md")
+    assert (ROOT / "docs" / "skillworks" / "adr-format.md").read_text(encoding="utf-8") == seeded("adr-format.md")
 
 
 def adr_writing_page():
@@ -402,9 +408,9 @@ def test_domain_modeling_points_at_the_page_on_writing_adrs_and_no_page_named_fo
 def test_domain_modeling_reads_the_adr_shape_from_steering_and_the_folder_from_the_setting():
     page = adr_writing_page()
 
-    assert read_of("docs/agents/adr-format.md") in page
+    assert read_of("docs/skillworks/adr-format.md") in page
     assert "`adr-folder`" in page
-    assert read_of("docs/agents/domain.md") in page
+    assert read_of("docs/skillworks/domain.md") in page
     assert "## Template" not in page
     assert "## Optional sections" not in page
     assert "docs/adr" not in page
@@ -430,7 +436,7 @@ def paragraphs_naming(text, name):
 
 
 def test_context_backfill_drafts_each_adr_in_the_teams_shape():
-    paragraphs = paragraphs_naming(skill_text("context-backfill"), read_of("docs/agents/adr-format.md"))
+    paragraphs = paragraphs_naming(skill_text("context-backfill"), read_of("docs/skillworks/adr-format.md"))
 
     assert any("ADR Draft" in paragraph and "`adr-folder`" in paragraph for paragraph in paragraphs)
 
@@ -447,8 +453,8 @@ def test_the_architecture_review_reads_and_writes_adrs_in_the_setting_and_the_sh
     text = skill_text("improve-codebase-architecture")
 
     assert "`adr-folder`" in text
-    assert read_of("docs/agents/domain.md") in text
-    assert read_of("docs/agents/adr-format.md") in text
+    assert read_of("docs/skillworks/domain.md") in text
+    assert read_of("docs/skillworks/adr-format.md") in text
     assert "numbered one above the highest" in " ".join(text.split())
 
 
@@ -464,7 +470,7 @@ def test_a_skill_that_reads_or_writes_adrs_names_the_setting_and_not_a_fixed_fol
 def test_the_backfill_page_says_adrs_go_to_the_setting_in_the_teams_shape_at_the_folders_width():
     page = " ".join((ROOT / "docs" / "usage" / "context-backfill.md").read_text(encoding="utf-8").split())
 
-    assert "`docs/agents/adr-format.md`" in page
+    assert "`docs/skillworks/adr-format.md`" in page
     assert "`adr-folder`" in page
     assert "padded as wide as the file with the highest number" in page
     assert "docs/adr/" not in page
@@ -481,7 +487,7 @@ def test_a_user_docs_page_that_names_the_adr_folder_names_the_setting_and_not_a_
 
 
 def test_a_seed_already_there_is_kept_and_its_difference_shown(repo, runner):
-    edited = repo.work / "docs" / "agents" / "issue-tracker.md"
+    edited = repo.work / "docs" / "skillworks" / "issue-tracker.md"
     edited.parent.mkdir(parents=True)
     edited.write_text("# Our own tracker notes\n", encoding="utf-8", newline="\n")
 
@@ -489,10 +495,10 @@ def test_a_seed_already_there_is_kept_and_its_difference_shown(repo, runner):
 
     assert ran.status == 0, ran.err
     assert edited.read_text(encoding="utf-8") == "# Our own tracker notes\n"
-    assert "kept docs/agents/issue-tracker.md, which differs from the seed:\n" in ran.out
+    assert "kept docs/skillworks/issue-tracker.md, which differs from the seed:\n" in ran.out
     assert "-# Our own tracker notes\n" in ran.out
     assert "+# Issue tracker: GitHub\n" in ran.out
-    assert "wrote docs/agents/issue-tracker.md" not in ran.out
+    assert "wrote docs/skillworks/issue-tracker.md" not in ran.out
 
 
 def test_a_seed_already_there_unchanged_says_so_and_shows_nothing(repo, runner):
@@ -501,7 +507,7 @@ def test_a_seed_already_there_unchanged_says_so_and_shows_nothing(repo, runner):
     ran = run_seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
-    assert "kept docs/agents/suite.json, the same as the seed\n" in ran.out
+    assert "kept docs/skillworks/suite.json, the same as the seed\n" in ran.out
     assert "differs" not in ran.out
 
 
@@ -796,15 +802,15 @@ def test_a_choice_that_names_no_overlap_is_refused_and_nothing_is_written(repo, 
     run_seed(runner, repo.work)
     before = on_disk(repo.work)
 
-    ran = run_seed_choosing(runner, repo.work, "docs/agents/domain.md:1=yours")
+    ran = run_seed_choosing(runner, repo.work, "docs/skillworks/domain.md:1=yours")
 
     assert ran.status == 1
-    assert "docs/agents/domain.md:1" in ran.err
+    assert "docs/skillworks/domain.md:1" in ran.err
     assert on_disk(repo.work) == before
 
 
-@pytest.mark.parametrize("choice", ["docs/agents/domain.md:1", "docs/agents/domain.md=yours",
-                                    "docs/agents/domain.md:x=yours", "docs/agents/domain.md:1=both"])
+@pytest.mark.parametrize("choice", ["docs/skillworks/domain.md:1", "docs/skillworks/domain.md=yours",
+                                    "docs/skillworks/domain.md:x=yours", "docs/skillworks/domain.md:1=both"])
 def test_a_choice_written_wrong_prints_the_usage(repo, runner, choice):
     ran = run_seed_choosing(runner, repo.work, choice)
 
@@ -862,10 +868,10 @@ def test_a_blend_that_names_no_overlap_is_refused_and_nothing_is_written(repo, r
     run_seed(runner, repo.work)
     before = on_disk(repo.work)
 
-    ran = run_seed_blending(runner, repo.work, "docs/agents/domain.md", 1, blend_file(tmp_path, "# Ours\n"))
+    ran = run_seed_blending(runner, repo.work, "docs/skillworks/domain.md", 1, blend_file(tmp_path, "# Ours\n"))
 
     assert ran.status == 1
-    assert "docs/agents/domain.md:1" in ran.err
+    assert "docs/skillworks/domain.md:1" in ran.err
     assert on_disk(repo.work) == before
 
 
@@ -900,7 +906,7 @@ def test_a_blend_beside_a_keep_and_a_settled_choice_in_one_run_is_honoured_with_
     }
 
 
-@pytest.mark.parametrize("choice", ["docs/agents/domain.md:1", "docs/agents/domain.md:1=", "docs/agents/domain.md=x"])
+@pytest.mark.parametrize("choice", ["docs/skillworks/domain.md:1", "docs/skillworks/domain.md:1=", "docs/skillworks/domain.md=x"])
 def test_a_blend_written_wrong_prints_the_usage(repo, runner, choice):
     ran = run_seed(runner, repo.work, "--blend", choice)
 
@@ -1022,7 +1028,7 @@ def test_this_repos_review_files_hold_the_seeds_lists_and_both_team_lists(seed):
 
 def test_this_repo_holds_no_file_under_an_old_baseline_name():
     for old in OLD_BASELINES:
-        assert not (ROOT / "docs" / "agents" / old).exists(), old
+        assert not (ROOT / "docs" / "skillworks" / old).exists(), old
 
 
 @pytest.mark.parametrize("page", [SETUP / "seeds" / "placement-checks.md", ROOT / WHERE["placement-checks.md"]])
@@ -1075,7 +1081,7 @@ def test_the_surfaces_seed_carries_one_worked_example_that_is_no_surface_of_its_
     assert "The sample app" not in surfaces(seeded("surfaces.md"))
 
 
-@pytest.mark.parametrize("page", ["docs/agents/surfaces.md", "docs/usage/steering.md"])
+@pytest.mark.parametrize("page", ["docs/skillworks/surfaces.md", "docs/usage/steering.md"])
 def test_this_repos_surfaces_and_the_steering_page_show_the_seeds_worked_example(page):
     assert worked_examples(seeded("surfaces.md"))[0] in worked_examples((ROOT / page).read_text(encoding="utf-8"))
 
@@ -1087,13 +1093,13 @@ def test_a_surface_written_only_inside_a_fence_is_not_counted():
 
 
 def test_this_repos_surfaces_list_the_usage_docs():
-    held = surfaces((ROOT / "docs" / "agents" / "surfaces.md").read_text(encoding="utf-8"))
+    held = surfaces((ROOT / "docs" / "skillworks" / "surfaces.md").read_text(encoding="utf-8"))
 
     assert "`docs/usage/`" in [where_it_lives(section).strip() for section in held.values()]
 
 
 def test_this_repos_surfaces_hold_the_seeds_readme_surface():
-    ours = surfaces((ROOT / "docs" / "agents" / "surfaces.md").read_text(encoding="utf-8"))
+    ours = surfaces((ROOT / "docs" / "skillworks" / "surfaces.md").read_text(encoding="utf-8"))
 
     assert ours.get("The README") == surfaces(seeded("surfaces.md"))["The README"]
 
@@ -1138,7 +1144,7 @@ def test_implements_fixing_section_never_leaves_a_hard_breach():
 def test_a_review_seed_and_this_repos_copy_say_a_check_that_shapes_the_build_is_a_rule(page):
     checks = section(page.read_text(encoding="utf-8"), "Checks")
 
-    assert "A check that should also shape the build goes in a rule in `docs/agents/rules/` instead." in checks
+    assert "A check that should also shape the build goes in a rule in `docs/skillworks/rules/` instead." in checks
     assert "this file is read only by its review" in checks
 
 
@@ -1166,7 +1172,7 @@ def test_the_issue_tracker_seed_holds_the_ticket_shape():
 
 
 def test_this_repos_tracker_docs_hold_the_seeds_ticket_shape():
-    ours = (ROOT / "docs" / "agents" / "issue-tracker.md").read_text(encoding="utf-8")
+    ours = (ROOT / "docs" / "skillworks" / "issue-tracker.md").read_text(encoding="utf-8")
 
     assert ticket_shape(ours) == ticket_shape(seeded("issue-tracker.md"))
 
@@ -1187,7 +1193,7 @@ def test_the_issue_tracker_seed_says_how_a_ticket_closes_with_the_files_tracker(
 
 
 def test_this_repos_tracker_docs_hold_the_seeds_files_tracker():
-    ours = (ROOT / "docs" / "agents" / "issue-tracker.md").read_text(encoding="utf-8")
+    ours = (ROOT / "docs" / "skillworks" / "issue-tracker.md").read_text(encoding="utf-8")
 
     assert files_tracker(ours) == files_tracker(seeded("issue-tracker.md"))
 
@@ -1208,7 +1214,7 @@ def test_the_issue_tracker_seed_reads_a_ticket_with_its_body_and_its_comments():
 
 
 def test_this_repos_tracker_docs_read_a_ticket_as_the_seed_does():
-    ours = (ROOT / "docs" / "agents" / "issue-tracker.md").read_text(encoding="utf-8")
+    ours = (ROOT / "docs" / "skillworks" / "issue-tracker.md").read_text(encoding="utf-8")
 
     assert ticket_reads(ours) == ticket_reads(seeded("issue-tracker.md"))
 
@@ -1224,7 +1230,7 @@ def test_to_tickets_reads_the_ticket_shape_from_the_tracker_docs():
 
 
 def test_to_tickets_reads_the_tracker_docs_by_their_path_from_the_repo_root():
-    assert ('Read `steering-file docs/agents/issue-tracker.md`. Its section "The ticket shape"'
+    assert ('Read `steering-file docs/skillworks/issue-tracker.md`. Its section "The ticket shape"'
             in (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8"))
 
 
@@ -1232,7 +1238,7 @@ def test_to_tickets_reads_the_tracker_docs_by_their_path_from_the_repo_root():
 def test_to_tickets_finds_the_glossary_through_the_domain_docs_in_a_step_it_may_not_skip():
     to_tickets = (SKILLS / "to-tickets" / "SKILL.md").read_text(encoding="utf-8")
 
-    assert ("\n### 2. Explore the codebase\n\nRead `steering-file docs/agents/domain.md`: it says where this repo keeps its "
+    assert ("\n### 2. Explore the codebase\n\nRead `steering-file docs/skillworks/domain.md`: it says where this repo keeps its "
             "glossary and its ADRs.") in to_tickets
     assert "CONTEXT.md" not in to_tickets
 
@@ -1386,7 +1392,7 @@ def test_the_grills_first_step_cuts_the_target_branch_when_loop_json_is_missing_
 
     assert "Target branch" in steps[0]
     assert "Interview" in steps[1]
-    for named in ["`docs/agents/loop.json` is missing on disk", "before the first question",
+    for named in ["`docs/skillworks/loop.json` is missing on disk", "before the first question",
                   "`cut-target-branch`", "`skillworks/spec/<the Export branch>`", "`skillworks/steering`",
                   "Open no pull request"]:
         assert named in cut, named
@@ -1417,7 +1423,7 @@ def test_a_steering_branch_that_does_not_rebase_or_is_not_on_origin_stops_the_gr
 def test_on_an_export_branch_domain_modeling_and_to_spec_stop_and_send_the_developer_to_the_grill(skill):
     text = under_heading(skill_text(skill), "## On an Export branch")
 
-    assert "`docs/agents/loop.json` is missing on disk" in text
+    assert "`docs/skillworks/loop.json` is missing on disk" in text
     assert "stop" in text.lower() and "/skillworks:grill" in text
 
 
@@ -1428,7 +1434,7 @@ STEERING_WRITERS = ["architecture-tests", "context-backfill"]
 def test_a_skill_that_writes_steering_stops_on_an_export_branch_and_names_the_steering_branch(skill):
     text = under_heading(skill_text(skill), "## On an Export branch")
 
-    for named in ["`docs/agents/loop.json` is missing on disk", "Stop here", "`skillworks/steering`", "push"]:
+    for named in ["`docs/skillworks/loop.json` is missing on disk", "Stop here", "`skillworks/steering`", "push"]:
         assert named in text, named
 
 
@@ -1657,7 +1663,7 @@ def test_the_user_docs_are_read_in_the_folders_below_too(tmp_path):
 def test_no_skill_seed_script_or_user_doc_names_the_grills_old_skill():
     pages = [path for path in PLUGIN.rglob("*") if path.is_file() and path.suffix in (".md", ".py", ".mjs", ".json")]
     pages += user_docs(ROOT)
-    pages += [ROOT / "docs" / "agents" / "domain.md"]
+    pages += [ROOT / "docs" / "skillworks" / "domain.md"]
     assert {SKILLS / "grill" / "SKILL.md", SETUP / "seeds" / "domain.md", ROOT / "docs" / "usage" / "the-loop.md"} <= set(pages)
 
     named = [str(path.relative_to(ROOT)) for path in pages if OLD_GRILL in path.read_text(encoding="utf-8")]
@@ -1732,7 +1738,7 @@ def test_the_stage_map_shows_each_adr_writer_loading_the_adr_shape_file(stage):
 
 def test_the_grill_page_says_a_settled_adr_goes_to_the_setting_in_the_teams_shape():
     page = (ROOT / "docs" / "usage" / "the-loop" / "the-grill.md").read_text(encoding="utf-8")
-    paragraphs = [paragraph for paragraph in page.split("\n\n") if "`docs/agents/adr-format.md`" in paragraph]
+    paragraphs = [paragraph for paragraph in page.split("\n\n") if "`docs/skillworks/adr-format.md`" in paragraph]
 
     assert len(paragraphs) == 1
     assert "`adr-folder`" in paragraphs[0]
@@ -1795,8 +1801,8 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
 def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(page):
     text = page.read_text(encoding="utf-8")
 
-    assert "docs/agents/issue-tracker.md" in text
-    assert "docs/agents/loop.json" in text
+    assert "docs/skillworks/issue-tracker.md" in text
+    assert "docs/skillworks/loop.json" in text
     assert re.search(r"\bgh\b", text) is None
 
 
@@ -1809,7 +1815,7 @@ GITHUB_ONLY_NAMES = ("the ticket's issue number", "the spec's issue number", "su
 def test_a_skill_names_a_spec_or_a_ticket_in_words_that_fit_either_tracker(page):
     text = page.read_text(encoding="utf-8")
 
-    assert "docs/agents/issue-tracker.md" in text
+    assert "docs/skillworks/issue-tracker.md" in text
     assert [name for name in GITHUB_ONLY_NAMES if name in text] == []
 
 
@@ -1850,14 +1856,14 @@ def test_spec_drift_reads_the_spec_commits_and_judges_the_target_branch_as_it_st
 def test_spec_drift_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     spec_drift = skill_text("spec-drift")
 
-    assert "`steering-file docs/agents/domain.md` says where this repo keeps its glossaries." in spec_drift
+    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_drift
     assert "CONTEXT.md" not in spec_drift
 
 
 # A hand run with the files Tracker fetches as the tracker docs say, so the ban holds only where the driver fetched.
 def test_spec_drift_runs_no_fetch_of_its_own_under_the_loop_alone():
     assert ("Under the spec loop, run no `git fetch` of your own, even where "
-            "`steering-file docs/agents/issue-tracker.md` names one.") in skill_text("spec-drift")
+            "`steering-file docs/skillworks/issue-tracker.md` names one.") in skill_text("spec-drift")
 
 
 def test_spec_drift_says_its_report_is_recorded_when_the_command_prints_where_it_went():
@@ -1899,7 +1905,7 @@ def test_spec_names_reads_only_the_spec_commits_and_the_glossary_and_records_a_n
 def test_spec_names_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     spec_names = skill_text("spec-names")
 
-    assert "`steering-file docs/agents/domain.md` says where this repo keeps its glossaries." in spec_names
+    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_names
     assert "CONTEXT.md" not in spec_names
 
 
@@ -1926,7 +1932,7 @@ def test_spec_names_ends_a_command_that_refuses_twice_on_the_blocked_line_under_
 def test_tdd_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     tdd = skill_text("tdd")
 
-    assert "read `steering-file docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs." in tdd
+    assert "read `steering-file docs/skillworks/domain.md`: it says where this repo keeps its glossary and its ADRs." in tdd
     assert "CONTEXT.md" not in tdd
 
 
@@ -1942,7 +1948,7 @@ def codebase_design_pages():
 def test_codebase_design_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
     pages = codebase_design_pages()
 
-    assert ("read `steering-file docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs."
+    assert ("read `steering-file docs/skillworks/domain.md`: it says where this repo keeps its glossary and its ADRs."
             in pages["DESIGN-IT-TWICE.md"])
     assert [name for name, text in pages.items() if "CONTEXT.md" in text] == []
 
@@ -1950,7 +1956,7 @@ def test_codebase_design_finds_the_glossary_through_the_domain_docs_and_names_no
 def test_codebase_design_lets_the_testing_rule_win_where_the_two_differ_on_what_to_fake():
     categories = codebase_design_pages()["DEEPENING.md"].split("\n## Dependency categories\n", 1)[1].split("\n## ", 1)[0]
 
-    assert ("Where `steering-file docs/agents/rules/testing.md` prints the rule and it rules differently on what to fake or mock, "
+    assert ("Where `steering-file docs/skillworks/rules/testing.md` prints the rule and it rules differently on what to fake or mock, "
             "the rule wins.") in categories
 
 
@@ -1992,20 +1998,20 @@ def test_each_axis_begins_its_loop_mode_report_with_a_blocked_line_when_its_revi
 
 
 def test_review_changes_stops_when_the_tracker_docs_are_missing():
-    assert stops("review-changes", read_of("docs/agents/issue-tracker.md"))
+    assert stops("review-changes", read_of("docs/skillworks/issue-tracker.md"))
 
 
 def test_to_tickets_stops_when_the_tracker_docs_or_the_ticket_shape_is_missing():
-    assert stops("to-tickets", read_of("docs/agents/issue-tracker.md"), '"The ticket shape"')
+    assert stops("to-tickets", read_of("docs/skillworks/issue-tracker.md"), '"The ticket shape"')
 
 
 def test_to_tickets_stops_when_the_domain_docs_are_missing():
-    assert stops("to-tickets", read_of("docs/agents/domain.md"))
+    assert stops("to-tickets", read_of("docs/skillworks/domain.md"))
 
 
 def test_to_tickets_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_file_or_the_ticket_shape_is_missing():
     assert stops("to-tickets", "`BLOCKED`", "Under the spec loop", "begin your last message",
-                 read_of("docs/agents/issue-tracker.md"), read_of("docs/agents/domain.md"), '"The ticket shape"')
+                 read_of("docs/skillworks/issue-tracker.md"), read_of("docs/skillworks/domain.md"), '"The ticket shape"')
 
 
 def test_to_tickets_ends_a_command_that_stops_twice_on_one_fault_on_the_blocked_line_under_the_loop():
@@ -2017,24 +2023,24 @@ def test_to_tickets_ends_a_command_that_stops_twice_on_one_fault_on_the_blocked_
 
 
 def test_tdd_stops_when_the_testing_rule_is_missing():
-    assert stops("tdd", read_of("docs/agents/rules/testing.md"))
+    assert stops("tdd", read_of("docs/skillworks/rules/testing.md"))
 
 
 def test_tdd_stops_when_the_domain_docs_are_missing():
-    assert stops("tdd", read_of("docs/agents/domain.md"))
+    assert stops("tdd", read_of("docs/skillworks/domain.md"))
 
 
 def test_tdd_begins_its_report_with_a_blocked_line_under_the_loop_when_a_steering_file_it_reads_is_missing():
     assert stops("tdd", "`BLOCKED`", "Under the spec loop", "begin your report",
-                 read_of("docs/agents/rules/testing.md"), read_of("docs/agents/domain.md"))
+                 read_of("docs/skillworks/rules/testing.md"), read_of("docs/skillworks/domain.md"))
 
 
 def test_the_comment_sweep_stops_when_the_comments_rule_is_missing():
-    assert stops("comment-sweep", read_of("docs/agents/rules/comments.md"))
+    assert stops("comment-sweep", read_of("docs/skillworks/rules/comments.md"))
 
 
 def test_the_comment_sweep_begins_its_report_with_a_blocked_line_under_the_loop_when_the_comments_rule_is_missing():
-    assert stops("comment-sweep", read_of("docs/agents/rules/comments.md"), "`BLOCKED`", "Under the spec loop")
+    assert stops("comment-sweep", read_of("docs/skillworks/rules/comments.md"), "`BLOCKED`", "Under the spec loop")
 
 
 SPEC_DRIFT_READS = [read_of(WHERE[name])
@@ -2068,9 +2074,9 @@ def test_implement_stops_on_the_blocked_line_when_a_steering_file_it_reads_is_mi
 
 
 def test_a_missing_lever_that_only_sends_the_user_to_setup_is_caught():
-    tells = "If `docs/agents/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`."
+    tells = "If `docs/skillworks/issue-tracker.md` is missing, tell the user to run `/skillworks:skillworks-setup`."
 
-    assert not says_stop(tells, "`docs/agents/issue-tracker.md`")
+    assert not says_stop(tells, "`docs/skillworks/issue-tracker.md`")
 
 
 def test_the_issue_tracker_seed_says_how_to_read_a_commits_sessions_back():
@@ -2084,7 +2090,7 @@ def test_the_issue_tracker_seed_says_how_to_read_a_commits_sessions_back():
 def test_the_starting_suite_is_valid_and_left_empty_is_not_ready(repo, runner):
     run_seed(runner, repo.work)
 
-    parsed = json.loads((repo.work / "docs" / "agents" / "suite.json").read_text(encoding="utf-8"))
+    parsed = json.loads((repo.work / "docs" / "skillworks" / "suite.json").read_text(encoding="utf-8"))
     ran = Suite(runner, repo.work).run()
 
     assert parsed == {"runs": 1, "checks": []}
@@ -2241,7 +2247,7 @@ def test_setup_asks_for_the_tracker_and_suggests_one_from_the_remote():
     assert "`files`" in step
     assert "github.com" in step
     assert "`tracker`" in step
-    assert "`docs/agents/loop.json`" in step
+    assert "`docs/skillworks/loop.json`" in step
 
 
 def test_setup_says_the_files_tracker_folder_is_committed_and_why():
@@ -2310,7 +2316,7 @@ def test_setup_asks_whether_the_work_goes_to_a_team_that_does_not_use_skillworks
 def test_setup_reads_an_earlier_export_answer_from_the_steering_branch_on_origin():
     question = setup_section(EXPORT_QUESTION)
 
-    assert "git show origin/skillworks/steering:docs/agents/loop.json" in question
+    assert "git show origin/skillworks/steering:docs/skillworks/loop.json" in question
 
 
 def test_with_the_export_and_the_files_tracker_setup_tells_the_developer_to_own_origin_first():
@@ -2386,7 +2392,7 @@ def test_the_stops_page_says_an_old_spec_value_is_refused_and_how_to_fix_it():
     page = " ".join(STOPS_PAGE.read_text(encoding="utf-8").split())
 
     assert '`"target-branch": "spec"`' in page
-    assert 'write `"target-branch": "pr"` in `docs/agents/loop.json`' in page
+    assert 'write `"target-branch": "pr"` in `docs/skillworks/loop.json`' in page
 
 
 # Each is a name only this repository uses, so finding one means a seed was copied, not written.
@@ -2410,7 +2416,7 @@ def test_the_seed_command_seeds_the_top_of_the_repository(repo):
     ran = launch("seed-steering", where=below)
 
     assert ran.status == 0, ran.err
-    assert (repo.work / "docs" / "agents" / "suite.json").is_file()
+    assert (repo.work / "docs" / "skillworks" / "suite.json").is_file()
     assert not (below / "docs").exists()
     assert git(repo.work, "status", "--porcelain", "--", "docs").strip()
 
@@ -2440,9 +2446,9 @@ def test_no_plugin_skill_links_out_of_the_plugin():
 
 def test_a_link_that_climbs_out_of_the_plugin_is_caught():
     page = SKILLS / "spec-loop" / "SKILL.md"
-    text = "[suite](../../../../docs/agents/suite.json) and [skill](../tdd/SKILL.md)"
+    text = "[suite](../../../../docs/skillworks/suite.json) and [skill](../tdd/SKILL.md)"
 
-    assert links_out_of_the_plugin(page, text) == ["../../../../docs/agents/suite.json"]
+    assert links_out_of_the_plugin(page, text) == ["../../../../docs/skillworks/suite.json"]
 
 
 def test_no_plugin_skill_names_a_rule_under_the_old_rules_folder():
@@ -2453,7 +2459,7 @@ def test_no_plugin_skill_names_a_rule_under_the_old_rules_folder():
         text = page.read_text(encoding="utf-8")
         assert ".claude/rules" not in text, page
         for rule in RULES:
-            assert "docs/agents/{}".format(rule) not in text, "{} names {} outside the rules folder".format(page, rule)
+            assert "docs/skillworks/{}".format(rule) not in text, "{} names {} outside the rules folder".format(page, rule)
 
 
 STEERING_NAMED = {
@@ -2471,7 +2477,7 @@ def test_the_axis_files_name_each_steering_file_by_its_path_from_the_repo_root()
             assert "{}](".format(read_of(WHERE[name])) not in text, "{} links {}".format(skill, name)
 
 
-RULES_FOLDER = "docs/agents/rules/"
+RULES_FOLDER = "docs/skillworks/rules/"
 
 RULES_FOLDER_READERS = ["review-changes/standards.md", "architecture-tests/SKILL.md"]
 
@@ -2526,10 +2532,10 @@ def test_a_seed_no_page_reads_is_caught():
     assert unread_steering(["words.md", "new-baseline.md"], STEERING_READERS, RULES_FOLDER_READERS) == ["new-baseline.md"]
 
 
-STEERING_PATH = re.compile(r"docs/agents/[\w./*<>-]*")
+STEERING_PATH = re.compile(r"docs/skillworks/[\w./*<>-]*")
 
 PATHS_SETUP_WRITES = set(seed_steering.PLACES.values()) | {
-    "docs/agents/", RULES_FOLDER, RULES_FOLDER + "*.md", seed_steering.BASES + "/",
+    "docs/skillworks/", RULES_FOLDER, RULES_FOLDER + "*.md", seed_steering.BASES + "/",
     seed_steering.BASES + "/" + agent_skills.BASE_NAME}
 
 
@@ -2547,15 +2553,15 @@ def test_no_plugin_page_names_a_steering_file_setup_does_not_seed():
 
 
 def test_a_steering_path_setup_does_not_seed_is_caught():
-    text = "Read `docs/agents/review-standards.md`, then `docs/agents/review-standard.md`. The rules sit in docs/agents/rules/."
+    text = "Read `docs/skillworks/review-standards.md`, then `docs/skillworks/review-standard.md`. The rules sit in docs/skillworks/rules/."
 
-    assert unseeded_steering(text) == ["docs/agents/review-standard.md"]
+    assert unseeded_steering(text) == ["docs/skillworks/review-standard.md"]
 
 
 TEAM_CHECK_STEP = {
     "review-standards": "3. Every breach of a team check. Name the check and quote the hunk.",
     "review-architecture": "5. Does anything the change added breach a team check?",
-    "review-spec": "Then walk the team checks in `steering-file docs/agents/review-spec.md`. A breach of one is a finding.",
+    "review-spec": "Then walk the team checks in `steering-file docs/skillworks/review-spec.md`. A breach of one is a finding.",
 }
 
 
@@ -2737,7 +2743,7 @@ def test_the_licence_notices_name_skillsmith_among_the_skills_that_are_ours():
 
 
 def test_no_plugin_file_or_steering_doc_names_the_old_review_skill():
-    pages = [path for folder in (PLUGIN, ROOT / "docs" / "usage", ROOT / "docs" / "agents")
+    pages = [path for folder in (PLUGIN, ROOT / "docs" / "usage", ROOT / "docs" / "skillworks")
              for path in folder.rglob("*") if path.is_file() and path.suffix in (".md", ".py", ".mjs", ".json")]
     assert pages
 
@@ -3053,13 +3059,13 @@ def test_setup_builds_the_claude_md_block_with_seed_agent_skills_after_it_settle
 def test_the_setup_skill_holds_none_of_the_claude_md_blocks_text():
     text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
 
-    for words in ("### Issue tracker", "### Domain docs", "Single-context:", "Multi-context:", "@docs/agents/rules/"):
+    for words in ("### Issue tracker", "### Domain docs", "Single-context:", "Multi-context:", "@docs/skillworks/rules/"):
         assert words not in text, words
 
 
 def test_setup_suggests_the_adr_folder_the_domain_docs_name_then_one_it_finds_then_docs_adr():
     step = " ".join(setup_section(POINTER_STEP).split())
-    named = step.index("1. The folder `adr-folder` names in `docs/agents/domain.md`")
+    named = step.index("1. The folder `adr-folder` names in `docs/skillworks/domain.md`")
     found = step.index("2. Else a folder that holds numbered Markdown files and has `adr` or `decision` in its path.")
     default = step.index("3. Else `docs/adr`.")
 
@@ -3070,14 +3076,14 @@ def test_setup_suggests_the_adr_folder_the_domain_docs_name_then_one_it_finds_th
 def test_setup_reads_an_earlier_adr_folder_before_the_seed_writes_its_default():
     step = " ".join(setup_section("### 1. Seed the Steering").split())
 
-    assert "Before you run it, read `adr-folder` from the YAML block at the end of `docs/agents/domain.md`" in step
+    assert "Before you run it, read `adr-folder` from the YAML block at the end of `docs/skillworks/domain.md`" in step
     assert "the seed writes `docs/adr` into a file that names none" in step
 
 
 def test_setup_writes_the_adr_folder_answer_into_the_domain_docs_yaml_block():
     step = " ".join(setup_section(POINTER_STEP).split())
 
-    assert ("Write the answer into `adr-folder` in the YAML block at the end of `docs/agents/domain.md`, "
+    assert ("Write the answer into `adr-folder` in the YAML block at the end of `docs/skillworks/domain.md`, "
             "and change no other line.") in step
 
 
@@ -3110,8 +3116,8 @@ def test_the_setup_page_lists_the_adr_folder_among_the_questions_setup_asks():
 def test_the_report_names_the_folder_each_steering_file_lives_in():
     report = setup_section("### 7. Report")
 
-    assert "`docs/agents/rules/`" in report
-    assert "`docs/agents/`" in report
+    assert "`docs/skillworks/rules/`" in report
+    assert "`docs/skillworks/`" in report
     for seed in WHERE:
         assert "`{}`".format(seed) in report, seed
 
@@ -3143,7 +3149,7 @@ BACKFILL_SENTENCE = ("A repo built before it had these files fills them once wit
 
 
 def test_the_domain_docs_seed_and_this_repos_copy_say_how_a_repo_with_a_history_fills_them():
-    copy = (ROOT / "docs" / "agents" / "domain.md").read_text(encoding="utf-8")
+    copy = (ROOT / "docs" / "skillworks" / "domain.md").read_text(encoding="utf-8")
 
     assert BACKFILL_SENTENCE in seeded("domain.md")
     assert BACKFILL_SENTENCE in copy
@@ -3287,7 +3293,7 @@ def test_the_seed_step_offers_a_blend_beside_yours_and_the_seed_for_each_overlap
     step = setup_section("### 1. Seed the Steering")
 
     assert "show the `yours` side, the `seed` side, and a blend you write to fit the repo" in step
-    assert "seed-steering --blend docs/agents/domain.md:1=" in step
+    assert "seed-steering --blend docs/skillworks/domain.md:1=" in step
     assert "You write nothing into the Steering file yourself" in step
 
 
@@ -3312,7 +3318,7 @@ def test_the_setup_page_explains_each_outcome_of_a_second_run():
 
     for outcome in OUTCOMES:
         assert "| {} |".format(outcome) in again, outcome
-    assert "`docs/agents/.seeds/`" in again
+    assert "`docs/skillworks/.seeds/`" in again
     assert "before you commit" in again
 
 
@@ -3385,7 +3391,7 @@ def test_setup_asks_whether_commits_credit_claude_and_suggests_hide():
 
     assert "should commits and pull requests credit Claude?" in step
     assert "On a first run, suggest `hide`" in step
-    assert "If `co-authored-by` in `docs/agents/loop.json` already names an answer" in step
+    assert "If `co-authored-by` in `docs/skillworks/loop.json` already names an answer" in step
     assert "`set-co-authored-by hide`" in step
     assert "`set-co-authored-by show`" in step
     assert "rewrites the `attribution` block of `.claude/settings.json` from the answer every time it runs" in step
@@ -3417,7 +3423,7 @@ def test_the_setup_page_explains_the_credit_question_and_both_answers():
     page = SETUP_PAGE.read_text(encoding="utf-8")
     credit = page.split("## Credit for Claude", 1)[1].split("\n## ", 1)[0]
 
-    assert "`set-co-authored-by` writes it to `co-authored-by` in `docs/agents/loop.json`" in credit
+    assert "`set-co-authored-by` writes it to `co-authored-by` in `docs/skillworks/loop.json`" in credit
     assert "**Claude Code's commit credit is always off.**" in credit
     assert "| `show` | The Plugin's hook adds the credit line to each commit Claude makes." in credit
     assert "Pull requests follow the same answer through Claude Code" in credit
@@ -3432,12 +3438,12 @@ def test_the_setup_page_explains_the_credit_question_and_both_answers():
 def test_the_setup_page_says_setup_writes_the_credit_answer_and_rewrites_the_block_from_it():
     page = SETUP_PAGE.read_text(encoding="utf-8")
     question = [line for line in page.splitlines() if line.startswith("| Should commits and pull requests credit Claude? |")]
-    files = [line for line in page.splitlines() if line.startswith("| `docs/agents/loop.json` |")]
+    files = [line for line in page.splitlines() if line.startswith("| `docs/skillworks/loop.json` |")]
     second_run = page.split("### The other outputs", 1)[1]
 
     assert len(question) == 1 and "`co-authored-by`" in question[0] and "suggests that one" in question[0]
     assert "`co-authored-by` holds your answer on the credit for Claude" in files[0]
-    assert "rewrites the `attribution` block from `co-authored-by` in `docs/agents/loop.json`" in second_run
+    assert "rewrites the `attribution` block from `co-authored-by` in `docs/skillworks/loop.json`" in second_run
 
 
 ARCHITECTURE_TESTS = SKILLS / "architecture-tests"
@@ -3515,7 +3521,7 @@ def test_the_architecture_tests_skill_can_be_invoked_by_the_model_and_states_the
     assert "/skillworks:tdd" in text
     for place in [WHERE["suite.json"], WHERE["placement-checks.md"], ".claude/settings.json"]:
         assert "`{}`".format(place) in text, place
-    assert read_of("docs/agents/rules/") in text
+    assert read_of("docs/skillworks/rules/") in text
     assert "`ignores`" in text
     assert "`when`" not in text
     assert "never quietly weakened" in text
@@ -3627,7 +3633,7 @@ def test_the_usage_docs_explain_what_architecture_tests_reads_chooses_and_writes
     section = usage_section("## Turn the rules into tests")
 
     assert "`/skillworks:architecture-tests`" in section
-    assert "`docs/agents/rules/`" in section
+    assert "`docs/skillworks/rules/`" in section
     for way in ("common tool", "starter test"):
         assert way in section, way
     assert "red first" in section
@@ -3720,7 +3726,7 @@ def test_implement_runs_the_suite_by_its_command_in_a_hand_run():
     assert read_of(WHERE["suite.json"]) in running
 
 
-READ_THROUGH_STEERING_FILE = re.compile(r"steering-file (docs/agents/[\w./*<>-]*)")
+READ_THROUGH_STEERING_FILE = re.compile(r"steering-file (docs/skillworks/[\w./*<>-]*)")
 
 
 # An Export branch holds no Steering on disk, so a path read any other way is a file that is not there.
@@ -3735,13 +3741,13 @@ SKILL_PAGES = sorted(str(page.relative_to(SKILLS)).replace("\\", "/")
                      if page.is_file() and page.relative_to(SKILLS).parts[0] != "skillworks-setup")
 
 # These ask where this branch is and not what the Steering says, so they test the disk on purpose.
-DISK_CHECK = re.compile(r"`docs/agents/loop\.json` is (?:missing )?on disk")
+DISK_CHECK = re.compile(r"`docs/skillworks/loop\.json` is (?:missing )?on disk")
 
 # A skill that writes Steering stops on an Export branch first, so each write lands on a branch that holds the file.
 STEERING_WRITES = {
-    "architecture-tests/SKILL.md": ["Add the test's command to `docs/agents/suite.json`",
-                                    "Fill both tables in `docs/agents/placement-checks.md`"],
-    "context-backfill/SKILL.md": ["an empty banned-words list, written `[]`, to `docs/agents/rules/words.md`"],
+    "architecture-tests/SKILL.md": ["Add the test's command to `docs/skillworks/suite.json`",
+                                    "Fill both tables in `docs/skillworks/placement-checks.md`"],
+    "context-backfill/SKILL.md": ["an empty banned-words list, written `[]`, to `docs/skillworks/rules/words.md`"],
 }
 
 
@@ -3776,10 +3782,10 @@ def test_a_plugin_skill_reads_each_steering_path_through_steering_file(page):
 
 
 def test_a_steering_path_read_past_steering_file_is_caught():
-    text = "Read `steering-file docs/agents/domain.md`, then `docs/agents/loop.json`."
+    text = "Read `steering-file docs/skillworks/domain.md`, then `docs/skillworks/loop.json`."
 
-    assert steering_read_past_steering_file(text) == ["docs/agents/loop.json"]
+    assert steering_read_past_steering_file(text) == ["docs/skillworks/loop.json"]
 
 
 def test_a_disk_check_of_the_export_branch_is_no_steering_read():
-    assert DISK_CHECK.sub("", "When `docs/agents/loop.json` is missing on disk, stop.") == "When , stop."
+    assert DISK_CHECK.sub("", "When `docs/skillworks/loop.json` is missing on disk, stop.") == "When , stop."

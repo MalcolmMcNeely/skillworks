@@ -5,7 +5,7 @@ from conftest import Ran, write_loop
 from context_backfill.context_map import with_multi_context
 from seeds import agent_skills
 
-BASE = "docs/agents/.seeds/agent-skills.md"
+BASE = "docs/skillworks/.seeds/agent-skills.md"
 
 RULES = ["comments.md", "testing.md"]
 
@@ -13,29 +13,29 @@ GITHUB_SINGLE = """## Agent skills
 
 ### Issue tracker
 
-GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. See `docs/agents/issue-tracker.md`.
+GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. See `docs/skillworks/issue-tracker.md`.
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/skillworks/domain.md`.
 
 ### Steering
 
-The rules in `docs/agents/rules/`, the review files in `docs/agents/`, and the Suite in `docs/agents/suite.json`. The team owns them.
+The rules in `docs/skillworks/rules/`, the review files in `docs/skillworks/`, and the Suite in `docs/skillworks/suite.json`. The team owns them.
 
 ### Rules
 
-The rules load into every session through these imports. Each one lives in `docs/agents/rules/`.
+The rules load into every session through these imports. Each one lives in `docs/skillworks/rules/`.
 
-@docs/agents/rules/comments.md
-@docs/agents/rules/testing.md
+@docs/skillworks/rules/comments.md
+@docs/skillworks/rules/testing.md
 """
 
 
 def set_up(work, rules=RULES):
     write_loop(work, "main")
     for rule in rules:
-        write(work / "docs" / "agents" / "rules" / rule, "# {}\n".format(rule))
+        write(work / "docs" / "skillworks" / "rules" / rule, "# {}\n".format(rule))
 
 
 def write(path, text):
@@ -67,8 +67,8 @@ def test_a_repo_with_no_claude_md_gets_one_holding_the_block_and_its_base_copy(r
 
 OWN_TRACKER = "Our tracker is GitHub, and the board lives in Projects.\n"
 SEED_TRACKER = ("GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. "
-                "See `docs/agents/issue-tracker.md`.\n")
-OLDER_TRACKER = "GitHub Issues, through `gh`. See `docs/agents/issue-tracker.md`.\n"
+                "See `docs/skillworks/issue-tracker.md`.\n")
+OLDER_TRACKER = "GitHub Issues, through `gh`. See `docs/skillworks/issue-tracker.md`.\n"
 SEED_STEERING = "The team owns them.\n"
 OLDER_STEERING = "The team keeps them.\n"
 
@@ -272,12 +272,12 @@ def test_a_switch_to_multi_context_made_by_context_backfill_is_taken_with_no_que
 def test_a_new_rule_file_adds_its_import_to_the_block(repo, runner):
     set_up(repo.work)
     seed(runner, repo.work)
-    write(repo.work / "docs" / "agents" / "rules" / "words.md", "# Words\n")
+    write(repo.work / "docs" / "skillworks" / "rules" / "words.md", "# Words\n")
 
     ran = seed(runner, repo.work)
 
     assert ran.status == 0, ran.err
-    assert read(repo.work / "CLAUDE.md") == GITHUB_SINGLE + "@docs/agents/rules/words.md\n"
+    assert read(repo.work / "CLAUDE.md") == GITHUB_SINGLE + "@docs/skillworks/rules/words.md\n"
     assert "updated CLAUDE.md\n" in ran.out
 
 
@@ -324,7 +324,7 @@ def test_the_files_tracker_line_names_the_specs_folder(repo, runner):
 
     assert read(repo.work / "CLAUDE.md") == GITHUB_SINGLE.replace(
         SEED_TRACKER, "Committed files in `.specs/`, one folder per spec and one file per ticket. "
-                      "See `docs/agents/issue-tracker.md`, under The files Tracker.\n")
+                      "See `docs/skillworks/issue-tracker.md`, under The files Tracker.\n")
 
 
 def test_the_domain_docs_line_names_the_adr_folder(repo, runner):
@@ -332,7 +332,7 @@ def test_the_domain_docs_line_names_the_adr_folder(repo, runner):
 
     seed(runner, repo.work, folder="docs/decisions/")
 
-    assert ("Single-context: `CONTEXT.md` and `docs/decisions/` at the repo root. See `docs/agents/domain.md`.\n"
+    assert ("Single-context: `CONTEXT.md` and `docs/decisions/` at the repo root. See `docs/skillworks/domain.md`.\n"
             in read(repo.work / "CLAUDE.md"))
 
 

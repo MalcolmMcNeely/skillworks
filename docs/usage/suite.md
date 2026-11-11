@@ -6,7 +6,7 @@ names and nothing else.
 
 ## The Suite file
 
-The Suite file is `docs/agents/suite.json`. Setup seeds it with no checks, so a new repo starts by
+The Suite file is `docs/skillworks/suite.json`. Setup seeds it with no checks, so a new repo starts by
 adding its own:
 
 ```json
@@ -34,7 +34,7 @@ adding its own:
     {
       "command": ["pytest", "scripts"],
       "folder": ".",
-      "image": "docs/agents/scripts.Dockerfile"
+      "image": "docs/skillworks/scripts.Dockerfile"
     }
   ]
 }
@@ -61,7 +61,7 @@ run of a real red only costs time.
 ## On an Export branch
 
 With [the Export](the-loop/export.md), your own branch holds no Steering file, so it has no
-`docs/agents/suite.json`. There `skillworks-suite` reads the Suite file from
+`docs/skillworks/suite.json`. There `skillworks-suite` reads the Suite file from
 `origin/skillworks/steering`, as your last fetch left it. The Dockerfile a check names as its `image`
 comes from there too, with the rest of its folder, and a change to that folder on the Steering branch
 runs the check again. A branch that holds its own Suite file reads that one.
@@ -103,7 +103,7 @@ runs again on any change, which is always safe.
 ## `image`: a check that runs in a container
 
 Some tests start many processes, and some OSes are slow to start one. A check with `image` names a
-Dockerfile, so the check runs on an OS that is fast for it. Keep the Dockerfile in `docs/agents/`
+Dockerfile, so the check runs on an OS that is fast for it. Keep the Dockerfile in `docs/skillworks/`
 with the rest of your Steering.
 
 1. The loop builds the image. Docker keeps what it built before, so a second build is fast.
@@ -204,7 +204,7 @@ A **Trial** runs a command of your own in the image a check names. It is for the
 change touches, when the check that runs them runs in an image:
 
 ```
-skillworks-suite --image docs/agents/scripts.Dockerfile -- pytest scripts/suite_test.py -k proof
+skillworks-suite --image docs/skillworks/scripts.Dockerfile -- pytest scripts/suite_test.py -k proof
 ```
 
 The form is `skillworks-suite --image <Dockerfile> -- <command>`. Name the image by the path the

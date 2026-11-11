@@ -12,7 +12,7 @@ from export import cut_target
 STEERING = "skillworks/steering"
 EXPORT = "feature/PROJ-12/slug"
 TARGET = "skillworks/spec/" + EXPORT
-LOOP = "docs/agents/loop.json"
+LOOP = "docs/skillworks/loop.json"
 
 
 class Work:

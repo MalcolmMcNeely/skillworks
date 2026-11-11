@@ -2,7 +2,7 @@
 
 Part of [the Dev loop](../the-loop.md).
 
-The **Target branch** is the branch a ticket Lands on. `target-branch` in `docs/agents/loop.json`
+The **Target branch** is the branch a ticket Lands on. `target-branch` in `docs/skillworks/loop.json`
 says which one it is. Setup asks you, and writes your answer there. It takes one of two kinds of
 answer.
 
@@ -49,7 +49,7 @@ protection. With `pr`:
 - You open the one pull request, from your branch. Skillworks opens none, and you write no closing
   keyword such as `Closes #<spec>` in it.
 
-**`pr` with `export` on.** With `"export": true` in `docs/agents/loop.json`, PR mode works for
+**`pr` with `export` on.** With `"export": true` in `docs/skillworks/loop.json`, PR mode works for
 [the Export](export.md), and three things change:
 
 - The Target branch is `skillworks/spec/<your branch>`, such as
@@ -69,4 +69,4 @@ Target branch, read the branch name you set, or the branch you started the grill
 
 PR mode was called spec mode, and its value was `"spec"`. The loop, the preflight and every script
 that reads `target-branch` now refuse `"target-branch": "spec"`, and nothing reads it as `"pr"`. To
-go on, write `"target-branch": "pr"` in `docs/agents/loop.json`.
+go on, write `"target-branch": "pr"` in `docs/skillworks/loop.json`.

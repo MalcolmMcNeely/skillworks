@@ -8,7 +8,7 @@ change what the stage does. [Steering](../steering.md) has the detail on each fi
 Two kinds of load:
 
 - **Always** means the file is in the Session from its start. `CLAUDE.md` loads, and it imports the
-  five rules in `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md`,
+  five rules in `docs/skillworks/rules/`: `comments.md`, `determinism.md`, `file-placement.md`,
   `testing.md` and `words.md`. The map calls these "`CLAUDE.md` and the rules".
 - **On demand** means a skill reads the file only when that stage needs it.
 

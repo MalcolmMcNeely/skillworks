@@ -9,7 +9,7 @@ Actively build and sharpen the project's domain model as you design. This is the
 
 ## On an Export branch
 
-When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering and takes no word or ADR. Stop here, and write nothing. Tell the developer to start the design with `/skillworks:grill`, which cuts the spec's Target branch before its first question. On a Target branch, go on.
+When `docs/skillworks/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering and takes no word or ADR. Stop here, and write nothing. Tell the developer to start the design with `/skillworks:grill`, which cuts the spec's Target branch before its first question. On a Target branch, go on.
 
 ## File structure
 
@@ -39,7 +39,7 @@ If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The ma
 │       └── CONTEXT.md
 ```
 
-Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. The trees show `docs/adr/`, but every new ADR goes to the folder `adr-folder` names in `steering-file docs/agents/domain.md`. If that folder does not exist, create it when the first ADR is needed.
+Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. The trees show `docs/adr/`, but every new ADR goes to the folder `adr-folder` names in `steering-file docs/skillworks/domain.md`. If that folder does not exist, create it when the first ADR is needed.
 
 ## During the session
 
@@ -81,7 +81,7 @@ More than one person runs agent work against a repo at once, and a conversation 
 
 So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push it to the Target branch. Never hold them to the end of the session.
 
-- **Find the Target branch.** Read `target-branch` in `steering-file docs/agents/loop.json`. A branch name is the Target branch. The word `pr` means PR mode; see [The spec's branch](#the-specs-branch).
+- **Find the Target branch.** Read `target-branch` in `steering-file docs/skillworks/loop.json`. A branch name is the Target branch. The word `pr` means PR mode; see [The spec's branch](#the-specs-branch).
 - **Stage by path.** Stage only the file you settled. Work in progress elsewhere in the tree is never swept into a glossary commit.
 - **Prefix the subject line.** `Glossary:` for a `CONTEXT.md` change, `ADR:` for an ADR, so the log says which kind of change it was without anyone opening it.
 - **Pull, then push.** A push onto a branch a teammate has moved is rejected, so pull first and push the rebased commit. Read what the pull brings down: when a teammate's change touches ground this session already settled, say so. What to re-ask is then a question for this session.
@@ -90,7 +90,7 @@ So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push
 
 In PR mode the Target branch is the branch this session is on: the developer's own branch, which the grill checked before its first question. The developer made it, and opens the one pull request from it after the loop.
 
-With `export` set to `true` in `steering-file docs/agents/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
+With `export` set to `true` in `steering-file docs/skillworks/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
 
 **Every word or ADR** goes to that branch. Commit it on the branch this session is on, pull, and push there.
 
@@ -98,7 +98,7 @@ Cut no branch. Open no pull request, and make no `gh` call to find the default b
 
 ### The spec's branch with the Export
 
-With `export` set to `true` in `steering-file docs/agents/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. The grill cut it before its first question, so this session is already on it.
+With `export` set to `true` in `steering-file docs/skillworks/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. The grill cut it before its first question, so this session is already on it.
 
 **Every word or ADR** goes to that Target branch. Stay on it, pull, and push there.
 

@@ -16,7 +16,7 @@ the loop.
 ## The check
 
 The first thing the command does is check the clone. It reads the Tracker and the Target branch
-from `docs/agents/loop.json`, fetches from origin the branch it reads the history from, and reads
+from `docs/skillworks/loop.json`, fetches from origin the branch it reads the history from, and reads
 that history. In PR mode that branch is the default branch, and not the Target branch.
 
 ### A clone it refuses
@@ -168,7 +168,7 @@ decision. The `Context:` line is there only with a map. The text between it and 
 text that will be written into the repo.
 
 The run writes each decision Draft in your team's shape: the template and the optional sections in
-`docs/agents/adr-format.md`. The run also reads the ADRs already in the folder `adr-folder` names,
+`docs/skillworks/adr-format.md`. The run also reads the ADRs already in the folder `adr-folder` names,
 so what you accept looks like the rest of your ADRs.
 
 A reversal, a decision that was later undone, is one Draft that holds two ADRs: the old one, marked
@@ -246,7 +246,7 @@ it.
 |---|---|
 | `accept` on the map | `CONTEXT-MAP.md` at the repo root, as the sheet holds it. Two Steering files change with it, as the next section says. |
 | `accept` on a word | The glossary, in alphabetical order, with its `_Avoid_` line and no evidence. With one glossary, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, where the map says that context lives. The file is created when there is none. |
-| `accept` on a decision | A new ADR in the folder `adr-folder` names, at the end of `docs/agents/domain.md`. Its number is one above the highest number there, padded as wide as the file with the highest number, so `041` is followed by `042`. An empty folder starts at `0001`. The Draft's title is its heading, and its text is the body, exactly as accepted, in the team's shape. |
+| `accept` on a decision | A new ADR in the folder `adr-folder` names, at the end of `docs/skillworks/domain.md`. Its number is one above the highest number there, padded as wide as the file with the highest number, so `041` is followed by `042`. An empty folder starts at `0001`. The Draft's title is its heading, and its text is the body, exactly as accepted, in the team's shape. |
 | `reject` | Nowhere. The Draft is dropped. |
 | `?` or blank | Nowhere yet. The Draft stays on the sheet. |
 
@@ -288,7 +288,7 @@ faces the same Answer as every other find before it is written. A Question whose
 A map changes how the checks read the repo, so two Steering files change in the same commit as the
 map:
 
-- `docs/agents/rules/words.md` gets an empty banned-words list, written `[]`, for each context the
+- `docs/skillworks/rules/words.md` gets an empty banned-words list, written `[]`, for each context the
   map names. The words rule wants a list for every context in the map, so a map with no lists would
   turn the Suite red.
 - The Domain docs line in `CLAUDE.md` says multi-context, in the words setup writes for a repo with a
@@ -312,7 +312,7 @@ commits it made, then pulls with rebase and pushes them.
 
 ### Where the commits go
 
-`target-branch` in `docs/agents/loop.json` decides where the commits go:
+`target-branch` in `docs/skillworks/loop.json` decides where the commits go:
 
 | `target-branch` | Where the commits go |
 |---|---|
@@ -372,6 +372,6 @@ passes after it.
 When nothing is left on the sheet, the run says so, and says that deleting `.context-backfill/`
 starts over. Then it names the next step:
 
-- When `docs/agents/suite.json` names no check yet, `/skillworks:architecture-tests`, which turns
+- When `docs/skillworks/suite.json` names no check yet, `/skillworks:architecture-tests`, which turns
   the rules into tests your team owns.
 - When it names a check, your first loop: `/skillworks:grill`, then `/skillworks:spec-loop <spec#>`.

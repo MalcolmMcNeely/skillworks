@@ -12,7 +12,7 @@ from stop import Stop, misuse, refusal
 USAGE = "usage: steering-file <path>\n"
 
 # Every script builds its Steering paths from this one name, so the folder moves in one line.
-STEERING_FOLDER = "docs/agents"
+STEERING_FOLDER = "docs/skillworks"
 
 # Read as the last fetch left it and never fetched, so a session reads its Steering offline and with no wait.
 STEERING_REF = "refs/remotes/origin/" + STEERING

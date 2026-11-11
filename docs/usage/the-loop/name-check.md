@@ -13,7 +13,7 @@ brought in, the Gap ticket's too. The script opens one more worktree and runs
 - the commits the spec's tickets Landed after the base commit, through `spec-commits`, in place of
   the spec's whole diff. A commit with no `Ticket:` trailer is not read, and neither is another
   spec's work;
-- the glossary of each context those commits touch. `docs/agents/domain.md` says where your
+- the glossary of each context those commits touch. `docs/skillworks/domain.md` says where your
   glossaries are, and the Name check finds them through it. Its `adr-folder` names your ADR folder,
   which the Name check does not read.
 

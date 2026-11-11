@@ -26,7 +26,7 @@ def test_a_missing_loop_file_stops_and_names_the_command_that_writes_it(tmp_path
         target_branch(tmp_path)
 
     assert stopped.value.status == REFUSED
-    assert "docs/agents/loop.json" in stopped.value.said
+    assert "docs/skillworks/loop.json" in stopped.value.said
     assert "seed-steering" in stopped.value.said
 
 
@@ -66,7 +66,7 @@ def test_an_old_spec_value_is_refused_and_the_fix_is_to_write_pr(tmp_path):
 
     assert stopped.value.status == REFUSED
     assert "spec mode is now PR mode" in stopped.value.said
-    assert 'write "target-branch": "pr" in docs/agents/loop.json' in stopped.value.said
+    assert 'write "target-branch": "pr" in docs/skillworks/loop.json' in stopped.value.said
 
 
 def test_an_old_spec_value_is_never_read_as_a_branch_name(tmp_path):

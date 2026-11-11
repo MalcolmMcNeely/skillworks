@@ -41,7 +41,7 @@ Your team's own checks for the `standards` review go here, one bullet for each. 
 - Every message handler is idempotent. A hard breach. Paths: `src/handlers/`.
 ```
 
-A check that should also shape the build goes in a rule in `docs/agents/rules/` instead. A rule loads into every session, and this file is read only by its review.
+A check that should also shape the build goes in a rule in `docs/skillworks/rules/` instead. A rule loads into every session, and this file is read only by its review.
 
 This list holds no check yet.
 

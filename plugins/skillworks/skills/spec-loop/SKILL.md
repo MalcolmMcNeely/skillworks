@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Take a spec that is already published on the tracker and run it to completion.
 
-The argument is the spec's number: its issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, such as `7` for `0007-local-tracker`, with the files Tracker. `tracker` in `steering-file docs/agents/loop.json` names the Tracker, and `steering-file docs/agents/issue-tracker.md` says how to read each one. If no number was given, list the open specs and ask which one.
+The argument is the spec's number: its issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, such as `7` for `0007-local-tracker`, with the files Tracker. `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. If no number was given, list the open specs and ask which one.
 
 Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
 
@@ -39,7 +39,7 @@ Tell the user the log path: `.spec-loop/<spec-number>/loop.log`.
 
 When the script exits, read `.spec-loop/<spec-number>/loop.log` and say which tickets closed.
 
-Each ticket Lands on its Target branch. `target-branch` in `steering-file docs/agents/loop.json` names it for every spec, or says `pr`, and then each spec names its own branch under `## Branch` and is reviewed as one pull request.
+Each ticket Lands on its Target branch. `target-branch` in `steering-file docs/skillworks/loop.json` names it for every spec, or says `pr`, and then each spec names its own branch under `## Branch` and is reviewed as one pull request.
 
 Name each Departure first, then each Choice and each Hand check, from the list at the end of the log to the user, one by one, before any close offer and at an early stop as well.
 

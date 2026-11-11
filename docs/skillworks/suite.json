@@ -48,7 +48,7 @@
                   "pytest", "-n", "auto", "tests/plugins/skillworks/scripts", "tools/backfill_evals",
                   "-m", "not this_repo"],
       "folder": ".",
-      "image": "docs/agents/script-tests.Dockerfile",
+      "image": "docs/skillworks/script-tests.Dockerfile",
       "ignores": [
         ".claude",
         "tools/*.mjs",

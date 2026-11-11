@@ -2,7 +2,7 @@
 
 Part of [the Dev loop](../the-loop.md).
 
-The **Tracker** is where your team keeps its specs and tickets. `tracker` in `docs/agents/loop.json`
+The **Tracker** is where your team keeps its specs and tickets. `tracker` in `docs/skillworks/loop.json`
 says which one it is. Setup asks you, and writes your answer there. It takes one of two answers.
 
 **`github`**. A spec is a GitHub issue, and each ticket is a sub-issue of it. The loop reads and

@@ -11,7 +11,7 @@ branch. You push that branch and open the pull request.
 
 ## Switch it on
 
-`"export": true` in `docs/agents/loop.json` switches the Export on. It works only with
+`"export": true` in `docs/skillworks/loop.json` switches the Export on. It works only with
 `"target-branch": "pr"`, because the loop reads the name of your branch from the name of the
 spec's Target branch. The preflight and the loop stop when `export` is on with any other Target
 branch, and say to write `"pr"`. A `loop.json` with no `export` reads as `false`, and the loop runs as it did
@@ -57,7 +57,7 @@ Then, for each spec:
 ## The grill's cut
 
 The grill cuts the Target branch at its start, before its first question, when
-`docs/agents/loop.json` is missing on disk. That file is missing only on your own branch. The grill
+`docs/skillworks/loop.json` is missing on disk. That file is missing only on your own branch. The grill
 runs one command, `cut-target-branch`, on your branch, and it does the same steps in every run:
 
 1. It rebases the Steering branch's own commits onto the commit your branch sits on, and
@@ -90,7 +90,7 @@ that starts on your branch gets its Steering from the local `origin/skillworks/s
 - When a session starts, the Plugin gives it the `CLAUDE.md` of `origin/skillworks/steering`, and
   each file that `CLAUDE.md` imports with `@`. So the session has the rules, the Tracker and the
   domain docs, the same as a session on the Target branch.
-- The session is told to read each path under `docs/agents/` with `steering-file <path>`. That
+- The session is told to read each path under `docs/skillworks/` with `steering-file <path>`. That
   command prints the file from disk, or from `origin/skillworks/steering` when your branch does not
   hold it.
 - Nothing is written to your branch. It stays free of every Steering file.
@@ -160,7 +160,7 @@ lines below it say how to read the branch and how to push it:
       5c0e1b7 Steering for a team that does not use Skillworks
       e44f2a9 A hand fix with no trailer
       0b7d3c6 Close spec 200
-      docs/agents/suite.json, from #202
+      docs/skillworks/suite.json, from #202
 2026-09-28 18:52:31 END   spec #200 complete. The Export is on feature/PROJ-12/slug.
       Review it with: git log --oneline 1f0a3c8e5b22..feature/PROJ-12/slug
       Push it with: git push origin feature/PROJ-12/slug
@@ -185,7 +185,7 @@ the ticket and each file that did not apply:
       5c0e1b7 Steering for a team that does not use Skillworks
       e44f2a9 A hand fix with no trailer
       0b7d3c6 Close spec 200
-      docs/agents/suite.json, from #202
+      docs/skillworks/suite.json, from #202
 2026-09-28 18:52:31 STOP  the change of #203 does not apply to the Export branch feature/PROJ-12/slug in src/app.py, so the Export moved nothing. Every ticket's code is still on skillworks/spec/feature/PROJ-12/slug.
 ```
 

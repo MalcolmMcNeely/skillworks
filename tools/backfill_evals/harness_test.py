@@ -70,9 +70,9 @@ def planted(top, *commits):
 SEEDS = "plugins/skillworks/skills/skillworks-setup/seeds"
 
 SET_UP = ("Set up the repo", {
-    "docs/agents/loop.json": json.dumps({"tracker": "github", "target-branch": "main"}) + "\n",
-    "docs/agents/rules/words.md": "# Words\n\n```yaml\nbanned-words:\n  studio: []\nskip-folders: []\n```\n",
-    "docs/agents/domain.md": "# Domain docs\n\nThis repo is multi-context.\n",
+    "docs/skillworks/loop.json": json.dumps({"tracker": "github", "target-branch": "main"}) + "\n",
+    "docs/skillworks/rules/words.md": "# Words\n\n```yaml\nbanned-words:\n  studio: []\nskip-folders: []\n```\n",
+    "docs/skillworks/domain.md": "# Domain docs\n\nThis repo is multi-context.\n",
     SEEDS + "/words.md": "# Words\n\nThe seed's own words rule.\n",
     SEEDS + "/domain.md": "# Domain docs\n\nThe seed's own domain docs.\n",
 })

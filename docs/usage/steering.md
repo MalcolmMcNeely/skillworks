@@ -9,7 +9,8 @@ team changes its mind, and commit the edit like any other change.
 This page is the one living list of what a team steers and what is fixed. An ADR records a decision
 as it was made. When a list changes, this page changes, and the ADR stays as it was.
 
-Every Steering file lives in `docs/agents/`, so you find all of it in one place. A few files sit
+Every Steering file lives in `docs/skillworks/`, so you find all of it in one place. The folder
+carries the Plugin's name because other tools write their own files to `docs/agents/`. A few files sit
 somewhere else, because a tool or a design puts them there. They are at the end of the list.
 
 Each file below says what it does, which part of the loop reads it, and what your team can change in
@@ -29,11 +30,11 @@ Some Steering has to be in every Session from the start. The rules are that kind
 each one with an `@` import:
 
 ```markdown
-@docs/agents/rules/comments.md
-@docs/agents/rules/determinism.md
-@docs/agents/rules/file-placement.md
-@docs/agents/rules/testing.md
-@docs/agents/rules/words.md
+@docs/skillworks/rules/comments.md
+@docs/skillworks/rules/determinism.md
+@docs/skillworks/rules/file-placement.md
+@docs/skillworks/rules/testing.md
+@docs/skillworks/rules/words.md
 ```
 
 So `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md` load into every
@@ -42,17 +43,17 @@ Session, and into every step of the loop. Keep them short, because every Session
 With [the Export](the-loop/export.md#a-session-on-your-own-branch), a Session on your own branch reads
 the Steering from the Steering branch, because your branch holds none of it.
 
-The preflight checks that each rule in `docs/agents/rules/` still has its import. Without that check,
+The preflight checks that each rule in `docs/skillworks/rules/` still has its import. Without that check,
 one deleted line would turn a rule off without a word. A new rule you add to the folder needs a new
 import line in `CLAUDE.md`, or the preflight stops. The loop runs the same check, so it stops too,
 before any ticket runs.
 
 ## What loads on demand
 
-Every other file in `docs/agents/` loads only when a skill reads it. A Session that does not need a
+Every other file in `docs/skillworks/` loads only when a skill reads it. A Session that does not need a
 baseline does not carry it. So a long baseline costs only the step that reads it.
 
-## The rules, in `docs/agents/rules/`
+## The rules, in `docs/skillworks/rules/`
 
 Each rule is prose with one YAML block at the end. The prose says what the rule asks for. The YAML
 block holds its settings.
@@ -77,7 +78,7 @@ skips that one folder and everything beneath it, and uses `/` on every OS.
 A check can read a rule's YAML block and fail the Suite on a breach. The Plugin ships no such check.
 It is yours to add, as a check in your Suite.
 
-## The files in `docs/agents/`
+## The files in `docs/skillworks/`
 
 | File | What it does | What reads it | What your team can change |
 |---|---|---|---|
@@ -88,7 +89,7 @@ It is yours to add, as a check in your Suite.
 | `review-architecture.md` | What the `architecture` review checks. It holds the arrangement baseline, the failures of placement and direction and their weighting, which the review looks for even when your repo documents nothing. It holds your team's own checks, each a hard breach or a judgement call. It holds a "Do not report" list. | The `architecture` review, and no other step. | The failures and their weighting. A rule your repo writes down always beats a failure. Your checks: each says what to look for, whether it is a hard breach or a judgement call, and the paths it covers when it covers fewer than all. The review skips a small change inside one module, but never one that a check of yours covers, so a check with no paths makes it review every change. "Do not report": the paths and the kinds of finding the review skips. |
 | `review-spec.md` | What the `spec` review checks, beyond whether the change is the one the ticket asked for. It holds no baseline, because that check lives in the review itself. It holds your team's own checks, each a hard breach or a judgement call. It holds a "Do not report" list. | The `spec` review, and no other step. | Your checks: each says what to look for, whether it is a hard breach or a judgement call, and the paths it covers when it covers fewer than all. "Do not report": the paths and the kinds of finding the review skips. The Seed holds no check, so the review checks only the ticket until you add one. |
 | `placement-checks.md` | Names the commands that prove placement, each with its folder and anything to run first. It also maps each check back to the rule it runs. | The `architecture` review. It runs these commands and nothing else. | The commands. The Seed names none, so the review can only judge placement by reading until you add them. |
-| `suite.json` | The Suite: the checks that decide green for your repo. | The `suite` step, the Suite again after a rebase, the full run, and `skillworks-suite`. | Every check, its `ready` command, its `ignores`, its `image`, and `runs`. [The Suite](suite.md) has the whole file. The Seed names no check, so the loop stops until you add one. A check can name a Dockerfile you keep in `docs/agents/` as its `image`. |
+| `suite.json` | The Suite: the checks that decide green for your repo. | The `suite` step, the Suite again after a rebase, the full run, and `skillworks-suite`. | Every check, its `ready` command, its `ignores`, its `image`, and `runs`. [The Suite](suite.md) has the whole file. The Seed names no check, so the loop stops until you add one. A check can name a Dockerfile you keep in `docs/skillworks/` as its `image`. |
 | `loop.json` | The loop's settings. `tracker` names where your specs and tickets live: `github` for GitHub Issues, or `files` for committed files in `.specs/`. `target-branch` names the branch the loop Lands on, or says `pr` to review each spec as one pull request. | Setup, which asks for all three and writes them. The preflight and the loop's scripts, through one reader. The skills that read or write a spec or a ticket, to find the Tracker. The grill, `/skillworks:to-spec`, `implement` and the drift check, to find the branch they push to or judge. | `tracker`: `github` or `files`. The Seed sets it to `github`, and setup asks. `target-branch`: a branch name, such as `main` or `master`, or `pr`. The Seed sets it to your remote's default branch. `co-authored-by`: `show` or `hide`. The Seed sets it to `hide`, and setup asks. `session-trailer`: `show` or `hide`. With `hide`, no commit the Plugin makes carries a `Skillworks-Session` trailer. The Seed sets it to `show`, and a `loop.json` without it means `show`. `export`: `true` or `false`. With `true`, the loop Exports each finished spec onto your own branch, as [the Export](the-loop/export.md) says. It works only with `target-branch` set to `pr`. The Seed sets it to `false`, and a `loop.json` without it means `false`. [The loop](the-loop/tracker.md) says how to choose each one. |
 | `surfaces.md` | Lists your Surfaces: the places a change can have to reach besides the code that does the work, such as the README or the user docs. [The Surfaces file](#the-surfaces-file) has an example. | The grill, which asks about each Surface a change touches. `/skillworks:to-spec`, which writes each answer into the spec's Surfaces section. The `spec` review and the drift check, which find each Surface the spec names and check it is in step. The Name check does not read it: it reads the diff and the glossary alone. | Every Surface. Add your own, and delete one your repo does not have. |
 
@@ -96,7 +97,7 @@ A hard breach is always fixed and never left. That holds for a check in a review
 and for a breach of a rule marked hard. A judgement call may be left, with the reason in the
 review's report and in the ticket's Closing note.
 
-A check that should also shape the build goes in a rule in `docs/agents/rules/`, and not in a review
+A check that should also shape the build goes in a rule in `docs/skillworks/rules/`, and not in a review
 file. A rule loads into every Session, so the build reads it too. A review file is read only by its
 review.
 
@@ -104,7 +105,7 @@ review.
 
 A change often has to reach more than its code. A new setting needs a line in the user docs. A new
 command needs a line in the README. The grill asks about these places, so nobody leaves one behind
-without deciding it. `docs/agents/surfaces.md` names them. The grill asks once the design is settled,
+without deciding it. `docs/skillworks/surfaces.md` names them. The grill asks once the design is settled,
 one Surface at a time, and skips a Surface the change does not touch. The spec carries each answer in
 its Surfaces section. Each ticket carries the Surfaces its change touches. The `spec` review and the
 drift check each check that those Surfaces are in step.
@@ -137,7 +138,7 @@ The Seed's default is a changed line and one new setup or run step. The heading 
 `## The README`, so that the loop can find it. A repo with no README Surface gets no README rules, and
 the loop treats its README as any other file.
 
-## The Steering outside `docs/agents/`
+## The Steering outside `docs/skillworks/`
 
 These files stay where a tool or a design places them.
 
@@ -163,7 +164,7 @@ Plugin, and no team edits them. There is no file for them, so do not look for on
 - The plain writing in `unslop`, and the output style the Plugin forces on every Session.
 - The rules for writing a document an agent reads, in `skillsmith`. Claude loads it when it edits a
   skill, a `CLAUDE.md` or a rule file.
-- The trailers on every commit: the Session trailer as `session-trailer` in `docs/agents/loop.json`
+- The trailers on every commit: the Session trailer as `session-trailer` in `docs/skillworks/loop.json`
   says, the `Ticket` trailer in the loop, and the credit line for Claude as `co-authored-by` says.
 - The three trailer rules the hook writes into `.git/config`:
   `trailer.Skillworks-Session.ifExists=addIfDifferent`,

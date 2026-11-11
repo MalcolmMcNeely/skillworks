@@ -92,7 +92,7 @@ looking.
    refusal rule 2.
 
    Run them as `/skillworks:implement`'s Building runs them. A test of a check with `image` in the Suite
-   file, which `steering-file docs/agents/suite.json` prints, runs as a Trial, and never on the host.
+   file, which `steering-file docs/skillworks/suite.json` prints, runs as a Trial, and never on the host.
    Start from that check's own `command`, and narrow only its paths and filters:
 
    ```bash

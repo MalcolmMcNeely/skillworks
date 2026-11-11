@@ -20,9 +20,9 @@ For every other comment, the target decides. In a file the request names by path
 
 ## The rules
 
-`steering-file docs/agents/rules/comments.md` prints the rules, and nothing else does. Read it before pass 1. It decides what a doc comment is, where doc comments may go, and which comments earn their place. Its keep and cut table, under "What a sweep keeps and cuts", is the team's taste: judge by it, and leave alone what it says to leave alone.
+`steering-file docs/skillworks/rules/comments.md` prints the rules, and nothing else does. Read it before pass 1. It decides what a doc comment is, where doc comments may go, and which comments earn their place. Its keep and cut table, under "What a sweep keeps and cuts", is the team's taste: judge by it, and leave alone what it says to leave alone.
 
-If `steering-file docs/agents/rules/comments.md` ends with a non-zero status, the file is missing, so stop. Tell the user that it is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was swept. Under the spec loop this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
+If `steering-file docs/skillworks/rules/comments.md` ends with a non-zero status, the file is missing, so stop. Tell the user that it is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was swept. Under the spec loop this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
 
 ## Pass 1: Cut
 

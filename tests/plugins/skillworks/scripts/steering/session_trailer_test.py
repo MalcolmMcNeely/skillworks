@@ -38,7 +38,7 @@ def test_a_missing_loop_file_reads_as_show(tmp_path):
 
 @pytest.mark.parametrize("text", ['{"session-trailer": ', '["hide"]'])
 def test_a_loop_file_that_holds_no_json_object_reads_as_show(tmp_path, text):
-    (tmp_path / "docs" / "agents").mkdir(parents=True)
+    (tmp_path / "docs" / "skillworks").mkdir(parents=True)
     (tmp_path / LOOP_FILE).write_text(text, encoding="utf-8", newline="\n")
 
     assert session_trailer(tmp_path) == "show"

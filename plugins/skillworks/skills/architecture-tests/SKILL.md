@@ -1,25 +1,25 @@
 ---
 name: architecture-tests
-description: Turn the rules in docs/agents/rules/ into architecture tests the team owns, with a common tool for the language where one fits and a starter test in the team's own language where none does, then wire each test into the Suite and the placement checks. Use when the user wants the rules enforced, after setup, or again when the repo gains a language or a rule.
+description: Turn the rules in docs/skillworks/rules/ into architecture tests the team owns, with a common tool for the language where one fits and a starter test in the team's own language where none does, then wire each test into the Suite and the placement checks. Use when the user wants the rules enforced, after setup, or again when the repo gains a language or a rule.
 ---
 
 # Architecture tests
 
-The rules in `steering-file docs/agents/rules/` are data a test enforces. Until a test reads them, they are prose an agent may or may not follow. This skill writes those tests into the team's repo. The team owns them from then on, like any other test.
+The rules in `steering-file docs/skillworks/rules/` are data a test enforces. Until a test reads them, they are prose an agent may or may not follow. This skill writes those tests into the team's repo. The team owns them from then on, like any other test.
 
 The Plugin ships no checker. Every test this skill writes is either a common tool for the language, set up to read the rule, or a starter test in the team's own language that reads the rule's YAML and checks the files.
 
 [REFERENCE.md](REFERENCE.md) maps each rule to the common tools for each language, and names the rules that need a starter test. Read it before you propose anything.
 
-If `steering-file docs/agents/rules/`, `steering-file docs/agents/suite.json` or `steering-file docs/agents/placement-checks.md` ends with a non-zero status, that file is missing, so stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
+If `steering-file docs/skillworks/rules/`, `steering-file docs/skillworks/suite.json` or `steering-file docs/skillworks/placement-checks.md` ends with a non-zero status, that file is missing, so stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
 
 ## On an Export branch
 
-When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. This skill writes Steering, and a Steering change never lands on that branch. Stop here, and write nothing. Tell the developer to switch to `skillworks/steering`, run this skill there, and push. On any other branch, go on.
+When `docs/skillworks/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. This skill writes Steering, and a Steering change never lands on that branch. Stop here, and write nothing. Tell the developer to switch to `skillworks/steering`, run this skill there, and push. On any other branch, go on.
 
 ## 1. Read the rules and find the languages
 
-Read each rule in `steering-file docs/agents/rules/`, and the YAML block at its end. The settings are what a test checks: a starter test reads them from the rule at every run, and never copies them, so a changed setting changes what the test checks.
+Read each rule in `steering-file docs/skillworks/rules/`, and the YAML block at its end. The settings are what a test checks: a starter test reads them from the rule at every run, and never copies them, so a changed setting changes what the test checks.
 
 Read `CONTEXT-MAP.md` where the repo has one, because a rule reaches only the code the map gives it.
 
@@ -29,7 +29,7 @@ Python and Java tools are not in the reference yet. For a repo in either, offer 
 
 ## 2. Ask which rules to enforce
 
-Show the user a table: each rule, the settings it reads, and for each language the tool or starter test the reference names. Mark each rule that already has a test, from the tables in `steering-file docs/agents/placement-checks.md` and the checks in `steering-file docs/agents/suite.json`. Mark too each rule that a tool the repo already runs holds, such as a boundary rule in a lint config, even where no table names it yet. That rule needs wiring in, not writing again.
+Show the user a table: each rule, the settings it reads, and for each language the tool or starter test the reference names. Mark each rule that already has a test, from the tables in `steering-file docs/skillworks/placement-checks.md` and the checks in `steering-file docs/skillworks/suite.json`. Mark too each rule that a tool the repo already runs holds, such as a boundary rule in a lint config, even where no table names it yet. That rule needs wiring in, not writing again.
 
 Ask which rules the team wants enforced. Offer every rule that has no test yet, and recommend the ones whose settings are filled in. A rule whose settings are empty, such as `slices: []`, judges nothing, so its test proves nothing until the team fills them.
 
@@ -59,8 +59,8 @@ A rule the code breaks today is reported to the team, and never quietly weakened
 
 Each write below is one the team approves, so show it before you make it.
 
-1. **The Suite.** Add the test's command to `docs/agents/suite.json`, with its `folder`, and with the `ignores` that keep it asleep: the paths, as git pathspecs from the repo root, that cannot change what it checks. Leave the rule files out of `ignores`, because a changed setting has to run the check again. In a pathspec `*` also matches `/`, so `docs/*.md` ignores the rule files too. A test that walks the whole repo ignores only exact file paths, never a folder or a pattern, because a new folder under an ignored path could break it. The Suite runs its checks at once, and two checks that build the same .NET project collide in its `obj` folder. So a .NET repo gives the Suite one check, `dotnet test` of the solution, and the placement checks can still list the narrow commands, because a review runs them one at a time. Where the command needs an install first, give the check a `ready` with the install command, and an `unless` path from the repo root, such as `web/node_modules`. Run `skillworks-suite` and read that the new check passes.
-2. **The placement checks.** Fill both tables in `docs/agents/placement-checks.md`. The first says which check proves which rule, so a review can cite a breach by the check's name. List the checks of every rule file, and for a rule outside `file-placement.md`, name its file in place of a number. The second holds the exact command that runs the check, its folder, and any command to run first. List the narrowest command that proves the rule, and leave out a slow one that proves something else.
+1. **The Suite.** Add the test's command to `docs/skillworks/suite.json`, with its `folder`, and with the `ignores` that keep it asleep: the paths, as git pathspecs from the repo root, that cannot change what it checks. Leave the rule files out of `ignores`, because a changed setting has to run the check again. In a pathspec `*` also matches `/`, so `docs/*.md` ignores the rule files too. A test that walks the whole repo ignores only exact file paths, never a folder or a pattern, because a new folder under an ignored path could break it. The Suite runs its checks at once, and two checks that build the same .NET project collide in its `obj` folder. So a .NET repo gives the Suite one check, `dotnet test` of the solution, and the placement checks can still list the narrow commands, because a review runs them one at a time. Where the command needs an install first, give the check a `ready` with the install command, and an `unless` path from the repo root, such as `web/node_modules`. Run `skillworks-suite` and read that the new check passes.
+2. **The placement checks.** Fill both tables in `docs/skillworks/placement-checks.md`. The first says which check proves which rule, so a review can cite a breach by the check's name. List the checks of every rule file, and for a rule outside `file-placement.md`, name its file in place of a number. The second holds the exact command that runs the check, its folder, and any command to run first. List the narrowest command that proves the rule, and leave out a slow one that proves something else.
 3. **The allowlist.** Add the command of any tool new to the repo to `permissions.allow` in `.claude/settings.json`, as the program and its first word, such as `Bash(dotnet test:*)`, so a review that runs the placement commands is not stopped by a Denial. Claude Code treats that file as sensitive and can turn down your own write to it, even when the team approves. So never write it by hand. Run `allow-commands` with every entry, such as `allow-commands "Bash(dotnet test:*)" "Bash(npm run lint:*)"`. It adds each entry that is missing, removes none, and says which it added.
 
    **If the write is turned down.** Where the `allow-commands` run is turned down too, do not stop. Show the developer the file, `.claude/settings.json`, and the exact entries to add to `permissions.allow`, one to a line. Ask the developer to add them. Then read the file back, and check that each entry is in `permissions.allow`. The allowlist step is done only when every entry is there. Never report it done while an entry is missing.
@@ -69,7 +69,7 @@ Each write below is one the team approves, so show it before you make it.
 
 The team runs this skill again when the repo gains a language or a rule. A rerun tests only what is new:
 
-- Find the rules and languages that no row of `steering-file docs/agents/placement-checks.md` covers yet.
+- Find the rules and languages that no row of `steering-file docs/skillworks/placement-checks.md` covers yet.
 - Keep every existing test as it is. The team owns it, so an edit to it is the team's, and a rerun is not a reason to rewrite it.
 - Name each existing test that reads a dropped value of a setting, with the file and the value it reads. The values dropped now are `true` and `false` of `doc-comments`: `false` is now `none`, and `true` is now `code`. Change no test. The team changes the value in its rule, and its own test, by hand.
 - Offer the new rules and the new languages, and go through steps 3 to 5 for each one the team picks.

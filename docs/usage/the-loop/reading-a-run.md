@@ -130,7 +130,7 @@ it:
 2026-09-28 18:52:31 LEFT  the Export left out 2 commits and 1 file of skillworks/spec/feature/PROJ-12/slug
       5c0e1b7 Steering for a team that does not use Skillworks
       e44f2a9 A hand fix with no trailer
-      docs/agents/suite.json, from #202
+      docs/skillworks/suite.json, from #202
 2026-09-28 18:52:31 END   spec #200 complete. The Export is on feature/PROJ-12/slug.
       Review it with: git log --oneline 1f0a3c8e5b22..feature/PROJ-12/slug
       Push it with: git push origin feature/PROJ-12/slug

@@ -128,12 +128,12 @@ ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
 ```
 
 **A rule with no import.** Before any ticket, and before a dry run prints its plan, the script checks
-that `CLAUDE.md` imports each rule in `docs/agents/rules/`. It reads both from the repo's top level.
+that `CLAUDE.md` imports each rule in `docs/skillworks/rules/`. It reads both from the repo's top level.
 A rule with no import would not load into any step, so the loop stops. The `ABORT` line names the
 rule and the line to add. It is the same check, and the same words, as setup's preflight:
 
 ```
-ABORT docs/agents/rules/words.md has no import in CLAUDE.md, so it does not load into a session. Add this line to CLAUDE.md: @docs/agents/rules/words.md
+ABORT docs/skillworks/rules/words.md has no import in CLAUDE.md, so it does not load into a session. Add this line to CLAUDE.md: @docs/skillworks/rules/words.md
 ```
 
 **A missing Steering file.** Before any ticket, and before a dry run prints its plan, the script checks
@@ -143,28 +143,28 @@ middle of a ticket, so the loop stops first. The `ABORT` line names the file and
 which writes the file again:
 
 ```
-ABORT docs/agents/review-standards.md is missing, and setup seeds it. Run /skillworks:skillworks-setup to write it again.
+ABORT docs/skillworks/review-standards.md is missing, and setup seeds it. Run /skillworks:skillworks-setup to write it again.
 ```
 
 **No ADR folder.** Before any ticket, and before a dry run prints its plan, the script reads
-`adr-folder` from the YAML block at the end of `docs/agents/domain.md`. It names the one folder every
+`adr-folder` from the YAML block at the end of `docs/skillworks/domain.md`. It names the one folder every
 new ADR goes to. A missing file, a missing block, a missing `adr-folder` and an empty one each stop
 the loop, so no ADR is written to a folder nobody chose. The fix is to run setup, which asks where
 your ADRs go and writes the answer. Setup's preflight stops the same way, with `FAIL` in place of
 `ABORT`:
 
 ```
-ABORT docs/agents/domain.md names no adr-folder. Run /skillworks:skillworks-setup to choose the folder new ADRs go to.
+ABORT docs/skillworks/domain.md names no adr-folder. Run /skillworks:skillworks-setup to choose the folder new ADRs go to.
 ```
 
 **An old `"target-branch": "spec"`.** PR mode was called spec mode, and its value was `"spec"`.
 Before any ticket, and before a dry run prints its plan, the script reads `target-branch`, and it
 refuses `"spec"`. It never reads it as `"pr"`. The fix is one edit: write `"target-branch": "pr"` in
-`docs/agents/loop.json`. Setup's preflight, and every script that reads the setting, stop with the
+`docs/skillworks/loop.json`. Setup's preflight, and every script that reads the setting, stop with the
 same words:
 
 ```
-ABORT docs/agents/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, write "target-branch": "pr" in docs/agents/loop.json.
+ABORT docs/skillworks/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, write "target-branch": "pr" in docs/skillworks/loop.json.
 ```
 
 **A spec with no commit to read.** Before the drift check, the drift re-check and the Name check, the
@@ -275,12 +275,12 @@ An earlier grill cut it. It can be a grill to resume, or a spec already done. De
 
 **A Steering write on your own branch.** With `export` on, your own branch holds no Steering, as
 [the Export](export.md#a-session-on-your-own-branch) says. A skill or a command that writes Steering
-sees that `docs/agents/loop.json` is missing on disk, and it stops before it writes anything. The
+sees that `docs/skillworks/loop.json` is missing on disk, and it stops before it writes anything. The
 skills are `/skillworks:architecture-tests` and `/skillworks:context-backfill`. The commands are
 `set-co-authored-by`, `allow-commands` and `context-backfill`:
 
 ```
-FAIL  docs/agents/loop.json is missing on disk, so this branch holds no Steering. With the Export, a Steering change is made on skillworks/steering: switch to it, run this there, and push. Without the Export, run seed-steering to write it. Nothing was written.
+FAIL  docs/skillworks/loop.json is missing on disk, so this branch holds no Steering. With the Export, a Steering change is made on skillworks/steering: switch to it, run this there, and push. Without the Export, run seed-steering to write it. Nothing was written.
 ```
 
 Make the change on the Steering branch:

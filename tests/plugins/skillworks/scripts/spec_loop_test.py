@@ -523,48 +523,48 @@ def test_the_dry_run_names_the_spec_and_its_tickets_by_issue_number(loop):
 def test_a_rule_with_no_import_stops_the_dry_run_naming_the_rule_and_the_line_to_add(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     claude = loop.repo.work / "CLAUDE.md"
-    imports = claude.read_text(encoding="utf-8").replace("@docs/agents/rules/words.md\n", "")
+    imports = claude.read_text(encoding="utf-8").replace("@docs/skillworks/rules/words.md\n", "")
     claude.write_text(imports, encoding="utf-8", newline="\n")
 
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
-    assert ("ABORT docs/agents/rules/words.md has no import in CLAUDE.md, so it does not load into a session. "
-            "Add this line to CLAUDE.md: @docs/agents/rules/words.md") in said(ran)
+    assert ("ABORT docs/skillworks/rules/words.md has no import in CLAUDE.md, so it does not load into a session. "
+            "Add this line to CLAUDE.md: @docs/skillworks/rules/words.md") in said(ran)
 
 
 def test_a_missing_steering_file_stops_the_dry_run_naming_the_file_and_setup(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    (loop.repo.work / "docs" / "agents" / "review-standards.md").unlink()
+    (loop.repo.work / "docs" / "skillworks" / "review-standards.md").unlink()
 
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
-    assert ("ABORT docs/agents/review-standards.md is missing, and setup seeds it. "
+    assert ("ABORT docs/skillworks/review-standards.md is missing, and setup seeds it. "
             "Run /skillworks:skillworks-setup to write it again.") in said(ran)
     assert "DRY" not in ran.out
 
 
 def test_a_repo_with_no_adr_shape_file_stops_the_dry_run_as_missing_steering(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    (loop.repo.work / "docs" / "agents" / "adr-format.md").unlink()
+    (loop.repo.work / "docs" / "skillworks" / "adr-format.md").unlink()
 
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
-    assert ("ABORT docs/agents/adr-format.md is missing, and setup seeds it. "
+    assert ("ABORT docs/skillworks/adr-format.md is missing, and setup seeds it. "
             "Run /skillworks:skillworks-setup to write it again.") in said(ran)
 
 
 def test_domain_docs_that_name_no_adr_folder_stop_the_dry_run_naming_setup(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    (loop.repo.work / "docs" / "agents" / "domain.md").write_text("# Domain Docs\n", encoding="utf-8",
+    (loop.repo.work / "docs" / "skillworks" / "domain.md").write_text("# Domain Docs\n", encoding="utf-8",
                                                                    newline="\n")
 
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
-    assert "ABORT docs/agents/domain.md has no YAML block at its end, so it names no adr-folder." in said(ran)
+    assert "ABORT docs/skillworks/domain.md has no YAML block at its end, so it names no adr-folder." in said(ran)
     assert "/skillworks:skillworks-setup" in said(ran)
     assert "DRY" not in ran.out
 
@@ -576,8 +576,8 @@ def test_an_old_spec_value_stops_the_dry_run_and_says_to_write_pr(loop):
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
-    assert ('docs/agents/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, '
-            'write "target-branch": "pr" in docs/agents/loop.json.') in said(ran)
+    assert ('docs/skillworks/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, '
+            'write "target-branch": "pr" in docs/skillworks/loop.json.') in said(ran)
     assert "DRY" not in ran.out
 
 
@@ -592,12 +592,12 @@ def test_a_repo_holding_every_seeded_file_passes_the_steering_check(loop):
 
 def test_a_seed_added_to_setup_s_list_is_checked_with_no_other_change(loop, monkeypatch):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    monkeypatch.setitem(seed_steering.PLACES, "new-seed.md", "docs/agents/new-seed.md")
+    monkeypatch.setitem(seed_steering.PLACES, "new-seed.md", "docs/skillworks/new-seed.md")
 
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 1
-    assert "ABORT docs/agents/new-seed.md is missing, and setup seeds it." in said(ran)
+    assert "ABORT docs/skillworks/new-seed.md is missing, and setup seeds it." in said(ran)
 
 
 def test_the_dry_run_prints_the_worktree_and_the_branch(loop):
@@ -3748,7 +3748,7 @@ def test_a_readme_the_spec_broke_is_filed_as_a_gap_ticket_that_names_the_readme(
 
 
 def test_a_team_with_no_readme_surface_has_a_readme_verdict_warned_of_and_not_counted(loop):
-    surfaces = loop.repo.work / "docs" / "agents" / "surfaces.md"
+    surfaces = loop.repo.work / "docs" / "skillworks" / "surfaces.md"
     surfaces.write_text(surfaces.read_text(encoding="utf-8").replace("## The README", "## The Readme"),
                         encoding="utf-8", newline="\n")
 
@@ -4741,7 +4741,7 @@ def test_the_target_branch_page_explains_both_kinds_of_target_branch():
     text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
 
     assert text.startswith("# The Target branch\n")
-    for named in ["`docs/agents/loop.json`", "`target-branch`", "`pr`", "You make the branch and open the pull request"]:
+    for named in ["`docs/skillworks/loop.json`", "`target-branch`", "`pr`", "You make the branch and open the pull request"]:
         assert named in text, named
     assert "Pick a branch name when" in text
     assert "Pick `pr` when" in text
@@ -4750,14 +4750,14 @@ def test_the_target_branch_page_explains_both_kinds_of_target_branch():
 def test_the_target_branch_page_says_an_old_spec_value_is_refused_and_how_to_fix_it():
     text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
 
-    assert 'write `"target-branch": "pr"` in `docs/agents/loop.json`' in text
+    assert 'write `"target-branch": "pr"` in `docs/skillworks/loop.json`' in text
 
 
 def test_the_tracker_page_explains_the_files_tracker_beside_github():
     text = (ROOT / TRACKER_PAGE).read_text(encoding="utf-8")
 
     assert text.startswith("# The Tracker\n")
-    for named in ["`docs/agents/loop.json`", "`tracker`", "`github`", "`files`", "`.specs/`",
+    for named in ["`docs/skillworks/loop.json`", "`tracker`", "`github`", "`files`", "`.specs/`",
                   "status: open", "blocked-by:", "claimed-by:", "gitignored", "## Closing note"]:
         assert named in text, named
     assert "Pick `github` when" in text
@@ -5536,12 +5536,12 @@ def test_a_note_the_tracker_turns_down_is_warned_of_and_ends_nothing(loop, runne
 
 def test_a_run_with_no_loop_file_stops_before_it_starts_a_ticket_and_names_the_fix(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    (loop.repo.work / "docs" / "agents" / "loop.json").unlink()
+    (loop.repo.work / "docs" / "skillworks" / "loop.json").unlink()
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert "FAIL  docs/agents/loop.json is missing. Run seed-steering to write it.\n" in loop.log()
+    assert "FAIL  docs/skillworks/loop.json is missing. Run seed-steering to write it.\n" in loop.log()
     assert "\n\n" not in loop.log()
     assert not runner.built("issue edit")
 
@@ -5739,7 +5739,7 @@ TEST = "Test <test@example.invalid>"
 
 
 def write_export_loop(top, export):
-    path = Path(top) / "docs" / "agents" / "loop.json"
+    path = Path(top) / "docs" / "skillworks" / "loop.json"
     path.write_text(json.dumps({"tracker": "github", "target-branch": "pr", "export": export}),
                     encoding="utf-8", newline="\n")
 
@@ -5890,7 +5890,7 @@ def test_a_suite_change_left_out_of_a_ticket_s_commit_is_listed_with_its_ticket(
 
     listed_out = lines_under(exporting, "LEFT  the Export left out 4 commits and 1 file of "
                              + EXPORT_TARGET)
-    assert listed_out[-1].strip() == "docs/agents/suite.json, from #161"
+    assert listed_out[-1].strip() == "docs/skillworks/suite.json, from #161"
 
 
 # The imports stay, so the run reads the same rules after the change.
@@ -5908,7 +5908,7 @@ def test_each_steering_file_left_out_of_a_ticket_s_commit_is_listed_on_a_line_of
     listed_out = lines_under(exporting, "LEFT  the Export left out 4 commits and 2 files of "
                              + EXPORT_TARGET)
     assert [line.strip() for line in listed_out[-2:]] == [
-        "CLAUDE.md, from #161", "docs/agents/suite.json, from #161"]
+        "CLAUDE.md, from #161", "docs/skillworks/suite.json, from #161"]
 
 
 def test_a_ticket_that_changed_specs_alone_gets_no_commit_and_the_others_still_do(exporting):
@@ -6025,7 +6025,7 @@ def test_the_list_of_what_the_export_left_out_is_in_the_log_after_the_stop(expor
     listed_out = lines_under(exporting, "LEFT  the Export left out 5 commits and 1 file of "
                              + EXPORT_TARGET)
     assert [line.split()[0] for line in listed_out[:3]] + [listed_out[-1].strip()] == [
-        left["steering"], left["hand"], left["claim"], "docs/agents/suite.json, from #161"]
+        left["steering"], left["hand"], left["claim"], "docs/skillworks/suite.json, from #161"]
 
 
 def test_a_stop_in_the_export_writes_no_end_line(exporting):

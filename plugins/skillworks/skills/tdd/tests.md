@@ -77,7 +77,7 @@ An act is anything a test does to the code while it runs: a cancel, a close of a
 
 A fact is something the test sees at the point the act needs, such as a stand-in saying that it holds a call. A sleep is not a fact. The code's own order is not a fact either, because the code can change its order for a good reason. When nothing the test sees answers the question, add the fact to the stand-in.
 
-The team's determinism rule, `steering-file docs/agents/rules/determinism.md`, holds the full rule under Order of events.
+The team's determinism rule, `steering-file docs/skillworks/rules/determinism.md`, holds the full rule under Order of events.
 
 ```typescript
 // BAD: Cancels, and trusts that the read already reached the store

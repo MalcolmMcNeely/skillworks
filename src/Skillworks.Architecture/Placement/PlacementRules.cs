@@ -15,7 +15,7 @@ internal sealed record PlacementRules(
     IReadOnlyDictionary<string, string> TestRoots,
     TestPlacement TestPlacement)
 {
-    public const string RelativePath = "docs/agents/rules/file-placement.md";
+    public const string RelativePath = "docs/skillworks/rules/file-placement.md";
 
     private const string Shared = "Shared";
 

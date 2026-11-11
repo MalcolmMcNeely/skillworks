@@ -51,11 +51,11 @@ def planted(top):
         git(top, "config", name, value)
     commit(top, "Base", {
         "CLAUDE.md": "# Repo\n\n### Domain docs\n\nMulti-context: the map and one glossary per context.\n"
-                     "See `docs/agents/domain.md`.\n",
-        "docs/agents/loop.json": json.dumps({"tracker": "github", "target-branch": "main"}, indent=2) + "\n",
-        "docs/agents/rules/words.md": "# Words\n\n```yaml\nbanned-words:\n  studio:\n    - Stint\n"
+                     "See `docs/skillworks/domain.md`.\n",
+        "docs/skillworks/loop.json": json.dumps({"tracker": "github", "target-branch": "main"}, indent=2) + "\n",
+        "docs/skillworks/rules/words.md": "# Words\n\n```yaml\nbanned-words:\n  studio:\n    - Stint\n"
                                       "skip-folders: []\n```\n",
-        "docs/agents/domain.md": "# Domain docs\n\nThis repo is multi-context.\n",
+        "docs/skillworks/domain.md": "# Domain docs\n\nThis repo is multi-context.\n",
         SEEDS + "/words.md": WORDS_SEED,
         SEEDS + "/domain.md": DOMAIN_SEED,
         SKILL: "The skill before the arm.\n",
@@ -153,14 +153,14 @@ def test_no_file_in_any_commit_carries_an_adr_number(clone):
 
 
 def test_the_steering_a_backfill_fills_is_its_seed(clone):
-    steering = [(clone / "docs/agents/rules/words.md").read_text(encoding="utf-8"),
-                (clone / "docs/agents/domain.md").read_text(encoding="utf-8")]
+    steering = [(clone / "docs/skillworks/rules/words.md").read_text(encoding="utf-8"),
+                (clone / "docs/skillworks/domain.md").read_text(encoding="utf-8")]
 
     assert steering == [WORDS_SEED, DOMAIN_SEED]
 
 
 def test_the_tracker_is_files(clone):
-    loop = json.loads((clone / "docs/agents/loop.json").read_text(encoding="utf-8"))
+    loop = json.loads((clone / "docs/skillworks/loop.json").read_text(encoding="utf-8"))
 
     assert loop == {"tracker": "files", "target-branch": "main"}
 

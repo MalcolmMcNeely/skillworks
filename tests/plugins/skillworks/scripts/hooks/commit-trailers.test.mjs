@@ -121,10 +121,10 @@ async function repository() {
 
 async function steeredRepository(chosen) {
   const repo = await repository();
-  await mkdir(join(repo.dir, "docs", "agents"), { recursive: true });
+  await mkdir(join(repo.dir, "docs", "skillworks"), { recursive: true });
   const settings = { tracker: "github", "target-branch": "main" };
   for (const [key, answer] of Object.entries(chosen)) if (answer) settings[key] = answer;
-  await writeFile(join(repo.dir, "docs", "agents", "loop.json"), JSON.stringify(settings));
+  await writeFile(join(repo.dir, "docs", "skillworks", "loop.json"), JSON.stringify(settings));
   return repo;
 }
 

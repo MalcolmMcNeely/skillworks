@@ -15,12 +15,12 @@ Your glossary, `CONTEXT.md`, and your ADRs are edited the moment a word or a dec
 the end. Every Session after this one starts with an empty context, and can only find those decisions
 in the repo.
 
-A settled ADR goes to the folder `adr-folder` names, in `docs/agents/domain.md`, in the shape
-`docs/agents/adr-format.md` gives. Its number is one above the highest in that folder, as wide as the
+A settled ADR goes to the folder `adr-folder` names, in `docs/skillworks/domain.md`, in the shape
+`docs/skillworks/adr-format.md` gives. Its number is one above the highest in that folder, as wide as the
 file with the highest number.
 
 When no design question is left, the grill walks your Surfaces: the places in
-`docs/agents/surfaces.md` a change can have to reach besides its code. It asks about one Surface at a
+`docs/skillworks/surfaces.md` a change can have to reach besides its code. It asks about one Surface at a
 time, and skips a Surface the change does not touch. Each answer becomes a requirement the spec
 carries. A file with no Surface in it skips this step.
 [Steering](../steering.md#the-surfaces-file) says how to write the file.

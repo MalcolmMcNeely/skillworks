@@ -16,34 +16,34 @@ const STEERING_BRANCH = (await readFile(join(PLUGIN, "scripts", "export", "expor
   /^STEERING = "([^"]+)"$/m,
 )[1];
 
-const LINE = "This branch holds no Steering. Read each path under `docs/agents/` with `steering-file <path>`.";
+const LINE = "This branch holds no Steering. Read each path under `docs/skillworks/` with `steering-file <path>`.";
 
 const STEERING_CLAUDE = [
   "# The team's project",
   "",
   "## Agent skills",
   "",
-  "See `docs/agents/issue-tracker.md` for the Tracker.",
+  "See `docs/skillworks/issue-tracker.md` for the Tracker.",
   "",
-  "@docs/agents/rules/comments.md",
-  "@docs/agents/rules/testing.md",
+  "@docs/skillworks/rules/comments.md",
+  "@docs/skillworks/rules/testing.md",
   "",
-  "An address such as `see @docs/agents/rules/in-a-span.md` in a code span is never loaded.",
+  "An address such as `see @docs/skillworks/rules/in-a-span.md` in a code span is never loaded.",
   "",
   "```",
-  "@docs/agents/rules/in-a-block.md",
+  "@docs/skillworks/rules/in-a-block.md",
   "```",
   "",
 ].join("\n");
 
 const STEERING = {
   "CLAUDE.md": STEERING_CLAUDE,
-  "docs/agents/loop.json": '{ "tracker": "github", "target-branch": "pr", "export": true }\n',
-  "docs/agents/rules/comments.md": "# Comments\n\nA comment records why.\n\n@more/doc-comments.md\n",
-  "docs/agents/rules/more/doc-comments.md": "# Doc comments\n\nNo file has doc comments.\n",
-  "docs/agents/rules/testing.md": "# Testing\n\nTests are integration style.\n",
-  "docs/agents/rules/in-a-span.md": "# In a span\n\nNamed only inside a code span.\n",
-  "docs/agents/rules/in-a-block.md": "# In a block\n\nNamed only inside a code block.\n",
+  "docs/skillworks/loop.json": '{ "tracker": "github", "target-branch": "pr", "export": true }\n',
+  "docs/skillworks/rules/comments.md": "# Comments\n\nA comment records why.\n\n@more/doc-comments.md\n",
+  "docs/skillworks/rules/more/doc-comments.md": "# Doc comments\n\nNo file has doc comments.\n",
+  "docs/skillworks/rules/testing.md": "# Testing\n\nTests are integration style.\n",
+  "docs/skillworks/rules/in-a-span.md": "# In a span\n\nNamed only inside a code span.\n",
+  "docs/skillworks/rules/in-a-block.md": "# In a block\n\nNamed only inside a code block.\n",
 };
 
 let temp;
@@ -167,7 +167,7 @@ test("a session on an Export branch gets each file the Steering CLAUDE.md import
   const context = await contextFor(repo);
 
   // Assert
-  const imported = ["docs/agents/rules/comments.md", "docs/agents/rules/testing.md", "docs/agents/rules/more/doc-comments.md"];
+  const imported = ["docs/skillworks/rules/comments.md", "docs/skillworks/rules/testing.md", "docs/skillworks/rules/more/doc-comments.md"];
   assert.deepEqual(
     imported.filter((path) => !context?.includes(STEERING[path])),
     [],
@@ -207,8 +207,8 @@ test("an address in a code span or a code block is not loaded as an import", asy
   // Assert
   assert.ok(
     context?.includes(LINE) &&
-      !context.includes(STEERING["docs/agents/rules/in-a-span.md"]) &&
-      !context.includes(STEERING["docs/agents/rules/in-a-block.md"]),
+      !context.includes(STEERING["docs/skillworks/rules/in-a-span.md"]) &&
+      !context.includes(STEERING["docs/skillworks/rules/in-a-block.md"]),
     context,
   );
 });
@@ -216,13 +216,25 @@ test("an address in a code span or a code block is not loaded as an import", asy
 test("a session on a branch with loop.json on disk gets nothing new", async () => {
   // Arrange
   const repo = await exportCheckout();
-  await writeAll(repo.dir, { "docs/agents/loop.json": STEERING["docs/agents/loop.json"] });
+  await writeAll(repo.dir, { "docs/skillworks/loop.json": STEERING["docs/skillworks/loop.json"] });
 
   // Act
   const context = await contextFor(repo);
 
   // Assert
   assert.equal(context, undefined);
+});
+
+test("a session on a branch that holds loop.json only at the old Steering path still gets the Steering", async () => {
+  // Arrange
+  const repo = await exportCheckout();
+  await writeAll(repo.dir, { "docs/agents/loop.json": STEERING["docs/skillworks/loop.json"] });
+
+  // Act
+  const context = await contextFor(repo);
+
+  // Assert
+  assert.ok(context?.includes(LINE), context);
 });
 
 test("a session on an Export branch with no local origin/skillworks/steering gets nothing new", async () => {
@@ -253,7 +265,7 @@ test("the hook reads the local origin/skillworks/steering as the last fetch left
   const repo = await exportCheckout();
   const other = join(temp, "other");
   execFileSync("git", ["clone", "--quiet", "--branch", STEERING_BRANCH, repo.origin, other], { env: repo.env });
-  await writeFile(join(other, "docs", "agents", "rules", "testing.md"), "# Testing\n\nA rule changed on another machine.\n");
+  await writeFile(join(other, "docs", "skillworks", "rules", "testing.md"), "# Testing\n\nA rule changed on another machine.\n");
   execFileSync("git", ["-C", other, "commit", "--quiet", "-am", "Change the testing rule"], { env: repo.env });
   execFileSync("git", ["-C", other, "push", "--quiet", "origin", STEERING_BRANCH], { env: repo.env });
 
@@ -261,7 +273,7 @@ test("the hook reads the local origin/skillworks/steering as the last fetch left
   const context = await contextFor(repo);
 
   // Assert
-  assert.ok(context?.includes(STEERING["docs/agents/rules/testing.md"]), context);
+  assert.ok(context?.includes(STEERING["docs/skillworks/rules/testing.md"]), context);
 });
 
 test("the hook writes nothing to the working tree", async () => {

@@ -60,7 +60,7 @@ const STEP: Record<string, Shown> = {
     name: 'comment sweep',
     hint: 'Cuts each new comment that only repeats the code. Comments the change did not write stay.',
   },
-  suite: { name: 'suite', hint: 'The script runs the checks in docs/agents/suite.json. No Session runs.' },
+  suite: { name: 'suite', hint: 'The script runs the checks in docs/skillworks/suite.json. No Session runs.' },
   finish: {
     name: 'close ticket and commit',
     hint: 'The build Session commits the change and closes the ticket. It does not push.',

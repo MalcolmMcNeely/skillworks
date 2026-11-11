@@ -63,7 +63,7 @@ move, a second request, a stop of a test host. The rule covers every act, and no
   state the act needs. Shipping code can change its own order for a good reason, and a comment in a
   test cannot stop it.
 - Where the test host has no fact at the point an act needs, the test adds one to the stand-in.
-  The testing rule, `docs/agents/rules/testing.md`, already allows a stand-in where the real thing
+  The testing rule, `docs/skillworks/rules/testing.md`, already allows a stand-in where the real thing
   forces a race.
 
 No check reads this section, so a green suite does not prove it. A race has no name a check can find.

@@ -13,7 +13,7 @@ Two arguments: the spec's number, then the commit the loop started from. The num
 
 Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
 
-`tracker` in `steering-file docs/agents/loop.json` names the Tracker, and `steering-file docs/agents/issue-tracker.md` says how to read each one. Read the spec and its tickets through those docs, and make no call of your own that they do not name.
+`tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. Read the spec and its tickets through those docs, and make no call of your own that they do not name.
 
 `/skillworks:spec-drift 42 a1b2c3d`
 
@@ -27,11 +27,11 @@ Every ticket Lands straight on the Target branch, and its Job branch goes when i
 
 The **spec's commits** are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. A commit with no `Ticket:` trailer is never one of them, whoever made it, and neither is a commit that names another spec's ticket. Other loops and hand commits Land on the same Target branch, so the range from the base commit holds work that is not this spec's.
 
-The Target branch is `target-branch` in `steering-file docs/agents/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
+The Target branch is `target-branch` in `steering-file docs/skillworks/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
 
-If `steering-file docs/agents/loop.json`, `steering-file docs/agents/issue-tracker.md`, `steering-file docs/agents/surfaces.md` or `steering-file docs/agents/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
+If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md`, `steering-file docs/skillworks/surfaces.md` or `steering-file docs/skillworks/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
 
-Under the spec loop, run no `git fetch` of your own, even where `steering-file docs/agents/issue-tracker.md` names one. The driver fetches the Target branch before it starts this Session, the `spec-commits` command in step 2 fetches it again, and a loop Session has no permission for a bare fetch.
+Under the spec loop, run no `git fetch` of your own, even where `steering-file docs/skillworks/issue-tracker.md` names one. The driver fetches the Target branch before it starts this Session, the `spec-commits` command in step 2 fetches it again, and a loop Session has no permission for a bare fetch.
 
 ## Judging a Departure
 
@@ -71,18 +71,18 @@ Where the rule held, the item for the part that lost gets **Contradicts**, and t
 
    Judge each `DEPARTS` line you were handed as Judging a Departure says.
 
-4. Give every Surface the spec names one Verdict, by its bold name. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each one the change touches, with what it has to say once the change Lands. Read each Surface on `origin/<target>`, at the path the spec gives or at its "Where it lives" in `steering-file docs/agents/surfaces.md`:
+4. Give every Surface the spec names one Verdict, by its bold name. A Surface is a place a change can have to reach besides the code that does the work, such as the README or the user docs. The spec's Surfaces section names each one the change touches, with what it has to say once the change Lands. Read each Surface on `origin/<target>`, at the path the spec gives or at its "Where it lives" in `steering-file docs/skillworks/surfaces.md`:
 
    - **In step** — it says what the spec asked
    - **Out of step** — it says less, or says something the code no longer does
 
    A spec whose Surfaces section says "None" has no Surface to judge.
 
-   The README is the one exception. When `steering-file docs/agents/surfaces.md` holds a Surface headed `## The README`, outside a code fence, judge the README on every spec, as `The README`, even when the spec names no README item or says "None". Read it on `origin/<target>`, at that Surface's "Where it lives". A link, path or command in the README that the spec's commits removed, renamed or moved makes it Out of step, and the reason names that line. When the spec has a README item, the one Verdict judges that item too. The loop counts this Verdict, so a README you skip is a Gap. Given a list of items without `The README`, do not judge it.
+   The README is the one exception. When `steering-file docs/skillworks/surfaces.md` holds a Surface headed `## The README`, outside a code fence, judge the README on every spec, as `The README`, even when the spec names no README item or says "None". Read it on `origin/<target>`, at that Surface's "Where it lives". A link, path or command in the README that the spec's commits removed, renamed or moved makes it Out of step, and the reason names that line. When the spec has a README item, the one Verdict judges that item too. The loop counts this Verdict, so a README you skip is a Gap. Given a list of items without `The README`, do not judge it.
 
 5. List **Unrequested** work: behaviour in the spec's commits that no story and no ticket asked for. Look nowhere else, so another spec's work and a hand commit never show up here. List an item only when it still stands on `origin/<target>`, because a later commit may have taken it out.
 
-6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. Look only in the spec's commits, and name a pair only when both still stand on `origin/<target>`. The project glossary is the arbiter. `steering-file docs/agents/domain.md` says where this repo keeps its glossaries.
+6. Look for the failure no per-ticket check can see: two tickets that introduced competing names or competing abstractions for one concept. Look only in the spec's commits, and name a pair only when both still stand on `origin/<target>`. The project glossary is the arbiter. `steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries.
 
 7. Write the report. The loop reads its lists, so their shape is fixed:
 

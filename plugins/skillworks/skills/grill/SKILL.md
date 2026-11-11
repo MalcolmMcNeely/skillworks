@@ -13,9 +13,9 @@ Drive a design from the first question to a published spec.
 
 ### 1. Find the Target branch
 
-When `docs/agents/loop.json` is missing on disk, follow [On an Export branch](#on-an-export-branch).
+When `docs/skillworks/loop.json` is missing on disk, follow [On an Export branch](#on-an-export-branch).
 
-When it is on disk, read `target-branch` and `export` in `steering-file docs/agents/loop.json`:
+When it is on disk, read `target-branch` and `export` in `steering-file docs/skillworks/loop.json`:
 
 - A branch name is the Target branch. Go on to step 2.
 - `pr` with `export` set to `true`: the grill cut the Target branch on the Export branch, and this session is on it. Go on to step 2.
@@ -31,7 +31,7 @@ In PR mode cut no branch, open no pull request, and make no `gh` call to find th
 
 #### On an Export branch
 
-When `docs/agents/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. Cut the spec's Target branch before the first question, so the whole design runs on a branch that holds the Steering. Run `cut-target-branch`, the one command that cuts it:
+When `docs/skillworks/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. Cut the spec's Target branch before the first question, so the whole design runs on a branch that holds the Steering. Run `cut-target-branch`, the one command that cuts it:
 
 ```bash
 cut-target-branch
@@ -57,7 +57,7 @@ second owns the words. Both run on every round.
 ### 3. Walk the Surfaces when the frontier is empty
 
 A Surface is a place a change can have to reach besides the code that does the work, such as the
-README or the user docs. `steering-file docs/agents/surfaces.md` lists the team's Surfaces, one `##` section each,
+README or the user docs. `steering-file docs/skillworks/surfaces.md` lists the team's Surfaces, one `##` section each,
 with where it lives, the question to ask and what to capture. A `##` inside a code fence is an
 example, not a Surface. A file with no Surface in it means skip this step. So does a non-zero status from `steering-file`, because then there is no file.
 

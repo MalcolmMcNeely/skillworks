@@ -36,7 +36,7 @@ hold, the item gets the Verdict the code earns.
 
 When your team has a README Surface, the drift check reads the README on every spec, even a spec with
 no README item. The README Surface is the Surface headed `## The README` in
-`docs/agents/surfaces.md`, and its "Where it lives" gives the README's path. A link, path or command in
+`docs/skillworks/surfaces.md`, and its "Where it lives" gives the README's path. A link, path or command in
 the README that the spec removed, renamed or moved makes the README Out of step, and the reason names
 it. The count treats that Verdict as an item of the spec, so an Out of step README, or a README with
 no Verdict, is a Gap. The Gap ticket fixes only the broken line, within what the Surface's "What to

@@ -56,16 +56,16 @@ class Work:
         runner.stub("claude", does=self.claude)
 
     def target(self, branch, tracker="github"):
-        loop = self.repo / "docs" / "agents" / "loop.json"
+        loop = self.repo / "docs" / "skillworks" / "loop.json"
         loop.parent.mkdir(parents=True, exist_ok=True)
         loop.write_text(json.dumps({"tracker": tracker, "target-branch": branch}, indent=2) + "\n",
                         encoding="utf-8", newline="\n")
 
     def domain_docs(self, text):
-        (self.repo / "docs" / "agents" / "domain.md").write_text(text, encoding="utf-8", newline="\n")
+        (self.repo / "docs" / "skillworks" / "domain.md").write_text(text, encoding="utf-8", newline="\n")
 
     def loop_file(self, text):
-        (self.repo / "docs" / "agents" / "loop.json").write_text(text, encoding="utf-8", newline="\n")
+        (self.repo / "docs" / "skillworks" / "loop.json").write_text(text, encoding="utf-8", newline="\n")
 
     # Every call the preflight makes is answered, and any other one fails, so a new call cannot pass on a guess.
     def gh(self):
@@ -322,12 +322,12 @@ def test_the_gh_version_is_never_asked(work):
 
 
 def test_a_missing_loop_file_fails_naming_the_command_that_writes_it(work):
-    (work.repo / "docs" / "agents" / "loop.json").unlink()
+    (work.repo / "docs" / "skillworks" / "loop.json").unlink()
 
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "FAIL  docs/agents/loop.json is missing. Run seed-steering to write it." in ran.err
+    assert "FAIL  docs/skillworks/loop.json is missing. Run seed-steering to write it." in ran.err
     assert "label ready-for-agent" not in ran.out
 
 
@@ -337,7 +337,7 @@ def test_a_loop_file_with_no_target_branch_fails(work):
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "FAIL  docs/agents/loop.json names no target-branch." in ran.err
+    assert "FAIL  docs/skillworks/loop.json names no target-branch." in ran.err
 
 
 def test_domain_docs_that_name_no_adr_folder_fail_naming_setup(work):
@@ -346,7 +346,7 @@ def test_domain_docs_that_name_no_adr_folder_fail_naming_setup(work):
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "FAIL  docs/agents/domain.md " in ran.err
+    assert "FAIL  docs/skillworks/domain.md " in ran.err
     assert "adr-folder" in ran.err
     assert "/skillworks:skillworks-setup" in ran.err
     assert "label ready-for-agent" not in ran.out
@@ -367,7 +367,7 @@ def test_a_loop_file_with_no_tracker_fails(work):
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "FAIL  docs/agents/loop.json names no tracker." in ran.err
+    assert "FAIL  docs/skillworks/loop.json names no tracker." in ran.err
 
 
 def test_export_with_a_named_target_branch_fails_and_says_it_needs_pr(work):
@@ -376,7 +376,7 @@ def test_export_with_a_named_target_branch_fails_and_says_it_needs_pr(work):
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert 'FAIL  docs/agents/loop.json says export, and export works only with "target-branch": "pr"' in ran.err
+    assert 'FAIL  docs/skillworks/loop.json says export, and export works only with "target-branch": "pr"' in ran.err
     assert "label ready-for-agent" not in ran.out
 
 
@@ -394,8 +394,8 @@ def test_an_old_spec_value_fails_before_any_check_of_the_remote_and_says_to_writ
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert ('FAIL  docs/agents/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, '
-            'write "target-branch": "pr" in docs/agents/loop.json.') in ran.err
+    assert ('FAIL  docs/skillworks/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, '
+            'write "target-branch": "pr" in docs/skillworks/loop.json.') in ran.err
     assert "gh authenticated" not in ran.out
 
 
@@ -436,7 +436,7 @@ def test_a_target_branch_missing_on_the_remote_fails_naming_it(work):
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "FAIL  the Target branch master in docs/agents/loop.json is not on owner/repo." in ran.err
+    assert "FAIL  the Target branch master in docs/skillworks/loop.json is not on owner/repo." in ran.err
     assert "label ready-for-agent" not in ran.out
 
 
@@ -571,7 +571,7 @@ RULES = ("comments.md", "determinism.md", "file-placement.md", "words.md")
 
 
 def rules(work, *names):
-    folder = work.repo / "docs" / "agents" / "rules"
+    folder = work.repo / "docs" / "skillworks" / "rules"
     folder.mkdir(parents=True)
     for name in names:
         (folder / name).write_text("# A rule\n", encoding="utf-8", newline="\n")
@@ -583,34 +583,34 @@ def claude_md(work, *lines):
 
 def test_a_claude_md_that_imports_every_rule_passes(work):
     rules(work, *RULES)
-    claude_md(work, *(f"@docs/agents/rules/{name}" for name in RULES))
+    claude_md(work, *(f"@docs/skillworks/rules/{name}" for name in RULES))
 
     ran = preflight(work)
 
     assert ran.status == 0, said(ran)
-    assert "ok    CLAUDE.md imports every rule in docs/agents/rules" in ran.out
+    assert "ok    CLAUDE.md imports every rule in docs/skillworks/rules" in ran.out
 
 
 def test_a_rule_with_no_import_fails_naming_the_rule_and_the_line_to_add(work):
     rules(work, *RULES)
-    claude_md(work, *(f"@docs/agents/rules/{name}" for name in RULES if name != "determinism.md"))
+    claude_md(work, *(f"@docs/skillworks/rules/{name}" for name in RULES if name != "determinism.md"))
 
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert ("FAIL  docs/agents/rules/determinism.md has no import in CLAUDE.md, so it does not load into a session. "
-            "Add this line to CLAUDE.md: @docs/agents/rules/determinism.md") in ran.err
+    assert ("FAIL  docs/skillworks/rules/determinism.md has no import in CLAUDE.md, so it does not load into a session. "
+            "Add this line to CLAUDE.md: @docs/skillworks/rules/determinism.md") in ran.err
     assert "label ready-for-agent" not in ran.out
 
 
 def test_an_import_inside_other_text_does_not_count(work):
     rules(work, "words.md")
-    claude_md(work, "See @docs/agents/rules/words.md.old for history.")
+    claude_md(work, "See @docs/skillworks/rules/words.md.old for history.")
 
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "docs/agents/rules/words.md has no import in CLAUDE.md" in ran.err
+    assert "docs/skillworks/rules/words.md has no import in CLAUDE.md" in ran.err
 
 
 def test_rules_with_no_claude_md_fail(work):
@@ -619,7 +619,7 @@ def test_rules_with_no_claude_md_fail(work):
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "Add this line to CLAUDE.md: @docs/agents/rules/words.md" in ran.err
+    assert "Add this line to CLAUDE.md: @docs/skillworks/rules/words.md" in ran.err
 
 
 def test_a_repo_with_no_rules_folder_passes(work):
@@ -664,7 +664,7 @@ def test_with_the_files_tracker_a_target_branch_missing_on_the_remote_fails_nami
     ran = preflight(work)
 
     assert ran.status == 1, said(ran)
-    assert "FAIL  the Target branch master in docs/agents/loop.json is not on origin." in ran.err
+    assert "FAIL  the Target branch master in docs/skillworks/loop.json is not on origin." in ran.err
 
 
 def test_with_the_files_tracker_in_pr_mode_the_default_branch_of_the_remote_passes(work):

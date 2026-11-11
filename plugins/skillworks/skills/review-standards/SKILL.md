@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # Review: Standards
 
-The argument is the ticket, named as its Tracker names it: `steering-file docs/agents/issue-tracker.md` says how each Tracker names its tickets. The ticket is the first word of the argument. Any text after it comes from the driver, and it still holds.
+The argument is the ticket, named as its Tracker names it: `steering-file docs/skillworks/issue-tracker.md` says how each Tracker names its tickets. The ticket is the first word of the argument. Any text after it comes from the driver, and it still holds.
 
 `/skillworks:review-standards 168`
 `/skillworks:review-standards 7/2`

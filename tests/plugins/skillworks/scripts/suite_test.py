@@ -303,7 +303,7 @@ SCRIPT_TESTS = "tests/plugins/skillworks/scripts"
 
 BACKFILL_EVALS = "tools/backfill_evals"
 
-SCRIPT_TESTS_IMAGE = "docs/agents/script-tests.Dockerfile"
+SCRIPT_TESTS_IMAGE = "docs/skillworks/script-tests.Dockerfile"
 
 # Tests marked this_repo read the paths the image check ignores, which its copy leaves out.
 THIS_REPO = "this_repo"
@@ -1074,7 +1074,7 @@ def test_ignores_that_is_not_a_list_of_paths_makes_the_suite_file_unreadable(tmp
 
 # --- a check that runs in an image ------------------------------------------
 
-DOCKERFILE = "docs/agents/tests.Dockerfile"
+DOCKERFILE = "docs/skillworks/tests.Dockerfile"
 
 
 class FakeDocker:
@@ -1313,7 +1313,7 @@ def test_a_suite_with_no_image_never_asks_docker(tmp_path, runner):
 
 def test_an_image_that_is_not_a_file_in_the_repo_makes_the_suite_file_unreadable(tmp_path, runner):
     given_a_dockerfile(tmp_path)
-    for image in ("docs/agents/missing.Dockerfile", "docs/agents", "", 3, ["x"]):
+    for image in ("docs/skillworks/missing.Dockerfile", "docs/skillworks", "", 3, ["x"]):
         given_a_suite_file_reading(tmp_path, json.dumps(
             {"checks": [{"command": ["prove"], "folder": ".", "image": image}]}))
         FakeDocker(runner)
@@ -1507,15 +1507,15 @@ def test_a_trial_copies_the_inputs_of_the_check_that_names_its_image(repo, runne
 
 def test_a_trial_refuses_an_image_no_check_names(repo, runner, monkeypatch):
     given_a_suite_in_an_image(repo.work, "prove")
-    (repo.work / "docs/agents/other.Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+    (repo.work / "docs/skillworks/other.Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
     docker = FakeDocker(runner)
 
-    ran = trial(runner, repo, "prove", image="docs/agents/other.Dockerfile",
+    ran = trial(runner, repo, "prove", image="docs/skillworks/other.Dockerfile",
                 monkeypatch=monkeypatch)
 
     assert ran.status == 1
     assert ran.err.startswith("FAIL  ")
-    assert "docs/agents/other.Dockerfile" in ran.err
+    assert "docs/skillworks/other.Dockerfile" in ran.err
     assert docker.calls() == []
 
 
@@ -1711,7 +1711,7 @@ REVIEW_PAGES = (
     "plugins/skillworks/skills/review-changes/architecture.md",
 )
 
-PLACEMENT_CHECKS = "docs/agents/placement-checks.md"
+PLACEMENT_CHECKS = "docs/skillworks/placement-checks.md"
 
 
 def this_repo_s_checks():

@@ -10,7 +10,7 @@ BANNED_VARIABLE = "BLIND_CLONE_BANNED_WORDS"
 GLOSSARY = "CONTEXT.md"
 MAP = "CONTEXT-MAP.md"
 ADR_FOLDER = "docs/adr/"
-FILLED_STEERING = ("docs/agents/rules/words.md", "docs/agents/domain.md")
+FILLED_STEERING = ("docs/skillworks/rules/words.md", "docs/skillworks/domain.md")
 
 # The Statement files say what each record says, so a pin after the harness landed would hand them to the clone.
 HARNESS_FOLDER = "tools/backfill_evals/"

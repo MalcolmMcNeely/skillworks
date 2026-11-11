@@ -61,7 +61,7 @@ class History:
     def clone(self, name, *flags, tracker="github"):
         where = self.root / name
         run(["git", "clone", "--quiet", *flags, self.origin.as_uri(), where.as_posix()])
-        loop = where / "docs" / "agents" / "loop.json"
+        loop = where / "docs" / "skillworks" / "loop.json"
         loop.parent.mkdir(parents=True, exist_ok=True)
         loop.write_text(json.dumps({"tracker": tracker, "target-branch": "main"}), encoding="utf-8")
         name_the_adr_folder(where, "docs/adr")
@@ -69,7 +69,7 @@ class History:
 
 
 def name_the_adr_folder(where, folder):
-    (where / "docs" / "agents" / "domain.md").write_text(
+    (where / "docs" / "skillworks" / "domain.md").write_text(
         "# Domain Docs\n\n```yaml\nadr-folder: {}\n```\n".format(folder), encoding="utf-8", newline="\n")
 
 
@@ -645,7 +645,7 @@ def test_with_a_named_target_branch_no_pull_request_is_asked_for(checkout, runne
 
 
 def in_pr_mode(where):
-    (where / "docs" / "agents" / "loop.json").write_text(
+    (where / "docs" / "skillworks" / "loop.json").write_text(
         json.dumps({"tracker": "github", "target-branch": "pr"}), encoding="utf-8")
 
 
@@ -779,8 +779,8 @@ CONTEXT_MAP = ("# Context Map\n\n## Contexts\n\n"
                "- [Web](./web/CONTEXT.md) — shows the dates in a browser\n")
 
 CLAUDE_FILE = ("# App\n\n## Agent skills\n\n### Domain docs\n\n"
-               "Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.\n\n"
-               "### Rules\n\n@docs/agents/rules/words.md\n")
+               "Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/skillworks/domain.md`.\n\n"
+               "### Rules\n\n@docs/skillworks/rules/words.md\n")
 
 WORDS_RULE = "# Words\n\nThe words that lost.\n\n```yaml\nbanned-words: {}\nskip-folders: []\n```\n"
 
@@ -798,8 +798,8 @@ def in_context(number, name, definition, answer, context, avoid=None):
 def steered(history):
     history.commit("Set up Skillworks", ANN, "2022-03-01T10:00:00+00:00", {
         "CLAUDE.md": CLAUDE_FILE,
-        "docs/agents/rules/words.md": WORDS_RULE,
-        "docs/agents/rules/comments.md": "# Comments\n",
+        "docs/skillworks/rules/words.md": WORDS_RULE,
+        "docs/skillworks/rules/comments.md": "# Comments\n",
     })
     history.push()
     return history
@@ -828,15 +828,15 @@ def test_an_accepted_map_is_written_with_an_empty_list_per_context_and_the_multi
 
     assert (first_change(steered, "Glossary:"),
             read(steered_checkout, "CONTEXT-MAP.md"),
-            read(steered_checkout, "docs/agents/rules/words.md").split("```yaml\n", 1)[1],
+            read(steered_checkout, "docs/skillworks/rules/words.md").split("```yaml\n", 1)[1],
             read(steered_checkout, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0]) == (
         ("Glossary: the map in CONTEXT-MAP.md",
-         ["CLAUDE.md", "CONTEXT-MAP.md", "docs/agents/rules/words.md"]),
+         ["CLAUDE.md", "CONTEXT-MAP.md", "docs/skillworks/rules/words.md"]),
         CONTEXT_MAP,
         "banned-words:\n  reader: []\n  web: []\nskip-folders: []\n```\n",
         "Multi-context: `CONTEXT-MAP.md` and `docs/architecture-decision-log/` at the repo root, and one "
         "`CONTEXT.md` per context. "
-        "See `docs/agents/domain.md`.")
+        "See `docs/skillworks/domain.md`.")
 
 
 def test_a_word_is_written_in_a_new_glossary_for_the_context_its_context_line_names(steered_checkout, runner):
@@ -868,19 +868,19 @@ def test_a_domain_docs_line_wrapped_by_hand_is_switched_whole(steered, steered_c
 
     assert read(steered_checkout, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0] == (
         "Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context. "
-        "See `docs/agents/domain.md`.")
+        "See `docs/skillworks/domain.md`.")
 
 
 def test_a_map_adds_no_word_to_a_list_and_keeps_the_lists_already_there(steered, steered_checkout, runner):
     rule = WORDS_RULE.replace("banned-words: {}\n", "banned-words:\n  reader:\n    - Parser\n")
-    (steered_checkout / "docs/agents/rules/words.md").write_text(rule, encoding="utf-8", newline="\n")
+    (steered_checkout / "docs/skillworks/rules/words.md").write_text(rule, encoding="utf-8", newline="\n")
     git(steered_checkout, "commit", "--quiet", "-am", "Ban Parser")
     mark(steered_checkout, sheet(words=the_map() + in_context(1, "View", "One page of dates.", "accept", "web",
                                                               avoid="Screen")))
 
     apply(runner, steered_checkout)
 
-    assert read(steered_checkout, "docs/agents/rules/words.md").split("```yaml\n", 1)[1] == (
+    assert read(steered_checkout, "docs/skillworks/rules/words.md").split("```yaml\n", 1)[1] == (
         "banned-words:\n  reader:\n    - Parser\n  web: []\nskip-folders: []\n```\n")
 
 
@@ -896,7 +896,7 @@ def test_a_gitignore_with_no_last_newline_gets_the_line_on_a_line_of_its_own(his
 
 def test_on_an_export_branch_the_check_names_the_steering_branch_and_writes_nothing(history, runner):
     where = history.clone("export")
-    (where / "docs" / "agents" / "loop.json").unlink()
+    (where / "docs" / "skillworks" / "loop.json").unlink()
 
     ran = check(runner, where)
 
@@ -907,7 +907,7 @@ def test_on_an_export_branch_the_check_names_the_steering_branch_and_writes_noth
 
 def test_on_an_export_branch_the_apply_names_the_steering_branch_and_writes_nothing(checkout, runner):
     mark(checkout, sheet(words=word(1, "Reader", "The part that turns a file into dates.", "accept", "Parser")))
-    (checkout / "docs" / "agents" / "loop.json").unlink()
+    (checkout / "docs" / "skillworks" / "loop.json").unlink()
     before = git(checkout, "rev-parse", "HEAD")
 
     ran = apply(runner, checkout)

@@ -29,8 +29,8 @@ def test_a_surfaces_file_with_no_readme_heading_has_no_readme_surface():
 
 
 def test_the_seeds_readme_surface_lives_at_the_readme(tmp_path):
-    (tmp_path / "docs" / "agents").mkdir(parents=True)
-    (tmp_path / "docs" / "agents" / "surfaces.md").write_text(
+    (tmp_path / "docs" / "skillworks").mkdir(parents=True)
+    (tmp_path / "docs" / "skillworks" / "surfaces.md").write_text(
         (SEEDS / "surfaces.md").read_text(encoding="utf-8"), encoding="utf-8")
 
     assert readme_surface_of(tmp_path) == "README.md"

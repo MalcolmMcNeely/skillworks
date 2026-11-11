@@ -4,7 +4,7 @@ Issues and specs for this repo live as GitHub issues. The skills write both Trac
 
 Infer the repo from `git remote -v` — `gh` does this by itself inside a clone.
 
-`tracker` in `docs/agents/loop.json` names the Tracker. With `github`, read on. With `files`, specs and tickets are committed files and nothing calls `gh`: "The files Tracker", below, takes the place of every GitHub call and convention in this file. "The ticket shape" holds for both.
+`tracker` in `docs/skillworks/loop.json` names the Tracker. With `github`, read on. With `files`, specs and tickets are committed files and nothing calls `gh`: "The files Tracker", below, takes the place of every GitHub call and convention in this file. "The ticket shape" holds for both.
 
 ## Conventions
 
@@ -84,14 +84,14 @@ These are load-bearing. The loop lands each ticket on its Target branch the mome
   - Never use `Closes #<n>`, `Fixes #<n>` or `Resolves #<n>`. Those close the issue the moment the commit lands on the Target branch, and an auto-closed issue carries no Closing note.
 - **A ticket is closed with a comment.** `gh issue close <n> --comment "..." --reason completed`. The comment names the commit, what was done and which tests prove it. It is the richest source of intention in the repository, and skills read it back.
 
-A commit also names the Session that made it, though the loop leans on none of it. The Plugin's `PreToolUse` hook adds `Skillworks-Session: <id>` to every `git commit` Claude runs through the Bash or PowerShell tool, in the same trailer block as `Ticket:`. The id is the Session's `session.id`. A commit that more than one Session wrote, such as an amend by a second Session or a Keep of a stopped run, carries one line for each of them. A commit a person makes outside Claude carries none, and Land never asks for one. On an Export branch, which holds no `docs/agents/loop.json`, the hook adds no trailer at all, so a commit Claude makes there carries none either. The hook also adds the credit line for Claude when `co-authored-by` in `docs/agents/loop.json` says `show`, and adds none when it says `hide`. With either answer, it refuses a commit whose message holds a credit line for Claude that the model typed, and the Session runs the commit again without it. A credit line that names a person is never refused.
+A commit also names the Session that made it, though the loop leans on none of it. The Plugin's `PreToolUse` hook adds `Skillworks-Session: <id>` to every `git commit` Claude runs through the Bash or PowerShell tool, in the same trailer block as `Ticket:`. The id is the Session's `session.id`. A commit that more than one Session wrote, such as an amend by a second Session or a Keep of a stopped run, carries one line for each of them. A commit a person makes outside Claude carries none, and Land never asks for one. On an Export branch, which holds no `docs/skillworks/loop.json`, the hook adds no trailer at all, so a commit Claude makes there carries none either. The hook also adds the credit line for Claude when `co-authored-by` in `docs/skillworks/loop.json` says `show`, and adds none when it says `hide`. With either answer, it refuses a commit whose message holds a credit line for Claude that the model typed, and the Session runs the commit again without it. A credit line that names a person is never refused.
 
-- **Read it back**: `git log -1 <commit> --format='%(trailers:key=Skillworks-Session,valueonly)'`. Each line is one Session. A team with `session-trailer` in `docs/agents/loop.json` set to `hide` has no such trailer to read: the hook and the Keep write none.
+- **Read it back**: `git log -1 <commit> --format='%(trailers:key=Skillworks-Session,valueonly)'`. Each line is one Session. A team with `session-trailer` in `docs/skillworks/loop.json` set to `hide` has no such trailer to read: the hook and the Keep write none.
 - **Take the id** to the Stores, where it is the `session.id` on every event that Session sent, or to `claude --resume <id>` on the machine that made the commit. The resume works only there, because the Session's history lives on that machine.
 
 ## The files Tracker
 
-Used when `tracker` in `docs/agents/loop.json` says `files`. Each spec is a folder under `.specs/`, and each ticket a Markdown file of its own in that folder's `tickets/`:
+Used when `tracker` in `docs/skillworks/loop.json` says `files`. Each spec is a folder under `.specs/`, and each ticket a Markdown file of its own in that folder's `tickets/`:
 
 ```
 .specs/

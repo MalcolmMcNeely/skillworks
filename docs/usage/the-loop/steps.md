@@ -64,7 +64,7 @@ Code's own `/code-review`.
 
 ## The Suite
 
-The Suite is the checks your repo names in `docs/agents/suite.json`. The script runs them itself,
+The Suite is the checks your repo names in `docs/skillworks/suite.json`. The script runs them itself,
 reads the exit status, and keeps the output. So the gate that says a ticket is done rests on nothing a
 Session said about itself. [The Suite](../suite.md) has the whole file.
 

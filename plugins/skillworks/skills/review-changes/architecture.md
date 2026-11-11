@@ -8,7 +8,7 @@ This axis reads outside the change. An import is only wrong against the module g
 
 ## Two modes
 
-**Loop mode** is how the loop's review step runs this axis, through `/skillworks:review-architecture`. The argument is the ticket, named as its Tracker names it: `steering-file docs/agents/issue-tracker.md` says how each Tracker names its tickets. The change is the working tree. This axis edits what it finds, as "Fix what you find" says.
+**Loop mode** is how the loop's review step runs this axis, through `/skillworks:review-architecture`. The argument is the ticket, named as its Tracker names it: `steering-file docs/skillworks/issue-tracker.md` says how each Tracker names its tickets. The change is the working tree. This axis edits what it finds, as "Fix what you find" says.
 
 **Report-only mode** is how `/skillworks:review-changes` runs this axis, in a sub-agent. The caller hands over the diff command, the `--stat -M` command, the commit list, and the ticket or spec. Read the change from those commands, and not from the working tree. This axis reports what it finds and edits nothing, so skip "Fix what you find". Still run the placement checks, because a check reads the code and changes none of it. Every other section holds in both modes.
 
@@ -38,13 +38,13 @@ Read the review file before you skip, as "The review file" below says, because t
 
 Three kinds, and each outranks the one before it.
 
-**Documented.** Anything that says how the code is *arranged* rather than how it is written: `CONTEXT-MAP.md`, each context's `CONTEXT.md`, and the ADRs in the folder `adr-folder` names. `steering-file docs/agents/domain.md` says where this repo's decisions live. Read that first and follow it.
+**Documented.** Anything that says how the code is *arranged* rather than how it is written: `CONTEXT-MAP.md`, each context's `CONTEXT.md`, and the ADRs in the folder `adr-folder` names. `steering-file docs/skillworks/domain.md` says where this repo's decisions live. Read that first and follow it.
 
-**Written as rules.** `steering-file docs/agents/rules/file-placement.md` holds the placement rules the code was written under. Read the context map beside it, where the repo has one, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in `steering-file docs/agents/placement-checks.md`. Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
+**Written as rules.** `steering-file docs/skillworks/rules/file-placement.md` holds the placement rules the code was written under. Read the context map beside it, where the repo has one, because a rule reaches only the code the map gives it. Cite a breach by the name of the check that catches it, from the table in `steering-file docs/skillworks/placement-checks.md`. Read that file: it maps each check back to the rule it runs, and it names the two places the arrangement baseline bends where the repo has written the rule down.
 
 **Executable.** A boundary rule the repo can run. This ranks highest, because it is enforced rather than hoped for. **Run it, do not reason about it.**
 
-Run the placement checks, and only those. `steering-file docs/agents/placement-checks.md` names each command that proves placement, with its folder. Run each command in its folder, from the repo root. Where a row names a command to run first, run that first in the same folder, unless the path it names is there in that folder. Run nothing else. The driver runs the whole Suite as a step of its own, and this axis would never read the rest.
+Run the placement checks, and only those. `steering-file docs/skillworks/placement-checks.md` names each command that proves placement, with its folder. Run each command in its folder, from the repo root. Where a row names a command to run first, run that first in the same folder, unless the path it names is there in that folder. Run nothing else. The driver runs the whole Suite as a step of its own, and this axis would never read the rest.
 
 Send each command to the Bash tool as a call of its own: the command alone where its folder is the repo root, and `cd <folder> && <command>` where it is not, with nothing wrapped round it. Look for the path a "run first" row names with a file tool, before the command, and not with a test inside the shell line. A loop session runs only the commands its permission rules name, and a rule matches the plain form, so a wrapped command or a PowerShell call is refused, and nobody is there to approve it.
 
@@ -52,11 +52,11 @@ Quote a breach as the command printed it. Say which commands you ran and what ea
 
 ### The review file
 
-On top of what the repo has, this axis always reads its review file, `steering-file docs/agents/review-architecture.md`. Read it yourself. It holds the arrangement baseline and its weighting, the team's own checks, and a "Do not report" list. Read the two bends that sit beneath the check table in `steering-file docs/agents/placement-checks.md` with it. It is the only review file this axis reads.
+On top of what the repo has, this axis always reads its review file, `steering-file docs/skillworks/review-architecture.md`. Read it yourself. It holds the arrangement baseline and its weighting, the team's own checks, and a "Do not report" list. Read the two bends that sit beneath the check table in `steering-file docs/skillworks/placement-checks.md` with it. It is the only review file this axis reads.
 
 Apply each team check only to the paths it names. A check that names no paths covers the whole change. A team check is a hard breach or a judgement call, as the check says. Skip every path and every kind of finding that "Do not report" names.
 
-If `steering-file docs/agents/review-architecture.md` ends with a non-zero status, the file is missing, so stop. Review nothing and edit nothing. Tell the user that the review file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
+If `steering-file docs/skillworks/review-architecture.md` ends with a non-zero status, the file is missing, so stop. Review nothing and edit nothing. Tell the user that the review file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
 
 ## The three binding rules
 

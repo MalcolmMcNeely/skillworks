@@ -19,15 +19,15 @@ The outputs:
 | Output | Why it exists |
 |---|---|
 | The `ready-for-agent` label, with `github` only | `/skillworks:to-spec` and `/skillworks:to-tickets` apply it, and `gh issue create` fails on a label that does not exist. Nothing in the loop reads it. |
-| `docs/agents/rules/*.md` | The five rules: comments, determinism, file placement, testing and words. The review axes read them. The testing rule holds the team's taste in tests and has no settings. The settings that name what a rule judges start empty, so nothing is judged until the team fills them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the words rule's `skip-folders`. The others ship with a default the team can change: `doc-comments`, `clock`, `max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`, `banned-folder-names`, `name-map` and `test-placement`. `doc-comments` ships as `none`, so no source file holds a doc comment until the team picks `code` or `all`. `test-placement` ships as `mirror`, so each test mirrors the code file it tests until the team picks `free`. |
-| `docs/agents/issue-tracker.md`, `docs/agents/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. The YAML block at the end of `domain.md` holds `adr-folder`, the one folder every new ADR goes to. Setup asks for it. |
-| `docs/agents/adr-format.md` | The ADR shape: the template and the optional sections every new ADR fills. It starts with the Skillworks shape, and a team edits it so new ADRs look like the ones it keeps. |
-| `docs/agents/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the baseline for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no baseline. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
-| `docs/agents/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
-| `docs/agents/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `pr` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. `export` is `true` when the work goes to a team that does not use Skillworks, and `false` otherwise. Setup asks first. |
-| `docs/agents/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
+| `docs/skillworks/rules/*.md` | The five rules: comments, determinism, file placement, testing and words. The review axes read them. The testing rule holds the team's taste in tests and has no settings. The settings that name what a rule judges start empty, so nothing is judged until the team fills them in: `contexts`, `slices`, `concerns`, `test-roots`, `banned-words` and the words rule's `skip-folders`. The others ship with a default the team can change: `doc-comments`, `clock`, `max-types-per-folder`, `source-files`, `test-files`, the placement rule's `skip-folders`, `banned-folder-names`, `name-map` and `test-placement`. `doc-comments` ships as `none`, so no source file holds a doc comment until the team picks `code` or `all`. `test-placement` ships as `mirror`, so each test mirrors the code file it tests until the team picks `free`. |
+| `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md` | One copy of the tracker calls and of where the domain docs live. Without one shared copy each skill carries its own and they drift. The YAML block at the end of `domain.md` holds `adr-folder`, the one folder every new ADR goes to. Setup asks for it. |
+| `docs/skillworks/adr-format.md` | The ADR shape: the template and the optional sections every new ADR fills. It starts with the Skillworks shape, and a team edits it so new ADRs look like the ones it keeps. |
+| `docs/skillworks/placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md` | What the review axes judge against. Each review file holds the baseline for its axis, if it has one, and a team's own checks, which start empty. `review-spec.md` holds no baseline. The placement checks start with no command listed. A team names the exact commands that prove placement, each with its folder and anything to run first, and the architecture review runs those and nothing else. |
+| `docs/skillworks/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
+| `docs/skillworks/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `pr` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. `export` is `true` when the work goes to a team that does not use Skillworks, and `false` otherwise. Setup asks first. |
+| `docs/skillworks/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
 | `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. |
-| A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/agents/` does not. The block is a Seed: `seed-agent-skills` builds it, and a second run merges a person's edits. |
+| A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/skillworks/` does not. The block is a Seed: `seed-agent-skills` builds it, and a second run merges a person's edits. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
 | The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes. It lets a skill read its own files, with `Read(~/.claude/plugins/**)` and, when the Marketplace folder sits outside the repo, a read rule for that folder, because a Session run by hand would stop to ask on a read outside the repo. The driver gives a loop Session its own read rule. It names no tool the Suite runs: those are the team's to add. |
 | An `attribution` block in `.claude/settings.json`, rewritten from `co-authored-by` every time setup runs | Claude Code credits Claude on each commit and pull request unless `attribution` says otherwise. Its commit credit is always off, because the Plugin's hook adds the credit line when `co-authored-by` says `show`. Its pull request credit is off for `hide` only. The block follows the answer in `loop.json`, so a block someone edited by hand comes back into step. |
@@ -39,7 +39,7 @@ The outputs:
 
 ### First, ask where the work goes
 
-Ask the developer one question before anything is written: will the work go to a team that does not use Skillworks? Offer two answers, `no` and `yes`. Suggest `no`, so the common answer is one keypress. With the Export, `loop.json` lives on the Steering branch and never on the developer's own branch, so read an earlier run's answer there: run `git fetch origin skillworks/steering`, and when it succeeds and `git show origin/skillworks/steering:docs/agents/loop.json` holds `"export": true`, suggest `yes` instead.
+Ask the developer one question before anything is written: will the work go to a team that does not use Skillworks? Offer two answers, `no` and `yes`. Suggest `no`, so the common answer is one keypress. With the Export, `loop.json` lives on the Steering branch and never on the developer's own branch, so read an earlier run's answer there: run `git fetch origin skillworks/steering`, and when it succeeds and `git show origin/skillworks/steering:docs/skillworks/loop.json` holds `"export": true`, suggest `yes` instead.
 
 With `no`, setup runs as it always has, on the branch the developer is on. Go on to step 1, and skip every part below that says "With the Export".
 
@@ -58,11 +58,11 @@ git switch -c skillworks/steering origin/<the default branch>
 
 When `skillworks/steering` is already a branch, here or on `origin`, an earlier run made it, so switch to it with `git switch skillworks/steering` instead.
 
-Steps 1 to 6 then run on the Steering branch. After step 1, write `"export": true` and `"target-branch": "pr"` into `docs/agents/loop.json`, and change no other key.
+Steps 1 to 6 then run on the Steering branch. After step 1, write `"export": true` and `"target-branch": "pr"` into `docs/skillworks/loop.json`, and change no other key.
 
 ### 1. Seed the Steering
 
-Before you run it, read `adr-folder` from the YAML block at the end of `docs/agents/domain.md`, where the file is there and names one. That is an earlier run's answer, and step 4 suggests it. Read it first, because the seed writes `docs/adr` into a file that names none, and that default is not the team's answer.
+Before you run it, read `adr-folder` from the YAML block at the end of `docs/skillworks/domain.md`, where the file is there and names one. That is an earlier run's answer, and step 4 suggests it. Read it first, because the seed writes `docs/adr` into a file that names none, and that default is not the team's answer.
 
 ```bash
 seed-steering
@@ -70,7 +70,7 @@ seed-steering
 
 It copies each seed in [seeds](./seeds) to its place in the repo, and adds the working folders to `.gitignore` where it does not name them yet, and creates `.handoff/` when it is missing. It ends with a `next step:` line, which the report in step 7 names. `loop.json` is written with the remote's default branch as its `target-branch`.
 
-It keeps a base copy of each seed in `docs/agents/.seeds/`, exactly as it copied it. On a later run it weighs three versions of each file: the base copy, the team's file and the current seed. It prints one line per file:
+It keeps a base copy of each seed in `docs/skillworks/.seeds/`, exactly as it copied it. On a later run it weighs three versions of each file: the base copy, the team's file and the current seed. It prints one line per file:
 
 | Outcome | What happened |
 |---|---|
@@ -96,19 +96,19 @@ Show the user each outcome line and each diff under it. The labels on a diff say
 When a line says `asks` or `kept ..., which differs from the seed`, the script has written nothing, and every other line says what it would do. No file changes until every question is answered. Put each overlap to the user: show the `yours` side, the `seed` side, and a blend you write to fit the repo, and ask which of the three to keep. Ask every question before you change anything. Then run it again with one choice per overlap:
 
 ```bash
-seed-steering --keep docs/agents/domain.md:1=yours --keep docs/agents/domain.md:2=seed
+seed-steering --keep docs/skillworks/domain.md:1=yours --keep docs/skillworks/domain.md:2=seed
 ```
 
 For a blend, write its text to a file outside the repo, and name the overlap and that file. The script writes the text in place of the overlap's lines. You write nothing into the Steering file yourself:
 
 ```bash
-seed-steering --blend docs/agents/domain.md:1=/tmp/domain-1.md
+seed-steering --blend docs/skillworks/domain.md:1=/tmp/domain-1.md
 ```
 
 When a line says `kept ..., which differs from the seed`, treat the file as edited. Show the user the diff, and change the file only by the lines they pick. When they have decided, even to take no lines, give the file back so the script writes its base copy, and the merge works from the next run on:
 
 ```bash
-seed-steering --settled docs/agents/domain.md
+seed-steering --settled docs/skillworks/domain.md
 ```
 
 Give the `--keep`, `--blend` and `--settled` choices in one run when they are due. A choice or a blend that names no overlap, or a `--settled` for a file that has a base copy, is refused, and nothing is written.
@@ -126,19 +126,19 @@ The Tracker is where the team keeps its specs and tickets. Ask the team which on
 - `github`: GitHub Issues, driven by `gh`. A spec is a parent issue, and its tickets are its sub-issues.
 - `files`: committed Markdown files in `.specs/`, one folder per spec and one file per ticket. It works on any remote: GitLab, Bitbucket, or a bare repo on a shared drive. It needs no `gh`.
 
-Read `git remote get-url origin`. When it names `github.com`, suggest `github`. Otherwise suggest `files`. So the common answer is one keypress. If `tracker` in `docs/agents/loop.json` already names another value, a team's answer from an earlier run, suggest that one instead.
+Read `git remote get-url origin`. When it names `github.com`, suggest `github`. Otherwise suggest `files`. So the common answer is one keypress. If `tracker` in `docs/skillworks/loop.json` already names another value, a team's answer from an earlier run, suggest that one instead.
 
-Write the answer into `tracker` in `docs/agents/loop.json`, and change no other key.
+Write the answer into `tracker` in `docs/skillworks/loop.json`, and change no other key.
 
 With `files`, tell the team that `.specs/` is committed and cannot be gitignored. Each job builds in a worktree of its own, and a worktree cannot see a gitignored folder. A ticket that its job cannot see cannot be built or closed.
 
 ### 3. Ask for the Target branch
 
-The Target branch is the branch the loop Lands each ticket on. Ask the team which one it is, and suggest the remote's default branch, so the common answer is one keypress. `seed-steering` has already written that branch into `docs/agents/loop.json`. If `target-branch` there names another value, a team's answer from an earlier run, suggest that one instead.
+The Target branch is the branch the loop Lands each ticket on. Ask the team which one it is, and suggest the remote's default branch, so the common answer is one keypress. `seed-steering` has already written that branch into `docs/skillworks/loop.json`. If `target-branch` there names another value, a team's answer from an earlier run, suggest that one instead.
 
 Offer one other answer: `pr`. With `pr`, you make the branch and open the pull request. You make a branch of your own for each spec, by your team's own rule, and start the grill on it. The grill writes the design and the spec there, and the loop Lands each ticket there. Then you open the one pull request from it, and a person reviews and merges it. Pick `pr` when the default branch is protected, or when the team reviews its work through pull requests.
 
-Write the answer into `target-branch` in `docs/agents/loop.json`, and change no other key.
+Write the answer into `target-branch` in `docs/skillworks/loop.json`, and change no other key.
 
 With the Export, ask nothing here, and write `pr`. The Export works only with `pr`, because the loop reads the developer's branch from the name of the spec's Target branch.
 
@@ -146,11 +146,11 @@ With the Export, ask nothing here, and write `pr`. The Export works only with `p
 
 First ask the team where its ADRs go. Every new ADR goes to this one folder, whatever context it is about, and the Domain docs line below names it. Suggest one folder, the first of these that holds:
 
-1. The folder `adr-folder` names in `docs/agents/domain.md`, as you read it before step 1. So a second run keeps the team's answer.
+1. The folder `adr-folder` names in `docs/skillworks/domain.md`, as you read it before step 1. So a second run keeps the team's answer.
 2. Else a folder that holds numbered Markdown files and has `adr` or `decision` in its path. A numbered file is named `<number>-<slug>.md`, such as `0001-event-sourced-orders.md`. Match `adr` and `decision` in any letter case. List every such folder you find, and suggest the one with the most files.
 3. Else `docs/adr`.
 
-Write the answer into `adr-folder` in the YAML block at the end of `docs/agents/domain.md`, and change no other line. Write it as a path from the repo root, with no `/` at its end. Where the file has no YAML block at its end, add one that holds `adr-folder` alone. Preflight in step 5 stops while the setting is missing or empty.
+Write the answer into `adr-folder` in the YAML block at the end of `docs/skillworks/domain.md`, and change no other line. Write it as a path from the repo root, with no `/` at its end. Where the file has no YAML block at its end, add one that holds `adr-folder` alone. Preflight in step 5 stops while the setting is missing or empty.
 
 Then build the `## Agent skills` block in `CLAUDE.md`. The block is a Seed, and a script builds it from your answers, so you write none of it yourself:
 
@@ -158,9 +158,9 @@ Then build the `## Agent skills` block in `CLAUDE.md`. The block is a Seed, and 
 seed-agent-skills --tracker <github|files> --adr-folder <adr-folder> --contexts <single|multi>
 ```
 
-Give the Tracker from step 2, and the folder `adr-folder` names. Give `--contexts multi` when the repo has `CONTEXT-MAP.md` at its root, and `--contexts single` otherwise. The script imports each rule file in `docs/agents/rules/`, and writes the multi-context Domain docs line in the words Context backfill writes when it switches the line.
+Give the Tracker from step 2, and the folder `adr-folder` names. Give `--contexts multi` when the repo has `CONTEXT-MAP.md` at its root, and `--contexts single` otherwise. The script imports each rule file in `docs/skillworks/rules/`, and writes the multi-context Domain docs line in the words Context backfill writes when it switches the line.
 
-The block runs from its heading to the next `## ` heading, or to the end of the file. The script changes nothing outside it. It keeps a base copy of the block in `docs/agents/.seeds/agent-skills.md`, and on a later run it weighs the block as step 1 weighs a Steering file. It prints the same outcome lines and the same diffs, and names the block by its file, such as `CLAUDE.md`. A missing block, or a missing file, is `wrote`. If the repo has `AGENTS.md` and no `CLAUDE.md`, the script uses `AGENTS.md`, and it never creates the one that is missing when the other exists.
+The block runs from its heading to the next `## ` heading, or to the end of the file. The script changes nothing outside it. It keeps a base copy of the block in `docs/skillworks/.seeds/agent-skills.md`, and on a later run it weighs the block as step 1 weighs a Steering file. It prints the same outcome lines and the same diffs, and names the block by its file, such as `CLAUDE.md`. A missing block, or a missing file, is `wrote`. If the repo has `AGENTS.md` and no `CLAUDE.md`, the script uses `AGENTS.md`, and it never creates the one that is missing when the other exists.
 
 When a line says `asks` or `kept ..., which differs from the seed`, the script has written nothing. Put each question to the user as step 1 does: for each overlap, show the `yours` side, the `seed` side, and a blend you write to fit the repo, and ask which of the three to keep. For a block with no base copy, show the diff, change the block only by the lines they pick, and then settle it. Ask every question before you change anything. Then run it again with the same answers and every choice at once:
 
@@ -177,7 +177,7 @@ A choice or a blend that names no overlap, or a `--settled` for a block that has
 skillworks-preflight
 ```
 
-It reads the Tracker and the Target branch from `docs/agents/loop.json`, and checks that `CLAUDE.md` imports each rule in `docs/agents/rules/`. It warns, and does not fail, when another enabled plugin also forces an output style. Safe to run again.
+It reads the Tracker and the Target branch from `docs/skillworks/loop.json`, and checks that `CLAUDE.md` imports each rule in `docs/skillworks/rules/`. It warns, and does not fail, when another enabled plugin also forces an output style. Safe to run again.
 
 With `github`, it checks `gh`, the login, that `origin` is GitHub, and the Target branch. A branch name must be on the remote and must take a direct push from this login. With `pr`, the default branch must be on the remote, and its protection does not matter. Then it creates the `ready-for-agent` label. It creates only what is missing and never overwrites an existing label.
 
@@ -208,12 +208,12 @@ If the file exists, merge:
 | `false` | Nothing. |
 | `true` | Show the user the key and what it costs: memory files on each machine steer the loop, so it runs differently from one machine to the next. Ask which to keep. Never change it without asking. |
 
-Ask the team one question: should commits and pull requests credit Claude? The one answer covers both. Offer two answers. On a first run, suggest `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/agents/loop.json` already names an answer, a team's answer from an earlier run, suggest that one instead.
+Ask the team one question: should commits and pull requests credit Claude? The one answer covers both. Offer two answers. On a first run, suggest `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/skillworks/loop.json` already names an answer, a team's answer from an earlier run, suggest that one instead.
 
 - `hide`: `set-co-authored-by hide`. No commit and no pull request credits Claude.
 - `show`: `set-co-authored-by show`. The Plugin's hook adds the credit line to each commit Claude makes, and Claude Code's own pull request credit applies.
 
-The command writes the answer into `co-authored-by` in `docs/agents/loop.json`, and rewrites the `attribution` block of `.claude/settings.json` from the answer every time it runs. Claude Code's commit credit is always off, because the hook adds the line itself. A block someone edited by hand comes back into step.
+The command writes the answer into `co-authored-by` in `docs/skillworks/loop.json`, and rewrites the `attribution` block of `.claude/settings.json` from the answer every time it runs. Claude Code's commit credit is always off, because the hook adds the line itself. A block someone edited by hand comes back into step.
 
 Settle `co-authored-by` and `attribution` with `set-co-authored-by` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
 
@@ -242,18 +242,18 @@ The push names `skillworks/steering` alone, so nothing else reaches `origin`. Th
 
 Say what was written and what was kept. Say where each Steering file lives:
 
-- `docs/agents/rules/`: `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
-- `docs/agents/`: `issue-tracker.md`, `domain.md`, `adr-format.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
+- `docs/skillworks/rules/`: `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
+- `docs/skillworks/`: `issue-tracker.md`, `domain.md`, `adr-format.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
 
 With the Export, say that the Steering is committed on `skillworks/steering` and pushed to `origin`, and that the developer is back on their own branch, which holds no Steering file. Say that a later change to the Steering, such as the Suite the next step fills in, is made and committed on `skillworks/steering`, and pushed there.
 
 Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude. Then tell them what the team fills in before the loop can finish a ticket:
 
-- `docs/agents/suite.json`: the checks that prove their code, each with a command, the folder it runs in, and optionally a readiness command with its message. A check that passes keeps a Proof of its inputs, and does not run again until one of them changes. A check may also name the paths it cannot be changed by, as `"ignores": ["docs", "web"]`: each is a git pathspec from the repo root. A path left off only costs a run, so a slow check is the one to give `ignores`. A check may name an `image`, a Dockerfile in `docs/agents/`, to run in a container. A check that did not run says so in the Suite output, and names its Proof. `runs` says how many times a red Suite runs before the loop believes it. It starts at 1, and a team with tests that flake raises it. Until it names a check, the loop stops with the Suite not ready.
+- `docs/skillworks/suite.json`: the checks that prove their code, each with a command, the folder it runs in, and optionally a readiness command with its message. A check that passes keeps a Proof of its inputs, and does not run again until one of them changes. A check may also name the paths it cannot be changed by, as `"ignores": ["docs", "web"]`: each is a git pathspec from the repo root. A path left off only costs a run, so a slow check is the one to give `ignores`. A check may name an `image`, a Dockerfile in `docs/skillworks/`, to run in a container. A check that did not run says so in the Suite output, and names its Proof. `runs` says how many times a red Suite runs before the loop believes it. It starts at 1, and a team with tests that flake raises it. Until it names a check, the loop stops with the Suite not ready.
 - The allowlist: each tool the Suite runs, such as a build or a test runner, so the loop can run it without a prompt.
 - The rules' settings, as the team settles them.
 
-Name the next step that the `next step:` line of `seed-steering` printed. For a repo with a history and no glossary, it names `/skillworks:context-backfill` first: it fills `CONTEXT.md` or `CONTEXT-MAP.md`, and the folder `adr-folder` names, once from the code and the history, and writes nothing until a person accepts it. A repo has a history when a commit touches a file setup does not write, and no glossary when it has no `CONTEXT.md` and no `CONTEXT-MAP.md` at its root. Then, and for every other repo first, name `/skillworks:architecture-tests`. It turns the rules into tests the team owns: it writes each test red first, proves it green, then fills `docs/agents/suite.json`, both tables of `docs/agents/placement-checks.md` and the allowlist. A team runs it again when it adds a language or a rule.
+Name the next step that the `next step:` line of `seed-steering` printed. For a repo with a history and no glossary, it names `/skillworks:context-backfill` first: it fills `CONTEXT.md` or `CONTEXT-MAP.md`, and the folder `adr-folder` names, once from the code and the history, and writes nothing until a person accepts it. A repo has a history when a commit touches a file setup does not write, and no glossary when it has no `CONTEXT.md` and no `CONTEXT-MAP.md` at its root. Then, and for every other repo first, name `/skillworks:architecture-tests`. It turns the rules into tests the team owns: it writes each test red first, proves it green, then fills `docs/skillworks/suite.json`, both tables of `docs/skillworks/placement-checks.md` and the allowlist. A team runs it again when it adds a language or a rule.
 
 Then tell them the loop is ready:
 

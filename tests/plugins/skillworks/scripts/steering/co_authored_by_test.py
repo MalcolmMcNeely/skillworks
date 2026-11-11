@@ -55,7 +55,7 @@ def test_the_answer_is_written_to_the_loop_file_beside_every_other_setting(repo,
 
     assert ran.status == 0, ran.err
     assert loop_now(repo) == {"tracker": "github", "target-branch": "main", "co-authored-by": answer}
-    assert "docs/agents/loop.json" in ran.out
+    assert "docs/skillworks/loop.json" in ran.out
 
 
 def test_the_loop_file_keeps_its_layout_and_only_the_answer_changes(repo):
@@ -255,7 +255,7 @@ def test_a_loop_file_that_is_not_json_is_refused_and_nothing_is_written(repo):
     ran = run_co_authored_by(repo.work, "hide")
 
     assert ran.status == 1
-    assert "FAIL  docs/agents/loop.json is not JSON" in ran.err
+    assert "FAIL  docs/skillworks/loop.json is not JSON" in ran.err
     assert not settings_file(repo).exists()
 
 

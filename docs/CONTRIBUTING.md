@@ -36,12 +36,12 @@ npm run lint
 npm test
 ```
 
-The loop runs the same checks from `docs/agents/suite.json`. A new check goes in both places.
+The loop runs the same checks from `docs/skillworks/suite.json`. A new check goes in both places.
 [The Suite](usage/suite.md) says how the loop runs them. This repo's Suite file sets `runs` to 2,
 so that a check that goes red and then passes shows as a Flake. The Architecture tests run
 alone, so they never wait on Docker. The Core and API tests run over one solution filter,
 `Skillworks.Studio.slnf`, so they build once. The loop runs the script
-tests in the Linux image `docs/agents/script-tests.Dockerfile`, because on Windows each git and bash
+tests in the Linux image `docs/skillworks/script-tests.Dockerfile`, because on Windows each git and bash
 process they start is slow to start. Run by hand, the command above runs them on your own machine.
 The tests marked `this_repo` run on the host in a check of their own, because they read the paths
 the script tests ignore, or this repo's history, and the image gets no copy of those. The backfill
@@ -186,12 +186,12 @@ that every item is written. A skill that needs its own terms in a reply says whe
 ### Steering and Machinery
 
 A Plugin skill is Machinery: every repo runs the same text. So it carries no fact of one repo. It
-reads the fact from the repo's Steering under `docs/agents/`, and a test fails a skill that states a
+reads the fact from the repo's Steering under `docs/skillworks/`, and a test fails a skill that states a
 habit of this repo.
 
-- Where the glossary and the ADRs live: `docs/agents/domain.md`. A bare `CONTEXT.md` is the wrong
+- Where the glossary and the ADRs live: `docs/skillworks/domain.md`. A bare `CONTEXT.md` is the wrong
   file in a repo with more than one context.
-- How to read and write a ticket: `docs/agents/issue-tracker.md`, in words that fit either Tracker.
+- How to read and write a ticket: `docs/skillworks/issue-tracker.md`, in words that fit either Tracker.
 - A Steering file that is missing gets the stop that `tdd` has: stop, name the file, say that
   `/skillworks:skillworks-setup` writes it, and say that nothing was done.
 
@@ -248,7 +248,7 @@ Put the table in the body of the commit that changes the skill. Nothing writes i
 | `src/Skillworks.Studio.Web/` | The React front end. Renders what the API shaped. Any rule of its own lives in a `lib` folder, such as `src/dashboard/lib/`, with a test beside it. |
 | `src/Skillworks.AppHost/` | The Aspire orchestrator. One command starts everything. |
 | `src/Skillworks.ServiceDefaults/` | Aspire's shared health, telemetry and service discovery setup. |
-| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `docs/agents/rules/` and lists the places the code breaks them. |
+| `src/Skillworks.Architecture/` | The architecture check. Reads the rules files in `docs/skillworks/rules/` and lists the places the code breaks them. |
 | `tests/Skillworks.Core.Tests/` | The stores Studio reads, tested against real containers, and the stand-ins for a store that stalls. |
 | `tests/Skillworks.Studio.Api.Tests/` | The real API in memory, against a real Loki, asserting the JSON it returns. |
 | `tests/Skillworks.Architecture.Tests/` | The architecture check on small folder trees, and on this repo. |
@@ -259,12 +259,12 @@ Put the table in the body of the commit that changes the skill. Nothing writes i
 | `plugins/skillworks/bin/` | The short commands the Plugin puts on PATH: `spec-loop`, `land-ticket`, `ticket-worktree`, `skillworks-preflight`, `seed-steering`, `seed-agent-skills`, `set-co-authored-by`, `allow-commands`, `skillworks-suite`, `tracker-publish`, `spec-commits`, `cut-target-branch`, `own-branch`, `steering-file`, `spec-loop-counts` and `context-backfill`. Each runs its script from the Plugin. |
 | `.claude/skills/` | The skills that are not in the Plugin. Dev tooling for this repo, mostly vendored. |
 | `tools/` | Dev tools you run by hand, such as `seeded-studio.mjs`. |
-| `docs/agents/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |
-| `docs/agents/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
+| `docs/skillworks/` | Reference text more than one skill reads. `/skillworks:skillworks-setup` seeds a starting version of each, and of the rules, in a repo that has none. This repo's copies are its own. |
+| `docs/skillworks/suite.json` | The Suite file: the checks that decide green for this repo, in order, each with its folder and what must be ready first. The loop runs these and nothing else. |
 | `docs/usage/` | How a team uses Skillworks, and how the loop works, for a human reading it rather than a skill. |
 | `docs/studio/` | How to run Studio, its settings, and how it gets its telemetry. Studio's glossary, `CONTEXT.md`, sits here too, and `CONTEXT-MAP.md` points at it. |
 | `docs/assets/` | The pictures the README shows. |
 
 The top folder under a code root is a Slice, named for a job Studio does, with `Shared` beside the
-Slices for the code no one job owns. `docs/agents/rules/file-placement.md` holds the rules.
+Slices for the code no one job owns. `docs/skillworks/rules/file-placement.md` holds the rules.
 

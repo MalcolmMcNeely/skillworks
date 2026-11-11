@@ -27,9 +27,9 @@ Prompt each sub-agent with a separate technical brief (file paths, coupling deta
 - Agent 3: "Optimise for the most common caller — make the default case trivial."
 - Agent 4 (the fourth, when there is one): "Design around ports & adapters for cross-seam dependencies."
 
-Paste the Glossary section of [SKILL.md](SKILL.md) into each brief, and with it the domain terms the candidate touches. To find those terms, read `steering-file docs/agents/domain.md`: it says where this repo keeps its glossary and its ADRs. Read the glossary that claims the candidate's code, where there is one. A sub-agent sees only its brief, and not this conversation or the skills loaded in it, so the terms have to travel in the brief for each sub-agent to name things consistently with the architecture language and the project's domain language.
+Paste the Glossary section of [SKILL.md](SKILL.md) into each brief, and with it the domain terms the candidate touches. To find those terms, read `steering-file docs/skillworks/domain.md`: it says where this repo keeps its glossary and its ADRs. Read the glossary that claims the candidate's code, where there is one. A sub-agent sees only its brief, and not this conversation or the skills loaded in it, so the terms have to travel in the brief for each sub-agent to name things consistently with the architecture language and the project's domain language.
 
-If `steering-file docs/agents/domain.md` ends with a non-zero status, the file is missing. Tell the user that it is missing and that `/skillworks:skillworks-setup` writes it, and send each brief with the Glossary section alone.
+If `steering-file docs/skillworks/domain.md` ends with a non-zero status, the file is missing. Tell the user that it is missing and that `/skillworks:skillworks-setup` writes it, and send each brief with the Glossary section alone.
 
 Each sub-agent outputs:
 

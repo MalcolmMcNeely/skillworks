@@ -4,22 +4,22 @@
 
 ### Issue tracker
 
-GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. See `docs/agents/issue-tracker.md`.
+GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. See `docs/skillworks/issue-tracker.md`.
 
 ### Domain docs
 
 Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context.
-See `docs/agents/domain.md`.
+See `docs/skillworks/domain.md`.
 
 ### Rules
 
-The rules load into every session through these imports. Each one lives in `docs/agents/rules/`.
+The rules load into every session through these imports. Each one lives in `docs/skillworks/rules/`.
 
-@docs/agents/rules/comments.md
-@docs/agents/rules/determinism.md
-@docs/agents/rules/file-placement.md
-@docs/agents/rules/testing.md
-@docs/agents/rules/words.md
+@docs/skillworks/rules/comments.md
+@docs/skillworks/rules/determinism.md
+@docs/skillworks/rules/file-placement.md
+@docs/skillworks/rules/testing.md
+@docs/skillworks/rules/words.md
 
 ## Working in this repo
 
@@ -33,7 +33,7 @@ Run the checks with the Plugin's command, and not with the test commands one by 
 skillworks-suite
 ```
 
-It runs every check in `docs/agents/suite.json` and keeps a Proof of each one that passes. A check
+It runs every check in `docs/skillworks/suite.json` and keeps a Proof of each one that passes. A check
 whose inputs match a Proof does not run again, so a second run after a small change is cheap.
 In a loop the driver runs the Suite as a step of its own, and it reads the Proofs your run kept.
 

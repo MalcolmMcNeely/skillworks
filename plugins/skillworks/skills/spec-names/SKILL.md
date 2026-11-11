@@ -19,9 +19,9 @@ A third argument, the rename ticket, makes this the Name re-check: see [The Name
 
 Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
 
-`tracker` in `steering-file docs/agents/loop.json` names the Tracker, and `steering-file docs/agents/issue-tracker.md` says how to record the report with each one. The Target branch is `target-branch` in `steering-file docs/agents/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files. In PR mode, read the spec for that branch name and for nothing more.
+`tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to record the report with each one. The Target branch is `target-branch` in `steering-file docs/skillworks/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files. In PR mode, read the spec for that branch name and for nothing more.
 
-If `steering-file docs/agents/loop.json`, `steering-file docs/agents/issue-tracker.md` or `steering-file docs/agents/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the loop reads that line and stops at once.
+If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md` or `steering-file docs/skillworks/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the loop reads that line and stops at once.
 
 ## What you read
 
@@ -37,7 +37,7 @@ Two things, and nothing else. A small context keeps the judge sharp, and one fin
 
    If `spec-commits` refuses, mend what the refusal names and run it again once. If it refuses again, stop, quote the refusal, and say that nothing was judged. Under the spec loop, begin your last message with a line that starts with `BLOCKED` and names the command, as for a missing file.
 
-2. **The glossary of each context the spec's commits touch.** `steering-file docs/agents/domain.md` says where this repo keeps its glossaries. Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file. Read each glossary on `origin/<target>`. Under the spec loop, this checkout was just cut from `origin/<target>`, so the glossary file in the checkout holds that text: read it with the Read tool. In a hand run the checkout may be behind, so read it with `git -C . show origin/<target>:<path>`.
+2. **The glossary of each context the spec's commits touch.** `steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries. Where the repo has a `CONTEXT-MAP.md`, the map says which glossary claims which file. Read each glossary on `origin/<target>`. Under the spec loop, this checkout was just cut from `origin/<target>`, so the glossary file in the checkout holds that text: read it with the Read tool. In a hand run the checkout may be behind, so read it with `git -C . show origin/<target>:<path>`.
 
 Read nothing else: not the spec, not its tickets, not the drift report, and not the code outside the spec's commits. A name is judged by what the spec's commits make it mean and by what the glossary says it means. Three reads go beyond the two: the Steering files this skill reads through `steering-file`, the spec's branch name in PR mode, and the search in [What you list](#what-you-list) that shows a name still stands.
 
@@ -109,14 +109,14 @@ The ticket is named the way the Tracker names it: the issue number with GitHub, 
 
 Read two things, and nothing else:
 
-1. **The rename ticket.** Each `###` heading in it is one rename, and the heading is its name. Read it the way `steering-file docs/agents/issue-tracker.md` says to read a ticket.
+1. **The rename ticket.** Each `###` heading in it is one rename, and the heading is its name. Read it the way `steering-file docs/skillworks/issue-tracker.md` says to read a ticket.
 2. **The rename ticket's diff.** Its commits carry its `Ticket:` trailer, `#57` with GitHub and `42/3` with files. Read them on `origin/<target>`:
 
    ```bash
    git log -p --reverse --grep "^Ticket: <trailer>$" <base>..origin/<target>
    ```
 
-Under the spec loop, run no `git fetch` of your own before either read, even where `steering-file docs/agents/issue-tracker.md` names one. The loop fetched the Target branch before it started this Session, and a loop Session has no permission for a bare fetch. In a hand run, fetch the Target branch first.
+Under the spec loop, run no `git fetch` of your own before either read, even where `steering-file docs/skillworks/issue-tracker.md` names one. The loop fetched the Target branch before it started this Session, and a loop Session has no permission for a bare fetch. In a hand run, fetch the Target branch first.
 
 Do not look for new renames. Judge only the ones the ticket lists.
 
