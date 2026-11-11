@@ -167,12 +167,14 @@ def check(*command, folder=".", ready=None, message="", unless=None, ignores=Non
     return entry
 
 
-def write_suite(tree, *checks, runs=None):
+def write_suite(tree, *checks, runs=None, baseline=None):
     path = Path(tree) / SUITE_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
     suite = {"checks": list(checks)}
     if runs is not None:
         suite["runs"] = runs
+    if baseline is not None:
+        suite["baseline"] = baseline
     path.write_text(json.dumps(suite, indent=2), encoding="utf-8", newline="\n")
     return path.relative_to(tree).as_posix()
 

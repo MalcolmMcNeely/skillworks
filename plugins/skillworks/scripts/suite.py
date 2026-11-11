@@ -163,6 +163,16 @@ def ignores_of(entry):
     return entry["ignores"]
 
 
+BASELINE_FIELDS = ("command", "folder", "image")
+
+
+def folder_of(entry):
+    folder = entry.get("folder", ".")
+    if not isinstance(folder, str) or not folder:
+        raise Unreadable("a folder that is not a path")
+    return folder
+
+
 def keyed_entry(entry):
     return json.dumps({field: entry.get(field) for field in KEYED}, sort_keys=True)
 
@@ -239,13 +249,37 @@ class Suite:
             raise Unreadable("no such file")
         return held
 
-    def read(self):
+    def parsed(self):
         try:
             parsed = json.loads(self.suite_text())
         except ValueError as fault:
             raise Unreadable("it is not JSON: {}".format(fault))
         if not isinstance(parsed, dict):
             raise Unreadable("it names no checks")
+        return parsed
+
+    # Read with the checks, so a baseline no driver could run makes the whole file unreadable.
+    def baseline_of(self, parsed):
+        if "baseline" not in parsed:
+            return None
+        entry = parsed["baseline"]
+        if not isinstance(entry, dict):
+            raise Unreadable("a baseline that is not an entry")
+        others = sorted(set(entry) - set(BASELINE_FIELDS))
+        if others:
+            raise Unreadable("a baseline that carries {}, and a baseline takes only {}".format(
+                ", ".join(others), ", ".join(BASELINE_FIELDS)))
+        return Check(command_of(entry), self.tree / folder_of(entry), None,
+                     image_of(entry, self.holds))
+
+    def baseline(self):
+        parsed = self.parsed()
+        self.read()
+        return self.baseline_of(parsed)
+
+    def read(self):
+        parsed = self.parsed()
+        self.baseline_of(parsed)
         runs = parsed.get("runs", 1)
         # Python counts a JSON true as an int, and a Suite run true times means nothing.
         if not isinstance(runs, int) or isinstance(runs, bool) or runs < 1:

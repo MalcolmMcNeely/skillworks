@@ -27,10 +27,22 @@ end asks you anything, unless the loop stops.
 
 Each run of the script starts the same way. After it fetches the Target branch, and before the Cut,
 the script checks a **Baseline**. It cuts a worktree of its own from the Target branch on `origin`,
-runs the `ready` command of each check in [the Suite file](suite.md), and then removes the worktree,
-so your own checkout is never built in. A machine that is not ready stops the run with the `message`
-your team wrote for that check, and no Session starts. The Baseline runs on every run, a rerun too,
-so a machine you made ready since the last run is seen as ready. A dry run lists it and runs nothing.
+runs the `ready` command of each check in [the Suite file](suite.md), then the Suite file's
+`baseline`, and then removes the worktree, so your own checkout is never built in. A machine that is
+not ready stops the run with the `message` your team wrote for that check, and no Session starts. The
+Baseline runs on every run, a rerun too, so a machine you made ready since the last run is seen as
+ready, and a fault fixed since is seen as fixed. A dry run lists it and runs nothing.
+
+A red `baseline` stops the run before the Cut with this line, in every mode, and no Session is asked
+to mend it:
+
+```
+ABORT the Target branch <branch> at <sha> fails its Baseline: <command>. It is not the spec's to mend. Bring a fix onto <branch>, then rerun. See <the kept output>
+```
+
+The fault was on the Target branch before the spec began, so fix it there. The whole output of the
+`baseline` is kept in `.spec-loop/<spec>/baseline.out`, beside the loop's other records, and the line
+names that file.
 
 A Suite file with no `baseline` writes this line to the log, and the run goes on:
 

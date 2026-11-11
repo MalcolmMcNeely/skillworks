@@ -1,5 +1,9 @@
 {
   "runs": 2,
+  "baseline": {
+    "command": ["dotnet", "build", "Skillworks.slnx"],
+    "folder": "."
+  },
   "checks": [
     {
       "command": ["dotnet", "test", "tests/Skillworks.Architecture.Tests"],

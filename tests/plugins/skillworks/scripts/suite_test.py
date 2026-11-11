@@ -1072,6 +1072,73 @@ def test_ignores_that_is_not_a_list_of_paths_makes_the_suite_file_unreadable(tmp
     assert run_by(runner) == []
 
 
+def given_a_suite_with_a_baseline(tree, **baseline):
+    write_suite(tree, check("prove"), baseline=dict({"command": ["compile", "all"]}, **baseline))
+
+
+def test_the_baseline_runs_its_command_from_its_folder(tmp_path, runner):
+    given_a_suite_with_a_baseline(tmp_path, folder="web")
+    (tmp_path / "web").mkdir()
+    given_every_program_passes(runner)
+    suite = Suite(runner, tmp_path)
+
+    suite.run_check(suite.baseline())
+
+    assert (run_by(runner), made_by(runner)[-1].where) == (
+        [["compile", "all"]], (tmp_path / "web").as_posix())
+
+
+def test_the_baseline_runs_from_the_repo_root_when_it_names_no_folder(tmp_path, runner):
+    given_a_suite_with_a_baseline(tmp_path)
+    given_every_program_passes(runner)
+    suite = Suite(runner, tmp_path)
+
+    suite.run_check(suite.baseline())
+
+    assert made_by(runner)[-1].where == tmp_path.as_posix()
+
+
+def test_the_baseline_that_names_an_image_runs_its_command_in_that_image(repo, runner):
+    given_a_dockerfile(repo.work)
+    given_a_suite_with_a_baseline(repo.work, image=DOCKERFILE)
+    docker = FakeDocker(runner)
+    suite = Suite(runner, repo.work)
+
+    suite.run_check(suite.baseline())
+
+    assert (docker.built, [call[-2:] for call in docker.calls() if call[1] == "create"]) == (
+        "FROM scratch\n", [["compile", "all"]])
+
+
+def test_a_suite_file_with_no_baseline_has_none(tmp_path, runner):
+    write_suite(tmp_path, check("prove"))
+
+    assert Suite(runner, tmp_path).baseline() is None
+
+
+MALFORMED_BASELINES = (
+    "compile all",
+    {},
+    {"command": "compile all"},
+    {"command": []},
+    {"command": ["compile"], "folder": 3},
+    {"command": ["compile"], "folder": ""},
+    {"command": ["compile"], "image": "no/such.Dockerfile"},
+    {"command": ["compile"], "ignores": ["web"]},
+    {"command": ["compile"], "ready": {"command": ["install"], "message": "Install it."}},
+)
+
+
+@pytest.mark.parametrize("baseline", MALFORMED_BASELINES)
+def test_a_malformed_baseline_makes_the_suite_file_unreadable(tmp_path, runner, baseline):
+    write_suite(tmp_path, check("prove"), baseline=baseline)
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.ready, SUITE_FILE in outcome.said, run_by(runner)) == (False, True, [])
+
+
 # --- a check that runs in an image ------------------------------------------
 
 DOCKERFILE = "docs/skillworks/tests.Dockerfile"
@@ -1941,6 +2008,12 @@ def test_no_api_test_reads_the_plugin_s_skill_folders():
 def checks_section(doc, heading):
     text = (ROOT / doc).read_text(encoding="utf-8")
     return text[text.index(heading + "\n"):]
+
+
+def test_this_repo_s_suite_file_names_a_baseline_that_builds_the_solution():
+    baseline = json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8")).get("baseline")
+
+    assert baseline == {"command": ["dotnet", "build", "Skillworks.slnx"], "folder": "."}
 
 
 def test_the_contributing_page_lists_every_check_of_this_repo_s_suite():

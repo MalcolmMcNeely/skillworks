@@ -58,6 +58,27 @@ reported: the Suite output names each Flake after the last run, and keeps what i
 machine or a process that crashes at random. Leave it at 1 when every red is real, because a second
 run of a real red only costs time.
 
+## `baseline`: the quick check of the Target branch
+
+`baseline`, beside `checks`, is optional. It names the quick command that shows the code compiles,
+such as a build of the solution:
+
+```json
+"baseline": {
+  "command": ["dotnet", "build", "Skillworks.slnx"],
+  "folder": "."
+}
+```
+
+`baseline` takes a `command`, a `folder` and an `image`, read as a check reads them. It takes no
+`ignores` and no `ready`, and any other key makes the Suite file one the loop cannot read. It keeps
+no Proof and reads none, so it runs on every run.
+
+The loop runs it in the [Baseline](the-loop.md), on the Target branch, before the Cut. It runs on the
+host, or in its image when it names one. When it fails, the run stops and no Session is asked to mend
+it, because the fault was on the Target branch before the spec began. A Suite file with no `baseline`
+still works, and the Baseline then checks only that the machine is ready.
+
 ## On an Export branch
 
 With [the Export](the-loop/export.md), your own branch holds no Steering file, so it has no

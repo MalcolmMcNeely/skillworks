@@ -1020,6 +1020,127 @@ def test_a_suite_file_the_baseline_cannot_read_writes_a_warning_and_the_run_goes
             call_asking(runner, CUT_TICKETS) is not None) == (True, True)
 
 
+BASELINE_COMMAND = ["dotnet", "build", "Skillworks.slnx"]
+
+BUILD_FAILED = "Build FAILED.\nerror CS0246: The type 'Clock' could not be found\n1 Error(s)\n"
+
+BASELINE_DOCKERFILE = "docs/skillworks/tests.Dockerfile"
+
+
+def given_a_suite_with_a_baseline(loop, image=None, red=False):
+    baseline = {"command": BASELINE_COMMAND}
+    if image is not None:
+        baseline["image"] = image
+        path = loop.repo.work / image
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("FROM scratch\n", encoding="utf-8", newline="\n")
+    write_suite(loop.repo.work, project_suite()[0], baseline=baseline)
+    git(loop.repo.work, "add", "-A")
+    git(loop.repo.work, "commit", "--quiet", "-m", "A Suite with a baseline")
+    git(loop.repo.work, "push", "--quiet", "origin", loop.repo.target)
+    loop.runner.stub("docker", says="an-id\n")
+
+    def answer():
+        if loop.runner.calls[-1][:2] == ["dotnet", "build"]:
+            return Ran(1 if red else 0, BUILD_FAILED if red else "Build succeeded.\n", "")
+        return Ran(0, "the solution passed", "")
+    loop.runner.stub("dotnet", does=answer)
+
+
+def target_sha(loop):
+    return git(loop.repo.work, "rev-parse", "origin/" + loop.repo.target).strip()
+
+
+def kept_baseline(loop):
+    return loop.records() / "baseline.out"
+
+
+def test_a_red_baseline_stops_the_run_before_the_cut_and_no_session_runs(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop, red=True)
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, session_calls(runner)) == (1, [])
+
+
+def test_a_red_baseline_s_stop_line_names_the_branch_the_commit_the_command_and_the_kept_output(
+        loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop, red=True)
+
+    ran = loop.run(SPEC)
+
+    assert ("ABORT the Target branch {0} at {1} fails its Baseline: dotnet build Skillworks.slnx. "
+            "It is not the spec's to mend. Bring a fix onto {0}, then rerun. See {2}").format(
+        loop.repo.target, target_sha(loop), kept_baseline(loop).as_posix()) in said(ran)
+
+
+def test_a_red_baseline_s_whole_output_is_kept(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop, red=True)
+
+    loop.run(SPEC)
+
+    assert BUILD_FAILED in kept_baseline(loop).read_text(encoding="utf-8")
+
+
+def test_the_baseline_s_worktree_is_removed_after_a_red_baseline_command(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop, red=True)
+
+    loop.run(SPEC)
+
+    assert (baseline_tree(loop).exists(), loop.repo.has_branch(SPEC, "baseline")) == (False, False)
+
+
+def test_a_green_baseline_goes_on_to_the_cut(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop)
+
+    loop.run(SPEC)
+
+    assert call_asking(runner, CUT_TICKETS) is not None
+
+
+def test_a_suite_file_that_names_a_baseline_writes_no_warning(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop)
+
+    loop.run(SPEC)
+
+    assert NO_BASELINE not in loop.log()
+
+
+def test_the_baseline_command_runs_in_the_baseline_s_worktree(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop)
+
+    loop.run(SPEC)
+
+    assert [call.where for call in runner.made if call.args == BASELINE_COMMAND] == [
+        baseline_tree(loop).as_posix()]
+
+
+def test_a_baseline_that_names_an_image_runs_in_that_image(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+    given_a_suite_with_a_baseline(loop, image=BASELINE_DOCKERFILE)
+
+    loop.run(SPEC)
+
+    assert ([call for call in runner.calls if call[:2] == ["docker", "create"]
+             and call[-3:] == BASELINE_COMMAND] != [],
+            [call for call in runner.calls if call == BASELINE_COMMAND]) == (True, [])
+
+
 def given_a_baseline_a_stopped_run_left(loop):
     git(loop.repo.work, "worktree", "add", "--quiet", "-b", "spec-loop/{}/baseline".format(SPEC),
         baseline_tree(loop).as_posix(), "origin/" + loop.repo.target)
@@ -4759,6 +4880,23 @@ def test_the_overview_says_a_machine_that_is_not_ready_stops_the_baseline_with_t
 
 def test_the_overview_shows_the_warning_for_a_suite_file_with_no_baseline():
     assert spec_loop.NO_BASELINE in page_text(LOOP_OVERVIEW)
+
+
+def test_the_overview_gives_the_stop_line_of_a_red_baseline():
+    assert ("ABORT the Target branch <branch> at <sha> fails its Baseline: <command>. It is not the "
+            "spec's to mend. Bring a fix onto <branch>, then rerun. See <the kept output>"
+            ) in page_text(LOOP_OVERVIEW)
+
+
+def test_the_overview_says_where_a_red_baseline_s_output_is_kept():
+    assert "`.spec-loop/<spec>/baseline.out`" in page_text(LOOP_OVERVIEW)
+
+
+def test_the_suite_page_describes_the_baseline_key_with_its_command_folder_and_image():
+    page = flat(page_text("docs/usage/suite.md"))
+
+    assert ("`baseline` takes a `command`, a `folder` and an `image`, read as a check reads them"
+            ) in page
 
 
 def test_the_suite_page_says_each_readiness_command_also_runs_at_the_start_of_a_run():

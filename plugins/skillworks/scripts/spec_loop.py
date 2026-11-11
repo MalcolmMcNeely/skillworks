@@ -1112,37 +1112,47 @@ class Loop:
 
     # Every run, rerun included, sees a machine made ready since; its own worktree spares the checkout.
     def run_baseline(self):
-        self.say("STEP  baseline the readiness of each check in the Suite file, on origin/{}".format(
-            self.target))
+        self.say("STEP  baseline the readiness of each check in the Suite file, then its baseline, "
+                 "on origin/{}".format(self.target))
         self.moved(BASELINE)
-        self.say(NO_BASELINE)
         self.remove_left_baseline()
         tree = self.opened(BASELINE_JOB)
         if not tree:
             raise stop("FAIL  the Baseline got no worktree to run in, so no Session was started.")
         try:
-            short = self.short_of_ready(tree)
+            red = self.red_baseline(tree)
         finally:
             closed = self.worktree("close", BASELINE_JOB)[0] == 0
-        not_ready = None
-        if short:
-            not_ready = stop("ABORT the machine is not ready for the Suite, so the Baseline stopped "
-                             "the run before the Cut and no Session was started: {}".format(
-                                 short.strip()))
         if not closed:
-            raise after(stop("FAIL  the Baseline's worktree at {} would not go.".format(tree)),
-                        not_ready)
-        if not_ready is not None:
-            raise not_ready
+            raise after(stop("FAIL  the Baseline's worktree at {} would not go.".format(tree)), red)
+        if red is not None:
+            raise red
 
     # The Suite step stops on a Suite file it cannot run, so the Baseline leaves that stop to it.
-    def short_of_ready(self, tree):
+    def red_baseline(self, tree):
+        suite = Suite(self.runner, tree)
         try:
-            return Suite(self.runner, tree).readiness()
+            short = suite.readiness()
+            named = suite.baseline()
         except Unreadable as fault:
-            self.say("WARN  {}, so the Baseline checked no readiness command".format(
+            self.say("WARN  {}, so the Baseline checked no readiness command and ran no baseline".format(
                 unreadable(fault).strip()))
-            return ""
+            return None
+        if short:
+            return stop("ABORT the machine is not ready for the Suite, so the Baseline stopped the "
+                        "run before the Cut and no Session was started: {}".format(short.strip()))
+        if named is None:
+            self.say(NO_BASELINE)
+            return None
+        ran = suite.run_check(named)
+        held = self.log_dir / "baseline.out"
+        written(held, ran.out + ran.err)
+        if ran.status == 0:
+            return None
+        return stop("ABORT the Target branch {0} at {1} fails its Baseline: {2}. It is not the "
+                    "spec's to mend. Bring a fix onto {0}, then rerun. See {3}".format(
+                        self.target, self.git(tree, "rev-parse", "HEAD").out.strip(),
+                        " ".join(named.command), held.as_posix()))
 
     def remove_left_baseline(self):
         tree, branch, _ = columns(self.worktree("plan", BASELINE_JOB)[1].strip())
@@ -1261,8 +1271,8 @@ class Loop:
 
         # Gathered whole and printed once, so a step that cannot be planned can still stop the run.
         plan = "  first, on every run\n" + plan_line(
-            BASELINE_JOB, "the readiness command of each check in the Suite file, in a worktree "
-            "cut from origin/<target> and removed after")
+            BASELINE_JOB, "the readiness command of each check in the Suite file, then its "
+            "baseline, in a worktree cut from origin/<target> and removed after")
         if self.ticket_count == 0:
             self.say("DRY   spec {} has no tickets, so a Session would cut them first".format(
                 self.spec_named()))
