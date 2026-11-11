@@ -3546,6 +3546,21 @@ def test_architecture_tests_falls_back_to_the_developer_when_the_allowlist_write
     assert allowlist_fallback_gaps(skill_text("architecture-tests")) == []
 
 
+def test_architecture_tests_writes_a_baseline_with_the_quickest_command_that_shows_the_code_compiles():
+    step = skill_text("architecture-tests").split("1. **The Suite.**", 1)[1].split("\n2. ", 1)[0]
+
+    assert "`baseline`" in step
+    assert "the quickest command that shows the code compiles" in step
+
+
+def test_setup_s_description_of_the_suite_file_names_the_baseline_key_and_what_it_is_for():
+    report = setup_section("### 7. Report")
+    entry = [line for line in report.splitlines() if line.startswith("- `{}`:".format(WHERE["suite.json"]))][0]
+
+    assert "`baseline`" in entry
+    assert "checks the Target branch with before the Cut" in entry
+
+
 def test_a_skill_that_drops_the_allowlist_fallback_is_caught():
     text = skill_text("architecture-tests")
     step = text.split("   **If the write is turned down.**", 1)[1].split("\n\n", 1)[0]

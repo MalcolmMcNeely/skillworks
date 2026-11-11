@@ -218,7 +218,9 @@ says.
 The Seeds judge nothing until your team fills them in. Before the loop can finish a ticket:
 
 - **`docs/skillworks/suite.json`**: add the checks that prove your code. [The Suite](suite.md) has the whole
-  file. [Turn the rules into tests](#turn-the-rules-into-tests) adds the checks for the rules.
+  file. [Turn the rules into tests](#turn-the-rules-into-tests) adds the checks for the rules. Name a
+  `baseline` too: the quick command, such as a build, that a run checks your Target branch with
+  before the Cut.
 - **The allowlist** in `.claude/settings.json`: add each tool your Suite runs, such as a build or a
   test runner. A Session with nobody watching cannot ask you, so a missing entry is a Denial.
 - **The rules' settings**, as your team settles them.
@@ -253,7 +255,10 @@ no `CONTEXT.md` and no `CONTEXT-MAP.md`. [Context backfill](context-backfill.md)
   you know the test can fail. Then it runs the test on your code and proves it green. A rule your code
   breaks today is reported to you, and never weakened. You choose: fix the code, or change the setting.
 - **What it writes.** You approve each write before it happens:
-  - `docs/skillworks/suite.json`: each test's command, with the `ignores` that keep it asleep.
+  - `docs/skillworks/suite.json`: each test's command, with the `ignores` that keep it asleep. Where
+    the file names no `baseline` yet, it writes one: the quickest command that shows your code
+    compiles, such as a build of your .NET solution. A run checks your Target branch with it before
+    the Cut.
   - `docs/skillworks/placement-checks.md`: both tables, which check proves which rule, and the exact
     command that runs each check.
   - `.claude/settings.json`: the command of any new tool, in the allowlist. It writes the entries with
