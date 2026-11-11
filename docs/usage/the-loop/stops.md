@@ -293,6 +293,17 @@ Make the change on the Steering branch:
 Setup is not stopped. With the Export, it switches to `skillworks/steering` itself before it
 writes anything.
 
+**A loop command on your own branch.** With `export` on, a command that reads `loop.json`, such as
+`tracker-publish`, `spec-loop` or `land-ticket`, stops on your own branch, because the file is not
+on disk there:
+
+```
+FAIL  docs/skillworks/loop.json is missing on disk, so this is an Export branch: its Steering is on skillworks/steering. Switch to the spec's Target branch, skillworks/spec/feature/PROJ-12/slug, and run this there, or start a design with /skillworks:grill.
+```
+
+Switch to the spec's Target branch, start a new Claude Code session there, and run the command
+again. With no spec yet, start one with `/skillworks:grill`, which cuts the Target branch.
+
 **The Steering branch does not rebase.** With `export` on, the grill cuts the spec's Target branch
 at its start, by the `cut-target-branch` command, as [the Export](export.md#the-grills-cut)
 says. The command first rebases the Steering branch, `skillworks/steering`, onto the commit your
