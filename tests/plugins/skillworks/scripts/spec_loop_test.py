@@ -2749,6 +2749,56 @@ def test_the_fix_step_before_the_suite_is_told_of_no_failure(loop, runner):
     assert "a test failed" not in prompts_asking(runner, "/skillworks:implement 168 --fix")[0]
 
 
+def test_the_fix_after_a_red_suite_is_told_the_driver_runs_the_whole_suite_after_it(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "The driver runs the whole Suite after this Session" in prompts_asking(
+        runner, "/skillworks:implement 168 --fix")[1]
+
+
+def test_the_fix_after_a_red_suite_runs_only_the_failed_tests_as_a_trial(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert ("Run only the tests that failed, as a Trial, and do not run `skillworks-suite` over "
+            "the whole Suite.") in prompts_asking(runner, "/skillworks:implement 168 --fix")[1]
+
+
+def test_the_fix_after_a_red_suite_is_not_told_to_check_its_work_against_the_whole_suite(
+        loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "When you check your work against the Suite" not in prompts_asking(
+        runner, "/skillworks:implement 168 --fix")[1]
+
+
+def test_the_first_fix_with_review_reports_only_keeps_the_brief_it_had(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    first = prompts_asking(runner, "/skillworks:implement 168 --fix")[0]
+    assert ran.status == 1
+    assert ("When you check your work against the Suite" in first
+            and "The driver runs the whole Suite after this Session" not in first)
+
+
 def test_the_retry_runs_under_the_fix_flag_and_no_other(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop, runs=2)

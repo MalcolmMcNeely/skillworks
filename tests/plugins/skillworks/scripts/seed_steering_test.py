@@ -1140,6 +1140,13 @@ def test_implements_fixing_section_never_leaves_a_hard_breach():
     assert "A judgement call may be left" in fixing
 
 
+def test_implements_fixing_section_runs_only_the_failed_tests_after_a_red_suite():
+    fixing = section(skill_text("implement"), "Fixing")
+
+    assert ("The driver runs the whole Suite after this Session, so run only the tests that "
+            "failed, as a Trial, and do not run `skillworks-suite` over the whole Suite.") in fixing
+
+
 @pytest.mark.parametrize("page", [page for seed in REVIEW_FILES for page in (SETUP / "seeds" / seed, ROOT / WHERE[seed])])
 def test_a_review_seed_and_this_repos_copy_say_a_check_that_shapes_the_build_is_a_rule(page):
     checks = section(page.read_text(encoding="utf-8"), "Checks")

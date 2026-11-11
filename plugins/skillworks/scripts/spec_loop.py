@@ -204,6 +204,12 @@ SUITE_BY_COMMAND = (
     "commands the Suite file names. In this loop the driver runs the whole Suite as a step of its "
     "own.")
 
+# After a red Suite the driver's own whole-Suite run comes next, so one here only doubles the wait.
+SUITE_AFTER_RED = (
+    "\n\nThe driver runs the whole Suite after this Session, and that run is the one that counts. "
+    "Run only the tests that failed, as a Trial, and do not run `skillworks-suite` over the whole "
+    "Suite.")
+
 # Read only at the start of a line, so a Session that mentions one in passing names none.
 # In the order the list shows them, so a Departure is the first thing a developer reads.
 LISTED_OPENINGS = (("DEPARTS", "DEPRT", "Departure", "Departures", "wrote"),
@@ -736,7 +742,9 @@ class Loop:
 
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
-        asked = self.asks(step, ticket) + SUITE_BY_COMMAND + "\n\n" + step.told
+        after_red = step.name == "fix" and self.red_suite is not None
+        asked = (self.asks(step, ticket) + (SUITE_AFTER_RED if after_red else SUITE_BY_COMMAND)
+                 + "\n\n" + step.told)
         if step.name == "finish":
             return asked + self.suite_report(), ""
         if step.name == "spec":
