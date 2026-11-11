@@ -663,7 +663,7 @@ def test_the_dry_run_prints_all_eight_steps_in_order(loop):
     for line in ("/skillworks:review-standards 168", "/skillworks:review-spec 168",
                  "/skillworks:review-architecture 168"):
         assert line in said(ran)
-    assert planned_steps(ran)[:8] == [
+    assert planned_steps(ran)[1:9] == [
         "build", "standards", "spec", "architecture", "fix", "sweep", "suite", "finish"]
 
 
@@ -888,6 +888,189 @@ def test_every_shape_fault_reaches_the_stop_line(loop):
     assert "the spec has no ## Implementation Decisions heading" in loop.log()
 
 
+# --- the Baseline -------------------------------------------------------------
+
+NOT_READY = "Docker does not answer."
+
+NO_BASELINE = ("WARN  suite.json names no baseline, so the Baseline checks only that the machine "
+               "is ready")
+
+
+def baseline_tree(loop):
+    return loop.repo.tree(SPEC, "baseline")
+
+
+# The project Suite's readiness command is `docker info`, so a daemon that is down is a machine not ready.
+def given_a_machine_that_is_not_ready(runner):
+    runner.stub("docker", says="the daemon is not running", status=1)
+
+
+# Ready for the Baseline and gone by the Suite step, as a container that stops during a long run.
+def given_a_machine_that_stops_being_ready_after_the_baseline(loop, runner):
+    def answer():
+        if runner.where == baseline_tree(loop).as_posix():
+            return Ran(0, "", "")
+        return Ran(1, "the daemon is not running", "")
+    runner.stub("docker", does=answer)
+
+
+def readiness_calls_in(runner, tree):
+    return [call for call in runner.made if call.args[0] == "docker" and call.where == tree.as_posix()]
+
+
+def test_a_machine_that_is_not_ready_stops_the_run_before_the_cut_with_its_check_s_message(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+    given_a_machine_that_is_not_ready(runner)
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, NOT_READY in said(ran), session_calls(runner)) == (1, True, [])
+
+
+def test_a_ready_machine_goes_on_to_the_cut(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert call_asking(runner, CUT_TICKETS) is not None
+
+
+def test_the_baseline_runs_each_readiness_command_in_a_worktree_of_its_own(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert readiness_calls_in(runner, baseline_tree(loop)) != []
+
+
+def test_the_baseline_skips_a_readiness_command_whose_unless_path_the_target_branch_holds(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_a_suite_on_the_target(loop, check("dotnet", "test", "Skillworks.slnx", ready=["docker", "info"],
+                                            message=NOT_READY, unless="docs/skillworks/suite.json"))
+    loop.runner.stub("dotnet", says="the solution passed")
+    Sessions(loop.repo, runner)
+    given_a_machine_that_is_not_ready(runner)
+
+    loop.run(SPEC)
+
+    assert call_asking(runner, CUT_TICKETS) is not None
+
+
+def test_a_suite_file_with_no_baseline_writes_a_warning_and_the_run_goes_on(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert (NO_BASELINE in loop.log(), call_asking(runner, CUT_TICKETS) is not None) == (True, True)
+
+
+def test_the_baseline_runs_before_the_first_ticket_of_a_spec_that_already_has_tickets(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+    given_a_machine_that_is_not_ready(runner)
+
+    ran = loop.run(SPEC)
+
+    assert (NOT_READY in said(ran), session_calls(runner)) == (True, [])
+
+
+def test_the_baseline_runs_again_on_a_rerun(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop).says["implement"] = A_BLOCKED
+    loop.run(SPEC)
+    sessions_before = len(session_calls(runner))
+    given_a_machine_that_is_not_ready(runner)
+
+    ran = loop.run(SPEC)
+
+    assert (NOT_READY in said(ran), len(session_calls(runner))) == (True, sessions_before)
+
+
+def test_the_baseline_s_worktree_is_removed_after_a_green_baseline(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert (baseline_tree(loop).exists(), loop.repo.has_branch(SPEC, "baseline")) == (False, False)
+
+
+def test_the_baseline_s_worktree_is_removed_after_a_red_baseline(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+    given_a_machine_that_is_not_ready(runner)
+
+    loop.run(SPEC)
+
+    assert (baseline_tree(loop).exists(), loop.repo.has_branch(SPEC, "baseline")) == (False, False)
+
+
+# The Suite step owns the stop for a Suite file it cannot run, so the Baseline does not take it.
+def test_a_suite_file_the_baseline_cannot_read_writes_a_warning_and_the_run_goes_on(loop, runner):
+    given_the_tracker_holds(loop, ())
+    Sessions(loop.repo, runner)
+
+    loop.run(SPEC)
+
+    assert ("so the Baseline checked no readiness command" in loop.log(),
+            call_asking(runner, CUT_TICKETS) is not None) == (True, True)
+
+
+def given_a_baseline_a_stopped_run_left(loop):
+    git(loop.repo.work, "worktree", "add", "--quiet", "-b", "spec-loop/{}/baseline".format(SPEC),
+        baseline_tree(loop).as_posix(), "origin/" + loop.repo.target)
+
+
+def test_a_baseline_worktree_a_stopped_run_left_is_removed_and_the_baseline_runs(loop, runner):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+    given_a_baseline_a_stopped_run_left(loop)
+
+    loop.run(SPEC)
+
+    assert (baseline_tree(loop).exists(), call_asking(runner, CUT_TICKETS) is not None) == (False, True)
+
+
+def test_a_baseline_worktree_a_stopped_run_left_is_not_kept_as_an_attempt(loop):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+    given_a_baseline_a_stopped_run_left(loop)
+
+    loop.run(SPEC)
+
+    assert "baseline-kept" not in git(loop.repo.work, "branch", "--list", "spec-loop/*")
+
+
+def test_the_log_names_the_baseline_as_a_step(loop):
+    given_the_tracker_holds(loop, ())
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    assert "STEP  baseline" in loop.log()
+
+
+def test_a_dry_run_lists_the_baseline_first(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert planned_steps(ran)[0] == "baseline"
+
+
+def test_a_dry_run_runs_nothing_for_the_baseline(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_suite_that_passes(loop)
+
+    loop.run(SPEC, "--dry-run")
+
+    assert (runner.started("docker"), baseline_tree(loop).exists()) == ([], False)
+
+
 # --- the Cut ------------------------------------------------------------------
 
 CUT_TICKETS = "/skillworks:to-tickets"
@@ -1055,7 +1238,7 @@ def test_a_dry_run_on_a_spec_with_no_tickets_prints_each_ticket_s_steps_with_a_p
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0, said(ran)
-    assert planned_steps(ran)[:9] == [
+    assert planned_steps(ran)[1:10] == [
         "cut", "build", "standards", "spec", "architecture", "fix", "sweep", "suite", "finish"]
     assert "/skillworks:implement <ticket> --stop-after-tests" in planned_call(ran, "build")
     assert "spec-loop/158/ticket-<ticket>" in said(ran)
@@ -1244,7 +1427,8 @@ def test_a_keep_that_left_nothing_alone_says_nothing(loop):
     ran = loop.run(SPEC)
 
     assert ran.status == 0
-    assert "WARN" not in said(ran)
+    assert [line for line in said(ran).split("\n")
+            if "WARN" in line and "Baseline" not in line] == []
     assert "left where it is" not in said(ran)
 
 
@@ -2094,15 +2278,15 @@ def test_a_red_suite_keeps_what_it_said_and_the_worktree_it_said_it_in(loop):
     assert ticket_worktree_of(loop).is_dir()
 
 
-def test_a_machine_short_of_what_the_suite_needs_stops_the_loop_naming_it(loop):
+def test_a_machine_short_of_what_the_suite_needs_stops_the_loop_naming_it(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
-    loop.runner.stub("docker", says="the daemon is not running", status=1)
+    given_a_machine_that_stops_being_ready_after_the_baseline(loop, runner)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert "Docker" in said(ran)
+    assert "ABORT #168 failed check suite-can-run" in said(ran)
     assert "the daemon is not running" in said(ran)
 
 
@@ -2110,7 +2294,7 @@ def test_a_machine_short_of_what_the_suite_needs_stops_the_loop_naming_it(loop):
 def test_a_machine_short_of_what_the_suite_needs_starts_no_session_to_mend_it(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
-    runner.stub("docker", says="the daemon is not running", status=1)
+    given_a_machine_that_stops_being_ready_after_the_baseline(loop, runner)
 
     ran = loop.run(SPEC)
 
@@ -2236,12 +2420,12 @@ def test_both_runs_are_kept_where_the_other_step_records_are(loop, runner):
 def test_a_machine_short_of_what_the_suite_needs_is_never_run_again(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop, runs=2)
-    runner.stub("docker", says="the daemon is not running", status=1)
+    given_a_machine_that_stops_being_ready_after_the_baseline(loop, runner)
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
-    assert len(runner.started("docker")) == 1
+    assert len(readiness_calls_in(runner, ticket_worktree_of(loop))) == 1
 
 
 # --- a Flake is named and its red output kept --------------------------------
@@ -4561,6 +4745,25 @@ def test_the_overview_holds_only_its_text_its_chart_and_its_table():
 def overview_charts():
     opening = (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8").split("\n## ", 1)[0]
     return re.findall(r"```mermaid\n(.*?)```", opening, re.DOTALL)
+
+
+def test_the_overview_says_the_baseline_runs_after_the_fetch_and_before_the_cut():
+    assert ("After it fetches the Target branch, and before the Cut, the script checks a "
+            "**Baseline**") in flat(page_text(LOOP_OVERVIEW))
+
+
+def test_the_overview_says_a_machine_that_is_not_ready_stops_the_baseline_with_the_team_s_message():
+    assert ("A machine that is not ready stops the run with the `message` your team wrote for "
+            "that check, and no Session starts.") in flat(page_text(LOOP_OVERVIEW))
+
+
+def test_the_overview_shows_the_warning_for_a_suite_file_with_no_baseline():
+    assert spec_loop.NO_BASELINE in page_text(LOOP_OVERVIEW)
+
+
+def test_the_suite_page_says_each_readiness_command_also_runs_at_the_start_of_a_run():
+    assert ("Each `ready` command also runs at the start of every run, in the "
+            "[Baseline](the-loop.md)") in flat(page_text("docs/usage/suite.md"))
 
 
 def test_the_overview_holds_one_small_chart_of_the_loop():

@@ -69,6 +69,9 @@ SESSIONS_RECORD = "skillworks-sessions"
 # Left after a red or a Flake for what its tools wrote, which a commit on a kept branch would bury.
 FULL_RUN = "full-run"
 
+# No Session works in it, so a run that died while it was open left nothing worth keeping.
+BASELINE = "baseline"
+
 # Named in full, because the way out it offers is read after a cd somewhere else.
 SELF = Path(__file__).resolve().as_posix()
 
@@ -234,7 +237,7 @@ class Worktrees:
             return
 
         for tree in sorted(self.group.iterdir()):
-            if not tree.is_dir() or tree.name == FULL_RUN:
+            if not tree.is_dir() or tree.name in (FULL_RUN, BASELINE):
                 continue
             job = tree.name
 

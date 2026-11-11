@@ -142,6 +142,12 @@ and keeps the output.
    A check with a Proof needs nothing from the machine. A machine that is not ready is not a red
    Suite. The loop stops and prints the `message`, and no Session is asked to fix it, because no
    Session can start Docker.
+
+   Each `ready` command also runs at the start of every run, in the [Baseline](the-loop.md), before
+   the Cut. There the `ready` command of every check runs, with a Proof or not, unless its `unless`
+   path is there. A machine that is not ready stops the run before any Session starts. The `ready`
+   check above still runs at each Suite step, so a container that stops during a long run still
+   stops the loop.
 2. **Then the checks run together.** So a Suite takes as long as its slowest check, and not the sum
    of them all.
 3. **A red check lets the others finish.** The fix step then reads every failure at once. The Suite

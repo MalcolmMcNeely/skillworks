@@ -5,7 +5,7 @@ from pathlib import Path
 from conftest import ROOT
 from spec_loop_test import (A_BLOCKED, A_CHOICE, A_DENIED_COMMAND, FINISH, ONE_OPEN_TICKET, SPEC,
                             TWO_OPEN_TICKETS,
-                            a_denied_command, all_of, closed, committed, full_run_tree,
+                            a_denied_command, all_of, baseline_tree, closed, committed, full_run_tree,
                             given_a_session_that_was_denied, given_a_spec_axis_that_says,
                             given_sessions_that_report, given_the_tracker_holds, loop)
 
@@ -83,6 +83,20 @@ def test_the_full_run_shows_as_what_the_loop_does_now(loop):
     loop.run(SPEC)
 
     assert seen[0]["doing"] == "full run"
+
+
+def test_the_baseline_shows_as_what_the_loop_does_now(loop):
+    given_a_run_that_lands(loop)
+    seen = []
+
+    def read_in_the_baseline():
+        if loop.runner.where == baseline_tree(loop).as_posix():
+            seen.append(position_of(loop))
+    loop.runner.stub("docker", does=read_in_the_baseline)
+
+    loop.run(SPEC)
+
+    assert seen[0]["doing"] == "baseline"
 
 
 def test_a_stop_leaves_a_position_that_says_stopped_with_the_stop_line_and_the_log(loop):

@@ -6,6 +6,7 @@ from pathlib import Path
 
 POSITION = "position.json"
 
+BASELINE = "baseline"
 CUTTING = "cutting"
 BUILDING = "building tickets"
 FULL_RUN = "full run"

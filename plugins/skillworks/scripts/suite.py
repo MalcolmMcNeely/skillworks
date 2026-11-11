@@ -335,6 +335,11 @@ class Suite:
         imaged = [check for check in wanted if check.image]
         return self.docker_short_of(imaged[0]) if imaged else ""
 
+    # Every check, and no Proof: a Proof says the work once passed, and not that this machine is ready now.
+    def readiness(self):
+        wanted, _ = self.read()
+        return self.short_of(wanted)
+
     def docker_short_of(self, check):
         asked = self.runner.run(["docker", "info"], self.tree.as_posix())
         if asked.status == 0:

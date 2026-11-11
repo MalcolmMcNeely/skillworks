@@ -13,7 +13,8 @@ flowchart TD
     grill["The grill<br/>argue the design out"] --> gate{"You confirm?"}
     gate -- no --> grill
     gate -- yes --> spec["The spec"]
-    spec --> tickets["The tickets"]
+    spec --> baseline["The Baseline<br/>is the machine ready?"]
+    baseline --> tickets["The tickets"]
     tickets --> steps["The steps of one ticket"]
     steps --> land["Landing"]
     land -- "another open ticket" --> steps
@@ -23,6 +24,19 @@ flowchart TD
 
 Your `yes` at the gate is the whole of your consent. Nothing between it and the drift report at the
 end asks you anything, unless the loop stops.
+
+Each run of the script starts the same way. After it fetches the Target branch, and before the Cut,
+the script checks a **Baseline**. It cuts a worktree of its own from the Target branch on `origin`,
+runs the `ready` command of each check in [the Suite file](suite.md), and then removes the worktree,
+so your own checkout is never built in. A machine that is not ready stops the run with the `message`
+your team wrote for that check, and no Session starts. The Baseline runs on every run, a rerun too,
+so a machine you made ready since the last run is seen as ready. A dry run lists it and runs nothing.
+
+A Suite file with no `baseline` writes this line to the log, and the run goes on:
+
+```
+WARN  suite.json names no baseline, so the Baseline checks only that the machine is ready
+```
 
 ## The pages of the loop
 

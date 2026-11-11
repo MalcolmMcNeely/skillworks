@@ -50,7 +50,7 @@ from count.verdicts import VERDICTS, read_verdicts
 from export.export_branch import export
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
-from position.position import (BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBEAT_SECONDS,
+from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBEAT_SECONDS,
                                NAME_CHECK, POSITION, STOPPED, position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
@@ -61,7 +61,7 @@ from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
-from suite import Suite
+from suite import Suite, Unreadable, unreadable
 from tracker.reading import FLAKES, listed
 from tracker.spec_commits import spec_commits
 
@@ -72,6 +72,11 @@ FLAGS = ("--dry-run", "--bypass")
 BYPASS_MODE = "bypassPermissions"
 
 FULL_RUN = ticket_worktree.FULL_RUN
+
+BASELINE_JOB = ticket_worktree.BASELINE
+
+NO_BASELINE = ("WARN  suite.json names no baseline, so the Baseline checks only that the machine "
+               "is ready")
 
 
 class Step(NamedTuple):
@@ -1103,6 +1108,52 @@ class Loop:
                                   how_many(len(items.decisions), "decision", "decisions"),
                                   how_many(len(items.surfaces), "Surface", "Surfaces")))
 
+    # --- the Baseline --------------------------------------------------------
+
+    # Every run, rerun included, sees a machine made ready since; its own worktree spares the checkout.
+    def run_baseline(self):
+        self.say("STEP  baseline the readiness of each check in the Suite file, on origin/{}".format(
+            self.target))
+        self.moved(BASELINE)
+        self.say(NO_BASELINE)
+        self.remove_left_baseline()
+        tree = self.opened(BASELINE_JOB)
+        if not tree:
+            raise stop("FAIL  the Baseline got no worktree to run in, so no Session was started.")
+        try:
+            short = self.short_of_ready(tree)
+        finally:
+            closed = self.worktree("close", BASELINE_JOB)[0] == 0
+        not_ready = None
+        if short:
+            not_ready = stop("ABORT the machine is not ready for the Suite, so the Baseline stopped "
+                             "the run before the Cut and no Session was started: {}".format(
+                                 short.strip()))
+        if not closed:
+            raise after(stop("FAIL  the Baseline's worktree at {} would not go.".format(tree)),
+                        not_ready)
+        if not_ready is not None:
+            raise not_ready
+
+    # The Suite step stops on a Suite file it cannot run, so the Baseline leaves that stop to it.
+    def short_of_ready(self, tree):
+        try:
+            return Suite(self.runner, tree).readiness()
+        except Unreadable as fault:
+            self.say("WARN  {}, so the Baseline checked no readiness command".format(
+                unreadable(fault).strip()))
+            return ""
+
+    def remove_left_baseline(self):
+        tree, branch, _ = columns(self.worktree("plan", BASELINE_JOB)[1].strip())
+        if not Path(tree).exists() and self.git(
+                self.root, "rev-parse", "--verify", "--quiet", "refs/heads/" + branch).status != 0:
+            return
+        if self.worktree("close", BASELINE_JOB)[0] != 0:
+            raise stop("FAIL  the worktree a stopped Baseline left at {} would not go, so this "
+                       "Baseline did not start.".format(tree))
+        self.say("      removed the worktree a stopped Baseline left at {}".format(tree))
+
     # --- the Cut -------------------------------------------------------------
 
     # Typed and not called through the Skill tool, because the Skill tool refuses a hidden skill.
@@ -1209,7 +1260,9 @@ class Loop:
                        "them.")
 
         # Gathered whole and printed once, so a step that cannot be planned can still stop the run.
-        plan = ""
+        plan = "  first, on every run\n" + plan_line(
+            BASELINE_JOB, "the readiness command of each check in the Suite file, in a worktree "
+            "cut from origin/<target> and removed after")
         if self.ticket_count == 0:
             self.say("DRY   spec {} has no tickets, so a Session would cut them first".format(
                 self.spec_named()))
@@ -1856,6 +1909,7 @@ class Loop:
 
         self.say("LOOP  spec {} from {} ({}) in {} mode".format(
             self.spec_named(), base, self.tracker.repo, self.permission_mode))
+        self.run_baseline()
         self.moved(BUILDING if self.ticket_count else CUTTING)
 
         # After the shape, so a spec the drift check could never count costs no Cut.
