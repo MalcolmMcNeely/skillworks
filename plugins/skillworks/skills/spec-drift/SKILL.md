@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 Two arguments: the spec's number, then the commit the loop started from. The number is the spec's issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, with the files Tracker.
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
 
 `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. Read the spec and its tickets through those docs, and make no call of your own that they do not name.
 
@@ -29,7 +29,7 @@ The **spec's commits** are the commits after the base commit whose `Ticket:` tra
 
 The Target branch is `target-branch` in `steering-file docs/skillworks/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
 
-If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md`, `steering-file docs/skillworks/surfaces.md` or `steering-file docs/skillworks/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
+If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md`, `steering-file docs/skillworks/surfaces.md` or `steering-file docs/skillworks/domain.md` says the file is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once.
 
 Under the spec loop, run no `git fetch` of your own, even where `steering-file docs/skillworks/issue-tracker.md` names one. The driver fetches the Target branch before it starts this Session, the `spec-commits` command in step 2 fetches it again, and a loop Session has no permission for a bare fetch.
 

@@ -11,7 +11,7 @@ The Plugin ships no checker. Every test this skill writes is either a common too
 
 [REFERENCE.md](REFERENCE.md) maps each rule to the common tools for each language, and names the rules that need a starter test. Read it before you propose anything.
 
-If `steering-file docs/skillworks/rules/`, `steering-file docs/skillworks/suite.json` or `steering-file docs/skillworks/placement-checks.md` ends with a non-zero status, that file is missing, so stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
+If `steering-file docs/skillworks/rules/`, `steering-file docs/skillworks/suite.json` or `steering-file docs/skillworks/placement-checks.md` says the file is missing, stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
 
 ## On an Export branch
 

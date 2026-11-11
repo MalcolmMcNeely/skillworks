@@ -6,7 +6,7 @@ Every new ADR goes to the one folder that `adr-folder` names, in the YAML block 
 
 The team owns what an ADR looks like. Read `steering-file docs/skillworks/adr-format.md` for the template and the optional sections, and write each new ADR in that shape.
 
-If `steering-file docs/skillworks/adr-format.md` ends with a non-zero status, the file is missing, so stop. Tell the user that the file is missing, that `/skillworks:skillworks-setup` writes it, and that no ADR was written.
+If `steering-file docs/skillworks/adr-format.md` says the file is missing, stop. Tell the user that the file is missing, that `/skillworks:skillworks-setup` writes it, and that no ADR was written.
 
 ## Numbering
 

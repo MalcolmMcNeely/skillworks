@@ -14,7 +14,7 @@ Code that follows every rule can still build the wrong thing. That is the failur
 
 ## What to read
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
 
 ### The ticket
 
@@ -31,7 +31,7 @@ This axis always reads its review file, `steering-file docs/skillworks/review-sp
 
 Apply each team check only to the paths it names. A check that names no paths covers the whole change. A team check is a hard breach or a judgement call, as the check says. Skip every path and every kind of finding that "Do not report" names.
 
-If `steering-file docs/skillworks/review-spec.md` ends with a non-zero status, the file is missing, so stop. Review nothing and edit nothing. Tell the user that the review file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
+If `steering-file docs/skillworks/review-spec.md` says the file is missing, stop. Review nothing and edit nothing. Tell the user that the review file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed. In loop mode this is work you cannot do, so begin the report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the loop at once. In report-only mode, that message is the whole report.
 
 ### The change
 

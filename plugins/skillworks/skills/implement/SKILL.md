@@ -22,11 +22,11 @@ The order is the spec loop's own, so the developer at the keyboard and the drive
 
 ## Before you start
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
 
 If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why. `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. With the files Tracker a ticket comes as `<spec>/<ticket>`, such as `7/2`, because its number is local to its spec.
 
-If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md` or `steering-file docs/skillworks/suite.json` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was done. Begin that report with the `BLOCKED` line, as Blocked says below.
+If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md` or `steering-file docs/skillworks/suite.json` says the file is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was done. Begin that report with the `BLOCKED` line, as Blocked says below.
 
 **Refuse a blocked ticket.** A ticket with an open blocker is not ready. With the GitHub Tracker, ask, with the ticket number in place of `<n>`:
 

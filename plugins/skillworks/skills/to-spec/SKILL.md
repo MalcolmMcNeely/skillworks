@@ -132,7 +132,7 @@ Exception: if a prototype produced a snippet that encodes a decision more precis
 
 ## Surfaces
 
-For each Surface in `steering-file docs/skillworks/surfaces.md` the change touches, one list item that opens with the Surface's name in bold, then its path, then the requirement the grill captured: what the Surface has to say once the change Lands. Point at the Surface by its path, and do not copy its content. Leave out a Surface the change does not touch. With no Surface touched, or no Surfaces file, so that `steering-file` ends with a non-zero status, write "None" and nothing else.
+For each Surface in `steering-file docs/skillworks/surfaces.md` the change touches, one list item that opens with the Surface's name in bold, then its path, then the requirement the grill captured: what the Surface has to say once the change Lands. Point at the Surface by its path, and do not copy its content. Leave out a Surface the change does not touch. With no Surface touched, or no Surfaces file, so that `steering-file` says the file is missing, write "None" and nothing else.
 
 <surface-example>
 - **The user docs** (`docs/usage/`): the accounts page says how old a balance can be before it is marked.

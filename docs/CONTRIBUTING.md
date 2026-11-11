@@ -171,7 +171,11 @@ So a loop skill:
   later steps.
 - A tool call outside the allow rules is a Denial, and nobody can approve it. The rules are in
   `.claude/settings.json`, seeded from `plugins/skillworks/skills/skillworks-setup/settings.json`.
-  Check that each command a loop skill names is allowed in the form the skill gives it.
+  Check that each command a loop skill names is allowed in the form the skill gives it. A command
+  with a status check after it, such as `; echo $?`, no longer matches its rule. So a skill never
+  asks for a command's exit status. It names what the command says, such as "says the file is
+  missing". The driver also tells every Session, in `GIVEN_EVERY_SESSION` in `runner.py`, to run
+  `steering-file` on its own.
 - Scratch files go under `.spec-loop/` in the worktree. A temp folder, or a path outside the
   worktree, is refused.
 - `spec-loop-counts` prints how the steps of past runs ended, with their Nudges and Denials. Read it

@@ -53,7 +53,7 @@ from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBEAT_SECONDS,
                                NAME_CHECK, POSITION, STOPPED, position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
-from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
+from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
 from seed_steering import missing_steering
 from steering.adr_folder import missing_adr_folder
 from steering.export import export_on
@@ -674,7 +674,7 @@ class Loop:
         rest = [str(a) for a in rest] or self.new_session()
         return self.runner.run(
             ["claude", "-p"] + rest
-            + ["--permission-mode", self.permission_mode, "--output-format", "json"] + MAY_READ_THE_PLUGIN,
+            + ["--permission-mode", self.permission_mode, "--output-format", "json"] + GIVEN_EVERY_SESSION,
             self.job_worktree,
             session_changes(self.tracker.trailer(ticket) if ticket else None),
             stdin=prompt)

@@ -59,7 +59,7 @@ second owns the words. Both run on every round.
 A Surface is a place a change can have to reach besides the code that does the work, such as the
 README or the user docs. `steering-file docs/skillworks/surfaces.md` lists the team's Surfaces, one `##` section each,
 with where it lives, the question to ask and what to capture. A `##` inside a code fence is an
-example, not a Surface. A file with no Surface in it means skip this step. So does a non-zero status from `steering-file`, because then there is no file.
+example, not a Surface. A file with no Surface in it means skip this step. So does `steering-file` saying the file is missing.
 
 The design is settled now, so each question can fit it. Walk the Surfaces by four rules:
 

@@ -53,7 +53,13 @@ def plugin_read_rule(folder=PLUGIN_FOLDER):
 
 
 # A Session works in its worktree, and a skill's own files sit outside it.
-MAY_READ_THE_PLUGIN = ["--allowedTools", plugin_read_rule()]
+# The allow rule matches steering-file alone, so a status check written after it is a Denial.
+GIVEN_EVERY_SESSION = [
+    "--allowedTools", plugin_read_rule(),
+    "--append-system-prompt",
+    "Run `steering-file` on its own, with no `echo`, no `$?` and no `$LASTEXITCODE` after it. "
+    "It says when a file is missing.",
+]
 
 
 # Here and not in the driver, because the driver imports the landing script and it starts a Session too.

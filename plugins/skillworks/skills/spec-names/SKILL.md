@@ -17,11 +17,11 @@ The base commit bounds the search for the spec's commits. If it was not passed, 
 
 A third argument, the rename ticket, makes this the Name re-check: see [The Name re-check](#the-name-re-check). With one, that section takes the place of What you read, What you list and The report. Without one, do everything down to it and stop there.
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When it ends with a non-zero status, the file is missing.
+Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
 
 `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to record the report with each one. The Target branch is `target-branch` in `steering-file docs/skillworks/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files. In PR mode, read the spec for that branch name and for nothing more.
 
-If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md` or `steering-file docs/skillworks/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the loop reads that line and stops at once.
+If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md` or `steering-file docs/skillworks/domain.md` says the file is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was judged. Under the spec loop this is work you cannot do, so begin your last message with a line that starts with `BLOCKED` and holds that message: the loop reads that line and stops at once.
 
 ## What you read
 

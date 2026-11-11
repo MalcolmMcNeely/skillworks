@@ -41,7 +41,7 @@ from filelock import FileLock, Timeout
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
-from runner import MAY_READ_THE_PLUGIN, Subprocess, session_changes
+from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
@@ -301,7 +301,7 @@ class Landing:
     def resolve_call(self, prompt):
         return self.runner.run(
             ["claude", "-p", "--resume", self.session,
-             "--permission-mode", self.permission_mode, "--output-format", "json"] + MAY_READ_THE_PLUGIN,
+             "--permission-mode", self.permission_mode, "--output-format", "json"] + GIVEN_EVERY_SESSION,
             self.worktree,
             session_changes(self.tracker.trailer(self.ticket)),
             stdin=prompt)

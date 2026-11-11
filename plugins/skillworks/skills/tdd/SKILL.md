@@ -13,7 +13,7 @@ Before the first test, read `steering-file docs/skillworks/domain.md`: it says w
 
 `steering-file docs/skillworks/rules/testing.md` prints the team's taste in tests: what to mock and what not to, how a test is named, how much one test asserts, and how high and how few the seams are. Read it before the first test, and write every test by it. Where it and this skill seem to disagree, the rule is the team's word on taste, and this skill is the method.
 
-If `steering-file docs/skillworks/rules/testing.md` or `steering-file docs/skillworks/domain.md` ends with a non-zero status, that file is missing, so stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that no test was written. Under the spec loop this is work you cannot do, so begin your report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the spec loop at once.
+If `steering-file docs/skillworks/rules/testing.md` or `steering-file docs/skillworks/domain.md` says the file is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that no test was written. Under the spec loop this is work you cannot do, so begin your report with a line that starts with `BLOCKED` and holds that message: the driver reads that line and stops the spec loop at once.
 
 ## What a good test is
 

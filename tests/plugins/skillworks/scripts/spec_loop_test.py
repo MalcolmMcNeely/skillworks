@@ -4737,6 +4737,24 @@ def test_every_session_and_the_landing_may_read_the_plugins_own_files(loop, runn
     assert read_rules_of_sessions(runner) == {plugin_read_rule(ROOT / "plugins" / "skillworks")}
 
 
+def system_prompts_of_sessions(runner):
+    calls = session_calls(runner)
+    assert call_asking(runner, RESOLVE) is not None, "the landing asked no Session to resolve"
+    return {call[call.index("--append-system-prompt") + 1] if "--append-system-prompt" in call else None
+            for call in calls}
+
+
+# The allow rule matches steering-file alone, so a status check written after it is a Denial.
+def test_every_session_and_the_landing_is_told_to_run_steering_file_with_no_status_check(loop, runner):
+    given_a_run_that_reaches_a_landing_conflict(loop)
+
+    loop.run(SPEC)
+
+    assert system_prompts_of_sessions(runner) == {
+        "Run `steering-file` on its own, with no `echo`, no `$?` and no `$LASTEXITCODE` after it. "
+        "It says when a file is missing."}
+
+
 @pytest.mark.parametrize("folder, rule", [
     (PureWindowsPath("C:/tools/skillworks"), "Read(//c/tools/skillworks/**)"),
     (PurePosixPath("/opt/skillworks"), "Read(//opt/skillworks/**)"),
