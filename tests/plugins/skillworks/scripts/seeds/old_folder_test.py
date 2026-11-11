@@ -3,8 +3,10 @@ import json
 
 import seed_steering
 from conftest import ROOT, Ran, git
+from export.export_branch import PREFIX, STEERING as STEERING_BRANCH, export
 from seed_steering import PLACES, SEEDS
 from steering.steering_file import STEERING_FOLDER
+from tracker.files import Files
 
 OLD_FOLDER = "docs/agents"
 
@@ -177,6 +179,117 @@ def test_an_answer_to_the_question_weighs_the_moved_file(repo, runner):
     assert (ran.status, held.startswith("# Our domain\n")) == (0, True), ran.err
 
 
+TEAMS_TRACKER = "# Our tracker\n\nWe file bugs in Jira.\n"
+
+ISSUE_TRACKER = PLACES["issue-tracker.md"]
+
+
+# The team's default branch held its own issue tracker file before setup merged a Seed into it.
+def set_up_with_the_export(repo):
+    write(repo.work, old(ISSUE_TRACKER), TEAMS_TRACKER)
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "The team's tracker")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
+    git(repo.work, "switch", "--quiet", "-c", STEERING_BRANCH)
+    set_up_in_the_old_layout(repo, committed=False)
+    seeded = (repo.work / old(ISSUE_TRACKER)).read_text(encoding="utf-8")
+    write(repo.work, old(ISSUE_TRACKER), TEAMS_TRACKER + "\n" + seeded)
+    loop = json.loads((repo.work / old(PLACES["loop.json"])).read_text(encoding="utf-8"))
+    write(repo.work, old(PLACES["loop.json"]), json.dumps(dict(loop, export=True, **{"target-branch": "pr"})))
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Steering")
+
+
+def moved_and_committed(runner, repo):
+    ran = run_seed(runner, repo)
+    assert ran.status == 0, ran.err
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Move the Steering")
+    return ran
+
+
+def test_with_the_export_an_old_path_the_default_branch_holds_gets_its_text_back(repo, runner):
+    set_up_with_the_export(repo)
+
+    moved_and_committed(runner, repo)
+
+    assert git(repo.work, "show", "HEAD:" + old(ISSUE_TRACKER)) == TEAMS_TRACKER
+
+
+def test_with_the_export_the_skillworks_text_lives_on_in_the_steering_folder(repo, runner):
+    set_up_with_the_export(repo)
+
+    moved_and_committed(runner, repo)
+
+    held = git(repo.work, "show", "HEAD:" + ISSUE_TRACKER)
+    assert held.startswith(TEAMS_TRACKER + "\n# Issue tracker")
+
+
+def test_with_the_export_an_old_path_the_default_branch_does_not_hold_is_gone(repo, runner):
+    set_up_with_the_export(repo)
+
+    moved_and_committed(runner, repo)
+
+    assert git(repo.work, "ls-tree", "-r", "--name-only", "HEAD", OLD_FOLDER).split() == [
+        old(ISSUE_TRACKER), OTHER_TOOLS_FILE]
+
+
+def test_with_the_export_each_old_path_given_back_is_listed(repo, runner):
+    set_up_with_the_export(repo)
+
+    ran = moved_and_committed(runner, repo)
+
+    given = [line for line in ran.out.splitlines() if line.startswith("gave ")]
+    assert given == ["gave {} back the text {} holds".format(old(ISSUE_TRACKER), repo.target)]
+
+
+def test_without_the_export_nothing_is_given_back(repo, runner):
+    write(repo.work, old(ISSUE_TRACKER), TEAMS_TRACKER)
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "The team's tracker")
+    git(repo.work, "push", "--quiet", "origin", repo.target)
+    set_up_in_the_old_layout(repo)
+
+    ran = run_seed(runner, repo)
+
+    assert (ran.status, files_under(repo.work, OLD_FOLDER)) == (0, [OTHER_TOOLS_FILE]), ran.err
+
+
+def test_a_run_that_asks_a_question_gives_nothing_back_and_says_what_it_would_give_back(repo, runner):
+    set_up_with_the_export(repo)
+    with_a_question_to_ask(repo)
+    before = (repo.work / old(ISSUE_TRACKER)).read_text(encoding="utf-8")
+
+    ran = run_seed(runner, repo)
+
+    said = "would give {} back the text {} holds\n".format(old(ISSUE_TRACKER), repo.target)
+    held = (repo.work / old(ISSUE_TRACKER)).read_text(encoding="utf-8")
+    assert (ran.status, said in ran.out, held == before) == (0, True, True), ran.err
+
+
+def test_after_the_move_an_export_of_a_ticket_that_edits_a_team_file_applies_with_no_skillworks_text(
+        repo, runner):
+    set_up_with_the_export(repo)
+    moved_and_committed(runner, repo)
+    target = PREFIX + repo.target
+    git(repo.work, "switch", "--quiet", "-c", target)
+    write(repo.work, ".specs/0007-a-spec/spec.md", "---\nstatus: open\n---\n\n# SPEC: A spec\n")
+    write(repo.work, ".specs/0007-a-spec/tickets/01-a-ticket.md",
+          "---\nstatus: closed\nblocked-by: []\n---\n\n# TICKET: A ticket\n")
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Tickets for spec 7")
+    with (repo.work / old(ISSUE_TRACKER)).open("a", encoding="utf-8", newline="\n") as tracker:
+        tracker.write("We triage on Mondays.\n")
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Triage day\n\nTicket: 7/1")
+    git(repo.work, "push", "--quiet", "origin", target)
+
+    done = export(runner, repo.work.as_posix(), target, Files(runner, repo.work, target, "7"), "7", "SPEC: A spec")
+
+    exported = git(repo.work, "show", "{}:{}".format(repo.target, old(ISSUE_TRACKER)))
+    assert (done.not_applied, exported) == (None, TEAMS_TRACKER + "We triage on Mondays.\n")
+
+
 def test_the_setup_page_says_setup_moves_only_the_skillworks_files_and_lists_each_move():
     page = " ".join((ROOT / "docs" / "usage" / "setup.md").read_text(encoding="utf-8").split())
 
@@ -184,4 +297,12 @@ def test_the_setup_page_says_setup_moves_only_the_skillworks_files_and_lists_eac
                  "Only the Skillworks files",
                  "Every other file in `docs/agents/` stays where it is",
                  "Setup lists each file it moved, by its old and its new path"):
+        assert said in page, said
+
+
+def test_the_setup_page_says_with_the_export_each_old_path_gets_the_default_branchs_text_back():
+    page = " ".join((ROOT / "docs" / "usage" / "setup.md").read_text(encoding="utf-8").split())
+
+    for said in ("With the Export, each old path that your default branch also holds gets the default branch's text back",
+                 "Setup lists each old path it gave back"):
         assert said in page, said

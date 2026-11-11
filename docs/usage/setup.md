@@ -334,13 +334,19 @@ lives in `docs/skillworks/`, and setup moves a repo's Steering from `docs/agents
   Dockerfile. It changes those paths in `suite.json`, and changes each `@docs/agents/...` import in
   `CLAUDE.md` to the new path. A file git tracks moves with `git mv`, so git sees a rename.
 - **What it leaves.** Every other file in `docs/agents/` stays where it is, so another tool still
-  finds its files. Nothing is left at a path setup moved.
+  finds its files. Without the Export, nothing is left at a path setup moved.
 - **What it says.** Setup lists each file it moved, by its old and its new path, as
   `moved docs/agents/domain.md to docs/skillworks/domain.md`. Read the list, and put back any file
   another tool still needs.
+- **With the Export.** The move runs on the Steering branch. With the Export, each old path that
+  your default branch also holds gets the default branch's text back on the Steering branch, so the
+  Steering commit changes no file your team owns, and a ticket that edits that file Exports cleanly.
+  The Skillworks text lives on in `docs/skillworks/`. An old path your default branch does not hold
+  is gone after the move. Setup lists each old path it gave back, as
+  `gave docs/agents/issue-tracker.md back the text main holds`.
 
-A run that stops for a question moves nothing yet. It lists each move as `would move`, and makes it
-on the run that has every answer.
+A run that stops for a question moves nothing yet. It lists each move as `would move`, and each old
+path it would give back as `would give`, and makes it on the run that has every answer.
 
 ### The other outputs
 
