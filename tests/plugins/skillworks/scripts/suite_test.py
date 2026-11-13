@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 import suite
-from conftest import ROOT, Ran, check, git, write_suite
+from conftest import ROOT, Ran, check, git, sidecar_steering, write_suite
 from suite import SUITE_FILE, Suite
 
 
@@ -1419,6 +1419,80 @@ def test_a_checkout_with_no_suite_file_runs_nothing_even_when_an_old_steering_br
     assert (outcome.passed, run_by(runner)) == (False, [])
 
 
+# --- Sidecar Steering ------------------------------------------------------------
+
+def test_under_sidecar_steering_the_command_runs_the_checks_the_sidecar_s_suite_file_names(
+        repo, runner, monkeypatch):
+    sidecar = sidecar_steering(repo)
+    write_suite(sidecar, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner)
+
+    assert (ran.status, run_by(runner)) == (0, [["prove"]]), ran.err
+
+
+def test_under_sidecar_steering_an_image_the_sidecar_s_suite_file_names_builds_from_the_sidecar(
+        repo, runner, monkeypatch):
+    sidecar = sidecar_steering(repo)
+    given_a_suite_in_an_image(sidecar, "prove")
+    docker = FakeDocker(runner)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner)
+
+    dockerfile = sidecar / DOCKERFILE
+    assert ["docker", "build", "--quiet", "--file", dockerfile.as_posix(),
+            dockerfile.parent.as_posix()] in docker.calls(), ran.err
+
+
+def writing_in(folder, name):
+    path = folder / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8", newline="\n") as file:
+        file.write("changed\n")
+
+
+def test_under_sidecar_steering_a_change_to_a_steering_file_in_the_sidecar_runs_a_proved_check_again(
+        repo, runner, monkeypatch):
+    sidecar = sidecar_steering(repo)
+    write_suite(sidecar, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+
+    suite_command(runner)
+    writing_in(sidecar, "docs/skillworks/rules/testing.md")
+    suite_command(runner)
+
+    assert runner.started("prove") == [["prove"], ["prove"]]
+
+
+def test_under_sidecar_steering_a_ticket_closed_in_the_sidecar_leaves_a_proved_check_proved(
+        repo, runner, monkeypatch):
+    sidecar = sidecar_steering(repo)
+    write_suite(sidecar, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+
+    suite_command(runner)
+    writing_in(sidecar, ".specs/0007-a-spec/tickets/01-a-ticket.md")
+    suite_command(runner)
+
+    assert runner.started("prove") == [["prove"]]
+
+
+def test_a_sidecar_with_no_loop_file_leaves_the_repo_s_suite_file_in_charge(repo, runner, monkeypatch):
+    write_suite(repo.work.parent / "work-skillworks", check("lint"))
+    write_suite(repo.work, check("prove"))
+    given_every_program_passes(runner)
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner)
+
+    assert (ran.status, run_by(runner)) == (0, [["prove"]]), ran.err
+
+
 # --- a Trial -------------------------------------------------------------------
 
 def trial(runner, repo, *command, image=DOCKERFILE, monkeypatch, where=None):
@@ -1687,6 +1761,14 @@ def test_only_the_suite_page_names_when_and_only_to_say_it_is_turned_down():
     assert naming
     for paragraph in naming:
         assert "turned down" in paragraph and "`ignores`" in paragraph, paragraph
+
+
+def test_the_suite_page_says_the_suite_file_can_sit_in_the_sidecar_and_a_change_there_runs_its_checks_again():
+    text = " ".join((ROOT / SUITE_PAGE).read_text(encoding="utf-8").split())
+
+    for words in ("the Suite file sits in the Sidecar", "builds each `image` from the Dockerfile the "
+                  "Sidecar holds", "A change to one of them runs every check again"):
+        assert words in text, words
 
 
 def test_the_suite_page_tells_a_team_how_to_run_the_suite_itself():

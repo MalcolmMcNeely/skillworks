@@ -10,7 +10,7 @@ import pytest
 import land_ticket
 import spec_loop
 from clock.held_clock import HeldClock
-from conftest import Ran, RecordingRunner, Repo, git, write_steering
+from conftest import Ran, RecordingRunner, Repo, git, project_suite, write_steering, write_suite
 from runner import Subprocess
 from sidecar.landed import LIST, Landed
 from sidecar.locator import sidecar_of
@@ -139,8 +139,18 @@ def building(runner, number):
     return build
 
 
+# Beside the rest of the Steering, because the Suite reads its file from wherever the Steering sits.
+def given_a_suite_that_passes_where_the_steering_sits(steered):
+    if not (steered.sidecar / LOOP_FILE).is_file():
+        given_a_suite_that_passes(steered)
+        return
+    write_suite(steered.sidecar, project_suite()[0])
+    steered.runner.stub("docker")
+    steered.runner.stub("dotnet", says="the solution passed")
+
+
 def given_tickets_that_land(steered, *tickets, trailer=True):
-    given_a_suite_that_passes(steered)
+    given_a_suite_that_passes_where_the_steering_sits(steered)
     git(steered.repo.work, "push", "--quiet", "origin", "main:" + SPEC_BRANCH)
     files = {FOLDER + "/spec.md": spec_file()}
     sessions = Sessions(steered.repo, steered.runner)

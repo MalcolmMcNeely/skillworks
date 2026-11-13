@@ -40,6 +40,18 @@ adding its own:
 }
 ```
 
+### Under Sidecar Steering
+
+Under Sidecar Steering, the Suite file sits in the Sidecar, at
+`docs/skillworks/suite.json` there, and the repo holds none. The Suite reads it from the Sidecar, and
+builds each `image` from the Dockerfile the Sidecar holds at that path. Every other path in the file,
+such as a `folder` or an `ignores`, is still a path in the repo.
+
+A Proof knows the Sidecar's Steering as well: every file under `docs/skillworks/` in the Sidecar, its
+`CLAUDE.md`, and the Dockerfile of the check. A change to one of them runs every check again, so a
+stale Proof never passes. The specs and tickets in the Sidecar are not Steering, so closing a ticket
+runs nothing again.
+
 ## What a check holds
 
 | Key | What it does |
@@ -48,7 +60,7 @@ adding its own:
 | `folder` | Where the command runs, from the repo root. |
 | `ready` | Optional. A command that proves the machine can run the check, such as `docker info`, and the `message` the loop prints when it fails. With `unless`, a path from the repo root, the loop skips the command when the path is there, so an install is not done twice. |
 | `ignores` | Optional. The paths the check cannot be changed by. See below. |
-| `image` | Optional. A Dockerfile in the repo, from the repo root. The check runs in that image. See below. |
+| `image` | Optional. A Dockerfile in the repo, from the repo root, or in the Sidecar under Sidecar Steering. The check runs in that image. See below. |
 
 `runs`, beside `checks`, says how many times the loop runs a red Suite before it believes it. It is 1
 when the file leaves it out. With `runs` at 2 or more, a check that goes red and then passes on the

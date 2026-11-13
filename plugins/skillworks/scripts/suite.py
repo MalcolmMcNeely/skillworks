@@ -32,13 +32,16 @@ from typing import NamedTuple
 
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.steering_file import STEERING_FOLDER
+from steering.steering_file import STEERING_FOLDER, steering_root
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: skillworks-suite [--fresh | --image <Dockerfile> -- <command>]\n"
 SUITE_FILE = STEERING_FOLDER + "/suite.json"
 REPO_IN_IMAGE = "/repo"
 PROOFS = "skillworks/proofs"
+# Apart from the repo's own names, so a Sidecar file never reads as the repo file of the same path.
+SIDECAR_MARK = "sidecar:"
+SIDECAR_CLAUDE_MD = "CLAUDE.md"
 # Only these make a check what it is, so an edit to another check leaves this one's Proofs standing.
 KEYED = ("command", "folder", "image", "ignores", "ready")
 # The check comes last, and a record made before it was kept still reads as a Proof.
@@ -217,12 +220,13 @@ class Suite:
         self.tree = Path(worktree)
         self.now = now
         self.fresh = fresh
+        self.steering = steering_root(self.tree)
 
-    def holds(self, path):
-        return (self.tree / path).is_file()
+    def steering_holds(self, path):
+        return (self.steering / path).is_file()
 
     def suite_text(self):
-        path = self.tree / SUITE_FILE
+        path = self.steering / SUITE_FILE
         if not path.is_file():
             raise Unreadable("no such file")
         return path.read_text(encoding="utf-8")
@@ -248,7 +252,7 @@ class Suite:
             raise Unreadable("a baseline that carries {}, and a baseline takes only {}".format(
                 ", ".join(others), ", ".join(BASELINE_FIELDS)))
         return Check(command_of(entry), self.tree / folder_of(entry), None,
-                     image_of(entry, self.holds))
+                     image_of(entry, self.steering_holds))
 
     def baseline(self):
         parsed = self.parsed()
@@ -273,7 +277,7 @@ class Suite:
                 ready = Ready(command_of(ready), str(ready.get("message", "")),
                               ready.get("unless"))
             # Read in fresh mode too, so a Suite file that names a missing image is never green.
-            image = image_of(entry, self.holds)
+            image = image_of(entry, self.steering_holds)
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
                                 None if self.fresh else image, ignores_of(entry),
                                 keyed_entry(entry)))
@@ -307,7 +311,24 @@ class Suite:
             if name not in digests:
                 digests[name] = hashlib.sha256(path.read_bytes()).hexdigest()
             key.update("\0{}\0{}".format(name, digests[name]).encode("utf-8"))
+        for name in self.sidecar_inputs(check):
+            marked = SIDECAR_MARK + name
+            if marked not in digests:
+                digests[marked] = hashlib.sha256((self.steering / name).read_bytes()).hexdigest()
+            key.update("\0{}\0{}".format(marked, digests[marked]).encode("utf-8"))
         return key.hexdigest()
+
+    # Only the Steering, because the Tracker writes the rest of the Sidecar on every close and no check reads it.
+    def sidecar_inputs(self, check):
+        if self.steering == self.tree:
+            return []
+        steering = self.steering / STEERING_FOLDER
+        names = {path.relative_to(self.steering).as_posix()
+                 for path in steering.rglob("*") if path.is_file()} if steering.is_dir() else set()
+        for name in (SIDECAR_CLAUDE_MD, check.image):
+            if name and (self.steering / name).is_file():
+                names.add(posixpath.normpath(name.replace("\\", "/")))
+        return sorted(names)
 
     def keys_of(self, wanted, proofs):
         if proofs.path is None:
@@ -452,7 +473,7 @@ class Suite:
     # Every check here names one image, and a file any of them reads is copied, so none misses it.
     def contained(self, checks, command, workdir):
         tree = self.tree.as_posix()
-        built = self.build(self.tree / checks[0].image)
+        built = self.build(self.steering / checks[0].image)
         if built.status != 0:
             return "build the image", built
         # The copy is the Proof's inputs and no more, so what was proved is what was tested.
