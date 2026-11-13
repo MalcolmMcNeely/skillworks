@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from conftest import PLUGIN, Ran, launch, sidecar_steering, write_loop
+from conftest import PLUGIN, Ran, git, launch, sidecar_steering, write_loop
 from runner import Subprocess
 from steering import co_authored_by
 from steering.target_branch import LOOP_FILE
@@ -289,6 +289,53 @@ def test_under_sidecar_steering_the_repos_files_are_left_untouched(repo):
 
     assert (loop_file(repo).read_text(encoding="utf-8"), settings_file(repo).read_text(encoding="utf-8")) == (
         loop_before, '{"permissions": {"allow": []}}\n')
+
+
+def test_under_sidecar_steering_an_answer_of_show_still_turns_claudes_own_attribution_off(repo):
+    sidecar = sidecar_steering(repo)
+
+    run_co_authored_by(repo.work, "show")
+
+    assert json.loads((sidecar / ".claude" / "settings.json").read_text(encoding="utf-8"))["attribution"] == HIDDEN
+
+
+@pytest.mark.parametrize("answer", ["hide", "show"])
+def test_under_sidecar_steering_the_developers_local_settings_turn_claudes_attribution_off(repo, answer):
+    sidecar_steering(repo)
+
+    run_co_authored_by(repo.work, answer)
+
+    local = repo.work / ".claude" / "settings.local.json"
+    assert json.loads(local.read_text(encoding="utf-8")) == {"attribution": HIDDEN}
+
+
+def test_under_sidecar_steering_from_a_worktree_the_local_settings_go_to_the_main_checkout(repo):
+    sidecar_steering(repo)
+    tree = repo.root / "tree"
+    git(repo.work, "worktree", "add", "--quiet", "-b", "side", tree.as_posix())
+
+    run_co_authored_by(tree, "hide")
+
+    assert ((repo.work / ".claude" / "settings.local.json").is_file(),
+            (tree / ".claude" / "settings.local.json").exists()) == (True, False)
+
+
+def test_under_sidecar_steering_the_local_settings_keep_every_other_key(repo):
+    sidecar_steering(repo)
+    local = repo.work / ".claude" / "settings.local.json"
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_text('{"permissions": {"allow": ["Bash(ls:*)"]}}\n', encoding="utf-8", newline="\n")
+
+    run_co_authored_by(repo.work, "hide")
+
+    assert json.loads(local.read_text(encoding="utf-8")) == {
+        "permissions": {"allow": ["Bash(ls:*)"]}, "attribution": HIDDEN}
+
+
+def test_without_sidecar_steering_no_local_settings_file_is_written(repo):
+    run_co_authored_by(repo.work, "hide")
+
+    assert not (repo.work / ".claude" / "settings.local.json").exists()
 
 
 def test_the_old_command_is_gone():

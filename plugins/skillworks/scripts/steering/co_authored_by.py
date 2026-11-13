@@ -4,16 +4,21 @@
 import json
 import re
 import sys
+from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
+from sidecar.locator import main_checkout_of
 from steering.allowlist import member
-from steering.steering_file import LOOP_FILE, steering_root
+from steering.steering_file import LOOP_FILE, sidecar_steering
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: set-co-authored-by hide|show\n"
 
 SETTINGS_FILE = ".claude/settings.json"
+
+# The developer's own sessions run in the main checkout and never load the Sidecar's settings file.
+LOCAL_SETTINGS_FILE = ".claude/settings.local.json"
 
 KEY = "co-authored-by"
 
@@ -38,16 +43,26 @@ def read_object(path, name, missing):
     return text, held
 
 
-def settle(top, answer):
-    root = steering_root(top)
-    loop_path, settings_path = root / LOOP_FILE, root / SETTINGS_FILE
+def settle(runner, top, answer):
+    sidecar = sidecar_steering(top)
+    root = sidecar or Path(top)
+    loop_path = root / LOOP_FILE
     loop_text, loop = read_object(loop_path, LOOP_FILE, None)
-    settings_text, settings = read_object(settings_path, SETTINGS_FILE, "{}")
+    settings = [(root / SETTINGS_FILE, SETTINGS_FILE)]
+    if sidecar is not None:
+        settings.append((main_checkout_of(runner, top) / LOCAL_SETTINGS_FILE, LOCAL_SETTINGS_FILE))
+    # The team the work goes to must see no credit for Claude, whatever the answer says.
+    block = BLOCKS["hide"] if sidecar is not None else BLOCKS[answer]
+    written = [(path, with_member(*read_object(path, name, "{}"), "attribution", block)) for path, name in settings]
     loop_path.write_bytes(with_member(loop_text, loop, KEY, answer).encode("utf-8"))
-    settings_path.parent.mkdir(parents=True, exist_ok=True)
-    block = BLOCKS[answer]
-    settings_path.write_bytes(with_member(settings_text, settings, "attribution", block).encode("utf-8"))
+    for path, text in written:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(text.encode("utf-8"))
     said = "wrote {}: {} to {}\n".format(KEY, answer, LOOP_FILE)
+    if sidecar is not None:
+        return said + ("Sidecar Steering is on, so Claude Code's own credit is off: wrote an attribution block to the "
+                       "Sidecar's {} and to {} in the main checkout, with empty strings for commit and pr\n"
+                       ).format(SETTINGS_FILE, LOCAL_SETTINGS_FILE)
     if answer == "hide":
         return said + "wrote an attribution block to {}, with empty strings for commit and pr\n".format(SETTINGS_FILE)
     return said + ("wrote an attribution block to {}, with an empty string for commit, so the Plugin adds the "
@@ -94,7 +109,7 @@ def main(argv, runner, out, err):
         found = runner.run(["git", "-C", argv[0], "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(argv[0]))
-        out.write(settle(found.out.strip(), argv[1]))
+        out.write(settle(runner, found.out.strip(), argv[1]))
         return 0
     except Stop as stop:
         err.write(stop.said)

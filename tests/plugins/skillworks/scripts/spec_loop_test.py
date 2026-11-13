@@ -5128,7 +5128,7 @@ def overview_table_links():
 
 def test_the_overview_s_table_lists_the_pages_in_run_order():
     assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
-                                      "the-loop/the-grill.md", "the-loop/tickets.md",
+                                      "the-loop/sidecar-steering.md", "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
                                       "the-loop/full-run.md", "the-loop/stops.md",

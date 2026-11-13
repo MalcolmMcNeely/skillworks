@@ -359,3 +359,28 @@ def test_a_command_written_wrong_prints_the_usage(repo, runner, argv):
 
     assert status == 64
     assert err.getvalue() == agent_skills.USAGE
+
+
+def sidecar_set_up(repo):
+    sidecar = repo.work.parent / (repo.work.name + "-skillworks")
+    set_up(sidecar)
+    return sidecar
+
+
+def test_under_sidecar_steering_the_block_and_its_imports_go_to_the_sidecars_claude_md(repo, runner):
+    sidecar = sidecar_set_up(repo)
+
+    ran = seed(runner, repo.work, tracker="files")
+
+    assert ran.status == 0, ran.err
+    assert ("@docs/skillworks/rules/testing.md" in read(sidecar / "CLAUDE.md").splitlines(),
+            (sidecar / BASE).is_file(), (repo.work / "CLAUDE.md").exists()) == (True, True, False)
+
+
+def test_under_sidecar_steering_the_github_tracker_is_refused_and_nothing_is_written(repo, runner):
+    sidecar = sidecar_set_up(repo)
+
+    ran = seed(runner, repo.work, tracker="github")
+
+    assert ((sidecar / "CLAUDE.md").exists(), "no issue on the other team's GitHub may show Skillworks" in ran.err) == (
+        False, True), ran.err

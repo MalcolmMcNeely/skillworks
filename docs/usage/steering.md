@@ -25,8 +25,8 @@ Steering on: when the Sidecar holds `docs/skillworks/loop.json`, every Steering 
 Sidecar, and none from the repo. No setting turns it on, so no setting can disagree with where the
 Steering sits.
 
-Sidecar Steering is for work that goes to a team that does not use Skillworks, so that team's repo
-holds no Steering at all. It needs PR mode and the files Tracker, and the preflight stops with any
+[Sidecar Steering](the-loop/sidecar-steering.md) is for work that goes to a team that does not use
+Skillworks, so that team's repo holds no Steering at all. It needs PR mode and the files Tracker, and the preflight stops with any
 other `target-branch` or `tracker`. `steering-file`, `allow-commands` and `set-co-authored-by` read
 and write the Sidecar's copy, from the main checkout and from every worktree. The Sidecar's
 `CLAUDE.md` and its imports load into each Session you start, so every skill reads your team's

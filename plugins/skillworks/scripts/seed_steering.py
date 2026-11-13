@@ -1,5 +1,6 @@
 # Each file is weighed against the base copy setup last wrote, so a newer Plugin's Seed replaces only what a team never edited.
 
+import json
 import sys
 from pathlib import Path
 
@@ -8,11 +9,14 @@ from runner import Subprocess
 from seeds import merge, old_folder
 from seeds.answers import took_an_answer
 from seeds.outcome import ASKS, BASES, Outcome, report, write
+from sidecar.locator import sidecar_of
+from steering.co_authored_by import LOCAL_SETTINGS_FILE, with_member
 from steering.rule_imports import RULES_FOLDER
-from steering.steering_file import STEERING_FOLDER, steering_root
+from steering.steering_file import STEERING_FOLDER, sidecar_steering, steering_root
+from steering.target_branch import PR_MODE
 from stop import Stop, misuse, refusal
 
-USAGE = ("usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... "
+USAGE = ("usage: seed-steering [folder] [--sidecar-steering] [--keep <file>:<overlap>=yours|seed]... "
          "[--blend <file>:<overlap>=<blend file>]... [--settled <file>]...\n")
 
 SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "seeds"
@@ -40,6 +44,10 @@ DEFAULT_BRANCH_PLACEHOLDER = "<default-branch>"
 HANDOFF = ".handoff/"
 
 WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/", ".context-backfill/"]
+
+SIDECAR_STEERING = "--sidecar-steering"
+
+LOOP_SEED = "loop.json"
 
 
 # Beside PLACES, so a new Seed is checked the day it is seeded and the loop never stops in the middle of a ticket for it.
@@ -69,8 +77,15 @@ def default_branch(runner, top):
                   "Nothing was written.")
 
 
-def weigh(top, default, name, place, choices, settled, moving):
+def seed_text(name, default, in_sidecar):
     wanted = (SEEDS / name).read_text(encoding="utf-8").replace(DEFAULT_BRANCH_PLACEHOLDER, default)
+    if not (in_sidecar and name == LOOP_SEED):
+        return wanted
+    return with_member(wanted, json.loads(wanted), "tracker", "files")
+
+
+def weigh(top, default, name, place, choices, settled, moving, in_sidecar=False):
+    wanted = seed_text(name, default, in_sidecar)
     target = top / place
     base = top / BASES / name
     was = moving.read(top, "{}/{}".format(BASES, name))
@@ -83,14 +98,15 @@ def weigh(top, default, name, place, choices, settled, moving):
                    asks=ASKS.get(weighed.asks), used=used)
 
 
-def seed(runner, top, default, choices, settled):
+def seed(runner, top, default, choices, settled, in_sidecar=False):
     moving = old_folder.planned(top, PLACES.values())
     outcomes = moving.outcomes(runner, top)
     readme = "{}/README.md".format(BASES)
     if moving.read(top, readme) is None:
         outcomes.append(Outcome("wrote {}\n".format(readme), "would write {}\n".format(readme),
                                 writes=[(top / readme, BASES_README)]))
-    outcomes += [weigh(top, default, name, place, choices, settled, moving) for name, place in PLACES.items()]
+    outcomes += [weigh(top, default, name, place, choices, settled, moving, in_sidecar)
+                 for name, place in PLACES.items()]
     used = set().union(*(outcome.used for outcome in outcomes))
     unused = sorted(choice for choice in choices if choice not in used)
     if unused:
@@ -103,16 +119,28 @@ def seed(runner, top, default, choices, settled):
 
 
 def ignore_working_folders(top):
-    path = top / ".gitignore"
+    return ignore(top / ".gitignore", ".gitignore", WORKING_FOLDERS)
+
+
+# Every worktree shares the exclude file, and the team's tracked .gitignore may not ignore the developer's settings.
+def exclude_working_folders(runner, top):
+    found = runner.run(["git", "-C", str(top), "rev-parse", "--git-path", "info/exclude"])
+    if found.status != 0:
+        raise refusal("git names no exclude file for {}. Nothing was written.".format(top))
+    path = Path(top) / found.out.strip()
+    return ignore(path, path.as_posix(), WORKING_FOLDERS + [LOCAL_SETTINGS_FILE])
+
+
+def ignore(path, name, wanted):
     held = path.read_text(encoding="utf-8") if path.exists() else ""
-    missing = [folder for folder in WORKING_FOLDERS if folder not in held.splitlines()]
+    missing = [folder for folder in wanted if folder not in held.splitlines()]
     if not missing:
         return []
     if held and not held.endswith("\n"):
         held += "\n"
     lines = ["# The Skillworks working folders. Transient, and never committed."] + missing
     named = ", ".join(missing)
-    return [Outcome("added {} to .gitignore\n".format(named), "would add {} to .gitignore\n".format(named),
+    return [Outcome("added {} to {}\n".format(named, name), "would add {} to {}\n".format(named, name),
                     writes=[(path, held + "\n".join(lines) + "\n")])]
 
 
@@ -138,27 +166,36 @@ def next_step(runner, top):
 
 
 def parsed(argv):
-    where, choices, settled = None, {}, set()
+    where, choices, settled, sidecar = None, {}, set(), False
     rest = iter(argv)
     for arg in rest:
         if took_an_answer(arg, rest, choices, settled, USAGE):
             continue
-        if where is None and not arg.startswith("--"):
+        if arg == SIDECAR_STEERING and not sidecar:
+            sidecar = True
+        elif where is None and not arg.startswith("--"):
             where = arg
         else:
             raise misuse(USAGE)
-    return where or ".", choices, settled
+    return where or ".", choices, settled, sidecar
 
 
 def main(argv, runner, out, err):
     try:
-        where, choices, settled = parsed(argv)
+        where, choices, settled, asked_for_sidecar = parsed(argv)
         found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        report(seed(runner, top, default_branch(runner, top), choices, settled) + ignore_working_folders(top) + make_handoff_folder(top),
-               next_step(runner, top), out)
+        default = default_branch(runner, top)
+        # Once the Sidecar holds the loop file the mode is on, so a later run with no answer still seeds the Sidecar.
+        sidecar = sidecar_of(runner, top) if asked_for_sidecar else sidecar_steering(top)
+        if sidecar is None:
+            outcomes = seed(runner, top, default, choices, settled) + ignore_working_folders(top)
+        else:
+            outcomes = (seed(runner, sidecar, PR_MODE, choices, settled, in_sidecar=True)
+                        + exclude_working_folders(runner, top))
+        report(outcomes + make_handoff_folder(top), next_step(runner, top), out)
         return 0
     except Stop as stop:
         err.write(stop.said)

@@ -12,7 +12,7 @@ from seeds.answers import took_an_answer
 from seeds.outcome import ASKS, BASES, Outcome, report
 from steering.adr_folder import DOMAIN_FILE
 from steering.rule_imports import RULES_FOLDER
-from steering.steering_file import STEERING_FOLDER
+from steering.steering_file import STEERING_FOLDER, sidecar_steering
 from steering.target_branch import LOOP_FILE
 from stop import Stop, misuse, refusal
 
@@ -136,10 +136,14 @@ def main(argv, runner, out, err, where=None):
         found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
-        top = Path(found.out.strip())
-        if not (top / LOOP_FILE).is_file():
+        sidecar = sidecar_steering(found.out.strip())
+        root = sidecar or Path(found.out.strip())
+        if not (root / LOOP_FILE).is_file():
             raise refusal("{} is missing. Run seed-steering to write it. Nothing was written.".format(LOOP_FILE))
-        report([weigh(top, built(top, tracker, folder, contexts), choices, settled)], "", out)
+        if sidecar and tracker != "files":
+            raise refusal("the Sidecar holds {}, so Sidecar Steering is on, and no issue on the other team's GitHub "
+                          "may show Skillworks. Give --tracker files. Nothing was written.".format(LOOP_FILE))
+        report([weigh(root, built(root, tracker, folder, contexts), choices, settled)], "", out)
         return 0
     except Stop as stop:
         err.write(stop.said)

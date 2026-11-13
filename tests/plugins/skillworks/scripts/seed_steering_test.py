@@ -2294,12 +2294,31 @@ def test_setup_writes_no_output_style(repo, runner):
     assert "outputStyle" not in (SETUP / "SKILL.md").read_text(encoding="utf-8")
 
 
-def test_setup_asks_no_export_question_and_starts_with_the_seed():
+def test_setup_asks_the_sidecar_steering_question_first_in_the_seed_step():
     text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
     process = text.split("\n## Process\n", 1)[1]
+    step = setup_section("### 1. Seed the Steering")
 
     assert process.lstrip("\n").startswith("### 1. Seed the Steering")
-    assert "a team that does not use Skillworks" not in text
+    assert step.lstrip("\n").startswith(
+        "First ask one question: does the work go to a team that does not use Skillworks?")
+    assert "seed-steering --sidecar-steering" in step
+    assert "Export" not in text
+
+
+def test_setup_under_sidecar_steering_refuses_the_github_tracker_and_says_why():
+    step = setup_section("### 2. Ask for the Tracker")
+
+    assert "Under Sidecar Steering, ask nothing here. The Tracker is `files`" in step
+    assert "Refuse `github`, and say why: an issue on the other team's GitHub would show them Skillworks." in step
+
+
+def test_setup_under_sidecar_steering_writes_the_settings_to_the_sidecar_and_the_local_settings_file():
+    step = " ".join(setup_section("### 6. Write the settings").split())
+
+    assert "Write them to the Sidecar's `.claude/settings.json`" in step
+    assert "Write the same to `.claude/settings.local.json` in the main checkout" in step
+    assert "run `set-co-authored-by hide`" in step
 
 
 USER_DOCS = ROOT / "docs" / "usage"
@@ -2309,13 +2328,46 @@ def test_the_export_page_is_gone():
     assert not (USER_DOCS / "the-loop" / "export.md").exists()
 
 
-@pytest.mark.parametrize("gone", ["export.md", "skillworks/steering", "Steering branch",
-                                  "a team that does not use Skillworks?"])
-def test_no_user_doc_links_to_the_export_page_or_names_the_steering_branch(gone):
+SIDECAR_STEERING_PAGE = USER_DOCS / "the-loop" / "sidecar-steering.md"
+
+
+@pytest.mark.parametrize("heading", [
+    "## Turn it on",
+    "## It needs PR mode and the files Tracker",
+    "## Commits carry no trailer",
+    "## The loop stops when the branch is rewritten under it",
+    "## Move from a Steering branch by hand",
+])
+def test_the_sidecar_steering_page_holds_each_part_the_user_needs(heading):
+    assert heading in SIDECAR_STEERING_PAGE.read_text(encoding="utf-8").splitlines()
+
+
+@pytest.mark.parametrize("page", ["the-loop.md", "steering.md", "setup.md"])
+def test_the_pages_that_named_the_export_link_the_sidecar_steering_page(page):
+    assert "sidecar-steering.md" in (USER_DOCS / page).read_text(encoding="utf-8")
+
+
+def test_the_setup_page_asks_the_sidecar_steering_question_and_says_where_setup_writes():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+    section = page.split("\n## Sidecar Steering\n", 1)[1].split("\n## ", 1)[0]
+
+    assert "| Does the work go to a team that does not use Skillworks? |" in page
+    for place in ["`.claude/settings.local.json` in your main checkout", "`.git/info/exclude`",
+                  "**Setup refuses the GitHub Tracker.**"]:
+        assert place in section, place
+
+
+@pytest.mark.parametrize("gone, allowed", [
+    ("export.md", []),
+    ("skillworks/steering", ["the-loop/sidecar-steering.md"]),
+    ("Steering branch", ["the-loop/sidecar-steering.md"]),
+    ("a team that does not use Skillworks?", ["setup.md"]),
+])
+def test_no_user_doc_links_to_the_export_page_or_names_the_steering_branch(gone, allowed):
     naming = sorted(page.relative_to(USER_DOCS).as_posix() for page in USER_DOCS.rglob("*.md")
                     if gone in page.read_text(encoding="utf-8"))
 
-    assert ((USER_DOCS / "setup.md").is_file(), naming) == (True, [])
+    assert ((USER_DOCS / "setup.md").is_file(), [page for page in naming if page not in allowed]) == (True, [])
 
 
 OLD_SPEC_VALUE = re.compile(r'"target-branch":\s*"spec"|`target-branch` (?:is|says) `spec`|target-branch says spec')
@@ -3349,12 +3401,12 @@ def test_no_skill_seed_or_allowlist_names_the_old_credit_command():
     assert SETUP / "settings.json" in pages and named == []
 
 
-def test_setup_writes_no_attribution_false_and_no_local_settings():
+def test_setup_writes_no_attribution_false_and_no_local_settings_without_sidecar_steering():
     text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
     settings = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))
 
     assert "attribution" not in settings
-    assert "Leave `.claude/settings.local.json` alone." in text
+    assert "Without Sidecar Steering, leave `.claude/settings.local.json` alone." in text
     for line in text.splitlines():
         if "\"attribution\": false" in line:
             assert "Never write" in line, line
@@ -3373,7 +3425,7 @@ def test_the_setup_page_explains_the_credit_question_and_both_answers():
     assert "A repo with no answer keeps Claude Code's own credit." in credit
     assert "Setup rewrites the block from your answer each time it runs." in credit
     assert "Setup never writes `\"attribution\": false`." in credit
-    assert "Setup never writes `.claude/settings.local.json`." in credit
+    assert "Without Sidecar Steering, setup never writes `.claude/settings.local.json`." in credit
 
 
 def test_the_setup_page_says_setup_writes_the_credit_answer_and_rewrites_the_block_from_it():
@@ -3765,4 +3817,78 @@ def test_under_sidecar_steering_the_seeds_in_the_sidecar_leave_nothing_missing(r
     write_steering(sidecar_steering(repo))
 
     assert seed_steering.missing_steering(repo.work) is None
+
+
+def sidecar_of(repo):
+    return repo.work.parent / (repo.work.name + "-skillworks")
+
+
+def test_a_seed_for_sidecar_steering_writes_every_steering_file_into_the_sidecar(repo, runner):
+    ran = run_seed(runner, repo.work, "--sidecar-steering")
+
+    assert ran.status == 0, ran.err
+    missing = [place for place in WHERE.values() if not (sidecar_of(repo) / place).is_file()]
+    assert missing == []
+
+
+def test_a_seed_for_sidecar_steering_leaves_the_repo_with_nothing_to_commit(repo, runner):
+    ran = run_seed(runner, repo.work, "--sidecar-steering")
+
+    assert (ran.status, git(repo.work, "status", "--porcelain", "--untracked-files=all")) == (0, ""), ran.err
+
+
+def test_a_seed_for_sidecar_steering_names_pr_mode_and_the_files_tracker_in_the_sidecars_loop_file(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+
+    loop = json.loads((sidecar_of(repo) / WHERE["loop.json"]).read_text(encoding="utf-8"))
+    assert (loop["target-branch"], loop["tracker"]) == ("pr", "files")
+
+
+def test_a_seed_for_sidecar_steering_writes_the_working_folders_to_the_git_exclude_file(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+
+    excluded = (repo.work / ".git" / "info" / "exclude").read_text(encoding="utf-8").splitlines()
+    assert [folder for folder in WORKING_FOLDERS if folder not in excluded] == []
+
+
+def test_a_seed_for_sidecar_steering_excludes_the_developers_local_settings_file(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+
+    assert ".claude/settings.local.json" in (repo.work / ".git" / "info" / "exclude").read_text(
+        encoding="utf-8").splitlines()
+
+
+def test_a_seed_for_sidecar_steering_leaves_a_tracked_gitignore_untouched(repo, runner):
+    repo.write_commit(repo.work, ".gitignore", "bin/", "Ignore bin")
+
+    run_seed(runner, repo.work, "--sidecar-steering")
+
+    assert (repo.work / ".gitignore").read_text(encoding="utf-8") == "bin/\n"
+
+
+def test_a_seed_from_a_worktree_writes_the_exclude_file_every_worktree_shares(repo, runner):
+    tree = repo.root / "tree"
+    git(repo.work, "worktree", "add", "--quiet", "-b", "side", tree.as_posix())
+
+    run_seed(runner, tree, "--sidecar-steering")
+
+    assert ".spec-loop/" in (repo.work / ".git" / "info" / "exclude").read_text(encoding="utf-8").splitlines()
+
+
+def test_a_second_seed_once_the_sidecar_holds_the_loop_file_seeds_the_sidecar_again(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    (sidecar_of(repo) / WHERE["surfaces.md"]).unlink()
+
+    run_seed(runner, repo.work)
+
+    assert ((sidecar_of(repo) / WHERE["surfaces.md"]).is_file(), (repo.work / WHERE["surfaces.md"]).exists()) == (
+        True, False)
+
+
+def test_a_seed_with_no_answer_on_sidecar_steering_still_writes_the_repo_as_before(repo, runner):
+    ran = run_seed(runner, repo.work)
+
+    assert (ran.status, (repo.work / WHERE["loop.json"]).is_file(), sidecar_of(repo).exists(),
+            ".spec-loop/" in (repo.work / ".gitignore").read_text(encoding="utf-8").splitlines()) == (
+        0, True, False, True), ran.err
 

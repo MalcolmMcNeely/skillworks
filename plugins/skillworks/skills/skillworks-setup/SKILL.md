@@ -26,7 +26,7 @@ The outputs:
 | `docs/skillworks/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
 | `docs/skillworks/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `pr` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. |
 | `docs/skillworks/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
-| `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. |
+| `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. Under Sidecar Steering they go to the repo's git exclude file instead, with `.claude/settings.local.json`. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/skillworks/` does not. The block is a Seed: `seed-agent-skills` builds it, and a second run merges a person's edits. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
 | The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes. It lets a skill read its own files, with `Read(~/.claude/plugins/**)` and, when the Marketplace folder sits outside the repo, a read rule for that folder, because a Session run by hand would stop to ask on a read outside the repo. The driver gives a loop Session its own read rule. It names no tool the Suite runs: those are the team's to add. |
@@ -38,6 +38,18 @@ The outputs:
 ## Process
 
 ### 1. Seed the Steering
+
+First ask one question: does the work go to a team that does not use Skillworks? Suggest no, so the common answer is one keypress. If the Sidecar already holds `docs/skillworks/loop.json`, an earlier run said yes, so suggest yes instead. The Sidecar is the folder beside the repo's main checkout with `-skillworks` on the end of its name.
+
+Yes turns Sidecar Steering on. Every Steering file, the `## Agent skills` block with its imports, and the settings go into the Sidecar, and the repo's tracked files never change. Sidecar Steering always runs in PR mode, with the files Tracker. With yes, run the seed with the flag:
+
+```bash
+seed-steering --sidecar-steering
+```
+
+It writes `loop.json` in the Sidecar with `target-branch` as `pr` and `tracker` as `files`. It adds the working folders and `.claude/settings.local.json` to the repo's own git exclude file, and never to `.gitignore`, because `.gitignore` is a file the team tracks. Once the Sidecar holds `loop.json`, a run with no flag seeds the Sidecar too, because the Steering being there is what turns the mode on. With no, run the seed with no flag, as below.
+
+Under Sidecar Steering, every `docs/skillworks/` path in the steps below names the Sidecar's copy. Read each one with `steering-file <path>`, and write each one in the Sidecar, never in the repo. That holds for `adr-folder` in `docs/skillworks/domain.md`, which you read before the seed and write in step 4.
 
 Before you run it, read `adr-folder` from the YAML block at the end of `docs/skillworks/domain.md`, where the file is there and names one. That is an earlier run's answer, and step 4 suggests it. Read it first, because the seed writes `docs/adr` into a file that names none, and that default is not the team's answer.
 
@@ -100,6 +112,8 @@ If it stops because the repo has no `origin` remote, stop setup and show the use
 
 ### 2. Ask for the Tracker
 
+Under Sidecar Steering, ask nothing here. The Tracker is `files`, and the seed has written it. Refuse `github`, and say why: an issue on the other team's GitHub would show them Skillworks. Preflight and `seed-agent-skills` refuse it too.
+
 The Tracker is where the team keeps its specs and tickets. Ask the team which one it uses, and offer two answers:
 
 - `github`: GitHub Issues, driven by `gh`. A spec is a parent issue, and its tickets are its sub-issues.
@@ -112,6 +126,8 @@ Write the answer into `tracker` in `docs/skillworks/loop.json`, and change no ot
 With `files`, tell the team that `.specs/` sits in the Sidecar, the folder beside the repo's main checkout with `-skillworks` on the end of its name. The Sidecar is a git repo with no remote, so it is never pushed and it serves this machine alone. Every worktree of the repo finds the same Sidecar, and a Session reads it with `tracker-show` and closes a ticket with `tracker-close`.
 
 ### 3. Ask for the Target branch
+
+Under Sidecar Steering, ask nothing here. The Target branch is `pr`, and the seed has written it: each spec's work goes to a branch of its own for the other team to review.
 
 The Target branch is the branch the loop Lands each ticket on. Ask the team which one it is, and suggest the remote's default branch, so the common answer is one keypress. `seed-steering` has already written that branch into `docs/skillworks/loop.json`. If `target-branch` there names another value, a team's answer from an earlier run, suggest that one instead.
 
@@ -135,7 +151,7 @@ Then build the `## Agent skills` block in `CLAUDE.md`. The block is a Seed, and 
 seed-agent-skills --tracker <github|files> --adr-folder <adr-folder> --contexts <single|multi>
 ```
 
-Give the Tracker from step 2, and the folder `adr-folder` names. Give `--contexts multi` when the repo has `CONTEXT-MAP.md` at its root, and `--contexts single` otherwise. The script imports each rule file in `docs/skillworks/rules/`, and writes the multi-context Domain docs line in the words Context backfill writes when it switches the line.
+Give the Tracker from step 2, and the folder `adr-folder` names. Under Sidecar Steering the script writes the block into the Sidecar's `CLAUDE.md`, and refuses any Tracker but `files`. Give `--contexts multi` when the repo has `CONTEXT-MAP.md` at its root, and `--contexts single` otherwise. The script imports each rule file in `docs/skillworks/rules/`, and writes the multi-context Domain docs line in the words Context backfill writes when it switches the line.
 
 The block runs from its heading to the next `## ` heading, or to the end of the file. The script changes nothing outside it. It keeps a base copy of the block in `docs/skillworks/.seeds/agent-skills.md`, and on a later run it weighs the block as step 1 weighs a Steering file. It prints the same outcome lines and the same diffs, and names the block by its file, such as `CLAUDE.md`. A missing block, or a missing file, is `wrote`. If the repo has `AGENTS.md` and no `CLAUDE.md`, the script uses `AGENTS.md`, and it never creates the one that is missing when the other exists.
 
@@ -165,6 +181,8 @@ It runs after the Tracker and the Target branch are written, because it reads `l
 If it fails, stop and report. Every step below assumes the remote works, and with `github` a working `gh`, and the script is what proves that. The `CLAUDE.md` block step 4 wrote is safe to leave: a second run of setup merges it, so the team fixes the fault and runs setup again.
 
 ### 6. Write the settings
+
+Under Sidecar Steering, write the settings below to two files, and never to the repo's `.claude/settings.json`, which the team owns. Write them to the Sidecar's `.claude/settings.json`, which the driver hands to every loop Session. Write the same to `.claude/settings.local.json` in the main checkout, because the developer's own sessions run there and never read the Sidecar's file. Merge into each file as below. Ask no credit question, and run `set-co-authored-by hide`: the team the work goes to sees no credit for Claude, so the command turns Claude Code's own credit off in both files, whatever the answer.
 
 Copy [settings.json](./settings.json) to `.claude/settings.json`. The Marketplace `path` in it is a placeholder. Write the folder that holds this Plugin's `.claude-plugin/marketplace.json`, which is three folders above this skill's base directory. Write it relative to the repo root, starting `./`, when it sits inside the repo, and in full otherwise.
 
@@ -196,13 +214,13 @@ Settle `co-authored-by` and `attribution` with `set-co-authored-by` and never by
 
 Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the credit answer out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all three knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
 
-Leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
+Without Sidecar Steering, leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
 
 Write nothing under `~/.claude`.
 
 ### 7. Report
 
-Say what was written and what was kept. Say where each Steering file lives:
+Say what was written and what was kept. Under Sidecar Steering, say that each path below sits in the Sidecar and not in the repo, and that the repo's tracked files did not change. Say where each Steering file lives:
 
 - `docs/skillworks/rules/`: `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
 - `docs/skillworks/`: `issue-tracker.md`, `domain.md`, `adr-format.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
