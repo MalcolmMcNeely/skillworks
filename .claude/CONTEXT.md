@@ -278,7 +278,8 @@ _Avoid_: Sibling folder, specs folder, store
 
 **Sidecar Steering**:
 The way a team works when its work goes to a team that does not use Skillworks. The Steering sits in
-the Sidecar and never in the repo, so each spec's branch holds only the work. It is always PR mode.
+the Sidecar and never in the repo, so each spec's branch holds only the work. It is always PR mode,
+with the files Tracker.
 _Avoid_: Export, Export branch, Steering branch, clean branch
 
 **Smart zone**:
