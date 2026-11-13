@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from branches.own_branch import own_branch
-from export.export_branch import PREFIX, STEERING
+from export.branch_names import PREFIX, STEERING
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess

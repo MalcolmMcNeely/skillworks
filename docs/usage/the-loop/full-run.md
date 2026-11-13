@@ -48,7 +48,6 @@ flowchart TD
     full -- red --> stop
     full -- green --> clean["A clean finish<br/>END, and the spec closes with files or in PR mode"]
     clean -- "PR mode" --> hint["A hint: open the pull request<br/>from the Target branch"]
-    clean -- "export on" --> export["The Export<br/>onto your own branch, never pushed"]
 ```
 
 In PR mode, with either Tracker, the log ends like this:
@@ -63,19 +62,6 @@ In PR mode, with either Tracker, the log ends like this:
 
 The loop opens no pull request and marks none ready, and it writes no `Closes #<spec>` line for its
 body. You open the pull request, with the title, body and labels your team's rules ask for.
-
-With `export` on, [the Export](export.md) runs after the spec closes and before `END`, and the loop
-prints no `PR` hint. The log ends like this:
-
-```
-2026-09-28 18:52:30 FULL  skillworks/spec/feature/PROJ-12/slug at 4c1d9e2 passed the whole Suite
-2026-09-28 18:52:31 EXPORT 3b8c0f4 Preflight checks for uv, from #202
-2026-09-28 18:52:31 LEFT  the Export left out 1 commit and 0 files of skillworks/spec/feature/PROJ-12/slug
-      5c0e1b7 Steering for a team that does not use Skillworks
-2026-09-28 18:52:31 END   spec #200 complete. The Export is on feature/PROJ-12/slug.
-      Review it with: git log --oneline 1f0a3c8e5b22..feature/PROJ-12/slug
-      Push it with: git push origin feature/PROJ-12/slug
-```
 
 The script decides a clean finish, and nothing else does. A clean finish is every Verdict Done or In
 step, no rename owed in [the Name report](name-check.md) or every rename Done in [the Name

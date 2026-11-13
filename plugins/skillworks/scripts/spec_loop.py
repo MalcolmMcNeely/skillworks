@@ -47,7 +47,6 @@ from count.rename_ticket import rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
 from count.verdicts import VERDICTS, read_verdicts
-from export.export_branch import export
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBEAT_SECONDS,
@@ -56,7 +55,6 @@ from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
 from seed_steering import missing_steering
 from steering.adr_folder import missing_adr_folder
-from steering.export import export_on
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
@@ -502,7 +500,6 @@ class Loop:
         self.root = Path.cwd()
         self.target = ""
         self.pr_mode = False
-        self.exports = False
         self.tracker = None
         self.spec_title = ""
         self.ticket_count = 0
@@ -1081,7 +1078,6 @@ class Loop:
     def preflight(self):
         self.tracker = tracker_for(self.runner, self.root, self.spec)
         self.pr_mode = in_pr_mode(self.root)
-        self.exports = export_on(self.root)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")
         missing = missing_steering(self.root) or missing_import(self.root) or missing_adr_folder(self.root)
@@ -1858,34 +1854,6 @@ class Loop:
     def hand_over(self):
         self.say(open_the_pull_request(self.target))
 
-    # --- the Export ----------------------------------------------------------
-
-    def push_command(self, branch):
-        return "git push {} {}".format(self.tracker.export_remote, branch)
-
-    # The driver alone, after the full run and the close, so only work the whole Suite proved is written.
-    def run_export(self):
-        if not fetch_origin(self.runner, self.root.as_posix(), self.target, self.err, self.wait):
-            raise stop("ABORT could not fetch {} from origin, so nothing was exported".format(self.target))
-        done = export(self.runner, self.root.as_posix(), self.target, self.tracker, self.spec,
-                      self.spec_title)
-        for written in done.written:
-            self.say("EXPORT {} {}, from {}".format(written.short, written.subject, written.source))
-        self.say("LEFT  the Export left out {} and {} of {}{}{}".format(
-            how_many(len(done.left), "commit", "commits"),
-            how_many(len(done.left_files), "file", "files"), self.target,
-            "".join("\n      {} {}".format(commit.short, commit.subject) for commit in done.left),
-            "".join("\n      {}, from {}".format(left.path, left.source) for left in done.left_files)))
-        # No Session is handed the conflict, because it would change code after the full run proved it.
-        if done.not_applied:
-            raise stop("STOP  the change of {} does not apply to the Export branch {} in {}, so the Export "
-                       "moved nothing. Every ticket's code is still on {}.".format(
-                           done.not_applied.source, done.branch, ", ".join(done.not_applied.files),
-                           self.target))
-        self.say("END   spec {} complete. The Export is on {}.".format(self.spec_named(), done.branch))
-        self.say("      Review it with: git log --oneline {}..{}".format(done.tip[:12], done.branch))
-        self.say("      Push it with: " + self.push_command(done.branch))
-
     # --- the whole run -------------------------------------------------------
 
     def read_target(self):
@@ -1950,8 +1918,6 @@ class Loop:
 
         # Reached only with every Verdict Done or In step, every rename Done and the full run green.
         self.close_spec()
-        if self.exports:
-            return self.run_export()
         if self.pr_mode:
             self.hand_over()
         self.say("END   spec {} complete. Every ticket is on {}.".format(

@@ -2,6 +2,5 @@
   "tracker": "github",
   "target-branch": "<default-branch>",
   "co-authored-by": "hide",
-  "session-trailer": "show",
-  "export": false
+  "session-trailer": "show"
 }

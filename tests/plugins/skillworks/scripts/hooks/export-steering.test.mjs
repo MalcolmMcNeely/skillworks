@@ -12,7 +12,7 @@ const PLUGIN = join(ROOT, "plugins", "skillworks");
 const SCRIPT = join(PLUGIN, "scripts", "hooks", "export-steering.mjs");
 
 // The hook is Node and cannot import the name, so a rename there turns these tests red until the hook follows it.
-const STEERING_BRANCH = (await readFile(join(PLUGIN, "scripts", "export", "export_branch.py"), "utf8")).match(
+const STEERING_BRANCH = (await readFile(join(PLUGIN, "scripts", "export", "branch_names.py"), "utf8")).match(
   /^STEERING = "([^"]+)"$/m,
 )[1];
 

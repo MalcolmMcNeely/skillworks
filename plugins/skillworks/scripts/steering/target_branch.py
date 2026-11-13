@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from export.export_branch import PREFIX, STEERING
+from export.branch_names import PREFIX, STEERING
 from runner import Subprocess
 from steering.steering_file import STEERING_FOLDER, STEERING_REF
 from stop import refusal

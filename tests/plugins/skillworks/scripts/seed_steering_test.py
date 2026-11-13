@@ -261,7 +261,7 @@ def test_the_loop_file_names_the_remotes_default_branch_as_the_target_branch(rep
     assert ran.status == 0, ran.err
     loop = json.loads((repo.work / "docs" / "skillworks" / "loop.json").read_text(encoding="utf-8"))
     assert loop == {"tracker": "github", "target-branch": "master", "co-authored-by": "hide",
-                    "session-trailer": "show", "export": False}
+                    "session-trailer": "show"}
 
 
 def test_a_loop_file_already_there_is_kept_and_its_difference_shown(repo, runner):

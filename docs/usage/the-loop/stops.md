@@ -326,26 +326,6 @@ The cause is most often a Steering file your team changed on the default branch,
 3. Push it with `git push --force-with-lease origin skillworks/steering`.
 4. Switch back to your branch, and start the grill again.
 
-**A ticket's change does not apply in the Export.** With `export` on, [the Export](export.md) runs
-after the full run passes and the spec closes. It builds every commit before it moves your branch.
-When a ticket's change does not apply onto your branch, the Export moves nothing. The `LEFT` list is
-still written, so you see every commit and every file it would have left out. Then the loop stops
-with a `STOP` line that names the ticket and each file that did not apply. No `END` line is written:
-
-```
-STOP  the change of #202 does not apply to the Export branch feature/PROJ-12/slug in src/app.py, so the Export moved nothing. Every ticket's code is still on skillworks/spec/feature/PROJ-12/slug.
-```
-
-Your branch stays on the commit it held, and the Target branch keeps every ticket's code, so no work
-is lost. No Session is handed the conflict, because a Session would change code after the full run
-proved it. The cause is most often a left-out commit, such as a hand fix, that changed the same file
-before the ticket did. Do one of these:
-
-1. Put the left-out change onto your branch, with a commit of your own, and run the loop again with
-   `spec-loop <spec>`.
-2. Or write the work onto your branch by hand. Read each ticket's change with
-   `git log -p <your branch>..origin/skillworks/spec/<your branch>`.
-
 ## Restarting a stopped run: the Keep
 
 To restart, run the same command again: `spec-loop <spec>`.

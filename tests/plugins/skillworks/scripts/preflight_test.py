@@ -370,18 +370,10 @@ def test_a_loop_file_with_no_tracker_fails(work):
     assert "FAIL  docs/skillworks/loop.json names no tracker." in ran.err
 
 
-def test_export_with_a_named_target_branch_fails_and_says_it_needs_pr(work):
-    work.loop_file(json.dumps({"tracker": "github", "target-branch": "main", "export": True}))
-
-    ran = preflight(work)
-
-    assert ran.status == 1, said(ran)
-    assert 'FAIL  docs/skillworks/loop.json says export, and export works only with "target-branch": "pr"' in ran.err
-    assert "label ready-for-agent" not in ran.out
-
-
-def test_export_in_pr_mode_passes(work):
-    work.loop_file(json.dumps({"tracker": "github", "target-branch": "pr", "export": True}))
+@pytest.mark.parametrize("target_branch", ["main", "pr"])
+@pytest.mark.parametrize("export", [True, False, "yes"])
+def test_an_old_export_key_passes_whatever_its_value(work, target_branch, export):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": target_branch, "export": export}))
 
     ran = preflight(work)
 

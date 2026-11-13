@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from export.export_branch import STEERING
+from export.branch_names import STEERING
 from steering.target_branch import LOOP_FILE
 from stop import refusal
 

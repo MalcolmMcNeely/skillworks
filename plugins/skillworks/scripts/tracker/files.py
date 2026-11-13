@@ -163,8 +163,6 @@ def as_numbers(value):
 class Files:
     # The close is in the commit that Lands, so no rebase can leave it naming a commit on no branch.
     close_names_commits = False
-    # origin is the developer's own remote, and the team's may be another.
-    export_remote = "<your team's remote>"
 
     # A target of None is PR mode, where each spec's frontmatter names its own branch.
     def __init__(self, runner, where, target, spec=None, wait=time.sleep):

@@ -5,9 +5,7 @@ import re
 
 from context_backfill.context_map import steering_file
 from seeds.outcome import BASES, Outcome
-from steering.export import KEY
 from steering.steering_file import STEERING_FOLDER
-from steering.target_branch import LOOP_FILE
 from suite import SUITE_FILE
 
 OLD_FOLDER = "docs/agents"
@@ -41,27 +39,6 @@ class Move:
                            writes=[(top / place, text)])
                    for place, text in self.texts.items()]
         return moves + changes
-
-
-def exports(moving, top):
-    try:
-        held = json.loads(moving.read(top, LOOP_FILE) or "{}")
-    except ValueError:
-        return False
-    return isinstance(held, dict) and held.get(KEY) is True
-
-
-# The Steering branch was cut from the team's default branch, so a path both hold must match there, or a ticket's edit to it cannot Export.
-def given_back(runner, top, default, moving):
-    if not exports(moving, top):
-        return []
-    source = "origin/" + default
-    held = [old for old, _ in moving.pairs
-            if runner.run(["git", "-C", str(top), "cat-file", "-e", "{}:{}".format(source, old)]).status == 0]
-    return [Outcome("gave {} back the text {} holds\n".format(old, default),
-                    "would give {} back the text {} holds\n".format(old, default),
-                    does=[lambda old=old: runner.run(["git", "-C", str(top), "checkout", source, "--", old])])
-            for old in held]
 
 
 def is_tracked(runner, top, place):

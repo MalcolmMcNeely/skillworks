@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from export.export_branch import STEERING
+from export.branch_names import STEERING
 from output.streams import speaking_any_character
 from runner import Subprocess
 from stop import Stop, misuse, refusal

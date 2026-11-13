@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from export.export_branch import PREFIX, export_branch_of
 from stop import is_a_number, refusal
 from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
 
@@ -83,8 +82,6 @@ def spec_branch(spec):
 class GitHub:
     # A Session closes the issue naming its commits, and a rebase at Land replaces them.
     close_names_commits = True
-    # origin is the team's own repo, so an Export branch is pushed there.
-    export_remote = "origin"
 
     # The Target branch, or None in PR mode, where each spec names its own.
     def __init__(self, runner, where, repo=THIS_REPO, target=None):
@@ -146,12 +143,10 @@ class GitHub:
         if self.target is not None:
             return ""
         branch = self.branch_of(spec)
-        # With the Export the work reaches the developer's own branch, and the pull request opens from there.
-        opens_from = export_branch_of(branch) if branch.startswith(PREFIX) else branch
         closed = self.gh("issue", "close", spec, "--comment",
-                         "Every ticket of this spec is on `{}`, and the full run of the Suite passed "
-                         "on it. Open the pull request from `{}`. A person reviews and merges "
-                         "it.".format(branch, opens_from), "--reason", "completed")
+                         "Every ticket of this spec is on `{0}`, and the full run of the Suite passed "
+                         "on it. Open the pull request from `{0}`. A person reviews and merges "
+                         "it.".format(branch), "--reason", "completed")
         if closed.status != 0:
             raise refusal("GitHub would not close spec #{0}. Close it with: gh issue close {0} "
                           "--reason completed\ngh said:\n{1}".format(

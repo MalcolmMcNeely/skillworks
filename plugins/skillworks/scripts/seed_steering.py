@@ -84,7 +84,7 @@ def weigh(top, default, name, place, choices, settled, moving):
 
 def seed(runner, top, default, choices, settled):
     moving = old_folder.planned(top, PLACES.values())
-    outcomes = moving.outcomes(runner, top) + old_folder.given_back(runner, top, default, moving)
+    outcomes = moving.outcomes(runner, top)
     readme = "{}/README.md".format(BASES)
     if moving.read(top, readme) is None:
         outcomes.append(Outcome("wrote {}\n".format(readme), "would write {}\n".format(readme),
