@@ -10,8 +10,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from branches.default_branch import default_branch
-from branches.own_branch import own_branch
-from context_backfill.applying import NOTHING_WRITTEN, apply
+from context_backfill.applying import apply, design_branch
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
@@ -111,7 +110,7 @@ def history_branch_of(runner, top):
 # In PR mode the work goes on the developer's own branch, so a branch that cannot hold it stops every command.
 def refuse_a_branch_that_cannot_hold_a_design(runner, top):
     if target_setting(top) == PR_MODE:
-        own_branch(runner, top, NOTHING_WRITTEN)
+        design_branch(runner, top)
 
 
 class Commit(NamedTuple):

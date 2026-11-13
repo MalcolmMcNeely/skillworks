@@ -15,6 +15,12 @@ Your glossary, `CONTEXT.md`, and your ADRs are edited the moment a word or a dec
 the end. Every Session after this one starts with an empty context, and can only find those decisions
 in the repo.
 
+In PR mode, `"target-branch": "pr"`, the grill asks for the spec's branch name first, before any
+design question. Skillworks makes that branch on `origin` and opens a grill worktree on it, under
+`.spec-loop/grill/`. A name it refuses is asked for again. Each word and ADR is written, committed and
+pushed in the grill worktree, so your checkout stays on the default branch for the whole grill, and
+you can start a second grill beside the first. [The Target branch](target-branch.md) says more.
+
 A settled ADR goes to the folder `adr-folder` names, in `docs/skillworks/domain.md`, in the shape
 `docs/skillworks/adr-format.md` gives. Its number is one above the highest in that folder, as wide as the
 file with the highest number.
@@ -44,9 +50,10 @@ words and ADRs written on the way, and what was ruled out. Then it asks you to c
 On your yes, `/skillworks:to-spec` runs. With `github`, it publishes a `SPEC:` issue with the
 `ready-for-agent` label. With `files`, it writes the spec's folder in `.specs/` in the Sidecar, and
 pushes nothing of it. It commits and pushes what the interview changed on disk to the Target
-branch, and it reports the spec's number. With `pr`, the spec names its own branch: under `## Branch` in the issue, or as `branch` in
-`spec.md`. Its Surfaces section holds the requirement the grill captured for each Surface the change
-touches.
+branch, and it reports the spec's number. With `pr`, the spec names its own branch: under
+`## Branch` in the issue, or as `branch` in `spec.md`, and the grill worktree is removed once the
+spec is published. Its Surfaces section holds the requirement the grill captured for each Surface
+the change touches.
 
 The loop counts the drift check's Verdicts against the spec, so three sections come in a fixed shape,
 the **counted shape**:

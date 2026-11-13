@@ -1299,48 +1299,90 @@ def test_to_spec_publishes_to_the_files_tracker_on_the_specs_branch_in_pr_mode()
     to_spec = skill_text("to-spec")
 
     assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md" in to_spec
-    assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md <the branch own-branch printed>" in to_spec
+    assert "tracker-publish spec <slug> .spec-loop/drafts/<slug>.md <the branch named at the grill>" in to_spec
     assert "`.specs/`" in to_spec
 
 
 PR_MODE_BRANCH_SECTIONS = [("domain-modeling", "### The spec's branch"), ("to-spec", "## The spec's branch")]
 
 
-def test_in_pr_mode_the_grill_runs_the_branch_check_before_its_first_question():
+def test_in_pr_mode_the_grill_asks_for_the_branch_name_and_runs_spec_branch_before_its_first_question():
     first = grill_cut(skill_text("grill"))
 
-    for named in ["PR mode", "`own-branch`", "before the first question"]:
+    for named in ["PR mode", "name the spec's branch", "spec-branch <name>", "before the first question"]:
         assert named in first, named
 
 
-def test_on_a_refused_branch_the_grill_asks_no_question_and_writes_nothing():
+def test_on_a_refused_name_the_grill_asks_for_the_name_again():
     first = grill_cut(skill_text("grill"))
-    refused = first.split("`own-branch`", 1)[1].split("\n#### ", 1)[0]
+    refused = first.split("spec-branch <name>", 1)[1]
 
-    for named in ["refuses", "Ask no question", "write nothing", "Pass on what it said"]:
+    for named in ["refuses", "Pass on what it said", "ask for the name again"]:
         assert named in refused, named
 
 
-def test_in_pr_mode_to_spec_runs_the_branch_check_and_publishes_nothing_on_a_refusal():
-    text = under_heading(skill_text("to-spec"), "## The spec's branch")
-
-    for named in ["`own-branch`", "refuses", "publish no spec", "write nothing"]:
-        assert named in text, named
+def test_in_pr_mode_the_grill_stays_on_the_default_branch():
+    assert "The checkout stays on the default branch" in grill_cut(skill_text("grill"))
 
 
-def test_only_the_grill_and_to_spec_run_the_branch_check():
+def test_only_the_grill_runs_spec_branch():
     naming = sorted(str(page.relative_to(SKILLS)).replace("\\", "/") for page in SKILLS.rglob("*.md")
-                    if "own-branch" in page.read_text(encoding="utf-8"))
+                    if "spec-branch <name>" in page.read_text(encoding="utf-8"))
 
-    assert naming == ["grill/SKILL.md", "to-spec/SKILL.md"]
+    assert naming == ["grill/SKILL.md"]
+
+
+def test_no_skill_runs_the_old_branch_check():
+    walked = {str(page.relative_to(SKILLS)).replace("\\", "/"): page.read_text(encoding="utf-8", errors="replace")
+              for page in SKILLS.rglob("*") if page.is_file()}
+
+    assert ("grill/SKILL.md" in walked, sorted(name for name, text in walked.items() if "own-branch" in text)) == (
+        True, [])
+
+
+def test_the_plugin_holds_no_old_branch_check_and_setup_allows_none():
+    plugin = SKILLS.parent
+    settings = (SKILLS / "skillworks-setup" / "settings.json").read_text(encoding="utf-8")
+
+    assert ((plugin / "bin" / "own-branch").exists(), (plugin / "scripts" / "branches" / "own_branch.py").exists(),
+            "own-branch" in settings) == (False, False, False)
+
+
+def test_no_skill_refuses_a_branch_under_skillworks():
+    walked = {str(page.relative_to(SKILLS)).replace("\\", "/"): page.read_text(encoding="utf-8")
+              for page in SKILLS.rglob("*.md")}
+
+    assert ("grill/SKILL.md" in walked,
+            sorted(name for name, text in walked.items() if "branch under `skillworks/`" in text)) == (True, [])
 
 
 @pytest.mark.parametrize("skill, heading", PR_MODE_BRANCH_SECTIONS)
-def test_in_pr_mode_the_specs_branch_is_the_developers_branch_the_session_is_on(skill, heading):
+def test_in_pr_mode_the_specs_branch_is_the_branch_named_at_the_grill_in_the_grill_worktree(skill, heading):
     text = under_heading(skill_text(skill), heading)
 
-    for named in ["the branch this session is on", "the developer's own branch", "Open no pull request"]:
+    for named in ["the branch the developer named at the grill", "the grill worktree", "Open no pull request"]:
         assert named in text, named
+
+
+@pytest.mark.parametrize("skill, heading", PR_MODE_BRANCH_SECTIONS)
+def test_in_pr_mode_each_word_and_adr_is_committed_pulled_and_pushed_in_the_grill_worktree(skill, heading):
+    text = " ".join(under_heading(skill_text(skill), heading).split())
+
+    for named in ["commit", "pull", "push", "git -C <the grill worktree>"]:
+        assert named in text, named
+
+
+def test_in_pr_mode_domain_modeling_reads_the_glossary_and_the_adrs_from_the_grill_worktree():
+    text = " ".join(under_heading(skill_text("domain-modeling"), "### The spec's branch").split())
+
+    assert "Read the glossary and the ADRs from the grill worktree" in text
+
+
+def test_in_pr_mode_to_spec_removes_the_grill_worktree_once_the_spec_is_published():
+    text = " ".join(under_heading(skill_text("to-spec"), "## The spec's branch").split())
+
+    assert "**After the spec is published**, remove the grill worktree" in text
+    assert "worktree remove" in text
 
 
 @pytest.mark.parametrize("skill, heading", PR_MODE_BRANCH_SECTIONS)
@@ -1354,7 +1396,7 @@ def test_in_pr_mode_context_backfill_refuses_a_branch_that_cannot_hold_a_design_
     text = " ".join(under_heading(skill_text("context-backfill"), "## Check the clone").split())
 
     for named in ["PR mode", "the branch this session starts on", "refuses, and writes nothing",
-                  "on the default branch, on a branch under `skillworks/` and on no branch",
+                  "on the default branch and on no branch",
                   "In PR mode the history is read from the default branch, and not from the Target branch"]:
         assert named in text, named
 
@@ -2148,7 +2190,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 18
+    assert len(commands) == 17
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -2228,10 +2270,11 @@ def test_setup_asks_for_the_target_branch_and_never_requires_main():
     assert "`main`" not in text
 
 
-def test_setup_describes_pr_as_the_developer_making_the_branch_and_opening_the_pull_request():
+def test_setup_describes_pr_as_the_developer_naming_the_branch_and_opening_the_pull_request():
     step = setup_section("### 3. Ask for the Target branch")
 
-    assert "you make the branch and open the pull request" in step
+    assert "you name the branch and open the pull request" in step
+    assert "the grill asks you to name the spec's branch, and Skillworks makes it" in step
 
 
 def test_setup_writes_no_output_style(repo, runner):

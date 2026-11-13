@@ -16,15 +16,15 @@ Drive a design from the first question to a published spec.
 Read `target-branch` in `steering-file docs/skillworks/loop.json`:
 
 - A branch name is the Target branch. Go on to step 2.
-- `pr` is PR mode. The Target branch is the branch this session is on: the developer's own branch, which the developer made by the team's own rule. Check it before the first question. Run `own-branch`, the one command that checks it, so the steps are the same in every run:
+- `pr` is PR mode. Each spec has a branch of its own, and the developer names it by the team's own rule. Ask the developer to name the spec's branch before the first question. Then run `spec-branch` with that name, the one command that makes it, so the steps are the same in every run:
 
   ```bash
-  own-branch
+  spec-branch <name>
   ```
 
-  It prints the branch, and the grill writes every word and ADR there. When it refuses, the branch cannot hold a design: it is the default branch, a branch under `skillworks/`, or no branch. Then stop the grill there. Ask no question, and write nothing. Pass on what it said, which tells the developer what to do.
+  It makes the branch on `origin` from the default branch, opens the grill worktree on it, and prints the worktree's path. That branch is the Target branch, and the grill worktree is where every word and ADR is read and written. Keep the name and the path: `skillworks:domain-modeling` writes there, and `skillworks:to-spec` publishes with the name. When it refuses, the name cannot hold a spec, such as the default branch, a name already on `origin`, or a name an open spec holds. Pass on what it said, ask for the name again, and run `spec-branch` with the new name. Ask no design question until it prints a path.
 
-In PR mode cut no branch, open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from their own branch, after the loop Lands the spec's tickets on it.
+The checkout stays on the default branch for the whole grill, so the developer can start a second grill beside this one. In PR mode switch no branch in the checkout, open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the spec's branch, after the loop Lands the spec's tickets on it.
 
 ### 2. Interview under both disciplines
 

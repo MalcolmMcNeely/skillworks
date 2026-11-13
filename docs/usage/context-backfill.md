@@ -33,9 +33,8 @@ A partial clone fetches each old file only when it is read, so reading its histo
 hours. A full clone reads the same history in seconds.
 
 In PR mode, `"target-branch": "pr"`, the check also refuses a branch that cannot hold a design: the
-default branch, a branch under `skillworks/`, and no branch. Make a branch of your own, switch to
-it, and start the backfill there. The work goes on that branch, and the history is still read from
-the default branch.
+default branch and no branch. Make a branch of your own, switch to it, and start the backfill there.
+The work goes on that branch, and the history is still read from the default branch.
 
 ### The fit
 
@@ -341,9 +340,9 @@ The run writes nothing when:
 - The sheet has no Answer on it. It tells you to mark the sheet.
 - An `Answer:` line holds a word that is not `accept`, `reject` or `?`.
 - The checkout is not on the Target branch. In PR mode, the checkout is on a branch that cannot
-  hold a design: the default branch, a branch under `skillworks/`, or no branch. The check and the
-  history refuse these too, so nothing is written there. [When a step fails](the-loop/stops.md)
-  shows each refusal, under A branch that cannot hold a design.
+  hold a design: the default branch or no branch. The check and the history refuse these too, so
+  nothing is written there. [When a step fails](the-loop/stops.md) shows each refusal, under A
+  branch that cannot hold a design.
 - An accepted word names a context that no map holds, on the sheet or in the repo.
 - An accepted map names no context, or setup has not written the words rule or the Domain docs
   line the map has to change.

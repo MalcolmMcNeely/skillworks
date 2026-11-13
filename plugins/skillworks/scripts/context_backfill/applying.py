@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 from typing import NamedTuple
 
+from branches.default_branch import default_branch
 from branches.open_the_pull_request import open_the_pull_request
-from branches.own_branch import own_branch
 from context_backfill.answer_sheet import (ACCEPT, ANSWERS, DECISION, MAP, SHEET_FILE, WORD, bold_name, read_sheet,
                                            references, what_is_left)
 from context_backfill.context_map import MAP_FILE, contexts_of, map_edits
@@ -82,10 +82,23 @@ class Destination(NamedTuple):
     in_pr_mode: bool
 
 
+WHAT_TO_DO = "Make a branch of your own, switch to it, and start again. "
+
+
+def design_branch(runner, top):
+    branch = git(runner, top, "branch", "--show-current").out.strip()
+    if not branch:
+        raise refusal("this checkout is on no branch. " + WHAT_TO_DO + NOTHING_WRITTEN)
+    if branch == default_branch(runner, top, NOTHING_WRITTEN):
+        raise refusal("this checkout is on {0}, and {0} is the default branch. {1}{2}".format(
+            branch, WHAT_TO_DO, NOTHING_WRITTEN))
+    return branch
+
+
 def destination_of(runner, top):
     branch = target_setting(top)
     if branch == PR_MODE:
-        return Destination(own_branch(runner, top, NOTHING_WRITTEN), True)
+        return Destination(design_branch(runner, top), True)
     here = git(runner, top, "symbolic-ref", "--quiet", "--short", "HEAD").out.strip()
     if here != branch:
         raise refusal("The Target branch is {}, and this checkout is on {}. Switch to {}, then run this "

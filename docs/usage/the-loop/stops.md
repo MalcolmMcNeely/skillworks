@@ -228,20 +228,34 @@ STOP  the Name re-check finds 1 rename not made on spec #200 after the rename ti
 The loop built the rename once and it is still owed. Make it in a ticket of your own, and run the loop
 again.
 
-**A branch that cannot hold a design.** A design goes on a branch of your own. In PR mode the grill
-runs the `own-branch` command before its first question, and `/skillworks:to-spec` runs it before it
-publishes. On a refusal the grill asks no question, `/skillworks:to-spec` publishes no spec, and
-neither writes anything. The command ends its line with `Nothing was written.` It refuses three
-branches. The default branch, which it finds from `origin/HEAD`:
+**A name that cannot hold a spec.** In PR mode the grill asks you to name the spec's branch before
+its first question, and runs the `spec-branch` command with that name. The command ends its line with
+`Nothing was pushed.`, and the grill asks you for another name. It refuses the default branch, which
+it finds from `origin/HEAD`:
+
+```
+FAIL  trunk is the default branch, and a spec needs a branch of its own. Name another. Nothing was pushed.
+```
+
+A name already on `origin`, or a name an open spec holds:
+
+```
+FAIL  feature/PROJ-12/slug is already on origin. Name another. Nothing was pushed.
+FAIL  Open spec 12 already names feature/PROJ-12/slug. Name another. Nothing was pushed.
+```
+
+Name the branch the way your team names its branches. Skillworks never checks the name against a
+pattern. When `origin` names no default branch, the command stops and says to run
+`git remote set-head origin --auto`.
+
+**A branch that cannot hold a design.** `/skillworks:context-backfill` writes on the branch you start
+it on. In PR mode it refuses two branches, and ends its line with `Nothing was written.` Each of its
+commands, `context-backfill check`, `context-backfill history` and `context-backfill apply`, checks
+the branch first, so none of them writes a file, makes a commit or pushes on a refused branch. The
+default branch:
 
 ```
 FAIL  this checkout is on trunk, and trunk is the default branch. Make a branch of your own, switch to it, and start again. Nothing was written.
-```
-
-A branch under `skillworks/`, which belongs to the loop:
-
-```
-FAIL  this checkout is on skillworks/feature, and a branch under skillworks/ belongs to the loop. Make a branch of your own, switch to it, and start again. Nothing was written.
 ```
 
 No branch, as after `git switch --detach`:
@@ -250,15 +264,8 @@ No branch, as after `git switch --detach`:
 FAIL  this checkout is on no branch. Make a branch of your own, switch to it, and start again. Nothing was written.
 ```
 
-`/skillworks:context-backfill` refuses the same three branches in PR mode, with the same line. Each
-of its commands, `context-backfill check`, `context-backfill history` and `context-backfill apply`,
-checks the branch first, so none of them writes a file, makes a commit or pushes on a refused
-branch.
-
 Make your branch the way your team names its branches, such as
-`git switch -c feature/PROJ-12/slug origin/<your default branch>`, and start again. Skillworks never
-checks the name. When `origin` names no default branch, each command stops and says to run
-`git remote set-head origin --auto`.
+`git switch -c feature/PROJ-12/slug origin/<your default branch>`, and start again.
 
 **No `loop.json`.** A command that reads `docs/skillworks/loop.json`, such as `tracker-publish`,
 `spec-loop`, `land-ticket` or `context-backfill`, stops when the file is missing:

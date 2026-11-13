@@ -705,12 +705,19 @@ def test_in_pr_mode_a_second_apply_pushes_to_the_same_branch(history, checkout, 
         "Glossary: 1 word in CONTEXT.md", "Glossary: 1 word in CONTEXT.md"]
 
 
+def test_in_pr_mode_the_apply_pushes_to_a_branch_under_skillworks(history, checkout, runner):
+    in_pr_mode(checkout)
+    git(checkout, "switch", "--quiet", "-c", "skillworks/ab-12")
+    mark(checkout, sheet(words=word(1, "Reader", "The part that reads dates.", "accept")))
+
+    ran = apply(runner, checkout)
+
+    assert (ran.status, subjects(history.origin, "skillworks/ab-12")[0]) == (
+        0, "Glossary: 1 word in CONTEXT.md"), ran.err
+
+
 def onto_the_default_branch(where):
     pass
-
-
-def onto_a_branch_of_the_loop(where):
-    git(where, "switch", "--quiet", "-c", "skillworks/ab-12")
 
 
 def onto_no_branch(where):
@@ -719,7 +726,6 @@ def onto_no_branch(where):
 
 BRANCHES_THAT_CANNOT_HOLD_A_DESIGN = {
     "the default branch": (onto_the_default_branch, "main is the default branch"),
-    "a branch of the loop": (onto_a_branch_of_the_loop, "belongs to the loop"),
     "no branch": (onto_no_branch, "on no branch"),
 }
 

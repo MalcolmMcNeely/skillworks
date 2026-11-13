@@ -5164,7 +5164,7 @@ def test_the_target_branch_page_explains_both_kinds_of_target_branch():
     text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
 
     assert text.startswith("# The Target branch\n")
-    for named in ["`docs/skillworks/loop.json`", "`target-branch`", "`pr`", "You make the branch and open the pull request"]:
+    for named in ["`docs/skillworks/loop.json`", "`target-branch`", "`pr`", "You name the branch and open the pull request"]:
         assert named in text, named
     assert "Pick a branch name when" in text
     assert "Pick `pr` when" in text
@@ -5174,6 +5174,34 @@ def test_the_target_branch_page_says_an_old_spec_value_is_refused_and_how_to_fix
     text = (ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8")
 
     assert 'write `"target-branch": "pr"` in `docs/skillworks/loop.json`' in text
+
+
+def test_in_pr_mode_the_target_branch_page_says_you_name_the_branch_at_the_grill_and_many_specs_run_at_once():
+    text = " ".join((ROOT / TARGET_BRANCH_PAGE).read_text(encoding="utf-8").split())
+
+    for named in ["you name the spec's branch at the grill", "Skillworks makes it", "many specs at once"]:
+        assert named in text, named
+
+
+def test_in_pr_mode_the_grill_page_says_the_grill_asks_for_the_branch_first_and_stays_on_the_default_branch():
+    text = " ".join((ROOT / GRILL_PAGE).read_text(encoding="utf-8").split())
+
+    for named in ["the grill asks for the spec's branch name first",
+                  "your checkout stays on the default branch"]:
+        assert named in text, named
+
+
+README_TARGET_BRANCH = (
+    "The Target branch is where each ticket Lands. It can be a branch you push to, such as `main`. Or, in PR mode, "
+    "you name a branch for each spec, Skillworks makes it, and you open one pull request from it. Either way, you "
+    "can grill and loop many specs at once. The specs and tickets live in GitHub Issues, or in Markdown files in "
+    "the Sidecar: a folder beside your repo that is never pushed.")
+
+
+def test_the_readme_says_what_the_target_branch_is_in_one_paragraph():
+    paragraphs = [" ".join(part.split()) for part in (ROOT / "README.md").read_text(encoding="utf-8").split("\n\n")]
+
+    assert README_TARGET_BRANCH in paragraphs
 
 
 def test_the_tracker_page_explains_the_files_tracker_beside_github():

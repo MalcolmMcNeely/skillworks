@@ -16,9 +16,9 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 2. Sketch out the seams at which you're going to test the feature. Pick them by the team's testing rule, `steering-file docs/skillworks/rules/testing.md`, which says how high and how few they are. Write them into the spec's Testing Decisions.
 
-3. Read `tracker` and `target-branch` in `steering-file docs/skillworks/loop.json`. A branch name is the Target branch for this spec. The word `pr` means PR mode; see [The spec's branch](#the-specs-branch) and check the branch now.
+3. Read `tracker` and `target-branch` in `steering-file docs/skillworks/loop.json`. A branch name is the Target branch for this spec. The word `pr` means PR mode; see [The spec's branch](#the-specs-branch).
 
-4. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
+4. Commit whatever the conversation changed on disk — `CONTEXT.md`, ADRs, glossary entries — and push it to the Target branch. In PR mode, commit and push it from the grill worktree. The spec points at decisions that must already be in the repo, because every session after this one starts with an empty context and can only find them there.
 
 5. Write the spec using the template below. The spec title should begin with "SPEC:". Keep the three counted sections in the shape [The counted shape](#the-counted-shape) gives. Then publish it as [Publishing the spec](#publishing-the-spec) says.
 
@@ -43,7 +43,7 @@ An item runs over several lines when its later lines are indented, so a nested l
 
    ```bash
    tracker-publish spec <slug> .spec-loop/drafts/<slug>.md                                   # target-branch names a branch
-   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md <the branch own-branch printed>   # target-branch says pr
+   tracker-publish spec <slug> .spec-loop/drafts/<slug>.md <the branch named at the grill>   # target-branch says pr
    ```
 
 3. It prints the number, a tab, and then the issue's URL with `github` or the folder with `files`, such as `8	.specs/0008-local-tracker`. With `files`, the folder is in the Sidecar, and `tracker-show <number>` prints the spec back.
@@ -60,17 +60,13 @@ The spec is a folder in `.specs/` in the Sidecar, a local git repo beside the re
 
 ## The spec's branch
 
-In PR mode the spec's Target branch is the branch this session is on: the developer's own branch, which the developer made by the team's own rule. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
+In PR mode the spec's Target branch is the branch the developer named at the grill. `spec-branch` made it on `origin`, and opened the grill worktree on it, at the path it printed. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
 
-**Before anything is written**, check the branch. Run `own-branch`, the one command that checks it, so the steps are the same in every run:
+**Before the spec is published**, commit what the conversation changed in the grill worktree, then pull and push there, with `git -C <the grill worktree>` in front of each git step. Name the branch last when you publish.
 
-```bash
-own-branch
-```
+**After the spec is published**, remove the grill worktree, so the next grill can open one of its own. Run `git -C . worktree remove <the grill worktree>` from the checkout this session started in, because a worktree is never removed from inside itself. The branch stays on `origin`, and the loop Lands each ticket there. A remove that refuses, because the grill worktree holds a change, leaves the spec published: tell the developer what it said.
 
-It prints the branch. Commit and push on it, and name it last when you publish. When it refuses, the branch cannot hold a design: it is the default branch, a branch under `skillworks/`, or no branch. Then stop: publish no spec, and write nothing. Pass on what it said, which tells the developer what to do.
-
-**After the spec is published** there is nothing more to do here. Cut no branch. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request from their own branch after the loop Lands the spec's tickets on it.
+Switch no branch in the checkout. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request from the spec's branch after the loop Lands the spec's tickets on it.
 
 <spec-template>
 

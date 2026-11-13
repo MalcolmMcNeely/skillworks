@@ -30,7 +30,7 @@ context-backfill check
 
 It reads the Tracker and the Target branch from the loop settings on disk, fetches from origin the branch it reads the history from, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit.
 
-When `target-branch` is `pr`, this is PR mode. The work goes on the branch this session starts on, the developer's own branch. So every command of this skill refuses, and writes nothing, on the default branch, on a branch under `skillworks/` and on no branch. In PR mode the history is read from the default branch, and not from the Target branch.
+When `target-branch` is `pr`, this is PR mode. The work goes on the branch this session starts on, the developer's own branch. So every command of this skill refuses, and writes nothing, on the default branch and on no branch. In PR mode the history is read from the default branch, and not from the Target branch.
 
 If it refuses, show the person the refusal and the command it names, and stop. A shallow clone is mended by the unshallow fetch, and a partial clone by a full clone. Do not read the history of a clone it refused: the part it holds would read as the whole.
 
@@ -207,7 +207,7 @@ It makes one `Glossary:` commit for the map and its Steering edits, naming the m
 
 It then rewrites the sheet to hold only what is left: the `?` lines, the unanswered lines, and a decision Draft for each written reason. It prints what is left.
 
-If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in PR mode, is on the default branch, on a branch under `skillworks/` or on no branch, when an accepted word names a context no map holds, when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change, and when an accepted map or decision needs the ADR folder and `steering-file docs/skillworks/domain.md` names no `adr-folder`. A refusal after the commits says the commits are made and names the command that sends them.
+If it refuses, show the person the refusal and stop. It refuses a sheet with no Answer on it, with one message: mark the sheet. It refuses before it writes anything when an Answer is not one of the three words, when the checkout is not on the Target branch or, in PR mode, is on the default branch or on no branch, when an accepted word names a context no map holds, when an accepted map names no context or the repo lacks the words rule or the Domain docs line the map has to change, and when an accepted map or decision needs the ADR folder and `steering-file docs/skillworks/domain.md` names no `adr-folder`. A refusal after the commits says the commits are made and names the command that sends them.
 
 ### Talk the `?` lines through
 

@@ -33,7 +33,6 @@
       "Bash(tracker-show:*)",
       "Bash(tracker-close:*)",
       "Bash(spec-commits:*)",
-      "Bash(own-branch:*)",
       "Bash(spec-branch:*)",
       "Bash(steering-file:*)",
       "Bash(spec-loop-counts:*)",

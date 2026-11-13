@@ -115,7 +115,7 @@ With `files`, tell the team that `.specs/` sits in the Sidecar, the folder besid
 
 The Target branch is the branch the loop Lands each ticket on. Ask the team which one it is, and suggest the remote's default branch, so the common answer is one keypress. `seed-steering` has already written that branch into `docs/skillworks/loop.json`. If `target-branch` there names another value, a team's answer from an earlier run, suggest that one instead.
 
-Offer one other answer: `pr`. With `pr`, you make the branch and open the pull request. You make a branch of your own for each spec, by your team's own rule, and start the grill on it. The grill writes the design and the spec there, and the loop Lands each ticket there. Then you open the one pull request from it, and a person reviews and merges it. Pick `pr` when the default branch is protected, or when the team reviews its work through pull requests.
+Offer one other answer: `pr`. With `pr`, you name the branch and open the pull request. For each spec the grill asks you to name the spec's branch, and Skillworks makes it, so you name it by your team's own rule. The grill writes the design there, and the loop Lands each ticket there. Then you open the one pull request from it, and a person reviews and merges it. Pick `pr` when the default branch is protected, or when the team reviews its work through pull requests.
 
 Write the answer into `target-branch` in `docs/skillworks/loop.json`, and change no other key.
 

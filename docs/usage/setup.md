@@ -26,8 +26,8 @@ Your repo needs these:
 - A Target branch: the branch the loop Lands every ticket on. It can be any branch, such as `master`
   or `develop`, and you must be able to push to it straight away. A rule that asks for a pull request
   or a status check on it stops the loop.
-- Or, if your default branch is protected, the Target branch `pr`: you make the branch and open
-  the pull request. You make a branch of your own for each spec and start the grill on it, and your
+- Or, if your default branch is protected, the Target branch `pr`: you name the branch and open
+  the pull request. The grill asks you to name a branch for each spec, Skillworks makes it, and your
   team reviews it as one pull request to the default branch.
 
 [The loop](the-loop/tracker.md) says how to choose a Tracker, and
@@ -109,7 +109,7 @@ holds an answer of its own.
 | Question | When setup asks it |
 |---|---|
 | Which Tracker does your team use? | Always. Setup suggests `github` when `origin` names `github.com`, and `files` otherwise, so the common answer is one keypress. If `tracker` in `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
-| Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `pr` for one pull request per spec: you make the branch and open the pull request. If `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
+| Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `pr` for one pull request per spec: you name the branch and open the pull request. If `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
 | Where do your ADRs go? | Always. Setup writes your answer into `adr-folder` in `docs/skillworks/domain.md`, and every new ADR goes to that one folder. It suggests one folder. On a second run, it suggests the folder `adr-folder` already names, so your answer survives. Else it looks for folders that hold numbered Markdown files, such as `0001-event-sourced-orders.md`, and have `adr` or `decision` in their path. It lists every one it finds, and suggests the one with the most files. Else it suggests `docs/adr`. A repo set up before this question existed stops at preflight until setup runs again, and one run clears the stop. |
 | Should commits and pull requests credit Claude? | Always. On a first run setup suggests `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/skillworks/loop.json` already names an answer, setup suggests that one. [Credit for Claude](#credit-for-claude) says what each answer does. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push`, `gh issue close` and `tracker-publish` with no prompt. That is the point, and also the risk. |

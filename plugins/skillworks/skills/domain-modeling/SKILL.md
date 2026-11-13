@@ -77,15 +77,17 @@ More than one person runs agent work against a repo at once, and a conversation 
 
 So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push it to the Target branch. Never hold them to the end of the session.
 
-- **Find the Target branch.** Read `target-branch` in `steering-file docs/skillworks/loop.json`. A branch name is the Target branch. The word `pr` means PR mode; see [The spec's branch](#the-specs-branch).
+- **Find the Target branch.** Read `target-branch` in `steering-file docs/skillworks/loop.json`. A branch name is the Target branch. The word `pr` means PR mode; see [The spec's branch](#the-specs-branch), which says where to read and write.
 - **Stage by path.** Stage only the file you settled. Work in progress elsewhere in the tree is never swept into a glossary commit.
 - **Prefix the subject line.** `Glossary:` for a `CONTEXT.md` change, `ADR:` for an ADR, so the log says which kind of change it was without anyone opening it.
 - **Pull, then push.** A push onto a branch a teammate has moved is rejected, so pull first and push the rebased commit. Read what the pull brings down: when a teammate's change touches ground this session already settled, say so. What to re-ask is then a question for this session.
 
 ### The spec's branch
 
-In PR mode the Target branch is the branch this session is on: the developer's own branch, which the grill checked before its first question. The developer made it, and opens the one pull request from it after the loop.
+In PR mode the Target branch is the branch the developer named at the grill. `spec-branch` made it, and opened the grill worktree on it, at the path it printed. The checkout this session started in stays on the default branch.
 
-**Every word or ADR** goes to that branch. Commit it on the branch this session is on, pull, and push there.
+**Read the glossary and the ADRs from the grill worktree**, and not from the checkout. A word settled earlier in this grill is there, and the checkout does not have it. Every path above is a path inside the grill worktree.
 
-Cut no branch. Open no pull request, and make no `gh` call to find the default branch.
+**Every word or ADR** goes to that branch. Write it in the grill worktree, then commit, pull and push there, with `git -C <the grill worktree>` in front of each git step, so the checkout's branch never changes.
+
+Switch no branch in the checkout. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request from the spec's branch after the loop.
