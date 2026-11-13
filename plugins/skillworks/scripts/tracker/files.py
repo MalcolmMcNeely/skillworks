@@ -174,13 +174,13 @@ def spec_hash(body):
     return "sha256:" + hashlib.sha256(body.replace("\r\n", "\n").encode("utf-8")).hexdigest()
 
 
-def folders_in(store):
-    specs = Path(store) / SPECS
+def folders_in(sidecar):
+    specs = Path(sidecar) / SPECS
     return sorted(each for each in specs.iterdir() if each.is_dir()) if specs.is_dir() else []
 
 
-def folder_on_disk(store, spec):
-    named = [each for each in folders_in(store) if number_of(each.name) == spec]
+def folder_on_disk(sidecar, spec):
+    named = [each for each in folders_in(sidecar) if number_of(each.name) == spec]
     return named[0] if len(named) == 1 else None
 
 
@@ -199,26 +199,28 @@ class Files:
         self.target = target
         self.spec = spec
         self.clock = clock or Clock()
-        self.repo = ""
-        self.sidecar = None
-        # Keyed by the Sidecar's commit, so a store that has not changed is not read again.
+        self.opened = None
+        # Keyed by the Sidecar's commit, so a Sidecar that has not changed is not read again.
         self.read_at = {}
 
-    def store(self):
-        if self.sidecar is None:
-            self.sidecar = Sidecar.of(self.runner, self.where, self.clock)
-        return self.sidecar
+    def sidecar(self):
+        if self.opened is None:
+            self.opened = Sidecar.of(self.runner, self.where, self.clock)
+        return self.opened
 
     def git(self, *args):
-        return self.runner.run(["git", "-C", self.store().folder.as_posix()] + [str(a) for a in args])
+        return self.runner.run(["git", "-C", self.sidecar().folder.as_posix()] + [str(a) for a in args])
 
     def connect(self):
-        self.repo = self.store().folder.as_posix()
+        self.sidecar()
         return ""
+
+    def kept_in(self):
+        return self.sidecar().folder.as_posix()
 
     # A Sidecar no write has made yet holds nothing, and git run there would read the folder above it.
     def commit(self):
-        if not (self.store().folder / ".git").exists():
+        if not (self.sidecar().folder / ".git").exists():
             return ""
         said = self.git("rev-parse", "--verify", "--quiet", HEAD)
         return said.out.strip() if said.status == 0 else ""
@@ -237,7 +239,7 @@ class Files:
         held = self.read(spec)
         if held is None:
             raise refusal("The Sidecar at {} holds no folder for spec {}, so it names no branch "
-                          "for it.".format(self.store().folder.as_posix(), spec))
+                          "for it.".format(self.kept_in(), spec))
         if not held.branch:
             raise refusal("Spec {} names no branch in its spec.md frontmatter, and in PR mode the "
                           "loop Lands on that branch. /skillworks:grill writes it, or add it by "
@@ -349,10 +351,6 @@ class Files:
     def trailer(self, ticket):
         return self.reference(ticket)
 
-    # The Sidecar is the one place a ticket's state is kept, whichever worktree asks.
-    def state_in(self, ticket, worktree):
-        return self.state(ticket)
-
     def close_asked(self, ticket):
         return ("Ticket {0} is still open. Close it with tracker-close {0} and a note file saying "
                 "what was done and which tests prove it.\n".format(self.reference(ticket)))
@@ -361,7 +359,7 @@ class Files:
         held = self.read(spec)
         if held is None:
             raise refusal("The Sidecar at {} holds no spec {}.".format(
-                self.store().folder.as_posix(), spec))
+                self.kept_in(), spec))
         if ticket is None:
             return held.folder + "/" + SPEC_FILE
         found = [each for each in held.tickets if each.number == ticket]
@@ -394,9 +392,9 @@ class Files:
     def changed(self, spec, ticket, message, change):
         path = self.path_of(spec, ticket)
 
-        def written(store):
-            write_text(store / path, change(text_of(store / path)))
-        self.store().write(message, written)
+        def written(sidecar):
+            write_text(sidecar / path, change(text_of(sidecar / path)))
+        self.sidecar().write(message, written)
         return path
 
     def claim(self, ticket, wait):
@@ -429,20 +427,20 @@ class Files:
     def record_report(self, spec, heading, report, what):
         path = self.changed(spec, None, "Record the {} of spec {}".format(what, spec),
                             lambda text: with_last_section(text, heading, report))
-        return (self.store().folder / path).as_posix()
+        return (self.sidecar().folder / path).as_posix()
 
     # The number is read inside the lock, so two filings at once take two numbers.
     def file_ticket(self, spec, title, body):
         self.path_of(spec)
         filed = []
 
-        def file(store):
-            folder = folder_on_disk(store, spec) / TICKETS
+        def file(sidecar):
+            folder = folder_on_disk(sidecar, spec) / TICKETS
             number = highest_of([each.name for each in folder.iterdir()] if folder.is_dir() else []) + 1
             write_text(folder / "{:02d}-{}.md".format(number, slug_of(title)),
                        new_ticket_text(title, body))
             filed.append(str(number))
-        self.store().write("File ticket under spec {}: {}".format(spec, title), file)
+        self.sidecar().write("File ticket under spec {}: {}".format(spec, title), file)
         return filed[0]
 
     def write_tickets(self, spec, tickets):
@@ -451,20 +449,20 @@ class Files:
                           "first.".format(spec))
         written = []
 
-        def write(store):
-            folder = folder_on_disk(store, spec) / TICKETS
+        def write(sidecar):
+            folder = folder_on_disk(sidecar, spec) / TICKETS
             if folder.is_dir() and any(folder.iterdir()):
                 raise refusal("Spec {} already has tickets in the Sidecar, so none were "
                               "written.".format(spec))
             for name, text in tickets:
                 write_text(folder / name, text)
                 written.append((folder / name).as_posix())
-        self.store().write("Write the tickets of spec {}".format(spec), write)
+        self.sidecar().write("Write the tickets of spec {}".format(spec), write)
         return written
 
     # A new spec never takes a number whose log, journal or kept work the loop already holds.
     def used_by_loop_state(self):
-        main = self.store().main
+        main = self.sidecar().main
         state = main / LOOP_STATE
         folders = [each.name for each in state.iterdir() if each.is_dir()] if state.is_dir() else []
         branches = listed(self.runner.run(
@@ -480,8 +478,8 @@ class Files:
         text = "\n".join([FENCE] + fields + [FENCE, "", ""]) + body
         found = []
 
-        def write(store):
-            folders = folders_in(store)
+        def write(sidecar):
+            folders = folders_in(sidecar)
             for folder in folders:
                 held = frontmatter(text_of(folder / SPEC_FILE))[0] if (folder / SPEC_FILE).is_file() else {}
                 if held.get(HASH) == hashed and held.get(STATUS) == OPEN:
@@ -489,9 +487,9 @@ class Files:
                     return
             number = max([highest_of([each.name for each in folders])] + self.used_by_loop_state()) + 1
             named = "{}/{:04d}-{}".format(SPECS, number, slug)
-            write_text(Path(store) / named / SPEC_FILE, text)
+            write_text(Path(sidecar) / named / SPEC_FILE, text)
             found.append((str(number), named, True))
-        self.store().write("Write spec: {}".format(heading(body, slug)), write)
+        self.sidecar().write("Write spec: {}".format(heading(body, slug)), write)
         return found[0]
 
 

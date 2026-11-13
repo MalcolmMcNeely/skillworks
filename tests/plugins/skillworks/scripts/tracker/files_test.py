@@ -203,6 +203,12 @@ def test_a_spec_folder_committed_in_the_repo_is_not_read(driver):
     assert "cannot read spec 7" in said(ran)
 
 
+def test_a_spec_the_sidecar_does_not_hold_stops_the_loop_naming_the_sidecar(driver):
+    ran = driver.dry_run()
+
+    assert "ABORT cannot read spec 7 from {}".format(driver.sidecar.as_posix()) in said(ran)
+
+
 def test_in_pr_mode_the_dry_run_reads_the_tickets_from_the_sidecar(driver):
     write_loop(driver.repo.work, "pr")
     driver.put({

@@ -834,9 +834,9 @@ class Loop:
         if check == "axis-reported":
             return self.axis_reported(step.name, held)
         if check == "ticket-open":
-            return self.tracker.state_in(ticket, self.job_worktree) == "open", ""
+            return self.tracker.state(ticket) == "open", ""
         if check == "ticket-closed":
-            return self.tracker.state_in(ticket, self.job_worktree) == "closed", ""
+            return self.tracker.state(ticket) == "closed", ""
         if check == "tree-changed":
             return self.tree_of_job() != "", ""
         if check == "tree-clean":
@@ -1115,7 +1115,7 @@ class Loop:
 
         state = self.tracker.spec_state(self.spec)
         if state is None:
-            raise stop("ABORT cannot read spec {} from {}".format(self.spec_named(), self.tracker.repo))
+            raise stop("ABORT cannot read spec {} from {}".format(self.spec_named(), self.tracker.kept_in()))
         self.spec_title = self.tracker.spec_title(self.spec)
         if state != "open":
             raise stop("ABORT spec {} is {}. The loop needs it open.".format(self.spec_named(), state))
@@ -1291,7 +1291,7 @@ class Loop:
     def dry_run(self):
         # The files Tracker keeps no claims, so it names nobody to claim as.
         me = getattr(self.tracker, "me", "")
-        self.say("DRY   repo={}{}".format(self.tracker.repo, "  me=" + me if me else ""))
+        self.say("DRY   repo={}{}".format(self.tracker.kept_in(), "  me=" + me if me else ""))
         self.say("DRY   spec {}: {}".format(self.spec_named(), self.spec_title))
         self.read_shape()
 
@@ -1959,7 +1959,7 @@ class Loop:
         base = held.read_text(encoding="utf-8").strip()
 
         self.say("LOOP  spec {} from {} ({}) in {} mode".format(
-            self.spec_named(), base, self.tracker.repo, self.permission_mode))
+            self.spec_named(), base, self.tracker.kept_in(), self.permission_mode))
         self.run_baseline()
         self.moved(BUILDING if self.ticket_count else CUTTING)
 

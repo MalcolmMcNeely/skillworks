@@ -113,6 +113,9 @@ class GitHub:
         self.me = self.gh("api", "user", "--jq", ".login").out.strip()
         return ""
 
+    def kept_in(self):
+        return self.repo
+
     def field(self, issue, jq):
         return self.gh("api", "repos/{}/issues/{}".format(self.repo, issue), "--jq", jq)
 
@@ -137,10 +140,6 @@ class GitHub:
     def state(self, issue):
         read = self.field(issue, ".state")
         return read.out.strip() if read.status == 0 else None
-
-    # The issue is the one place a GitHub ticket's state is kept, whichever worktree asks.
-    def state_in(self, ticket, worktree):
-        return self.state(ticket)
 
     def close_asked(self, ticket):
         return ("Ticket #{} is still open. Close it with a comment saying what was done and "
