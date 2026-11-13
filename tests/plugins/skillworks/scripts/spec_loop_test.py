@@ -5369,7 +5369,8 @@ def given_a_run_that_lands(loop):
 
 # Held in this process, since the OS turns away a second handle on the Turn's file even from here.
 def holding_the_turn(loop):
-    turn = land_ticket.Turn.of(Subprocess(), loop.repo.work.as_posix(), "spec #200 ticket #199")
+    turn = land_ticket.Turn.of(Subprocess(), loop.repo.work.as_posix(), "main",
+                               "spec #200 ticket #199")
     turn.take(lambda holder: None)
     return turn
 

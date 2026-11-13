@@ -28,6 +28,7 @@
 # A script of its own, so the risky part can be proved against a throwaway
 # repository without running a session.
 
+import hashlib
 import json
 import os
 import re
@@ -100,18 +101,20 @@ class Conflict(NamedTuple):
         return "files={} hunks={} lines={}".format(self.files, self.hunks, self.lines)
 
 
-# The shared git folder, so every worktree of one clone meets the same Turn.
+# The shared git folder, so every worktree of one clone meets the same Turn for one branch.
 class Turn:
-    def __init__(self, folder, holder):
-        self.lock = FileLock(Path(folder) / "skillworks-turn")
-        self.holder_path = Path(folder) / "skillworks-turn-holder"
+    def __init__(self, folder, target, holder):
+        # A digest, because a branch name may hold a slash, and Windows folds the case of a name.
+        named = "skillworks-turn-" + hashlib.sha256(target.encode("utf-8")).hexdigest()
+        self.lock = FileLock(Path(folder) / named)
+        self.holder_path = Path(folder) / (named + "-holder")
         self.holder = holder
 
     @staticmethod
-    def of(runner, worktree, holder):
+    def of(runner, worktree, target, holder):
         said = runner.run(["git", "-C", worktree, "rev-parse", "--path-format=absolute",
                            "--git-common-dir"])
-        return Turn(said.out.strip(), holder)
+        return Turn(said.out.strip(), target, holder)
 
     def take(self, waiting):
         try:
@@ -550,7 +553,7 @@ class Landing:
 
     def land(self):
         self.verify()
-        turn = Turn.of(self.runner, self.worktree, self.holder())
+        turn = Turn.of(self.runner, self.worktree, self.target, self.holder())
         try:
             self.land_on(turn)
         finally:

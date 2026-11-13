@@ -330,7 +330,8 @@ wait of the whole check. It proves nothing: it keeps no Proof, and the loop neve
 _Avoid_: Spot check, narrow run, focused run
 
 **Turn**:
-The right to push to the Target branch, held by one loop at a time in one clone. A loop that lost a
+The right to push to one Target branch, held by one loop at a time in one clone. Each Target branch
+has a Turn of its own, so loops that Land on different branches never wait for each other. A loop that lost a
 push race waits for its Turn and holds it until it Lands, so the loops beside it cannot beat it again. A loop
 that has not lost takes its Turn only for the push. A Turn orders the loops of one clone and no
 others: a push from anywhere else can still beat it, and the loop tries again.

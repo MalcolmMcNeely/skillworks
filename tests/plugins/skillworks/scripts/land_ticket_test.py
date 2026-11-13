@@ -75,19 +75,20 @@ def busy(holder):
     print("busy", flush=True)
     sys.exit(0)
 
-turn = Turn.of(Subprocess(), sys.argv[2], sys.argv[3])
-turn.take(busy if sys.argv[4] in ("try", "grab") else lambda holder: None)
+turn = Turn.of(Subprocess(), sys.argv[2], sys.argv[3], sys.argv[4])
+turn.take(busy if sys.argv[5] in ("try", "grab") else lambda holder: None)
 print("held", flush=True)
-if sys.argv[4] in ("hold", "grab"):
+if sys.argv[5] in ("hold", "grab"):
     sys.stdin.read()
 turn.let_go()
 """
 
 
 class OtherLoop:
-    def __init__(self, repo, holder, how):
+    def __init__(self, repo, target, holder, how):
         self.process = subprocess.Popen(
-            [sys.executable, "-c", OTHER_LOOP, str(SCRIPTS), repo.work.as_posix(), holder, how],
+            [sys.executable, "-c", OTHER_LOOP, str(SCRIPTS), repo.work.as_posix(), target, holder,
+             how],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, encoding="utf-8")
         self.said = self.process.stdout.readline().strip()
 
@@ -100,8 +101,8 @@ class OtherLoop:
 def other_loops():
     started = []
 
-    def start(repo, holder="spec #200 ticket #199", how="hold"):
-        loop = OtherLoop(repo, holder, how)
+    def start(repo, holder="spec #200 ticket #199", how="hold", target=None):
+        loop = OtherLoop(repo, target or repo.target, holder, how)
         started.append(loop)
         return loop
 
@@ -915,7 +916,7 @@ def test_in_pr_mode_a_landing_that_lost_a_race_waits_for_the_turn_and_lands_on_t
     runner.refuse("push --quiet origin HEAD:" + SPEC_BRANCH, LOST_RACE, times=1)
     held = []
     out = Heard(WAITS, {"lost a race to " + SPEC_BRANCH: lambda: held.append(
-        other_loops(pr_mode, how="grab"))})
+        other_loops(pr_mode, how="grab", target=SPEC_BRANCH))})
 
     landing = Beside(runner, out, pr_mode.work, 163, target=SPEC_BRANCH)
     heard = landing.heard()
@@ -1070,6 +1071,40 @@ def test_the_turn_is_let_go_when_a_push_the_remote_turns_down_stops(repo, runner
 
     assert ran.status == 1
     assert the_turn_is_free(repo, other_loops)
+
+
+def test_a_loop_landing_on_another_branch_lands_while_a_loop_on_main_holds_its_turn(
+        pr_mode, runner, other_loops):
+    commit_for_ticket(pr_mode, 163)
+    head = head_of(pr_mode)
+    runner.refuse("push --quiet origin HEAD:" + SPEC_BRANCH, LOST_RACE, times=1)
+    on_main = other_loops(pr_mode, target="main")
+    # A landing that waits lets the loop on main go, so a shared Turn fails the case, not hangs it.
+    out = Heard(WAITS, {WAITS: on_main.let_go})
+
+    ran = Beside(runner, out, pr_mode.work, 163, target=SPEC_BRANCH).ended()
+
+    assert ran.status == 0, report(ran)
+    assert WAITS not in report(ran)
+    assert on_main.process.poll() is None
+    assert spec_branch_of(pr_mode) == head
+
+
+@pytest.mark.parametrize("other", ["spec-a", "spec_a", "spec/a/b", "spec", "Spec/A"])
+def test_a_branch_with_a_slash_has_a_turn_no_similar_name_shares(repo, other_loops, other):
+    other_loops(repo, target="spec/a")
+
+    beside = other_loops(repo, how="try", target=other)
+
+    assert beside.said == "held"
+
+
+def test_a_second_loop_on_a_branch_with_a_slash_waits_for_its_turn(repo, other_loops):
+    other_loops(repo, target="spec/a")
+
+    beside = other_loops(repo, how="try", target="spec/a")
+
+    assert beside.said == "busy"
 
 
 def test_uncommitted_work_is_refused(repo, runner):

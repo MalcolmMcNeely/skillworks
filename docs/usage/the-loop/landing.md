@@ -52,8 +52,9 @@ Nothing is pushed unless every step passes.
 Two loops in one clone can finish at the same time. Both push, and one loses: its push is turned down
 because the Target branch moved. That is a lost push race, and it is expected.
 
-The **Turn** is the right to push, held by one loop at a time in one clone. A loop takes the Turn only
-for its push. A loop that lost a race takes the Turn and keeps it from its next fetch until it Lands,
+The **Turn** is the right to push, held by one loop at a time in one clone. Each Target branch has a
+Turn of its own, so loops that Land on different branches never wait for each other. A loop takes the
+Turn only for its push. A loop that lost a race takes the Turn and keeps it from its next fetch until it Lands,
 so the loops beside it cannot beat it again. It goes back to fetch, rebases, runs the Suite, and
 pushes again, with no cap on tries.
 
