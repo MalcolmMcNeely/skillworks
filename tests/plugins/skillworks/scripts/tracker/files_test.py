@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import re
+import threading
 from pathlib import Path
 
 import pytest
@@ -23,10 +24,7 @@ SPEC = "7"
 FOLDER = ".specs/0007-local-tracker"
 SPEC_BRANCH = "spec/local-tracker"
 
-ME = "test@example.invalid"
 RIVAL = "rival@example.invalid"
-
-NO_TICKET = "DRY   no ticket is startable"
 
 
 def next_is(ticket):
@@ -44,12 +42,12 @@ def spec_file(status="open", branch=None, body=COUNTED):
     return "\n".join(lines + ["---", "", "# SPEC: A local tracker", "", body])
 
 
-def ticket_file(title, status="open", blocked_by=(), claimed_by=""):
+def ticket_file(title, status="open", blocked_by=(), more=()):
     return "\n".join([
         "---",
         "status: " + status,
         "blocked-by: [{}]".format(", ".join(str(number) for number in blocked_by)),
-        "claimed-by: " + claimed_by,
+        *more,
         "---",
         "",
         "# " + title,
@@ -86,14 +84,13 @@ def refs_of(repo):
     return git(repo.origin, "for-each-ref", "--format=%(refname) %(objectname)")
 
 
-# A run with a claude that answers nothing stops at the build, after its claim is in the Sidecar.
-def run_loop(runner, checkout, *flags):
+def run_loop(runner, checkout, *flags, spec=SPEC):
     if "claude" not in runner.stubs:
         runner.stub("claude")
     write_steering(checkout)
     out, err = io.StringIO(), io.StringIO()
     with contextlib.chdir(checkout):
-        status = spec_loop.main([SPEC, *flags], runner, out, err, lambda seconds: None,
+        status = spec_loop.main([spec, *flags], runner, out, err, lambda seconds: None,
                                 HeldClock())
     return Ran(status, out.getvalue(), err.getvalue())
 
@@ -107,8 +104,27 @@ class Driver:
     def dry_run(self):
         return run_loop(self.runner, self.repo.work, "--dry-run")
 
-    def run(self):
-        return run_loop(self.runner, self.repo.work)
+    def run(self, spec=SPEC):
+        return run_loop(self.runner, self.repo.work, spec=spec)
+
+    # The first loop's Session holds until the case lets it go, so the loop is running while the case acts.
+    @contextlib.contextmanager
+    def running(self, spec=SPEC):
+        holding, release = threading.Event(), threading.Event()
+        runner = RecordingRunner()
+
+        def session():
+            holding.set()
+            release.wait()
+        runner.stub("claude", does=session)
+        first = threading.Thread(target=run_loop, args=(runner, self.repo.work), kwargs={"spec": spec})
+        first.start()
+        try:
+            assert holding.wait(120), "the first loop never reached a Session"
+            yield
+        finally:
+            release.set()
+            first.join()
 
     # Written as the Tracker writes, one commit under the lock, so the loop reads it as it would its own.
     def put(self, files):
@@ -124,9 +140,6 @@ class Driver:
 
     def status_of(self, path):
         return self.field(path, "status")
-
-    def claimed(self, name):
-        return self.field(ticket_path(name), "claimed-by")
 
 
 @pytest.fixture
@@ -164,7 +177,7 @@ def test_a_ticket_whose_blocker_is_open_is_not_picked_until_the_sidecar_closes_i
     blocker = ticket_path("01-read-loop-json")
     driver.put({
         FOLDER + "/spec.md": spec_file(),
-        blocker: ticket_file("Read loop.json", claimed_by="someone@example.invalid"),
+        blocker: ticket_file("Read loop.json"),
         ticket_path("02-close-in-worktree"): ticket_file("Close in the worktree", blocked_by=[1]),
     })
 
@@ -172,7 +185,7 @@ def test_a_ticket_whose_blocker_is_open_is_not_picked_until_the_sidecar_closes_i
     driver.put({blocker: ticket_file("Read loop.json", status="closed")})
     unblocked = driver.dry_run()
 
-    assert NO_TICKET in blocked.out, said(blocked)
+    assert next_is(1) in blocked.out, said(blocked)
     assert next_is(2) in unblocked.out, said(unblocked)
 
 
@@ -211,30 +224,92 @@ def two_free_tickets():
     }
 
 
-def test_a_claim_sets_claimed_by_in_the_sidecar_and_pushes_nothing(driver):
+def test_a_run_writes_nothing_to_the_ticket_it_starts_and_pushes_nothing(driver):
     driver.put(two_free_tickets())
     before = refs_of(driver.repo)
 
     ran = driver.run()
 
     assert "START 7/1" in ran.out, said(ran)
-    assert (driver.claimed("01-read-loop-json"), driver.claimed("02-close-in-worktree")) == (ME, "")
-    assert refs_of(driver.repo) == before
+    assert (driver.held(ticket_path("01-read-loop-json")), refs_of(driver.repo)) == (
+        ticket_file("Read loop.json"), before)
 
 
-def test_a_ticket_another_loop_claimed_is_not_picked(driver):
+def test_a_ticket_file_that_still_names_a_claim_is_picked_as_any_other(driver):
     driver.put(two_free_tickets())
-    driver.put({ticket_path("01-read-loop-json"): ticket_file("Read loop.json", claimed_by=RIVAL)})
+    driver.put({ticket_path("01-read-loop-json"): ticket_file(
+        "Read loop.json", more=["claimed-by: " + RIVAL])})
 
     ran = driver.run()
 
-    assert "START 7/2" in ran.out, said(ran)
-    assert "START 7/1" not in ran.out
-    assert (driver.claimed("01-read-loop-json"), driver.claimed("02-close-in-worktree")) == (
-        RIVAL, ME)
+    assert "START 7/1" in ran.out, said(ran)
 
 
-def test_in_pr_mode_a_spec_that_names_no_branch_stops_before_a_claim_and_says_the_grill_writes_it(
+def test_git_with_no_user_email_does_not_stop_the_loop(driver, tmp_path, monkeypatch):
+    empty = tmp_path / "no-identity.gitconfig"
+    empty.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", empty.as_posix())
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    git(driver.repo.work, "config", "--unset", "user.email")
+    git(driver.repo.work, "config", "--unset", "user.name")
+    driver.put(two_free_tickets())
+
+    ran = driver.run()
+
+    assert "START 7/1" in ran.out, said(ran)
+
+
+# --- one loop to a spec on this machine --------------------------------------
+
+def test_a_second_loop_on_a_spec_with_a_loop_running_stops_before_it_builds_and_names_the_log(driver):
+    driver.put(two_free_tickets())
+
+    with driver.running():
+        ran = driver.run()
+
+    assert (ran.status, "START" in ran.out) == (1, False), said(ran)
+    assert "spec 7 already has a loop running on this machine" in said(ran)
+    assert ".spec-loop/7/loop.log" in said(ran)
+
+
+def test_a_second_loop_on_a_spec_from_another_worktree_of_the_clone_stops_and_names_the_first_log(
+        driver, tmp_path):
+    driver.put(two_free_tickets())
+    other = tmp_path / "other"
+    git(driver.repo.work, "worktree", "add", "--quiet", "--detach", other.as_posix())
+    write_loop(other, "main")
+    first_log = (driver.repo.work / ".spec-loop" / SPEC / "loop.log").as_posix()
+
+    with driver.running():
+        ran = run_loop(RecordingRunner(), other)
+
+    assert (ran.status, "START" in ran.out) == (1, False), said(ran)
+    assert first_log in said(ran)
+
+
+def test_a_loop_on_a_spec_whose_earlier_loop_has_ended_starts(driver):
+    driver.put(two_free_tickets())
+    driver.run()
+
+    ran = driver.run()
+
+    assert "START 7/1" in ran.out, said(ran)
+
+
+def test_two_loops_on_two_specs_start_side_by_side(driver):
+    driver.put(two_free_tickets())
+    driver.put({
+        ".specs/0008-another/spec.md": spec_file(),
+        ".specs/0008-another/tickets/01-another.md": ticket_file("Another"),
+    })
+
+    with driver.running():
+        ran = driver.run(spec="8")
+
+    assert "START 8/1" in ran.out, said(ran)
+
+
+def test_in_pr_mode_a_spec_that_names_no_branch_stops_before_a_ticket_and_says_the_grill_writes_it(
         driver):
     write_loop(driver.repo.work, "pr")
     driver.put({
@@ -244,7 +319,7 @@ def test_in_pr_mode_a_spec_that_names_no_branch_stops_before_a_claim_and_says_th
 
     ran = driver.run()
 
-    assert (ran.status, driver.claimed("01-read-loop-json")) == (1, "")
+    assert (ran.status, "START" in ran.out) == (1, False)
     assert "branch in its spec.md frontmatter" in said(ran)
     assert "/skillworks:grill writes it" in said(ran)
 
@@ -666,14 +741,14 @@ def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(d
 GAPS = "## What to build\n\nS2: Missing.\n"
 
 
-def test_a_filed_ticket_is_written_next_in_number_open_and_unclaimed(driver):
+def test_a_filed_ticket_is_written_next_in_number_and_open(driver):
     driver.put(two_free_tickets())
 
     number = files_tracker(driver).file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
 
     assert number == "3"
     assert driver.held(ticket_path("03-ticket-build-the-gaps")) == (
-        "---\nstatus: open\nblocked-by: []\nclaimed-by: \n---\n\n"
+        "---\nstatus: open\nblocked-by: []\n---\n\n"
         "# TICKET: Build the Gaps\n\n" + GAPS)
 
 
@@ -767,7 +842,7 @@ def test_a_spec_still_without_tickets_after_the_cut_stops_in_the_files_trackers_
     assert not speaks_github(said(ran)), said(ran)
 
 
-def test_a_spec_in_another_shape_is_turned_down_before_its_first_ticket_is_claimed(driver):
+def test_a_spec_in_another_shape_is_turned_down_before_its_first_ticket_starts(driver):
     driver.put({
         FOLDER + "/spec.md": spec_file(body="## User Stories\n\n1. One.\n3. Three.\n"),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -778,7 +853,7 @@ def test_a_spec_in_another_shape_is_turned_down_before_its_first_ticket_is_claim
     assert ran.status == 1
     assert "## User Stories skips 2: it goes from 1 to 3" in said(ran)
     assert "the spec has no ## Implementation Decisions heading" in said(ran)
-    assert driver.claimed("01-read-loop-json") == ""
+    assert "START" not in ran.out
 
 
 def test_a_spec_that_cannot_be_read_is_refused_naming_no_github_repo(driver):

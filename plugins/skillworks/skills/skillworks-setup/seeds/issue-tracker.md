@@ -115,7 +115,6 @@ Each file opens with frontmatter. A ticket's body follows "The ticket shape".
 ---
 status: open
 blocked-by: [1]
-claimed-by:
 ---
 
 # TICKET: Close the ticket in the worktree
@@ -123,7 +122,6 @@ claimed-by:
 
 - **`status`**: `open` or `closed`, on `spec.md` and on each ticket.
 - **`blocked-by`**: the numbers of the tickets in the same spec that this one waits for.
-- **`claimed-by`**: the `user.email` of the loop that took the ticket. The loop sets it. Leave it empty.
 - **`branch`**: on `spec.md` alone, when `target-branch` says `pr`. It names the spec's own branch, and the loop Lands each ticket there.
 - **`hash`**: on `spec.md` alone. `tracker-publish` writes it, so a rerun finds the spec it already wrote.
 
@@ -137,7 +135,7 @@ A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<t
 - **List what is open**: each folder in `.specs/` in the Sidecar whose `spec.md` says `status: open`, and in each one the tickets that are startable. `tracker-show` prints each file.
 - **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command puts it at the end of the spec's `spec.md` in place of any earlier one, since there is no issue to comment on. The loop reads it back from there. `/skillworks:spec-drift` says how.
 - **Record a Name report**: `tracker-publish names <spec> <file>`. The file opens with `## Name report`, and the command puts it below the drift report in place of any earlier one. A new drift report takes it away, since a new drift check starts the judging again. `/skillworks:spec-names` says how.
-- **Claim a ticket**: the loop does it, with a commit in the Sidecar that sets `claimed-by`.
+- **Claim a ticket**: there are no claims. The Sidecar serves one machine, and `spec-loop` refuses to start a spec that already has a loop running on it, so no two loops build the same ticket.
 - **Close a ticket**: `tracker-close <spec>/<ticket> <note-file>`. It sets `status: closed` and puts the note at the end of the ticket's file, under `## Closing note`. On a ticket already closed it changes nothing and says so.
 
 ### The two conventions, with files

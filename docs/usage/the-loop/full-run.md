@@ -10,7 +10,9 @@ It runs once, at the end, after the drift check, its count and [the Name check](
 When the count finds a Gap, it runs after [the Gap round](drift-check.md#the-gap-round) too, and when the Name
 check finds a rename, after [the Name re-check](name-check.md#the-name-re-check). It is the slowest step, so it
 runs only on the finished spec. It runs when the loop stopped early too, whether at a ticket, at the
-count or at the Name check, because the tickets that landed are on the Target branch all the same.
+count or at the Name check, because the tickets that landed are on the Target branch all the same. A second loop on a spec
+that [already has a loop running](stops.md) stops before it builds anything. It has landed nothing,
+so it has no full run.
 
 The full run trusts no Proof and uses no image, so every check runs on your own machine. A check that
 goes red there loses all its Proofs, so a stale Proof cannot skip it again.

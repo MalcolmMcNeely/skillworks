@@ -26,17 +26,17 @@ Each Surface in the spec's Surfaces section goes into the ticket whose change ne
 updates a Surface, so every ticket that Lands leaves each Surface in step.
 
 Before the script starts work, it checks that `claude` is on `PATH`, and that the spec is open.
-With `github`, it checks that `gh` is logged in. With `files`, it checks that git has a
-`user.email`, because it claims each ticket in that name. It records where the Target branch stood
+With `github`, it checks that `gh` is logged in. It checks that no other loop on this machine is
+running the same spec, as [the Tracker](tracker.md#one-loop-to-a-spec-and-a-close) says. It records where the Target branch stood
 on `origin` in `.spec-loop/<spec>/base.sha`. That file is written once, so a restarted run still
 measures from where the first run began.
 
 **Picking a ticket** is a query, not a judgement. The script takes the spec's first open ticket that
-has no open blocker and that nobody has claimed.
+has no open blocker and, with `github`, that nobody has claimed.
 
 **Claiming** it, with `github`, assigns itself, waits three seconds, and reads the assignees back.
-Another name there means it lets the ticket go and moves on. With `files`, a claim is a commit in the
-Sidecar, as [the Tracker](tracker.md#a-claim-and-a-close) says.
+Another name there means it lets the ticket go and moves on. With `files`, there are no claims, as
+[the Tracker](tracker.md#one-loop-to-a-spec-and-a-close) says.
 
 Open tickets that are all blocked or claimed by someone else stop the run with a `STUCK` line.
 

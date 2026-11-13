@@ -99,7 +99,6 @@ A ticket, `.specs/0007-local-tracker/tickets/02-close-in-worktree.md`:
 ---
 status: open
 blocked-by: [1]
-claimed-by:
 ---
 
 # TICKET: Close the ticket in the Sidecar
@@ -121,19 +120,23 @@ The ticket's Session closes its own ticket with tracker-close.
 |---|---|---|---|
 | `status` | `spec.md` and each ticket | `open` or `closed`. | `to-spec` and `to-tickets` write `open`. The loop closes it. |
 | `blocked-by` | Each ticket | The numbers of the tickets in the same spec that must close first. | `to-tickets`. |
-| `claimed-by` | Each ticket | The `user.email` of the loop that took the ticket. | The loop. Leave it empty. |
 | `branch` | `spec.md`, when `target-branch` says `pr` | The spec's own branch. The loop Lands each ticket there. | `to-spec`. |
 | `hash` | `spec.md` | A hash of the spec, so a second run of `to-spec` finds the spec it already wrote and writes none. | `to-spec`. |
 
 You can edit a file by hand, like any other file. Commit the edit in the Sidecar, because the loop
 reads what the Sidecar has committed.
 
-## A claim and a close
+## One loop to a spec, and a close
 
 - **Reading.** The loop reads `.specs/` in the Sidecar. It never fetches from `origin` to find a spec.
-- **Picking.** A ticket can start when it is open, nobody has claimed it, and each ticket in its
-  `blocked-by` is closed.
-- **Claiming.** The loop sets `claimed-by: <your user.email>` in a commit in the Sidecar.
+- **Picking.** A ticket can start when it is open, and each ticket in its `blocked-by` is closed.
+- **No claims.** The files Tracker keeps no claims. Every loop on one machine runs as the same person,
+  so a claim could not tell two loops apart. The loop writes nothing to a ticket when it takes it, and
+  it does not read your git `user.email`.
+- **One loop to a spec.** `spec-loop` refuses to start a spec that already has a loop running on this
+  machine. It stops before it builds anything, and names the spec and the running loop's log. Watch
+  that loop, or wait for it to end. A loop that has ended, or that died, holds the spec no longer.
+  Loops on two different specs run side by side.
 - **Closing a ticket.** `finish` commits the code, and then runs `tracker-close 7/2 <note-file>`. That
   sets `status: closed` and adds a `## Closing note` at the end of the ticket file. The note holds
   what the Closing note holds on GitHub: what was done, which tests prove it, and which checks did

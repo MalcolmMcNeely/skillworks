@@ -127,6 +127,16 @@ ABORT spec #200 is not in the shape the loop counts, so no ticket was started.
       /skillworks:grill writes a spec in the shape the loop counts. Write it in that shape, and run the loop again.
 ```
 
+**A second loop on a spec.** Before anything else, the script checks that no other loop on this
+machine is running the same spec. Two loops on one spec would build the same ticket, so the second
+one stops before it builds anything. It writes nothing to the running loop's log. The `ABORT` line
+names the spec and the running loop's log. Watch that loop, or run this one again once it has ended.
+A loop on another spec is not stopped:
+
+```
+ABORT spec 7 already has a loop running on this machine, so this one started nothing. Read the running loop's log at C:/code/shop/.spec-loop/7/loop.log
+```
+
 **A rule with no import.** Before any ticket, and before a dry run prints its plan, the script checks
 that `CLAUDE.md` imports each rule in `docs/skillworks/rules/`. It reads both from the repo's top level.
 A rule with no import would not load into any step, so the loop stops. The `ABORT` line names the

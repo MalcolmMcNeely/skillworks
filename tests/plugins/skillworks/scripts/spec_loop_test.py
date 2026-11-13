@@ -5114,7 +5114,7 @@ def test_the_tickets_page_holds_the_cut_picking_claiming_and_the_worktrees():
     assert "\n## Worktrees and Job branches\n" in text
     assert "the **Cut**" in page
     assert "**Picking a ticket** is a query, not a judgement." in page
-    assert "as [the Tracker](tracker.md#a-claim-and-a-close) says." in page
+    assert "as [the Tracker](tracker.md#one-loop-to-a-spec-and-a-close) says." in page
     assert "| The Job branch | `spec-loop/<spec>/ticket-<n>` |" in text
     overview = (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")
     assert "### The tickets" not in overview
@@ -5181,10 +5181,36 @@ def test_the_tracker_page_explains_the_files_tracker_beside_github():
 
     assert text.startswith("# The Tracker\n")
     for named in ["`docs/skillworks/loop.json`", "`tracker`", "`github`", "`files`", "`.specs/`",
-                  "status: open", "blocked-by:", "claimed-by:", "gitignored", "## Closing note"]:
+                  "status: open", "blocked-by:", "gitignored", "## Closing note"]:
         assert named in text, named
     assert "Pick `github` when" in text
     assert "Pick `files` when" in text
+
+
+def test_the_tracker_page_says_the_files_tracker_keeps_no_claims_and_runs_one_loop_to_a_spec():
+    text = (ROOT / TRACKER_PAGE).read_text(encoding="utf-8")
+    page = " ".join(text.split())
+
+    assert "claimed-by" not in text
+    for named in ["The files Tracker keeps no claims.",
+                  "`spec-loop` refuses to start a spec that already has a loop running on this machine."]:
+        assert named in page, named
+
+
+@pytest.mark.parametrize("page", [STOPS_PAGE, FULL_RUN_PAGE, READING_A_RUN_PAGE])
+def test_a_page_about_the_run_says_a_second_loop_on_a_spec_is_refused(page):
+    text = " ".join((ROOT / page).read_text(encoding="utf-8").split())
+
+    assert "already has a loop running" in text
+
+
+@pytest.mark.parametrize("copy", ["docs/skillworks/issue-tracker.md",
+                                  "plugins/skillworks/skills/skillworks-setup/seeds/issue-tracker.md",
+                                  "plugins/skillworks/skills/to-tickets/SKILL.md"])
+def test_no_copy_of_the_tracker_rules_asks_for_claimed_by(copy):
+    text = (ROOT / copy).read_text(encoding="utf-8")
+
+    assert "claimed-by" not in text
 
 
 def test_the_grill_page_gives_the_counted_shape():

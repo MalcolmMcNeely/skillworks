@@ -70,7 +70,7 @@ Iterate until the user approves the breakdown.
 
 Publishing needs a spec on the Tracker, because `tracker-publish` takes the spec's number and every ticket hangs from that spec. When the work has no spec there, such as a plan that lives only in this conversation, publish nothing. Tell the user that no ticket was made, and that `/skillworks:grill` ends in a spec these tickets can be cut from.
 
-Publish the tickets you showed, with the same files and the same command for both Trackers. Write one file per ticket with the Write tool, to the folder `.spec-loop/<spec>/tickets/` in this checkout, named `<NN>-<slug>.md` and numbered from `01` in dependency order, blockers first. Each file opens with the frontmatter the tracker docs show: `status: open`, `blocked-by` listing the numbers of the tickets that block it, such as `blocked-by: [1, 2]`, and `claimed-by` left empty, because the loop sets it. The ticket shape's title and body follow, the title as a `# ` heading. Then publish every file in one call:
+Publish the tickets you showed, with the same files and the same command for both Trackers. Write one file per ticket with the Write tool, to the folder `.spec-loop/<spec>/tickets/` in this checkout, named `<NN>-<slug>.md` and numbered from `01` in dependency order, blockers first. Each file opens with the frontmatter the tracker docs show: `status: open`, `blocked-by` listing the numbers of the tickets that block it, such as `blocked-by: [1, 2]`. The ticket shape's title and body follow, the title as a `# ` heading. Then publish every file in one call:
 
 ```bash
 tracker-publish tickets <spec> <file>...
@@ -78,7 +78,7 @@ tracker-publish tickets <spec> <file>...
 
 Git ignores `.spec-loop/`, so the files leave the checkout clean. Write nowhere outside the checkout, and make no temp folder: the loop's Cut runs this skill in a Session that has no permission for either, and nobody is there to give it.
 
-Before it writes anything, it turns down a set the loop could not follow: a file with no number, two files with one number, a ticket not `open`, a `claimed-by` already set, a blocker that is not a ticket before it, or two tickets with one title. The refusal names the file and the fault, so mend that file and run the command again.
+Before it writes anything, it turns down a set the loop could not follow: a file with no number, two files with one number, a ticket not `open`, a blocker that is not a ticket before it, or two tickets with one title. The refusal names the file and the fault, so mend that file and run the command again.
 
 - **`files`**: it pushes the files into the spec's `tickets/` folder, on the spec's branch in PR mode. The folder is the parent relationship, so nothing more links a ticket to its spec. It turns down a spec that already has tickets, so a second run adds nothing.
 - **`github`**: it files each ticket blockers first as an issue with the `ready-for-agent` label, makes it a sub-issue of the spec, turns its `blocked-by` into blocking links, and prints each issue number. `/skillworks:spec-loop` reads a spec's sub-issues to find its own work, so the link is what keeps two people's loops off each other's tickets. It is safe to run again: a rerun files only the tickets still missing and adds only the missing links, and after a full success it changes nothing and says so. When it stops on a failed `gh` call, run it again.

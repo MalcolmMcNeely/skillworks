@@ -38,6 +38,7 @@ from typing import Callable, NamedTuple
 
 import land_ticket
 import ticket_worktree
+from filelock import FileLock, Timeout
 from branches.open_the_pull_request import open_the_pull_request
 from clock.clock import Clock
 from count.gap_ticket import gap_ticket
@@ -54,6 +55,7 @@ from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHE
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
 from seed_steering import missing_steering
+from sidecar.sidecar import main_checkout_of
 from steering.adr_folder import missing_adr_folder
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
@@ -68,6 +70,9 @@ USAGE = "usage: spec-loop <spec-issue-number> [--dry-run] [--bypass]\n"
 FLAGS = ("--dry-run", "--bypass")
 
 BYPASS_MODE = "bypassPermissions"
+
+RUNNING_LOCK = "running.lock"
+RUNNING_LOG = "running.log-path"
 
 FULL_RUN = ticket_worktree.FULL_RUN
 
@@ -548,6 +553,10 @@ class Loop:
         self.position_turn = threading.Lock()
         self.last_position = None
         self.stop_heartbeat = None
+
+        self.held_spec = None
+        # A second loop writes nothing of its own, so the running loop's log and Position stay its own.
+        self.second = False
 
     # --- the Position --------------------------------------------------------
 
@@ -1263,7 +1272,9 @@ class Loop:
         return plan
 
     def dry_run(self):
-        self.say("DRY   repo={}  me={}".format(self.tracker.repo, self.tracker.me))
+        # The files Tracker keeps no claims, so it names nobody to claim as.
+        me = getattr(self.tracker, "me", "")
+        self.say("DRY   repo={}{}".format(self.tracker.repo, "  me=" + me if me else ""))
         self.say("DRY   spec {}: {}".format(self.spec_named(), self.spec_title))
         self.read_shape()
 
@@ -1859,6 +1870,28 @@ class Loop:
     def read_target(self):
         return target_branch_for(self.runner, self.root, self.spec, self.tracker)
 
+    # The OS frees the hold when the process dies, and the main checkout is where every worktree of the clone meets it.
+    def hold_the_spec(self):
+        held = main_checkout_of(self.runner, self.root) / ".spec-loop" / self.spec
+        held.mkdir(parents=True, exist_ok=True)
+        self.held_spec = FileLock(held / RUNNING_LOCK, thread_local=False)
+        try:
+            self.held_spec.acquire(blocking=False)
+        except Timeout:
+            self.held_spec = None
+            self.second = True
+            # Windows holds the lock file shut, so the running loop names its log in a file beside it.
+            named = held / RUNNING_LOG
+            log = named.read_text(encoding="utf-8").strip() if named.is_file() else self.log.as_posix()
+            raise stop("ABORT spec {} already has a loop running on this machine, so this one "
+                       "started nothing. Read the running loop's log at {}\n".format(self.spec, log))
+        written(held / RUNNING_LOG, self.log.as_posix())
+
+    def let_go_of_the_spec(self):
+        if self.held_spec is not None:
+            self.held_spec.release()
+            self.held_spec = None
+
     def run(self, dry):
         # No guard on the branch or on the edits: nothing is ever built in this checkout.
         found = self.git(Path.cwd(), "rev-parse", "--show-toplevel")
@@ -1870,6 +1903,8 @@ class Loop:
         self.log = self.log_dir / "loop.log"
         self.journal = self.log_dir / "journal.jsonl"
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        if not dry:
+            self.hold_the_spec()
         self.writes_position = not dry
 
         self.preflight()
@@ -1946,7 +1981,7 @@ def main(argv, runner, out, err, wait, clock):
         loop.moved(FINISHED)
         return 0
     except Stop as stopped:
-        if stopped.status == MISUSED or loop is None:
+        if stopped.status == MISUSED or loop is None or loop.second:
             err.write(stopped.said)
         else:
             # A refusal from a script the loop reads ends its line itself, and say ends it again.
@@ -1972,6 +2007,7 @@ def main(argv, runner, out, err, wait, clock):
         # An interrupt passes both handlers, and a beat after it would show a dead loop as live.
         if loop is not None:
             loop.heartbeat_stopped()
+            loop.let_go_of_the_spec()
 
 
 if __name__ == "__main__":

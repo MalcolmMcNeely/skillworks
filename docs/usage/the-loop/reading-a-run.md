@@ -31,6 +31,10 @@ date or time of its own.
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
 
+A spec that already has a loop running on this machine gets no `SHAPE` line. The second loop prints
+one `ABORT` line that names the spec and the running loop's log, writes nothing to that log, and
+stops. Read the log it names to follow the loop that is running.
+
 A spec with no tickets gets a `CUT` line after it. The slices the Cut showed follow it, as that
 Session wrote them, and then the first `START` line:
 

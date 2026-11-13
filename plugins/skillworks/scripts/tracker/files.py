@@ -14,7 +14,6 @@ SPECS = ".specs"
 SPEC_FILE = "spec.md"
 TICKETS = "tickets"
 FENCE = "---"
-CLAIMED_BY = "claimed-by"
 STATUS = "status"
 CLOSED = "closed"
 CLOSING_NOTE = "## Closing note"
@@ -35,7 +34,6 @@ class Ticket(NamedTuple):
     number: str
     status: str
     blocked_by: list
-    claimed_by: str
     title: str
     path: str
 
@@ -153,7 +151,7 @@ def slug_of(title):
 
 
 def new_ticket_text(title, body):
-    return "\n".join([FENCE, STATUS + ": open", "blocked-by: []", CLAIMED_BY + ": ", FENCE, "",
+    return "\n".join([FENCE, STATUS + ": open", "blocked-by: []", FENCE, "",
                       "# " + title, "", body.replace("\r\n", "\n").strip("\n"), ""])
 
 
@@ -202,7 +200,6 @@ class Files:
         self.spec = spec
         self.clock = clock or Clock()
         self.repo = ""
-        self.me = ""
         self.sidecar = None
         # Keyed by the Sidecar's commit, so a store that has not changed is not read again.
         self.read_at = {}
@@ -217,9 +214,6 @@ class Files:
 
     def connect(self):
         self.repo = self.store().folder.as_posix()
-        self.me = self.runner.run(["git", "-C", self.where, "config", "user.email"]).out.strip()
-        if not self.me:
-            return "git has no user.email, and the files Tracker claims each ticket in that name"
         return ""
 
     # A Sidecar no write has made yet holds nothing, and git run there would read the folder above it.
@@ -274,7 +268,7 @@ class Files:
             ticket, text = frontmatter(self.shown(path))
             tickets.append(Ticket(number, ticket.get(STATUS, ""),
                                   as_numbers(ticket.get("blocked-by", [])),
-                                  ticket.get(CLAIMED_BY, ""), heading(text, name[:-3]), path))
+                                  heading(text, name[:-3]), path))
         tickets.sort(key=lambda ticket: int(ticket.number))
         return Spec(held.get(STATUS, ""), heading(body, folder.rsplit("/", 1)[-1]), tickets, body,
                     held.get(BRANCH, ""), folder)
@@ -323,11 +317,9 @@ class Files:
         found = self.ticket(ticket)
         return sum(1 for blocker in found.blocked_by if blocker not in closed) if found else None
 
+    # The Sidecar serves one machine, where spec-loop runs one loop to a spec, so no other loop holds a ticket.
     def claimed_by_others(self, ticket):
-        found = self.ticket(ticket)
-        if found is None or found.claimed_by == self.me:
-            return ""
-        return found.claimed_by
+        return ""
 
     # A ticket number is local to its spec, so the spec comes with it wherever it is named.
     def reference(self, ticket):
@@ -397,17 +389,7 @@ class Files:
         return path
 
     def claim(self, ticket, wait):
-        taken = []
-
-        def claimed(text):
-            holder = frontmatter(text)[0].get(CLAIMED_BY, "")
-            if holder:
-                taken.append(holder)
-                return text
-            return with_field(text, CLAIMED_BY, self.me)
-        self.changed(self.spec, ticket, "Claim ticket {} of spec {} for {}".format(
-            ticket, self.spec, self.me), claimed)
-        return "" if not taken or taken[0] == self.me else taken[0]
+        return ""
 
     def close(self, ticket, note):
         section = CLOSING_NOTE + "\n\n" + note.replace("\r\n", "\n").strip("\n") + "\n"

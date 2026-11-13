@@ -8,6 +8,8 @@ from stop import refusal
 SUFFIX = "-skillworks"
 LOCK = ".skillworks-lock"
 WAIT_SECONDS = 1
+AUTHOR = "Skillworks"
+AUTHOR_EMAIL = "skillworks@localhost"
 
 
 # Git lists the main checkout first, so every worktree of one clone finds the same Sidecar.
@@ -73,16 +75,14 @@ class Sidecar:
         taken.wait()
         stop()
 
-    # Commits as the main checkout's author, and no remote verifies a signature.
+    # An identity of its own, so a machine whose git names nobody still commits, and no remote verifies a signature.
     def make(self):
         self.git("init", "--quiet")
         (self.folder / ".git" / "info").mkdir(exist_ok=True)
         with (self.folder / ".git" / "info" / "exclude").open("a", encoding="utf-8", newline="\n") as exclude:
             exclude.write("/{}\n".format(LOCK))
-        for name in ("user.name", "user.email"):
-            said = self.runner.run(["git", "-C", self.main.as_posix(), "config", "--get", name])
-            if said.status == 0 and said.out.strip():
-                self.git("config", name, said.out.strip())
+        self.git("config", "user.name", AUTHOR)
+        self.git("config", "user.email", AUTHOR_EMAIL)
         self.git("config", "commit.gpgsign", "false")
 
     def git(self, *args):

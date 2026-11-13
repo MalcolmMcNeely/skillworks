@@ -8,7 +8,7 @@ from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.target_branch import LOOP_FILE, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
-from tracker.files import CLAIMED_BY, FENCE, STATUS, as_numbers, frontmatter, number_of
+from tracker.files import FENCE, STATUS, as_numbers, frontmatter, number_of
 from tracker.github import BRANCH_HEADING, GitHub, NewTicket
 from tracker.reading import DRIFT_REPORT, NAME_REPORT
 
@@ -103,9 +103,6 @@ def checked_tickets(where, paths):
         held, _ = frontmatter(text)
         if held.get(STATUS) != "open":
             raise refusal("{} needs status: open in its frontmatter.".format(name))
-        if held.get(CLAIMED_BY):
-            raise refusal("{} names claimed-by, which the loop sets as it takes the ticket. Leave "
-                          "it empty.".format(name))
         for blocker in as_numbers(held.get("blocked-by", [])):
             if blocker not in named or int(blocker) >= int(number):
                 raise refusal("{} is blocked by {}, which is not a ticket before it. Number the "

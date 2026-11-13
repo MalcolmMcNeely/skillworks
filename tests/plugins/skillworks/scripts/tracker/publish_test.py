@@ -282,12 +282,21 @@ def test_tickets_for_a_spec_with_no_folder_are_turned_down(writer):
     assert "9" in ran.err
 
 
+def test_a_ticket_that_names_a_claim_is_written_as_given_because_nothing_reads_one(writer):
+    writer.spec()
+    claimed = ticket_file("TICKET: A", more=["claimed-by: someone@example.invalid"])
+
+    ran = writer.tickets("1", {"01-a.md": claimed})
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/tickets/01-a.md") == claimed
+
+
 UNFOLLOWABLE = [
     ({"01-a.md": ticket_file("TICKET: A", blocked_by=[2]), "02-b.md": ticket_file("TICKET: B")},
      "dependency order"),
     ({"01-a.md": ticket_file("TICKET: A", blocked_by=[3])}, "dependency order"),
     ({"01-a.md": ticket_file("TICKET: A", status="closed")}, "status: open"),
-    ({"01-a.md": ticket_file("TICKET: A", claimed_by="someone@example.invalid")}, "claimed-by"),
     ({"a.md": ticket_file("TICKET: A")}, "number"),
     ({"01-a.md": ticket_file("TICKET: A"), "01-b.md": ticket_file("TICKET: B")}, "number"),
     ({"01-a.md": ticket_file("TICKET: A"), "02-b.md": ticket_file("TICKET: A")}, "title"),
