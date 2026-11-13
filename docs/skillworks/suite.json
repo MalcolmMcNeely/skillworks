@@ -70,7 +70,7 @@
       ]
     },
     {
-      "command": ["uv", "run", "--with", "pytest", "pytest",
+      "command": ["uv", "run", "--with", "pytest", "--with", "filelock", "pytest",
                   "tests/plugins/skillworks/scripts/suite_test.py", "tools/backfill_evals", "-m", "this_repo"],
       "folder": "."
     },

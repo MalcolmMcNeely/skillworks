@@ -60,7 +60,8 @@ class History:
 
     def clone(self, name, *flags, tracker="github"):
         where = self.root / name
-        run(["git", "clone", "--quiet", *flags, self.origin.as_uri(), where.as_posix()])
+        # A machine-wide core.autocrlf=true writes CRLF at clone time, and a later autocrlf=false then shows every file changed.
+        run(["git", "clone", "--quiet", "--config", "core.autocrlf=false", *flags, self.origin.as_uri(), where.as_posix()])
         loop = where / "docs" / "skillworks" / "loop.json"
         loop.parent.mkdir(parents=True, exist_ok=True)
         loop.write_text(json.dumps({"tracker": tracker, "target-branch": "main"}), encoding="utf-8")

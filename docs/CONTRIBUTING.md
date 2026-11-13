@@ -22,7 +22,7 @@ dotnet test Skillworks.Studio.slnf --blame-crash --blame-crash-dump-type mini
 
 uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts tools/backfill_evals -m "not this_repo"
 
-uv run --with pytest pytest tests/plugins/skillworks/scripts/suite_test.py tools/backfill_evals -m this_repo
+uv run --with pytest --with filelock pytest tests/plugins/skillworks/scripts/suite_test.py tools/backfill_evals -m this_repo
 
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
