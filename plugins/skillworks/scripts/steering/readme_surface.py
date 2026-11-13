@@ -1,8 +1,6 @@
 # Found by its heading and not by its path, so a team whose README lives elsewhere keeps the rules.
 
-from pathlib import Path
-
-from steering.steering_file import STEERING_FOLDER
+from steering.steering_file import STEERING_FOLDER, steering_root
 
 SURFACES_FILE = STEERING_FOLDER + "/surfaces.md"
 
@@ -32,7 +30,7 @@ def readme_surface(text):
 
 
 def readme_surface_of(top):
-    path = Path(top) / SURFACES_FILE
+    path = steering_root(top) / SURFACES_FILE
     if not path.is_file():
         return None
     return readme_surface(path.read_text(encoding="utf-8", errors="replace"))

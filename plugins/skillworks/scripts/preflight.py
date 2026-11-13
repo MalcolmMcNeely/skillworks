@@ -4,13 +4,13 @@ import json
 import os
 import re
 import sys
-from pathlib import Path
 
 from configuration.checks import check_configuration
 from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.adr_folder import adr_folder
 from steering.rule_imports import RULES_FOLDER, missing_import
+from steering.steering_file import sidecar_steering, steering_root
 from steering.target_branch import LOOP_FILE, PR_MODE, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 
@@ -72,6 +72,7 @@ class Preflight:
         self.check_rule_imports()
         self.tracker = tracker_setting(self.top)
         self.target = target_setting(self.top)
+        self.check_sidecar_steering()
         ok(self.out, "adr-folder " + adr_folder(self.top))
         self.check_claude()
         self.origin = self.check_origin()
@@ -92,12 +93,28 @@ class Preflight:
             self.out.write("\nReady. Next: the rest of /skillworks:skillworks-setup.\n")
 
     def check_rule_imports(self):
-        if not (Path(self.top) / RULES_FOLDER).is_dir():
+        if not (steering_root(self.top) / RULES_FOLDER).is_dir():
             return
         missing = missing_import(self.top)
         if missing:
             raise refusal(missing)
         ok(self.out, "CLAUDE.md imports every rule in " + RULES_FOLDER)
+
+    def check_sidecar_steering(self):
+        sidecar = sidecar_steering(self.top)
+        if sidecar is None:
+            return
+        steering_on = "the Sidecar holds {}, so Sidecar Steering is on, and it names the ".format(LOOP_FILE)
+        if self.target != PR_MODE:
+            raise refusal(steering_on + ("Target branch {}. Under Sidecar Steering each spec's work goes to a "
+                                         "branch of its own for the other team to review, so write "
+                                         "\"target-branch\": \"pr\" in the Sidecar's {}.")
+                          .format(self.target, LOOP_FILE))
+        if self.tracker != "files":
+            raise refusal(steering_on + ("tracker {}. Under Sidecar Steering no issue may show the other team "
+                                         "Skillworks, so write \"tracker\": \"files\" in the Sidecar's {}.")
+                          .format(self.tracker, LOOP_FILE))
+        ok(self.out, "Sidecar Steering, from " + sidecar.as_posix())
 
     def check_claude(self):
         said = self.runner.run(["claude", "--version"]).out.split()

@@ -9,7 +9,8 @@ from clock.held_clock import HeldClock
 from conftest import Ran, Repo, launch
 from files_test import FOLDER, spec_file, ticket_file, ticket_path, write_files, write_loop
 from runner import Subprocess
-from sidecar.sidecar import Sidecar, sidecar_of
+from sidecar.locator import sidecar_of
+from sidecar.sidecar import Sidecar
 from show_test import on_github
 from tracker import close
 

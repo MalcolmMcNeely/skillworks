@@ -3,10 +3,10 @@
 import json
 import sys
 from json.decoder import scanstring
-from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
+from steering.steering_file import steering_root
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: allow-commands <entry>...\n"
@@ -19,7 +19,7 @@ DECODER = json.JSONDecoder()
 
 
 def settle(top, entries):
-    path = Path(top) / SETTINGS_FILE
+    path = steering_root(top) / SETTINGS_FILE
     text = path.read_bytes().decode("utf-8") if path.is_file() else None
     held = parsed(text)
     allowed = held.get("permissions", {}).get("allow", [])

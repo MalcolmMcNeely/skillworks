@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from conftest import PLUGIN, Ran, launch, write_loop
+from conftest import PLUGIN, Ran, git, launch, sidecar_steering, write_loop
 from runner import Subprocess
 from steering import allowlist
 from steering.target_branch import LOOP_FILE
@@ -170,3 +170,34 @@ def test_a_checkout_with_no_loop_file_still_gets_the_entry(repo):
 
     assert ran.status == 0, ran.err
     assert "Bash(dotnet test:*)" in settings_now(repo)["permissions"]["allow"]
+
+
+def test_under_sidecar_steering_an_entry_is_added_to_the_sidecars_settings(repo):
+    sidecar = sidecar_steering(repo)
+
+    ran = run_allowlist(repo.work, "Bash(dotnet test:*)")
+
+    assert ran.status == 0, ran.err
+    assert json.loads((sidecar / ".claude" / "settings.json").read_text(encoding="utf-8")) == {
+        "permissions": {"allow": ["Bash(dotnet test:*)"]}}
+
+
+def test_under_sidecar_steering_the_repos_settings_are_left_untouched(repo):
+    team_settings(repo, '{"permissions": {"allow": []}}\n')
+    sidecar_steering(repo)
+
+    run_allowlist(repo.work, "Bash(dotnet test:*)")
+
+    assert settings_file(repo).read_text(encoding="utf-8") == '{"permissions": {"allow": []}}\n'
+
+
+def test_under_sidecar_steering_a_worktree_adds_the_entry_to_the_sidecars_settings(repo):
+    sidecar = sidecar_steering(repo)
+    tree = repo.work / ".spec-loop" / "nested" / "job"
+    git(repo.work, "worktree", "add", "--quiet", "-b", "job", tree.as_posix())
+
+    ran = launch("allow-commands", "Bash(dotnet test:*)", where=tree)
+
+    assert ran.status == 0, ran.err
+    assert "Bash(dotnet test:*)" in json.loads(
+        (sidecar / ".claude" / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]

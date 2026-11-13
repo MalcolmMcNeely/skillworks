@@ -43,7 +43,7 @@ from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
-from sidecar.sidecar import main_checkout_of
+from sidecar.locator import main_checkout_of
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite

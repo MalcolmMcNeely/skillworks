@@ -140,6 +140,12 @@ def write_loop(top, target):
                     encoding="utf-8", newline="\n")
 
 
+def sidecar_steering(repo):
+    sidecar = repo.work.parent / "work-skillworks"
+    write_loop(sidecar, "pr")
+    return sidecar
+
+
 # The loop stops before any ticket in a repo setup has not seeded, so a case starts in one it has.
 def write_steering(top):
     for name, place in PLACES.items():

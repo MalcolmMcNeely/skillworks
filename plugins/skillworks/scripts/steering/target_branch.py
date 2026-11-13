@@ -3,12 +3,11 @@
 import json
 from pathlib import Path
 
-from steering.steering_file import STEERING_FOLDER
+from steering.steering_file import LOOP_FILE, steering_root
 from stop import refusal
 from tracker.files import Files
 from tracker.github import GitHub
 
-LOOP_FILE = STEERING_FOLDER + "/loop.json"
 PR_MODE = "pr"
 # Read as a branch name, an old "spec" would land every ticket on a branch called spec.
 OLD_SPEC_VALUE = "spec"
@@ -17,7 +16,7 @@ TRACKERS = ("github", "files")
 
 
 def settings(top):
-    path = Path(top) / LOOP_FILE
+    path = steering_root(top) / LOOP_FILE
     if not path.is_file():
         raise refusal("{} is missing. Run seed-steering to write it.".format(LOOP_FILE))
     return json.loads(path.read_text(encoding="utf-8"))

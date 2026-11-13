@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import seed_steering
 from branches.open_the_pull_request import open_the_pull_request
-from conftest import PLUGIN, ROOT, Ran, Repo, git, launch
+from conftest import PLUGIN, ROOT, Ran, Repo, git, launch, sidecar_steering, write_steering
 from seeds import agent_skills
 from suite import Suite
 from tracker.files import CLOSING_NOTE
@@ -3753,4 +3753,10 @@ def test_a_steering_path_read_past_steering_file_is_caught():
     text = "Read `steering-file docs/skillworks/domain.md`, then `docs/skillworks/loop.json`."
 
     assert steering_read_past_steering_file(text) == ["docs/skillworks/loop.json"]
+
+
+def test_under_sidecar_steering_the_seeds_in_the_sidecar_leave_nothing_missing(repo):
+    write_steering(sidecar_steering(repo))
+
+    assert seed_steering.missing_steering(repo.work) is None
 

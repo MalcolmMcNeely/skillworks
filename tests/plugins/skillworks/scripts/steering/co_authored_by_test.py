@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from conftest import PLUGIN, Ran, launch, write_loop
+from conftest import PLUGIN, Ran, launch, sidecar_steering, write_loop
 from runner import Subprocess
 from steering import co_authored_by
 from steering.target_branch import LOOP_FILE
@@ -258,6 +258,37 @@ def test_the_command_writes_both_files_at_the_top_of_the_repository(repo):
     assert settings_now(repo)["attribution"] == HIDDEN
     assert loop_now(repo)["co-authored-by"] == "hide"
     assert not (below / ".claude").exists() and not (below / "docs").exists()
+
+
+@pytest.mark.parametrize("answer", ["hide", "show"])
+def test_under_sidecar_steering_the_answer_is_written_to_the_sidecars_loop_file(repo, answer):
+    sidecar = sidecar_steering(repo)
+
+    ran = run_co_authored_by(repo.work, answer)
+
+    assert ran.status == 0, ran.err
+    assert json.loads((sidecar / LOOP_FILE).read_text(encoding="utf-8")) == {
+        "tracker": "github", "target-branch": "pr", "co-authored-by": answer}
+
+
+def test_under_sidecar_steering_the_attribution_block_is_written_to_the_sidecars_settings(repo):
+    sidecar = sidecar_steering(repo)
+
+    run_co_authored_by(repo.work, "hide")
+
+    assert json.loads((sidecar / ".claude" / "settings.json").read_text(encoding="utf-8")) == {
+        "attribution": HIDDEN}
+
+
+def test_under_sidecar_steering_the_repos_files_are_left_untouched(repo):
+    team_settings(repo, '{"permissions": {"allow": []}}\n')
+    loop_before = loop_file(repo).read_text(encoding="utf-8")
+    sidecar_steering(repo)
+
+    run_co_authored_by(repo.work, "hide")
+
+    assert (loop_file(repo).read_text(encoding="utf-8"), settings_file(repo).read_text(encoding="utf-8")) == (
+        loop_before, '{"permissions": {"allow": []}}\n')
 
 
 def test_the_old_command_is_gone():

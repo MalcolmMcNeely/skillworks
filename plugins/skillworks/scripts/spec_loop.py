@@ -55,7 +55,7 @@ from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHE
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
 from seed_steering import missing_steering
-from sidecar.sidecar import main_checkout_of
+from sidecar.locator import main_checkout_of
 from steering.adr_folder import missing_adr_folder
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import

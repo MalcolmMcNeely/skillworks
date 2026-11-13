@@ -13,7 +13,8 @@ import spec_loop
 from clock.held_clock import HeldClock
 from conftest import Ran, RecordingRunner, Repo, git, write_steering
 from runner import Subprocess
-from sidecar.sidecar import Sidecar, sidecar_of
+from sidecar.locator import sidecar_of
+from sidecar.sidecar import Sidecar
 from spec_loop_test import Sessions, given_a_suite_that_passes
 from steering.target_branch import LOOP_FILE
 from stop import REFUSED, Stop

@@ -31,6 +31,16 @@ class Work:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8", newline="\n")
 
+    def in_sidecar(self, name, text):
+        path = self.repo.work.parent / "work-skillworks" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8", newline="\n")
+
+    def nested_worktree(self):
+        tree = self.repo.work / ".spec-loop" / "nested" / "job"
+        git(self.repo.work, "worktree", "add", "--quiet", "-b", "job", tree.as_posix())
+        return tree
+
     def run(self, *argv, where=None):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.chdir(where or self.repo.work):
@@ -92,6 +102,55 @@ def test_a_path_is_read_from_the_repo_root_whatever_folder_the_caller_is_in(work
     ran = work.run(SURFACES, where=work.repo.work / "src")
 
     assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
+
+
+LOOP = "docs/skillworks/loop.json"
+
+
+def test_with_loop_json_in_the_sidecar_the_sidecars_copy_is_printed_from_the_main_checkout(work):
+    work.on_disk(LOOP, '{"target-branch": "main"}\n')
+    work.in_sidecar(LOOP, '{"target-branch": "pr"}\n')
+
+    ran = work.run(LOOP)
+
+    assert (ran.status, ran.out) == (0, '{"target-branch": "pr"}\n'), ran.err
+
+
+def test_with_loop_json_in_the_sidecar_the_sidecars_copy_is_printed_from_a_worktree(work):
+    tree = work.nested_worktree()
+    work.in_sidecar(LOOP, '{"target-branch": "pr"}\n')
+
+    ran = work.run(LOOP, where=tree)
+
+    assert (ran.status, ran.out) == (0, '{"target-branch": "pr"}\n'), ran.err
+
+
+def test_with_loop_json_in_the_sidecar_a_steering_file_is_read_from_the_sidecar_and_not_the_repo(work):
+    work.on_disk(SURFACES, "# Surfaces\n\nThe repo copy.\n")
+    work.in_sidecar(LOOP, '{"target-branch": "pr"}\n')
+    work.in_sidecar(SURFACES, "# Surfaces\n\nThe Sidecar copy.\n")
+
+    ran = work.run(SURFACES)
+
+    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe Sidecar copy.\n"), ran.err
+
+
+def test_a_sidecar_with_no_loop_json_leaves_every_read_on_the_repo(work):
+    work.on_disk(SURFACES, "# Surfaces\n\nThe repo copy.\n")
+    work.in_sidecar(SURFACES, "# Surfaces\n\nThe Sidecar copy.\n")
+
+    ran = work.run(SURFACES)
+
+    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe repo copy.\n"), ran.err
+
+
+def test_the_command_prints_the_sidecars_copy_to_the_caller_from_a_worktree(work):
+    tree = work.nested_worktree()
+    work.in_sidecar(LOOP, '{"target-branch": "pr"}\n')
+
+    ran = launch("steering-file", LOOP, where=tree)
+
+    assert (ran.status, ran.out) == (0, '{"target-branch": "pr"}\n'), ran.err
 
 
 def test_the_command_prints_the_disk_copy_to_the_caller(work):

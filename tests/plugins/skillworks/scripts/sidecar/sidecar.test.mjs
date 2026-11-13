@@ -37,7 +37,7 @@ function pythonSidecarOf(where) {
     "import sys",
     "sys.path.insert(0, sys.argv[1])",
     "from runner import Subprocess",
-    "from sidecar.sidecar import sidecar_of",
+    "from sidecar.locator import sidecar_of",
     "sys.stdout.write(str(sidecar_of(Subprocess(), sys.argv[2])))",
   ].join("\n");
   return execFileSync("uv", ["run", "--no-project", "python", "-c", program, SCRIPTS, where],

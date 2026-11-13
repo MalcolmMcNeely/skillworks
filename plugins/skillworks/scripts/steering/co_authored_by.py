@@ -4,12 +4,11 @@
 import json
 import re
 import sys
-from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.allowlist import member
-from steering.target_branch import LOOP_FILE
+from steering.steering_file import LOOP_FILE, steering_root
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: set-co-authored-by hide|show\n"
@@ -40,7 +39,8 @@ def read_object(path, name, missing):
 
 
 def settle(top, answer):
-    loop_path, settings_path = Path(top) / LOOP_FILE, Path(top) / SETTINGS_FILE
+    root = steering_root(top)
+    loop_path, settings_path = root / LOOP_FILE, root / SETTINGS_FILE
     loop_text, loop = read_object(loop_path, LOOP_FILE, None)
     settings_text, settings = read_object(settings_path, SETTINGS_FILE, "{}")
     loop_path.write_bytes(with_member(loop_text, loop, KEY, answer).encode("utf-8"))

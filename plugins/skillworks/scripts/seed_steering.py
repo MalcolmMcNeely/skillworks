@@ -9,7 +9,7 @@ from seeds import merge, old_folder
 from seeds.answers import took_an_answer
 from seeds.outcome import ASKS, BASES, Outcome, report, write
 from steering.rule_imports import RULES_FOLDER
-from steering.steering_file import STEERING_FOLDER
+from steering.steering_file import STEERING_FOLDER, steering_root
 from stop import Stop, misuse, refusal
 
 USAGE = ("usage: seed-steering [folder] [--keep <file>:<overlap>=yours|seed]... "
@@ -44,8 +44,9 @@ WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/", ".context-backf
 
 # Beside PLACES, so a new Seed is checked the day it is seeded and the loop never stops in the middle of a ticket for it.
 def missing_steering(top):
+    root = steering_root(top)
     for place in PLACES.values():
-        if not (Path(top) / place).is_file():
+        if not (root / place).is_file():
             return ("{} is missing, and setup seeds it. "
                     "Run /skillworks:skillworks-setup to write it again.".format(place))
     return None

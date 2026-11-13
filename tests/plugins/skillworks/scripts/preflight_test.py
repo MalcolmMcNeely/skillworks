@@ -707,6 +707,53 @@ def test_a_repo_with_no_remote_fails_with_the_commands_that_add_a_bare_one(work,
     assert "git push origin main" in ran.err
 
 
+def sidecar_steering(work, branch, tracker):
+    steering = work.repo / "docs" / "skillworks"
+    held = work.root / "work-skillworks" / "docs" / "skillworks"
+    held.parent.mkdir(parents=True)
+    shutil.move(steering, held)
+    (held / "loop.json").write_text(json.dumps({"tracker": tracker, "target-branch": branch}) + "\n",
+                                    encoding="utf-8", newline="\n")
+
+
+def test_under_sidecar_steering_a_target_branch_that_is_not_pr_fails_and_says_why(work):
+    work.serve(GITLAB, "main")
+    sidecar_steering(work, "main", "files")
+    work.runner.hide("gh")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert ("FAIL  the Sidecar holds docs/skillworks/loop.json, so Sidecar Steering is on, and it names the "
+            "Target branch main. Under Sidecar Steering each spec's work goes to a branch of its own for the "
+            "other team to review, so write \"target-branch\": \"pr\" in the Sidecar's "
+            "docs/skillworks/loop.json.") in ran.err
+
+
+def test_under_sidecar_steering_the_github_tracker_fails_and_says_why(work):
+    work.serve(GITLAB, "main")
+    sidecar_steering(work, "pr", "github")
+    work.runner.hide("gh")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert ("FAIL  the Sidecar holds docs/skillworks/loop.json, so Sidecar Steering is on, and it names the "
+            "tracker github. Under Sidecar Steering no issue may show the other team Skillworks, so write "
+            "\"tracker\": \"files\" in the Sidecar's docs/skillworks/loop.json.") in ran.err
+
+
+def test_under_sidecar_steering_pr_mode_with_the_files_tracker_passes_on_the_sidecars_steering(work):
+    work.serve(GITLAB, "main")
+    sidecar_steering(work, "pr", "files")
+    work.runner.hide("gh")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "ok    target-branch pr, each reviewed into main" in ran.out
+
+
 def test_the_preflight_command_fails_with_the_install_link_when_uv_is_missing(tmp_path):
     env = dict(os.environ)
     env["PATH"] = os.pathsep.join(folder for folder in env["PATH"].split(os.pathsep)

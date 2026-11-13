@@ -5,7 +5,8 @@ import pytest
 from clock.held_clock import HeldClock
 from conftest import git
 from runner import Subprocess
-from sidecar.sidecar import WAIT_SECONDS, Sidecar, sidecar_of
+from sidecar.locator import sidecar_of
+from sidecar.sidecar import WAIT_SECONDS, Sidecar
 
 
 @pytest.fixture

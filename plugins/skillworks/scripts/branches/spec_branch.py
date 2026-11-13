@@ -6,7 +6,7 @@ import sys
 from branches.default_branch import default_branch
 from output.streams import speaking_any_character
 from runner import Subprocess
-from sidecar.sidecar import main_checkout_of
+from sidecar.locator import main_checkout_of
 from steering.target_branch import tracker_for
 from stop import Stop, misuse, refusal
 

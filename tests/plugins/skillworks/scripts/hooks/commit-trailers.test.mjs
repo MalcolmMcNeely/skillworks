@@ -534,6 +534,40 @@ test("a commit in a repository with no loop.json carries no credit from the hook
   assert.deepEqual(credits(repo), []);
 });
 
+async function sidecarSteeredRepository(chosen) {
+  const repo = await repository();
+  const steering = join(`${repo.dir}-skillworks`, "docs", "skillworks");
+  await mkdir(steering, { recursive: true });
+  await writeFile(join(steering, "loop.json"), JSON.stringify({ tracker: "files", "target-branch": "pr", ...chosen }));
+  return repo;
+}
+
+test("a commit takes the credit from the Sidecar's loop.json when the Sidecar holds one", async () => {
+  // Arrange
+  const repo = await sidecarSteeredRepository({ "co-authored-by": "show" });
+  const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(credits(repo), [CREDIT]);
+});
+
+test("a commit leaves the repo's loop.json unread when the Sidecar holds one", async () => {
+  // Arrange
+  const repo = await sidecarSteeredRepository({ "co-authored-by": "hide" });
+  await mkdir(join(repo.dir, "docs", "skillworks"), { recursive: true });
+  await writeFile(join(repo.dir, "docs", "skillworks", "loop.json"), JSON.stringify({ "co-authored-by": "show" }));
+  const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+
+  // Act
+  repo.run(command);
+
+  // Assert
+  assert.deepEqual(credits(repo), []);
+});
+
 test("an amend by the same Session with the credit shown adds no second credit line", async () => {
   // Arrange
   const repo = await creditRepository("show");

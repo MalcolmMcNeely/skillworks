@@ -13,7 +13,8 @@ from conftest import Ran, RecordingRunner, Repo, git, launch
 from files_test import refs_of, ticket_file, write_loop
 from github_test import Issues
 from runner import Subprocess
-from sidecar.sidecar import WAIT_SECONDS, sidecar_of
+from sidecar.locator import sidecar_of
+from sidecar.sidecar import WAIT_SECONDS
 from steering.target_branch import LOOP_FILE
 from tracker import publish
 from tracker.files import Files

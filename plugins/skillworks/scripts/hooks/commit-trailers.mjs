@@ -8,7 +8,7 @@ import { setTimeout as wait } from "node:timers/promises";
 import { promisify } from "node:util";
 import { baseName, COMMIT_IN_TEXT, GIT_OPTIONS_WITH_VALUE, placeAfterCommit } from "./git-grammar.mjs";
 import { powerShellCommits } from "./powershell-commits.mjs";
-import { STEERING_FOLDER } from "./steering-folder.mjs";
+import { LOOP_FILE, steeringRoot } from "./steering-folder.mjs";
 
 const SESSION_KEY = "Skillworks-Session";
 
@@ -37,7 +37,7 @@ const TYPED_CREDIT = /(?:^|['"]|\\n|`n)[ \t]*co-authored-by:[^\n]*noreply@anthro
 // Refused and not edited out: the line sits inside shell quoting, where an edit can break the message or the command.
 const NO_TYPED_CREDIT =
   `The Plugin adds the Claude ${CREDIT_KEY} line to each commit itself, as the team chose in co-authored-by in ` +
-  `${STEERING_FOLDER}/loop.json. Remove the line and run the commit again.`;
+  `${LOOP_FILE}. Remove the line and run the commit again.`;
 
 const PLAIN =
   "Run `git commit` as a plain command of its own, not inside a shell string, eval, backticks or another program, " +
@@ -74,7 +74,7 @@ function repoRoot(cwd) {
 }
 
 function loopFile(root) {
-  return join(root, STEERING_FOLDER, "loop.json");
+  return join(steeringRoot(root), LOOP_FILE);
 }
 
 function loopSettings(root) {

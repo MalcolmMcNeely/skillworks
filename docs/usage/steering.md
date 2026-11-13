@@ -17,6 +17,23 @@ Each file below says what it does, which part of the loop reads it, and what you
 it. [The loop](the-loop.md) has the steps these parts name, and [the stage map](the-loop/stage-map.md)
 says which stage loads each file.
 
+## Steering in the Sidecar
+
+The Steering can sit in the Sidecar instead of the repo. The Sidecar is the folder beside your repo,
+named for it with `-skillworks` on the end, that is never pushed. Its being there turns Sidecar
+Steering on: when the Sidecar holds `docs/skillworks/loop.json`, every Steering file is read from the
+Sidecar, and none from the repo. No setting turns it on, so no setting can disagree with where the
+Steering sits.
+
+Sidecar Steering is for work that goes to a team that does not use Skillworks, so that team's repo
+holds no Steering at all. It needs PR mode and the files Tracker, and the preflight stops with any
+other `target-branch` or `tracker`. `steering-file`, `allow-commands` and `set-co-authored-by` read
+and write the Sidecar's copy, from the main checkout and from every worktree. The Sidecar's
+`CLAUDE.md` and its imports load into each Session you start, so every skill reads your team's
+rules. The paths on this page stay the same, measured from the Sidecar instead of the repo.
+
+With no `loop.json` in the Sidecar, every Steering file is read from the repo, as below.
+
 ## Every Steering file always exists
 
 Each step of the loop leans on its Steering file, so every file setup seeds always exists. To want

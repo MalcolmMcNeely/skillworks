@@ -1,8 +1,6 @@
 # One reader, so the scripts can never disagree on where a new ADR goes.
 
-from pathlib import Path
-
-from steering.steering_file import STEERING_FOLDER
+from steering.steering_file import STEERING_FOLDER, steering_root
 from steering.yaml_block import last_yaml_span
 from stop import refusal
 
@@ -22,7 +20,7 @@ def last_yaml_block(text):
 
 
 def folder_or_refusal(top):
-    path = Path(top) / DOMAIN_FILE
+    path = steering_root(top) / DOMAIN_FILE
     if not path.is_file():
         return None, "{} is missing, so no folder is named for new ADRs. {}".format(DOMAIN_FILE, FIX)
     block = last_yaml_block(path.read_text(encoding="utf-8"))
