@@ -248,8 +248,8 @@ before it. The Journal is what keeps the past.
 _Avoid_: Progress, status, state
 
 **PR mode**:
-The way a team works when it reviews each spec as one pull request. The developer makes the branch and
-opens the pull request. Skillworks does neither.
+The way a team works when it reviews each spec as one pull request. The developer names the spec's
+branch, and Skillworks makes it. The developer opens the pull request.
 _Avoid_: Spec mode
 
 **Proof**:
@@ -281,6 +281,11 @@ _Avoid_: Template, default, stub
 One run of Claude Code, from the first prompt to the last. It carries an identity that every Load and
 every telemetry event of that run shares, which is what lets the two be read together.
 _Avoid_: Conversation, chat, transcript
+
+**Sidecar**:
+A folder beside the repo, named for it with `-skillworks` on the end, that holds the files Tracker's
+specs, tickets and the numbers they take. It is never pushed, so it serves the one machine it sits on.
+_Avoid_: Sibling folder, specs folder, store
 
 **Smart zone**:
 The part of a context window in which a model still keeps every instruction it was given. A session
@@ -320,13 +325,13 @@ _Avoid_: Axis, touchpoint, artefact
 
 **Target branch**:
 The branch a ticket Lands on. It is `main` for a team that pushes straight to it. In PR mode, it is the
-branch the developer started the design on, or with the Export, a branch the loop cuts from it.
+branch the developer named when the design began, or with the Export, a branch the loop cuts from it.
 _Avoid_: Runway, trunk, base branch
 
 **Tracker**:
-Where a repo keeps its specs and tickets, and their state: GitHub Issues, or files committed under
-`.specs/`. The loop reads what is open, blocked and claimed from it, so a ticket's state has to be
-something every loop and every teammate sees.
+Where a repo keeps its specs and tickets, and their state: GitHub Issues, or files in the Sidecar.
+The loop reads what is open, blocked and claimed from it, so a ticket's state has to be something
+every loop sees. GitHub Issues also shows it to every teammate, and the Sidecar to one machine only.
 _Avoid_: Backlog, board, issue store
 
 **Trial**:
