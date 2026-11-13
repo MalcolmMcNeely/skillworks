@@ -253,6 +253,17 @@ class Files:
             self.read_at[(commit, spec)] = self.spec_on(spec) if commit else None
         return self.read_at[(commit, spec)]
 
+    def open_spec_branches(self):
+        if not self.commit():
+            return {}
+        held = {}
+        for path in listed(self.git("ls-tree", "--name-only", HEAD, SPECS + "/").out):
+            spec = number_of(path.rsplit("/", 1)[-1])
+            found = self.read(spec) if spec else None
+            if found and found.status == OPEN and found.branch:
+                held[found.branch] = spec
+        return held
+
     def spec_on(self, spec):
         folder = self.folder_on(spec)
         if not folder:

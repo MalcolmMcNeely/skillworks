@@ -1,8 +1,9 @@
-# PR mode asks here, and only git names the default branch, so every Tracker refuses the same branches.
+# PR mode asks here and not in each Tracker, so every Tracker refuses the same branches.
 
 import os
 import sys
 
+from branches.default_branch import default_branch
 from output.streams import speaking_any_character
 from runner import Subprocess
 from stop import Stop, misuse, refusal
@@ -16,19 +17,6 @@ USAGE = "usage: own-branch\n"
 
 def git(runner, where, *args):
     return runner.run(["git", "-C", where] + list(args))
-
-
-def default_branch(runner, where, nothing):
-    named = git(runner, where, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
-    if named.status == 0 and named.out.strip():
-        return named.out.strip().removeprefix("origin/")
-    # A clone that never fetched origin/HEAD, such as one made with git remote add, can still ask origin.
-    asked = git(runner, where, "ls-remote", "--symref", "origin", "HEAD")
-    for line in asked.out.splitlines():
-        if line.startswith("ref: refs/heads/") and line.endswith("\tHEAD"):
-            return line[len("ref: refs/heads/"):-len("\tHEAD")]
-    raise refusal("origin names no default branch, so this checkout cannot be told apart from it. Name it, "
-                  "then start again:\n  git remote set-head origin --auto\n" + nothing)
 
 
 def own_branch(runner, where, nothing):

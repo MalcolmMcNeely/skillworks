@@ -41,6 +41,7 @@
       "Bash(tracker-show:*)",
       "Bash(tracker-close:*)",
       "Bash(spec-commits:*)",
+      "Bash(spec-branch:*)",
       "Bash(steering-file:*)"
     ]
   },

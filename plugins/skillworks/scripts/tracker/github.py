@@ -70,13 +70,20 @@ def ticket_spec_line(spec):
     return "<!-- skillworks-ticket spec:{} -->".format(spec)
 
 
-def spec_branch(spec):
+def branch_named_in(spec):
     lines = [line.strip() for line in spec.splitlines()]
     if BRANCH_HEADING in lines:
         below = lines[lines.index(BRANCH_HEADING) + 1:]
         named = next((line for line in below if line), "").strip("`")
         if named and not named.startswith("#"):
             return named
+    return ""
+
+
+def spec_branch(spec):
+    named = branch_named_in(spec)
+    if named:
+        return named
     raise refusal("The spec names no branch under {}. /skillworks:grill writes it, or add it by hand.".format(BRANCH_HEADING))
 
 
@@ -173,6 +180,21 @@ class GitHub:
 
     def branch_of(self, spec):
         return spec_branch(self.spec_body(spec))
+
+    # A ticket carries the same label and no branch, so only a spec's branch is kept.
+    def open_spec_branches(self):
+        asked = self.gh("api", "--paginate", "repos/{}/issues?state=open&labels={}".format(self.repo, READY),
+                        "--jq", ".[] | [.number, .body] | @json")
+        if asked.status != 0:
+            raise refusal("GitHub would not list the open specs. gh said:\n{}".format(
+                (asked.out + asked.err).rstrip("\n")))
+        held = {}
+        for line in listed(asked.out):
+            number, body = json.loads(line)
+            named = branch_named_in(body or "")
+            if named:
+                held[named] = "#{}".format(number)
+        return held
 
     # --paginate runs --jq once per page, so a length would count only the first hundred.
     def tickets(self, spec):

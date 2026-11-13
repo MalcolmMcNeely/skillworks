@@ -9,7 +9,8 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-from branches.own_branch import default_branch, own_branch
+from branches.default_branch import default_branch
+from branches.own_branch import own_branch
 from context_backfill.applying import NOTHING_WRITTEN, apply
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
