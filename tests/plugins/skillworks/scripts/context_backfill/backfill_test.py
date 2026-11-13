@@ -900,6 +900,84 @@ def test_a_gitignore_with_no_last_newline_gets_the_line_on_a_line_of_its_own(his
     assert (full / ".gitignore").read_text(encoding="utf-8") == "bin/\n.context-backfill/\n"
 
 
+def sidecar_of(where):
+    return where.with_name(where.name + "-skillworks")
+
+
+# The Steering moves out of the repo, as setup leaves it when the work goes to a team that does not use Skillworks.
+def under_sidecar_steering(where):
+    sidecar = sidecar_of(where)
+    (sidecar / "docs" / "skillworks").mkdir(parents=True)
+    for name in ("loop.json", "domain.md"):
+        (where / "docs" / "skillworks" / name).replace(sidecar / "docs" / "skillworks" / name)
+    (sidecar / "docs" / "skillworks" / "loop.json").write_text(
+        json.dumps({"tracker": "files", "target-branch": "pr"}), encoding="utf-8")
+    git(where, "switch", "--quiet", "-c", DEVELOPERS_BRANCH)
+    return sidecar
+
+
+def exclude_file(where):
+    return where / git(where, "rev-parse", "--git-path", "info/exclude").strip()
+
+
+def test_under_sidecar_steering_the_check_ignores_the_scratch_folder_in_the_exclude_file_and_not_in_gitignore(
+        history, runner):
+    full = history.clone("full")
+    under_sidecar_steering(full)
+
+    ran = check(runner, full)
+
+    assert (ran.status, (full / ".gitignore").exists(),
+            ".context-backfill/" in exclude_file(full).read_text(encoding="utf-8").splitlines()) == (0, False, True), ran.err
+
+
+TEAMS_CLAUDE_FILE = "# App\n\nThe team's own notes.\n"
+
+
+@pytest.fixture
+def sidecar_steered(history):
+    history.commit("Write the team's notes", ANN, "2022-03-01T10:00:00+00:00", {"CLAUDE.md": TEAMS_CLAUDE_FILE})
+    history.push()
+    return history
+
+
+@pytest.fixture
+def sidecar_checkout(sidecar_steered, checkout):
+    git(checkout, "pull", "--quiet", "origin", "main")
+    sidecar = under_sidecar_steering(checkout)
+    for name, text in (("CLAUDE.md", CLAUDE_FILE), ("docs/skillworks/rules/words.md", WORDS_RULE)):
+        (sidecar / name).parent.mkdir(parents=True, exist_ok=True)
+        (sidecar / name).write_text(text, encoding="utf-8", newline="\n")
+    return checkout
+
+
+def files_of_commit(origin, branch, subject):
+    for line in git(origin, "log", "--format=%H %s", branch).splitlines():
+        sha, said = line.split(" ", 1)
+        if said == subject:
+            return sorted(git(origin, "show", "--format=", "--name-only", sha).split())
+    return None
+
+
+def test_under_sidecar_steering_an_accepted_map_changes_the_sidecars_steering_and_commits_the_map_alone(
+        sidecar_steered, sidecar_checkout, runner):
+    sidecar = sidecar_of(sidecar_checkout)
+    mark(sidecar_checkout, sheet(words=the_map() + in_context(1, "Reader", "The part that reads dates.", "?", "reader")))
+
+    ran = apply(runner, sidecar_checkout)
+
+    assert (ran.status,
+            files_of_commit(sidecar_steered.origin, DEVELOPERS_BRANCH, "Glossary: the map in CONTEXT-MAP.md"),
+            read(sidecar, "docs/skillworks/rules/words.md").split("```yaml\n", 1)[1],
+            read(sidecar, "CLAUDE.md").split("### Domain docs\n\n", 1)[1].split("\n\n", 1)[0],
+            git(sidecar_checkout, "status", "--porcelain", "--untracked-files=no")) == (
+        0, ["CONTEXT-MAP.md"],
+        "banned-words:\n  reader: []\n  web: []\nskip-folders: []\n```\n",
+        "Multi-context: `CONTEXT-MAP.md` and `docs/adr/` at the repo root, and one `CONTEXT.md` per context. "
+        "See `docs/skillworks/domain.md`.",
+        ""), ran.err
+
+
 def test_with_no_loop_file_the_check_sends_the_person_to_seed_steering_and_writes_nothing(history, runner):
     where = history.clone("unseeded")
     (where / "docs" / "skillworks" / "loop.json").unlink()

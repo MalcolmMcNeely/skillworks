@@ -253,9 +253,14 @@ def apply(runner, top, scratch, out):
     made = []
     # The map and its Steering edits go first and together, so no commit holds a map the Suite cannot read.
     if edits:
-        for name, text in edits.items():
-            (Path(top) / name).write_text(text, encoding="utf-8", newline="\n")
-        made.append(commit(runner, top, tuple(edits), "Glossary: the map in " + MAP_FILE))
+        for edited, text in edits.items():
+            edited.write_text(text, encoding="utf-8", newline="\n")
+        in_repo = tuple(edited.relative_to(top).as_posix() for edited in edits if edited.is_relative_to(Path(top)))
+        elsewhere = [edited.as_posix() for edited in edits if not edited.is_relative_to(Path(top))]
+        if elsewhere:
+            out.write("Sidecar Steering is on, so the map's Steering edits went to the Sidecar, and no commit holds "
+                      "them:\n" + "".join("  " + name + "\n" for name in elsewhere))
+        made.append(commit(runner, top, in_repo, "Glossary: the map in " + MAP_FILE))
     for glossary, (title, words) in groups.items():
         written = write_words(top, glossary, title, words, out)
         if written:

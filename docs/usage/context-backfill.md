@@ -354,6 +354,23 @@ shows you the Draft or the Question with its evidence, and asks for an Answer. G
 three words as on the sheet: `accept`, `reject` or `?`. You can change a Draft's words before you
 accept it. Each Answer you give is applied as you give it, the same way as an Answer on the sheet.
 
+### Under Sidecar Steering
+
+With [Sidecar Steering](the-loop/sidecar-steering.md), the Steering sits in the Sidecar, and the
+backfill writes no Steering into the repo:
+
+- The check adds `.context-backfill/` to the repo's git exclude file, `.git/info/exclude`, and never
+  to `.gitignore`.
+- An accepted map makes its two Steering edits, the banned-words lists and the Domain docs line, in
+  the Sidecar's copies of `docs/skillworks/rules/words.md` and `CLAUDE.md`. They wait there
+  uncommitted, as setup leaves its own. The map's commit holds `CONTEXT-MAP.md` alone.
+- The map, the glossaries and the ADRs still go to your branch, as a word or an ADR the grill
+  settles does, so your teammates see them in the pull request.
+
+So no Steering file among the repo's tracked files changes. The next step is never
+`/skillworks:architecture-tests`, because it refuses under Sidecar Steering: a test that reads
+Steering would reach the team's build. The next step is your first loop, `/skillworks:grill`.
+
 ## Starting over
 
 Delete the scratch folder:

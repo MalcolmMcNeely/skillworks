@@ -11,6 +11,12 @@ The Plugin ships no checker. Every test this skill writes is either a common too
 
 [REFERENCE.md](REFERENCE.md) maps each rule to the common tools for each language, and names the rules that need a starter test. Read it before you propose anything.
 
+## Under Sidecar Steering
+
+Sidecar Steering is on when the Steering sits in the Sidecar, the folder beside the repo's main checkout with `-skillworks` on the end of its name. The Session's start then says so. Under Sidecar Steering, stop before you read or write anything. Tell the user that this skill does not run in this mode, because a test that reads Steering would reach the team's build: the work goes to a team that does not use Skillworks, its repo holds no Steering for the test to read, and the test would carry Skillworks into it. Say that nothing was written, and that the next step is the first loop: `/skillworks:grill`, then `/skillworks:spec-loop <spec#>`.
+
+## Before you start
+
 If `steering-file docs/skillworks/rules/`, `steering-file docs/skillworks/suite.json` or `steering-file docs/skillworks/placement-checks.md` says the file is missing, stop, and tell the user to run `/skillworks:skillworks-setup` first, because this skill wires its tests into the files setup writes.
 
 ## 1. Read the rules and find the languages

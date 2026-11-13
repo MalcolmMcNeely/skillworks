@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 
 from steering.adr_folder import DOMAIN_FILE, adr_folder
 from steering.rule_imports import RULES_FOLDER
+from steering.steering_file import steering_root
 from steering.yaml_block import last_yaml_span
 from stop import refusal
 
@@ -79,30 +80,32 @@ def with_multi_context(steering, folder):
     return "\n".join(lines) + "\n"
 
 
-def steering_file(top):
-    held = [name for name in STEERING_FILES if (top / name).is_file()]
+def steering_file(root):
+    held = [name for name in STEERING_FILES if (root / name).is_file()]
     return held[0] if held else STEERING_FILES[0]
 
 
 # Every edit is worked out before any file is written, so a map that cannot be applied leaves the tree as it was.
+# The map is a domain doc and goes to the repo, while its Steering edits go wherever the Steering sits.
 def map_edits(top, entry):
     contexts = contexts_of(entry.text)
     if not contexts:
         raise refusal("{} names no context under ## Contexts, so it cannot be applied. Mend it on the sheet, then run "
                       "this again. Nothing was written.".format(entry.name))
-    rule_path = top / WORDS_RULE
+    root = steering_root(top)
+    rule_path = root / WORDS_RULE
     rule = with_empty_lists(rule_path.read_text(encoding="utf-8"), contexts) if rule_path.is_file() else None
     if rule is None:
         raise refusal("The map needs an empty banned-words list for each context, and {} holds no banned-words "
                       "setting this can add to. Run /skillworks:skillworks-setup, then run this again. Nothing "
                       "was written.".format(WORDS_RULE))
     folder = adr_folder(top)
-    name = steering_file(top)
-    steering_path = top / name
+    name = steering_file(root)
+    steering_path = root / name
     steering = (with_multi_context(steering_path.read_text(encoding="utf-8"), folder)
                 if steering_path.is_file() else None)
     if steering is None:
         raise refusal("The map needs the Domain docs line in {} to say multi-context, and {} has no {} section. "
                       "Run /skillworks:skillworks-setup, then run this again. Nothing was written.".format(
                           name, name, DOMAIN_DOCS))
-    return {MAP_FILE: entry.text.strip("\n") + "\n", WORDS_RULE: rule, name: steering}
+    return {top / MAP_FILE: entry.text.strip("\n") + "\n", rule_path: rule, steering_path: steering}

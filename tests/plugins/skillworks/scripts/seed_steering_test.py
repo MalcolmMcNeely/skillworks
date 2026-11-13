@@ -2192,6 +2192,20 @@ def test_a_repo_with_a_history_and_a_glossary_is_sent_to_architecture_tests_alon
     assert step == "next step: /skillworks:architecture-tests"
 
 
+def test_under_sidecar_steering_a_repo_with_a_history_is_sent_to_the_backfill_and_then_the_grill(repo, runner):
+    step = next_step(run_seed(runner, repo.work, "--sidecar-steering"))
+
+    assert step == "next step: /skillworks:context-backfill, then /skillworks:grill"
+
+
+def test_under_sidecar_steering_a_repo_with_a_glossary_is_sent_to_the_grill_alone(repo, runner):
+    (repo.work / "CONTEXT.md").write_text("# Glossary\n", encoding="utf-8", newline="\n")
+
+    step = next_step(run_seed(runner, repo.work, "--sidecar-steering"))
+
+    assert step == "next step: /skillworks:grill"
+
+
 def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
@@ -3503,6 +3517,51 @@ def test_every_line_of_the_reference_names_a_tool_or_a_starter_test():
         for row in rows:
             assert len(row) == 5, row
             assert any(cell not in ("", "—") for cell in row[1:]), row
+
+
+def test_under_sidecar_steering_architecture_tests_stops_before_it_writes_anything_and_says_why():
+    text = skill_text("architecture-tests")
+    section = " ".join(under_heading(text, "## Under Sidecar Steering").split())
+
+    assert (text.index("## Under Sidecar Steering") < text.index("## 1. "),
+            "stop before you read or write anything" in section,
+            "a test that reads Steering would reach the team's build" in section,
+            "nothing was written" in section) == (True, True, True, True)
+
+
+def test_under_sidecar_steering_the_backfill_ignores_its_scratch_folder_in_the_exclude_file():
+    text = " ".join(under_heading(skill_text("context-backfill"), "## Check the clone").split())
+
+    assert "Under Sidecar Steering it adds the line to the repo's git exclude file, and never to `.gitignore`" in text
+
+
+def test_under_sidecar_steering_the_backfill_writes_the_maps_steering_edits_to_the_sidecar():
+    text = " ".join(under_heading(skill_text("context-backfill"), "### Apply the sheet").split())
+
+    assert ("Under Sidecar Steering it makes both Steering edits in the Sidecar's copies, and the map's commit "
+            "holds `CONTEXT-MAP.md` alone") in text
+
+
+def test_under_sidecar_steering_the_backfill_never_names_architecture_tests_as_the_next_step():
+    text = " ".join(under_heading(skill_text("context-backfill"), "### End the second run").split())
+
+    assert ("Under Sidecar Steering the next step is the first loop, whatever the Suite file names, because "
+            "`/skillworks:architecture-tests` refuses there") in text
+
+
+def test_the_setup_report_sends_a_sidecar_steered_repo_to_the_grill_and_not_to_architecture_tests():
+    report = " ".join(setup_section("### 7. Report").split())
+
+    assert ("Under Sidecar Steering the `next step:` line names `/skillworks:grill` in place of "
+            "`/skillworks:architecture-tests`, which refuses there") in report
+
+
+def test_the_backfill_page_says_that_under_sidecar_steering_the_backfill_writes_to_the_sidecar():
+    page = (USER_DOCS / "context-backfill.md").read_text(encoding="utf-8")
+    section = " ".join(page.split("\n### Under Sidecar Steering\n", 1)[1].split("\n## ", 1)[0].split())
+
+    for named in ("the Sidecar", "`.git/info/exclude`", "the repo's tracked files", "`/skillworks:grill`"):
+        assert named in section, named
 
 
 def test_the_architecture_tests_skill_can_be_invoked_by_the_model_and_states_the_method():

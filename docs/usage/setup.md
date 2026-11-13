@@ -235,6 +235,10 @@ Then the loop is ready:
 Setup leaves the rules as prose. An agent reads their settings, but no check enforces them. Run
 `/skillworks:architecture-tests` after setup to turn the rules into tests your team owns.
 
+Under [Sidecar Steering](the-loop/sidecar-steering.md) it refuses and writes nothing, because a test
+that reads Steering would reach the team's build. Setup then names `/skillworks:grill` as the next
+step in its place.
+
 For a repo with a history and no glossary, run `/skillworks:context-backfill` first. It fills your
 glossary and your ADRs once, from your code and your history, and writes nothing until you accept
 it.

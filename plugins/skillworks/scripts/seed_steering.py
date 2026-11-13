@@ -158,11 +158,13 @@ def has_history(runner, top):
     return found.status == 0 and bool(found.out.strip())
 
 
-def next_step(runner, top):
+# architecture-tests refuses under Sidecar Steering, so the step after setup there is the first grill.
+def next_step(runner, top, in_sidecar):
+    then = "/skillworks:grill" if in_sidecar else "/skillworks:architecture-tests"
     has_glossary = (top / "CONTEXT.md").exists() or (top / "CONTEXT-MAP.md").exists()
     if has_history(runner, top) and not has_glossary:
-        return "next step: /skillworks:context-backfill, then /skillworks:architecture-tests\n"
-    return "next step: /skillworks:architecture-tests\n"
+        return "next step: /skillworks:context-backfill, then {}\n".format(then)
+    return "next step: {}\n".format(then)
 
 
 def parsed(argv):
@@ -195,7 +197,7 @@ def main(argv, runner, out, err):
         else:
             outcomes = (seed(runner, sidecar, PR_MODE, choices, settled, in_sidecar=True)
                         + exclude_working_folders(runner, top))
-        report(outcomes + make_handoff_folder(top), next_step(runner, top), out)
+        report(outcomes + make_handoff_folder(top), next_step(runner, top, sidecar is not None), out)
         return 0
     except Stop as stop:
         err.write(stop.said)

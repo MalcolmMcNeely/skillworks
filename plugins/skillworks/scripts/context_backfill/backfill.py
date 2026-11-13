@@ -14,6 +14,7 @@ from context_backfill.applying import apply, design_branch
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
+from steering.steering_file import sidecar_steering
 from steering.target_branch import PR_MODE, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 from tracker.files import SPEC_FILE, SPECS, TICKETS, number_of
@@ -221,16 +222,25 @@ def fit(runner, top, ref, tracker):
     ]
 
 
-def make_scratch_folder(top):
+# The team the work goes to tracks .gitignore, so under Sidecar Steering the line goes to the exclude file no one pushes.
+def ignore_file(runner, top):
+    if sidecar_steering(top) is None:
+        return Path(top) / ".gitignore", ".gitignore"
+    named = git(runner, top, "rev-parse", "--git-path", "info/exclude").out.strip()
+    return Path(top) / named, named
+
+
+def make_scratch_folder(runner, top):
     (Path(top) / SCRATCH).mkdir(exist_ok=True)
-    path = Path(top) / ".gitignore"
+    path, name = ignore_file(runner, top)
     held = path.read_text(encoding="utf-8") if path.exists() else ""
     if any(line.strip().strip("/") == SCRATCH for line in held.splitlines()):
         return "Scratch folder: {}/\n".format(SCRATCH)
     if held and not held.endswith("\n"):
         held += "\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(held + SCRATCH + "/\n", encoding="utf-8", newline="\n")
-    return "Scratch folder: {}/, added to .gitignore\n".format(SCRATCH)
+    return "Scratch folder: {}/, added to {}\n".format(SCRATCH, name)
 
 
 def check(runner, where, out, wait):
@@ -245,7 +255,7 @@ def check(runner, where, out, wait):
     ref = "origin/" + branch
     said = "The fit of {}:\n".format(ref) + "".join("  " + line + "\n" for line in fit(runner, top, ref, tracker))
     out.write(said + "\n")
-    out.write(make_scratch_folder(top))
+    out.write(make_scratch_folder(runner, top))
     write_scratch(top, FIT_FILE, said)
 
 

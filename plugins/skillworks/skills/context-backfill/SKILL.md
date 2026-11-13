@@ -28,7 +28,7 @@ Run the check from the repo root:
 context-backfill check
 ```
 
-It reads the Tracker and the Target branch from the loop settings on disk, fetches from origin the branch it reads the history from, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit.
+It reads the Tracker and the Target branch from the loop settings on disk, fetches from origin the branch it reads the history from, and creates the scratch folder. It adds `.context-backfill/` to `.gitignore` when the line is missing, so an Answer sheet never reaches a commit. Under Sidecar Steering it adds the line to the repo's git exclude file, and never to `.gitignore`, because `.gitignore` is a file the team tracks.
 
 When `target-branch` is `pr`, this is PR mode. The work goes on the branch this session starts on, the developer's own branch. So every command of this skill refuses, and writes nothing, on the default branch and on no branch. In PR mode the history is read from the default branch, and not from the Target branch.
 
@@ -195,7 +195,7 @@ context-backfill apply
 
 It reads `.context-backfill/answer-sheet.md`, and writes the text that is on the sheet, never the text a pass wrote, so a Draft the person edited is written as edited:
 
-- An accepted map goes into `CONTEXT-MAP.md` at the repo root. In the same commit it adds an empty banned-words list, written `[]`, to `docs/skillworks/rules/words.md` for each context the map names, and switches the Domain docs line in `CLAUDE.md` to multi-context, naming the folder `adr-folder` names. It edits nothing else in Steering, and never adds a word to a banned-words list.
+- An accepted map goes into `CONTEXT-MAP.md` at the repo root. In the same commit it adds an empty banned-words list, written `[]`, to `docs/skillworks/rules/words.md` for each context the map names, and switches the Domain docs line in `CLAUDE.md` to multi-context, naming the folder `adr-folder` names. It edits nothing else in Steering, and never adds a word to a banned-words list. Under Sidecar Steering it makes both Steering edits in the Sidecar's copies, and the map's commit holds `CONTEXT-MAP.md` alone, so no Steering reaches the repo. The Sidecar is a local git repo, and the edits wait there uncommitted, as setup leaves its own.
 - Each accepted word goes into the glossary, in alphabetical order, with its `_Avoid_` line and never with its evidence. Without a map, that is `CONTEXT.md` at the repo root. With a map, it is the `CONTEXT.md` of the context the `Context:` line names, at the path the map gives it. It creates the file when there is none.
 - Each accepted decision goes into the folder that `adr-folder` names, in the YAML block at the end of `steering-file docs/skillworks/domain.md`. Its number is one above the highest leading number of any `<number>-<slug>.md` file in that folder, padded to the digit count of the file with the highest number. An empty or missing folder gives `0001`, and a number held twice causes no stop. The title is its heading and the Draft's text, exactly as accepted, is its body. It ends with one line, `Recovered from history:`, and the commits and tickets it came from.
 - An accepted reversal goes in as two ADRs with two numbers in a row, each titled by its `####` heading, and each ending with the same `Recovered from history:` line. The old decision comes first, and the new decision second. In place, wherever the text puts them, `Status: superseded by the decision below` becomes `Status: superseded by ADR-<new number>`, and `This supersedes the decision above.` becomes `This supersedes ADR <old number>.`, each number at the folder's width. Nothing else in the text changes.
@@ -225,3 +225,5 @@ Then name the next step. Read `steering-file docs/skillworks/suite.json`:
 
 - When it names no check, the next step is `/skillworks:architecture-tests`, which turns the rules into tests the team owns.
 - When it names a check, the next step is the first loop: `/skillworks:grill`, then `/skillworks:spec-loop <spec#>`.
+
+Under Sidecar Steering the next step is the first loop, whatever the Suite file names, because `/skillworks:architecture-tests` refuses there.
