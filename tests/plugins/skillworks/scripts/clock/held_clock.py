@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime, timedelta, timezone
 
 HELD_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -7,6 +8,8 @@ class HeldClock:
     def __init__(self):
         self.at = HELD_AT
         self.repeats = []
+        # Set once something waits on a beat, so a test acts only after the code is waiting.
+        self.repeating = threading.Event()
 
     def now(self):
         return self.at
@@ -15,6 +18,7 @@ class HeldClock:
         repeat = {"due": self.at + timedelta(seconds=seconds), "every": timedelta(seconds=seconds),
                   "do": do}
         self.repeats.append(repeat)
+        self.repeating.set()
         return lambda: self.repeats.remove(repeat) if repeat in self.repeats else None
 
     # Each repeat runs at the moment it falls due, so a long move reads as the beats it spans.

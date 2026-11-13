@@ -42,6 +42,7 @@ from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
+from sidecar.sidecar import main_checkout_of
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
@@ -530,10 +531,8 @@ class Landing:
                 raise self.die("commit {} names ticket {}, and this is {}. Nothing was pushed."
                                .format(sha, named, mine))
 
-    # Git lists the main checkout first, whichever worktree asks.
     def main_checkout(self):
-        said = self.read("would not list its worktrees", "worktree", "list", "--porcelain")
-        return said.split("\n")[0][len("worktree "):]
+        return main_checkout_of(self.runner, self.worktree).as_posix()
 
     # A waiter names the holder, so a hung suite can be found and its loop killed.
     def holder(self):
