@@ -53,7 +53,7 @@ from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBEAT_SECONDS,
                                NAME_CHECK, POSITION, STOPPED, position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
-from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
+from runner import Subprocess, given_every_session, session_changes
 from seed_steering import missing_steering
 from sidecar.landed import Landed
 from sidecar.locator import main_checkout_of
@@ -240,21 +240,23 @@ ITEM_SEPARATOR = ", "
 CIRCUIT = ("fix", "sweep", "suite")
 
 
-def nudged_on(step):
-    return [check for check in step.checks.split() if check in NUDGED_BY]
+def nudged_on(checks):
+    return [check for check in checks if check in NUDGED_BY]
 
 
 def heading_of(axis):
     return "## " + axis[0].upper() + axis[1:]
 
 
-def owed(tracker, ticket, step, check):
+def owed(tracker, ticket, step, check, sidecar_steered=False):
     if check == "axis-reported":
         return ("You have not written your report under the heading {}. Write it, with your "
                 "findings or a statement that you found none.\n".format(heading_of(step.name)))
     if check == "tree-changed":
         return ("You have changed nothing in the worktree. Build what ticket {} asks, and leave "
                 "the change uncommitted.\n".format(tracker.trailer(ticket)))
+    if check == "new-commit" and sidecar_steered:
+        return "You have not committed the work. Commit it, with no trailer in the message.\n"
     if check == "new-commit":
         return ("You have not committed the work. Commit it, with Ticket: {} in the message's "
                 "trailer.\n".format(tracker.trailer(ticket)))
@@ -666,6 +668,9 @@ class Loop:
     def git(self, repo, *args):
         return self.runner.run(["git", "-C", as_git_path(repo)] + [str(a) for a in args])
 
+    def sidecar(self):
+        return sidecar_steering(self.root)
+
     # Recorded before the Session starts, so a run that stops mid-Session still knows who was working.
     def new_session(self):
         found = self.git(self.job_worktree, "rev-parse", "--absolute-git-dir")
@@ -680,11 +685,13 @@ class Loop:
     # The prompt goes on stdin, because Windows ends a command line at 32,767 characters.
     def claude_p(self, prompt, *rest, ticket=None):
         rest = [str(a) for a in rest] or self.new_session()
+        sidecar = self.sidecar()
         return self.runner.run(
             ["claude", "-p"] + rest
-            + ["--permission-mode", self.permission_mode, "--output-format", "json"] + GIVEN_EVERY_SESSION,
+            + ["--permission-mode", self.permission_mode, "--output-format", "json"]
+            + given_every_session(sidecar),
             self.job_worktree,
-            session_changes(self.tracker.trailer(ticket) if ticket else None),
+            session_changes(self.tracker.trailer(ticket) if ticket else None, sidecar),
             stdin=prompt)
 
     # A path comes back on stdout, so a reason takes stderr, and the log too for a background run.
@@ -810,6 +817,13 @@ class Loop:
 
     def tree_of_job(self):
         return self.git(self.job_worktree, "status", "--porcelain").out.strip()
+
+    # Under Sidecar Steering no commit carries a trailer, so a check for one could only fail.
+    def checks_of(self, step):
+        checks = step.checks.split()
+        if self.sidecar() is None:
+            return checks
+        return [check for check in checks if check != "ticket-trailer"]
 
     def check_passes(self, ticket, step, check, held):
         if check == "no-error":
@@ -1001,7 +1015,8 @@ class Loop:
             nudge += 1
             self.say("NUDGE {} {:<13}{} of {}, failed {}".format(
                 self.named(ticket), step.name, nudge, NUDGES, " ".join(failed)))
-            ran = self.claude_p("".join(owed(self.tracker, ticket, step, check)
+            sidecar_steered = self.sidecar() is not None
+            ran = self.claude_p("".join(owed(self.tracker, ticket, step, check, sidecar_steered)
                                         for check in failed) + NUDGE_TAILS[step.told],
                                 "--resume", field(held, "session_id"), ticket=ticket)
             appended(reasons, ran.err)
@@ -1010,7 +1025,7 @@ class Loop:
     # Blocked is read between the kinds: a Session that never ran fails, and a Blocked one stops.
     # Handed back and not raised, so the Journal keeps what was judged before the loop acts on it.
     def failed_checks(self, ticket, step, held, reasons):
-        checks = step.checks.split()
+        checks = self.checks_of(step)
         for check in checks:
             if check in NUDGED_BY:
                 continue
@@ -1263,8 +1278,8 @@ class Loop:
                 call += " --resume <build session>"
             else:
                 call += " --session-id <new id>"
-            plan += plan_line(step.name, call, step.checks)
-            nudged = nudged_on(step)
+            plan += plan_line(step.name, call, " ".join(self.checks_of(step)))
+            nudged = nudged_on(self.checks_of(step))
             if nudged:
                 plan += nudges_line(" ".join(nudged))
 

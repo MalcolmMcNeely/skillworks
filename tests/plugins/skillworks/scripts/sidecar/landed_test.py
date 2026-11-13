@@ -118,14 +118,15 @@ def closed_by_command(tree, ticket):
 
 
 # What /skillworks:implement does at Finishing: commit, then close through tracker-close.
-def finishing(runner, ticket, *names):
+def finishing(runner, ticket, *names, trailer=True):
     def finish():
         tree = Path(runner.where)
         for name in names:
             (tree / name).write_text("{} by {}\n".format(name, ticket), encoding="utf-8",
                                      newline="\n")
             git(tree, "add", "-A")
-            git(tree, "commit", "--quiet", "-m", "Wrote " + name + "\n\nTicket: " + ticket)
+            git(tree, "commit", "--quiet", "-m",
+                "Wrote " + name + ("\n\nTicket: " + ticket if trailer else ""))
         closed_by_command(tree, ticket)
     return finish
 
@@ -138,7 +139,7 @@ def building(runner, number):
     return build
 
 
-def given_tickets_that_land(steered, *tickets):
+def given_tickets_that_land(steered, *tickets, trailer=True):
     given_a_suite_that_passes(steered)
     git(steered.repo.work, "push", "--quiet", "origin", "main:" + SPEC_BRANCH)
     files = {FOLDER + "/spec.md": spec_file()}
@@ -149,7 +150,7 @@ def given_tickets_that_land(steered, *tickets):
         sessions.then["implement {} --stop-after-tests".format(reference)] = building(
             steered.runner, number)
         sessions.then["implement {} --finish".format(reference)] = finishing(
-            steered.runner, reference, *names)
+            steered.runner, reference, *names, trailer=trailer)
     steered.put(files)
     sessions.then["spec-drift"] = recording(steered, "drift", DRIFT)
     sessions.then["spec-names"] = recording(steered, "names", NAMES)
@@ -330,3 +331,103 @@ def test_a_spec_whose_tickets_the_list_holds_no_commit_for_stops_naming_the_list
     assert ran.status == 1
     assert "that the list in the Sidecar holds for one of its tickets. 7/1 is closed" in ran.out, \
         said(ran)
+
+
+# --- the Sessions the loop starts -------------------------------------------------
+
+SIDECAR_SETTINGS = ".claude/settings.json"
+
+
+def given_sidecar_settings(steered):
+    path = steered.sidecar / SIDECAR_SETTINGS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{"includeCoAuthoredBy": false}\n', encoding="utf-8", newline="\n")
+
+
+def sessions_started(steered):
+    return [call for call in steered.runner.made if call.args[0] == "claude"]
+
+
+def given_after(call, flag):
+    return call.args[call.args.index(flag) + 1] if flag in call.args else None
+
+
+def what_a_session_is_given(steered, call):
+    return (Path(given_after(call, "--add-dir") or "") == steered.sidecar,
+            Path(given_after(call, "--settings") or "") == steered.sidecar / SIDECAR_SETTINGS,
+            (call.env or {}).get("CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD"))
+
+
+def test_under_sidecar_steering_every_session_gets_the_sidecar_its_claude_md_and_its_settings(
+        steered):
+    given_sidecar_settings(steered)
+    given_tickets_that_land(steered, (1, ("one.txt",)), trailer=False)
+
+    steered.run()
+
+    started = sessions_started(steered)
+    assert started
+    assert {what_a_session_is_given(steered, call) for call in started} == {(True, True, "1")}
+
+
+def test_under_sidecar_steering_the_conflict_session_gets_the_sidecar_its_claude_md_and_its_settings(
+        steered):
+    given_sidecar_settings(steered)
+    sessions = given_tickets_that_land(steered, (1, ("one.txt",)), (2, ("one.txt",)))
+    given_the_other_side_lands_while_ticket_2_builds(steered, sessions, listed_for="7/1")
+
+    steered.run()
+
+    [resolving] = [call for call in sessions_started(steered)
+                   if call.stdin and call.stdin.startswith("/skillworks:resolve-conflict")]
+    assert what_a_session_is_given(steered, resolving) == (True, True, "1")
+
+
+def test_under_sidecar_steering_no_session_is_handed_a_ticket_for_the_hook(steered):
+    given_tickets_that_land(steered, (1, ("one.txt",)), trailer=False)
+
+    steered.run()
+
+    started = sessions_started(steered)
+    assert started
+    assert [call for call in started if (call.env or {}).get("SKILLWORKS_TICKET")] == []
+
+
+def test_outside_sidecar_steering_no_session_is_given_the_sidecar(steered):
+    (steered.sidecar / LOOP_FILE).unlink()
+    write_loop(steered.repo.work)
+    write_steering(steered.repo.work)
+    given_tickets_that_land(steered, (1, ("one.txt",)))
+
+    steered.run()
+
+    started = sessions_started(steered)
+    assert started
+    assert [call for call in started if "--add-dir" in call.args] == []
+
+
+def test_under_sidecar_steering_a_finish_that_did_not_commit_is_nudged_to_commit_with_no_trailer(
+        steered):
+    sessions = given_tickets_that_land(steered, (1, ("one.txt",)), trailer=False)
+    finish = "implement 7/1 --finish"
+    sessions.when_nudged[finish] = sessions.then[finish]
+    sessions.then[finish] = lambda: closed_by_command(steered.runner.where, "7/1")
+
+    ran = steered.run()
+
+    [nudge] = [call.stdin for call in sessions_started(steered)
+               if call.stdin and call.stdin.startswith("You have not committed the work")]
+    assert ran.status == 0, said(ran)
+    assert "Ticket:" not in nudge
+
+
+def test_under_sidecar_steering_tickets_whose_commits_carry_no_trailer_land_on_the_named_branch(
+        steered):
+    given_tickets_that_land(steered, (1, ("one.txt",)), (2, ("two.txt",)), trailer=False)
+
+    ran = steered.run()
+
+    assert ran.status == 0, said(ran)
+    assert steered.on_origin("log", "--format=%(trailers:only)", "main.." + SPEC_BRANCH).strip() == ""
+    assert {"one.txt", "two.txt"} <= set(
+        steered.on_origin("ls-tree", "--name-only", SPEC_BRANCH).split())

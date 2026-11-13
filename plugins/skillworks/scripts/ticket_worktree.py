@@ -38,6 +38,7 @@ from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.session_trailer import session_trailer
+from steering.steering_file import sidecar_steering
 from steering.target_branch import target_branch_for
 from stop import Stop, is_a_number, misuse, refusal
 
@@ -265,7 +266,8 @@ class Worktrees:
                 # A line ending alone stages to nothing, and git refuses to commit that.
                 if self.git(tree, "diff", "--cached", "--quiet").status != 0:
                     state = "held"
-                    hidden = session_trailer(self.checkout) == "hide"
+                    hidden = (session_trailer(self.checkout) == "hide"
+                              or sidecar_steering(self.checkout) is not None)
                     sessions = [] if hidden else self.recorded_sessions(tree)
                     # Losing the work costs more than losing the Session's name.
                     if not sessions and not hidden:

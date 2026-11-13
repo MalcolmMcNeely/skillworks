@@ -542,30 +542,81 @@ async function sidecarSteeredRepository(chosen) {
   return repo;
 }
 
-test("a commit takes the credit from the Sidecar's loop.json when the Sidecar holds one", async () => {
+function trailerBlock(repo) {
+  return repo.git("log", "-1", "--format=%(trailers:only,unfold)").trim();
+}
+
+test("under Sidecar Steering a Bash commit by a Session handed a ticket carries no trailer", async () => {
   // Arrange
-  const repo = await sidecarSteeredRepository({ "co-authored-by": "show" });
-  const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+  const repo = await sidecarSteeredRepository({ "co-authored-by": "show", "session-trailer": "show" });
+  const command = await asRun('git add -A && git commit -m "Fix the thing"', SESSION, "7/2", repo.dir);
 
   // Act
   repo.run(command);
 
   // Assert
-  assert.deepEqual(credits(repo), [CREDIT]);
+  assert.equal(trailerBlock(repo), "");
 });
 
-test("a commit leaves the repo's loop.json unread when the Sidecar holds one", async () => {
+test("under Sidecar Steering a PowerShell commit by a Session handed a ticket carries no trailer", { skip: NO_PWSH }, async () => {
   // Arrange
-  const repo = await sidecarSteeredRepository({ "co-authored-by": "hide" });
+  const repo = await sidecarSteeredRepository({ "co-authored-by": "show", "session-trailer": "show" });
+  const typed = 'git add -A; git commit -m "Fix the thing"';
+  const answer = await answerTo(typed, SESSION, "PowerShell", "7/2", repo.dir);
+
+  // Act
+  await repo.runPowerShell(answer?.updatedInput?.command ?? typed);
+
+  // Assert
+  assert.equal(trailerBlock(repo), "");
+});
+
+test("under Sidecar Steering the repo's own loop.json adds no trailer either", async () => {
+  // Arrange
+  const repo = await sidecarSteeredRepository({});
   await mkdir(join(repo.dir, "docs", "skillworks"), { recursive: true });
   await writeFile(join(repo.dir, "docs", "skillworks", "loop.json"), JSON.stringify({ "co-authored-by": "show" }));
-  const command = await rewritten('git add -A && git commit -m "Fix the thing"', SESSION, "Bash", "", repo.dir);
+  const command = await asRun('git add -A && git commit -m "Fix the thing"', SESSION, "", repo.dir);
 
   // Act
   repo.run(command);
 
   // Assert
-  assert.deepEqual(credits(repo), []);
+  assert.equal(trailerBlock(repo), "");
+});
+
+test("under Sidecar Steering a commit with no Session id is not denied", async () => {
+  // Arrange
+  const repo = await sidecarSteeredRepository({});
+
+  // Act
+  const answer = await answerTo('git add -A && git commit -m "Fix the thing"', null, "Bash", "", repo.dir);
+
+  // Assert
+  assert.equal(answer, undefined);
+});
+
+test("under Sidecar Steering a commit inside bash -c passes, since the hook has nothing to add", async () => {
+  // Arrange
+  const repo = await sidecarSteeredRepository({});
+
+  // Act
+  const answer = await answerTo("bash -c 'git commit -m x'", SESSION, "Bash", "", repo.dir);
+
+  // Assert
+  assert.equal(answer, undefined);
+});
+
+test("under Sidecar Steering a typed Claude credit line inside bash -c is denied", async () => {
+  // Arrange
+  const repo = await sidecarSteeredRepository({});
+  const command = "bash -c 'git commit -m \"Fix it\" -m \"Co-Authored-By: Claude <noreply@anthropic.com>\"'";
+
+  // Act
+  const answer = await answerTo(command, SESSION, "Bash", "", repo.dir);
+
+  // Assert
+  assert.match(answer?.permissionDecisionReason ?? "", /Under Sidecar Steering no commit carries a Claude/);
 });
 
 test("an amend by the same Session with the credit shown adds no second credit line", async () => {
@@ -737,6 +788,23 @@ for (const [tool, form, command] of TYPED_CREDITS) {
     // Assert
     assert.ok(got.updatedInput);
   });
+}
+
+for (const answer of ["show", "hide", undefined]) {
+  for (const [tool, form, command] of TYPED_CREDITS) {
+    test(`under Sidecar Steering a ${tool} commit holding a typed Claude credit line in ${form} is denied with ${answer ?? "no answer"}`, async () => {
+      // Arrange
+      const repo = await sidecarSteeredRepository(answer ? { "co-authored-by": answer } : {});
+
+      // Act
+      const got = await answerTo(command, SESSION, tool, "", repo.dir);
+
+      // Assert
+      assert.equal(got?.permissionDecision, "deny");
+      assert.match(got.permissionDecisionReason, /Sidecar Steering/);
+      assert.match(got.permissionDecisionReason, /remove the line and run the commit again/i);
+    });
+  }
 }
 
 test("a typed Claude credit line in a command with no commit passes unchanged", async () => {

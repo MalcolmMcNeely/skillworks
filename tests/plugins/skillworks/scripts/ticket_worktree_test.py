@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 import ticket_worktree
-from conftest import SCRIPTS, Ran, Repo, git, launch, no_wait, write_loop
+from conftest import SCRIPTS, Ran, Repo, git, launch, no_wait, sidecar_steering, write_loop
 from steering.target_branch import LOOP_FILE
 
 SCRIPT = (SCRIPTS / "ticket_worktree.py").as_posix()
@@ -289,6 +289,20 @@ def test_a_held_keep_names_its_session_when_the_team_shows_the_session_trailer(r
     run_worktree(runner, "keep", repo.work, 158)
 
     assert sessions_named(repo, "ticket-164-kept-1") == ["first-session"]
+
+
+def test_a_held_keep_under_sidecar_steering_names_no_session(repo, runner):
+    given_job(repo, runner, 158, "ticket-164")
+    sidecar_steering(repo)
+    tree = repo.tree(158, "ticket-164")
+    given_sessions(tree, "first-session")
+    given_held(tree)
+
+    ran = run_worktree(runner, "keep", repo.work, 158)
+
+    assert ran.out == record("ticket-164", "ticket-164-kept-1", "held")
+    assert git(repo.work, "log", "-1", "--format=%(trailers:only)", "spec-loop/158/ticket-164-kept-1"
+               ).strip() == ""
 
 
 def test_a_held_keep_names_a_session_that_already_committed(repo, runner):

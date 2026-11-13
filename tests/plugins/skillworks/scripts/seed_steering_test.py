@@ -1208,6 +1208,12 @@ def test_the_issue_tracker_seed_says_the_files_tracker_lives_in_the_sidecar_and_
     assert "never opens its files by hand" in files
 
 
+def test_the_issue_tracker_seed_says_no_commit_carries_a_ticket_trailer_under_sidecar_steering():
+    files = files_tracker(seeded("issue-tracker.md"))
+
+    assert "Under Sidecar Steering no commit carries a `Ticket:` trailer." in files
+
+
 def test_this_repos_tracker_docs_hold_the_seeds_files_tracker():
     ours = (ROOT / "docs" / "skillworks" / "issue-tracker.md").read_text(encoding="utf-8")
 

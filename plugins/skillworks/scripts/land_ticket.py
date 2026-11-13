@@ -42,7 +42,7 @@ from filelock import FileLock, Timeout
 from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
-from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
+from runner import Subprocess, given_every_session, session_changes
 from sidecar.landed import Landed
 from sidecar.locator import main_checkout_of
 from steering.steering_file import sidecar_steering
@@ -165,6 +165,7 @@ class Landing:
         self.target = target
         # Set under Sidecar Steering alone, where it stands in for the trailer.
         self.landed = None
+        self.sidecar = None
 
     @property
     def upstream(self):
@@ -311,9 +312,10 @@ class Landing:
     def resolve_call(self, prompt):
         return self.runner.run(
             ["claude", "-p", "--resume", self.session,
-             "--permission-mode", self.permission_mode, "--output-format", "json"] + GIVEN_EVERY_SESSION,
+             "--permission-mode", self.permission_mode, "--output-format", "json"]
+            + given_every_session(self.sidecar),
             self.worktree,
-            session_changes(self.tracker.trailer(self.ticket)),
+            session_changes(self.tracker.trailer(self.ticket), self.sidecar),
             stdin=prompt)
 
     def resolve_conflict(self, base, refused):
@@ -512,7 +514,8 @@ class Landing:
         # The worktree script read the main checkout's settings, so a landing handed none reads the same ones.
         # The Tracker is read before the push, so a landing never pushes and then finds it has none.
         top = self.main_checkout()
-        if sidecar_steering(top):
+        self.sidecar = sidecar_steering(top)
+        if self.sidecar:
             self.landed = Landed(self.runner, top)
         if not self.target or self.tracker is None:
             self.tracker = self.tracker or tracker_for(self.runner, top, self.spec)
