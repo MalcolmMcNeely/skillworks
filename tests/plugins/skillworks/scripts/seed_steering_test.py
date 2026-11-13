@@ -2139,7 +2139,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 15
+    assert len(commands) == 17
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -3608,6 +3608,20 @@ def test_implement_ends_its_refusal_of_a_blocked_ticket_on_the_blocked_line():
 
     assert ("A ticket with an open blocker is work you cannot do, so begin that report with the "
             "`BLOCKED` line, as Blocked says below.") in before
+
+
+def test_implement_reads_its_ticket_and_spec_with_tracker_show_on_github():
+    before = section(skill_text("implement"), "Before you start")
+
+    assert ("With the GitHub Tracker, print each one with `tracker-show <n>`, the ticket's number "
+            "and then the spec's.") in before
+
+
+def test_implement_closes_its_ticket_with_tracker_close_on_github():
+    finishing = section(skill_text("implement"), "Finishing")
+
+    assert "tracker-close <n> .spec-loop/closing-notes/<n>.md" in finishing
+    assert "gh issue close" not in finishing
 
 
 # Running the suite never runs in a loop, so a path named only there leaves a build with no Suite file.

@@ -30,6 +30,8 @@
       "Bash(ticket-worktree:*)",
       "Bash(skillworks-suite:*)",
       "Bash(tracker-publish:*)",
+      "Bash(tracker-show:*)",
+      "Bash(tracker-close:*)",
       "Bash(spec-commits:*)",
       "Bash(own-branch:*)",
       "Bash(steering-file:*)",

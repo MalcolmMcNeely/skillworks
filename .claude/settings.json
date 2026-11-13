@@ -38,6 +38,8 @@
       "Bash(docker:*)",
       "Bash(mkdir:*)",
       "Bash(tracker-publish:*)",
+      "Bash(tracker-show:*)",
+      "Bash(tracker-close:*)",
       "Bash(spec-commits:*)",
       "Bash(steering-file:*)"
     ]

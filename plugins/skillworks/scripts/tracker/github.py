@@ -1,6 +1,7 @@
 # gh 2.92.0 has no dependency flags, so reads go through `gh api`: docs/research/harness/ticket-state-guardrails.md.
 
 import hashlib
+import json
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -204,6 +205,13 @@ class GitHub:
 
     def close(self, ticket, comment):
         return self.gh("issue", "close", ticket, "--comment", comment).status == 0
+
+    def issue(self, number):
+        asked = self.gh("issue", "view", number, "--json", "title,body,comments")
+        if asked.status != 0:
+            raise refusal("GitHub would not give issue #{}. gh said:\n{}".format(
+                number, (asked.out + asked.err).rstrip("\n")))
+        return json.loads(asked.out)
 
     def reopen(self, ticket):
         return self.gh("issue", "reopen", ticket).status == 0

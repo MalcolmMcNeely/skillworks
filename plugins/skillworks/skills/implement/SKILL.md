@@ -24,7 +24,7 @@ The order is the spec loop's own, so the developer at the keyboard and the drive
 
 Read each Steering file with `steering-file <path>`, and never by another route. It prints the file from disk. When the file is missing, it says so.
 
-If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why. `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. With the files Tracker a ticket comes as `<spec>/<ticket>`, such as `7/2`, because its number is local to its spec.
+If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why. `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. With the GitHub Tracker, print each one with `tracker-show <n>`, the ticket's number and then the spec's. With the files Tracker a ticket comes as `<spec>/<ticket>`, such as `7/2`, because its number is local to its spec.
 
 If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/issue-tracker.md` or `steering-file docs/skillworks/suite.json` says the file is missing, stop. Tell the user which file is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was done. Begin that report with the `BLOCKED` line, as Blocked says below.
 
@@ -131,4 +131,10 @@ Run no tests here either. One step owns that gate: under the spec loop the drive
 3. **Commit to the branch you are on.** Under the spec loop that is the Job branch, and the ticket Lands on its Target branch later. Under a hand run it is the Target branch, which `target-branch` in `steering-file docs/skillworks/loop.json` names; when that says `pr`, it is the branch the spec names, under `## Branch` on GitHub or as `branch` in `spec.md` with the files Tracker. Do not push. A spec loop pushes the ticket itself, by a step of its own that runs after this one, so the push is checked rather than taken on trust.
    - **Name the ticket in the message.** See "Two conventions the loop leans on" in `steering-file docs/skillworks/issue-tracker.md` for the form, and for why it is not a closing word. With the files Tracker the trailer names the spec and the ticket, as `Ticket: 7/2`.
 4. **Leave the working tree clean.** A caller may be driving you in a loop and will stop if it is not.
-5. **With the GitHub Tracker, close the ticket** with a comment saying what was done, which tests prove it, which checks did not run, each Flake and its kept file, any finding left unfixed with the reason, and each question the ticket puts to a person with the answer the build gave, so the developer can change that answer later from the ticket. With the files Tracker, step 2 has closed it already.
+5. **With the GitHub Tracker, close the ticket** with a comment saying what was done, which tests prove it, which checks did not run, each Flake and its kept file, any finding left unfixed with the reason, and each question the ticket puts to a person with the answer the build gave, so the developer can change that answer later from the ticket. Write that comment with the Write tool to `.spec-loop/closing-notes/<n>.md`, with the ticket's number in place of `<n>`, and close with this one command:
+
+   ```bash
+   tracker-close <n> .spec-loop/closing-notes/<n>.md
+   ```
+
+   Git ignores `.spec-loop/`, so the note leaves the working tree clean. The command closes the ticket as completed, with the note as its comment, in one call. On a ticket already closed it changes nothing and says so. With the files Tracker, step 2 has closed it already.
