@@ -25,7 +25,7 @@ Given a list, judge only those items, and write Verdicts for those alone. Every 
 
 Every ticket Lands straight on the Target branch, and its Job branch goes when it passes, so no branch is left to diff. The base commit is the only thing that says where the work began, and it bounds the search for the spec's commits. The loop stores it in `.spec-loop/<spec>/base.sha` and passes it in. If it was not passed, read that file. If that is missing too, stop and ask — do not guess a base.
 
-The **spec's commits** are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. A commit with no `Ticket:` trailer is never one of them, whoever made it, and neither is a commit that names another spec's ticket. Other loops and hand commits Land on the same Target branch, so the range from the base commit holds work that is not this spec's.
+The **spec's commits** are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. Under Sidecar Steering no trailer counts: the list of Landed commits the loop keeps in the Sidecar names each commit's ticket instead. A commit with no ticket is never one of them, whoever made it, and neither is a commit of another spec's ticket. Other loops and hand commits Land on the same Target branch, so the range from the base commit holds work that is not this spec's.
 
 The Target branch is `target-branch` in `steering-file docs/skillworks/loop.json`. When that says `pr`, the spec names its own branch: under its `## Branch` heading with GitHub, and as `branch` in its frontmatter with files.
 
@@ -48,7 +48,7 @@ Where the rule held, the item for the part that lost gets **Contradicts**, and t
    - **GitHub**: the spec issue, then its sub-issues with their Closing notes.
    - **Files**: `spec.md` in the spec's folder on `origin/<target>`, then each file in its `tickets/` folder there, with its `## Closing note`. The remote is where the tickets Landed, and this checkout may not hold them.
 
-2. Get the spec's commits. This one command prints them, oldest first, each with its patch and its `Ticket:` trailer. It fetches the Target branch and reads `origin/<target>`, and not the branch this checkout holds, because the tickets Landed on the remote:
+2. Get the spec's commits. This one command prints them, oldest first, each with its patch and its ticket: its `Ticket:` trailer, or under Sidecar Steering a `Ticket:` line above the commit. It fetches the Target branch and reads `origin/<target>`, and not the branch this checkout holds, because the tickets Landed on the remote:
 
    ```bash
    spec-commits <spec> <base>

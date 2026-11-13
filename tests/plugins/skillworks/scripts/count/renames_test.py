@@ -181,7 +181,7 @@ def test_spec_names_given_a_rename_ticket_judges_only_that_tickets_renames_and_d
 
     assert "## The Name re-check" in text
     assert "/skillworks:spec-names 42 a1b2c3d 57" in text
-    assert 'git log -p --reverse --grep "^Ticket: <trailer>$" <base>..origin/<target>' in text
+    assert "spec-commits <spec> <base> <ticket>" in text
     assert "Do not look for new renames." in text
 
 

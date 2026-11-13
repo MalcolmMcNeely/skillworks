@@ -27,7 +27,7 @@ If `steering-file docs/skillworks/loop.json`, `steering-file docs/skillworks/iss
 
 Two things, and nothing else. A small context keeps the judge sharp, and one finding is all this step owes.
 
-1. **The spec's commits.** They are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. A commit with no `Ticket:` trailer is never one of them, and neither is a commit that names another spec's ticket, so a name another spec or a person brought in is never yours to judge. This one command prints them, oldest first, each with its patch and its trailer, so the trailer shows which ticket brought each name in. It fetches the Target branch and reads `origin/<target>`, because the tickets Landed on the remote:
+1. **The spec's commits.** They are the commits after the base commit whose `Ticket:` trailer names one of the spec's tickets, the Gap ticket and the rename ticket among them. Under Sidecar Steering no trailer counts: the list of Landed commits the loop keeps in the Sidecar names each commit's ticket instead. A commit with no ticket is never one of them, and neither is a commit of another spec's ticket, so a name another spec or a person brought in is never yours to judge. This one command prints them, oldest first, each with its patch and its ticket, so you see which ticket brought each name in. The ticket is the commit's trailer, or under Sidecar Steering a `Ticket:` line above the commit. It fetches the Target branch and reads `origin/<target>`, because the tickets Landed on the remote:
 
    ```bash
    spec-commits <spec> <base>
@@ -46,7 +46,7 @@ Read nothing else: not the spec, not its tickets, not the drift report, and not 
 Every finding is a rename. A rename is never "Optional", and never a matter of taste: a name that says something the code no longer does is a defect, and so is one concept under two names. The loop treats every rename you list as work owed, and asks no one whether to make it, so list only what must change.
 
 1. **A name whose meaning moved.** The spec's commits changed what a type, function, field, file or glossary word does, and the name stayed. A comment edited above a declaration whose name did not change is the sign to look for. Name the old name and say what it now means.
-2. **A concept two tickets named two ways.** Two of the spec's commits with two `Ticket:` trailers brought in two names for one thing. Name both, and say which one the glossary uses. When the glossary has no word for it, write `no glossary word` on the line, and name the one the spec's commits use most. The loop reads those words and tells a person the word needs settling.
+2. **A concept two tickets named two ways.** Two of the spec's commits of two tickets brought in two names for one thing. Name both, and say which one the glossary uses. When the glossary has no word for it, write `no glossary word` on the line, and name the one the spec's commits use most. The loop reads those words and tells a person the word needs settling.
 
 A name the glossary lists under _Avoid_ is a finding too, when the spec's commits brought it in.
 
@@ -110,10 +110,10 @@ The ticket is named the way the Tracker names it: the issue number with GitHub, 
 Read two things, and nothing else:
 
 1. **The rename ticket.** Each `###` heading in it is one rename, and the heading is its name. Read it the way `steering-file docs/skillworks/issue-tracker.md` says to read a ticket.
-2. **The rename ticket's diff.** Its commits carry its `Ticket:` trailer, `#57` with GitHub and `42/3` with files. Read them on `origin/<target>`:
+2. **The rename ticket's diff.** Read its commits with the same command, with the ticket last as you were given it. It prints only that ticket's commits on `origin/<target>`, by their trailer or under Sidecar Steering by the list:
 
    ```bash
-   git log -p --reverse --grep "^Ticket: <trailer>$" <base>..origin/<target>
+   spec-commits <spec> <base> <ticket>
    ```
 
 Under the spec loop, run no `git fetch` of your own before either read, even where `steering-file docs/skillworks/issue-tracker.md` names one. The loop fetched the Target branch before it started this Session, and a loop Session has no permission for a bare fetch. In a hand run, fetch the Target branch first.

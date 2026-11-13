@@ -11,6 +11,8 @@ from clock.held_clock import HeldClock
 from conftest import Ran, Repo, git, launch
 from files_test import commit_files, spec_file, ticket_file, write_files, write_loop
 from runner import Subprocess
+from sidecar.landed import Landed
+from sidecar.locator import sidecar_of
 from sidecar.sidecar import Sidecar
 from steering.target_branch import LOOP_FILE
 from tracker import spec_commits
@@ -233,6 +235,97 @@ def test_with_github_in_pr_mode_the_branch_the_spec_names_is_read(history):
 
     assert ran.status == 0, said(ran)
     assert printed(ran) == [read]
+
+
+def test_a_ticket_named_after_the_base_prints_that_tickets_commits_alone(history):
+    base = history.tickets(four_tickets())
+    history.commit("Read", ["Ticket: 7/1"])
+    rename = history.commit("Rename", ["Ticket: 7/4"])
+    again = history.commit("Rename again", ["Ticket: 7/4"])
+
+    ran = history.run("7", base, "4")
+
+    assert ran.status == 0, said(ran)
+    assert printed(ran) == [rename, again]
+
+
+# --- under Sidecar Steering ----------------------------------------------------
+
+# The Steering moves into the Sidecar, and the spec's branch is the one the commits are pushed to.
+def steered(history):
+    (history.repo.work / LOOP_FILE).unlink()
+    write_loop(sidecar_of(Subprocess(), history.repo.work), "pr")
+    return history.tickets({**four_tickets(), FOLDER + "/spec.md": spec_file(branch="main")})
+
+
+def listed(history, ticket, *commits):
+    Landed(Subprocess(), history.repo.work).add("main", ticket, list(commits))
+
+
+def test_under_sidecar_steering_the_commits_the_list_names_are_printed_each_under_its_ticket(
+        history):
+    base = steered(history)
+    read = history.commit("Read")
+    history.commit("A hand fix", ["Ticket: 7/1"])
+    write = history.commit("Write")
+    listed(history, "7/1", read)
+    listed(history, "7/2", write)
+
+    ran = history.run("7", base)
+
+    assert ran.status == 0, said(ran)
+    assert re.findall(r"^Ticket: (\S+)\ncommit ([0-9a-f]{40})$", ran.out, re.MULTILINE) == [
+        ("7/1", read), ("7/2", write)]
+
+
+def test_under_sidecar_steering_a_ticket_named_prints_the_commits_the_list_holds_for_it(history):
+    base = steered(history)
+    read = history.commit("Read")
+    rename = history.commit("Rename", ["Ticket: 7/1"])
+    listed(history, "7/1", read)
+    listed(history, "7/4", rename)
+
+    ran = history.run("7", base, "7/4")
+
+    assert ran.status == 0, said(ran)
+    assert printed(ran) == [rename]
+
+
+def test_under_sidecar_steering_a_listed_commit_the_branch_no_longer_holds_is_refused_naming_it(
+        history):
+    base = steered(history)
+    read = history.commit("Read")
+    listed(history, "7/1", read)
+    git(history.repo.origin, "update-ref", "refs/heads/main", base)
+
+    ran = history.run("7", base)
+
+    assert ran.status == 1
+    assert "main on origin no longer holds commit {}".format(read) in ran.err
+    assert "main was rewritten under the list" in ran.err
+
+
+def test_a_commits_ticket_is_read_from_its_trailer(history):
+    history.tickets(four_tickets())
+    read = history.commit("Read", ["Ticket: 7/1"])
+    git(history.repo.work, "fetch", "--quiet", "origin")
+
+    ran = history.run("--ticket-of", read)
+
+    assert (ran.status, ran.out) == (0, "7/1\n"), said(ran)
+
+
+def test_under_sidecar_steering_a_commits_ticket_is_read_from_the_list_and_never_its_trailer(
+        history):
+    steered(history)
+    read = history.commit("Read")
+    by_hand = history.commit("A hand fix", ["Ticket: 7/1"])
+    listed(history, "7/1", read)
+    git(history.repo.work, "fetch", "--quiet", "origin")
+
+    ran = (history.run("--ticket-of", read), history.run("--ticket-of", by_hand))
+
+    assert [(each.status, each.out) for each in ran] == [(0, "7/1\n"), (0, "")], said(ran[0])
 
 
 def test_the_command_runs_from_the_plugins_bin_folder(history):

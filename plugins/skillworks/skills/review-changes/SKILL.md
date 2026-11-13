@@ -46,7 +46,7 @@ Before going further, confirm the fixed point resolves (`git rev-parse <fixed-po
 
 Look for the ticket or spec the change was built for, in this order:
 
-1. The `Ticket:` trailer on the commits, read back as `steering-file docs/skillworks/issue-tracker.md` says. Fetch the ticket and its parent spec through the same docs.
+1. The ticket each commit Landed for. `spec-commits --ticket-of <commit>` prints it: from the commit's `Ticket:` trailer, or under Sidecar Steering from the list of Landed commits the loop keeps in the Sidecar, where a trailer counts for nothing. Fetch the ticket and its parent spec as `steering-file docs/skillworks/issue-tracker.md` says.
 2. An issue number, or a ticket named as its Tracker names it, passed as this skill's argument. An uncommitted change carries no trailer, so this is where its ticket comes from.
 3. With neither, ask the user which ticket or spec the change was built for. If they say there isn't one, skip the Spec sub-agent and note that in the report.
 

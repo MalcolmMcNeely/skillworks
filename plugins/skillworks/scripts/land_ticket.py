@@ -43,7 +43,9 @@ from fetch_origin import ATTEMPTS as FETCH_ATTEMPTS
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
+from sidecar.landed import Landed
 from sidecar.locator import main_checkout_of
+from steering.steering_file import sidecar_steering
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from suite import Suite
@@ -161,6 +163,8 @@ class Landing:
         # None when no conflict is in hand, so a stop can tell whether it has one to record.
         self.conflict = None
         self.target = target
+        # Set under Sidecar Steering alone, where it stands in for the trailer.
+        self.landed = None
 
     @property
     def upstream(self):
@@ -273,13 +277,15 @@ class Landing:
 
     # The session may only refuse for want of a ticket once it has had them all.
     def other_side(self, base):
-        commits = self.git("log", "--reverse", "--format=%h %s", base + ".." + self.upstream)
+        commits = self.git("log", "--reverse", "--format=%H %h %s", base + ".." + self.upstream)
         if commits.status != 0:
             return None
+        landed = self.listed_on_target()
         said = ""
         for line in listed(commits.out):
+            full, _, line = line.partition(" ")
             sha, _, subject = line.partition(" ")
-            ticket = self.trailer_of(sha)
+            ticket = landed.get(full, "") if self.landed is not None else self.trailer_of(sha)
             if not ticket:
                 said += ("### {} {}\n\nThis commit names no ticket. Read it with: "
                          "git show {}\n\n").format(sha, subject, sha)
@@ -505,8 +511,10 @@ class Landing:
 
         # The worktree script read the main checkout's settings, so a landing handed none reads the same ones.
         # The Tracker is read before the push, so a landing never pushes and then finds it has none.
+        top = self.main_checkout()
+        if sidecar_steering(top):
+            self.landed = Landed(self.runner, top)
         if not self.target or self.tracker is None:
-            top = self.main_checkout()
             self.tracker = self.tracker or tracker_for(self.runner, top, self.spec)
         if not self.target:
             if self.spec is None and in_pr_mode(top):
@@ -522,6 +530,9 @@ class Landing:
             raise self.die("{} has uncommitted changes in {}. Nothing was pushed.".format(
                 self.named, self.worktree))
 
+        # Under Sidecar Steering the list traces each commit back once it Lands, so no trailer is needed.
+        if self.landed is not None:
+            return
         # A commit with no trailer can never be traced back, and a ticket can make more than one.
         mine = self.tracker.trailer(self.ticket)
         for sha in self.ticket_commits():
@@ -559,6 +570,29 @@ class Landing:
         finally:
             turn.let_go()
 
+    # Read just after a fetch, so a branch rewritten under the list stops the landing before it moves anything.
+    def listed_on_target(self):
+        if self.landed is None:
+            return {}
+        try:
+            return self.landed.on(self.target, self.worktree)
+        except Stop as stop:
+            raise self.die(stop.said.removeprefix("FAIL  ").rstrip("\n") + " Nothing was pushed.")
+
+    # Still inside the Turn, so no other landing on the branch can write between the push and the list.
+    def list_landed(self, landing):
+        try:
+            self.landed.add(self.target, self.tracker.trailer(self.ticket), landing)
+        except Stop as stop:
+            raise refusal("{} landed on {}, and the Sidecar would not list its commits, so no check "
+                          "will count them as {}'s. List them by hand in {}, one line each as "
+                          "<branch><TAB><commit><TAB>{}:\n{}\nThe Sidecar said: {}".format(
+                              self.named, self.target, self.named, self.landed.path.as_posix(),
+                              self.tracker.trailer(self.ticket), "\n".join(landing),
+                              stop.said.strip()))
+        self.say("{} listed {} in the Sidecar".format(
+            self.named, "its commit" if len(landing) == 1 else "its {} commits".format(len(landing))))
+
     # The finishing step closed the ticket naming the commits it made, which a rebase replaces.
     def name_the_rebased(self, built):
         landed = listed(self.git("log", "--reverse", "--format=%h",
@@ -587,6 +621,7 @@ class Landing:
                                .format(self.named, self.target))
             if self.git("rev-parse", "--verify", "--quiet", self.upstream).status != 0:
                 raise self.die("origin has no {} branch. Nothing was pushed.".format(self.target))
+            self.listed_on_target()
 
             # A ticket already on its Target branch would push nothing and call that a success.
             if not self.git("rev-list", "-1", self.upstream + "..HEAD").out.strip():
@@ -601,11 +636,15 @@ class Landing:
 
             if not kept:
                 self.take(turn)
+            # Read before the push, because a push moves the ref the range starts from.
+            landing = listed(self.git("rev-list", "--reverse", self.upstream + "..HEAD").out)
             pushed = self.git("push", "--quiet", "origin", "HEAD:" + self.target)
             if pushed.status == 0:
                 self.say("{} landed on {} as {} in {} {}, holding the Turn {}".format(
                     self.named, self.target, commit, tries, "try" if tries == 1 else "tries",
                     "from fetch to push" if kept else "for its push"))
+                if self.landed is not None:
+                    self.list_landed(landing)
                 if rebased and self.tracker.close_names_commits:
                     self.name_the_rebased(built)
                 return

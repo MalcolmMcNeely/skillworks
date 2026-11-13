@@ -28,6 +28,13 @@ date or time of its own.
 2026-09-28 16:57:06 STEP  #203 build        3/6  ~245m left
 ```
 
+Under Sidecar Steering, the landing adds a line after its `landed` line, when it has added the
+ticket's commits to the list in the Sidecar:
+
+```
+2026-09-28 16:56:49 ok    12/2 listed its 2 commits in the Sidecar
+```
+
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
 
@@ -134,7 +141,9 @@ leaves:
 
 A `SCOPE` line comes before the drift check, the drift re-check and the Name check. It says how many
 of the spec's commits the check reads, and how many other commits after the base commit it leaves
-out: a hand commit with no `Ticket:` trailer, or another spec's ticket. The script judges nothing
+out: a hand commit with no `Ticket:` trailer, or another spec's ticket. Under Sidecar Steering it
+leaves out every commit the list in the Sidecar does not hold, a hand commit with a `Ticket:` line
+too. The script judges nothing
 here. It prints the counts, and the check judges. A spec with no commit to read gets a `STOP` line
 in place of the `SCOPE` line, as [When a step fails](stops.md) shows.
 
@@ -176,7 +185,8 @@ re-check's:
 ```
 
 A `STOP` line names each Gap left after the round, each Contradicts, each rename not made and a spec
-with no commit to read, as [When a step fails](stops.md) shows. It comes last, after the
+with no commit to read, as [When a step fails](stops.md) shows. Under Sidecar Steering, a `STOP` or
+`FAIL` line names a branch rewritten under the list, and the commit it no longer holds. It comes last, after the
 full run's lines, in place of `END`, and only a `LIST` can follow it. `END` comes only on
 [a clean finish](full-run.md#a-clean-finish).
 

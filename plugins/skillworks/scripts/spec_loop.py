@@ -55,8 +55,10 @@ from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHE
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import GIVEN_EVERY_SESSION, Subprocess, session_changes
 from seed_steering import missing_steering
+from sidecar.landed import Landed
 from sidecar.locator import main_checkout_of
 from steering.adr_folder import missing_adr_folder
+from steering.steering_file import sidecar_steering
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
@@ -1601,9 +1603,12 @@ class Loop:
     def say_scope(self, what, base):
         kept, left = spec_commits(self.tracker, self.spec, base, self.wait, self.target)
         if not kept:
-            raise stop("STOP  spec {} has no commit after the base commit {} whose Ticket: trailer "
-                       "names one of its tickets. {} The {} did not run and the spec stays "
-                       "open.".format(self.spec_named(), base, self.why_no_commit(), what))
+            named_by = ("that the list in the Sidecar holds for one of its tickets"
+                        if sidecar_steering(self.root) else
+                        "whose Ticket: trailer names one of its tickets")
+            raise stop("STOP  spec {} has no commit after the base commit {} {}. {} The {} did not "
+                       "run and the spec stays open.".format(
+                           self.spec_named(), base, named_by, self.why_no_commit(), what))
         self.say("SCOPE the {} reads {} of spec {}, and leaves out {} after the base commit".format(
             what, how_many(len(kept), "commit", "commits"), self.spec_named(),
             how_many(len(left), "other commit", "other commits")))
@@ -1870,6 +1875,15 @@ class Loop:
     def read_target(self):
         return target_branch_for(self.runner, self.root, self.spec, self.tracker)
 
+    # Before any ticket, so a branch rewritten between runs stops the loop before it builds on the list.
+    def check_the_list(self):
+        if not sidecar_steering(self.root):
+            return
+        try:
+            Landed(self.runner, self.root, self.clock).on(self.target, self.root)
+        except Stop as stopped:
+            raise stop("STOP  " + stopped.said.removeprefix("FAIL  ").rstrip("\n"))
+
     # The OS frees the hold when the process dies, and the main checkout is where every worktree of the clone meets it.
     def hold_the_spec(self):
         held = main_checkout_of(self.runner, self.root) / ".spec-loop" / self.spec
@@ -1921,6 +1935,7 @@ class Loop:
         # Every worktree is cut from the Target branch on origin, so the ref has to be current first.
         if not fetch_origin(self.runner, self.root.as_posix(), self.target, self.err, self.wait):
             raise stop("ABORT could not fetch {} from origin".format(self.target))
+        self.check_the_list()
 
         # Written once, so a resumed run still measures from where the first run started.
         held = self.log_dir / "base.sha"

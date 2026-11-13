@@ -137,6 +137,26 @@ A loop on another spec is not stopped:
 ABORT spec 7 already has a loop running on this machine, so this one started nothing. Read the running loop's log at C:/code/shop/.spec-loop/7/loop.log
 ```
 
+**A branch rewritten under the list.** Under [Sidecar Steering](../steering.md), no commit on the
+spec's branch is read for its `Ticket:` trailer. Each time a ticket Lands, the loop adds its commits
+to a list in the Sidecar, `landed-commits.tsv`, while it still holds the Turn. The landing, the
+other side of a conflict, `spec-commits`, the drift check, the Name check and `review-changes` read
+that list to find a ticket's commits. A commit that is not on the list, such as one you made by hand,
+counts toward no ticket, even when its message holds a `Ticket:` line.
+
+Before the loop reads the list, it checks that the Target branch on `origin` still holds every
+commit the list names. A force-push or a rebase of the branch can drop one. The loop then cannot
+tell which commits are a ticket's, so it stops and guesses none. Before any ticket, the line is a
+`STOP` line. At a landing it is a `FAIL` line, and the ticket is open again:
+
+```
+STOP  feature/PROJ-12/slug on origin no longer holds commit 4c1d9e2f7a0b3c5d8e6f1a2b3c4d5e6f7a8b9c0d, which the Sidecar lists as Landed for ticket 12/2. feature/PROJ-12/slug was rewritten under the list, so the loop cannot tell which commits are a ticket's, and it guesses none. Put the commit back on feature/PROJ-12/slug, or take its line out of C:/code/shop-skillworks/landed-commits.tsv, and run again.
+```
+
+Push the commit back to the branch, or take its line out of the list by hand. Each line is the
+branch, the commit and the ticket, with a tab between them. The Sidecar keeps the list in its git
+history, so `git -C <sidecar> log -p landed-commits.tsv` shows each change to it.
+
 **A rule with no import.** Before any ticket, and before a dry run prints its plan, the script checks
 that `CLAUDE.md` imports each rule in `docs/skillworks/rules/`. It reads both from the repo's top level.
 A rule with no import would not load into any step, so the loop stops. The `ABORT` line names the
@@ -190,7 +210,9 @@ STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2
 ```
 
 Check that `git log` on the Target branch shows each Landed ticket's `Ticket:` trailer, and run the
-loop again.
+loop again. Under Sidecar Steering, the line says "that the list in the Sidecar holds for one of its
+tickets" in place of the trailer. Check the list in the Sidecar instead, as "A branch rewritten
+under the list" above says.
 
 **A drift report that leaves work owed.** After the last ticket, the script [counts the drift
 check's Verdicts](drift-check.md#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
