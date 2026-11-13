@@ -1,25 +1,36 @@
 import os
+import re
 import sys
 
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.target_branch import LOOP_FILE, tracker_setting
-from stop import Stop, is_a_number, misuse, refusal
+from steering.target_branch import tracker_for
+from stop import Stop, misuse, refusal
 from tracker.github import GitHub
 
-USAGE = "usage: tracker-show <spec-or-ticket>\n"
+USAGE = ("usage: tracker-show <spec-or-ticket>\n"
+         "       With the files Tracker: tracker-show <spec> or tracker-show <spec>/<ticket>\n")
+
+# A files Tracker ticket is named by its spec too, because its number is local to that spec.
+NAMED = re.compile(r"([0-9]+)(?:/([0-9]+))?")
 
 
-def github_tracker(runner, where, command):
+class Named:
+    def __init__(self, given, usage):
+        found = NAMED.fullmatch(given)
+        if not found:
+            raise misuse(usage)
+        self.first = str(int(found.group(1)))
+        self.ticket = str(int(found.group(2))) if found.group(2) else None
+
+
+def opened(runner, where, named):
     found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
     if found.status != 0:
         raise refusal("{} is not inside a git repo.".format(where))
-    top = found.out.strip()
-    if tracker_setting(top) != "github":
-        raise refusal("{} names the files Tracker, and {} serves the GitHub Tracker alone so far. "
-                      "Read the ticket file as docs/skillworks/issue-tracker.md says.".format(
-                          LOOP_FILE, command))
-    tracker = GitHub(runner, top)
+    tracker = tracker_for(runner, found.out.strip(), named.first)
+    if isinstance(tracker, GitHub) and named.ticket is not None:
+        raise refusal("The GitHub Tracker names each issue by its number alone, such as 642.")
     problem = tracker.connect()
     if problem:
         raise refusal(problem[0].upper() + problem[1:] + ".")
@@ -36,10 +47,14 @@ def printed(issue):
 def main(argv, runner, out, err, where=None):
     where = where or os.getcwd()
     try:
-        if len(argv) != 1 or not is_a_number(argv[0]):
+        if len(argv) != 1:
             raise misuse(USAGE)
-        tracker = github_tracker(runner, where, "tracker-show")
-        out.write(printed(tracker.issue(str(int(argv[0])))))
+        named = Named(argv[0], USAGE)
+        tracker = opened(runner, where, named)
+        if isinstance(tracker, GitHub):
+            out.write(printed(tracker.issue(named.first)))
+        else:
+            out.write(tracker.text(named.first, named.ticket))
         return 0
     except Stop as stop:
         err.write(stop.said)

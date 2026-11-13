@@ -35,8 +35,8 @@ measures from where the first run began.
 has no open blocker and that nobody has claimed.
 
 **Claiming** it, with `github`, assigns itself, waits three seconds, and reads the assignees back.
-Another name there means it lets the ticket go and moves on. With `files`, a claim is a pushed commit,
-as [the Tracker](tracker.md#a-claim-and-a-close) says.
+Another name there means it lets the ticket go and moves on. With `files`, a claim is a commit in the
+Sidecar, as [the Tracker](tracker.md#a-claim-and-a-close) says.
 
 Open tickets that are all blocked or claimed by someone else stop the run with a `STUCK` line.
 

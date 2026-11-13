@@ -6,8 +6,11 @@ import json
 
 import pytest
 
+from clock.held_clock import HeldClock
 from conftest import Ran, Repo, launch
-from files_test import write_loop
+from files_test import FOLDER, ticket_file, ticket_path, write_files, write_loop
+from runner import Subprocess
+from sidecar.sidecar import Sidecar
 from steering.target_branch import LOOP_FILE
 from tracker import show
 
@@ -94,10 +97,47 @@ def test_a_number_that_is_not_a_number_is_told_the_usage(repo, runner, issues):
     assert "usage: tracker-show <spec-or-ticket>" in ran.err
 
 
-def test_the_command_runs_from_the_plugins_bin_folder_and_turns_down_the_files_tracker(repo):
+def test_a_github_issue_named_with_a_slash_is_told_the_github_form(repo, runner, issues):
+    ran = shown(repo, runner, "639/2")
+
+    assert ran.status == 1
+    assert "by its number alone" in ran.err
+
+
+SPEC_TEXT = "---\nstatus: open\n---\n\n# SPEC: A local tracker\n\n## Problem Statement\n\nNone.\n"
+
+TICKET_TEXT = ticket_file("TICKET: Read loop.json", blocked_by=[1])
+
+
+@pytest.fixture
+def in_files(repo):
     write_loop(repo.work, "main")
+    Sidecar.of(Subprocess(), repo.work, HeldClock()).write("Tracker state", lambda folder: write_files(
+        folder, {FOLDER + "/spec.md": SPEC_TEXT, ticket_path("02-read-loop-json"): TICKET_TEXT}))
+    return repo
 
-    ran = launch("tracker-show", "642", where=repo.work)
 
-    assert ran.status == 1, ran.out + ran.err
-    assert "tracker-show serves the GitHub Tracker alone so far" in ran.err
+def test_with_the_files_tracker_a_spec_is_printed_from_the_sidecar(in_files, runner):
+    ran = shown(in_files, runner, "7")
+
+    assert (ran.status, ran.out) == (0, SPEC_TEXT), ran.err
+
+
+def test_with_the_files_tracker_a_ticket_is_printed_from_the_sidecar_by_its_spec_and_number(
+        in_files, runner):
+    ran = shown(in_files, runner, "7/2")
+
+    assert (ran.status, ran.out) == (0, TICKET_TEXT), ran.err
+
+
+def test_with_the_files_tracker_a_ticket_the_sidecar_does_not_hold_is_refused(in_files, runner):
+    ran = shown(in_files, runner, "7/9")
+
+    assert (ran.status, ran.out) == (1, "")
+    assert "holds no ticket 9" in ran.err
+
+
+def test_the_command_runs_from_the_plugins_bin_folder_with_the_files_tracker(in_files):
+    ran = launch("tracker-show", "7/2", where=in_files.work)
+
+    assert (ran.status, ran.out) == (0, TICKET_TEXT), ran.err

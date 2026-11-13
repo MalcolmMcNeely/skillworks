@@ -10,7 +10,7 @@ Write the Steering the Skillworks skills read, and the settings the loop needs. 
 
 The Plugin carries the Machinery: the skills, the scripts, the hooks and the output style. They run from the Plugin, so setup copies none of them. Steering is what the repo tells the loop about itself. Setup copies a starting version of each piece, and the team owns it from then on. A Plugin update never changes it by itself. A second run of setup brings in the newer seed and keeps the team's edits.
 
-The Tracker is where the team keeps its specs and tickets: `github`, for GitHub Issues, or `files`, for committed files in `.specs/` on any remote. Setup asks which one.
+The Tracker is where the team keeps its specs and tickets: `github`, for GitHub Issues, or `files`, for Markdown files in the Sidecar, a local git repo beside the repo. Setup asks which one.
 
 Setup refuses a repo with no remote, with either Tracker. The loop Lands every ticket by pushing to `origin`. A bare repo on a shared drive is enough, and `seed-steering` prints the commands that add one.
 
@@ -103,13 +103,13 @@ If it stops because the repo has no `origin` remote, stop setup and show the use
 The Tracker is where the team keeps its specs and tickets. Ask the team which one it uses, and offer two answers:
 
 - `github`: GitHub Issues, driven by `gh`. A spec is a parent issue, and its tickets are its sub-issues.
-- `files`: committed Markdown files in `.specs/`, one folder per spec and one file per ticket. It works on any remote: GitLab, Bitbucket, or a bare repo on a shared drive. It needs no `gh`.
+- `files`: Markdown files in `.specs/` in the Sidecar, one folder per spec and one file per ticket. It works with any remote: GitLab, Bitbucket, or a bare repo on a shared drive. It needs no `gh`, and it pushes nothing but the work.
 
 Read `git remote get-url origin`. When it names `github.com`, suggest `github`. Otherwise suggest `files`. So the common answer is one keypress. If `tracker` in `docs/skillworks/loop.json` already names another value, a team's answer from an earlier run, suggest that one instead.
 
 Write the answer into `tracker` in `docs/skillworks/loop.json`, and change no other key.
 
-With `files`, tell the team that `.specs/` is committed and cannot be gitignored. Each job builds in a worktree of its own, and a worktree cannot see a gitignored folder. A ticket that its job cannot see cannot be built or closed.
+With `files`, tell the team that `.specs/` sits in the Sidecar, the folder beside the repo's main checkout with `-skillworks` on the end of its name. The Sidecar is a git repo with no remote, so it is never pushed and it serves this machine alone. Every worktree of the repo finds the same Sidecar, and a Session reads it with `tracker-show` and closes a ticket with `tracker-close`.
 
 ### 3. Ask for the Target branch
 

@@ -1,4 +1,4 @@
-# Driven through the dry run, so each case checks which ticket starts, not how it was found.
+# Driven through the loop and the Tracker's commands, so each case checks what the Sidecar and origin hold.
 
 import contextlib
 import io
@@ -11,10 +11,12 @@ import pytest
 import spec_loop
 from clock.held_clock import HeldClock
 from conftest import Ran, RecordingRunner, Repo, git, write_steering
+from runner import Subprocess
+from sidecar.sidecar import Sidecar, sidecar_of
 from spec_loop_test import Sessions, given_a_suite_that_passes
 from steering.target_branch import LOOP_FILE
 from stop import REFUSED, Stop
-from tracker import publish
+from tracker import close, publish
 from tracker.files import Files
 
 SPEC = "7"
@@ -79,19 +81,12 @@ def commit_files(where, files, message):
     git(where, "commit", "--quiet", "-m", message)
 
 
-class Racing(RecordingRunner):
-    def __init__(self):
-        super().__init__()
-        self.before_push = None
-
-    def run(self, args, where=None, env=None, stdin=None):
-        if "push" in [str(a) for a in args] and self.before_push is not None:
-            first, self.before_push = self.before_push, None
-            first()
-        return super().run(args, where, env, stdin)
+# Every ref and the commit it names, so a case sees any push or new branch at all.
+def refs_of(repo):
+    return git(repo.origin, "for-each-ref", "--format=%(refname) %(objectname)")
 
 
-# A run with a claude that answers nothing stops at the build, after its claim has reached origin.
+# A run with a claude that answers nothing stops at the build, after its claim is in the Sidecar.
 def run_loop(runner, checkout, *flags):
     if "claude" not in runner.stubs:
         runner.stub("claude")
@@ -107,6 +102,7 @@ class Driver:
     def __init__(self, repo, runner):
         self.repo = repo
         self.runner = runner
+        self.sidecar = sidecar_of(Subprocess(), repo.work)
 
     def dry_run(self):
         return run_loop(self.runner, self.repo.work, "--dry-run")
@@ -114,24 +110,23 @@ class Driver:
     def run(self):
         return run_loop(self.runner, self.repo.work)
 
-    def rival(self):
-        other = self.repo.other_checkout()
-        git(other, "config", "user.email", RIVAL)
-        write_loop(other, json.loads((self.repo.work / LOOP_FILE).read_text(encoding="utf-8"))[
-            "target-branch"])
+    # Written as the Tracker writes, one commit under the lock, so the loop reads it as it would its own.
+    def put(self, files):
+        Sidecar.of(Subprocess(), self.repo.work, HeldClock()).write(
+            "Tracker state", lambda folder: write_files(folder, files))
 
-        class Rival:
-            def run(self):
-                return run_loop(RecordingRunner(), other)
-        return Rival()
+    def held(self, path):
+        return (self.sidecar / path).read_text(encoding="utf-8")
 
-    # Pushed from a clone of its own, so the main checkout never holds what the remote does.
-    def push(self, files, branch="main"):
-        other = self.repo.other_checkout()
-        if branch != "main":
-            git(other, "checkout", "--quiet", "-B", branch)
-        commit_files(other, files, "Tracker state")
-        git(other, "push", "--quiet", "origin", branch)
+    def field(self, path, name):
+        return next(line[len(name) + 1:].strip() for line in self.held(path).split("\n")
+                    if line.startswith(name + ":"))
+
+    def status_of(self, path):
+        return self.field(path, "status")
+
+    def claimed(self, name):
+        return self.field(ticket_path(name), "claimed-by")
 
 
 @pytest.fixture
@@ -142,7 +137,7 @@ def driver(tmp_path, monkeypatch):
     # A session is looked for under this case's own folder, so no real one can answer a check here.
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", (tmp_path / "claude").as_posix())
     write_loop(repo.work, "main")
-    return Driver(repo, Racing())
+    return Driver(repo, RecordingRunner())
 
 
 def said(ran):
@@ -150,7 +145,7 @@ def said(ran):
 
 
 def test_the_dry_run_names_the_first_ticket_whose_blockers_are_all_closed(driver):
-    driver.push({
+    driver.put({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json", status="closed"),
         ticket_path("02-close-in-worktree"): ticket_file("Close in the worktree", blocked_by=[1]),
@@ -165,76 +160,47 @@ def test_the_dry_run_names_the_first_ticket_whose_blockers_are_all_closed(driver
     assert "7/2 [open] Close in the worktree" in ran.out
 
 
-def test_a_ticket_whose_blocker_is_open_is_not_picked_until_the_remote_closes_it(driver):
+def test_a_ticket_whose_blocker_is_open_is_not_picked_until_the_sidecar_closes_it(driver):
     blocker = ticket_path("01-read-loop-json")
-    driver.push({
+    driver.put({
         FOLDER + "/spec.md": spec_file(),
         blocker: ticket_file("Read loop.json", claimed_by="someone@example.invalid"),
         ticket_path("02-close-in-worktree"): ticket_file("Close in the worktree", blocked_by=[1]),
     })
 
     blocked = driver.dry_run()
-    driver.push({blocker: ticket_file("Read loop.json", status="closed")})
+    driver.put({blocker: ticket_file("Read loop.json", status="closed")})
     unblocked = driver.dry_run()
 
     assert NO_TICKET in blocked.out, said(blocked)
     assert next_is(2) in unblocked.out, said(unblocked)
 
 
-def test_a_blocker_closed_in_the_main_checkout_alone_changes_nothing(driver):
-    blocker = ticket_path("01-read-loop-json")
-    driver.push({
-        FOLDER + "/spec.md": spec_file(),
-        blocker: ticket_file("Read loop.json", claimed_by="someone@example.invalid"),
-        ticket_path("02-close-in-worktree"): ticket_file("Close in the worktree", blocked_by=[1]),
-    })
-    git(driver.repo.work, "pull", "--quiet", "origin", "main")
-    commit_files(driver.repo.work, {blocker: ticket_file("Read loop.json", status="closed")},
-                 "Closed here and never pushed")
-
-    ran = driver.dry_run()
-
-    assert ran.status == 0, said(ran)
-    assert NO_TICKET in ran.out
-
-
-def test_a_spec_folder_only_in_the_main_checkout_is_not_read(driver):
-    driver.push({"elsewhere.txt": "nothing about the spec\n"})
+def test_a_spec_folder_committed_in_the_repo_is_not_read(driver):
     commit_files(driver.repo.work, {
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
-    }, "Written here and never pushed")
+    }, "Written in the repo")
+    git(driver.repo.work, "push", "--quiet", "origin", "main")
 
     ran = driver.dry_run()
 
     assert ran.status == 1
-    assert "cannot read" in said(ran)
+    assert "cannot read spec 7" in said(ran)
 
 
-def test_in_pr_mode_the_tickets_are_read_from_the_branch_the_spec_names(driver):
+def test_in_pr_mode_the_dry_run_reads_the_tickets_from_the_sidecar(driver):
     write_loop(driver.repo.work, "pr")
-    # A stale copy on another branch names the spec's branch and not its own, so it is not read.
-    driver.push({
-        FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
-        ticket_path("01-read-loop-json"): ticket_file("Stale", status="closed"),
-    }, branch="spec/stale")
-    driver.push({
+    driver.put({
         FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json", status="closed"),
         ticket_path("02-close-in-worktree"): ticket_file("Close in the worktree", blocked_by=[1]),
-    }, branch=SPEC_BRANCH)
+    })
 
     ran = driver.dry_run()
 
     assert ran.status == 0, said(ran)
     assert next_is(2) in ran.out
-    assert "Stale" not in ran.out
-
-
-def claimed_on_remote(repo, name, branch="main"):
-    text = git(repo.origin, "show", "{}:{}".format(branch, ticket_path(name)))
-    return next(line[len("claimed-by:"):].strip() for line in text.split("\n")
-                if line.startswith("claimed-by:"))
 
 
 def two_free_tickets():
@@ -245,89 +211,45 @@ def two_free_tickets():
     }
 
 
-def test_a_claim_pushes_a_commit_that_sets_claimed_by_on_the_target_branch(driver):
-    driver.push(two_free_tickets())
-    before = git(driver.repo.origin, "rev-parse", "main").strip()
+def test_a_claim_sets_claimed_by_in_the_sidecar_and_pushes_nothing(driver):
+    driver.put(two_free_tickets())
+    before = refs_of(driver.repo)
 
     ran = driver.run()
 
     assert "START 7/1" in ran.out, said(ran)
-    assert claimed_on_remote(driver.repo, "01-read-loop-json") == ME
-    assert claimed_on_remote(driver.repo, "02-close-in-worktree") == ""
-    assert git(driver.repo.origin, "log", "--format=%P", "{}..main".format(before)).split() == [before]
-    changed = git(driver.repo.origin, "diff", "--name-only", before, "main").split()
-    assert changed == [ticket_path("01-read-loop-json")]
+    assert (driver.claimed("01-read-loop-json"), driver.claimed("02-close-in-worktree")) == (ME, "")
+    assert refs_of(driver.repo) == before
 
 
 def test_a_ticket_another_loop_claimed_is_not_picked(driver):
-    driver.push(two_free_tickets())
-    driver.push({ticket_path("01-read-loop-json"): ticket_file("Read loop.json",
-                                                               claimed_by=RIVAL)})
+    driver.put(two_free_tickets())
+    driver.put({ticket_path("01-read-loop-json"): ticket_file("Read loop.json", claimed_by=RIVAL)})
 
     ran = driver.run()
 
     assert "START 7/2" in ran.out, said(ran)
     assert "START 7/1" not in ran.out
-    assert claimed_on_remote(driver.repo, "01-read-loop-json") == RIVAL
-    assert claimed_on_remote(driver.repo, "02-close-in-worktree") == ME
+    assert (driver.claimed("01-read-loop-json"), driver.claimed("02-close-in-worktree")) == (
+        RIVAL, ME)
 
 
-def test_two_loops_racing_for_one_ticket_build_different_tickets(driver):
-    driver.push(two_free_tickets())
-    rival = driver.rival()
-    rivalled = []
-    # The rival runs whole the moment this loop first pushes, so this loop's claim is the one that loses.
-    driver.runner.before_push = lambda: rivalled.append(rival.run())
-
-    ran = driver.run()
-
-    assert "START 7/1" in rivalled[0].out, said(rivalled[0])
-    assert len([call for call in driver.runner.calls if "push" in call]) == 2
-    assert "START 7/2" in ran.out, said(ran)
-    assert "START 7/1" not in ran.out
-    assert claimed_on_remote(driver.repo, "01-read-loop-json") == RIVAL
-    assert claimed_on_remote(driver.repo, "02-close-in-worktree") == ME
-
-
-def test_in_pr_mode_a_claim_reaches_the_branch_the_spec_names(driver):
+def test_in_pr_mode_a_spec_that_names_no_branch_stops_before_a_claim_and_says_the_grill_writes_it(
+        driver):
     write_loop(driver.repo.work, "pr")
-    driver.push({
-        FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
-        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
-    }, branch=SPEC_BRANCH)
-
-    ran = driver.run()
-
-    assert "START 7/1" in ran.out, said(ran)
-    assert claimed_on_remote(driver.repo, "01-read-loop-json", SPEC_BRANCH) == ME
-
-
-def test_in_pr_mode_a_spec_that_names_no_branch_stops_the_dry_run(driver):
-    write_loop(driver.repo.work, "pr")
-    driver.push({
+    driver.put({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
-    }, branch=SPEC_BRANCH)
+    })
 
-    ran = driver.dry_run()
+    ran = driver.run()
 
-    assert ran.status == 1
+    assert (ran.status, driver.claimed("01-read-loop-json")) == (1, "")
     assert "branch in its spec.md frontmatter" in said(ran)
-
-
-def test_in_pr_mode_the_stop_for_a_spec_that_names_no_branch_says_the_grill_writes_it(driver):
-    write_loop(driver.repo.work, "pr")
-    driver.push({
-        FOLDER + "/spec.md": spec_file(),
-        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
-    }, branch=SPEC_BRANCH)
-
-    ran = driver.dry_run()
-
     assert "/skillworks:grill writes it" in said(ran)
 
 
-# --- a close, in the commit that Lands ---------------------------------------
+# --- a close, in the Sidecar before the Land ---------------------------------
 
 REFERENCE = "7/1"
 FINISH = "implement {} --finish".format(REFERENCE)
@@ -335,21 +257,25 @@ NOTE = "Built the reader. Proved by the reader tests."
 CODE = "reader.txt"
 
 
-def closed_in_file(text):
-    return text.replace("status: open", "status: closed") + "\n## Closing note\n\n" + NOTE + "\n"
-
-
-def finishing(runner, trailer=REFERENCE, closes=True):
+# What /skillworks:implement does at Finishing: commit, then close through tracker-close.
+def finishing(runner, trailer=REFERENCE, closes=True, ticket=REFERENCE, code=CODE):
     def finish():
         tree = Path(runner.where)
-        (tree / CODE).write_text("read\n", encoding="utf-8", newline="\n")
-        if closes:
-            held = tree / ticket_path("01-read-loop-json")
-            held.write_text(closed_in_file(held.read_text(encoding="utf-8")), encoding="utf-8",
-                            newline="\n")
+        (tree / code).write_text("read\n", encoding="utf-8", newline="\n")
         git(tree, "add", "-A")
         git(tree, "commit", "--quiet", "-m", "Built the reader\n\nTicket: " + trailer)
+        if closes:
+            closed_by_command(tree, ticket)
     return finish
+
+
+def closed_by_command(tree, ticket, note=NOTE):
+    # Beside the worktree, so the note leaves its tree clean as an ignored file does.
+    held = Path(tree).parent / "closing-note.md"
+    held.write_text(note + "\n", encoding="utf-8", newline="\n")
+    out, err = io.StringIO(), io.StringIO()
+    status = close.main([ticket, held.as_posix()], RecordingRunner(), out, err, Path(tree).as_posix())
+    return Ran(status, out.getvalue(), err.getvalue())
 
 
 def given_sessions_that_finish(driver, runs=None, **finish):
@@ -358,44 +284,37 @@ def given_sessions_that_finish(driver, runs=None, **finish):
     sessions.then[FINISH] = finishing(driver.runner, **finish)
     sessions.then["spec-drift"] = drifting(driver)
     sessions.then["spec-names"] = naming(driver)
-    driver.push({
+    driver.put({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
     })
     return sessions
 
 
-def on_remote(repo, path, branch="main"):
-    return git(repo.origin, "show", "{}:{}".format(branch, path))
-
-
-def status_on_remote_branch(repo, path, branch):
-    return next(line[len("status:"):].strip() for line in on_remote(repo, path, branch).split("\n")
-                if line.startswith("status:"))
-
-
-def status_on_remote(repo, path):
-    return status_on_remote_branch(repo, path, "main")
-
-
 def asked_of_claude(driver):
     return [call[-1] for call in driver.runner.started("claude")]
 
 
-def test_a_landed_tickets_commit_holds_its_code_its_close_and_its_closing_note(driver):
+def test_a_landed_ticket_is_closed_in_the_sidecar_with_its_closing_note(driver):
     given_sessions_that_finish(driver)
 
     ran = driver.run()
 
     assert "DONE  7/1" in ran.out, said(ran)
-    landed = git(driver.repo.origin, "log", "--format=%H", "--grep=Built the reader",
-                 "main").split()
-    assert len(landed) == 1
-    changed = git(driver.repo.origin, "show", "--name-only", "--format=", landed[0]).split()
-    assert CODE in changed
-    assert ticket_path("01-read-loop-json") in changed
-    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "closed"
-    assert NOTE in on_remote(driver.repo, ticket_path("01-read-loop-json"))
+    assert driver.status_of(ticket_path("01-read-loop-json")) == "closed"
+    assert "## Closing note\n\n" + NOTE in driver.held(ticket_path("01-read-loop-json"))
+
+
+def test_a_whole_run_pushes_nothing_of_the_tracker_to_origin(driver):
+    given_sessions_that_finish(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert git(driver.repo.origin, "log", "--format=%H", "main", "--", ".specs") == ""
+    assert sorted(git(driver.repo.origin, "for-each-ref", "--format=%(refname)").split()) == [
+        "refs/heads/main"]
+    assert CODE in git(driver.repo.origin, "ls-tree", "--name-only", "main").split()
 
 
 def test_each_session_is_handed_the_ticket_by_its_spec_and_its_number(driver):
@@ -410,19 +329,6 @@ def test_each_session_is_handed_the_ticket_by_its_spec_and_its_number(driver):
     assert "/skillworks:implement 7/1 --finish" in commands
 
 
-def test_each_session_started_for_the_ticket_is_handed_its_trailer_by_spec_and_number(driver):
-    given_sessions_that_finish(driver)
-
-    ran = driver.run()
-
-    assert ran.status == 0, said(ran)
-    # The Plugin's hook reads this name, so it is written out here and not imported.
-    handed = [(call.env or {}).get("SKILLWORKS_TICKET") for call in driver.runner.made
-              if call.args[0] == "claude" and REFERENCE in call.stdin.split("\n", 1)[0]]
-    assert handed
-    assert set(handed) == {REFERENCE}
-
-
 def test_the_landed_commit_names_the_spec_and_the_ticket_in_its_trailer(driver):
     given_sessions_that_finish(driver)
 
@@ -434,17 +340,17 @@ def test_the_landed_commit_names_the_spec_and_the_ticket_in_its_trailer(driver):
     assert trailer.strip() == REFERENCE
 
 
-def test_a_commit_naming_the_ticket_alone_is_not_landed(driver):
+def test_a_commit_naming_the_ticket_alone_is_not_landed_and_the_ticket_is_open_again(driver):
     given_sessions_that_finish(driver, trailer="#1")
 
     ran = driver.run()
 
     assert ran.status == 1
     assert "step finish failed check ticket-trailer" in said(ran)
-    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "open"
+    assert driver.status_of(ticket_path("01-read-loop-json")) == "open"
 
 
-def test_a_ticket_whose_land_fails_is_still_open_on_the_remote(driver):
+def test_a_ticket_whose_land_fails_is_open_again_in_the_sidecar(driver):
     given_sessions_that_finish(driver)
     driver.runner.refuse("HEAD:main", "remote: the push was turned down")
 
@@ -452,11 +358,12 @@ def test_a_ticket_whose_land_fails_is_still_open_on_the_remote(driver):
 
     assert ran.status == 1
     assert "did not reach main" in said(ran)
-    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "open"
+    assert "7/1 is open again" in ran.out
+    assert driver.status_of(ticket_path("01-read-loop-json")) == "open"
     assert CODE not in git(driver.repo.origin, "ls-tree", "--name-only", "main").split()
 
 
-def test_a_finish_that_left_its_ticket_file_open_is_nudged_to_close_it_there(driver):
+def test_a_finish_that_left_its_ticket_open_is_nudged_to_close_it_with_tracker_close(driver):
     given_sessions_that_finish(driver, closes=False)
 
     ran = driver.run()
@@ -464,20 +371,19 @@ def test_a_finish_that_left_its_ticket_file_open_is_nudged_to_close_it_there(dri
     assert ran.status == 1
     nudges = [prompt for prompt in asked_of_claude(driver) if not prompt.startswith("/")]
     assert nudges, said(ran)
-    assert "status: closed" in nudges[0]
-    assert "same commit" in nudges[0]
-    assert status_on_remote(driver.repo, ticket_path("01-read-loop-json")) == "open"
+    assert "tracker-close 7/1" in nudges[0]
+    assert driver.status_of(ticket_path("01-read-loop-json")) == "open"
 
 
-def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_on_the_remote(driver):
+def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_in_the_sidecar(driver):
     given_sessions_that_finish(driver)
 
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+    assert driver.status_of(FOLDER + "/spec.md") == "closed"
     assert (ran.out.index("DRIFT") < ran.out.index("FULL  main at")
-            < ran.out.index("CLOSE spec 7") < ran.out.index("END   spec 7"))
+            < ran.out.index("CLOSE spec 7 is closed in the Sidecar") < ran.out.index("END   spec 7"))
 
 
 def test_a_red_full_run_after_every_verdict_done_leaves_the_spec_open(driver):
@@ -495,19 +401,18 @@ def test_a_red_full_run_after_every_verdict_done_leaves_the_spec_open(driver):
     assert ran.status == 1
     assert "RED   the full run of the Suite went red" in ran.out
     assert "CLOSE" not in ran.out
-    assert "END" not in ran.out
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+    assert driver.status_of(FOLDER + "/spec.md") == "open"
 
 
+# The loop runs from the default branch, and only the spec's branch is Landed on.
 def given_sessions_that_finish_on_the_spec_branch(driver):
-    git(driver.repo.work, "checkout", "--quiet", "-b", SPEC_BRANCH)
-    driver.repo.target = SPEC_BRANCH
     write_loop(driver.repo.work, "pr")
-    write_files(driver.repo.work, {
+    driver.put({
         FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
     })
     given_a_suite_that_passes(driver)
+    git(driver.repo.work, "push", "--quiet", "origin", "main:" + SPEC_BRANCH)
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner)
     sessions.then["spec-drift"] = drifting(driver)
@@ -515,14 +420,24 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     return sessions
 
 
-def test_in_pr_mode_the_run_ends_at_the_close_and_never_calls_gh(driver):
+def test_in_pr_mode_the_ticket_lands_on_the_branch_the_spec_names(driver):
+    given_sessions_that_finish_on_the_spec_branch(driver)
+
+    ran = driver.run()
+
+    assert ran.status == 0, said(ran)
+    assert CODE in git(driver.repo.origin, "ls-tree", "--name-only", SPEC_BRANCH).split()
+    assert CODE not in git(driver.repo.origin, "ls-tree", "--name-only", "main").split()
+
+
+def test_in_pr_mode_the_run_closes_the_spec_in_the_sidecar_and_never_calls_gh(driver):
     given_sessions_that_finish_on_the_spec_branch(driver)
 
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
     assert driver.runner.started("gh") == []
-    assert status_on_remote_branch(driver.repo, FOLDER + "/spec.md", SPEC_BRANCH) == "closed"
+    assert driver.status_of(FOLDER + "/spec.md") == "closed"
     assert "CLOSE spec 7" in ran.out
 
 
@@ -535,14 +450,6 @@ def test_in_pr_mode_the_last_lines_ask_for_the_pull_request_from_the_spec_branch
     last = "\n".join(ran.out.rstrip("\n").split("\n")[-3:])
     assert "PR    open the pull request from {}. A person reviews and merges it.".format(
         SPEC_BRANCH) in last
-
-
-def test_in_pr_mode_the_run_writes_no_closing_keyword_for_the_pull_request(driver):
-    given_sessions_that_finish_on_the_spec_branch(driver)
-
-    ran = driver.run()
-
-    assert ran.status == 0, said(ran)
     assert "Closes #" not in ran.out
 
 
@@ -556,8 +463,8 @@ def recording(driver, command, report):
     def record():
         held = driver.repo.root / (command + "-report.md")
         held.write_text(report, encoding="utf-8", newline="\n")
-        publish.main([command, SPEC, held.as_posix()], driver.runner, io.StringIO(),
-                     io.StringIO(), lambda seconds: None, driver.repo.work.as_posix())
+        publish.main([command, SPEC, held.as_posix()], RecordingRunner(), io.StringIO(),
+                     io.StringIO(), HeldClock(), driver.repo.work.as_posix())
     return record
 
 
@@ -580,9 +487,7 @@ def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
-    text = on_remote(driver.repo, FOLDER + "/spec.md")
-    assert REPORT + "\n" + NAMES in text
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+    assert REPORT + "\n" + NAMES in driver.held(FOLDER + "/spec.md")
     held = driver.repo.work / ".spec-loop" / SPEC / "drift.md"
     assert held.read_text(encoding="utf-8") == VERDICTS
     assert "DRIFT the report is recorded on spec 7" in ran.out
@@ -595,7 +500,7 @@ def test_the_loop_reads_back_the_name_report_recorded_below_the_drift_report(dri
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
-    assert on_remote(driver.repo, FOLDER + "/spec.md").endswith(NAMES)
+    assert driver.held(FOLDER + "/spec.md").endswith(NAMES)
     held = driver.repo.work / ".spec-loop" / SPEC / "names.md"
     assert held.read_text(encoding="utf-8") == RENAMES
     assert "NAMES no rename is owed on spec 7" in ran.out
@@ -609,7 +514,7 @@ def test_a_name_check_that_recorded_no_report_stops_and_leaves_the_spec_open(dri
 
     assert ran.status == 1
     assert "STOP  the Name check recorded no report on spec 7" in ran.out
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+    assert driver.status_of(FOLDER + "/spec.md") == "open"
 
 
 def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):
@@ -620,7 +525,7 @@ def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(dr
 
     assert ran.status == 1
     assert "STOP  the drift check recorded no report on spec 7" in ran.out
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+    assert driver.status_of(FOLDER + "/spec.md") == "open"
 
 
 def test_the_flakes_of_a_run_are_noted_in_the_spec_file_above_its_reports(driver):
@@ -630,22 +535,26 @@ def test_the_flakes_of_a_run_are_noted_in_the_spec_file_above_its_reports(driver
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
-    text = on_remote(driver.repo, FOLDER + "/spec.md")
+    text = driver.held(FOLDER + "/spec.md")
     [kept] = sorted((driver.repo.work / ".spec-loop" / SPEC).glob("flake-ticket-1-suite-*.out"))
     note = text[text.index("## Flakes\n"):text.index(REPORT)]
     assert "- dotnet test Skillworks.slnx, in 7/1 suite: {}\n".format(kept.as_posix()) in note
     assert text.endswith(REPORT + "\n" + NAMES)
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+    assert driver.status_of(FOLDER + "/spec.md") == "closed"
+
+
+def files_tracker(driver, target="main"):
+    return Files(RecordingRunner(), driver.repo.work, target, SPEC, HeldClock())
 
 
 def test_a_later_note_takes_the_place_of_an_earlier_one_and_leaves_the_reports(driver):
-    driver.push({FOLDER + "/spec.md": spec_file(body=COUNTED + "\n" + REPORT + "\n" + NAMES)})
+    driver.put({FOLDER + "/spec.md": spec_file(body=COUNTED + "\n" + REPORT + "\n" + NAMES)})
     tracker = files_tracker(driver)
 
     tracker.record_flakes(SPEC, "## Flakes\n\n- the first run's Flake\n")
     tracker.record_flakes(SPEC, "## Flakes\n\n- the second run's Flake\n")
 
-    text = on_remote(driver.repo, FOLDER + "/spec.md")
+    text = driver.held(FOLDER + "/spec.md")
     assert text.count("## Flakes") == 1
     assert "the first run's Flake" not in text
     assert text.index("the second run's Flake") < text.index(REPORT)
@@ -660,42 +569,35 @@ D1_MISSING = ("## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Missing. Not
 
 
 # A file of its own, since the ticket landed before it already holds what every build writes.
-def given_a_filed_ticket_that_lands(driver, sessions, slug):
+def given_a_filed_ticket_that_lands(driver, sessions):
     def build():
         (Path(driver.runner.where) / "filed.txt").write_text("built\n", encoding="utf-8",
                                                              newline="\n")
 
-    def finish():
-        tree = Path(driver.runner.where)
-        held = tree / ticket_path(slug)
-        held.write_text(held.read_text(encoding="utf-8").replace("status: open", "status: closed")
-                        + "\n## Closing note\n\nBuilt it.\n", encoding="utf-8", newline="\n")
-        git(tree, "add", "-A")
-        git(tree, "commit", "--quiet", "-m", "Built it\n\nTicket: {}/2".format(SPEC))
-
     sessions.then["implement {}/2 --stop-after-tests".format(SPEC)] = build
-    sessions.then["implement {}/2 --finish".format(SPEC)] = finish
+    sessions.then["implement {}/2 --finish".format(SPEC)] = finishing(
+        driver.runner, trailer=SPEC + "/2", ticket=SPEC + "/2", code="filed-done.txt")
 
 
 def given_a_gap_round(driver, *reports):
     sessions = given_sessions_that_finish(driver)
-    given_a_filed_ticket_that_lands(driver, sessions, GAP_TICKET)
+    given_a_filed_ticket_that_lands(driver, sessions)
     waiting = list(reports)
     sessions.then["spec-drift"] = lambda: drifting(driver, waiting.pop(0))()
     return sessions
 
 
-def test_a_gap_is_filed_as_a_ticket_file_under_the_spec_and_a_closed_round_closes_it(driver):
+def test_a_gap_is_filed_as_a_ticket_file_in_the_sidecar_and_a_closed_round_closes_it(driver):
     given_a_gap_round(driver, D1_MISSING, "## Drift report\n\n### Verdicts\n\n- D1: Done\n")
 
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
     assert "FILED {}/2 under spec {} builds 1 Gap".format(SPEC, SPEC) in ran.out
-    filed = on_remote(driver.repo, ticket_path(GAP_TICKET))
+    filed = driver.held(ticket_path(GAP_TICKET))
     assert "### D1\n\n> The tracker is files.\n\nVerdict: Missing. Not there.\n" in filed
-    assert status_on_remote(driver.repo, ticket_path(GAP_TICKET)) == "closed"
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+    assert driver.status_of(ticket_path(GAP_TICKET)) == "closed"
+    assert driver.status_of(FOLDER + "/spec.md") == "closed"
 
 
 def test_a_gap_left_after_the_round_leaves_the_spec_open(driver):
@@ -707,7 +609,7 @@ def test_a_gap_left_after_the_round_leaves_the_spec_open(driver):
     assert ran.status == 1
     assert "      Gap: D1 is Missing: Not there.\n" in ran.out
     assert "CLOSE" not in ran.out
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+    assert driver.status_of(FOLDER + "/spec.md") == "open"
 
 
 RENAME_TICKET = "02-ticket-make-the-renames-the-name-check-found"
@@ -717,24 +619,24 @@ BATCH_MOVED = "## Name report\n\n### Renames\n\n- `Batch`: it now holds a whole 
 
 def given_a_rename_round(driver, *reports):
     sessions = given_sessions_that_finish(driver)
-    given_a_filed_ticket_that_lands(driver, sessions, RENAME_TICKET)
+    given_a_filed_ticket_that_lands(driver, sessions)
     waiting = list(reports)
     sessions.then["spec-names"] = lambda: naming(driver, waiting.pop(0))()
     return sessions
 
 
-def test_a_rename_is_filed_as_a_ticket_file_under_the_spec_and_a_rename_made_closes_it(driver):
+def test_a_rename_is_filed_as_a_ticket_file_in_the_sidecar_and_a_rename_made_closes_it(driver):
     given_a_rename_round(driver, BATCH_MOVED, "## Name report\n\n### Verdicts\n\n- Batch: Done\n")
 
     ran = driver.run()
 
     assert ran.status == 0, said(ran)
     assert "FILED {}/2 under spec {} makes 1 rename".format(SPEC, SPEC) in ran.out
-    filed = on_remote(driver.repo, ticket_path(RENAME_TICKET))
+    filed = driver.held(ticket_path(RENAME_TICKET))
     assert "### Batch\n\n> `Batch`: it now holds a whole spec.\n" in filed
-    assert status_on_remote(driver.repo, ticket_path(RENAME_TICKET)) == "closed"
+    assert driver.status_of(ticket_path(RENAME_TICKET)) == "closed"
     assert "NAMES every rename is made on spec 7" in ran.out
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "closed"
+    assert driver.status_of(FOLDER + "/spec.md") == "closed"
 
 
 def test_a_rename_not_made_leaves_the_spec_open(driver):
@@ -746,14 +648,14 @@ def test_a_rename_not_made_leaves_the_spec_open(driver):
     assert ran.status == 1
     assert "      Not made: Batch is Not done: Still there.\n" in ran.out
     assert "CLOSE" not in ran.out
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+    assert driver.status_of(FOLDER + "/spec.md") == "open"
 
 
 def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(driver):
     given_sessions_that_finish(driver)
     ran = driver.run()
 
-    read = Files(RecordingRunner(), driver.repo.work, "main", SPEC).closing_note(REFERENCE)
+    read = files_tracker(driver).closing_note(REFERENCE)
 
     assert ran.status == 0, said(ran)
     assert read == NOTE
@@ -764,23 +666,19 @@ def test_a_resolver_reads_how_a_landed_ticket_was_closed_from_its_closing_note(d
 GAPS = "## What to build\n\nS2: Missing.\n"
 
 
-def files_tracker(driver, target="main"):
-    return Files(RecordingRunner(), driver.repo.work, target, SPEC, lambda seconds: None)
-
-
-def test_a_filed_ticket_is_pushed_next_in_number_open_and_unclaimed(driver):
-    driver.push(two_free_tickets())
+def test_a_filed_ticket_is_written_next_in_number_open_and_unclaimed(driver):
+    driver.put(two_free_tickets())
 
     number = files_tracker(driver).file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
 
     assert number == "3"
-    assert on_remote(driver.repo, ticket_path("03-ticket-build-the-gaps")) == (
+    assert driver.held(ticket_path("03-ticket-build-the-gaps")) == (
         "---\nstatus: open\nblocked-by: []\nclaimed-by: \n---\n\n"
         "# TICKET: Build the Gaps\n\n" + GAPS)
 
 
 def test_a_filed_ticket_is_listed_among_the_specs_open_tickets(driver):
-    driver.push(two_free_tickets())
+    driver.put(two_free_tickets())
     tracker = files_tracker(driver)
 
     number = tracker.file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
@@ -790,49 +688,37 @@ def test_a_filed_ticket_is_listed_among_the_specs_open_tickets(driver):
     assert tracker.open_blockers(number) == 0
 
 
-def test_a_filed_ticket_that_loses_a_race_for_its_number_reads_again(driver):
-    driver.push(two_free_tickets())
-    tracker = Files(Racing(), driver.repo.work, "main", SPEC, lambda seconds: None)
-    tracker.runner.before_push = lambda: driver.push(
-        {ticket_path("03-rival"): ticket_file("TICKET: Rival")})
-
-    number = tracker.file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
-
-    assert number == "4"
-    assert tracker.title("3") == "TICKET: Rival"
-    assert tracker.title("4") == "TICKET: Build the Gaps"
-
-
-def test_in_pr_mode_a_filed_ticket_reaches_the_branch_the_spec_names(driver):
-    driver.push({
-        FOLDER + "/spec.md": spec_file(branch=SPEC_BRANCH),
-        ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
-    }, branch=SPEC_BRANCH)
-
-    number = files_tracker(driver, target=None).file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
-
-    assert number == "2"
-    assert "# TICKET: Build the Gaps" in on_remote(
-        driver.repo, ticket_path("02-ticket-build-the-gaps"), SPEC_BRANCH)
-
-
 def test_a_ticket_filed_under_a_spec_with_no_folder_stops_and_says_so(driver):
-    driver.push({"elsewhere.txt": "nothing about the spec\n"})
+    driver.put({"elsewhere.txt": "nothing about the spec\n"})
 
     with pytest.raises(Stop) as stopped:
         files_tracker(driver).file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
 
     assert stopped.value.status == REFUSED
-    assert "Spec 7 has no folder on origin/main" in stopped.value.said
+    assert "holds no spec 7" in stopped.value.said
 
 
-def test_a_spec_whose_run_stopped_is_left_open_on_the_remote(driver):
+def test_filing_closing_and_reopening_leave_every_ref_on_origin_as_it_was(driver):
+    driver.put(two_free_tickets())
+    tracker = files_tracker(driver)
+    before = refs_of(driver.repo)
+
+    tracker.file_ticket(SPEC, "TICKET: Build the Gaps", GAPS)
+    tracker.close("1", NOTE)
+    tracker.reopen("1")
+    tracker.record_flakes(SPEC, "## Flakes\n\n- one\n")
+    tracker.close_spec(SPEC)
+
+    assert refs_of(driver.repo) == before
+
+
+def test_a_spec_whose_run_stopped_is_left_open(driver):
     given_sessions_that_finish(driver, closes=False)
 
     ran = driver.run()
 
     assert ran.status == 1
-    assert status_on_remote(driver.repo, FOLDER + "/spec.md") == "open"
+    assert driver.status_of(FOLDER + "/spec.md") == "open"
 
 
 # --- the log, in the Tracker's words ------------------------------------------
@@ -862,7 +748,7 @@ def test_a_whole_run_logs_every_ticket_and_the_spec_by_the_files_trackers_names(
 
 
 def test_the_dry_run_names_every_ticket_by_the_files_trackers_names(driver):
-    driver.push(two_free_tickets())
+    driver.put(two_free_tickets())
 
     ran = driver.dry_run()
 
@@ -872,7 +758,7 @@ def test_the_dry_run_names_every_ticket_by_the_files_trackers_names(driver):
 
 
 def test_a_spec_still_without_tickets_after_the_cut_stops_in_the_files_trackers_words(driver):
-    driver.push({FOLDER + "/spec.md": spec_file()})
+    driver.put({FOLDER + "/spec.md": spec_file()})
 
     ran = driver.run()
 
@@ -882,7 +768,7 @@ def test_a_spec_still_without_tickets_after_the_cut_stops_in_the_files_trackers_
 
 
 def test_a_spec_in_another_shape_is_turned_down_before_its_first_ticket_is_claimed(driver):
-    driver.push({
+    driver.put({
         FOLDER + "/spec.md": spec_file(body="## User Stories\n\n1. One.\n3. Three.\n"),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
     })
@@ -892,11 +778,11 @@ def test_a_spec_in_another_shape_is_turned_down_before_its_first_ticket_is_claim
     assert ran.status == 1
     assert "## User Stories skips 2: it goes from 1 to 3" in said(ran)
     assert "the spec has no ## Implementation Decisions heading" in said(ran)
-    assert "claimed-by: \n" in on_remote(driver.repo, ticket_path("01-read-loop-json"))
+    assert driver.claimed("01-read-loop-json") == ""
 
 
 def test_a_spec_that_cannot_be_read_is_refused_naming_no_github_repo(driver):
-    driver.push({"elsewhere.txt": "nothing about the spec\n"})
+    driver.put({"elsewhere.txt": "nothing about the spec\n"})
 
     ran = driver.dry_run()
 

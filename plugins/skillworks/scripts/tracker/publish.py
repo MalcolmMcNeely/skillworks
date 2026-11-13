@@ -1,20 +1,16 @@
-# A number is pushed the moment it is read, so of two rival specs one push is refused and reads again.
-
 import os
 import re
 import sys
-import time
 from pathlib import Path
 
+from clock.clock import Clock
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.target_branch import LOOP_FILE, PR_MODE, target_setting, tracker_setting
+from steering.target_branch import LOOP_FILE, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
-from tracker.files import (CLAIMED_BY, EVERY_BRANCH, FENCE, PUSH_ATTEMPTS, SPEC_FILE, SPECS, STATUS,
-                           TICKETS, Files, as_numbers, frontmatter, heading, number_of,
-                           with_last_section)
+from tracker.files import CLAIMED_BY, FENCE, STATUS, as_numbers, frontmatter, number_of
 from tracker.github import BRANCH_HEADING, GitHub, NewTicket
-from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
+from tracker.reading import DRIFT_REPORT, NAME_REPORT
 
 USAGE = (
     "usage: tracker-publish spec <slug> <body-file> [<branch>]\n"
@@ -29,21 +25,12 @@ SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 
 SPEC_HEADING = "# SPEC: "
 
-# Outside refs/heads and refs/tags, so no clone or fetch brings the reservations down.
-RESERVED = "refs/skillworks/specs/"
 
-
-def opened(runner, where, spec, wait):
+def opened(runner, where, spec, clock=None):
     found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
     if found.status != 0:
         raise refusal("{} is not inside a git repo.".format(where))
-    top = found.out.strip()
-    named = target_setting(top)
-    target = None if named == PR_MODE else named
-    if tracker_setting(top) == "files":
-        tracker = Files(runner, top, target, spec, wait)
-    else:
-        tracker = GitHub(runner, top, target=target)
+    tracker = tracker_for(runner, found.out.strip(), spec, clock)
     problem = tracker.connect()
     if problem:
         raise refusal(problem[0].upper() + problem[1:] + ".")
@@ -55,32 +42,6 @@ def read(where, path):
         return (Path(where) / path).read_text(encoding="utf-8")
     except OSError as error:
         raise refusal("{} could not be read: {}".format(path, error))
-
-
-def highest(tracker, refs):
-    numbers = [int(number_of(path.rsplit("/", 1)[-1]) or 0)
-               for ref in refs
-               for path in listed(tracker.git("ls-tree", "--name-only", ref, SPECS + "/").out)]
-    return max(numbers, default=0)
-
-
-def tip(tracker, branch):
-    commit = tracker.git("rev-parse", "--verify", "--quiet", "origin/" + branch).out.strip()
-    if not commit:
-        raise refusal("origin has no branch {}, so nothing was written to it. Push the branch "
-                      "first.".format(branch))
-    return commit
-
-
-def every_branch(tracker):
-    refs = listed(tracker.git("for-each-ref", "--format=%(refname:strip=2)", "refs/remotes/origin").out)
-    return [ref for ref in refs if ref != "origin/HEAD"]
-
-
-def highest_reserved(tracker):
-    said = tracker.git("ls-remote", "origin", RESERVED + "*").out
-    names = [line.split("\t", 1)[-1][len(RESERVED):] for line in listed(said)]
-    return max([int(name) for name in names if is_a_number(name)], default=0)
 
 
 # The title is the heading and the body what is below it, as the loop reads a spec issue back.
@@ -114,26 +75,11 @@ def publish_spec(tracker, slug, body, branch, out, err):
     if body.lstrip().startswith(FENCE):
         raise refusal("The body already opens with frontmatter. tracker-publish writes it, so "
                       "leave it out.")
-    branch = branch or tracker.target
-    fields = [STATUS + ": open"] + (["branch: " + branch] if in_pr_mode else [])
-    text = "\n".join([FENCE] + fields + [FENCE, "", ""]) + body
-    for _ in range(PUSH_ATTEMPTS):
-        tracker.fetched(EVERY_BRANCH if in_pr_mode else branch)
-        parent = tip(tracker, branch)
-        if in_pr_mode:
-            number = max(highest(tracker, every_branch(tracker)), highest_reserved(tracker)) + 1
-        else:
-            number = highest(tracker, [parent]) + 1
-        folder = "{}/{:04d}-{}".format(SPECS, number, slug)
-        # In PR mode two specs push to two branches and neither is refused, so the number is held on one ref too.
-        reserved = [RESERVED + str(number)] if in_pr_mode else []
-        if tracker.pushed(branch, parent, {folder + "/" + SPEC_FILE: text},
-                          "Write spec {}: {}".format(number, heading(body, slug)),
-                          "Spec {}".format(number), reserved):
-            out.write("{}\t{}\n".format(number, folder))
-            return
-    raise refusal("The spec lost the race for a number {} times in a row. Run tracker-publish "
-                  "again.".format(PUSH_ATTEMPTS))
+    number, folder, written = tracker.write_spec(slug, body, branch if in_pr_mode else "")
+    out.write("{}\t{}\n".format(number, folder))
+    if not written:
+        err.write("Spec {} in the Sidecar already holds this spec, so nothing was written.\n".format(
+            number))
 
 
 def checked_tickets(where, paths):
@@ -192,27 +138,9 @@ def publish_tickets(tracker, spec, tickets, out, err):
             err.write("Every ticket of spec #{} was already filed and linked, so nothing "
                       "changed.\n".format(spec))
         return
-    branch = tracker.branch_of(spec)
-    for _ in range(PUSH_ATTEMPTS):
-        tracker.fetched(branch)
-        parent = tip(tracker, branch)
-        folder = tracker.folder_on(parent, spec)
-        if not folder:
-            raise refusal("Spec {} has no folder on origin/{}. Write it with tracker-publish spec "
-                          "first.".format(spec, branch))
-        if listed(tracker.git("ls-tree", "--name-only", parent, folder + "/" + TICKETS + "/").out):
-            raise refusal("Spec {} already has tickets on origin/{}, so none were "
-                          "written.".format(spec, branch))
-        written = {"{}/{}/{}".format(folder, TICKETS, name): text for name, text in tickets}
-        if tracker.pushed(branch, parent, written, "Write the tickets of spec {}".format(spec),
-                          "The tickets of spec {}".format(spec)):
-            out.write("".join(path + "\n" for path in written))
-            return
-    raise refusal("The tickets of spec {} lost to another push {} times in a row. Run "
-                  "tracker-publish again.".format(spec, PUSH_ATTEMPTS))
+    out.write("".join(path + "\n" for path in tracker.write_tickets(spec, tickets)))
 
 
-# On the files Tracker each report replaces its heading to the end of the file, so a drift report takes the Name report after it too.
 def publish_report(tracker, spec, report_file, report, heading, what, out):
     if report.replace("\r\n", "\n").split("\n", 1)[0].strip() != heading:
         raise refusal("The {} does not open with {}. Its first line is that heading, as it is on a "
@@ -220,44 +148,28 @@ def publish_report(tracker, spec, report_file, report, heading, what, out):
     if isinstance(tracker, GitHub):
         out.write(tracker.post_report(spec, report_file, what) + "\n")
         return
-    branch = tracker.branch_of(spec)
-    for _ in range(PUSH_ATTEMPTS):
-        tracker.fetched(branch)
-        parent = tip(tracker, branch)
-        folder = tracker.folder_on(parent, spec)
-        if not folder:
-            raise refusal("Spec {} has no folder on origin/{}, so its {} has nowhere to "
-                          "go.".format(spec, branch, what))
-        path = folder + "/" + SPEC_FILE
-        written = with_last_section(tracker.shown(parent, path), heading, report)
-        if tracker.pushed(branch, parent, {path: written},
-                          "Record the {} of spec {}".format(what, spec),
-                          "The {} of spec {}".format(what, spec)):
-            out.write(path + "\n")
-            return
-    raise refusal("The {} of spec {} lost to another push {} times in a row. Run "
-                  "tracker-publish again.".format(what, spec, PUSH_ATTEMPTS))
+    out.write(tracker.record_report(spec, heading, report, what) + "\n")
 
 
-def main(argv, runner, out, err, wait, where=None):
+def main(argv, runner, out, err, clock=None, where=None):
     where = where or os.getcwd()
     try:
         command = argv[0] if argv else ""
         if command == "spec" and len(argv) in (3, 4):
-            tracker = opened(runner, where, None, wait)
+            tracker = opened(runner, where, None, clock)
             publish_spec(tracker, argv[1], read(where, argv[2]), argv[3] if len(argv) == 4 else "",
                          out, err)
             return 0
         if command == "tickets" and len(argv) > 2 and is_a_number(argv[1]):
             spec = str(int(argv[1]))
             tickets = checked_tickets(where, argv[2:])
-            publish_tickets(opened(runner, where, spec, wait), spec, tickets, out, err)
+            publish_tickets(opened(runner, where, spec, clock), spec, tickets, out, err)
             return 0
         if command in REPORTS and len(argv) == 3 and is_a_number(argv[1]):
             spec = str(int(argv[1]))
             heading, what = REPORTS[command]
             report_file = (Path(where) / argv[2]).as_posix()
-            publish_report(opened(runner, where, spec, wait), spec, report_file,
+            publish_report(opened(runner, where, spec, clock), spec, report_file,
                            read(where, argv[2]), heading, what, out)
             return 0
         raise misuse(USAGE)
@@ -270,4 +182,4 @@ if __name__ == "__main__":
     speaking_any_character(sys.stdout)
     speaking_any_character(sys.stderr)
     # python -m runs from the scripts folder, so the caller's folder is handed in first.
-    sys.exit(main(sys.argv[2:], Subprocess(), sys.stdout, sys.stderr, time.sleep, sys.argv[1]))
+    sys.exit(main(sys.argv[2:], Subprocess(), sys.stdout, sys.stderr, Clock(), sys.argv[1]))

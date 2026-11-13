@@ -45,13 +45,13 @@ def tracker_setting(top):
     return held["tracker"]
 
 
-def tracker_for(runner, top, spec=None):
+def tracker_for(runner, top, spec=None, clock=None):
     where = Path(top).as_posix()
     named = target_setting(top)
     target = None if named == PR_MODE else named
     if tracker_setting(top) == "github":
         return GitHub(runner, where, target=target)
-    return Files(runner, where, target, spec)
+    return Files(runner, where, target, spec, clock)
 
 
 def in_pr_mode(top):

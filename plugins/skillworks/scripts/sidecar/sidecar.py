@@ -45,7 +45,9 @@ class Sidecar:
                 self.make()
             change(self.folder)
             self.git("add", "--all")
-            self.git("commit", "--quiet", "--message", message)
+            # A change can find its work already done, and git refuses a commit that holds nothing.
+            if self.git("status", "--porcelain").strip():
+                self.git("commit", "--quiet", "--message", message)
         finally:
             self.lock.release()
 

@@ -1,15 +1,19 @@
-# Driven through main, so each case checks what reached the remote and what the files Tracker reads back.
+# Driven through main, so each case checks what reached the Sidecar and what the files Tracker reads back.
 
 import contextlib
 import io
 import json
+import threading
 from pathlib import Path
 
 import pytest
 
-from conftest import Ran, Repo, git, launch
-from files_test import Racing, commit_files, spec_file, ticket_file, write_loop
+from clock.held_clock import HeldClock
+from conftest import Ran, RecordingRunner, Repo, git, launch
+from files_test import refs_of, ticket_file, write_loop
 from github_test import Issues
+from runner import Subprocess
+from sidecar.sidecar import WAIT_SECONDS, sidecar_of
 from steering.target_branch import LOOP_FILE
 from tracker import publish
 from tracker.files import Files
@@ -25,12 +29,16 @@ FILED_BODY = "## Problem Statement\n\nNo GitHub.\n"
 HASH_LINE = ("<!-- skillworks-spec sha256:e167abbc1f143b1e3955268f97d0530bb70cada2af94b2bee3968b5d9e2"
              "6e0c6 -->")
 
+# The sha256 of BODY, worked out outside the code under test.
+BODY_HASH = "sha256:df4a0fc9315e9ed0fb9bb4de51fb64e2db0ce7c135055c2aa1ecc7919117db96"
+
 
 class Writer:
     def __init__(self, repo, runner, scratch):
         self.repo = repo
         self.runner = runner
         self.scratch = scratch
+        self.clock = HeldClock()
 
     def written(self, name, text):
         path = self.scratch / name
@@ -38,65 +46,80 @@ class Writer:
         path.write_text(text, encoding="utf-8", newline="\n")
         return path.as_posix()
 
-    def run(self, *argv):
+    def run(self, *argv, where=None):
         out, err = io.StringIO(), io.StringIO()
-        with contextlib.chdir(self.repo.work):
-            status = publish.main(list(argv), self.runner, out, err, lambda seconds: None)
+        where = where or self.repo.work
+        with contextlib.chdir(where):
+            status = publish.main(list(argv), self.runner, out, err, self.clock,
+                                  Path(where).as_posix())
         return Ran(status, out.getvalue(), err.getvalue())
 
-    def spec(self, slug="local-tracker", body=BODY, *branch):
-        return self.run("spec", slug, self.written("spec-body.md", body), *branch)
+    def spec(self, slug="local-tracker", body=BODY, *branch, where=None):
+        return self.run("spec", slug, self.written(slug + "-body.md", body), *branch, where=where)
 
     def tickets(self, spec, tickets):
         return self.run("tickets", spec, *[self.written("tickets/" + name, text)
                                            for name, text in tickets.items()])
 
-    # Pushed from a clone of its own, so the main checkout never holds what the remote does.
-    def push(self, files, branch="main"):
-        other = self.repo.other_checkout()
-        if branch != "main":
-            git(other, "checkout", "--quiet", "-B", branch)
-        commit_files(other, files, "Tracker state")
-        git(other, "push", "--quiet", "origin", branch)
+    def sidecar(self):
+        return sidecar_of(Subprocess(), self.repo.work)
 
-    def on_remote(self, path, branch="main"):
-        return git(self.repo.origin, "show", "{}:{}".format(branch, path))
+    def held(self, path):
+        return (self.sidecar() / path).read_text(encoding="utf-8")
 
-    def folders(self, branch="main"):
-        return git(self.repo.origin, "ls-tree", "--name-only", branch, ".specs/").split()
+    def folders(self):
+        specs = self.sidecar() / ".specs"
+        return sorted(".specs/" + each.name for each in specs.iterdir()) if specs.is_dir() else []
 
     def tracker(self, spec, target="main"):
-        return Files(self.runner, self.repo.work, target, spec, lambda seconds: None)
+        return Files(RecordingRunner(), self.repo.work, target, spec, HeldClock())
 
 
 @pytest.fixture
 def writer(tmp_path):
     repo = Repo(tmp_path / "repo")
     write_loop(repo.work, "main")
-    return Writer(repo, Racing(), tmp_path / "scratch")
+    return Writer(repo, RecordingRunner(), tmp_path / "scratch")
 
 
 def said(ran):
     return ran.out + ran.err
 
 
-def test_a_spec_is_pushed_as_a_numbered_folder_with_its_frontmatter(writer):
+def spec_text(status="open", branch=None):
+    lines = ["---", "status: " + status, "hash: " + BODY_HASH]
+    if branch:
+        lines.append("branch: " + branch)
+    return "\n".join(lines + ["---", "", ""]) + BODY
+
+
+def test_a_spec_is_written_to_the_sidecar_as_a_numbered_folder_with_its_frontmatter(writer):
     ran = writer.spec()
 
     assert ran.status == 0, said(ran)
     assert ran.out == "1\t.specs/0001-local-tracker\n"
-    assert writer.on_remote(".specs/0001-local-tracker/spec.md") == "---\nstatus: open\n---\n\n" + BODY
+    assert writer.held(".specs/0001-local-tracker/spec.md") == spec_text()
     assert writer.tracker("1").spec_state("1") == "open"
     assert writer.tracker("1").spec_title("1") == "SPEC: A local tracker"
 
 
-def test_a_spec_takes_the_highest_number_on_the_remote_plus_one(writer):
-    writer.push({".specs/0007-older/spec.md": spec_file(), ".specs/0003-oldest/spec.md": spec_file()})
+def test_a_spec_takes_the_highest_number_in_the_sidecar_plus_one(writer):
+    writer.spec("older", "# SPEC: Older\n")
+    writer.spec("old", "# SPEC: Old\n")
 
     ran = writer.spec()
 
-    assert ran.status == 0, said(ran)
-    assert ".specs/0008-local-tracker" in writer.folders()
+    assert (ran.status, ran.out) == (0, "3\t.specs/0003-local-tracker\n"), said(ran)
+
+
+def test_a_spec_takes_a_number_above_every_one_the_loop_state_already_uses(writer):
+    (writer.repo.work / ".spec-loop" / "12").mkdir(parents=True)
+    (writer.repo.work / ".spec-loop" / "grill").mkdir(parents=True)
+    git(writer.repo.work, "branch", "spec-loop/15/ticket-1")
+
+    ran = writer.spec()
+
+    assert (ran.status, ran.out) == (0, "16\t.specs/0016-local-tracker\n"), said(ran)
 
 
 def test_the_checkout_is_left_as_it_was(writer):
@@ -112,15 +135,67 @@ def test_the_checkout_is_left_as_it_was(writer):
     assert not (writer.repo.work / ".specs").exists()
 
 
-def test_two_specs_written_at_once_end_with_two_numbers(writer):
-    rival = {".specs/0001-rival/spec.md": spec_file()}
-    writer.runner.before_push = lambda: writer.push(rival)
+# The first writer is held inside the lock until the second waits on it, so both truly run at once.
+class HeldInsideTheLock(RecordingRunner):
+    def __init__(self):
+        super().__init__()
+        self.holds = threading.Event()
+        self.let_go = threading.Event()
+
+    def run(self, args, where=None, env=None, stdin=None):
+        if [str(each) for each in args][-2:] == ["add", "--all"] and not self.holds.is_set():
+            self.holds.set()
+            self.let_go.wait()
+        return super().run(args, where, env, stdin)
+
+
+def test_two_specs_published_at_once_from_two_worktrees_get_two_different_numbers(writer):
+    nested = writer.repo.work / ".spec-loop" / "grill" / "other"
+    git(writer.repo.work, "worktree", "add", "--quiet", "-b", "other", nested.as_posix())
+    write_loop(nested, "main")
+    first_runner = HeldInsideTheLock()
+    first = Writer(writer.repo, first_runner, writer.scratch / "first")
+    first.clock = writer.clock
+    ran = {}
+
+    def publish_first():
+        ran["first"] = first.spec("first", "# SPEC: First\n")
+
+    def publish_second():
+        ran["second"] = writer.spec("second", "# SPEC: Second\n", where=nested)
+
+    first_thread = threading.Thread(target=publish_first)
+    second_thread = threading.Thread(target=publish_second)
+    first_thread.start()
+    first_runner.holds.wait()
+    second_thread.start()
+    writer.clock.repeating.wait()
+    first_runner.let_go.set()
+    first_thread.join()
+    writer.clock.move(WAIT_SECONDS)
+    second_thread.join()
+
+    assert (ran["first"].out, ran["second"].out) == (
+        "1\t.specs/0001-first\n", "2\t.specs/0002-second\n"), said(ran["second"])
+
+
+def test_a_rerun_after_a_failure_prints_the_spec_it_already_wrote_and_files_none(writer):
+    writer.spec()
 
     ran = writer.spec()
 
-    assert ran.status == 0, said(ran)
-    assert ran.out == "2\t.specs/0002-local-tracker\n"
-    assert writer.folders() == [".specs/0001-rival", ".specs/0002-local-tracker"]
+    assert (ran.status, ran.out) == (0, "1\t.specs/0001-local-tracker\n"), said(ran)
+    assert "already holds this spec, so nothing was written" in ran.err
+    assert writer.folders() == [".specs/0001-local-tracker"]
+
+
+def test_a_spec_with_the_same_body_as_a_closed_spec_is_written_anew(writer):
+    writer.spec()
+    writer.tracker("1").close_spec("1")
+
+    ran = writer.spec()
+
+    assert (ran.status, ran.out) == (0, "2\t.specs/0002-local-tracker\n"), said(ran)
 
 
 def test_a_body_that_brings_its_own_frontmatter_is_turned_down(writer):
@@ -131,58 +206,14 @@ def test_a_body_that_brings_its_own_frontmatter_is_turned_down(writer):
     assert writer.folders() == []
 
 
-def test_in_pr_mode_the_folder_is_on_the_specs_branch_and_names_it(writer):
+def test_in_pr_mode_the_spec_names_its_branch_in_its_frontmatter(writer):
     write_loop(writer.repo.work, "pr")
-    writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
 
     ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
 
     assert ran.status == 0, said(ran)
-    assert writer.folders() == []
-    text = writer.on_remote(".specs/0001-local-tracker/spec.md", SPEC_BRANCH)
-    assert text.startswith("---\nstatus: open\nbranch: {}\n---\n".format(SPEC_BRANCH))
+    assert writer.held(".specs/0001-local-tracker/spec.md") == spec_text(branch=SPEC_BRANCH)
     assert writer.tracker("1", target=None).branch_of("1") == SPEC_BRANCH
-
-
-def test_in_pr_mode_the_number_counts_the_specs_on_every_branch(writer):
-    write_loop(writer.repo.work, "pr")
-    writer.push({".specs/0004-elsewhere/spec.md": spec_file(branch="spec/elsewhere")},
-                branch="spec/elsewhere")
-    writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
-
-    ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
-
-    assert ran.status == 0, said(ran)
-    assert ".specs/0005-local-tracker" in writer.folders(SPEC_BRANCH)
-
-
-def test_in_pr_mode_two_specs_written_at_once_on_two_branches_end_with_two_numbers(writer):
-    write_loop(writer.repo.work, "pr")
-    writer.push({"base.txt": "base\nrival branch\n"}, branch="spec/rival")
-    writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
-    rival = Writer(writer.repo, Racing(), writer.scratch / "rival")
-    rivalled = []
-    # The rival runs whole the moment this writer first pushes, so this writer's number is the one taken.
-    writer.runner.before_push = lambda: rivalled.append(rival.spec("rival", BODY, "spec/rival"))
-
-    ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
-
-    assert rivalled[0].out == "1\t.specs/0001-rival\n", said(rivalled[0])
-    assert ran.status == 0, said(ran)
-    assert ran.out == "2\t.specs/0002-local-tracker\n"
-    assert writer.tracker("2", target=None).branch_of("2") == SPEC_BRANCH
-
-
-def test_in_pr_mode_a_number_reserved_with_no_folder_left_is_not_taken_again(writer):
-    write_loop(writer.repo.work, "pr")
-    writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
-    head = git(writer.repo.origin, "rev-parse", "main").strip()
-    git(writer.repo.origin, "update-ref", publish.RESERVED + "3", head)
-
-    ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
-
-    assert ran.status == 0, said(ran)
-    assert ran.out == "4\t.specs/0004-local-tracker\n"
 
 
 def test_in_pr_mode_a_spec_with_no_branch_is_turned_down(writer):
@@ -192,15 +223,6 @@ def test_in_pr_mode_a_spec_with_no_branch_is_turned_down(writer):
 
     assert ran.status == 1
     assert "branch" in ran.err
-
-
-def test_in_pr_mode_a_branch_not_on_the_remote_is_turned_down(writer):
-    write_loop(writer.repo.work, "pr")
-
-    ran = writer.spec("local-tracker", BODY, SPEC_BRANCH)
-
-    assert ran.status == 1
-    assert SPEC_BRANCH in ran.err
 
 
 def test_a_checkout_with_no_loop_file_is_told_to_seed_it_even_beside_an_old_steering_branch(writer):
@@ -228,7 +250,7 @@ def three_tickets():
     }
 
 
-def test_tickets_are_pushed_into_the_specs_folder_and_the_tracker_reads_them(writer):
+def test_tickets_are_written_into_the_specs_folder_and_the_tracker_reads_them(writer):
     writer.spec()
 
     ran = writer.tickets("1", three_tickets())
@@ -239,18 +261,7 @@ def test_tickets_are_pushed_into_the_specs_folder_and_the_tracker_reads_them(wri
     assert tracker.open_tickets("1") == ["1", "2", "3"]
     assert tracker.title("2") == "TICKET: Close in the worktree"
     assert [tracker.open_blockers(ticket) for ticket in ["1", "2", "3"]] == [0, 1, 2]
-    assert writer.on_remote(".specs/0001-local-tracker/tickets/03-claim.md") == three_tickets()["03-claim.md"]
-
-
-def test_in_pr_mode_tickets_reach_the_specs_branch(writer):
-    write_loop(writer.repo.work, "pr")
-    writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
-    writer.spec("local-tracker", BODY, SPEC_BRANCH)
-
-    ran = writer.tickets("1", three_tickets())
-
-    assert ran.status == 0, said(ran)
-    assert writer.tracker("1", target=None).tickets("1") == ["1", "2", "3"]
+    assert writer.held(".specs/0001-local-tracker/tickets/03-claim.md") == three_tickets()["03-claim.md"]
 
 
 def test_tickets_for_a_spec_with_tickets_already_are_turned_down(writer):
@@ -261,6 +272,7 @@ def test_tickets_for_a_spec_with_tickets_already_are_turned_down(writer):
 
     assert ran.status == 1
     assert "already" in ran.err
+    assert writer.tracker("1").tickets("1") == ["1", "2", "3"]
 
 
 def test_tickets_for_a_spec_with_no_folder_are_turned_down(writer):
@@ -296,15 +308,14 @@ def test_a_ticket_the_tracker_could_not_follow_is_turned_down(writer, tickets, r
 REPORT = "## Drift report\n\n- Story 1: Done\n- Story 2: Missing\n"
 
 
-def test_a_drift_report_is_pushed_to_the_end_of_the_specs_file(writer):
+def test_a_drift_report_is_written_to_the_end_of_the_specs_file(writer):
     writer.spec()
 
     ran = writer.run("drift", "1", writer.written("drift.md", REPORT))
 
     assert ran.status == 0, said(ran)
-    assert ran.out == ".specs/0001-local-tracker/spec.md\n"
-    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
-    assert text == "---\nstatus: open\n---\n\n" + BODY + "\n" + REPORT
+    assert ran.out == (writer.sidecar() / ".specs/0001-local-tracker/spec.md").as_posix() + "\n"
+    assert writer.held(".specs/0001-local-tracker/spec.md") == spec_text() + "\n" + REPORT
     assert writer.tracker("1").drift_report("1") == "- Story 1: Done\n- Story 2: Missing"
 
 
@@ -315,23 +326,10 @@ def test_a_second_drift_report_takes_the_place_of_the_first(writer):
     ran = writer.run("drift", "1", writer.written("again.md", "## Drift report\n\nAll done.\n"))
 
     assert ran.status == 0, said(ran)
-    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
+    text = writer.held(".specs/0001-local-tracker/spec.md")
     assert text.count("## Drift report") == 1
     assert "Missing" not in text
     assert writer.tracker("1").drift_report("1") == "All done."
-
-
-def test_a_drift_report_that_loses_a_race_reads_again_and_keeps_the_rivals_change(writer):
-    writer.spec()
-    rival = "---\nstatus: open\n---\n\n" + BODY + "\nA rival line.\n"
-    writer.runner.before_push = lambda: writer.push({".specs/0001-local-tracker/spec.md": rival})
-
-    ran = writer.run("drift", "1", writer.written("drift.md", REPORT))
-
-    assert ran.status == 0, said(ran)
-    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
-    assert "A rival line." in text
-    assert text.endswith(REPORT)
 
 
 def test_a_drift_report_without_its_heading_is_turned_down(writer):
@@ -344,37 +342,25 @@ def test_a_drift_report_without_its_heading_is_turned_down(writer):
     assert writer.tracker("1").drift_report("1") == ""
 
 
-def test_in_pr_mode_a_drift_report_reaches_the_specs_branch(writer):
-    write_loop(writer.repo.work, "pr")
-    writer.push({"base.txt": "base\nspec branch\n"}, branch=SPEC_BRANCH)
-    writer.spec("local-tracker", BODY, SPEC_BRANCH)
-
-    ran = writer.run("drift", "1", writer.written("drift.md", REPORT))
-
-    assert ran.status == 0, said(ran)
-    assert writer.on_remote(".specs/0001-local-tracker/spec.md", SPEC_BRANCH).endswith(REPORT)
-
-
 def test_a_drift_report_for_a_spec_with_no_folder_is_turned_down(writer):
     ran = writer.run("drift", "9", writer.written("drift.md", REPORT))
 
     assert ran.status == 1
-    assert "Spec 9 has no folder on origin/main" in ran.err
+    assert "holds no spec 9" in ran.err
 
 
 NAMES = "## Name report\n\n### Renames\n\n- `Batch`: it now holds a whole spec.\n"
 
 
-def test_a_name_report_is_pushed_below_the_drift_report_and_each_reads_back_alone(writer):
+def test_a_name_report_is_written_below_the_drift_report_and_each_reads_back_alone(writer):
     writer.spec()
     writer.run("drift", "1", writer.written("drift.md", REPORT))
 
     ran = writer.run("names", "1", writer.written("names.md", NAMES))
 
     assert ran.status == 0, said(ran)
-    assert ran.out == ".specs/0001-local-tracker/spec.md\n"
-    text = writer.on_remote(".specs/0001-local-tracker/spec.md")
-    assert text == "---\nstatus: open\n---\n\n" + BODY + "\n" + REPORT + "\n" + NAMES
+    text = writer.held(".specs/0001-local-tracker/spec.md")
+    assert text == spec_text() + "\n" + REPORT + "\n" + NAMES
     assert writer.tracker("1").drift_report("1") == "- Story 1: Done\n- Story 2: Missing"
     assert writer.tracker("1").name_report("1") == (
         "### Renames\n\n- `Batch`: it now holds a whole spec.")
@@ -388,7 +374,7 @@ def test_a_second_name_report_takes_the_place_of_the_first(writer):
                                                   "## Name report\n\n### Renames\n\n- None\n"))
 
     assert ran.status == 0, said(ran)
-    assert writer.on_remote(".specs/0001-local-tracker/spec.md").count("## Name report") == 1
+    assert writer.held(".specs/0001-local-tracker/spec.md").count("## Name report") == 1
     assert writer.tracker("1").name_report("1") == "### Renames\n\n- None"
 
 
@@ -413,6 +399,20 @@ def test_a_name_report_without_its_heading_is_turned_down(writer):
     assert ran.status == 1
     assert "## Name report" in ran.err
     assert writer.tracker("1").name_report("1") == ""
+
+
+def test_publishing_a_spec_its_tickets_and_its_reports_neither_pushes_nor_fetches(writer):
+    write_loop(writer.repo.work, "pr")
+    before = refs_of(writer.repo)
+
+    writer.spec("local-tracker", BODY, SPEC_BRANCH)
+    writer.tickets("1", three_tickets())
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("names", "1", writer.written("names.md", NAMES))
+
+    assert refs_of(writer.repo) == before
+    assert [call for call in writer.runner.started("git")
+            if "push" in call or "fetch" in call or "ls-remote" in call] == []
 
 
 class Comments:

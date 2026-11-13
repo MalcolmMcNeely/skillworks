@@ -1196,7 +1196,16 @@ def test_the_issue_tracker_seed_says_how_a_ticket_closes_with_the_files_tracker(
     assert "`Ticket: <spec>/<ticket>`" in files
     assert "`status: closed`" in files
     assert "`{}`".format(CLOSING_NOTE) in files
-    assert "closed in the commit that holds its code" in files
+    assert "tracker-close <spec>/<ticket> <note-file>" in files
+    assert "the loop sets `status: open` again" in files
+
+
+def test_the_issue_tracker_seed_says_the_files_tracker_lives_in_the_sidecar_and_is_read_with_tracker_show():
+    files = files_tracker(seeded("issue-tracker.md"))
+
+    assert "a local git repo with no remote" in files
+    assert "`tracker-show <spec>/<ticket>`" in files
+    assert "never opens its files by hand" in files
 
 
 def test_this_repos_tracker_docs_hold_the_seeds_files_tracker():
@@ -2186,12 +2195,12 @@ def test_setup_asks_for_the_tracker_and_suggests_one_from_the_remote():
     assert "`docs/skillworks/loop.json`" in step
 
 
-def test_setup_says_the_files_tracker_folder_is_committed_and_why():
+def test_setup_says_the_files_tracker_folder_sits_in_the_sidecar_and_is_never_pushed():
     step = setup_section("### 2. Ask for the Tracker")
 
-    assert "`.specs/`" in step
-    assert "cannot be gitignored" in step
-    assert "worktree" in step
+    assert "`.specs/` sits in the Sidecar" in step
+    assert "never pushed" in step
+    assert "cannot be gitignored" not in step
 
 
 def test_setup_skips_the_github_steps_with_the_files_tracker():
@@ -3596,11 +3605,11 @@ def test_implement_s_refused_write_keeps_the_ticket_open_through_finishing_and_t
     refused = section(text, "A write under `.claude/` refused")
     finishing = section(text, "Finishing")
 
-    assert "commit as its step 3 says, and skip the close in its steps 2 and 5" in refused
+    assert "commit as its step 3 says, and skip the close in its step 5" in refused
     assert "Begin your answer to it with the `BLOCKED` line, and close nothing." in refused
-    assert "\n2. **With the files Tracker, close the ticket now**" in finishing
+    assert "\n2. **Write the Closing note.**" in finishing
     assert "\n3. **Commit to the branch you are on.**" in finishing
-    assert "\n5. **With the GitHub Tracker, close the ticket**" in finishing
+    assert "\n5. **Close the ticket**" in finishing
 
 
 def test_implement_ends_its_refusal_of_a_blocked_ticket_on_the_blocked_line():
@@ -3617,7 +3626,14 @@ def test_implement_reads_its_ticket_and_spec_with_tracker_show_on_github():
             "and then the spec's.") in before
 
 
-def test_implement_closes_its_ticket_with_tracker_close_on_github():
+def test_implement_reads_its_ticket_and_spec_with_tracker_show_with_the_files_tracker():
+    before = section(skill_text("implement"), "Before you start")
+
+    assert "Print it with `tracker-show 7/2`, and its spec with `tracker-show 7`." in before
+    assert "remote's Target branch" not in before
+
+
+def test_implement_closes_its_ticket_with_tracker_close_on_either_tracker():
     finishing = section(skill_text("implement"), "Finishing")
 
     assert "tracker-close <n> .spec-loop/closing-notes/<n>.md" in finishing

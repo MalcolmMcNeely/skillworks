@@ -19,7 +19,7 @@ Once the spec is known, typing the command is the whole of the user's consent. A
 
 ### 1. Check the spec
 
-Read the spec in full: the issue and its comments on GitHub, or `spec.md` on the remote's Target branch with the files Tracker. It must be **open** — the loop needs it open as the parent of its tickets. If it is closed, stop and say so.
+Read the spec in full: the issue and its comments on GitHub, or `tracker-show <spec>` with the files Tracker, which prints its `spec.md` from the Sidecar. It must be **open** — the loop needs it open as the parent of its tickets. If it is closed, stop and say so.
 
 Cut no tickets yourself. A spec with no tickets has them cut by the driver, as its first step.
 
@@ -47,7 +47,7 @@ Name each Departure first, then each Choice and each Hand check, from the list a
 
 Unrequested work never stops the loop, and the driver writes a `NOTE  Unrequested:` line for each item. Name each of those items to the user, one by one, before any close offer, so they read them at the moment they decide. Then:
 
-- **With the files Tracker**, make no offer. The driver closed the spec itself after the full run, by a commit on the Target branch, and its `CLOSE` line in the log says so. Say that. With `pr`, its `PR` line names the spec's branch. Tell the user to open the pull request from that branch, and that a person reviews and merges it.
+- **With the files Tracker**, make no offer. The driver closed the spec itself after the full run, by a commit in the Sidecar, and its `CLOSE` line in the log says so. Say that. With `pr`, its `PR` line names the spec's branch. Tell the user to open the pull request from that branch, and that a person reviews and merges it.
 - **With the GitHub Tracker and a branch name**, make one offer, and only this one: close the spec. Close it on a yes. The decision is the user's, because closing the spec is where a feature is declared done.
 - **With the GitHub Tracker and `pr`**, make no offer. The driver closed the spec issue itself after the full run, with a comment, and its `CLOSE` line in the log says so. Say that. Its `PR` line names the spec's branch. Tell the user to open the pull request from that branch, and that a person reviews and merges it. Never open, mark or merge the pull request yourself: the developer opens it, by the team's own rules.
 

@@ -93,7 +93,7 @@ tracker-publish names <spec> .spec-loop/<spec>/names-report.md
 Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.
 
 - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. Post nothing on the spec after it, because the loop reads the last comment.
-- **Files**: the command pushes the report to the end of the spec's `spec.md`, below the drift report, and takes the place of any earlier Name report. It writes through an index of its own, so the checkout stays clean. The loop turns down a Name check that leaves the checkout changed.
+- **Files**: the command writes the report to the end of the spec's `spec.md` in the Sidecar, below the drift report, and takes the place of any earlier Name report. The Sidecar sits outside the checkout, so the checkout stays clean. The loop turns down a Name check that leaves the checkout changed.
 
 The report is recorded when the command prints the comment's URL, or the path of `spec.md`. If `tracker-publish` refuses, mend what the refusal names and run it again once. If it refuses again, stop, quote the refusal, and say that the report is not recorded. Under the spec loop, begin your last message with a line that starts with `BLOCKED` and names the command, as for a missing file.
 

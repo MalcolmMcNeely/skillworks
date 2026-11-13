@@ -130,7 +130,7 @@ Where the rule held, the item for the part that lost gets **Contradicts**, and t
    Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.
 
    - **GitHub**: the command posts the report as a new comment on the spec issue, and prints the comment's URL. A second run adds a second comment, and the loop reads the last one, so post nothing on the spec after the report.
-   - **Files**: the command pushes the report to the end of the spec's `spec.md` on the remote, and takes the place of any earlier report. It writes through an index of its own, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
+   - **Files**: the command writes the report to the end of the spec's `spec.md` in the Sidecar, and takes the place of any earlier report. The Sidecar sits outside the checkout, so the checkout stays clean. The loop turns down a drift check that leaves the checkout changed.
 
    The report is recorded when the command prints the comment's URL, or the path of `spec.md`. A report you only say in this Session is lost, because the loop reads the Tracker. If `tracker-publish` refuses, mend what the refusal names and run it again once. If it refuses again, stop, quote the refusal, and say that the report is not recorded. Under the spec loop, begin your last message with a line that starts with `BLOCKED` and names the command, as for a missing file.
 

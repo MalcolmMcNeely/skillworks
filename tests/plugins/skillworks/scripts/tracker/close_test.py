@@ -5,8 +5,11 @@ import io
 
 import pytest
 
+from clock.held_clock import HeldClock
 from conftest import Ran, Repo, launch
-from files_test import write_loop
+from files_test import FOLDER, spec_file, ticket_file, ticket_path, write_files, write_loop
+from runner import Subprocess
+from sidecar.sidecar import Sidecar, sidecar_of
 from show_test import on_github
 from tracker import close
 
@@ -105,10 +108,48 @@ def test_a_call_with_no_note_file_is_told_the_usage(repo, runner, issues):
     assert "usage: tracker-close <ticket> <note-file>" in ran.err
 
 
-def test_the_command_runs_from_the_plugins_bin_folder_and_turns_down_the_files_tracker(repo):
+@pytest.fixture
+def in_files(repo):
     write_loop(repo.work, "main")
+    Sidecar.of(Subprocess(), repo.work, HeldClock()).write("Tracker state", lambda folder: write_files(
+        folder, {FOLDER + "/spec.md": spec_file(),
+                 ticket_path("01-read-loop-json"): ticket_file("TICKET: Read loop.json")}))
+    return repo
 
-    ran = launch("tracker-close", "642", note_file(repo), where=repo.work)
 
-    assert ran.status == 1, ran.out + ran.err
-    assert "tracker-close serves the GitHub Tracker alone so far" in ran.err
+def in_sidecar(repo):
+    return (sidecar_of(Subprocess(), repo.work) / ticket_path("01-read-loop-json")).read_text(
+        encoding="utf-8")
+
+
+def test_with_the_files_tracker_a_ticket_is_closed_in_the_sidecar_with_its_closing_note(
+        in_files, runner):
+    ran = closed(in_files, runner, "7/1", note_file(in_files))
+
+    assert (ran.status, ran.out) == (0, "Closed 7/1.\n"), ran.err
+    assert in_sidecar(in_files).startswith("---\nstatus: closed\n")
+    assert in_sidecar(in_files).endswith("## Closing note\n\n" + NOTE)
+
+
+def test_with_the_files_tracker_a_rerun_on_a_closed_ticket_changes_nothing_and_says_so(
+        in_files, runner):
+    closed(in_files, runner, "7/1", note_file(in_files))
+
+    ran = closed(in_files, runner, "7/1", note_file(in_files, "A second note.\n"))
+
+    assert (ran.status, in_sidecar(in_files).endswith(NOTE)) == (0, True), ran.err
+    assert "Ticket 7/1 is already closed, so nothing changed." in ran.err
+
+
+def test_with_the_files_tracker_a_spec_alone_closes_nothing(in_files, runner):
+    ran = closed(in_files, runner, "7", note_file(in_files))
+
+    assert ran.status == 1
+    assert "such as 7/2" in ran.err
+    assert in_sidecar(in_files).startswith("---\nstatus: open\n")
+
+
+def test_the_command_runs_from_the_plugins_bin_folder_with_the_files_tracker(in_files):
+    ran = launch("tracker-close", "7/1", note_file(in_files), where=in_files.work)
+
+    assert (ran.status, ran.out) == (0, "Closed 7/1.\n"), ran.err

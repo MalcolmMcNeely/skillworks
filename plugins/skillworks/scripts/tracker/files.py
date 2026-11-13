@@ -1,13 +1,12 @@
-# Reads only the remote's Target branch, so unpushed work cannot change what the loop starts.
+# Reads and writes the Sidecar alone, so nothing about a spec or a ticket ever reaches origin.
 
-import io
+import hashlib
 import re
-import tempfile
-import time
 from pathlib import Path
 from typing import NamedTuple
 
-from fetch_origin import fetch_origin
+from clock.clock import Clock
+from sidecar.sidecar import Sidecar
 from stop import is_a_number, refusal
 from tracker.reading import DRIFT_REPORT, FLAKES, NAME_REPORT, listed
 
@@ -19,16 +18,17 @@ CLAIMED_BY = "claimed-by"
 STATUS = "status"
 CLOSED = "closed"
 CLOSING_NOTE = "## Closing note"
+OPEN = "open"
+HASH = "hash"
+BRANCH = "branch"
 
-# Every remote branch at once, because in PR mode the spec's own folder says which one is its.
-EVERY_BRANCH = "*"
+# The committed state, so a read never sees a write the lock is still holding.
+HEAD = "HEAD"
 
-# Enough for several loops starting at once, few enough that a remote refusing for another reason cannot spin.
-PUSH_ATTEMPTS = 5
+LOOP_STATE = ".spec-loop"
+LOOP_BRANCHES = "spec-loop/"
 
 REPORTS = (DRIFT_REPORT, NAME_REPORT)
-
-LOST_RACE = ("[rejected]", "fetch first", "non-fast-forward", "cannot lock ref")
 
 
 class Ticket(NamedTuple):
@@ -45,6 +45,8 @@ class Spec(NamedTuple):
     title: str
     tickets: list
     body: str
+    branch: str
+    folder: str
 
 
 def number_of(name):
@@ -160,110 +162,122 @@ def as_numbers(value):
     return [str(int(item)) if is_a_number(item) else item for item in held]
 
 
+def text_of(path):
+    return Path(path).read_text(encoding="utf-8")
+
+
+def write_text(path, text):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="")
+
+
+def spec_hash(body):
+    return "sha256:" + hashlib.sha256(body.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+
+
+def folders_in(store):
+    specs = Path(store) / SPECS
+    return sorted(each for each in specs.iterdir() if each.is_dir()) if specs.is_dir() else []
+
+
+def folder_on_disk(store, spec):
+    named = [each for each in folders_in(store) if number_of(each.name) == spec]
+    return named[0] if len(named) == 1 else None
+
+
+def highest_of(names):
+    return max([int(number_of(name) or 0) for name in names], default=0)
+
+
 class Files:
-    # The close is in the commit that Lands, so no rebase can leave it naming a commit on no branch.
+    # The Closing note is a section of the ticket file, which has no thread to take a later comment.
     close_names_commits = False
 
     # A target of None is PR mode, where each spec's frontmatter names its own branch.
-    def __init__(self, runner, where, target, spec=None, wait=time.sleep):
+    def __init__(self, runner, where, target, spec=None, clock=None):
         self.runner = runner
         self.where = str(where)
         self.target = target
         self.spec = spec
-        self.wait = wait
+        self.clock = clock or Clock()
         self.repo = ""
         self.me = ""
-        self.branches = {}
-        # Keyed by the commit read, so a ref that has not moved is not read again.
+        self.sidecar = None
+        # Keyed by the Sidecar's commit, so a store that has not changed is not read again.
         self.read_at = {}
 
-    def git(self, *args, env=None):
-        return self.runner.run(["git", "-C", self.where] + [str(a) for a in args], None, env)
+    def store(self):
+        if self.sidecar is None:
+            self.sidecar = Sidecar.of(self.runner, self.where, self.clock)
+        return self.sidecar
+
+    def git(self, *args):
+        return self.runner.run(["git", "-C", self.store().folder.as_posix()] + [str(a) for a in args])
 
     def connect(self):
-        found = self.git("remote", "get-url", "origin")
-        if found.status != 0:
-            return "this repo has no remote named origin, and the files Tracker reads from it"
-        self.repo = found.out.strip()
-        self.me = self.git("config", "user.email").out.strip()
+        self.repo = self.store().folder.as_posix()
+        self.me = self.runner.run(["git", "-C", self.where, "config", "user.email"]).out.strip()
         if not self.me:
             return "git has no user.email, and the files Tracker claims each ticket in that name"
         return ""
 
-    def fetched(self, branch):
-        said = io.StringIO()
-        if not fetch_origin(self.runner, self.where, branch, said, self.wait):
-            raise refusal("The files Tracker could not fetch {} from origin, so it has nothing to "
-                          "read. git said:\n{}".format(branch, said.getvalue().rstrip("\n")))
+    # A Sidecar no write has made yet holds nothing, and git run there would read the folder above it.
+    def commit(self):
+        if not (self.store().folder / ".git").exists():
+            return ""
+        said = self.git("rev-parse", "--verify", "--quiet", HEAD)
+        return said.out.strip() if said.status == 0 else ""
 
-    def shown(self, ref, path):
-        return self.git("show", "{}:{}".format(ref, path)).out
+    def shown(self, path):
+        return self.git("show", "{}:{}".format(HEAD, path)).out
 
-    def folder_on(self, ref, spec):
-        held = self.git("ls-tree", "--name-only", ref, SPECS + "/").out
+    def folder_on(self, spec):
+        held = self.git("ls-tree", "--name-only", HEAD, SPECS + "/").out
         named = [path for path in listed(held) if number_of(path.rsplit("/", 1)[-1]) == spec]
         return named[0] if len(named) == 1 else ""
 
     def branch_of(self, spec):
         if self.target is not None:
             return self.target
-        if spec not in self.branches:
-            self.branches[spec] = self.branch_named_by(spec)
-        return self.branches[spec]
-
-    def branch_named_by(self, spec):
-        self.fetched(EVERY_BRANCH)
-        refs = listed(self.git("for-each-ref", "--format=%(refname:strip=3)",
-                               "refs/remotes/origin").out)
-        found = []
-        for branch in refs:
-            if branch == "HEAD":
-                continue
-            folder = self.folder_on("origin/" + branch, spec)
-            if not folder:
-                continue
-            held, _ = frontmatter(self.shown("origin/" + branch, folder + "/" + SPEC_FILE))
-            if held.get("branch") == branch:
-                found.append(branch)
-        if len(found) == 1:
-            return found[0]
-        if not found:
-            raise refusal("No branch on origin holds the folder of spec {} with that branch named "
-                          "as branch in its spec.md frontmatter. /skillworks:grill writes "
-                          "it, or add it by hand.".format(spec))
-        raise refusal("Spec {} names its own branch on more than one branch of origin: {}. Keep "
-                      "it on one.".format(spec, ", ".join(found)))
+        held = self.read(spec)
+        if held is None:
+            raise refusal("The Sidecar at {} holds no folder for spec {}, so it names no branch "
+                          "for it.".format(self.store().folder.as_posix(), spec))
+        if not held.branch:
+            raise refusal("Spec {} names no branch in its spec.md frontmatter, and in PR mode the "
+                          "loop Lands on that branch. /skillworks:grill writes it, or add it by "
+                          "hand.".format(spec))
+        return held.branch
 
     def read(self, spec):
         if spec is None:
             raise refusal("The files Tracker numbers each ticket inside its spec, and it was given "
                           "no spec.")
-        branch = self.branch_of(spec)
-        self.fetched(branch)
-        ref = "origin/" + branch
-        commit = self.git("rev-parse", ref).out.strip()
+        commit = self.commit()
         if (commit, spec) not in self.read_at:
-            self.read_at[(commit, spec)] = self.spec_on(ref, spec)
+            self.read_at[(commit, spec)] = self.spec_on(spec) if commit else None
         return self.read_at[(commit, spec)]
 
-    def spec_on(self, ref, spec):
-        folder = self.folder_on(ref, spec)
+    def spec_on(self, spec):
+        folder = self.folder_on(spec)
         if not folder:
             return None
-        held, body = frontmatter(self.shown(ref, folder + "/" + SPEC_FILE))
+        held, body = frontmatter(self.shown(folder + "/" + SPEC_FILE))
         tickets = []
-        paths = listed(self.git("ls-tree", "--name-only", ref, folder + "/" + TICKETS + "/").out)
+        paths = listed(self.git("ls-tree", "--name-only", HEAD, folder + "/" + TICKETS + "/").out)
         for path in paths:
             name = path.rsplit("/", 1)[-1]
             number = number_of(name)
             if not number or not name.endswith(".md"):
                 continue
-            ticket, text = frontmatter(self.shown(ref, path))
-            tickets.append(Ticket(number, ticket.get("status", ""),
+            ticket, text = frontmatter(self.shown(path))
+            tickets.append(Ticket(number, ticket.get(STATUS, ""),
                                   as_numbers(ticket.get("blocked-by", [])),
                                   ticket.get(CLAIMED_BY, ""), heading(text, name[:-3]), path))
         tickets.sort(key=lambda ticket: int(ticket.number))
-        return Spec(held.get("status", ""), heading(body, folder.rsplit("/", 1)[-1]), tickets, body)
+        return Spec(held.get(STATUS, ""), heading(body, folder.rsplit("/", 1)[-1]), tickets, body,
+                    held.get(BRANCH, ""), folder)
 
     def ticket(self, number):
         held = self.read(self.spec)
@@ -296,7 +310,7 @@ class Files:
 
     def open_tickets(self, spec):
         held = self.read(spec)
-        return [ticket.number for ticket in held.tickets if ticket.status == "open"] if held else []
+        return [ticket.number for ticket in held.tickets if ticket.status == OPEN] if held else []
 
     def ticket_rows(self, spec):
         held = self.read(spec)
@@ -305,7 +319,7 @@ class Files:
     # A blocker with no file is not known to be closed, so it counts as open.
     def open_blockers(self, ticket):
         held = self.read(self.spec)
-        closed = {each.number for each in held.tickets if each.status == "closed"} if held else set()
+        closed = {each.number for each in held.tickets if each.status == CLOSED} if held else set()
         found = self.ticket(ticket)
         return sum(1 for blocker in found.blocked_by if blocker not in closed) if found else None
 
@@ -332,23 +346,28 @@ class Files:
     def trailer(self, ticket):
         return self.reference(ticket)
 
-    # Read in the worktree, because the close is made there and reaches origin only as it Lands.
+    # The Sidecar is the one place a ticket's state is kept, whichever worktree asks.
     def state_in(self, ticket, worktree):
-        found = self.ticket(ticket)
-        if found is None:
-            return None
-        try:
-            text = (Path(worktree) / found.path).read_text(encoding="utf-8")
-        except OSError:
-            return None
-        return frontmatter(text)[0].get(STATUS, "")
+        return self.state(ticket)
 
     def close_asked(self, ticket):
-        found = self.ticket(ticket)
-        named = found.path if found else "the file of ticket " + self.reference(ticket)
-        return ("Ticket {} is still open in {}. Set status: closed in its frontmatter and add its "
-                "closing note under {}, in the same commit as the code.\n".format(
-                    self.reference(ticket), named, CLOSING_NOTE))
+        return ("Ticket {0} is still open. Close it with tracker-close {0} and a note file saying "
+                "what was done and which tests prove it.\n".format(self.reference(ticket)))
+
+    def path_of(self, spec, ticket=None):
+        held = self.read(spec)
+        if held is None:
+            raise refusal("The Sidecar at {} holds no spec {}.".format(
+                self.store().folder.as_posix(), spec))
+        if ticket is None:
+            return held.folder + "/" + SPEC_FILE
+        found = [each for each in held.tickets if each.number == ticket]
+        if not found:
+            raise refusal("Spec {} in the Sidecar holds no ticket {}.".format(spec, ticket))
+        return found[0].path
+
+    def text(self, spec, ticket=None):
+        return self.shown(self.path_of(spec, ticket))
 
     def closing_note(self, trailer):
         spec, _, ticket = trailer.partition("/")
@@ -359,128 +378,127 @@ class Files:
         found = [each for each in held.tickets if each.number == ticket] if held else []
         if not found:
             return None
-        ref = "origin/" + self.branch_of(spec)
-        return closing_note_in(frontmatter(self.shown(ref, found[0].path))[1])
-
-    def spec_text(self, spec):
-        branch = self.branch_of(spec)
-        self.fetched(branch)
-        ref = "origin/" + branch
-        folder = self.folder_on(ref, spec)
-        if not folder:
-            return ""
-        return frontmatter(self.shown(ref, folder + "/" + SPEC_FILE))[1]
+        return closing_note_in(frontmatter(self.shown(found[0].path))[1])
 
     # The Name check runs after the drift check, so its report is the one written below.
     def drift_report(self, spec):
-        return section_in(self.spec_text(spec), DRIFT_REPORT, NAME_REPORT)
+        return section_in(self.spec_body(spec), DRIFT_REPORT, NAME_REPORT)
 
     def name_report(self, spec):
-        return section_in(self.spec_text(spec), NAME_REPORT)
+        return section_in(self.spec_body(spec), NAME_REPORT)
 
-    # A ticket closes only in the commit that Lands, so one that failed to Land was never closed.
-    def reopen(self, ticket):
-        return False
+    # The file is read again inside the lock, so a change builds on the last write and not on a stale read.
+    def changed(self, spec, ticket, message, change):
+        path = self.path_of(spec, ticket)
 
-    # The remote takes only the first push on top of a read, so the loser reads again.
+        def written(store):
+            write_text(store / path, change(text_of(store / path)))
+        self.store().write(message, written)
+        return path
+
     def claim(self, ticket, wait):
-        for _ in range(PUSH_ATTEMPTS):
-            found = self.ticket(ticket)
-            if found is None:
-                raise refusal("Ticket {} of spec {} has no file on origin, so it cannot be "
-                              "claimed.".format(ticket, self.spec))
-            if found.claimed_by:
-                return "" if found.claimed_by == self.me else found.claimed_by
-            if self.pushed_change(
-                    self.spec, found.path, lambda text: with_field(text, CLAIMED_BY, self.me),
-                    "Claim ticket {} of spec {} for {}".format(found.number, self.spec, self.me),
-                    "The claim on ticket {} of spec {}".format(found.number, self.spec)):
-                return ""
-        raise refusal("The claim on ticket {} of spec {} lost to another push {} times in a row. "
-                      "Run the loop again.".format(ticket, self.spec, PUSH_ATTEMPTS))
+        taken = []
+
+        def claimed(text):
+            holder = frontmatter(text)[0].get(CLAIMED_BY, "")
+            if holder:
+                taken.append(holder)
+                return text
+            return with_field(text, CLAIMED_BY, self.me)
+        self.changed(self.spec, ticket, "Claim ticket {} of spec {} for {}".format(
+            ticket, self.spec, self.me), claimed)
+        return "" if not taken or taken[0] == self.me else taken[0]
+
+    def close(self, ticket, note):
+        section = CLOSING_NOTE + "\n\n" + note.replace("\r\n", "\n").strip("\n") + "\n"
+        self.changed(self.spec, ticket, "Close ticket {} of spec {}".format(ticket, self.spec),
+                     lambda text: with_last_section(with_field(text, STATUS, CLOSED),
+                                                    CLOSING_NOTE, section))
+        return True
+
+    # The Closing note stays until a new close replaces it, so a person still reads why it closed.
+    def reopen(self, ticket):
+        self.changed(self.spec, ticket, "Reopen ticket {} of spec {}".format(ticket, self.spec),
+                     lambda text: with_field(text, STATUS, OPEN))
+        return True
 
     def close_spec(self, spec):
-        for _ in range(PUSH_ATTEMPTS):
-            branch = self.branch_of(spec)
-            self.fetched(branch)
-            folder = self.folder_on("origin/" + branch, spec)
-            if not folder:
-                raise refusal("Spec {} has no folder on origin/{}, so it cannot be "
-                              "closed.".format(spec, branch))
-            commit = self.pushed_change(
-                spec, folder + "/" + SPEC_FILE, lambda text: with_field(text, STATUS, CLOSED),
-                "Close spec {}".format(spec), "The close of spec {}".format(spec))
-            if commit:
-                return "on {} as {}".format(
-                    branch, self.git("rev-parse", "--short", commit).out.strip())
-        raise refusal("The close of spec {} lost to another push {} times in a row. Set status: "
-                      "closed in its spec.md by hand.".format(spec, PUSH_ATTEMPTS))
+        self.changed(spec, None, "Close spec {}".format(spec),
+                     lambda text: with_field(text, STATUS, CLOSED))
+        return "in the Sidecar as {}".format(self.git("rev-parse", "--short", HEAD).out.strip())
 
     # One section and not one per run, so spec.md carries the last run's Flakes and never a pile of them.
     def record_flakes(self, spec, note):
-        for _ in range(PUSH_ATTEMPTS):
-            branch = self.branch_of(spec)
-            self.fetched(branch)
-            folder = self.folder_on("origin/" + branch, spec)
-            if not folder:
-                raise refusal("Spec {} has no folder on origin/{}, so its note has nowhere to "
-                              "go.".format(spec, branch))
-            if self.pushed_change(
-                    spec, folder + "/" + SPEC_FILE,
-                    lambda text: with_section_above(text, FLAKES, note, REPORTS),
-                    "Note the Flakes of spec {}".format(spec),
-                    "The note on spec {}".format(spec)):
-                return
-        raise refusal("The note on spec {} lost to another push {} times in a row.".format(
-            spec, PUSH_ATTEMPTS))
+        self.changed(spec, None, "Note the Flakes of spec {}".format(spec),
+                     lambda text: with_section_above(text, FLAKES, note, REPORTS))
 
-    # The number is read and pushed on one parent, so of two rival filings the remote refuses one.
+    # Each report replaces its heading to the end of the file, so a drift report takes the Name report after it too.
+    def record_report(self, spec, heading, report, what):
+        path = self.changed(spec, None, "Record the {} of spec {}".format(what, spec),
+                            lambda text: with_last_section(text, heading, report))
+        return (self.store().folder / path).as_posix()
+
+    # The number is read inside the lock, so two filings at once take two numbers.
     def file_ticket(self, spec, title, body):
-        for _ in range(PUSH_ATTEMPTS):
-            branch = self.branch_of(spec)
-            self.fetched(branch)
-            parent = self.git("rev-parse", "origin/" + branch).out.strip()
-            folder = self.folder_on(parent, spec)
-            if not folder:
-                raise refusal("Spec {} has no folder on origin/{}, so no ticket can be filed under "
-                              "it.".format(spec, branch))
-            held = listed(self.git("ls-tree", "--name-only", parent, folder + "/" + TICKETS + "/").out)
-            number = max([int(number_of(path.rsplit("/", 1)[-1]) or 0) for path in held],
-                         default=0) + 1
-            path = "{}/{}/{:02d}-{}.md".format(folder, TICKETS, number, slug_of(title))
-            if self.pushed(branch, parent, {path: new_ticket_text(title, body)},
-                           "File ticket {} of spec {}: {}".format(number, spec, title),
-                           "Ticket {} of spec {}".format(number, spec)):
-                return str(number)
-        raise refusal("Filing a ticket under spec {} lost to another push {} times in a row. Run "
-                      "the loop again.".format(spec, PUSH_ATTEMPTS))
+        self.path_of(spec)
+        filed = []
 
-    def pushed_change(self, spec, path, change, message, what):
-        branch = self.branch_of(spec)
-        parent = self.git("rev-parse", "origin/" + branch).out.strip()
-        return self.pushed(branch, parent, {path: change(self.shown(parent, path))}, message, what)
+        def file(store):
+            folder = folder_on_disk(store, spec) / TICKETS
+            number = highest_of([each.name for each in folder.iterdir()] if folder.is_dir() else []) + 1
+            write_text(folder / "{:02d}-{}.md".format(number, slug_of(title)),
+                       new_ticket_text(title, body))
+            filed.append(str(number))
+        self.store().write("File ticket under spec {}: {}".format(spec, title), file)
+        return filed[0]
 
-    # A ref in reserved is new on the remote, so a push that finds it already there loses a race.
-    def pushed(self, branch, parent, written, message, what, reserved=()):
-        with tempfile.TemporaryDirectory() as scratch:
-            # An index of its own, so neither the checkout nor its staged work is touched.
-            index = {"GIT_INDEX_FILE": (Path(scratch) / "index").as_posix()}
-            self.git("read-tree", parent, env=index)
-            for path, text in written.items():
-                held = Path(scratch) / "changed.md"
-                held.write_text(text, encoding="utf-8", newline="")
-                blob = self.git("hash-object", "-w", "--no-filters", held.as_posix()).out.strip()
-                self.git("update-index", "--add", "--cacheinfo", "100644,{},{}".format(blob, path),
-                         env=index)
-            tree = self.git("write-tree", env=index).out.strip()
-        commit = self.git("commit-tree", tree, "-p", parent, "-m", message).out.strip()
-        refs = ["refs/heads/" + branch] + list(reserved)
-        atomic = ["--atomic"] if reserved else []
-        pushed = self.git("push", "--quiet", *atomic, "origin",
-                          *["{}:{}".format(commit, ref) for ref in refs])
-        if pushed.status == 0:
-            return commit
-        said = (pushed.out + pushed.err).rstrip("\n")
-        if any(mark in said for mark in LOST_RACE):
-            return ""
-        raise refusal("{} did not reach {} on origin. git said:\n{}".format(what, branch, said))
+    def write_tickets(self, spec, tickets):
+        if self.read(spec) is None:
+            raise refusal("Spec {} has no folder in the Sidecar. Write it with tracker-publish spec "
+                          "first.".format(spec))
+        written = []
+
+        def write(store):
+            folder = folder_on_disk(store, spec) / TICKETS
+            if folder.is_dir() and any(folder.iterdir()):
+                raise refusal("Spec {} already has tickets in the Sidecar, so none were "
+                              "written.".format(spec))
+            for name, text in tickets:
+                write_text(folder / name, text)
+                written.append((folder / name).as_posix())
+        self.store().write("Write the tickets of spec {}".format(spec), write)
+        return written
+
+    # A new spec never takes a number whose log, journal or kept work the loop already holds.
+    def used_by_loop_state(self):
+        main = self.store().main
+        state = main / LOOP_STATE
+        folders = [each.name for each in state.iterdir() if each.is_dir()] if state.is_dir() else []
+        branches = listed(self.runner.run(
+            ["git", "-C", main.as_posix(), "for-each-ref", "--format=%(refname:strip=2)",
+             "refs/heads/" + LOOP_BRANCHES]).out)
+        named = [branch[len(LOOP_BRANCHES):].split("/", 1)[0] for branch in branches]
+        return [int(name) for name in folders + named if is_a_number(name)]
+
+    # A rerun finds the open spec by its hash, so a spec written before a failure is not written twice.
+    def write_spec(self, slug, body, branch):
+        hashed = spec_hash(body)
+        fields = [STATUS + ": " + OPEN, HASH + ": " + hashed] + ([BRANCH + ": " + branch] if branch else [])
+        text = "\n".join([FENCE] + fields + [FENCE, "", ""]) + body
+        found = []
+
+        def write(store):
+            folders = folders_in(store)
+            for folder in folders:
+                held = frontmatter(text_of(folder / SPEC_FILE))[0] if (folder / SPEC_FILE).is_file() else {}
+                if held.get(HASH) == hashed and held.get(STATUS) == OPEN:
+                    found.append((number_of(folder.name), SPECS + "/" + folder.name, False))
+                    return
+            number = max([highest_of([each.name for each in folders])] + self.used_by_loop_state()) + 1
+            named = "{}/{:04d}-{}".format(SPECS, number, slug)
+            write_text(Path(store) / named / SPEC_FILE, text)
+            found.append((str(number), named, True))
+        self.store().write("Write spec: {}".format(heading(body, slug)), write)
+        return found[0]
+
+

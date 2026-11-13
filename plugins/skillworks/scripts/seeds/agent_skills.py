@@ -26,7 +26,7 @@ BASE_NAME = "agent-skills.md"
 TRACKERS = {
     "github": ("GitHub Issues, driven by the `gh` CLI. A spec is a parent issue; its tickets are its sub-issues. "
                "See `{}/issue-tracker.md`.".format(STEERING_FOLDER)),
-    "files": ("Committed files in `.specs/`, one folder per spec and one file per ticket. "
+    "files": ("Files in `.specs/` in the Sidecar, one folder per spec and one file per ticket. "
               "See `{}/issue-tracker.md`, under The files Tracker.".format(STEERING_FOLDER)),
 }
 

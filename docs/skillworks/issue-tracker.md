@@ -4,7 +4,7 @@ Issues and specs for this repo live as GitHub issues. The skills write both Trac
 
 Infer the repo from `git remote -v` — `gh` does this by itself inside a clone.
 
-`tracker` in `docs/skillworks/loop.json` names the Tracker. With `github`, read on. With `files`, specs and tickets are committed files and nothing calls `gh`: "The files Tracker", below, takes the place of every GitHub call and convention in this file. "The ticket shape" holds for both.
+`tracker` in `docs/skillworks/loop.json` names the Tracker. With `github`, read on. With `files`, specs and tickets are files in the Sidecar, a local git repo beside the repo, and nothing calls `gh`: "The files Tracker", below, takes the place of every GitHub call and convention in this file. "The ticket shape" holds for both.
 
 ## Conventions
 
@@ -91,18 +91,21 @@ A commit also names the Session that made it, though the loop leans on none of i
 
 ## The files Tracker
 
-Used when `tracker` in `docs/skillworks/loop.json` says `files`. Each spec is a folder under `.specs/`, and each ticket a Markdown file of its own in that folder's `tickets/`:
+Used when `tracker` in `docs/skillworks/loop.json` says `files`. The specs and tickets sit in the Sidecar: a folder beside the repo's main checkout, with the same name and `-skillworks` on the end, such as `shop-skillworks` beside `shop`. The Sidecar is a local git repo with no remote. Each change to it is one commit, made under a lock held in the Sidecar, so its history shows what changed and a mistake can be undone. Nothing about a spec or a ticket is pushed, so the files Tracker serves one machine. Every worktree of the repo finds the same Sidecar.
+
+Each spec is a folder under `.specs/` in the Sidecar, and each ticket a Markdown file of its own in that folder's `tickets/`:
 
 ```
-.specs/
-  0007-local-tracker/
-    spec.md
-    tickets/
-      01-read-loop-json.md
-      02-close-in-worktree.md
+shop-skillworks/
+  .specs/
+    0007-local-tracker/
+      spec.md
+      tickets/
+        01-read-loop-json.md
+        02-close-in-worktree.md
 ```
 
-`.specs/` is committed, and it is never gitignored. Each job builds in a worktree of its own, and a worktree cannot see a gitignored folder.
+The Sidecar sits outside every worktree, so a Session reads it with `tracker-show` and closes a ticket with `tracker-close`, and never opens its files by hand.
 
 ### A spec and its tickets
 
@@ -121,27 +124,29 @@ claimed-by:
 - **`status`**: `open` or `closed`, on `spec.md` and on each ticket.
 - **`blocked-by`**: the numbers of the tickets in the same spec that this one waits for.
 - **`claimed-by`**: the `user.email` of the loop that took the ticket. The loop sets it. Leave it empty.
-- **`branch`**: on `spec.md` alone, when `target-branch` says `pr`. It names the spec's own branch.
+- **`branch`**: on `spec.md` alone, when `target-branch` says `pr`. It names the spec's own branch, and the loop Lands each ticket there.
+- **`hash`**: on `spec.md` alone. `tracker-publish` writes it, so a rerun finds the spec it already wrote.
 
 A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<ticket>`, such as `7/2` for ticket `02` of spec `0007`. The loop hands each Session its ticket in that form, as in `/skillworks:implement 7/2 --finish`.
 
-- **Read a ticket**: its file, on the remote's Target branch. `git fetch origin <target>`, then `git show origin/<target>:.specs/<spec-folder>/tickets/<ticket-file>`. Inside a loop's worktree, read the file in the worktree, which is where the ticket is closed.
-- **Find a ticket's spec**: the folder its file sits in.
-- **Write a spec**: `tracker-publish spec <slug> <file>`, with the spec's branch last in PR mode. It numbers the spec one above the highest number on the remote, writes the frontmatter and pushes the folder. `/skillworks:to-spec` says how.
+- **Read a spec or a ticket**: `tracker-show <spec>` prints its `spec.md`, and `tracker-show <spec>/<ticket>`, such as `tracker-show 7/2`, prints the ticket's file, frontmatter and all.
+- **Find a ticket's spec**: the number before the `/`.
+- **Write a spec**: `tracker-publish spec <slug> <file>`, with the spec's branch last in PR mode. Under the lock, it numbers the spec one above the highest of the Sidecar's specs and of every spec number the loop's state on this machine already uses, and writes the folder with its frontmatter. A rerun with the same spec prints the open spec it already wrote, and writes nothing. `/skillworks:to-spec` says how.
 - **Write a spec's tickets**: `tracker-publish tickets <spec> <file>...`, every file at once. `/skillworks:to-tickets` says how.
-- **Is a ticket startable?** It is open, and every ticket in its `blocked-by` is closed on the remote's Target branch.
-- **List what is open**: each spec folder in `.specs/` on the remote's Target branch whose `spec.md` says `status: open`, and in each one the tickets that are startable. `git ls-tree --name-only origin/<target> .specs/` lists the folders. In PR mode each spec sits on a branch of its own, so `git fetch origin`, and look on every branch for a spec folder whose `spec.md` names that branch as its `branch`.
+- **Is a ticket startable?** It is open, and every ticket in its `blocked-by` is closed in the Sidecar.
+- **List what is open**: each folder in `.specs/` in the Sidecar whose `spec.md` says `status: open`, and in each one the tickets that are startable. `tracker-show` prints each file.
 - **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command puts it at the end of the spec's `spec.md` in place of any earlier one, since there is no issue to comment on. The loop reads it back from there. `/skillworks:spec-drift` says how.
 - **Record a Name report**: `tracker-publish names <spec> <file>`. The file opens with `## Name report`, and the command puts it below the drift report in place of any earlier one. A new drift report takes it away, since a new drift check starts the judging again. `/skillworks:spec-names` says how.
-- **Claim a ticket**: the loop does it, with a commit that sets `claimed-by`, pushed to the Target branch. A push the remote turns down lost a race, so the loop reads again and takes another ticket.
+- **Claim a ticket**: the loop does it, with a commit in the Sidecar that sets `claimed-by`.
+- **Close a ticket**: `tracker-close <spec>/<ticket> <note-file>`. It sets `status: closed` and puts the note at the end of the ticket's file, under `## Closing note`. On a ticket already closed it changes nothing and says so.
 
 ### The two conventions, with files
 
 These stand in for the two above.
 
 - **A commit names its spec and its ticket.** Put `Ticket: <spec>/<ticket>` in the message's trailer block, such as `Ticket: 7/2`, in the same trailer block as any other. Read it back the same way: `git log -1 <commit> --format='%(trailers:key=Ticket,valueonly)'`. A spec's checks read only the commits whose trailer names one of its tickets, and never a commit with no trailer, so a hand fix that should count for a spec carries `Ticket: <spec>/<ticket>` for one of its tickets.
-- **A ticket is closed in the commit that holds its code.** Before you commit, set `status: closed` in the ticket's frontmatter, and add a `## Closing note` section at the end of its file. The note holds what the Closing note holds on GitHub, where it is the comment the ticket closes with: what was done, which tests prove it, which checks did not run, and any finding left unfixed with the reason. It cannot name its own commit, and it has no need to. Commit the note with the code, and push nothing. The close reaches the remote only as the ticket Lands, so a ticket whose Land fails is never closed there. Skills read the note back.
-- **A spec is closed by its loop.** After the last ticket and the drift check, the loop sets `status: closed` in `spec.md` on the Target branch. Never close it by hand while a loop runs on it.
+- **A ticket is closed with a Closing note, through `tracker-close`.** The Session commits the code, then closes the ticket in the Sidecar, before the loop Lands it, as with GitHub. The close sets `status: closed`, and the note under `## Closing note` holds what the Closing note holds on GitHub: what was done, which tests prove it, which checks did not run, and any finding left unfixed with the reason. When the Land fails, the loop sets `status: open` again, so a close never outlives the work it closed. Skills read the note back.
+- **A spec is closed by its loop.** After the last ticket and the drift check, the loop sets `status: closed` in `spec.md` in the Sidecar. Never close it by hand while a loop runs on it.
 
 ## Wayfinding operations
 

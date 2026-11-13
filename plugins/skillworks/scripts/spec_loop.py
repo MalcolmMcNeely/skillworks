@@ -1076,7 +1076,7 @@ class Loop:
     # --- getting started -----------------------------------------------------
 
     def preflight(self):
-        self.tracker = tracker_for(self.runner, self.root, self.spec)
+        self.tracker = tracker_for(self.runner, self.root, self.spec, self.clock)
         self.pr_mode = in_pr_mode(self.root)
         if not self.runner.found("claude"):
             raise stop("ABORT claude is not on PATH")

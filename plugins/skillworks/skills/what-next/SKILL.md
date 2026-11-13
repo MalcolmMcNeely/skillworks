@@ -43,7 +43,7 @@ Asked what is open, or which ticket is next, read the Tracker. `tracker` in `ste
 
 Read each Steering file with `steering-file <path>`, and never by another route. It prints the file from disk. When the file is missing, it says so.
 
-- **Files**: list the open specs and their startable tickets, from `.specs/` on the remote, as "List what is open" in the tracker docs says. Name a spec by its number and title, and a ticket as `<spec>/<ticket>` with its title. A spec with a startable ticket goes on at `/skillworks:spec-loop <spec>`.
+- **Files**: list the open specs and their startable tickets, from `.specs/` in the Sidecar, as "List what is open" in the tracker docs says. Name a spec by its number and title, and a ticket as `<spec>/<ticket>` with its title. A spec with a startable ticket goes on at `/skillworks:spec-loop <spec>`.
 - **GitHub**: the open work is on GitHub Issues, so point the user there.
 
 ## Steps the Dev loop runs for you

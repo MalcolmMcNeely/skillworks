@@ -46,7 +46,7 @@ An item runs over several lines when its later lines are indented, so a nested l
    tracker-publish spec <slug> .spec-loop/drafts/<slug>.md <the branch own-branch printed>   # target-branch says pr
    ```
 
-3. It prints the number, a tab, and then the issue's URL with `github` or the folder with `files`, such as `8	.specs/0008-local-tracker`. With `files`, pull the branch, so the checkout holds the folder too.
+3. It prints the number, a tab, and then the issue's URL with `github` or the folder with `files`, such as `8	.specs/0008-local-tracker`. With `files`, the folder is in the Sidecar, and `tracker-show <number>` prints the spec back.
 
 When the command fails, run it again. It files nothing twice.
 
@@ -56,7 +56,7 @@ The command files one issue. Its title is the `# SPEC: ` heading, its body is th
 
 ### With `files`
 
-The spec is a folder in `.specs/`. The command writes its frontmatter: `status: open`, and in PR mode `branch`, so the folder sits on that branch and the pull request carries the spec and its code together. The command numbers the spec one above the highest number on the remote, and pushes the folder at once. Two specs written at once get two numbers: the remote refuses the second push, and the command reads again and takes the next number. In PR mode each spec pushes to a branch of its own, so the same push also holds the number on the remote as `refs/skillworks/specs/<number>`, and a second spec cannot take it. It writes through an index of its own, so it never touches the checkout.
+The spec is a folder in `.specs/` in the Sidecar, a local git repo beside the repo that is never pushed. The command writes its frontmatter: `status: open`, a `hash` of the spec, and in PR mode `branch`, which names the branch the loop Lands each ticket on. It numbers the spec under a lock held in the Sidecar, one above the highest of the Sidecar's specs and of every spec number the loop's state on this machine already uses, so two specs written at once get two numbers. A rerun with the same spec finds the open spec by its `hash`, prints it, and writes nothing. The command never touches the checkout, and it pushes nothing to `origin`.
 
 ## The spec's branch
 

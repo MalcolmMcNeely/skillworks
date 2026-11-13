@@ -323,7 +323,7 @@ def test_the_files_tracker_line_names_the_specs_folder(repo, runner):
     seed(runner, repo.work, tracker="files")
 
     assert read(repo.work / "CLAUDE.md") == GITHUB_SINGLE.replace(
-        SEED_TRACKER, "Committed files in `.specs/`, one folder per spec and one file per ticket. "
+        SEED_TRACKER, "Files in `.specs/` in the Sidecar, one folder per spec and one file per ticket. "
                       "See `docs/skillworks/issue-tracker.md`, under The files Tracker.\n")
 
 

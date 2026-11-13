@@ -7,8 +7,11 @@ import re
 
 import pytest
 
+from clock.held_clock import HeldClock
 from conftest import Ran, Repo, git, launch
-from files_test import commit_files, spec_file, ticket_file, write_loop
+from files_test import commit_files, spec_file, ticket_file, write_files, write_loop
+from runner import Subprocess
+from sidecar.sidecar import Sidecar
 from steering.target_branch import LOOP_FILE
 from tracker import spec_commits
 
@@ -29,6 +32,12 @@ class History:
         branch = git(self.other, "branch", "--show-current").strip()
         git(self.other, "push", "--quiet", "origin", branch)
         return git(self.other, "rev-parse", "HEAD").strip()
+
+    # The tickets sit in the Sidecar, and the commit is the base the loop would start from.
+    def tickets(self, files):
+        Sidecar.of(Subprocess(), self.repo.work, HeldClock()).write(
+            "Tracker state", lambda folder: write_files(folder, files))
+        return self.commit("The base of spec 7")
 
     def move_to(self, branch):
         held = git(self.other, "branch", "--list", branch).strip()
@@ -69,7 +78,7 @@ def four_tickets():
 
 
 def test_with_files_the_commits_that_name_the_specs_tickets_are_printed_and_no_other(history):
-    base = history.commit("The tickets of spec 7", files=four_tickets())
+    base = history.tickets(four_tickets())
     read = history.commit("Read", ["Ticket: 7/1"])
     history.commit("A hand fix")
     history.commit("Another spec's work", ["Ticket: 8/1"])
@@ -83,7 +92,7 @@ def test_with_files_the_commits_that_name_the_specs_tickets_are_printed_and_no_o
 
 
 def test_commits_at_or_before_the_base_are_left_out(history):
-    history.commit("The tickets of spec 7", files=four_tickets())
+    history.tickets(four_tickets())
     history.commit("Read before the loop", ["Ticket: 7/1"])
     base = history.commit("Write at the base", ["Ticket: 7/2"])
     after = history.commit("Read again", ["Ticket: 7/1"])
@@ -94,7 +103,7 @@ def test_commits_at_or_before_the_base_are_left_out(history):
 
 
 def test_a_commit_with_several_ticket_trailers_is_printed_when_any_names_the_specs_ticket(history):
-    base = history.commit("The tickets of spec 7", files=four_tickets())
+    base = history.tickets(four_tickets())
     shared = history.commit("Shared fix", ["Ticket: 8/1", "Ticket: 7/2"])
 
     ran = history.run("7", base)
@@ -103,7 +112,7 @@ def test_a_commit_with_several_ticket_trailers_is_printed_when_any_names_the_spe
 
 
 def test_each_commit_is_printed_oldest_first_with_its_trailer_and_its_patch(history):
-    base = history.commit("The tickets of spec 7", files=four_tickets())
+    base = history.tickets(four_tickets())
     history.commit("Read", ["Ticket: 7/1"], {"read.txt": "the first line\n"})
     history.commit("Write", ["Ticket: 7/2"], {"write.txt": "the second line\n"})
 
@@ -116,7 +125,7 @@ def test_each_commit_is_printed_oldest_first_with_its_trailer_and_its_patch(hist
 
 
 def test_the_checkout_and_the_tracker_are_left_as_they_were(history):
-    base = history.commit("The tickets of spec 7", files=four_tickets())
+    base = history.tickets(four_tickets())
     history.commit("Read", ["Ticket: 7/1"])
     work = history.repo.work
     (work / "staged.txt").write_text("staged\n", encoding="utf-8")
@@ -135,8 +144,7 @@ def test_the_checkout_and_the_tracker_are_left_as_they_were(history):
 def test_in_pr_mode_the_specs_own_branch_is_read(history):
     on_files(history.repo, "pr")
     history.move_to("spec/local-tracker")
-    base = history.commit("The tickets of spec 7",
-                          files={**four_tickets(), FOLDER + "/spec.md": spec_file(branch="spec/local-tracker")})
+    base = history.tickets({**four_tickets(), FOLDER + "/spec.md": spec_file(branch="spec/local-tracker")})
     read = history.commit("Read", ["Ticket: 7/1"])
 
     ran = history.run("7", base)
@@ -146,7 +154,7 @@ def test_in_pr_mode_the_specs_own_branch_is_read(history):
 
 
 def test_a_base_that_is_no_commit_is_turned_down(history):
-    history.commit("The tickets of spec 7", files=four_tickets())
+    history.tickets(four_tickets())
 
     ran = history.run("7", "not-a-commit")
 
@@ -228,7 +236,7 @@ def test_with_github_in_pr_mode_the_branch_the_spec_names_is_read(history):
 
 
 def test_the_command_runs_from_the_plugins_bin_folder(history):
-    base = history.commit("The tickets of spec 7", files=four_tickets())
+    base = history.tickets(four_tickets())
     read = history.commit("Read", ["Ticket: 7/1"])
 
     ran = launch("spec-commits", "7", base, where=history.repo.work)

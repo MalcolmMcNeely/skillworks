@@ -81,7 +81,7 @@ def main(argv, runner, out, err, wait, where=None):
         if len(argv) != 2 or not is_a_number(argv[0]) or not argv[1]:
             raise misuse(USAGE)
         spec = str(int(argv[0]))
-        tracker = opened(runner, where, spec, wait)
+        tracker = opened(runner, where, spec)
         kept, _ = spec_commits(tracker, spec, argv[1], wait)
         out.write("\n".join(shown(tracker, commit).rstrip("\n") + "\n" for commit in kept))
         return 0

@@ -20,8 +20,9 @@ Your repo needs these:
 - An `origin` remote. Setup stops in a repo with no remote, and prints the commands that add one. A
   bare repo on a shared drive is enough.
 - A Tracker: where your team keeps its specs and tickets. `github` keeps them as GitHub issues, and
-  needs `origin` on GitHub with Issues turned on. `files` keeps them as committed Markdown files in
-  `.specs/`, and works on any remote, such as GitLab, Bitbucket or a bare repo.
+  needs `origin` on GitHub with Issues turned on. `files` keeps them as Markdown files in `.specs/`
+  in the Sidecar, a local git repo beside your repo, and works with any remote, such as GitLab,
+  Bitbucket or a bare repo.
 - A Target branch: the branch the loop Lands every ticket on. It can be any branch, such as `master`
   or `develop`, and you must be able to push to it straight away. A rule that asks for a pull request
   or a status check on it stops the loop.
@@ -68,7 +69,7 @@ Setup runs these steps on the branch you are on.
    no remote.
 2. **Ask for the Tracker.** Setup suggests `github` when `origin` names `github.com`, and `files`
    otherwise. It writes your answer into `tracker` in `docs/skillworks/loop.json`. With `files`, it tells
-   you that `.specs/` is committed and must never be gitignored.
+   you that `.specs/` sits in the Sidecar and is never pushed.
 3. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `pr`. It
    writes your answer into `target-branch` in `docs/skillworks/loop.json`.
 4. **Point `CLAUDE.md` at the docs.** Setup asks where your ADRs go, and writes your answer into

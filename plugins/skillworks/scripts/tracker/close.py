@@ -4,10 +4,12 @@ from pathlib import Path
 
 from output.streams import speaking_any_character
 from runner import Subprocess
-from stop import Stop, is_a_number, misuse, refusal
-from tracker.show import github_tracker
+from stop import Stop, misuse, refusal
+from tracker.github import GitHub
+from tracker.show import Named, opened
 
-USAGE = "usage: tracker-close <ticket> <note-file>\n"
+USAGE = ("usage: tracker-close <ticket> <note-file>\n"
+         "       With the files Tracker: tracker-close <spec>/<ticket> <note-file>\n")
 
 
 def read(where, path):
@@ -17,23 +19,42 @@ def read(where, path):
         raise refusal("{} could not be read: {}".format(path, error))
 
 
+def closed_on_github(tracker, ticket, note, out, err):
+    if tracker.state(ticket) == "closed":
+        err.write("Ticket #{} is already closed, so nothing changed.\n".format(ticket))
+        return
+    # One call, so a guardrail cannot leave the ticket closed with no note.
+    done = tracker.gh("issue", "close", ticket, "--comment", note, "--reason", "completed")
+    if done.status != 0:
+        raise refusal("GitHub would not close ticket #{}, so it is still open. Run tracker-close "
+                      "again. gh said:\n{}".format(ticket, (done.out + done.err).rstrip("\n")))
+    out.write("Closed #{}.\n".format(ticket))
+
+
+def closed_in_files(tracker, named, note, out, err):
+    reference = tracker.reference(named.ticket)
+    if tracker.state(named.ticket) == "closed":
+        err.write("Ticket {} is already closed, so nothing changed.\n".format(reference))
+        return
+    tracker.close(named.ticket, note)
+    out.write("Closed {}.\n".format(reference))
+
+
 def main(argv, runner, out, err, where=None):
     where = where or os.getcwd()
     try:
-        if len(argv) != 2 or not is_a_number(argv[0]):
+        if len(argv) != 2:
             raise misuse(USAGE)
-        ticket = str(int(argv[0]))
+        named = Named(argv[0], USAGE)
         note = read(where, argv[1])
-        tracker = github_tracker(runner, where, "tracker-close")
-        if tracker.state(ticket) == "closed":
-            err.write("Ticket #{} is already closed, so nothing changed.\n".format(ticket))
-            return 0
-        # One call, so a guardrail cannot leave the ticket closed with no note.
-        done = tracker.gh("issue", "close", ticket, "--comment", note, "--reason", "completed")
-        if done.status != 0:
-            raise refusal("GitHub would not close ticket #{}, so it is still open. Run tracker-close "
-                          "again. gh said:\n{}".format(ticket, (done.out + done.err).rstrip("\n")))
-        out.write("Closed #{}.\n".format(ticket))
+        tracker = opened(runner, where, named)
+        if isinstance(tracker, GitHub):
+            closed_on_github(tracker, named.first, note, out, err)
+        elif named.ticket is None:
+            raise refusal("The files Tracker names a ticket by its spec and its number, such as "
+                          "7/2, and {} names no ticket.".format(argv[0]))
+        else:
+            closed_in_files(tracker, named, note, out, err)
         return 0
     except Stop as stop:
         err.write(stop.said)
