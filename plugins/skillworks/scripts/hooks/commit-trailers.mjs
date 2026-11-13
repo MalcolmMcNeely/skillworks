@@ -16,9 +16,6 @@ const TICKET_VARIABLE = "SKILLWORKS_TICKET";
 
 const CREDIT_KEY = "Co-Authored-By";
 
-// Read as the last fetch left it, because the hook has 5 seconds and no time to fetch.
-const STEERING_REF = "refs/remotes/origin/skillworks/steering";
-
 // Fixed, because the hook is never told the model, and the Session trailer leads to the Session that records it.
 const CREDIT = `${CREDIT_KEY}: Claude <noreply@anthropic.com>`;
 
@@ -87,19 +84,6 @@ function loopSettings(root) {
     return held !== null && typeof held === "object" ? held : {};
   } catch {
     return {};
-  }
-}
-
-// A team's branch may forbid trailers, and the Steering branch's loop.json speaks only for the loop's branches.
-async function onAnExportBranch(root) {
-  if (root === undefined || existsSync(loopFile(root))) return false;
-  try {
-    await promisify(execFile)("git", ["-C", root, "rev-parse", "--verify", "--quiet", `${STEERING_REF}^{commit}`], {
-      windowsHide: true,
-    });
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -390,12 +374,9 @@ if (typeof command !== "string") process.exit(0);
 
 const cwd = typeof payload.cwd === "string" ? payload.cwd : process.cwd();
 
-const root = repoRoot(cwd);
-if (await onAnExportBranch(root)) process.exit(0);
-
 let verdict;
 try {
-  const settings = loopSettings(root);
+  const settings = loopSettings(repoRoot(cwd));
   verdict = judge(
     command,
     payload.tool_name,

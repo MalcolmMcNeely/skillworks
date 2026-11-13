@@ -49,7 +49,7 @@ def test_the_default_branch_is_refused_with_what_to_do(work):
 
 
 def test_a_branch_under_the_loops_own_prefix_is_refused_with_what_to_do(work):
-    work.switch("-c", "skillworks/spec/feature")
+    work.switch("-c", "skillworks/feature")
 
     ran = work.run()
 

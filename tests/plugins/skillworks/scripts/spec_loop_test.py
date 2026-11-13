@@ -5131,8 +5131,7 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
-                                      "the-loop/full-run.md", "the-loop/export.md",
-                                      "the-loop/stops.md",
+                                      "the-loop/full-run.md", "the-loop/stops.md",
                                       "the-loop/reading-a-run.md", "the-loop/watching-a-run.md",
                                       "the-loop/stage-map.md",
                                       "the-loop/sessions.md"]
@@ -6155,7 +6154,7 @@ def test_with_a_branch_name_the_driver_leaves_the_spec_issue_open(loop, runner):
 # --- an old export key ------------------------------------------------------
 
 YOUR_BRANCH = "feature/PROJ-12/slug"
-OLD_EXPORT_TARGET = "skillworks/spec/" + YOUR_BRANCH
+SPECS_OWN_BRANCH = "feature/PROJ-12/spec"
 
 
 def write_loop_holding_export(top, export, target_branch="pr"):
@@ -6168,32 +6167,32 @@ def write_loop_holding_export(top, export, target_branch="pr"):
 def old_export(request, tmp_path, runner, monkeypatch):
     repo = Repo(tmp_path)
     git(repo.work, "branch", YOUR_BRANCH)
-    git(repo.work, "checkout", "--quiet", "-b", OLD_EXPORT_TARGET)
-    git(repo.work, "push", "--quiet", "origin", OLD_EXPORT_TARGET)
-    repo.target = OLD_EXPORT_TARGET
+    git(repo.work, "checkout", "--quiet", "-b", SPECS_OWN_BRANCH)
+    git(repo.work, "push", "--quiet", "origin", SPECS_OWN_BRANCH)
+    repo.target = SPECS_OWN_BRANCH
     driven = driver_in(repo, runner, monkeypatch)
     write_loop_holding_export(repo.work, request.param)
     return driven
 
 
-def given_a_run_that_lands_on_the_old_export_target(loop):
+def given_a_run_that_lands_on_the_spec_s_own_branch(loop):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET + ONE_OPEN_TICKET)
-    tracker.body = COUNTED + "\n## Branch\n\n`{}`\n".format(OLD_EXPORT_TARGET)
+    tracker.body = COUNTED + "\n## Branch\n\n`{}`\n".format(SPECS_OWN_BRANCH)
     sessions = given_sessions_that_report(loop)
     sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
 
 
 def test_a_run_whatever_its_export_key_ends_with_the_ordinary_end_line(old_export):
-    given_a_run_that_lands_on_the_old_export_target(old_export)
+    given_a_run_that_lands_on_the_spec_s_own_branch(old_export)
 
     ran = old_export.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert "END   spec #158 complete. Every ticket is on {}.".format(OLD_EXPORT_TARGET) in old_export.log()
+    assert "END   spec #158 complete. Every ticket is on {}.".format(SPECS_OWN_BRANCH) in old_export.log()
 
 
 def test_a_run_whatever_its_export_key_writes_no_export_and_no_left_line(old_export):
-    given_a_run_that_lands_on_the_old_export_target(old_export)
+    given_a_run_that_lands_on_the_spec_s_own_branch(old_export)
 
     ran = old_export.run(SPEC)
 
@@ -6203,7 +6202,7 @@ def test_a_run_whatever_its_export_key_writes_no_export_and_no_left_line(old_exp
 
 
 def test_a_run_whatever_its_export_key_leaves_your_own_branch_where_it_was(old_export):
-    given_a_run_that_lands_on_the_old_export_target(old_export)
+    given_a_run_that_lands_on_the_spec_s_own_branch(old_export)
     before = git(old_export.repo.work, "rev-parse", YOUR_BRANCH)
 
     ran = old_export.run(SPEC)
@@ -6213,12 +6212,12 @@ def test_a_run_whatever_its_export_key_leaves_your_own_branch_where_it_was(old_e
 
 
 def test_a_run_whatever_its_export_key_ends_with_the_hint_to_open_the_pull_request(old_export):
-    given_a_run_that_lands_on_the_old_export_target(old_export)
+    given_a_run_that_lands_on_the_spec_s_own_branch(old_export)
 
     ran = old_export.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert "PR    open the pull request from {}.".format(OLD_EXPORT_TARGET) in old_export.log()
+    assert "PR    open the pull request from {}.".format(SPECS_OWN_BRANCH) in old_export.log()
 
 
 @pytest.mark.parametrize("export", [True, False, "yes"])

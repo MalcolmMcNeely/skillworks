@@ -336,13 +336,12 @@ def test_the_domain_docs_line_names_the_adr_folder(repo, runner):
             in read(repo.work / "CLAUDE.md"))
 
 
-def test_a_branch_with_no_steering_is_refused_and_nothing_is_written(repo, runner):
+def test_a_checkout_with_no_loop_file_is_sent_to_seed_steering_and_nothing_is_written(repo, runner):
     before = on_disk(repo.work)
 
     ran = seed(runner, repo.work)
 
-    assert ran.status == 1
-    assert "skillworks/steering" in ran.err
+    assert ran.err == "FAIL  docs/skillworks/loop.json is missing. Run seed-steering to write it. Nothing was written.\n"
     assert on_disk(repo.work) == before
 
 

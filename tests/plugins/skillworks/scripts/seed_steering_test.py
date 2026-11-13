@@ -477,7 +477,7 @@ def test_the_backfill_page_says_adrs_go_to_the_setting_in_the_teams_shape_at_the
 
 
 @pytest.mark.parametrize("page", ["README.md", "the-loop/stage-map.md", "the-loop/sessions.md",
-                                  "the-loop/target-branch.md", "the-loop/export.md",
+                                  "the-loop/target-branch.md",
                                   "the-loop/name-check.md", "the-loop/the-grill.md"])
 def test_a_user_docs_page_that_names_the_adr_folder_names_the_setting_and_not_a_fixed_path(page):
     text = (ROOT / "docs" / "usage" / page).read_text(encoding="utf-8")
@@ -1379,10 +1379,6 @@ def under_heading(text, heading):
     return text.split("\n" + heading + "\n", 1)[1].split("\n#", 1)[0]
 
 
-EXPORT_BRANCH_SECTIONS = [("domain-modeling", "### The spec's branch with the Export"),
-                          ("to-spec", "## The spec's branch with the Export")]
-
-
 def grill_cut(grill):
     return grill.split("\n### 1. ", 1)[1].split("\n### ", 1)[0]
 
@@ -1392,97 +1388,30 @@ def git_and_gh_lines(text):
             if line.startswith(("gh ", "git ", "default=")) or "gh pr" in line or "gh api" in line]
 
 
-def test_the_grills_first_step_cuts_the_target_branch_when_loop_json_is_missing_on_disk():
-    grill = skill_text("grill")
-    steps = grill_steps(grill)
-    cut = grill_cut(grill)
+def test_the_grills_first_step_finds_the_target_branch_before_the_interview():
+    steps = grill_steps(skill_text("grill"))
 
     assert "Target branch" in steps[0]
     assert "Interview" in steps[1]
-    for named in ["`docs/skillworks/loop.json` is missing on disk", "before the first question",
-                  "`cut-target-branch`", "`skillworks/spec/<the Export branch>`", "`skillworks/steering`",
-                  "Open no pull request"]:
-        assert named in cut, named
 
 
-def test_the_grill_runs_no_git_step_and_no_gh_call_by_hand_for_the_cut():
+def test_the_grill_runs_no_git_step_and_no_gh_call_by_hand_to_find_the_target_branch():
     cut = grill_cut(skill_text("grill"))
 
     assert git_and_gh_lines(cut) == []
 
 
-def test_an_existing_target_branch_stops_the_grill_with_a_switch_and_a_new_session():
-    cut = grill_cut(skill_text("grill"))
-    existing = [line for line in cut.split("\n") if "already exists" in line]
-
-    assert len(existing) == 1
-    assert "switches to that branch" in existing[0] and "starts a new session there" in existing[0]
+GONE_WITH_THE_EXPORT = ["On an Export branch", "with the Export", "cut-target-branch", "skillworks/steering",
+                        "skillworks/spec/", "Steering branch", "`export`"]
 
 
-def test_a_steering_branch_that_does_not_rebase_or_is_not_on_origin_stops_the_grill_with_no_question():
-    cut = grill_cut(skill_text("grill"))
+@pytest.mark.parametrize("gone", GONE_WITH_THE_EXPORT)
+def test_no_plugin_skill_holds_an_export_section_or_names_the_steering_branch(gone):
+    walked = {str(page.relative_to(SKILLS)).replace("\\", "/"): page.read_text(encoding="utf-8", errors="replace")
+              for page in SKILLS.rglob("*") if page.is_file()}
+    naming = sorted(name for name, text in walked.items() if gone in text)
 
-    assert "does not rebase" in cut and "no Steering branch is on `origin`" in cut
-    assert "stop the grill" in cut and "Ask no question" in cut
-
-
-@pytest.mark.parametrize("skill", ["domain-modeling", "to-spec"])
-def test_on_an_export_branch_domain_modeling_and_to_spec_stop_and_send_the_developer_to_the_grill(skill):
-    text = under_heading(skill_text(skill), "## On an Export branch")
-
-    assert "`docs/skillworks/loop.json` is missing on disk" in text
-    assert "stop" in text.lower() and "/skillworks:grill" in text
-
-
-STEERING_WRITERS = ["architecture-tests", "context-backfill"]
-
-
-@pytest.mark.parametrize("skill", STEERING_WRITERS)
-def test_a_skill_that_writes_steering_stops_on_an_export_branch_and_names_the_steering_branch(skill):
-    text = under_heading(skill_text(skill), "## On an Export branch")
-
-    for named in ["`docs/skillworks/loop.json` is missing on disk", "Stop here", "`skillworks/steering`", "push"]:
-        assert named in text, named
-
-
-@pytest.mark.parametrize("skill", STEERING_WRITERS)
-def test_a_skill_that_writes_steering_stops_before_anything_it_runs(skill):
-    text = skill_text(skill)
-    headings = [line for line in text.split("\n") if line.startswith("## ")]
-
-    assert headings[0] == "## On an Export branch"
-    assert "```" not in text.split("## On an Export branch", 1)[0]
-
-
-def test_no_skill_but_the_grill_names_the_cut_command():
-    naming = sorted(str(page.relative_to(SKILLS)).replace("\\", "/") for page in SKILLS.rglob("*.md")
-                    if "cut-target-branch" in page.read_text(encoding="utf-8"))
-
-    assert naming == ["grill/SKILL.md"]
-
-
-@pytest.mark.parametrize("skill, heading", EXPORT_BRANCH_SECTIONS)
-def test_with_the_export_the_target_branch_the_grill_cut_takes_every_later_change(skill, heading):
-    text = under_heading(skill_text(skill), heading)
-
-    for named in ["`export`", "`skillworks/spec/<the Export branch>`", "`skillworks/steering`",
-                  "Open no pull request"]:
-        assert named in text, named
-
-
-@pytest.mark.parametrize("skill, heading", EXPORT_BRANCH_SECTIONS)
-def test_with_the_export_no_git_step_and_no_gh_call_is_run_by_hand(skill, heading):
-    text = under_heading(skill_text(skill), heading)
-
-    assert git_and_gh_lines(text) == []
-
-
-@pytest.mark.parametrize("skill, heading", [("domain-modeling", "### The spec's branch"),
-                                            ("to-spec", "## The spec's branch")])
-def test_the_spec_branch_without_the_export_sends_the_export_case_to_its_own_section(skill, heading):
-    text = under_heading(skill_text(skill), heading)
-
-    assert "With `export` set to `true`" in text and "with the Export" in text
+    assert ("grill/SKILL.md" in walked, naming) == (True, [])
 
 
 def spec_template(to_spec):
@@ -2210,7 +2139,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 16
+    assert len(commands) == 15
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -2307,81 +2236,28 @@ def test_setup_writes_no_output_style(repo, runner):
     assert "outputStyle" not in (SETUP / "SKILL.md").read_text(encoding="utf-8")
 
 
-EXPORT_QUESTION = "### First, ask where the work goes"
-STEERING_COMMIT = "### Then, with the Export, commit the Steering branch"
-
-
-def test_setup_asks_whether_the_work_goes_to_a_team_that_does_not_use_skillworks_before_it_seeds():
+def test_setup_asks_no_export_question_and_starts_with_the_seed():
     text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
-    question = setup_section(EXPORT_QUESTION)
+    process = text.split("\n## Process\n", 1)[1]
 
-    assert text.index(EXPORT_QUESTION) < text.index("### 1. Seed the Steering")
-    assert "a team that does not use Skillworks" in question
-    assert "With `no`, setup runs as it always has" in question
-
-
-def test_setup_reads_an_earlier_export_answer_from_the_steering_branch_on_origin():
-    question = setup_section(EXPORT_QUESTION)
-
-    assert "git show origin/skillworks/steering:docs/skillworks/loop.json" in question
+    assert process.lstrip("\n").startswith("### 1. Seed the Steering")
+    assert "a team that does not use Skillworks" not in text
 
 
-def test_with_the_export_and_the_files_tracker_setup_tells_the_developer_to_own_origin_first():
-    question = setup_section(EXPORT_QUESTION)
-    told = [paragraph for paragraph in question.split("\n\n") if "`files`" in paragraph and "`origin`" in paragraph]
-
-    assert len(told) == 1
-    assert "a remote of their own" in told[0]
-    assert "before" in told[0]
+USER_DOCS = ROOT / "docs" / "usage"
 
 
-def test_with_the_export_setup_writes_the_steering_on_the_steering_branch_cut_from_the_default_branch():
-    question = setup_section(EXPORT_QUESTION)
-
-    for named in ["`skillworks/steering`", "git switch -c skillworks/steering origin/<the default branch>",
-                  "`\"export\": true`", "`\"target-branch\": \"pr\"`"]:
-        assert named in question, named
+def test_the_export_page_is_gone():
+    assert not (USER_DOCS / "the-loop" / "export.md").exists()
 
 
-def test_with_the_export_setup_asks_no_target_branch_and_writes_pr():
-    step = setup_section("### 3. Ask for the Target branch")
+@pytest.mark.parametrize("gone", ["export.md", "skillworks/steering", "Steering branch",
+                                  "a team that does not use Skillworks?"])
+def test_no_user_doc_links_to_the_export_page_or_names_the_steering_branch(gone):
+    naming = sorted(page.relative_to(USER_DOCS).as_posix() for page in USER_DOCS.rglob("*.md")
+                    if gone in page.read_text(encoding="utf-8"))
 
-    assert "With the Export, ask nothing here, and write `pr`." in step
-
-
-def test_with_the_export_setup_commits_and_pushes_the_steering_branch_and_switches_back():
-    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
-    commit = setup_section(STEERING_COMMIT)
-
-    assert text.index("### 6. Write the settings") < text.index(STEERING_COMMIT) < text.index("### 7. Report")
-    for named in ["git push -u origin skillworks/steering", "git switch <the branch they were on>",
-                  "no Steering file"]:
-        assert named in commit, named
-
-
-def test_the_setup_page_holds_the_export_question_and_the_advice_to_own_origin():
-    page = SETUP_PAGE.read_text(encoding="utf-8")
-    questions = page.split("## The questions setup asks", 1)[1].split("\n## ", 1)[0]
-    rows = [line for line in questions.splitlines()
-            if line.startswith("| Will the work go to a team that does not use Skillworks? |")]
-
-    assert len(rows) == 1
-    assert "`files`" in rows[0] and "a remote of your own" in rows[0]
-    assert "`skillworks/steering`" in page
-
-
-def test_the_export_page_names_setup_as_the_first_step_of_the_flow():
-    page = (ROOT / "docs" / "usage" / "the-loop" / "export.md").read_text(encoding="utf-8")
-    flow = page.split("## Your flow", 1)[1].split("\n## ", 1)[0]
-    first = [line for line in flow.splitlines() if line.startswith("1. ")]
-
-    assert len(first) == 1 and "/skillworks:skillworks-setup" in first[0]
-
-
-def test_the_export_page_says_the_export_needs_pr():
-    page = (ROOT / "docs" / "usage" / "the-loop" / "export.md").read_text(encoding="utf-8")
-
-    assert '`"target-branch": "pr"`' in page
+    assert ((USER_DOCS / "setup.md").is_file(), naming) == (True, [])
 
 
 OLD_SPEC_VALUE = re.compile(r'"target-branch":\s*"spec"|`target-branch` (?:is|says) `spec`|target-branch says spec')
@@ -3751,21 +3627,18 @@ def test_implement_runs_the_suite_by_its_command_in_a_hand_run():
 READ_THROUGH_STEERING_FILE = re.compile(r"steering-file (docs/skillworks/[\w./*<>-]*)")
 
 
-# An Export branch holds no Steering on disk, so a path read any other way is a file that is not there.
+# One command reads every Steering path, so the place it reads from can move without a skill changing.
 def steering_read_past_steering_file(text):
     through = {match.start(1) for match in READ_THROUGH_STEERING_FILE.finditer(text)}
     return [match.group(0) for match in STEERING_PATH.finditer(text) if match.start() not in through]
 
 
-# Setup keeps its own Export route and runs where the Steering is on disk, and the Seeds under it never change.
+# Setup writes the Steering, so it names each path to write and not to read, and the Seeds under it never change.
 SKILL_PAGES = sorted(str(page.relative_to(SKILLS)).replace("\\", "/")
                      for page in SKILLS.rglob("*")
                      if page.is_file() and page.relative_to(SKILLS).parts[0] != "skillworks-setup")
 
-# These ask where this branch is and not what the Steering says, so they test the disk on purpose.
-DISK_CHECK = re.compile(r"`docs/skillworks/loop\.json` is (?:missing )?on disk")
-
-# A skill that writes Steering stops on an Export branch first, so each write lands on a branch that holds the file.
+# A skill that writes Steering names the path it writes, which is no read.
 STEERING_WRITES = {
     "architecture-tests/SKILL.md": ["Add the test's command to `docs/skillworks/suite.json`",
                                     "Fill both tables in `docs/skillworks/placement-checks.md`"],
@@ -3778,7 +3651,7 @@ def without_front_matter(text):
 
 
 def reads_of_steering(page):
-    text = DISK_CHECK.sub("", without_front_matter((SKILLS / page).read_text(encoding="utf-8")))
+    text = without_front_matter((SKILLS / page).read_text(encoding="utf-8"))
     for write in STEERING_WRITES.get(page, []):
         text = text.replace(write, "")
     return text
@@ -3808,6 +3681,3 @@ def test_a_steering_path_read_past_steering_file_is_caught():
 
     assert steering_read_past_steering_file(text) == ["docs/skillworks/loop.json"]
 
-
-def test_a_disk_check_of_the_export_branch_is_no_steering_read():
-    assert DISK_CHECK.sub("", "When `docs/skillworks/loop.json` is missing on disk, stop.") == "When , stop."

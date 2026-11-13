@@ -41,7 +41,7 @@ The limit on this is the **[Smart zone](SMART-AND-DUMB-ZONES.md)**: the part of 
 
 Asked what is open, or which ticket is next, read the Tracker. `tracker` in `steering-file docs/skillworks/loop.json` names it, and `steering-file docs/skillworks/issue-tracker.md` says how to read it. Read through those docs, and make no call of your own that they do not name.
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
+Read each Steering file with `steering-file <path>`, and never by another route. It prints the file from disk. When the file is missing, it says so.
 
 - **Files**: list the open specs and their startable tickets, from `.specs/` on the remote, as "List what is open" in the tracker docs says. Name a spec by its number and title, and a ticket as `<spec>/<ticket>` with its title. A spec with a startable ticket goes on at `/skillworks:spec-loop <spec>`.
 - **GitHub**: the open work is on GitHub Issues, so point the user there.

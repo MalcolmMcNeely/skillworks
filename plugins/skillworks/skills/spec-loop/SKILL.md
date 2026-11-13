@@ -11,7 +11,7 @@ Take a spec that is already published on the tracker and run it to completion.
 
 The argument is the spec's number: its issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, such as `7` for `0007-local-tracker`, with the files Tracker. `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. If no number was given, list the open specs and ask which one.
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
+Read each Steering file with `steering-file <path>`, and never by another route. It prints the file from disk. When the file is missing, it says so.
 
 Once the spec is known, typing the command is the whole of the user's consent. Ask nothing else until step 3, and there only the close offer, which a spec in PR mode never gets.
 

@@ -128,8 +128,8 @@ async function steeredRepository(chosen) {
   return repo;
 }
 
-// The Steering branch is left only as origin/skillworks/steering, as the Export leaves the developer's branch.
-async function exportRepository() {
+// A clone made before the Steering branch went still holds origin/skillworks/steering, and the hook must not read it.
+async function unsteeredRepositoryBesideAnOldSteeringBranch() {
   const repo = await repository();
   repo.git("add", "-A");
   repo.git("commit", "--quiet", "-m", "Steering");
@@ -638,40 +638,27 @@ test("a PowerShell commit carries no Session trailer when the team chose to hide
   assert.deepEqual({ sessions: sessions(repo), tickets: tickets(repo) }, { sessions: [], tickets: ["#582"] });
 });
 
-test("a commit on an Export branch carries no Session trailer", async () => {
+test("a commit in a checkout with no loop.json beside an old Steering branch carries the Session and its Ticket", async () => {
   // Arrange
-  const repo = await exportRepository();
-  const command = await asRun('git add -A && git commit -m "Fix the thing"', SESSION, "", repo.dir);
+  const repo = await unsteeredRepositoryBesideAnOldSteeringBranch();
+  const command = await asRun('git add -A && git commit -m "Fix the thing"', SESSION, "#254", repo.dir);
 
   // Act
   repo.run(command);
 
   // Assert
-  assert.deepEqual(sessions(repo), []);
+  assert.deepEqual({ sessions: sessions(repo), tickets: tickets(repo) }, { sessions: [SESSION], tickets: ["#254"] });
 });
 
-test("a Ticket typed on an Export branch stays as typed, whatever ticket the Session was handed", async () => {
+test("a commit inside bash -c in a checkout with no loop.json beside an old Steering branch is denied", async () => {
   // Arrange
-  const repo = await exportRepository();
-  const typed = 'git add -A && git commit -m "Fix the thing" -m "Ticket: PROJ-12"';
-  const command = await asRun(typed, SESSION, "#254", repo.dir);
-
-  // Act
-  repo.run(command);
-
-  // Assert
-  assert.deepEqual(tickets(repo), ["PROJ-12"]);
-});
-
-test("a commit inside bash -c on an Export branch is not denied", async () => {
-  // Arrange
-  const repo = await exportRepository();
+  const repo = await unsteeredRepositoryBesideAnOldSteeringBranch();
 
   // Act
   const answer = await answerTo('bash -c "git commit -m x"', SESSION, "Bash", "", repo.dir);
 
   // Assert
-  assert.equal(answer?.permissionDecision, undefined);
+  assert.equal(answer?.permissionDecision, "deny");
 });
 
 const TYPED_CREDITS = [

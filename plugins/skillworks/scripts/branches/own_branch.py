@@ -1,4 +1,4 @@
-# PR mode and the Export both ask here, and only git names the default branch, so every Tracker refuses the same branches.
+# PR mode asks here, and only git names the default branch, so every Tracker refuses the same branches.
 
 import os
 import sys
@@ -7,7 +7,6 @@ from output.streams import speaking_any_character
 from runner import Subprocess
 from stop import Stop, misuse, refusal
 
-# The Target and Steering branches may not share a first part with an Export branch: git cannot hold x and x/....
 LOOPS_OWN = "skillworks/"
 
 WHAT_TO_DO = "Make a branch of your own, switch to it, and start again. "

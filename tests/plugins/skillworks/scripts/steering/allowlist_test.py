@@ -162,13 +162,11 @@ def test_the_command_writes_the_settings_at_the_top_of_the_repository(repo):
     assert not (below / ".claude").exists()
 
 
-def test_on_an_export_branch_the_command_names_the_steering_branch_and_writes_nothing(repo):
+def test_a_checkout_with_no_loop_file_still_gets_the_entry(repo):
     (repo.work / LOOP_FILE).unlink()
     team_settings(repo)
-    before = settings_file(repo).read_bytes()
 
     ran = launch("allow-commands", "Bash(dotnet test:*)", where=repo.work)
 
-    assert ran.status == 1
-    assert "skillworks/steering" in ran.err
-    assert settings_file(repo).read_bytes() == before
+    assert ran.status == 0, ran.err
+    assert "Bash(dotnet test:*)" in settings_now(repo)["permissions"]["allow"]

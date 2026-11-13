@@ -13,13 +13,10 @@ Drive a design from the first question to a published spec.
 
 ### 1. Find the Target branch
 
-When `docs/skillworks/loop.json` is missing on disk, follow [On an Export branch](#on-an-export-branch).
-
-When it is on disk, read `target-branch` and `export` in `steering-file docs/skillworks/loop.json`:
+Read `target-branch` in `steering-file docs/skillworks/loop.json`:
 
 - A branch name is the Target branch. Go on to step 2.
-- `pr` with `export` set to `true`: the grill cut the Target branch on the Export branch, and this session is on it. Go on to step 2.
-- `pr` without the Export is PR mode. The Target branch is the branch this session is on: the developer's own branch, which the developer made by the team's own rule. Check it before the first question. Run `own-branch`, the one command that checks it, so the steps are the same in every run:
+- `pr` is PR mode. The Target branch is the branch this session is on: the developer's own branch, which the developer made by the team's own rule. Check it before the first question. Run `own-branch`, the one command that checks it, so the steps are the same in every run:
 
   ```bash
   own-branch
@@ -28,26 +25,6 @@ When it is on disk, read `target-branch` and `export` in `steering-file docs/ski
   It prints the branch, and the grill writes every word and ADR there. When it refuses, the branch cannot hold a design: it is the default branch, a branch under `skillworks/`, or no branch. Then stop the grill there. Ask no question, and write nothing. Pass on what it said, which tells the developer what to do.
 
 In PR mode cut no branch, open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from their own branch, after the loop Lands the spec's tickets on it.
-
-#### On an Export branch
-
-When `docs/skillworks/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. Cut the spec's Target branch before the first question, so the whole design runs on a branch that holds the Steering. Run `cut-target-branch`, the one command that cuts it:
-
-```bash
-cut-target-branch
-```
-
-It rebases the Steering branch, `skillworks/steering`, onto the commit the Export branch sits on and pushes it to `origin`. Then it cuts the Target branch, `skillworks/spec/<the Export branch>`, from the Steering branch, pushes it, and switches to it. Run no git step of your own to make either branch, so the steps are the same in every run.
-
-Then go on to step 2, as on any branch. Read nothing more after the cut: the session already holds the Steering, because it was loaded when the session started.
-
-Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the Export branch, after the loop Exports onto it.
-
-When the command refuses, it cut nothing, so stop the grill there. Ask no question. Pass on what the command said, and add one thing by its cause:
-
-- When the Target branch already exists, add that the developer switches to that branch and starts a new session there.
-- When the Steering branch does not rebase, the refusal names each file. Add that the developer mends those files on `skillworks/steering`, pushes it, and starts again on the Export branch.
-- When no Steering branch is on `origin`, add nothing. The refusal says how to make one.
 
 ### 2. Interview under both disciplines
 

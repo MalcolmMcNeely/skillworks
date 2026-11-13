@@ -31,7 +31,6 @@
       "Bash(skillworks-suite:*)",
       "Bash(tracker-publish:*)",
       "Bash(spec-commits:*)",
-      "Bash(cut-target-branch:*)",
       "Bash(own-branch:*)",
       "Bash(steering-file:*)",
       "Bash(spec-loop-counts:*)",

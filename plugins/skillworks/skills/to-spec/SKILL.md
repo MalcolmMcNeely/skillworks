@@ -10,10 +10,6 @@ This skill takes the current conversation context and codebase understanding and
 
 The issue tracker should have been provided to you. If not, tell the user to run `/skillworks:skillworks-setup`.
 
-## On an Export branch
-
-When `docs/skillworks/loop.json` is missing on disk, this session is on an Export branch: the developer's own branch, which holds no Steering. Stop here, and publish no spec. Tell the developer to start with `/skillworks:grill`, which cuts the spec's Target branch before its first question. On a Target branch, go on.
-
 ## Process
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
@@ -26,7 +22,7 @@ When `docs/skillworks/loop.json` is missing on disk, this session is on an Expor
 
 5. Write the spec using the template below. The spec title should begin with "SPEC:". Keep the three counted sections in the shape [The counted shape](#the-counted-shape) gives. Then publish it as [Publishing the spec](#publishing-the-spec) says.
 
-6. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In PR mode, report the branch the spec was published with. With `export` on, report the Target branch and the Export branch.
+6. Report the spec's number, and what `tracker-publish` printed beside it: with `github` its URL, with `files` its folder. That number is the argument to `/skillworks:spec-loop`. In PR mode, report the branch the spec was published with.
 
 ## The counted shape
 
@@ -66,8 +62,6 @@ The spec is a folder in `.specs/`. The command writes its frontmatter: `status: 
 
 In PR mode the spec's Target branch is the branch this session is on: the developer's own branch, which the developer made by the team's own rule. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
 
-With `export` set to `true` in `steering-file docs/skillworks/loop.json`, follow [The spec's branch with the Export](#the-specs-branch-with-the-export) instead of this section.
-
 **Before anything is written**, check the branch. Run `own-branch`, the one command that checks it, so the steps are the same in every run:
 
 ```bash
@@ -77,16 +71,6 @@ own-branch
 It prints the branch. Commit and push on it, and name it last when you publish. When it refuses, the branch cannot hold a design: it is the default branch, a branch under `skillworks/`, or no branch. Then stop: publish no spec, and write nothing. Pass on what it said, which tells the developer what to do.
 
 **After the spec is published** there is nothing more to do here. Cut no branch. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request from their own branch after the loop Lands the spec's tickets on it.
-
-## The spec's branch with the Export
-
-With `export` set to `true` in `steering-file docs/skillworks/loop.json`, the loop later Exports the spec's work onto the developer's own branch, the Export branch. The spec's Target branch is `skillworks/spec/<the Export branch>`, cut from the Steering branch, `skillworks/steering`. Name it last when you publish.
-
-**First part, before the spec is published.** Find the Target branch.
-
-The grill cut the Target branch before its first question, so this session is on it. Use that branch. `git branch --show-current` names it.
-
-**Second part:** there is none. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the Export branch, after the loop Exports onto it.
 
 <spec-template>
 

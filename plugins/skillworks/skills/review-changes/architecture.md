@@ -14,7 +14,7 @@ This axis reads outside the change. An import is only wrong against the module g
 
 ## What to read
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
+Read each Steering file with `steering-file <path>`, and never by another route. It prints the file from disk. When the file is missing, it says so.
 
 ### The change
 

@@ -710,7 +710,7 @@ def onto_the_default_branch(where):
 
 
 def onto_a_branch_of_the_loop(where):
-    git(where, "switch", "--quiet", "-c", "skillworks/spec/ab-12")
+    git(where, "switch", "--quiet", "-c", "skillworks/ab-12")
 
 
 def onto_no_branch(where):
@@ -894,24 +894,22 @@ def test_a_gitignore_with_no_last_newline_gets_the_line_on_a_line_of_its_own(his
     assert (full / ".gitignore").read_text(encoding="utf-8") == "bin/\n.context-backfill/\n"
 
 
-def test_on_an_export_branch_the_check_names_the_steering_branch_and_writes_nothing(history, runner):
-    where = history.clone("export")
+def test_with_no_loop_file_the_check_sends_the_person_to_seed_steering_and_writes_nothing(history, runner):
+    where = history.clone("unseeded")
     (where / "docs" / "skillworks" / "loop.json").unlink()
 
     ran = check(runner, where)
 
-    assert ran.status == 1
-    assert "skillworks/steering" in ran.err
+    assert ran.err == "FAIL  docs/skillworks/loop.json is missing. Run seed-steering to write it.\n"
     assert not (where / ".gitignore").exists() and not (where / ".context-backfill").exists()
 
 
-def test_on_an_export_branch_the_apply_names_the_steering_branch_and_writes_nothing(checkout, runner):
+def test_with_no_loop_file_the_apply_sends_the_person_to_seed_steering_and_writes_nothing(checkout, runner):
     mark(checkout, sheet(words=word(1, "Reader", "The part that turns a file into dates.", "accept", "Parser")))
     (checkout / "docs" / "skillworks" / "loop.json").unlink()
     before = git(checkout, "rev-parse", "HEAD")
 
     ran = apply(runner, checkout)
 
-    assert ran.status == 1
-    assert "skillworks/steering" in ran.err
+    assert ran.err == "FAIL  docs/skillworks/loop.json is missing. Run seed-steering to write it.\n"
     assert not (checkout / "CONTEXT.md").exists() and git(checkout, "rev-parse", "HEAD") == before

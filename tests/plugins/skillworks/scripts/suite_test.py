@@ -1392,78 +1392,31 @@ def test_an_image_that_is_not_a_file_in_the_repo_makes_the_suite_file_unreadable
     assert run_by(runner) == []
 
 
-# --- an Export branch, which holds no Steering on disk ------------------------
+# --- an old Steering branch on origin ------------------------------------------
 
-STEERING = "skillworks/steering"
+OLD_STEERING_BRANCH = "skillworks/steering"
 
 
-# Pushed and then left, so the checkout reads it only from the local origin/skillworks/steering.
-def given_on_the_steering_branch(repo, files):
-    git(repo.work, "switch", "--quiet", "-c", STEERING)
+# Pushed and then left, so the checkout holds it only as the local origin/skillworks/steering.
+def given_on_an_old_steering_branch(repo, files):
+    git(repo.work, "switch", "--quiet", "-c", OLD_STEERING_BRANCH)
     for name, text in files.items():
         path = repo.work / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8", newline="\n")
     git(repo.work, "add", "-A")
     git(repo.work, "commit", "--quiet", "-m", "Steering")
-    git(repo.work, "push", "--quiet", "-u", "origin", STEERING)
+    git(repo.work, "push", "--quiet", "-u", "origin", OLD_STEERING_BRANCH)
     git(repo.work, "switch", "--quiet", repo.target)
 
 
-def suite_text(*checks):
-    return json.dumps({"checks": list(checks)}, indent=2)
-
-
-def test_a_checkout_with_no_suite_file_runs_the_checks_the_steering_branch_names(repo, runner):
-    given_on_the_steering_branch(repo, {SUITE_FILE: suite_text(check("compile", "all"), check("lint"))})
+def test_a_checkout_with_no_suite_file_runs_nothing_even_when_an_old_steering_branch_holds_one(repo, runner):
+    given_on_an_old_steering_branch(repo, {SUITE_FILE: json.dumps({"checks": [check("lint")]})})
     given_every_program_passes(runner)
 
     outcome = Suite(runner, repo.work).run()
 
-    assert outcome.passed, outcome.said
-    assert by_words(run_by(runner)) == [["compile", "all"], ["lint"]]
-
-
-def test_a_checkout_with_its_own_suite_file_runs_only_the_checks_it_names(repo, runner):
-    given_on_the_steering_branch(repo, {SUITE_FILE: suite_text(check("compile", "all"))})
-    write_suite(repo.work, check("lint"))
-    given_every_program_passes(runner)
-
-    Suite(runner, repo.work).run()
-
-    assert run_by(runner) == [["lint"]]
-
-
-def test_a_check_whose_dockerfile_is_on_the_steering_branch_builds_from_it(repo, runner):
-    given_on_the_steering_branch(repo, {SUITE_FILE: suite_text(check("prove", image=DOCKERFILE)),
-                                        DOCKERFILE: "FROM steering\n"})
-    docker = FakeDocker(runner)
-
-    outcome = Suite(runner, repo.work).run()
-
-    assert outcome.passed, outcome.said
-    assert docker.built == "FROM steering\n"
-
-
-def test_a_check_runs_again_once_the_steering_branch_changes_its_dockerfile(repo, runner):
-    given_on_the_steering_branch(repo, {SUITE_FILE: suite_text(check("prove", image=DOCKERFILE)),
-                                        DOCKERFILE: "FROM steering\n"})
-    docker = FakeDocker(runner)
-    Suite(runner, repo.work).run()
-    given_on_the_steering_branch_again(repo, {DOCKERFILE: "FROM changed\n"})
-
-    Suite(runner, repo.work).run()
-
-    assert docker.verbs().count("start") == 2
-
-
-def given_on_the_steering_branch_again(repo, files):
-    git(repo.work, "switch", "--quiet", STEERING)
-    for name, text in files.items():
-        (repo.work / name).write_text(text, encoding="utf-8", newline="\n")
-    git(repo.work, "commit", "--quiet", "-am", "Steering")
-    git(repo.work, "push", "--quiet", "origin", STEERING)
-    git(repo.work, "switch", "--quiet", repo.target)
+    assert (outcome.passed, run_by(runner)) == (False, [])
 
 
 # --- a Trial -------------------------------------------------------------------

@@ -203,17 +203,14 @@ def test_in_pr_mode_a_branch_not_on_the_remote_is_turned_down(writer):
     assert SPEC_BRANCH in ran.err
 
 
-def test_on_an_export_branch_the_stop_sends_the_developer_to_the_target_branch(writer):
+def test_a_checkout_with_no_loop_file_is_told_to_seed_it_even_beside_an_old_steering_branch(writer):
     (writer.repo.work / LOOP_FILE).unlink()
     git(writer.repo.work, "update-ref", "refs/remotes/origin/skillworks/steering", "HEAD")
     git(writer.repo.work, "checkout", "--quiet", "-b", "proj-12/local-tracker")
 
     ran = writer.spec()
 
-    assert ran.err == (
-        "FAIL  docs/skillworks/loop.json is missing on disk, so this is an Export branch: its Steering is on "
-        "skillworks/steering. Switch to the spec's Target branch, skillworks/spec/proj-12/local-tracker, "
-        "and run this there, or start a design with /skillworks:grill.\n")
+    assert ran.err == "FAIL  docs/skillworks/loop.json is missing. Run seed-steering to write it.\n"
 
 
 def test_with_a_branch_named_target_a_branch_given_is_turned_down(writer):

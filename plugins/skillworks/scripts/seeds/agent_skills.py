@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 from context_backfill.context_map import MULTI_CONTEXT, steering_file
-from export.steering_write import refuse_on_an_export_branch
 from output.streams import speaking_any_character
 from runner import Subprocess
 from seeds import merge
@@ -14,6 +13,7 @@ from seeds.outcome import ASKS, BASES, Outcome, report
 from steering.adr_folder import DOMAIN_FILE
 from steering.rule_imports import RULES_FOLDER
 from steering.steering_file import STEERING_FOLDER
+from steering.target_branch import LOOP_FILE
 from stop import Stop, misuse, refusal
 
 USAGE = ("usage: seed-agent-skills --tracker github|files --adr-folder <folder> --contexts single|multi "
@@ -137,7 +137,8 @@ def main(argv, runner, out, err, where=None):
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
         top = Path(found.out.strip())
-        refuse_on_an_export_branch(top)
+        if not (top / LOOP_FILE).is_file():
+            raise refusal("{} is missing. Run seed-steering to write it. Nothing was written.".format(LOOP_FILE))
         report([weigh(top, built(top, tracker, folder, contexts), choices, settled)], "", out)
         return 0
     except Stop as stop:

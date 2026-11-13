@@ -175,12 +175,12 @@ def test_in_pr_mode_a_spec_is_closed_as_completed_with_a_comment_naming_its_bran
 
 
 def test_the_close_comment_names_the_spec_s_own_branch_for_the_pull_request_whatever_its_name(runner):
-    runner.stub("gh", says="## Branch\n\n`skillworks/spec/feature/x`\n")
+    runner.stub("gh", says="## Branch\n\n`team/feature/PROJ-12/x`\n")
 
     github(runner).close_spec("158")
 
     [close] = [line for line in asked(runner) if line.startswith("issue close")]
-    assert "Open the pull request from `skillworks/spec/feature/x`" in close
+    assert "Open the pull request from `team/feature/PROJ-12/x`" in close
 
 
 def test_in_pr_mode_a_spec_that_would_not_close_is_refused_with_what_gh_said(runner):

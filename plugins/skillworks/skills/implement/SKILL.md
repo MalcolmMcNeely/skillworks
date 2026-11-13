@@ -22,7 +22,7 @@ The order is the spec loop's own, so the developer at the keyboard and the drive
 
 ## Before you start
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
+Read each Steering file with `steering-file <path>`, and never by another route. It prints the file from disk. When the file is missing, it says so.
 
 If a ticket number was given, fetch it, and fetch its parent spec too — the ticket is the what, the spec is the why. `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. With the files Tracker a ticket comes as `<spec>/<ticket>`, such as `7/2`, because its number is local to its spec.
 

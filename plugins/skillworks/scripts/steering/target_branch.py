@@ -3,9 +3,7 @@
 import json
 from pathlib import Path
 
-from export.branch_names import PREFIX, STEERING
-from runner import Subprocess
-from steering.steering_file import STEERING_FOLDER, STEERING_REF
+from steering.steering_file import STEERING_FOLDER
 from stop import refusal
 from tracker.files import Files
 from tracker.github import GitHub
@@ -21,19 +19,8 @@ TRACKERS = ("github", "files")
 def settings(top):
     path = Path(top) / LOOP_FILE
     if not path.is_file():
-        raise missing(top)
+        raise refusal("{} is missing. Run seed-steering to write it.".format(LOOP_FILE))
     return json.loads(path.read_text(encoding="utf-8"))
-
-
-# On an Export branch seed-steering is the wrong advice: it would write Steering onto the team's branch.
-def missing(top):
-    git = Subprocess()
-    if git.run(["git", "-C", str(top), "rev-parse", "--verify", "--quiet", STEERING_REF]).status != 0:
-        return refusal("{} is missing. Run seed-steering to write it.".format(LOOP_FILE))
-    branch = git.run(["git", "-C", str(top), "branch", "--show-current"]).out.strip()
-    return refusal("{} is missing on disk, so this is an Export branch: its Steering is on {}. Switch to the "
-                   "spec's Target branch, {}{}, and run this there, or start a design with "
-                   "/skillworks:grill.".format(LOOP_FILE, STEERING, PREFIX, branch))
 
 
 def target_setting(top):

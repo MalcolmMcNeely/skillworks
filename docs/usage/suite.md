@@ -79,14 +79,6 @@ host, or in its image when it names one. When it fails, the run stops and no Ses
 it, because the fault was on the Target branch before the spec began. A Suite file with no `baseline`
 still works, and the Baseline then checks only that the machine is ready.
 
-## On an Export branch
-
-With [the Export](the-loop/export.md), your own branch holds no Steering file, so it has no
-`docs/skillworks/suite.json`. There `skillworks-suite` reads the Suite file from
-`origin/skillworks/steering`, as your last fetch left it. The Dockerfile a check names as its `image`
-comes from there too, with the rest of its folder, and a change to that folder on the Steering branch
-runs the check again. A branch that holds its own Suite file reads that one.
-
 ## Proofs: a check never proves the same thing twice
 
 Each time a check passes, the Suite keeps a **Proof**: the check, and the exact inputs it passed on.

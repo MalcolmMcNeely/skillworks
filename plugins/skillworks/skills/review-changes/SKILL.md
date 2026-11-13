@@ -28,7 +28,7 @@ Each axis keeps its steps in an axis file in this skill's folder, `${CLAUDE_SKIL
 | Spec | `spec.md` |
 | Architecture | `architecture.md` |
 
-Read each Steering file with `steering-file <path>`, and never from disk. It prints the file from disk, or from the Steering branch when this branch holds none. When the file is missing, it says so.
+Read each Steering file with `steering-file <path>`, and never by another route. It prints the file from disk. When the file is missing, it says so.
 
 `steering-file docs/skillworks/issue-tracker.md` says how this repo names and reads a ticket. If that says the file is missing, stop. Tell the user that it is missing, that `/skillworks:skillworks-setup` writes it, and that nothing was reviewed.
 

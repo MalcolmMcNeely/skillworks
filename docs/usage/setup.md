@@ -61,10 +61,7 @@ needs their clone of Skillworks at the same path.
 
 ## What setup does
 
-First, setup asks whether the work goes to a team that does not use Skillworks. With no, it runs the
-steps below on the branch you are on, as it always has. With yes, it runs them on the Steering
-branch instead, as [Work for a team that does not use Skillworks](#work-for-a-team-that-does-not-use-skillworks)
-says.
+Setup runs these steps on the branch you are on.
 
 1. **Seed the Steering.** `seed-steering` copies each Seed to its place, keeps a base copy of it in
    `docs/skillworks/.seeds/`, and adds the loop's working folders to `.gitignore`. It stops in a repo with
@@ -104,16 +101,14 @@ in step 6.
 
 ## The questions setup asks
 
-Setup asks six things on a clean repo: whether the work goes to a team that does not use
-Skillworks, your Tracker, your Target branch, where your ADRs go, whether commits credit Claude, and
-the one yes it needs. With a yes to the first, it asks no Target branch. It asks more only where your repo already holds an answer of its
-own.
+Setup asks five things on a clean repo: your Tracker, your Target branch, where your ADRs go,
+whether commits credit Claude, and the one yes it needs. It asks more only where your repo already
+holds an answer of its own.
 
 | Question | When setup asks it |
 |---|---|
-| Will the work go to a team that does not use Skillworks? | Always, first. Setup suggests no, so the common answer is one keypress. If `origin` already holds `skillworks/steering`, and its `docs/skillworks/loop.json` sets `export` to `true`, setup suggests yes. With yes and the `files` Tracker, setup tells you to make `origin` a remote of your own first, such as a bare repo on your machine, so the loop's pushes do not reach your team's remote by mistake. [Work for a team that does not use Skillworks](#work-for-a-team-that-does-not-use-skillworks) says what yes does. |
 | Which Tracker does your team use? | Always. Setup suggests `github` when `origin` names `github.com`, and `files` otherwise, so the common answer is one keypress. If `tracker` in `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
-| Which is your Target branch? | Always, unless you answered yes to the first question. Then setup asks nothing and writes `pr`. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `pr` for one pull request per spec: you make the branch and open the pull request. If `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
+| Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `pr` for one pull request per spec: you make the branch and open the pull request. If `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
 | Where do your ADRs go? | Always. Setup writes your answer into `adr-folder` in `docs/skillworks/domain.md`, and every new ADR goes to that one folder. It suggests one folder. On a second run, it suggests the folder `adr-folder` already names, so your answer survives. Else it looks for folders that hold numbered Markdown files, such as `0001-event-sourced-orders.md`, and have `adr` or `decision` in their path. It lists every one it finds, and suggests the one with the most files. Else it suggests `docs/adr`. A repo set up before this question existed stops at preflight until setup runs again, and one run clears the stop. |
 | Should commits and pull requests credit Claude? | Always. On a first run setup suggests `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/skillworks/loop.json` already names an answer, setup suggests that one. [Credit for Claude](#credit-for-claude) says what each answer does. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push`, `gh issue close` and `tracker-publish` with no prompt. That is the point, and also the risk. |
@@ -158,28 +153,6 @@ one goes missing or holds another value.
 
 [Steering](steering.md) says what each of these files does and what your team can change in it.
 
-## Work for a team that does not use Skillworks
-
-Answer yes to the first question when your team does not use Skillworks, and must be able to go on
-without it. The loop then [Exports](the-loop/export.md) each finished spec onto your own branch, with
-no trace of the Plugin.
-
-- **With the `files` Tracker, make `origin` your own first.** Use a remote of your own, such as a bare
-  repo on your machine, with your default branch pushed to it. The loop pushes its claims, its Target
-  branches and the Steering branch to `origin`, so with your team's remote as `origin`, those pushes
-  reach your team by mistake. If `origin` is not yet yours, setup stops, and you run it again after.
-  With the `github` Tracker, `origin` is the GitHub repo whose Issues the loop uses.
-- **Your working tree must be clean.** Setup stops when it is not.
-- **Setup writes the Steering on the Steering branch, `skillworks/steering`.** It cuts the branch from
-  your remote's default branch, and runs every step there. It asks no Target branch: it writes
-  `"target-branch": "pr"` and `"export": true` into `docs/skillworks/loop.json`.
-- **Setup commits the Steering there, and pushes it.** It shows you each file to review first. Then it
-  commits, pushes `skillworks/steering` to `origin`, and switches you back to the branch you were on.
-  That branch holds no Steering file, because setup never writes one there.
-
-A later change to the Steering, such as the checks you add to `docs/skillworks/suite.json`, goes on
-`skillworks/steering` too. Commit it there, and push it.
-
 ## Credit for Claude
 
 Setup asks your team one question: should commits and pull requests credit Claude? The one answer,
@@ -209,9 +182,7 @@ Claude Code's `attribution` block in `.claude/settings.json` from the answer.
 - **Setup never writes `.claude/settings.local.json`.** It is gitignored, so a loop worktree never
   sees it, and the choice is your team's and not one developer's.
 
-The `Skillworks-Session` trailer stays on every commit, whichever you answer. With the Export, a
-commit on your own branch is the one exception: it gets no trailer, as [the Export](the-loop/export.md)
-says.
+The `Skillworks-Session` trailer stays on every commit, whichever you answer.
 
 ## What your team fills in
 

@@ -49,19 +49,6 @@ protection. With `pr`:
 - You open the one pull request, from your branch. Skillworks opens none, and you write no closing
   keyword such as `Closes #<spec>` in it.
 
-**`pr` with `export` on.** With `"export": true` in `docs/skillworks/loop.json`, PR mode works for
-[the Export](export.md), and three things change:
-
-- The Target branch is `skillworks/spec/<your branch>`, such as
-  `skillworks/spec/feature/PROJ-12/slug`, and not your branch itself. Your branch is the one you started
-  the grill on.
-- The grill cuts it from the Steering branch, `skillworks/steering`, and not from the default branch,
-  at its start, before its first question. The `cut-target-branch` command first brings the
-  Steering branch onto the commit your branch sits on. `/skillworks:to-spec` and
-  `/skillworks:domain-modeling` never cut it.
-- The grill and `/skillworks:to-spec` open no pull request, and the loop marks none ready. You open
-  the one pull request, from your own branch, after the loop Exports onto it.
-
 Every other part of [the Dev loop](../the-loop.md) is the same for both kinds. Where it says the
 Target branch, read the branch name you set, or the branch you started the grill on.
 

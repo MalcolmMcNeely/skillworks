@@ -221,10 +221,23 @@ again.
 **A branch that cannot hold a design.** A design goes on a branch of your own. In PR mode the grill
 runs the `own-branch` command before its first question, and `/skillworks:to-spec` runs it before it
 publishes. On a refusal the grill asks no question, `/skillworks:to-spec` publishes no spec, and
-neither writes anything. The command ends its line with `Nothing was written.`:
+neither writes anything. The command ends its line with `Nothing was written.` It refuses three
+branches. The default branch, which it finds from `origin/HEAD`:
 
 ```
 FAIL  this checkout is on trunk, and trunk is the default branch. Make a branch of your own, switch to it, and start again. Nothing was written.
+```
+
+A branch under `skillworks/`, which belongs to the loop:
+
+```
+FAIL  this checkout is on skillworks/feature, and a branch under skillworks/ belongs to the loop. Make a branch of your own, switch to it, and start again. Nothing was written.
+```
+
+No branch, as after `git switch --detach`:
+
+```
+FAIL  this checkout is on no branch. Make a branch of your own, switch to it, and start again. Nothing was written.
 ```
 
 `/skillworks:context-backfill` refuses the same three branches in PR mode, with the same line. Each
@@ -232,99 +245,19 @@ of its commands, `context-backfill check`, `context-backfill history` and `conte
 checks the branch first, so none of them writes a file, makes a commit or pushes on a refused
 branch.
 
-With `export` on, the `cut-target-branch` command checks the branch you are on before it cuts
-anything, as [the Export](export.md#the-grills-cut) says, and ends its line with `Nothing was cut.`
-Both refuse the same three branches, and cut nothing and push nothing. The default branch, which they
-find from `origin/HEAD`:
-
-```
-FAIL  this checkout is on trunk, and trunk is the default branch. Make a branch of your own, switch to it, and start again. Nothing was cut.
-```
-
-A branch under `skillworks/`, which belongs to the loop:
-
-```
-FAIL  this checkout is on skillworks/spec/feature, and a branch under skillworks/ belongs to the loop. Make a branch of your own, switch to it, and start again. Nothing was cut.
-```
-
-No branch, as after `git switch --detach`:
-
-```
-FAIL  this checkout is on no branch. Make a branch of your own, switch to it, and start again. Nothing was cut.
-```
-
 Make your branch the way your team names its branches, such as
 `git switch -c feature/PROJ-12/slug origin/<your default branch>`, and start again. Skillworks never
 checks the name. When `origin` names no default branch, each command stops and says to run
 `git remote set-head origin --auto`.
 
-**The Target branch already exists.** With `export` on, the grill cuts the spec's Target branch
-at its start, before its first question, by the `cut-target-branch` command, as
-[the Export](export.md#the-grills-cut) says. When `skillworks/spec/<your branch>` is already in your
-checkout or on `origin`, the command cuts nothing, and the grill stops and asks no question:
+**No `loop.json`.** A command that reads `docs/skillworks/loop.json`, such as `tracker-publish`,
+`spec-loop`, `land-ticket` or `context-backfill`, stops when the file is missing:
 
 ```
-FAIL  the Target branch skillworks/spec/feature/PROJ-12/slug is already on origin. Switch to it and go on there. Nothing was cut.
+FAIL  docs/skillworks/loop.json is missing. Run seed-steering to write it.
 ```
 
-An earlier grill cut it. It can be a grill to resume, or a spec already done. Decide which:
-
-1. Switch to it: `git switch skillworks/spec/<your branch>`.
-2. Start a new Claude Code session there. A session keeps the Steering it loaded when it started.
-3. Go on there, with `/skillworks:grill` for a grill to resume.
-
-**A Steering write on your own branch.** With `export` on, your own branch holds no Steering, as
-[the Export](export.md#a-session-on-your-own-branch) says. A skill or a command that writes Steering
-sees that `docs/skillworks/loop.json` is missing on disk, and it stops before it writes anything. The
-skills are `/skillworks:architecture-tests` and `/skillworks:context-backfill`. The commands are
-`set-co-authored-by`, `allow-commands` and `context-backfill`:
-
-```
-FAIL  docs/skillworks/loop.json is missing on disk, so this branch holds no Steering. With the Export, a Steering change is made on skillworks/steering: switch to it, run this there, and push. Without the Export, run seed-steering to write it. Nothing was written.
-```
-
-Make the change on the Steering branch:
-
-1. Switch to it: `git switch skillworks/steering`.
-2. Start a new Claude Code session there, and run the skill or the command again.
-3. Commit, and push it with `git push origin skillworks/steering`.
-4. Switch back to your branch. The next grill cuts its Target branch from the new Steering.
-
-Setup is not stopped. With the Export, it switches to `skillworks/steering` itself before it
-writes anything.
-
-**A loop command on your own branch.** With `export` on, a command that reads `loop.json`, such as
-`tracker-publish`, `spec-loop` or `land-ticket`, stops on your own branch, because the file is not
-on disk there:
-
-```
-FAIL  docs/skillworks/loop.json is missing on disk, so this is an Export branch: its Steering is on skillworks/steering. Switch to the spec's Target branch, skillworks/spec/feature/PROJ-12/slug, and run this there, or start a design with /skillworks:grill.
-```
-
-Switch to the spec's Target branch, start a new Claude Code session there, and run the command
-again. With no spec yet, start one with `/skillworks:grill`, which cuts the Target branch.
-
-**The Steering branch does not rebase.** With `export` on, the grill cuts the spec's Target branch
-at its start, by the `cut-target-branch` command, as [the Export](export.md#the-grills-cut)
-says. The command first rebases the Steering branch, `skillworks/steering`, onto the commit your
-branch sits on. When that rebase conflicts, the command aborts it and pushes nothing. The Steering
-branch stays as it was, on `origin` and in your checkout, and no Target branch is cut. The grill
-stops there, and names each file the rebase stopped on:
-
-```
-FAIL  the Steering branch skillworks/steering does not rebase onto 1f0a3c8e5b22, so nothing was pushed and no Target branch was cut. Mend these files on skillworks/steering so they apply, push it, and run cut-target-branch again:
-  CLAUDE.md
-```
-
-The cause is most often a Steering file your team changed on the default branch, such as the
-`CLAUDE.md` the Steering adds its imports to. Fix it once:
-
-1. Switch to `skillworks/steering`, and rebase it onto your branch by hand:
-   `git rebase <your branch>`.
-2. Mend each file the line names, so it holds your team's change and the Steering's. Then
-   `git rebase --continue`.
-3. Push it with `git push --force-with-lease origin skillworks/steering`.
-4. Switch back to your branch, and start the grill again.
+Run `/skillworks:skillworks-setup`, which writes it, and run the command again.
 
 ## Restarting a stopped run: the Keep
 

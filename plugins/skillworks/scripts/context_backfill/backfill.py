@@ -11,7 +11,6 @@ from typing import NamedTuple
 
 from branches.own_branch import default_branch, own_branch
 from context_backfill.applying import NOTHING_WRITTEN, apply
-from export.steering_write import refuse_on_an_export_branch
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
 from runner import Subprocess
@@ -433,7 +432,6 @@ def main(argv, runner, out, err, wait, where=None):
         if len(argv) != 1 or argv[0] not in COMMANDS:
             raise misuse(USAGE)
         top = top_of(runner, where)
-        refuse_on_an_export_branch(top)
         refuse_a_branch_that_cannot_hold_a_design(runner, top)
         COMMANDS[argv[0]](runner, where, out, wait)
         return 0

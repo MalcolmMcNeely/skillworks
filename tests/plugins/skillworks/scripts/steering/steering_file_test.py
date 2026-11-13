@@ -1,4 +1,4 @@
-# Driven against a bare origin, so the Steering branch is read from the local origin/skillworks/steering a fetch left.
+# Driven against a bare origin that holds a skillworks/steering branch, so a read that reached for it would show.
 
 import contextlib
 import io
@@ -9,7 +9,7 @@ from conftest import Ran, Repo, git, launch
 from runner import Subprocess
 from steering import steering_file
 
-STEERING = "skillworks/steering"
+OLD_STEERING_BRANCH = "skillworks/steering"
 SURFACES = "docs/skillworks/surfaces.md"
 RULES = "docs/skillworks/rules/"
 
@@ -18,12 +18,12 @@ class Work:
     def __init__(self, repo):
         self.repo = repo
 
-    def on_steering(self, *files):
-        git(self.repo.work, "switch", "--quiet", "-c", STEERING)
+    def on_old_steering_branch(self, *files):
+        git(self.repo.work, "switch", "--quiet", "-c", OLD_STEERING_BRANCH)
         for name, text in zip(files[::2], files[1::2]):
             (self.repo.work / name).parent.mkdir(parents=True, exist_ok=True)
             self.repo.write_commit(self.repo.work, name, text, "Steering")
-        git(self.repo.work, "push", "--quiet", "-u", "origin", STEERING)
+        git(self.repo.work, "push", "--quiet", "-u", "origin", OLD_STEERING_BRANCH)
         git(self.repo.work, "switch", "--quiet", "main")
 
     def on_disk(self, name, text):
@@ -51,38 +51,21 @@ def test_a_file_on_disk_is_printed_as_it_is_on_disk(work):
     assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
 
 
-def test_a_file_missing_on_disk_is_printed_from_the_steering_branch(work):
-    work.on_steering(SURFACES, "# Surfaces\n\nThe Steering copy.")
+def test_a_file_missing_on_disk_is_missing_even_when_an_old_steering_branch_holds_it(work):
+    work.on_old_steering_branch(SURFACES, "# Surfaces\n\nThe Steering copy.")
 
     ran = work.run(SURFACES)
 
-    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe Steering copy.\n"), ran.err
+    assert (ran.status != 0, ran.out, ran.err) == (True, "", "FAIL  {} is missing.\n".format(SURFACES))
 
 
-def test_a_file_on_disk_and_on_the_steering_branch_is_printed_from_disk(work):
-    work.on_steering(SURFACES, "# Surfaces\n\nThe Steering copy.")
+def test_a_file_on_disk_is_printed_from_disk_when_an_old_steering_branch_holds_it_too(work):
+    work.on_old_steering_branch(SURFACES, "# Surfaces\n\nThe Steering copy.")
     work.on_disk(SURFACES, "# Surfaces\n\nThe disk copy.\n")
 
     ran = work.run(SURFACES)
 
     assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
-
-
-def test_a_team_file_at_the_old_steering_path_does_not_hide_the_steering_branchs_file(work):
-    work.on_steering(SURFACES, "# Surfaces\n\nThe Steering copy.")
-    work.on_disk("docs/agents/surfaces.md", "# Surfaces\n\nThe team's own file.\n")
-
-    ran = work.run(SURFACES)
-
-    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe Steering copy.\n"), ran.err
-
-
-def test_a_file_in_neither_place_prints_nothing_and_fails_with_one_line(work):
-    work.on_steering("docs/skillworks/loop.json", "{}")
-
-    ran = work.run(SURFACES)
-
-    assert (ran.status != 0, ran.out, len(ran.err.splitlines())) == (True, "", 1), ran.err
 
 
 def test_a_folder_on_disk_prints_the_path_of_each_file_in_it(work):
@@ -94,38 +77,26 @@ def test_a_folder_on_disk_prints_the_path_of_each_file_in_it(work):
     assert (ran.status, ran.out) == (0, RULES + "comments.md\n" + RULES + "words.md\n"), ran.err
 
 
-def test_a_folder_missing_on_disk_prints_the_path_of_each_file_in_it_on_the_steering_branch(work):
-    work.on_steering(RULES + "words.md", "# Words", RULES + "comments.md", "# Comments")
+def test_a_folder_missing_on_disk_is_missing_even_when_an_old_steering_branch_holds_it(work):
+    work.on_old_steering_branch(RULES + "words.md", "# Words")
 
     ran = work.run(RULES)
 
-    assert (ran.status, ran.out) == (0, RULES + "comments.md\n" + RULES + "words.md\n"), ran.err
-
-
-def test_a_steering_change_on_origin_is_not_read_until_a_fetch_brings_it(work):
-    work.on_steering(SURFACES, "# Surfaces\n\nThe Steering copy.")
-    other = work.repo.other_checkout()
-    git(other, "switch", "--quiet", STEERING)
-    work.repo.write_commit(other, SURFACES, "A change made on another machine.", "Another machine")
-    git(other, "push", "--quiet", "origin", STEERING)
-
-    ran = work.run(SURFACES)
-
-    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe Steering copy.\n"), ran.err
+    assert (ran.status != 0, ran.out, ran.err) == (True, "", "FAIL  {} is missing.\n".format(RULES))
 
 
 def test_a_path_is_read_from_the_repo_root_whatever_folder_the_caller_is_in(work):
-    work.on_steering(SURFACES, "# Surfaces\n\nThe Steering copy.")
+    work.on_disk(SURFACES, "# Surfaces\n\nThe disk copy.\n")
     (work.repo.work / "src").mkdir()
 
     ran = work.run(SURFACES, where=work.repo.work / "src")
 
-    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe Steering copy.\n"), ran.err
+    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
 
 
-def test_the_command_prints_the_steering_copy_to_the_caller(work):
-    work.on_steering(SURFACES, "# Surfaces\n\nThe Steering copy.")
+def test_the_command_prints_the_disk_copy_to_the_caller(work):
+    work.on_disk(SURFACES, "# Surfaces\n\nThe disk copy.\n")
 
     ran = launch("steering-file", SURFACES, where=work.repo.work)
 
-    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe Steering copy.\n"), ran.err
+    assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
