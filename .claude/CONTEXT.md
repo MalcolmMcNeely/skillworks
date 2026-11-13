@@ -125,18 +125,6 @@ Edit. It is a record and never a judgement: an axis that edits is doing its job,
 loop. What an Edit cannot be is silent.
 _Avoid_: Record, change, diff
 
-**Export**:
-Building, from the ticket commits of one spec, a branch that holds only the work: one commit for each
-ticket, with no trailer, no `.specs/` and none of the loop's own commits. It runs once, after the
-spec closes, and it never pushes.
-_Avoid_: Strip, scrub, clean-up, squash
-
-**Export branch**:
-The developer's own branch, cut from the default branch, that the grill starts on and the Export
-writes onto. The developer pushes it and opens the pull request from it. The Target branch stays as
-the loop left it.
-_Avoid_: Clean branch, PR branch, release branch
-
 **Flake**:
 A check that went red on one run of a Suite and passed on a later run of the same Suite, on the same
 inputs. Nothing changed between the two, so the red was not the code's. A Flake counts as green, and
@@ -284,8 +272,14 @@ _Avoid_: Conversation, chat, transcript
 
 **Sidecar**:
 A folder beside the repo, named for it with `-skillworks` on the end, that holds the files Tracker's
-specs, tickets and the numbers they take. It is never pushed, so it serves the one machine it sits on.
+specs, tickets and the numbers they take, and with Sidecar Steering the Steering too. It is never
+pushed, so it serves the one machine it sits on.
 _Avoid_: Sibling folder, specs folder, store
+
+**Sidecar Steering**:
+The way a team works when its work goes to a team that does not use Skillworks. The Steering sits in
+the Sidecar and never in the repo, so each spec's branch holds only the work. It is always PR mode.
+_Avoid_: Export, Export branch, Steering branch, clean branch
 
 **Smart zone**:
 The part of a context window in which a model still keeps every instruction it was given. A session
@@ -301,15 +295,10 @@ _Avoid_: Claim (the Tracker's word for taking a ticket), fact, assertion
 
 **Steering**:
 What a repo tells the loop about itself: its rules, its tracker docs, its review files and its
-Suite. Setup copies a starting version into the repo as files, and the team owns them from then on.
+Suite. Setup copies a starting version into the repo, or into the Sidecar, as files, and the team
+owns them from then on.
 A skill reads a fact about one repo from its Steering and never carries it.
 _Avoid_: Config, guidance, policy
-
-**Steering branch**:
-A long-lived branch that is the default branch plus the Steering, kept only on the loop's own remote.
-When a team Exports, each spec's Target branch is cut from it, so the loop has its Steering and the
-Export branch never holds any.
-_Avoid_: Base branch, setup branch, skillworks branch
 
 **Suite**:
 The checks a repo names for the loop to run before a ticket Lands. The repo owns the list, so each
@@ -325,7 +314,7 @@ _Avoid_: Axis, touchpoint, artefact
 
 **Target branch**:
 The branch a ticket Lands on. It is `main` for a team that pushes straight to it. In PR mode, it is the
-branch the developer named when the design began, or with the Export, a branch the loop cuts from it.
+branch the developer named when the design began.
 _Avoid_: Runway, trunk, base branch
 
 **Tracker**:
