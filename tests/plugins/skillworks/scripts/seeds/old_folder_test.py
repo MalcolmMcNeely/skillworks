@@ -32,7 +32,7 @@ def suite_naming(dockerfile):
 
 def set_up_in_the_old_layout(repo, committed=True):
     for name, place in PLACES.items():
-        text = (SEEDS / name).read_text(encoding="utf-8").replace(seed_steering.DEFAULT_BRANCH_PLACEHOLDER, "main")
+        text = (SEEDS / name).read_text(encoding="utf-8").replace(seed_steering.TARGET_BRANCH_PLACEHOLDER, "main")
         write(repo.work, old(place), text)
         write(repo.work, "{}/.seeds/{}".format(OLD_FOLDER, name), text)
     write(repo.work, "{}/.seeds/README.md".format(OLD_FOLDER),

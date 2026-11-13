@@ -39,7 +39,7 @@ current Seed, to tell your edits from the Plugin's.
 These copies are not to be edited. Edit the Steering file in `{}/` instead.
 """.format(STEERING_FOLDER)
 
-DEFAULT_BRANCH_PLACEHOLDER = "<default-branch>"
+TARGET_BRANCH_PLACEHOLDER = "<target-branch>"
 
 HANDOFF = ".handoff/"
 
@@ -77,15 +77,15 @@ def default_branch(runner, top):
                   "Nothing was written.")
 
 
-def seed_text(name, default, in_sidecar):
-    wanted = (SEEDS / name).read_text(encoding="utf-8").replace(DEFAULT_BRANCH_PLACEHOLDER, default)
-    if not (in_sidecar and name == LOOP_SEED):
+def seed_text(name, target_branch, sidecar_steering):
+    wanted = (SEEDS / name).read_text(encoding="utf-8").replace(TARGET_BRANCH_PLACEHOLDER, target_branch)
+    if not (sidecar_steering and name == LOOP_SEED):
         return wanted
     return with_member(wanted, json.loads(wanted), "tracker", "files")
 
 
-def weigh(top, default, name, place, choices, settled, moving, in_sidecar=False):
-    wanted = seed_text(name, default, in_sidecar)
+def weigh(top, target_branch, name, place, choices, settled, moving, sidecar_steering=False):
+    wanted = seed_text(name, target_branch, sidecar_steering)
     target = top / place
     base = top / BASES / name
     was = moving.read(top, "{}/{}".format(BASES, name))
@@ -98,14 +98,14 @@ def weigh(top, default, name, place, choices, settled, moving, in_sidecar=False)
                    asks=ASKS.get(weighed.asks), used=used)
 
 
-def seed(runner, top, default, choices, settled, in_sidecar=False):
+def seed(runner, top, target_branch, choices, settled, sidecar_steering=False):
     moving = old_folder.planned(top, PLACES.values())
     outcomes = moving.outcomes(runner, top)
     readme = "{}/README.md".format(BASES)
     if moving.read(top, readme) is None:
         outcomes.append(Outcome("wrote {}\n".format(readme), "would write {}\n".format(readme),
                                 writes=[(top / readme, BASES_README)]))
-    outcomes += [weigh(top, default, name, place, choices, settled, moving, in_sidecar)
+    outcomes += [weigh(top, target_branch, name, place, choices, settled, moving, sidecar_steering)
                  for name, place in PLACES.items()]
     used = set().union(*(outcome.used for outcome in outcomes))
     unused = sorted(choice for choice in choices if choice not in used)
@@ -159,8 +159,8 @@ def has_history(runner, top):
 
 
 # architecture-tests refuses under Sidecar Steering, so the step after setup there is the first grill.
-def next_step(runner, top, in_sidecar):
-    then = "/skillworks:grill" if in_sidecar else "/skillworks:architecture-tests"
+def next_step(runner, top, sidecar_steering):
+    then = "/skillworks:grill" if sidecar_steering else "/skillworks:architecture-tests"
     has_glossary = (top / "CONTEXT.md").exists() or (top / "CONTEXT-MAP.md").exists()
     if has_history(runner, top) and not has_glossary:
         return "next step: /skillworks:context-backfill, then {}\n".format(then)
@@ -195,7 +195,7 @@ def main(argv, runner, out, err):
         if sidecar is None:
             outcomes = seed(runner, top, default, choices, settled) + ignore_working_folders(top)
         else:
-            outcomes = (seed(runner, sidecar, PR_MODE, choices, settled, in_sidecar=True)
+            outcomes = (seed(runner, sidecar, PR_MODE, choices, settled, sidecar_steering=True)
                         + exclude_working_folders(runner, top))
         report(outcomes + make_handoff_folder(top), next_step(runner, top, sidecar is not None), out)
         return 0

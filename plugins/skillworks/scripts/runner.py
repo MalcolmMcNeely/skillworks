@@ -69,11 +69,11 @@ ADDED_FOLDER_RULES = "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD"
 
 
 # On Windows the local settings file does not reach a worktree, so the Sidecar's is named outright.
-def given_every_session(sidecar=None):
-    if sidecar is None:
+def given_every_session(sidecar_steering=None):
+    if sidecar_steering is None:
         return list(GIVEN_EVERY_SESSION)
-    given = GIVEN_EVERY_SESSION + ["--add-dir", Path(sidecar).as_posix()]
-    settings = Path(sidecar) / SIDECAR_SETTINGS
+    given = GIVEN_EVERY_SESSION + ["--add-dir", Path(sidecar_steering).as_posix()]
+    settings = Path(sidecar_steering) / SIDECAR_SETTINGS
     if settings.is_file():
         given += ["--settings", settings.as_posix()]
     return given
@@ -81,7 +81,7 @@ def given_every_session(sidecar=None):
 
 # Here and not in the driver, because the driver imports the landing script and it starts a Session too.
 # Only a Session sets this ID and a Child inherits the attribute, so all below name the first Parent.
-def session_changes(trailer=None, sidecar=None):
+def session_changes(trailer=None, sidecar_steering=None):
     # Claude Code sets this, and the session must not read as nested in this one.
     changes = {
         "CLAUDECODE": None,
@@ -89,9 +89,9 @@ def session_changes(trailer=None, sidecar=None):
         "BASH_MAX_TIMEOUT_MS": BASH_LIMIT_MS,
         # Taken away when there is none, so a Session not started for a ticket never inherits one.
         # Under Sidecar Steering no commit carries a trailer, so no Session is handed a ticket.
-        TICKET_VARIABLE: None if sidecar is not None else trailer,
+        TICKET_VARIABLE: None if sidecar_steering is not None else trailer,
     }
-    if sidecar is not None:
+    if sidecar_steering is not None:
         changes[ADDED_FOLDER_RULES] = "1"
     parent = os.environ.get("CLAUDE_CODE_SESSION_ID")
     if not parent:

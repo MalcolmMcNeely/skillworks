@@ -151,7 +151,7 @@ def test_a_spec_whose_last_comment_is_no_name_report_has_none(runner, last):
 
 
 def test_a_commit_names_its_issue_by_number_alone(runner):
-    assert github(runner).trailer("168") == "#168"
+    assert github(runner).commit_ticket("168") == "#168"
     assert github(runner).reference("168") == "168"
 
 

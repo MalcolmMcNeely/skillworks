@@ -165,7 +165,7 @@ class Landing:
         self.target = target
         # Set under Sidecar Steering alone, where it stands in for the trailer.
         self.landed = None
-        self.sidecar = None
+        self.sidecar_steering = None
 
     @property
     def upstream(self):
@@ -313,9 +313,9 @@ class Landing:
         return self.runner.run(
             ["claude", "-p", "--resume", self.session,
              "--permission-mode", self.permission_mode, "--output-format", "json"]
-            + given_every_session(self.sidecar),
+            + given_every_session(self.sidecar_steering),
             self.worktree,
-            session_changes(self.tracker.trailer(self.ticket), self.sidecar),
+            session_changes(self.tracker.commit_ticket(self.ticket), self.sidecar_steering),
             stdin=prompt)
 
     def resolve_conflict(self, base, refused):
@@ -514,8 +514,8 @@ class Landing:
         # The worktree script read the main checkout's settings, so a landing handed none reads the same ones.
         # The Tracker is read before the push, so a landing never pushes and then finds it has none.
         top = self.main_checkout()
-        self.sidecar = sidecar_steering(top)
-        if self.sidecar:
+        self.sidecar_steering = sidecar_steering(top)
+        if self.sidecar_steering:
             self.landed = Landed(self.runner, top)
         if not self.target or self.tracker is None:
             self.tracker = self.tracker or tracker_for(self.runner, top, self.spec)
@@ -537,7 +537,7 @@ class Landing:
         if self.landed is not None:
             return
         # A commit with no trailer can never be traced back, and a ticket can make more than one.
-        mine = self.tracker.trailer(self.ticket)
+        mine = self.tracker.commit_ticket(self.ticket)
         for sha in self.ticket_commits():
             named = self.trailer_of(sha)
             if not named:
@@ -585,13 +585,13 @@ class Landing:
     # Still inside the Turn, so no other landing on the branch can write between the push and the list.
     def list_landed(self, landing):
         try:
-            self.landed.add(self.target, self.tracker.trailer(self.ticket), landing)
+            self.landed.add(self.target, self.tracker.commit_ticket(self.ticket), landing)
         except Stop as stop:
             raise refusal("{} landed on {}, and the Sidecar would not list its commits, so no check "
                           "will count them as {}'s. List them by hand in {}, one line each as "
                           "<branch><TAB><commit><TAB>{}:\n{}\nThe Sidecar said: {}".format(
                               self.named, self.target, self.named, self.landed.path.as_posix(),
-                              self.tracker.trailer(self.ticket), "\n".join(landing),
+                              self.tracker.commit_ticket(self.ticket), "\n".join(landing),
                               stop.said.strip()))
         self.say("{} listed {} in the Sidecar".format(
             self.named, "its commit" if len(landing) == 1 else "its {} commits".format(len(landing))))

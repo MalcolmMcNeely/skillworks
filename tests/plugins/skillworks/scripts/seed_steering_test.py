@@ -56,7 +56,7 @@ def seeded(name):
 
 
 def seeded_for(name, default_branch):
-    return seeded(name).replace(seed_steering.DEFAULT_BRANCH_PLACEHOLDER, default_branch)
+    return seeded(name).replace(seed_steering.TARGET_BRANCH_PLACEHOLDER, default_branch)
 
 
 def test_an_empty_repo_gets_every_seed(repo, runner):

@@ -348,7 +348,7 @@ class Files:
     def spec_named(self, spec):
         return spec
 
-    def trailer(self, ticket):
+    def commit_ticket(self, ticket):
         return self.reference(ticket)
 
     def close_asked(self, ticket):

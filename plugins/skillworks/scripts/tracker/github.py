@@ -133,7 +133,7 @@ class GitHub:
     def spec_named(self, spec):
         return "#" + spec
 
-    def trailer(self, ticket):
+    def commit_ticket(self, ticket):
         return self.named(ticket)
 
     # A failed read is not a ticket in any state.

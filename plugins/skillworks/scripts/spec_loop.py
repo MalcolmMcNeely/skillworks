@@ -248,23 +248,23 @@ def heading_of(axis):
     return "## " + axis[0].upper() + axis[1:]
 
 
-def owed(tracker, ticket, step, check, sidecar_steered=False):
+def owed(tracker, ticket, step, check, sidecar_steering=False):
     if check == "axis-reported":
         return ("You have not written your report under the heading {}. Write it, with your "
                 "findings or a statement that you found none.\n".format(heading_of(step.name)))
     if check == "tree-changed":
         return ("You have changed nothing in the worktree. Build what ticket {} asks, and leave "
-                "the change uncommitted.\n".format(tracker.trailer(ticket)))
-    if check == "new-commit" and sidecar_steered:
+                "the change uncommitted.\n".format(tracker.commit_ticket(ticket)))
+    if check == "new-commit" and sidecar_steering:
         return "You have not committed the work. Commit it, with no trailer in the message.\n"
     if check == "new-commit":
         return ("You have not committed the work. Commit it, with Ticket: {} in the message's "
-                "trailer.\n".format(tracker.trailer(ticket)))
+                "trailer.\n".format(tracker.commit_ticket(ticket)))
     if check == "ticket-trailer":
         return ("Git reads no Ticket: {0} trailer in a commit you made. Git reads trailers only "
                 "from the last paragraph of the message, so put Ticket: {0} in that paragraph, "
                 "with no blank line between it and the other trailers, and amend the commit.\n"
-                .format(tracker.trailer(ticket)))
+                .format(tracker.commit_ticket(ticket)))
     if check == "tree-clean":
         return ("The worktree still holds uncommitted changes. Commit them or remove them, so "
                 "the tree is clean.\n")
@@ -668,7 +668,7 @@ class Loop:
     def git(self, repo, *args):
         return self.runner.run(["git", "-C", as_git_path(repo)] + [str(a) for a in args])
 
-    def sidecar(self):
+    def sidecar_steering(self):
         return sidecar_steering(self.root)
 
     # Recorded before the Session starts, so a run that stops mid-Session still knows who was working.
@@ -685,13 +685,13 @@ class Loop:
     # The prompt goes on stdin, because Windows ends a command line at 32,767 characters.
     def claude_p(self, prompt, *rest, ticket=None):
         rest = [str(a) for a in rest] or self.new_session()
-        sidecar = self.sidecar()
+        sidecar_steering = self.sidecar_steering()
         return self.runner.run(
             ["claude", "-p"] + rest
             + ["--permission-mode", self.permission_mode, "--output-format", "json"]
-            + given_every_session(sidecar),
+            + given_every_session(sidecar_steering),
             self.job_worktree,
-            session_changes(self.tracker.trailer(ticket) if ticket else None, sidecar),
+            session_changes(self.tracker.commit_ticket(ticket) if ticket else None, sidecar_steering),
             stdin=prompt)
 
     # A path comes back on stdout, so a reason takes stderr, and the log too for a background run.
@@ -821,7 +821,7 @@ class Loop:
     # Under Sidecar Steering no commit carries a trailer, so a check for one could only fail.
     def checks_of(self, step):
         checks = step.checks.split()
-        if self.sidecar() is None:
+        if self.sidecar_steering() is None:
             return checks
         return [check for check in checks if check != "ticket-trailer"]
 
@@ -853,7 +853,7 @@ class Loop:
         said = self.git(self.job_worktree, "log", "--format=%(trailers:key=Ticket,valueonly)%x00",
                         self.ticket_base + "..HEAD").out
         return all("".join(c for c in named.strip().split("\n")[0] if not c.isspace())
-                   == self.tracker.trailer(ticket)
+                   == self.tracker.commit_ticket(ticket)
                    for named in said.split("\0")[:-1])
 
     # --- the Edit an axis made -----------------------------------------------
@@ -1015,8 +1015,8 @@ class Loop:
             nudge += 1
             self.say("NUDGE {} {:<13}{} of {}, failed {}".format(
                 self.named(ticket), step.name, nudge, NUDGES, " ".join(failed)))
-            sidecar_steered = self.sidecar() is not None
-            ran = self.claude_p("".join(owed(self.tracker, ticket, step, check, sidecar_steered)
+            sidecar_steering = self.sidecar_steering() is not None
+            ran = self.claude_p("".join(owed(self.tracker, ticket, step, check, sidecar_steering)
                                         for check in failed) + NUDGE_TAILS[step.told],
                                 "--resume", field(held, "session_id"), ticket=ticket)
             appended(reasons, ran.err)
@@ -1291,7 +1291,7 @@ class Loop:
     def dry_run(self):
         # The files Tracker keeps no claims, so it names nobody to claim as.
         me = getattr(self.tracker, "me", "")
-        self.say("DRY   repo={}{}".format(self.tracker.kept_in(), "  me=" + me if me else ""))
+        self.say("DRY   kept_in={}{}".format(self.tracker.kept_in(), "  me=" + me if me else ""))
         self.say("DRY   spec {}: {}".format(self.spec_named(), self.spec_title))
         self.read_shape()
 

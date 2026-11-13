@@ -72,7 +72,7 @@ def commits_and_tickets(tracker, spec, base, wait, branch=None):
     branch = branch or branch_read(tracker, spec)
     fetched(tracker, branch, wait)
     base = checked_base(tracker, base)
-    named = {tracker.trailer(ticket) for ticket in tracker.tickets(spec)}
+    named = {tracker.commit_ticket(ticket) for ticket in tracker.tickets(spec)}
     return with_tickets(tracker, branch, after(tracker, base, branch)), named
 
 
@@ -146,7 +146,7 @@ def main(argv, runner, out, err, wait, where=None):
         tracker = opened(runner, where, spec)
         commits, named = commits_and_tickets(tracker, spec, argv[1], wait)
         if only is not None:
-            named = {tracker.trailer(only)} & named
+            named = {tracker.commit_ticket(only)} & named
         out.write("\n".join(printed(tracker, commit, tickets & named)
                             for commit, tickets in commits if tickets & named))
         return 0

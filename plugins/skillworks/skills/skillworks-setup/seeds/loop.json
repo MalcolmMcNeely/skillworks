@@ -1,6 +1,6 @@
 {
   "tracker": "github",
-  "target-branch": "<default-branch>",
+  "target-branch": "<target-branch>",
   "co-authored-by": "hide",
   "session-trailer": "show"
 }
