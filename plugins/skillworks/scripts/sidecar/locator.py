@@ -1,5 +1,3 @@
-# Apart from the Sidecar's writer, because steering-file runs with no packages and the writer needs filelock.
-
 from pathlib import Path
 
 from stop import refusal

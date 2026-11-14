@@ -30,5 +30,9 @@ def test_a_wrapper_that_asks_for_filelock_with_no_version_breaks_the_rule(tmp_pa
     assert wrappers_without_filelock(tmp_path) == ["spec-commits"]
 
 
+def test_the_plugin_holds_wrappers_for_the_rule_to_judge():
+    assert any(path.is_file() for path in (PLUGIN / "bin").iterdir())
+
+
 def test_every_wrapper_in_the_plugin_asks_uv_for_filelock():
     assert wrappers_without_filelock(PLUGIN / "bin") == []
