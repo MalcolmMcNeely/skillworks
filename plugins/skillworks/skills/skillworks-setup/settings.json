@@ -52,6 +52,10 @@
     "skillworks@skillworks": true
   },
   "autoMemoryEnabled": false,
+  "autoCompactEnabled": false,
+  "idleCompaction": false,
+  "disableWorkflows": true,
+  "disableClaudeAiConnectors": true,
   "promptCacheTtl": "1h",
   "subagentPromptCacheTtl": "1h"
 }

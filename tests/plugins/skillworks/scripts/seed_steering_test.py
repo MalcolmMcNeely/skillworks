@@ -3053,6 +3053,75 @@ def test_the_steering_page_names_the_cache_keys():
     assert "`subagentPromptCacheTtl`" in row
 
 
+FEATURE_DEFAULTS = {
+    "autoCompactEnabled": False,
+    "idleCompaction": False,
+    "disableWorkflows": True,
+    "disableClaudeAiConnectors": True,
+}
+
+
+def test_the_settings_file_turns_off_compaction_workflows_and_claude_ai_connectors():
+    shipped = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))
+
+    assert {key: shipped.get(key) for key in FEATURE_DEFAULTS} == FEATURE_DEFAULTS
+
+
+def test_the_settings_step_settles_each_feature_key_by_the_rule_it_uses_for_memory():
+    step = setup_section("### 6. Write the settings")
+    settle = [line for line in step.split("\n") if line.startswith("- Settle `autoMemoryEnabled`")]
+    rules = " ".join(line for line in step.split("\n") if line.startswith("| "))
+
+    assert len(settle) == 1
+    for key in FEATURE_DEFAULTS:
+        assert "`{}`".format(key) in settle[0], key
+    assert "| The key is missing, or no file | Set it to its default." in rules
+    assert "| The default | Nothing. |" in rules
+    assert "| The other value | Show the user the key and what it costs. Ask which to keep." in rules
+
+
+def test_the_settings_step_gives_each_feature_key_its_default_and_its_cost():
+    step = setup_section("### 6. Write the settings")
+
+    for key, value in FEATURE_DEFAULTS.items():
+        rows = [line for line in step.split("\n") if line.startswith("| `{}` |".format(key))]
+        assert len(rows) == 1, key
+        assert "| `{}` |".format(json.dumps(value)) in rows[0], key
+
+
+def test_the_settings_step_reads_the_feature_lines_out_in_the_one_agreement_pass():
+    step = " ".join(setup_section("### 6. Write the settings").split())
+
+    assert ("Read the four lines that turn off auto-compaction, idle compaction, workflows and the "
+            "claude.ai connectors out in the same pass.") in step
+
+
+def test_the_outputs_give_one_reason_for_each_feature_default():
+    outputs = (SETUP / "SKILL.md").read_text(encoding="utf-8").split("## Process", 1)[0]
+
+    for key, value in FEATURE_DEFAULTS.items():
+        rows = [line for line in outputs.split("\n")
+                if line.startswith("| `\"{}\": {}`".format(key, json.dumps(value)))]
+        assert len(rows) == 1, key
+
+
+def test_the_setup_page_lists_each_feature_default_with_a_reason():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+
+    for key, value in FEATURE_DEFAULTS.items():
+        rows = [line for line in page.split("\n")
+                if line.startswith("- `\"{}\": {}`".format(key, json.dumps(value)))]
+        assert len(rows) == 1, key
+
+
+def test_the_steering_page_names_each_feature_key_and_how_to_get_the_feature_back():
+    row = settings_row("steering.md")
+
+    for key in FEATURE_DEFAULTS:
+        assert "`{}`".format(key) in row, key
+    assert "set its key to the other value" in row
+
+
 POINTER_STEP = "### 4. Point CLAUDE.md at the docs"
 
 

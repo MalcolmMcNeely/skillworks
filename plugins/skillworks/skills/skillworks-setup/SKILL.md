@@ -34,6 +34,10 @@ The outputs:
 | Three trailer rules in `.git/config`, written by the Plugin's hook and not by setup, on the first commit it rewrites in each clone | `trailer.Skillworks-Session.ifExists=addIfDifferent`, `trailer.Co-Authored-By.ifExists=addIfDifferent` and `trailer.Ticket.ifExists=replace`. They make a typed `Ticket` line give way to the hook's, and keep an amend by the same Session from adding a line twice. They sit in the config and not in the command, so a team's allow rule for `git commit` still matches. Setup writes nothing for them. |
 | `"promptCacheTtl": "1h"` and `"subagentPromptCacheTtl": "1h"` in `.claude/settings.json` | A loop Session waits on the Suite and on its sub-agents for longer than the default five minutes of prompt cache. With one hour, each ticket reads its prompt from a warm cache and does not pay for a cold one. |
 | `"autoMemoryEnabled": false` in `.claude/settings.json` | Every Load comes from the repository. Claude Code keeps memory files under `~/.claude`, on the machine and outside the repository, and loads them into every session. With memory on, one commit steers two machines differently, and a run cannot be read back from what the repository holds. With it off, one commit steers every machine the same way. The memory files stay on disk, so removing the line brings them back. |
+| `"autoCompactEnabled": false` in `.claude/settings.json` | A Session that fills its context stops, and does not compact and carry on in the Dumb zone. |
+| `"idleCompaction": false` in `.claude/settings.json` | A Grill stays in one unbroken context when the developer steps away, also when they turn auto-compaction back on. |
+| `"disableWorkflows": true` in `.claude/settings.json` | One workflow can start dozens of agents and use a large number of tokens. |
+| `"disableClaudeAiConnectors": true` in `.claude/settings.json` | The loop and most repos never use the claude.ai connectors, so they cost context on every turn for nothing. |
 
 ## Process
 
@@ -194,14 +198,22 @@ If the file exists, merge:
 - Add the missing entries to `permissions.allow`. Remove none.
 - Add `extraKnownMarketplaces.skillworks` and `enabledPlugins["skillworks@skillworks"]` where missing. If either is there with another value, show the user both and ask which to keep.
 - Add `promptCacheTtl` and `subagentPromptCacheTtl` where missing, each as `"1h"`. Where the team set one, keep its value.
-- Settle `autoMemoryEnabled` by the table below.
+- Settle `autoMemoryEnabled`, `autoCompactEnabled`, `idleCompaction`, `disableWorkflows` and `disableClaudeAiConnectors`, each one by the two tables below.
 - Leave every other key as the user has it.
+
+| Key | Default | What the other value costs |
+|---|---|---|
+| `autoMemoryEnabled` | `false` | Memory files on each machine steer the loop, so it runs differently from one machine to the next. |
+| `autoCompactEnabled` | `false` | A Session that fills its context compacts and carries on in the Dumb zone, and does not stop. |
+| `idleCompaction` | `false` | A Grill left idle compacts, and does not stay in one unbroken context. |
+| `disableWorkflows` | `true` | One workflow can start dozens of agents and use a large number of tokens. |
+| `disableClaudeAiConnectors` | `true` | Every claude.ai connector loads into every Session, and costs context on every turn. |
 
 | What is there | What to do |
 |---|---|
-| No `autoMemoryEnabled`, or no file | Set it to `false`. Leave every other key alone. |
-| `false` | Nothing. |
-| `true` | Show the user the key and what it costs: memory files on each machine steer the loop, so it runs differently from one machine to the next. Ask which to keep. Never change it without asking. |
+| The key is missing, or no file | Set it to its default. Leave every other key alone. |
+| The default | Nothing. |
+| The other value | Show the user the key and what it costs. Ask which to keep. Never change it without asking. |
 
 Ask the team one question: should commits and pull requests credit Claude? The one answer covers both. Offer two answers. On a first run, suggest `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/skillworks/loop.json` already names an answer, a team's answer from an earlier run, suggest that one instead.
 
@@ -212,7 +224,7 @@ The command writes the answer into `co-authored-by` in `docs/skillworks/loop.jso
 
 Settle `co-authored-by` and `attribution` with `set-co-authored-by` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
 
-Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the credit answer out with it. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all three knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
+Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the credit answer out with it. Read the four lines that turn off auto-compaction, idle compaction, workflows and the claude.ai connectors out in the same pass. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all of it knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
 
 Without Sidecar Steering, leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
 
