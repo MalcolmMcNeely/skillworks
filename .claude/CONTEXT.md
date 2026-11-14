@@ -237,7 +237,8 @@ _Avoid_: Progress, status, state
 
 **PR mode**:
 The way a team works when it reviews each spec as one pull request. The developer names the spec's
-branch, and Skillworks makes it. The developer opens the pull request.
+branch, and Skillworks makes it, or uses it when the developer made it already. The developer opens
+the pull request.
 _Avoid_: Spec mode
 
 **Proof**:

@@ -1,4 +1,4 @@
-# PR mode makes each spec's branch here, so the developer's checkout never leaves the default branch.
+# PR mode makes or adopts each spec's branch here, so the developer's checkout never switches branch.
 
 import os
 import sys
@@ -31,11 +31,6 @@ def free_name(runner, top, name, default):
         raise refused("{} is not a name git takes for a branch.".format(name))
     if name == default:
         raise refused("{0} is the default branch, and a spec needs a branch of its own. Name another.".format(name))
-    asked = git(runner, top, "ls-remote", "--heads", "origin", "refs/heads/" + name)
-    if asked.status != 0:
-        raise refused("origin did not answer: {}".format((asked.err or asked.out).strip()))
-    if asked.out.strip():
-        raise refused("{} is already on origin. Name another.".format(name))
     tracker = tracker_for(runner, top)
     problem = tracker.connect()
     if problem:
@@ -43,8 +38,30 @@ def free_name(runner, top, name, default):
     held = tracker.open_spec_branches()
     if name in held:
         raise refused("Open spec {} already names {}. Name another.".format(held[name], name))
-    if git(runner, top, "rev-parse", "--verify", "--quiet", "refs/heads/" + name).status == 0:
-        raise refused("{} is already a branch in this clone. Name another.".format(name))
+
+
+def on_origin(runner, top, name):
+    asked = git(runner, top, "ls-remote", "--heads", "origin", "refs/heads/" + name)
+    if asked.status != 0:
+        raise refused("origin did not answer: {}".format((asked.err or asked.out).strip()))
+    return bool(asked.out.strip())
+
+
+# Git checks a branch out in one worktree only, so a branch the developer is on is written where it is.
+def worktree_on(runner, top, name):
+    path = None
+    for line in git(runner, top, "worktree", "list", "--porcelain").out.splitlines():
+        if line.startswith("worktree "):
+            path = line[len("worktree "):]
+        elif line == "branch refs/heads/" + name:
+            return path
+    return None
+
+
+def pushed(runner, top, args):
+    done = git(runner, top, *args)
+    if done.status != 0:
+        raise refused("git {} failed: {}".format(args[0], (done.err or done.out).strip()))
 
 
 def spec_branch(runner, where, name):
@@ -52,22 +69,32 @@ def spec_branch(runner, where, name):
     top = main.as_posix()
     default = default_branch(runner, top, NOTHING)
     free_name(runner, top, name, default)
+    remote = on_origin(runner, top, name)
+    local = git(runner, top, "rev-parse", "--verify", "--quiet", "refs/heads/" + name).status == 0
+    held = worktree_on(runner, top, name) if local else None
     grill = main / GRILL / name
-    if grill.exists():
+    if held is None and grill.exists():
         raise refused("{} is already there. Remove it, or name another branch.".format(grill.as_posix()))
-    tip = "refs/remotes/origin/" + default
-    for args in (["fetch", "--quiet", "origin", "+refs/heads/{}:{}".format(default, tip)],
-                 ["push", "--quiet", "origin", "{}:refs/heads/{}".format(tip, name)]):
-        done = git(runner, top, *args)
-        if done.status != 0:
-            raise refused("git {} failed: {}".format(args[0], (done.err or done.out).strip()))
-    for args in (["fetch", "--quiet", "origin", "+refs/heads/{0}:refs/remotes/origin/{0}".format(name)],
-                 ["worktree", "add", "--quiet", "--track", "-b", name, grill.as_posix(), "origin/" + name]):
+    if not remote:
+        if local:
+            pushed(runner, top, ["push", "--quiet", "origin", "refs/heads/{0}:refs/heads/{0}".format(name)])
+        else:
+            tip = "refs/remotes/origin/" + default
+            pushed(runner, top, ["fetch", "--quiet", "origin", "+refs/heads/{}:{}".format(default, tip)])
+            pushed(runner, top, ["push", "--quiet", "origin", "{}:refs/heads/{}".format(tip, name)])
+    steps = [["fetch", "--quiet", "origin", "+refs/heads/{0}:refs/remotes/origin/{0}".format(name)]]
+    if not local:
+        steps.append(["worktree", "add", "--quiet", "--track", "-b", name, grill.as_posix(), "origin/" + name])
+    else:
+        if held is None:
+            steps.append(["worktree", "add", "--quiet", grill.as_posix(), name])
+        steps.append(["branch", "--quiet", "--set-upstream-to=origin/" + name, name])
+    for args in steps:
         done = git(runner, top, *args)
         if done.status != 0:
             raise refusal("{} is on origin, and git {} failed: {}".format(
                 name, args[0], (done.err or done.out).strip()))
-    return grill.as_posix()
+    return held or grill.as_posix()
 
 
 def main(argv, runner, out, err, where=None):

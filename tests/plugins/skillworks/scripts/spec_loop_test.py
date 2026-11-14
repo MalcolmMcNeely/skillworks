@@ -5183,11 +5183,11 @@ def test_in_pr_mode_the_target_branch_page_says_you_name_the_branch_at_the_grill
         assert named in text, named
 
 
-def test_in_pr_mode_the_grill_page_says_the_grill_asks_for_the_branch_first_and_stays_on_the_default_branch():
+def test_in_pr_mode_the_grill_page_says_the_grill_asks_for_the_branch_first_and_never_switches_branch():
     text = " ".join((ROOT / GRILL_PAGE).read_text(encoding="utf-8").split())
 
     for named in ["the grill asks for the spec's branch name first",
-                  "your checkout stays on the default branch"]:
+                  "your checkout never switches branch"]:
         assert named in text, named
 
 

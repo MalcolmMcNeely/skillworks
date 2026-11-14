@@ -60,11 +60,11 @@ The spec is a folder in `.specs/` in the Sidecar, a local git repo beside the re
 
 ## The spec's branch
 
-In PR mode the spec's Target branch is the branch the developer named at the grill. `spec-branch` made it on `origin`, and opened the grill worktree on it, at the path it printed. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
+In PR mode the spec's Target branch is the branch the developer named at the grill. `spec-branch` made it on `origin`, or used it when it was already there, and opened the grill worktree on it, at the path it printed. The loop reads the branch from the spec's `## Branch` section with `github`, and from its frontmatter with `files`, so a spec without it stops the loop.
 
 **Before the spec is published**, commit what the conversation changed in the grill worktree, then pull and push there, with `git -C <the grill worktree>` in front of each git step. Name the branch last when you publish.
 
-**After the spec is published**, remove the grill worktree, so the next grill can open one of its own. Run `git -C . worktree remove <the grill worktree>` from the checkout this session started in, because a worktree is never removed from inside itself. The branch stays on `origin`, and the loop Lands each ticket there. A remove that refuses, because the grill worktree holds a change, leaves the spec published: tell the developer what it said.
+**After the spec is published**, remove the grill worktree, so the next grill can open one of its own. Run `git -C . worktree remove <the grill worktree>` from the checkout this session started in, because a worktree is never removed from inside itself. The branch stays on `origin`, and the loop Lands each ticket there. A remove that refuses, because the grill worktree holds a change, leaves the spec published: tell the developer what it said. Remove only a grill worktree under `.spec-loop/grill/`. A path anywhere else is the developer's own checkout or worktree, so leave it.
 
 Switch no branch in the checkout. Open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request from the spec's branch after the loop Lands the spec's tickets on it.
 

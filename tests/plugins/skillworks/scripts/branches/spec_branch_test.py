@@ -139,14 +139,24 @@ def test_the_default_branch_is_refused_and_nothing_is_pushed(work):
     assert (ran.status, "main is the default branch" in ran.err, work.on_origin()) == (1, True, ["main"]), said(ran)
 
 
-def test_a_name_already_on_origin_is_refused_and_nothing_is_pushed(work):
+def test_a_name_already_on_origin_opens_the_grill_worktree_at_that_branchs_own_tip(work):
     git(work.repo.work, "push", "--quiet", "origin", "main:" + NAME)
     before = work.tip_on_origin(NAME)
     work.repo.advance_origin("ahead")
 
     ran = work.run(NAME)
 
-    assert (ran.status, "already on origin" in ran.err, work.tip_on_origin(NAME)) == (1, True, before), said(ran)
+    opened = git(work.grill(NAME), "rev-parse", "HEAD").strip()
+    assert (ran.status, opened, work.tip_on_origin(NAME)) == (0, before, before), said(ran)
+
+
+def test_a_name_already_on_origin_opens_a_grill_worktree_that_pushes_to_it(work):
+    git(work.repo.work, "push", "--quiet", "origin", "main:" + NAME)
+
+    work.run(NAME)
+
+    upstream = git(work.grill(NAME), "rev-parse", "--abbrev-ref", "@{upstream}").strip()
+    assert upstream == "origin/" + NAME
 
 
 def test_a_name_an_open_spec_in_the_sidecar_names_is_refused_and_nothing_is_pushed(work):
@@ -188,12 +198,42 @@ def test_a_name_git_would_not_take_is_refused_and_nothing_is_pushed(work):
     assert (ran.status, work.on_origin()) == (1, ["main"]), said(ran)
 
 
-def test_a_local_branch_of_the_name_is_refused_and_nothing_is_pushed(work):
-    git(work.repo.work, "branch", NAME)
+def test_a_branch_only_in_this_clone_is_pushed_to_origin_at_its_own_tip(work):
+    git(work.repo.work, "switch", "--quiet", "-c", NAME)
+    git(work.repo.work, "commit", "--quiet", "--allow-empty", "-m", "Mine")
+    mine = git(work.repo.work, "rev-parse", "HEAD").strip()
+    git(work.repo.work, "switch", "--quiet", "main")
 
     ran = work.run(NAME)
 
-    assert (ran.status, "already a branch" in ran.err, work.on_origin()) == (1, True, ["main"]), said(ran)
+    assert (ran.status, work.tip_on_origin(NAME)) == (0, mine), said(ran)
+
+
+def test_a_branch_in_this_clone_and_on_origin_opens_a_grill_worktree_that_pushes_to_it(work):
+    git(work.repo.work, "branch", NAME)
+    git(work.repo.work, "push", "--quiet", "origin", NAME)
+
+    work.run(NAME)
+
+    upstream = git(work.grill(NAME), "rev-parse", "--abbrev-ref", "@{upstream}").strip()
+    assert upstream == "origin/" + NAME
+
+
+def test_the_branch_the_checkout_is_on_is_used_in_the_checkout_itself(work):
+    git(work.repo.work, "switch", "--quiet", "-c", NAME)
+
+    ran = work.run(NAME)
+
+    assert (ran.status, ran.out, work.grill(NAME).exists()) == (0, work.repo.work.as_posix() + "\n", False), said(ran)
+
+
+def test_the_branch_the_checkout_is_on_is_pushed_to_origin_when_it_is_not_there(work):
+    git(work.repo.work, "switch", "--quiet", "-c", NAME)
+
+    ran = work.run(NAME)
+
+    upstream = git(work.repo.work, "rev-parse", "--abbrev-ref", "@{upstream}").strip()
+    assert (ran.status, NAME in work.on_origin(), upstream) == (0, True, "origin/" + NAME), said(ran)
 
 
 def test_a_refusal_says_that_nothing_was_pushed(work):

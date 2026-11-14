@@ -84,7 +84,7 @@ So commit every change to `CONTEXT.md` or an ADR as soon as it settles, and push
 
 ### The spec's branch
 
-In PR mode the Target branch is the branch the developer named at the grill. `spec-branch` made it, and opened the grill worktree on it, at the path it printed. The checkout this session started in stays on the default branch.
+In PR mode the Target branch is the branch the developer named at the grill. `spec-branch` made it, or used it when it was already there, and opened the grill worktree on it, at the path it printed. When the checkout was on that branch, the grill worktree is the checkout. The checkout this session started in stays on the branch it is on.
 
 **Read the glossary and the ADRs from the grill worktree**, and not from the checkout. A word settled earlier in this grill is there, and the checkout does not have it. Every path above is a path inside the grill worktree.
 

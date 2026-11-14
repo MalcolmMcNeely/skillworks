@@ -17,9 +17,10 @@ in the repo.
 
 In PR mode, `"target-branch": "pr"`, the grill asks for the spec's branch name first, before any
 design question. Skillworks makes that branch on `origin` and opens a grill worktree on it, under
-`.spec-loop/grill/`. A name it refuses is asked for again. Each word and ADR is written, committed and
-pushed in the grill worktree, so your checkout stays on the default branch for the whole grill, and
-you can start a second grill beside the first. [The Target branch](target-branch.md) says more.
+`.spec-loop/grill/`. A branch you made already is used as it is, and when your checkout is on it, the
+grill writes in your checkout. A name it refuses is asked for again. Each word and ADR is written,
+committed and pushed in the grill worktree, so your checkout never switches branch. Start on the
+default branch, and you can start a second grill beside the first. [The Target branch](target-branch.md) says more.
 
 A settled ADR goes to the folder `adr-folder` names, in `docs/skillworks/domain.md`, in the shape
 `docs/skillworks/adr-format.md` gives. Its number is one above the highest in that folder, as wide as the

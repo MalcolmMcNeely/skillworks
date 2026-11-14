@@ -259,10 +259,9 @@ it finds from `origin/HEAD`:
 FAIL  trunk is the default branch, and a spec needs a branch of its own. Name another. Nothing was pushed.
 ```
 
-A name already on `origin`, or a name an open spec holds:
+A name an open spec holds:
 
 ```
-FAIL  feature/PROJ-12/slug is already on origin. Name another. Nothing was pushed.
 FAIL  Open spec 12 already names feature/PROJ-12/slug. Name another. Nothing was pushed.
 ```
 

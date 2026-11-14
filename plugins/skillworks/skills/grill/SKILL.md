@@ -22,9 +22,9 @@ Read `target-branch` in `steering-file docs/skillworks/loop.json`:
   spec-branch <name>
   ```
 
-  It makes the branch on `origin` from the default branch, opens the grill worktree on it, and prints the worktree's path. That branch is the Target branch, and the grill worktree is where every word and ADR is read and written. Keep the name and the path: `skillworks:domain-modeling` writes there, and `skillworks:to-spec` publishes with the name. When it refuses, the name cannot hold a spec, such as the default branch, a name already on `origin`, or a name an open spec holds. Pass on what it said, ask for the name again, and run `spec-branch` with the new name. Ask no design question until it prints a path.
+  It makes the branch on `origin` from the default branch, opens the grill worktree on it, and prints the worktree's path. A branch that is already there, on `origin` or in this clone, is used as it is. When the checkout is on that branch, the checkout is the grill worktree, and the path it prints is the checkout's. That branch is the Target branch, and the grill worktree is where every word and ADR is read and written. Keep the name and the path: `skillworks:domain-modeling` writes there, and `skillworks:to-spec` publishes with the name. When it refuses, the name cannot hold a spec, such as the default branch, or a name an open spec holds. Pass on what it said, ask for the name again, and run `spec-branch` with the new name. Ask no design question until it prints a path.
 
-The checkout stays on the default branch for the whole grill, so the developer can start a second grill beside this one. In PR mode switch no branch in the checkout, open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the spec's branch, after the loop Lands the spec's tickets on it.
+The checkout stays on the branch it is on for the whole grill. A developer who starts on the default branch can start a second grill beside this one. In PR mode switch no branch in the checkout, open no pull request, and make no `gh` call to find the default branch. The developer opens the one pull request, from the spec's branch, after the loop Lands the spec's tickets on it.
 
 ### 2. Interview under both disciplines
 

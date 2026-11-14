@@ -1327,8 +1327,8 @@ def test_on_a_refused_name_the_grill_asks_for_the_name_again():
         assert named in refused, named
 
 
-def test_in_pr_mode_the_grill_stays_on_the_default_branch():
-    assert "The checkout stays on the default branch" in grill_cut(skill_text("grill"))
+def test_in_pr_mode_the_grill_never_switches_the_checkouts_branch():
+    assert "The checkout stays on the branch it is on" in grill_cut(skill_text("grill"))
 
 
 def test_only_the_grill_runs_spec_branch():
