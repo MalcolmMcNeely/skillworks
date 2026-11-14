@@ -754,6 +754,42 @@ def test_under_sidecar_steering_pr_mode_with_the_files_tracker_passes_on_the_sid
     assert "ok    target-branch pr, each reviewed into main" in ran.out
 
 
+def sidecar_settings(work, text):
+    folder = work.root / "work-skillworks" / ".claude"
+    folder.mkdir(exist_ok=True)
+    (folder / "settings.json").write_text(text, encoding="utf-8", newline="\n")
+    return (folder / "settings.json").as_posix()
+
+
+def under_sidecar_steering(work):
+    work.serve(GITLAB, "main")
+    sidecar_steering(work, "pr", "files")
+    work.runner.hide("gh")
+
+
+def test_under_sidecar_steering_memory_off_in_the_sidecars_settings_draws_no_warning(work):
+    under_sidecar_steering(work)
+    sidecar_settings(work, '{"autoMemoryEnabled": false}')
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert "autoMemoryEnabled is not false" not in said(ran)
+
+
+@pytest.mark.parametrize("text", ['{"autoMemoryEnabled": true}', '{"permissions": {"allow": []}}'])
+def test_under_sidecar_steering_memory_not_off_in_the_sidecars_settings_warns_naming_that_file(work, text):
+    under_sidecar_steering(work)
+    work.settings('{"autoMemoryEnabled": false}')
+    settings_path = sidecar_settings(work, text)
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert ("warn  autoMemoryEnabled is not false in {}, so each session loads memory files only this machine "
+            "holds. Add \"autoMemoryEnabled\": false to that file.\n".format(settings_path)) in ran.out
+
+
 def test_the_preflight_command_fails_with_the_install_link_when_uv_is_missing(tmp_path):
     env = dict(os.environ)
     env["PATH"] = os.pathsep.join(folder for folder in env["PATH"].split(os.pathsep)

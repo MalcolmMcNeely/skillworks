@@ -88,7 +88,7 @@ class Preflight:
             else:
                 self.label(*LABEL)
 
-        check_configuration(self.runner, self.top, self.out)
+        check_configuration(self.runner, self.top, self.out, self.sidecar)
         if not only_checking:
             self.out.write("\nReady. Next: the rest of /skillworks:skillworks-setup.\n")
 
@@ -101,7 +101,7 @@ class Preflight:
         ok(self.out, "CLAUDE.md imports every rule in " + RULES_FOLDER)
 
     def check_sidecar_steering(self):
-        sidecar = sidecar_steering(self.top)
+        self.sidecar = sidecar = sidecar_steering(self.top)
         if sidecar is None:
             return
         steering_on = "the Sidecar holds {}, so Sidecar Steering is on, and it names the ".format(LOOP_FILE)

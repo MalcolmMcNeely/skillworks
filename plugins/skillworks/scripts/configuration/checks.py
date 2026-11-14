@@ -24,20 +24,23 @@ def warn(out, said):
 
 
 # A file that cannot be read says nothing about the setting, so it counts as not false.
-def auto_memory_off(top):
+def auto_memory_off(settings):
     try:
-        held = json.loads((Path(top) / SETTINGS_FILE).read_text(encoding="utf-8"))
+        held = json.loads(settings.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
     return isinstance(held, dict) and held.get("autoMemoryEnabled") is False
 
 
-def check_auto_memory(top, out):
-    if auto_memory_off(top):
+# Under Sidecar Steering the loop is handed the Sidecar's settings, and setup never writes the repo's.
+def check_auto_memory(top, out, sidecar):
+    settings = (sidecar or Path(top)) / SETTINGS_FILE
+    if auto_memory_off(settings):
         ok(out, "auto-memory off")
     else:
+        named = settings.as_posix() if sidecar else SETTINGS_FILE
         warn(out, "autoMemoryEnabled is not false in {}, so each session loads memory files only this "
-                  "machine holds. Add \"autoMemoryEnabled\": false to that file.".format(SETTINGS_FILE))
+                  "machine holds. Add \"autoMemoryEnabled\": false to that file.".format(named))
 
 
 # Claude Code names a project by the path it was opened in, and Windows does not tell letter case apart.
@@ -104,6 +107,6 @@ def check_output_styles(runner, top, out):
         ok(out, "no other plugin forces an output style")
 
 
-def check_configuration(runner, top, out):
-    check_auto_memory(top, out)
+def check_configuration(runner, top, out, sidecar=None):
+    check_auto_memory(top, out, sidecar)
     check_output_styles(runner, top, out)
