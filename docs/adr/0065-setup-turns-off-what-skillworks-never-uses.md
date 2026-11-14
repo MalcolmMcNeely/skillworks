@@ -5,8 +5,10 @@ and each one costs context on every turn. Skillworks is for developers who want 
 do not yet know which of these they need, so setup turns them off in the settings file it already
 writes, for people and the loop alike: a deny entry for each unused tool, plan mode included, since
 the Grill does that job, and `disableWorkflows`, `disableClaudeAiConnectors` and
-`autoCompactEnabled: false`. A Session that fills its context stops, rather than compacting into the
-Dumb zone, and a loop Session that stops fails its step loudly. A developer who wants a feature back
+`autoCompactEnabled: false` and `idleCompaction: false`. A Session that fills its context stops,
+rather than compacting into the Dumb zone, and a loop Session that stops fails its step loudly.
+`autoCompactEnabled: false` already stops idle compaction, and the second key keeps it stopped for a
+developer who turns auto-compaction back on, because a Grill has to stay in one unbroken context. A developer who wants a feature back
 edits the settings.
 
 ## Considered options
