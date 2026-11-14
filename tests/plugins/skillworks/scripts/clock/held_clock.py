@@ -14,6 +14,10 @@ class HeldClock:
     def now(self):
         return self.at
 
+    # Runs no repeat, because a beat falls due while a write holds the lock that beat waits for.
+    def wait(self, seconds):
+        self.at += timedelta(seconds=seconds)
+
     def every(self, seconds, do):
         repeat = {"due": self.at + timedelta(seconds=seconds), "every": timedelta(seconds=seconds),
                   "do": do}
@@ -29,7 +33,8 @@ class HeldClock:
             if not due:
                 break
             repeat = min(due, key=lambda each: each["due"])
-            self.at = repeat["due"]
+            # A repeat that waited has moved time on, and time never runs back.
+            self.at = max(self.at, repeat["due"])
             repeat["due"] += repeat["every"]
             repeat["do"]()
-        self.at = until
+        self.at = max(self.at, until)

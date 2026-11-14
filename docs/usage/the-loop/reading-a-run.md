@@ -36,7 +36,8 @@ ticket's commits to the list in the Sidecar:
 ```
 
 A write of the Position can fail, such as when the pane reads the file at the moment the driver
-replaces it on Windows. The driver then writes a line that names the error, and the loop goes on:
+replaces it on Windows. The driver tries a held file again for up to a second. Only when the write
+still fails does the driver write a line that names the error, and the loop goes on:
 
 ```
 2026-09-28 16:58:10 WARN  the Position was not written, PermissionError: [WinError 5] Access is denied

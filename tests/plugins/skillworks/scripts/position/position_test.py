@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from conftest import ROOT
@@ -308,8 +309,69 @@ def test_a_write_that_fails_puts_one_line_in_the_log_that_names_the_error(loop):
 
     loop.run(SPEC)
 
-    assert [line[line.index("WARN"):] for line in loop.log().splitlines() if "Position" in line] == [
+    assert position_lines(loop) == [
         "WARN  the Position was not written, PermissionError: [Errno 13] Access is denied"]
+
+
+def failing_for(tries, error):
+    failures = iter(range(tries))
+
+    def replace(source, target):
+        if next(failures, None) is not None:
+            raise error
+        os.replace(source, target)
+    return replace
+
+
+def position_lines(loop):
+    return [line[line.index("WARN"):] for line in loop.log().splitlines() if "Position" in line]
+
+
+def test_a_replace_held_a_few_times_within_the_second_lands_the_position_and_logs_nothing(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    seen = []
+
+    def beat_held_three_times():
+        beat_once_with(loop, failing_for(3, HELD))
+        seen.append((position_of(loop)["heartbeat"], position_lines(loop)))
+    sessions.then["review-standards"] = beat_held_three_times
+
+    loop.run(SPEC)
+
+    assert seen[0] == ("2026-01-01T00:00:30Z", [])
+
+
+def test_a_replace_held_every_time_gives_up_after_one_second_of_clock_time(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    spent = []
+
+    def beat_held_throughout():
+        before = loop.clock.now()
+        beat_once_with(loop, held_by_a_reader)
+        spent.append(loop.clock.now() - before)
+    sessions.then["review-standards"] = beat_held_throughout
+
+    loop.run(SPEC)
+
+    assert spent[0] == timedelta(seconds=HEARTBEAT + 1)
+
+
+def test_a_write_that_fails_for_another_reason_is_not_tried_again_and_logs_its_line(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    seen = []
+
+    def beat_on_a_full_disk_once():
+        before = position_of(loop)
+        beat_once_with(loop, failing_for(1, OSError(28, "No space left on device")))
+        seen.append((position_of(loop) == before, position_lines(loop)))
+    sessions.then["review-standards"] = beat_on_a_full_disk_once
+
+    loop.run(SPEC)
+
+    assert seen[0] == (True, ["WARN  the Position was not written, OSError: [Errno 28] No space left on device"])
 
 
 def beat_once_with(loop, replace):

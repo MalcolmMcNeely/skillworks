@@ -613,7 +613,7 @@ class Loop:
             self.position_written(self.last_position)
 
     def position_written(self, position):
-        failed = written_whole(self.log_dir / POSITION, position, self.replace)
+        failed = written_whole(self.log_dir / POSITION, position, self.replace, self.clock)
         if failed is None:
             return
         # A log that cannot be written either has nowhere to say so, and the next write tries again.

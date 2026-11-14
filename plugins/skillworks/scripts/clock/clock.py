@@ -1,12 +1,16 @@
 # Handed in rather than read from the machine, so a test holds time still and moves it on purpose.
 
 import threading
+import time
 from datetime import datetime, timezone
 
 
 class Clock:
     def now(self):
         return datetime.now(timezone.utc)
+
+    def wait(self, seconds):
+        time.sleep(seconds)
 
     # A daemon thread, so a driver that dies is never kept alive by its own heartbeat.
     def every(self, seconds, do):
