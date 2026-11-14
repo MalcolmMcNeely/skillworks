@@ -1,7 +1,3 @@
-# /// script
-# dependencies = ["filelock>=3.16"]
-# ///
-#
 # Land one finished ticket on its Target branch.
 #
 #   land-ticket <worktree> <ticket-number> [session-id] [--spec <spec-number>]

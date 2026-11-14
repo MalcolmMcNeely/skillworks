@@ -57,10 +57,13 @@ the host and not in the Linux image, so a Claude Code release that moves the mod
 
 The loop's scripts live in the Plugin, at `plugins/skillworks/scripts/`, and their tests sit at the
 same path under `tests/`. The script tests build a throwaway repository in a temporary directory and
-touch nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest,
-and `filelock` for the landing lock, are asked for on the command line, because the scripts carry no
-project file. The hook scripts are node, and their tests sit beside the script tests and use the
-test runner built into node, so they add no dependency. node expands the quoted pattern itself.
+touch nothing else. The scripts are Python, so `uv` has to be on PATH for their tests to run. pytest
+and `filelock` are asked for on the command line, because the scripts carry no project file. The
+scripts use `filelock` to take the Turn and to guard the Sidecar. Every wrapper in
+`plugins/skillworks/bin/` asks `uv` for it with `--with "filelock>=3.16"` on its `uv run` line, so a
+new wrapper does the same. A script test reads each wrapper and fails on one that does not. The hook
+scripts are node, and their tests sit beside the script tests and use the test runner built into
+node, so they add no dependency. node expands the quoted pattern itself.
 
 The script tests come in two sets, told apart by one flag on the same path. The commands above run
 the fast set, which answers for `gh` and `claude` through the Runner, so it needs neither installed
