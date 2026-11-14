@@ -38,6 +38,7 @@ The outputs:
 | `"idleCompaction": false` in `.claude/settings.json` | A Grill stays in one unbroken context when the developer steps away, also when they turn auto-compaction back on. |
 | `"disableWorkflows": true` in `.claude/settings.json` | One workflow can start dozens of agents and use a large number of tokens. |
 | `"disableClaudeAiConnectors": true` in `.claude/settings.json` | The loop and most repos never use the claude.ai connectors, so they cost context on every turn for nothing. |
+| `permissions.deny` in `.claude/settings.json` | Each name is a tool Skillworks never calls, and a denied tool costs no context. The plan mode tools are among them, because the Grill does the planning. The list never names `Skill`, `Agent`, `Bash`, `PowerShell`, `Read`, `Edit`, `Write`, `ToolSearch` or `SendMessage`. |
 
 ## Process
 
@@ -196,6 +197,7 @@ If the file exists, merge:
 
 - Keep `$schema` as the file has it, and add it where missing.
 - Add the missing entries to `permissions.allow`. Remove none.
+- Settle `permissions.deny` in the agreement pass below. Its entries are the tools Skillworks never calls. Never deny `Skill`, `Agent`, `Bash`, `PowerShell`, `Read`, `Edit`, `Write`, `ToolSearch` or `SendMessage`, and never turn hooks off.
 - Add `extraKnownMarketplaces.skillworks` and `enabledPlugins["skillworks@skillworks"]` where missing. If either is there with another value, show the user both and ask which to keep.
 - Add `promptCacheTtl` and `subagentPromptCacheTtl` where missing, each as `"1h"`. Where the team set one, keep its value.
 - Settle `autoMemoryEnabled`, `autoCompactEnabled`, `idleCompaction`, `disableWorkflows` and `disableClaudeAiConnectors`, each one by the two tables below.
@@ -224,7 +226,7 @@ The command writes the answer into `co-authored-by` in `docs/skillworks/loop.jso
 
 Settle `co-authored-by` and `attribution` with `set-co-authored-by` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
 
-Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the credit answer out with it. Read the four lines that turn off auto-compaction, idle compaction, workflows and the claude.ai connectors out in the same pass. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all of it knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
+Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the credit answer out with it. Read the four lines that turn off auto-compaction, idle compaction, workflows and the claude.ai connectors out in the same pass. Read out each entry of `permissions.deny` the file is missing, in the same pass, and add only the ones the user agrees to. Remove none. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all of it knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
 
 Without Sidecar Steering, leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
 

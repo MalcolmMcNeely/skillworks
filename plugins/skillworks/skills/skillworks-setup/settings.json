@@ -38,6 +38,21 @@
       "Bash(spec-loop-counts:*)",
       "Bash(context-backfill:*)",
       "Read(~/.claude/plugins/**)"
+    ],
+    "deny": [
+      "AskUserQuestion",
+      "ReportFindings",
+      "ScheduleWakeup",
+      "SendFeedback",
+      "NotebookEdit",
+      "CronCreate",
+      "CronDelete",
+      "CronList",
+      "DesignSync",
+      "EnterPlanMode",
+      "ExitPlanMode",
+      "PushNotification",
+      "RemoteTrigger"
     ]
   },
   "extraKnownMarketplaces": {

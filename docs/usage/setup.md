@@ -147,7 +147,7 @@ Review these before you commit them.
 | `docs/skillworks/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. `agent-skills.md` is the base copy of the `## Agent skills` block, exactly as setup last wrote it. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. Each machine has its own, and nobody commits them. Setup also creates `.handoff/`, where `handoff` saves. `.context-backfill/` holds the Answer sheet of the [Context backfill](context-backfill.md). |
 | `CLAUDE.md` | The `## Agent skills` block. A second run merges the block with your edits to it. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
-| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. The four feature defaults below. An `attribution` block, which setup rewrites from `co-authored-by` each time it runs. On a second run, setup adds a cache key that is missing and keeps one your team set. |
+| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. The four feature defaults below, and the deny list. An `attribution` block, which setup rewrites from `co-authored-by` each time it runs. On a second run, setup adds a cache key that is missing and keeps one your team set. |
 
 The settings turn off four features Skillworks never uses:
 
@@ -158,6 +158,14 @@ The settings turn off four features Skillworks never uses:
 
 On a second run, setup adds a missing key with its default and leaves a key that holds the default
 alone. Where a key holds the other value, setup shows you what that costs and asks which to keep.
+
+The settings also deny the tools Skillworks never calls, so they cost no context:
+
+- `permissions.deny`: `AskUserQuestion`, `ReportFindings`, `ScheduleWakeup`, `SendFeedback`, `NotebookEdit`, `CronCreate`, `CronDelete`, `CronList`, `DesignSync`, `EnterPlanMode`, `ExitPlanMode`, `PushNotification` and `RemoteTrigger`. The Grill does the planning, so the plan mode tools are denied too.
+
+Setup never denies a tool Skillworks calls, such as `Skill`, `Agent`, `Bash` or `Read`. On a second
+run, setup reads out each default it would add back and adds only what you agree to. It removes no
+deny line, so a tool you got back stays back unless you agree to deny it again.
 
 Setup writes nothing under `~/.claude`. Without Sidecar Steering, it leaves
 `.claude/settings.local.json` alone.

@@ -3122,6 +3122,74 @@ def test_the_steering_page_names_each_feature_key_and_how_to_get_the_feature_bac
     assert "set its key to the other value" in row
 
 
+DENIED_TOOLS = [
+    "AskUserQuestion", "ReportFindings", "ScheduleWakeup", "SendFeedback", "NotebookEdit",
+    "CronCreate", "CronDelete", "CronList", "DesignSync", "EnterPlanMode", "ExitPlanMode",
+    "PushNotification", "RemoteTrigger",
+]
+
+
+def tools_skillworks_calls():
+    in_skills = set()
+    for skill in SKILLS.rglob("*.md"):
+        in_skills |= set(re.findall(r"\b([A-Z][A-Za-z]+) tool\b", skill.read_text(encoding="utf-8")))
+    in_hooks = set()
+    hooks = json.loads((PLUGIN / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+    for entries in hooks.values():
+        for entry in entries:
+            in_hooks |= {tool for tool in entry["matcher"].split("|") if tool}
+    assert "Skill" in in_skills and "Bash" in in_hooks
+    never_denied = {"Skill", "Agent", "Bash", "PowerShell", "Read", "Edit", "Write", "ToolSearch", "SendMessage"}
+    return never_denied | in_skills | in_hooks
+
+
+def test_the_settings_file_denies_the_tools_skillworks_never_calls():
+    shipped = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))
+
+    assert shipped["permissions"]["deny"] == DENIED_TOOLS
+
+
+def test_the_settings_file_denies_none_of_the_tools_skillworks_calls():
+    shipped = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))
+    denied = {entry.split("(", 1)[0] for entry in shipped["permissions"]["deny"]}
+
+    assert denied & tools_skillworks_calls() == set()
+
+
+def test_the_settings_step_adds_each_missing_deny_entry_only_with_agreement_and_removes_none():
+    step = " ".join(setup_section("### 6. Write the settings").split())
+
+    assert ("Read out each entry of `permissions.deny` the file is missing, in the same pass, and add "
+            "only the ones the user agrees to. Remove none.") in step
+
+
+def test_the_outputs_give_one_reason_for_the_deny_list():
+    outputs = (SETUP / "SKILL.md").read_text(encoding="utf-8").split("## Process", 1)[0]
+    rows = [line for line in outputs.split("\n")
+            if line.startswith("| `permissions.deny` in `.claude/settings.json` |")]
+
+    assert len(rows) == 1
+    assert "the Grill" in rows[0]
+
+
+def test_the_setup_page_lists_each_denied_tool_and_what_a_second_run_adds_back():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+    flat = " ".join(page.split())
+    rows = [line for line in page.split("\n") if line.startswith("- `permissions.deny`")]
+
+    assert len(rows) == 1
+    for tool in DENIED_TOOLS:
+        assert "`{}`".format(tool) in rows[0], tool
+    assert "reads out each default it would add back and adds only what you agree to" in flat
+
+
+def test_the_steering_page_names_the_deny_list_and_how_to_get_a_tool_back():
+    row = settings_row("steering.md")
+
+    assert "`permissions.deny`" in row
+    assert "delete its deny line" in row
+
+
 POINTER_STEP = "### 4. Point CLAUDE.md at the docs"
 
 
