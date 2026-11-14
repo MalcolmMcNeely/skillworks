@@ -295,8 +295,8 @@ fixed size and two records can hold what one Draft holds.
 _Avoid_: Claim (the Tracker's word for taking a ticket), fact, assertion
 
 **Steering**:
-What a repo tells the loop about itself: its rules, its tracker docs, its review files, its Suite
-and the settings its loop Sessions start with. Setup copies a starting version into the repo, or into the Sidecar, as files, and the team
+What a repo tells the loop about itself: its rules, its tracker docs, its review files and its
+Suite. Setup copies a starting version into the repo, or into the Sidecar, as files, and the team
 owns them from then on.
 A skill reads a fact about one repo from its Steering and never carries it.
 _Avoid_: Config, guidance, policy
