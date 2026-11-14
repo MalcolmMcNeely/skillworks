@@ -47,8 +47,9 @@ from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from output.streams import speaking_any_character
-from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, FINISHED, HEARTBEAT_SECONDS,
-                               NAME_CHECK, POSITION, STOPPED, position_time, written_whole)
+from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, END_PATIENCE, FINISHED,
+                               HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE, POSITION, STOPPED,
+                               position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import Subprocess, given_every_session, session_changes
 from seed_steering import missing_steering
@@ -594,7 +595,7 @@ class Loop:
             with self.position_turn:
                 # A copy, as the driver's thread changes these tickets, kept first so a failed write is retried.
                 self.last_position = json.loads(json.dumps(position))
-                self.position_written(position)
+                self.position_written(position, END_PATIENCE if doing in (FINISHED, STOPPED) else PATIENCE)
 
     def heartbeat_started(self):
         self.stop_heartbeat = self.clock.every(HEARTBEAT_SECONDS, self.beat)
@@ -612,8 +613,8 @@ class Loop:
             self.last_position["heartbeat"] = position_time(self.clock.now())
             self.position_written(self.last_position)
 
-    def position_written(self, position):
-        failed = written_whole(self.log_dir / POSITION, position, self.replace, self.clock)
+    def position_written(self, position, patience=PATIENCE):
+        failed = written_whole(self.log_dir / POSITION, position, self.replace, self.clock, patience)
         if failed is None:
             return
         # A log that cannot be written either has nowhere to say so, and the next write tries again.

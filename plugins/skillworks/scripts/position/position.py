@@ -28,12 +28,14 @@ def position_time(moment):
 
 # Short, because the write holds the lock both writers share, so a step change waits this long at most.
 PATIENCE = timedelta(seconds=1)
+# Long, because the heartbeat stops before the end write and nothing writes the Position after it.
+END_PATIENCE = timedelta(seconds=30)
 TRY_EVERY_SECONDS = 0.05
 
 
 # Renamed into place, so a reader that opens the file between two writes never reads half of one.
 # A failure is handed back and never raised, because a display file must not end a heartbeat or a run.
-def written_whole(path, position, replace, clock):
+def written_whole(path, position, replace, clock, patience=PATIENCE):
     path = Path(path)
     beside = path.with_name(path.name + ".tmp")
     try:
@@ -47,7 +49,7 @@ def written_whole(path, position, replace, clock):
             return None
         # Windows refuses a replace while the pane reads the file, and that clears by itself.
         except PermissionError as held:
-            if clock.now() - began >= PATIENCE:
+            if clock.now() - began >= patience:
                 return held
             clock.wait(TRY_EVERY_SECONDS)
         except OSError as failed:

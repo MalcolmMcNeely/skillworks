@@ -36,14 +36,16 @@ ticket's commits to the list in the Sidecar:
 ```
 
 A write of the Position can fail, such as when the pane reads the file at the moment the driver
-replaces it on Windows. The driver tries a held file again for up to a second. Only when the write
-still fails does the driver write a line that names the error, and the loop goes on:
+replaces it on Windows. The driver tries a held file again for up to a second. The end write, which
+says `finished` or `stopped`, tries for up to 30 seconds. Only when the write still fails does the
+driver write a line that names the error, and the loop goes on:
 
 ```
 2026-09-28 16:58:10 WARN  the Position was not written, PermissionError: [WinError 5] Access is denied
 ```
 
-The line is harmless. The next heartbeat writes the Position again.
+The line is harmless. The next heartbeat writes the Position again. After the end write no heartbeat
+comes, so after a failed end write the pane shows the loop as `gone`.
 
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.

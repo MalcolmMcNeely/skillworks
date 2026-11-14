@@ -374,6 +374,47 @@ def test_a_write_that_fails_for_another_reason_is_not_tried_again_and_logs_its_l
     assert seen[0] == (True, ["WARN  the Position was not written, OSError: [Errno 28] No space left on device"])
 
 
+def held_at_the_end_for(loop, seconds):
+    began = []
+
+    def replace(source, target):
+        if json.loads(Path(source).read_text(encoding="utf-8"))["doing"] in ("finished", "stopped"):
+            if not began:
+                began.append(loop.clock.now())
+            if loop.clock.now() - began[0] < timedelta(seconds=seconds):
+                raise HELD
+        os.replace(source, target)
+    return replace
+
+
+def test_an_end_write_held_for_longer_than_a_second_still_leaves_finished(loop):
+    given_a_run_that_lands(loop)
+    loop.replace = held_at_the_end_for(loop, 5)
+
+    loop.run(SPEC)
+
+    assert position_of(loop)["doing"] == "finished"
+
+
+def test_an_end_write_held_for_longer_than_a_second_still_leaves_stopped(loop):
+    given_a_build_that_is_blocked(loop)
+    loop.replace = held_at_the_end_for(loop, 5)
+
+    loop.run(SPEC)
+
+    assert position_of(loop)["doing"] == "stopped"
+
+
+def test_an_end_write_held_past_thirty_seconds_gives_up_with_one_line_and_the_run_ends_as_it_would(loop):
+    given_a_run_that_lands(loop)
+    loop.replace = held_at_the_end_for(loop, 60)
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, position_lines(loop)) == (
+        0, ["WARN  the Position was not written, PermissionError: [Errno 13] Access is denied"])
+
+
 def beat_once_with(loop, replace):
     loop.replace = replace
     loop.clock.move(HEARTBEAT)
