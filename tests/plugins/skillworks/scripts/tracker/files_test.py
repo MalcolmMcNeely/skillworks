@@ -3,6 +3,7 @@
 import contextlib
 import io
 import json
+import os
 import re
 import threading
 from pathlib import Path
@@ -92,7 +93,7 @@ def run_loop(runner, checkout, *flags, spec=SPEC):
     out, err = io.StringIO(), io.StringIO()
     with contextlib.chdir(checkout):
         status = spec_loop.main([spec, *flags], runner, out, err, lambda seconds: None,
-                                HeldClock())
+                                HeldClock(), os.replace)
     return Ran(status, out.getvalue(), err.getvalue())
 
 

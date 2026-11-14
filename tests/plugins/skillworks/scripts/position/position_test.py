@@ -259,6 +259,65 @@ def test_after_a_stopped_run_the_heartbeat_is_no_longer_written(loop):
     assert position_of(loop) == last and last["doing"] == "stopped"
 
 
+HELD = PermissionError(13, "Access is denied")
+
+
+def held_by_a_reader(source, target):
+    raise HELD
+
+
+def test_a_heartbeat_whose_write_fails_for_one_beat_writes_the_position_at_the_next_beat(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    seen = []
+
+    def one_beat_held():
+        beat_once_with(loop, held_by_a_reader)
+        loop.clock.move(HEARTBEAT)
+        seen.append(position_of(loop))
+    sessions.then["review-standards"] = one_beat_held
+
+    loop.run(SPEC)
+
+    assert seen[0]["heartbeat"] == "2026-01-01T00:01:00Z"
+
+
+def test_a_step_change_whose_write_fails_leaves_the_run_going_and_the_next_beat_writes_the_new_step(loop):
+    sessions = given_a_run_that_lands(loop)
+    seen = []
+
+    def held_from_the_build_on():
+        loop.replace = held_by_a_reader
+
+    def beat_once_let_go():
+        loop.replace = os.replace
+        loop.clock.move(HEARTBEAT)
+        seen.append(position_of(loop))
+    sessions.then["implement 168 --stop-after-tests"] = held_from_the_build_on
+    sessions.then["review-standards"] = beat_once_let_go
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, seen[0]["ticket"]["step"]) == (0, "standards")
+
+
+def test_a_write_that_fails_puts_one_line_in_the_log_that_names_the_error(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then["review-standards"] = lambda: beat_once_with(loop, held_by_a_reader)
+
+    loop.run(SPEC)
+
+    assert [line[line.index("WARN"):] for line in loop.log().splitlines() if "Position" in line] == [
+        "WARN  the Position was not written, PermissionError: [Errno 13] Access is denied"]
+
+
+def beat_once_with(loop, replace):
+    loop.replace = replace
+    loop.clock.move(HEARTBEAT)
+    loop.replace = os.replace
+
+
 def test_reading_a_run_names_the_position_file_beside_the_log():
     page = (ROOT / "docs" / "usage" / "the-loop" / "reading-a-run.md").read_text(encoding="utf-8")
 

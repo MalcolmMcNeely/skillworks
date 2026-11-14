@@ -3,6 +3,7 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -75,7 +76,8 @@ class Steered:
     def run(self):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.chdir(self.repo.work):
-            status = spec_loop.main([SPEC], self.runner, out, err, lambda seconds: None, HeldClock())
+            status = spec_loop.main([SPEC], self.runner, out, err, lambda seconds: None, HeldClock(),
+                                    os.replace)
         return Ran(status, out.getvalue(), err.getvalue())
 
     def listed(self):

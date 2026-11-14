@@ -4,6 +4,7 @@
 import ast
 import io
 import json
+import os
 import re
 import threading
 import uuid
@@ -42,11 +43,17 @@ class Driver:
         # Recorded rather than waited out, so the claim can be read without spending its seconds.
         self.waits = []
         self.clock = HeldClock()
+        # Swapped mid-run by a case, so a write of the Position can fail on purpose.
+        self.replace = os.replace
+
+    def replaced(self, source, target):
+        self.replace(source, target)
 
     def run(self, *args):
         out, err = io.StringIO(), io.StringIO()
         status = spec_loop.main(
-            [str(a) for a in args], self.runner, out, err, self.waits.append, self.clock)
+            [str(a) for a in args], self.runner, out, err, self.waits.append, self.clock,
+            self.replaced)
         return Ran(status, out.getvalue(), err.getvalue())
 
     def records(self):
@@ -2686,7 +2693,7 @@ def test_a_landing_red_with_a_character_the_code_page_lacks_ends_with_its_fail_l
     out = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
     speaking_any_character(out)
 
-    spec_loop.main([SPEC], runner, out, io.StringIO(), loop.waits.append, loop.clock)
+    spec_loop.main([SPEC], runner, out, io.StringIO(), loop.waits.append, loop.clock, loop.replaced)
     out.flush()
 
     assert "FAIL  #168 did not reach main." in out.buffer.getvalue().decode("utf-8")
@@ -5430,7 +5437,7 @@ class Beside:
         try:
             self.status = spec_loop.main(
                 [str(a) for a in args], loop.runner, self.out, self.err, loop.waits.append,
-                loop.clock)
+                loop.clock, loop.replaced)
         finally:
             # A loop that ended without the line must fail the case, not hang it.
             self.out.seen.set()

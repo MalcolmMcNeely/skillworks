@@ -20,6 +20,7 @@
 # Env:
 #   SPEC_LOOP_PERMISSION_MODE   passed to `claude -p` (default: acceptEdits); writes under .claude/ need `--bypass`
 
+import contextlib
 import hashlib
 import io
 import json
@@ -490,13 +491,14 @@ def told_plan():
 
 
 class Loop:
-    def __init__(self, runner, spec, out, err, wait, permission_mode, clock):
+    def __init__(self, runner, spec, out, err, wait, permission_mode, clock, replace):
         self.runner = runner
         self.spec = spec
         self.out = out
         self.err = err
         self.wait = wait
         self.clock = clock
+        self.replace = replace
         self.permission_mode = permission_mode
         self.log_dir = Path(".spec-loop") / spec
         self.log = self.log_dir / "loop.log"
@@ -590,9 +592,9 @@ class Loop:
         if self.writes_position:
             position = self.position_now()
             with self.position_turn:
-                written_whole(self.log_dir / POSITION, position)
-                # A copy, because the driver's own thread goes on changing the tickets it names.
+                # A copy, as the driver's thread changes these tickets, kept first so a failed write is retried.
                 self.last_position = json.loads(json.dumps(position))
+                self.position_written(position)
 
     def heartbeat_started(self):
         self.stop_heartbeat = self.clock.every(HEARTBEAT_SECONDS, self.beat)
@@ -608,7 +610,15 @@ class Loop:
             if self.last_position is None:
                 return
             self.last_position["heartbeat"] = position_time(self.clock.now())
-            written_whole(self.log_dir / POSITION, self.last_position)
+            self.position_written(self.last_position)
+
+    def position_written(self, position):
+        failed = written_whole(self.log_dir / POSITION, position, self.replace)
+        if failed is None:
+            return
+        # A log that cannot be written either has nowhere to say so, and the next write tries again.
+        with contextlib.suppress(OSError):
+            self.say("WARN  the Position was not written, {}: {}".format(type(failed).__name__, failed))
 
     def read_spec_tickets(self):
         rows = self.tracker.ticket_rows(self.spec)
@@ -1997,11 +2007,11 @@ def arguments(argv):
     return spec, "--dry-run" in rest, mode
 
 
-def main(argv, runner, out, err, wait, clock):
+def main(argv, runner, out, err, wait, clock, replace):
     loop = None
     try:
         spec, dry, mode = arguments(argv)
-        loop = Loop(runner, spec, out, err, wait, mode, clock)
+        loop = Loop(runner, spec, out, err, wait, mode, clock, replace)
         loop.run(dry)
         loop.list_what_sessions_wrote()
         loop.moved(FINISHED)
@@ -2039,4 +2049,5 @@ def main(argv, runner, out, err, wait, clock):
 if __name__ == "__main__":
     speaking_any_character(sys.stdout)
     speaking_any_character(sys.stderr)
-    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep, Clock()))
+    sys.exit(main(sys.argv[1:], Subprocess(), sys.stdout, sys.stderr, time.sleep, Clock(),
+                  os.replace))

@@ -1,7 +1,6 @@
 # The driver writes it and the pane reads it, so these fields are the contract between the two.
 
 import json
-import os
 from pathlib import Path
 
 POSITION = "position.json"
@@ -27,8 +26,13 @@ def position_time(moment):
 
 
 # Renamed into place, so a reader that opens the file between two writes never reads half of one.
-def written_whole(path, position):
+# A failure is handed back and never raised, because a display file must not end a heartbeat or a run.
+def written_whole(path, position, replace):
     path = Path(path)
     beside = path.with_name(path.name + ".tmp")
-    beside.write_text(json.dumps(position, indent=2) + "\n", encoding="utf-8", newline="\n")
-    os.replace(beside, path)
+    try:
+        beside.write_text(json.dumps(position, indent=2) + "\n", encoding="utf-8", newline="\n")
+        replace(beside, path)
+    except OSError as failed:
+        return failed
+    return None

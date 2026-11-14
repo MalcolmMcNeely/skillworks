@@ -5,6 +5,7 @@
 
 import io
 import json
+import os
 import tempfile
 from pathlib import Path
 from typing import NamedTuple
@@ -110,7 +111,7 @@ def driver_lines():
 
     with tempfile.TemporaryDirectory() as folder:
         loop = spec_loop.Loop(runner, SPEC, io.StringIO(), io.StringIO(), lambda seconds: None,
-                              "acceptEdits", HeldClock())
+                              "acceptEdits", HeldClock(), os.replace)
         # Where the driver logs what it says is not what this proves.
         loop.log = Path(folder) / "loop.log"
         # This checkout's loop.json names the Tracker whose lines are proved.

@@ -35,6 +35,15 @@ ticket's commits to the list in the Sidecar:
 2026-09-28 16:56:49 ok    12/2 listed its 2 commits in the Sidecar
 ```
 
+A write of the Position can fail, such as when the pane reads the file at the moment the driver
+replaces it on Windows. The driver then writes a line that names the error, and the loop goes on:
+
+```
+2026-09-28 16:58:10 WARN  the Position was not written, PermissionError: [WinError 5] Access is denied
+```
+
+The line is harmless. The next heartbeat writes the Position again.
+
 The `SHAPE` line comes first. It says the spec is in the counted shape, and how many items it holds.
 A spec in another shape gets an `ABORT` line in its place, and nothing after it.
 
