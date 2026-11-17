@@ -305,7 +305,7 @@ _Avoid_: Claim (the Tracker's word for taking a ticket), fact, assertion
 What the loop reads about how to work: rules, tracker docs, review files and the Suite. A repo's
 Steering holds what is true only in that repo. Setup copies a starting version into the repo, or into
 the Sidecar, as files, and the team owns them from then on. A developer's remote Steering holds their
-own way of working, which goes with them to every repo, and only they write it.
+own way of working, which goes with them to each repo they name for it, and only they write it.
 A skill reads a fact about one repo from its Steering and never carries it.
 _Avoid_: Config, guidance, policy
 
