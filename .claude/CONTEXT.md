@@ -196,8 +196,8 @@ _Avoid_: Integrate, integration
 
 **Layer**:
 One source of the text a step reads: the repo, the Sidecar, the developer's own user files, or the
-developer's remote Steering at a pinned commit. A step gets every Layer at once, and each part of the text comes from exactly one of them. The user Layer is
-true only on one machine.
+developer's remote Steering at a pinned commit. A step gets every Layer at once, and each part of the
+text comes from exactly one of them. The user Layer is true only on one machine.
 _Avoid_: Place, source, level
 
 **Load**:
@@ -302,9 +302,10 @@ fixed size and two records can hold what one Draft holds.
 _Avoid_: Claim (the Tracker's word for taking a ticket), fact, assertion
 
 **Steering**:
-What a repo tells the loop about itself: its rules, its tracker docs, its review files and its
-Suite. Setup copies a starting version into the repo, or into the Sidecar, as files, and the team
-owns them from then on.
+What the loop reads about how to work: rules, tracker docs, review files and the Suite. A repo's
+Steering holds what is true only in that repo. Setup copies a starting version into the repo, or into
+the Sidecar, as files, and the team owns them from then on. A developer's remote Steering holds their
+own way of working, which goes with them to every repo, and only they write it.
 A skill reads a fact about one repo from its Steering and never carries it.
 _Avoid_: Config, guidance, policy
 
