@@ -195,8 +195,8 @@ own, the moment it passes, so a stopped run leaves every ticket before it alread
 _Avoid_: Integrate, integration
 
 **Layer**:
-One source of the text a step reads: the repo, the Sidecar, or the developer's own user files. A step
-gets every Layer at once, and each part of the text comes from exactly one of them. The user Layer is
+One source of the text a step reads: the repo, the Sidecar, the developer's own user files, or the
+developer's remote Steering at a pinned commit. A step gets every Layer at once, and each part of the text comes from exactly one of them. The user Layer is
 true only on one machine.
 _Avoid_: Place, source, level
 
