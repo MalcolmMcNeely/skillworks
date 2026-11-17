@@ -288,6 +288,105 @@ def test_an_import_cycle_shows_each_file_once(repo, home):
     )), ran.err
 
 
+API_RULE = "---\npaths:\n  - \"src/api/**/*.ts\"\n  - tests/api/**\n---\n\n## The API\n\nText.\n"
+
+WEB_RULE = "---\npaths: [\"src/**/*.{ts,tsx}\"]\n---\n\nUse hooks.\n"
+
+
+def test_path_rules_from_the_repo_and_the_user_are_listed_last_under_may_load_with_their_globs(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, ".claude/rules/api.md", API_RULE)
+    write(home, ".claude/rules/web.md", WEB_RULE)
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "May load:\n"
+        "\n"
+        "  [user]     ~/.claude/rules/web.md  src/**/*.{ts,tsx}\n"
+        "  [repo]     .claude/rules/api.md  src/api/**/*.ts, tests/api/**\n"
+    )), ran.err
+
+
+def test_a_rule_with_no_paths_always_loads_and_shows_its_text(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, ".claude/rules/style/plain.md", "## Style\n\nShort lines.\n")
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     .claude/rules/style/plain.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [repo] .claude/rules/style/plain.md <==\n"
+        "[repo]\n"
+        "## Style\n"
+        "\n"
+        "Short lines.\n"
+    )), ran.err
+
+
+def test_path_shows_each_rule_a_read_of_that_file_would_load_with_its_text(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, ".claude/rules/api.md", API_RULE)
+    write(repo.work, ".claude/rules/docs.md", "---\npaths: docs/**/*.md\n---\n\nPlain words.\n")
+    write(home, ".claude/rules/web.md", WEB_RULE)
+
+    ran = show("gate", "--path", "src/api/orders.ts", where=repo.work, home=home)
+
+    assert (ran.status, ran.out.split("\n\nA read of ")[-1]) == (0, (
+        "src/api/orders.ts loads:\n"
+        "\n"
+        "==> [user] ~/.claude/rules/web.md <==\n"
+        + WEB_RULE +
+        "\n"
+        "==> [repo] .claude/rules/api.md <==\n"
+        "---\n"
+        "paths:\n"
+        "  - \"src/api/**/*.ts\"\n"
+        "  - tests/api/**\n"
+        "---\n"
+        "\n"
+        "[repo]\n"
+        "## The API\n"
+        "\n"
+        "Text.\n"
+    )), ran.err
+
+
+def test_path_with_no_matching_rule_says_so_and_exits_with_0(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, ".claude/rules/api.md", API_RULE)
+
+    ran = show("gate", "--path", "src/web/page.tsx", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "No path rule matches src/web/page.tsx.\n"
+    )), ran.err
+
+
 def sidecar_hook_files(where):
     payload = {"cwd": str(where), "hook_event_name": "SessionStart", "source": "startup"}
     done = subprocess.run(
