@@ -196,7 +196,7 @@ _Avoid_: Integrate, integration
 
 **Layer**:
 One source of the text a step reads: the repo, the Sidecar, the developer's own user files, or the
-developer's remote Steering at a pinned commit. A step gets every Layer at once, and each part of the
+developer's remote Steering at the tip of its `main`. A step gets every Layer at once, and each part of the
 text comes from exactly one of them. The user Layer is true only on one machine.
 _Avoid_: Place, source, level
 
