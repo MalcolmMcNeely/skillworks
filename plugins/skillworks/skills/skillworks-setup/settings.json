@@ -35,6 +35,7 @@
       "Bash(spec-commits:*)",
       "Bash(spec-branch:*)",
       "Bash(steering-file:*)",
+      "Bash(show-steering:*)",
       "Bash(spec-loop-counts:*)",
       "Bash(context-backfill:*)",
       "Read(~/.claude/plugins/**)"
