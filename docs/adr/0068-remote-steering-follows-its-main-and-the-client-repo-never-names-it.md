@@ -7,7 +7,8 @@ teammate sets it once on their own machine.
 Every run reads the tip of the remote's `main`. The run fetches it when it starts and holds that
 commit until it ends, so a change the developer pushes mid-run never reaches a ticket of that run. The
 run writes the commit in its own files under `.spec-loop/`, which never go to the client, so a run's
-result can still be traced to the version of the method it read.
+result can still be traced to the version of the method it read. A person's Session fetches when it
+starts as well, so the grill reads the same text as the run that builds its spec.
 
 A change to the remote reaches every client on its next run. That is what the developer wants: the
 method is one thing, and ADR 0067 makes a conflict between the two Layers the developer's to avoid.
