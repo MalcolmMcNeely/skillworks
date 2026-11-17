@@ -4877,7 +4877,7 @@ STOPS_PAGE = LOOP_FOLDER + "/stops.md"
 
 READING_A_RUN_PAGE = LOOP_FOLDER + "/reading-a-run.md"
 
-STAGE_MAP_PAGE = LOOP_FOLDER + "/stage-map.md"
+STEP_MAP_PAGE = LOOP_FOLDER + "/step-map.md"
 
 SESSIONS_PAGE = LOOP_FOLDER + "/sessions.md"
 
@@ -4891,7 +4891,7 @@ def test_the_loop_folder_holds_the_pages_split_from_the_loop_page():
             ROOT / TICKETS_PAGE, ROOT / STEPS_PAGE, ROOT / LANDING_PAGE,
             ROOT / DRIFT_CHECK_PAGE, ROOT / NAME_CHECK_PAGE,
             ROOT / FULL_RUN_PAGE, ROOT / STOPS_PAGE, ROOT / READING_A_RUN_PAGE,
-            ROOT / STAGE_MAP_PAGE, ROOT / SESSIONS_PAGE} <= set(loop_folder_pages())
+            ROOT / STEP_MAP_PAGE, ROOT / SESSIONS_PAGE} <= set(loop_folder_pages())
 
 
 def page_text(page):
@@ -4925,10 +4925,10 @@ def test_the_reading_a_run_page_links_the_stops_page():
     assert "with no commit to read, as [When a step fails](stops.md) shows." in reading
 
 
-def test_the_stage_map_page_holds_the_stage_map():
-    text = page_text(STAGE_MAP_PAGE)
+def test_the_step_map_page_holds_the_step_map():
+    text = page_text(STEP_MAP_PAGE)
 
-    assert text.startswith("# The stage map\n")
+    assert text.startswith("# The step map\n")
     assert "[Steering](../steering.md) has the detail on each file." in flat(text)
 
 
@@ -5140,7 +5140,7 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
                                       "the-loop/full-run.md", "the-loop/stops.md",
                                       "the-loop/reading-a-run.md", "the-loop/watching-a-run.md",
-                                      "the-loop/stage-map.md",
+                                      "the-loop/step-map.md",
                                       "the-loop/sessions.md"]
 
 
@@ -5348,8 +5348,20 @@ def test_the_steering_page_links_the_tracker_page():
     assert "(the-loop/tracker.md) says how to choose each one." in text
 
 
-def test_the_steering_page_links_the_stage_map_page():
-    assert "](the-loop/stage-map.md)" in page_text("docs/usage/steering.md")
+@pytest.mark.parametrize("page, link", [("docs/usage/steering.md", "](the-loop/step-map.md)"),
+                                        (SESSIONS_PAGE, "](step-map.md)"),
+                                        (LOOP_OVERVIEW, "](the-loop/step-map.md)")])
+def test_a_page_that_points_at_what_a_step_reads_links_the_step_map(page, link):
+    assert link in page_text(page)
+
+
+def test_no_page_of_the_user_docs_names_the_old_map():
+    pages = sorted((ROOT / "docs" / "usage").rglob("*.md"))
+    naming = [page.relative_to(ROOT).as_posix() for page in pages
+              if re.search(r"stage[- ]map", page.read_text(encoding="utf-8"), re.IGNORECASE)]
+
+    assert ROOT / STEP_MAP_PAGE in pages
+    assert naming == []
 
 
 def test_the_index_of_the_user_docs_has_one_row_for_the_loop_saying_the_overview_links_each_part():
@@ -6375,72 +6387,161 @@ def test_the_step_list_is_marked_in_the_user_docs_on_the_steps_page_alone():
     assert marking == [STEPS_PAGE]
 
 
-# --- the stage map held to the step list ---------------------------------------
+# --- the step map held to the step list ---------------------------------------
 
-MAP_MARK = "<!-- stage map -->"
+MAP_MARK = "<!-- step map -->"
+
+STEP_LIST = ROOT / "plugins" / "skillworks" / "scripts" / "steering" / "steps.json"
 
 SEEDS = ROOT / "plugins" / "skillworks" / "skills" / "skillworks-setup" / "seeds"
 
+THE_GRILL = "the Grill"
 
-# A step is named in backticks in the first cell of its row, so a word in the prose never counts.
-def stages_in_the_map(text):
+THE_SPEC_LOOP = "the spec loop"
+
+
+def listed_steps():
+    return json.loads(STEP_LIST.read_text(encoding="utf-8"))["steps"]
+
+
+def steps_of(listed):
+    return [(step["name"], step["stage"], step["on-demand"]) for step in listed]
+
+
+def map_rows(text):
     lines = [line.strip() for line in text.splitlines()]
     marked = [at for at, line in enumerate(lines) if line == MAP_MARK]
-    assert len(marked) == 1, "expected one stage map, found {}".format(len(marked))
+    assert len(marked) == 1, "expected one step map, found {}".format(len(marked))
     rows = []
     for line in lines[marked[0] + 1:]:
         if not line.startswith("|"):
             break
-        rows.append(line)
-    first_cells = [row.split("|")[1] for row in rows[2:]]
-    return {name for cell in first_cells for name in re.findall(r"`([^`]+)`", cell)}
+        rows.append([cell.strip() for cell in line.strip("|").split("|")])
+    return rows[2:]
 
 
-def steps_missing_from(text):
-    named = stages_in_the_map(text)
-    return [step.name for step in spec_loop.STEPS if step.name not in named]
+# Only a backticked path counts as a file, so a setting such as `adr-folder` named beside the paths is not one.
+def steps_in_the_map(text):
+    steps = []
+    for cells in map_rows(text):
+        names = re.findall(r"`([^`]+)`", cells[0])
+        assert len(names) == 1, cells[0]
+        files = [held for held in re.findall(r"`([^`]+)`", cells[3]) if "/" in held]
+        steps.append((names[0], cells[1], files))
+    return steps
 
 
-def given_a_map_naming(names):
-    rows = "".join("| `{}` | a | b | c |\n".format(name) for name in names)
-    return "Prose.\n\n{}\n| Stage | Always | On demand | Change |\n|---|---|---|---|\n{}\nMore.\n".format(
-        MAP_MARK, rows)
+def given_a_map_of(steps):
+    rows = "".join("| `{}` | {} | a | {} | c |\n".format(
+        name, stage, ", ".join("`{}`".format(path) for path in files) or "Nothing more")
+        for name, stage, files in steps)
+    return ("Prose.\n\n{}\n| Step | Stage | Always | On demand | Change |\n|---|---|---|---|---|\n{}\n"
+            "More.\n").format(MAP_MARK, rows)
 
 
-def test_the_stage_map_is_marked_in_the_user_docs_on_the_stage_map_page_alone():
+def test_the_step_list_holds_the_twelve_steps_of_the_dev_loop_in_order():
+    assert [(step["name"], step["stage"]) for step in listed_steps()] == [
+        ("grill", THE_GRILL), ("gate", THE_GRILL), ("write-spec", THE_GRILL),
+        ("tickets", THE_SPEC_LOOP), ("build", THE_SPEC_LOOP), ("standards", THE_SPEC_LOOP),
+        ("spec", THE_SPEC_LOOP), ("architecture", THE_SPEC_LOOP), ("fix", THE_SPEC_LOOP),
+        ("sweep", THE_SPEC_LOOP), ("suite", THE_SPEC_LOOP), ("finish", THE_SPEC_LOOP)]
+
+
+def test_no_two_steps_in_the_step_list_share_a_name():
+    names = [step["name"] for step in listed_steps()]
+
+    assert len(names) == len(set(names))
+
+
+def test_every_step_in_the_step_list_has_a_one_line_description():
+    blank = [step["name"] for step in listed_steps()
+             if not step["description"].strip() or "\n" in step["description"]]
+
+    assert blank == []
+
+
+def test_every_on_demand_path_in_the_step_list_is_a_steering_path():
+    stray = [path for step in listed_steps() for path in step["on-demand"]
+             if not path.startswith("docs/skillworks/")]
+
+    assert stray == []
+
+
+def test_the_step_list_names_each_step_the_driver_runs_for_a_ticket_in_its_order():
+    after_the_tickets = [step["name"] for step in listed_steps()][4:]
+
+    assert after_the_tickets == [step.name for step in spec_loop.STEPS]
+
+
+def test_the_step_map_agrees_with_the_step_list():
+    held = page_text(STEP_MAP_PAGE)
+
+    assert steps_in_the_map(held) == steps_of(listed_steps())
+
+
+def test_a_map_that_misses_a_step_is_caught():
+    short = steps_of(listed_steps())[:-1]
+
+    assert steps_in_the_map(given_a_map_of(short)) == short
+
+
+def test_a_map_that_holds_the_steps_out_of_order_is_caught():
+    turned = list(reversed(steps_of(listed_steps())))
+
+    assert steps_in_the_map(given_a_map_of(turned)) == turned
+
+
+def test_a_map_that_misses_a_file_a_step_reads_on_demand_is_caught():
+    steps = steps_of(listed_steps())
+    name, stage, files = steps[0]
+    steps[0] = (name, stage, files[1:])
+
+    assert steps_in_the_map(given_a_map_of(steps)) == steps
+
+
+def test_a_setting_named_beside_the_paths_is_not_read_as_a_file():
+    steps = steps_of(listed_steps())
+    first = "`{}`".format(steps[0][2][0])
+    named = given_a_map_of(steps).replace(first, first + ", the folder `adr-folder` names", 1)
+
+    assert steps_in_the_map(named) == steps
+
+
+def test_the_step_map_is_marked_in_the_user_docs_on_the_step_map_page_alone():
     marking = [page.relative_to(ROOT).as_posix()
                for page in sorted((ROOT / "docs" / "usage").rglob("*.md"))
                if MAP_MARK in page.read_text(encoding="utf-8")]
 
-    assert marking == [STAGE_MAP_PAGE]
+    assert marking == [STEP_MAP_PAGE]
 
 
-def test_the_stage_map_names_every_step_the_loop_runs():
-    held = (ROOT / STAGE_MAP_PAGE).read_text(encoding="utf-8")
+# The map's Stage column heads cells that hold only the Grill or the spec loop, so its heading is free.
+def test_the_step_map_says_stage_only_for_the_grill_and_the_spec_loop():
+    pieces = [piece.strip() for piece in re.split(r"\. |\||\n", page_text(STEP_MAP_PAGE))]
+    stray = [piece for piece in pieces if re.search(r"\bstages?\b", piece, re.IGNORECASE)
+             and piece != "Stage" and "Grill" not in piece and "spec loop" not in piece]
 
-    assert steps_missing_from(held) == []
-
-
-def test_a_map_that_missed_a_step_added_to_the_driver_is_caught():
-    short = given_a_map_naming(step.name for step in spec_loop.STEPS[:-1])
-
-    assert steps_missing_from(short) == [spec_loop.STEPS[-1].name]
-
-
-def test_a_step_named_only_outside_the_first_cell_is_not_counted():
-    elsewhere = given_a_map_naming(step.name for step in spec_loop.STEPS[:-1]).replace(
-        "| c |", "| `{}` |".format(spec_loop.STEPS[-1].name), 1)
-
-    assert steps_missing_from(elsewhere) == [spec_loop.STEPS[-1].name]
+    assert stray == []
 
 
 # The map describes Machinery, so a copy seeded into a team's repo would go stale there.
-def test_no_seed_holds_a_stage_map():
+def test_no_seed_holds_a_step_map():
     seeds = list(SEEDS.iterdir())
     holding = [seed.name for seed in seeds if MAP_MARK in seed.read_text(encoding="utf-8")]
 
     assert seeds != []
     assert holding == []
+
+
+def test_this_repo_s_surfaces_hold_the_step_list():
+    surface = flat(page_section(page_text("docs/skillworks/surfaces.md"), "## The step list"))
+
+    assert "**Where it lives:** `plugins/skillworks/scripts/steering/steps.json` and `{}`".format(
+        STEP_MAP_PAGE) in surface
+    assert ("**The question:** Does this change alter which Steering a step reads, or add, rename or "
+            "remove a step?") in surface
+    assert ("**What to capture:** Each step that changes, and the files it reads once the change "
+            "Lands.") in surface
 
 
 # --- the command the Plugin puts on PATH ------------------------------------

@@ -121,7 +121,7 @@ are there to answer.
 |---|---|
 | Its prompt | The step's command and the ticket's number, then the words for its kind of step, which say nobody will answer. |
 | `CLAUDE.md` | With the rules it imports. |
-| What the step's skill reads | On demand, as [the stage map](stage-map.md) shows. |
+| What the step's skill reads | On demand, as [the step map](step-map.md) shows. |
 | The ticket and the spec | On the Tracker. |
 | The repo | As its worktree holds it. |
 

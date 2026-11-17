@@ -476,7 +476,7 @@ def test_the_backfill_page_says_adrs_go_to_the_setting_in_the_teams_shape_at_the
     assert "docs/adr/" not in page
 
 
-@pytest.mark.parametrize("page", ["README.md", "the-loop/stage-map.md", "the-loop/sessions.md",
+@pytest.mark.parametrize("page", ["README.md", "the-loop/step-map.md", "the-loop/sessions.md",
                                   "the-loop/target-branch.md",
                                   "the-loop/name-check.md", "the-loop/the-grill.md"])
 def test_a_user_docs_page_that_names_the_adr_folder_names_the_setting_and_not_a_fixed_path(page):
@@ -1712,21 +1712,21 @@ def test_the_grills_sum_up_lists_each_surfaces_answer():
     assert "Surface" in sum_up
 
 
-def stage_map_row(stage):
-    stage_map = STAGE_MAP_PAGE.read_text(encoding="utf-8").split("<!-- stage map -->", 1)[1]
-    rows = [line for line in stage_map.splitlines() if line.startswith("| {} |".format(stage))]
-    assert len(rows) == 1, stage
+def step_map_row(step):
+    step_map = STEP_MAP_PAGE.read_text(encoding="utf-8").split("<!-- step map -->", 1)[1]
+    rows = [line for line in step_map.splitlines() if line.startswith("| {} |".format(step))]
+    assert len(rows) == 1, step
     return rows[0]
 
 
-@pytest.mark.parametrize("stage", ["The grill", "The spec", "`spec`", "The drift check"])
-def test_the_stage_map_names_the_surfaces_file_for_each_stage_that_reads_it(stage):
-    assert "`surfaces.md`" in stage_map_row(stage)
+@pytest.mark.parametrize("step", ["`grill`", "`write-spec`", "`spec`", "The drift check"])
+def test_the_step_map_names_the_surfaces_file_for_each_step_that_reads_it(step):
+    assert "/surfaces.md`" in step_map_row(step)
 
 
-@pytest.mark.parametrize("stage", ["The grill", "Context backfill"])
-def test_the_stage_map_shows_each_adr_writer_loading_the_adr_shape_file(stage):
-    assert "`adr-format.md`" in stage_map_row(stage)
+@pytest.mark.parametrize("step", ["`grill`", "Context backfill"])
+def test_the_step_map_shows_each_adr_writer_loading_the_adr_shape_file(step):
+    assert "/adr-format.md`" in step_map_row(step)
 
 
 def test_the_grill_page_says_a_settled_adr_goes_to_the_setting_in_the_teams_shape():
@@ -2827,7 +2827,7 @@ STOPS_PAGE = ROOT / "docs" / "usage" / "the-loop" / "stops.md"
 
 READING_A_RUN_PAGE = ROOT / "docs" / "usage" / "the-loop" / "reading-a-run.md"
 
-STAGE_MAP_PAGE = ROOT / "docs" / "usage" / "the-loop" / "stage-map.md"
+STEP_MAP_PAGE = ROOT / "docs" / "usage" / "the-loop" / "step-map.md"
 
 
 def full_run_chart():
@@ -2859,8 +2859,8 @@ def test_the_drift_check_page_describes_the_gap_ticket_and_the_one_round():
     assert "through [the same steps](steps.md) as every other ticket" in page
 
 
-def test_the_stage_map_page_shows_the_gap_ticket():
-    assert "| The Gap ticket |" in STAGE_MAP_PAGE.read_text(encoding="utf-8")
+def test_the_step_map_page_shows_the_gap_ticket():
+    assert "| The Gap ticket |" in STEP_MAP_PAGE.read_text(encoding="utf-8")
 
 
 def test_the_reading_a_run_page_shows_the_gap_ticket_in_the_log():
@@ -2919,8 +2919,8 @@ def test_the_full_run_page_shows_the_name_check_in_its_chart():
     assert 'names["Name check' in full_run_chart()
 
 
-def test_the_stage_map_page_shows_the_name_check():
-    assert "| The Name check |" in STAGE_MAP_PAGE.read_text(encoding="utf-8")
+def test_the_step_map_page_shows_the_name_check():
+    assert "| The Name check |" in STEP_MAP_PAGE.read_text(encoding="utf-8")
 
 
 def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check():
@@ -2940,8 +2940,8 @@ def test_the_full_run_page_shows_the_rename_ticket_in_its_chart():
     assert 'renames["The rename ticket' in full_run_chart()
 
 
-def test_the_stage_map_page_shows_the_rename_ticket():
-    assert "| The rename ticket |" in STAGE_MAP_PAGE.read_text(encoding="utf-8")
+def test_the_step_map_page_shows_the_rename_ticket():
+    assert "| The rename ticket |" in STEP_MAP_PAGE.read_text(encoding="utf-8")
 
 
 def test_the_stops_page_shows_the_stop_for_a_rename_not_made():
@@ -3817,8 +3817,8 @@ def enforced_row(section, rule):
     return rows[0]
 
 
-def test_the_stage_map_names_every_setting_enforced_only_once_a_check_exists():
-    section = STAGE_MAP_PAGE.read_text(encoding="utf-8")
+def test_the_step_map_names_every_setting_enforced_only_once_a_check_exists():
+    section = STEP_MAP_PAGE.read_text(encoding="utf-8")
 
     assert ENFORCED in section
     assert "`/skillworks:architecture-tests`" in section

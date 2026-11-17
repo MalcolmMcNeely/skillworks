@@ -14,8 +14,8 @@ carries the Plugin's name because other tools write their own files to `docs/age
 somewhere else, because a tool or a design puts them there. They are at the end of the list.
 
 Each file below says what it does, which part of the loop reads it, and what your team can change in
-it. [The loop](the-loop.md) has the steps these parts name, and [the stage map](the-loop/stage-map.md)
-says which stage loads each file.
+it. [The loop](the-loop.md) has the steps these parts name, and [the step map](the-loop/step-map.md)
+says which step loads each file.
 
 ## Steering in the Sidecar
 

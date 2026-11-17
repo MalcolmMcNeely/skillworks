@@ -52,3 +52,11 @@ Keep the heading `## The README` as it is, so that the loop can find this Surfac
 - **What to capture:** Each Seed that is added or changed, in general words with no word from this
   repo, and whether this repo's own copy changes with it. For a new Steering file, capture that every
   team's loop stops at its preflight until the team runs setup again.
+
+## The step list
+
+- **Where it lives:** `plugins/skillworks/scripts/steering/steps.json` and
+  `docs/usage/the-loop/step-map.md`
+- **The question:** Does this change alter which Steering a step reads, or add, rename or remove a
+  step?
+- **What to capture:** Each step that changes, and the files it reads once the change Lands.

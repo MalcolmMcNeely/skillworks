@@ -1,0 +1,123 @@
+{
+  "steps": [
+    {
+      "name": "grill",
+      "stage": "the Grill",
+      "description": "Interviews you about the design, and writes the glossary and the ADRs as they settle.",
+      "on-demand": [
+        "docs/skillworks/loop.json",
+        "docs/skillworks/domain.md",
+        "docs/skillworks/adr-format.md",
+        "docs/skillworks/surfaces.md"
+      ]
+    },
+    {
+      "name": "gate",
+      "stage": "the Grill",
+      "description": "Sums up the design and waits for your yes.",
+      "on-demand": []
+    },
+    {
+      "name": "write-spec",
+      "stage": "the Grill",
+      "description": "Writes the spec from the settled design and publishes it to the Tracker.",
+      "on-demand": [
+        "docs/skillworks/rules/testing.md",
+        "docs/skillworks/loop.json",
+        "docs/skillworks/surfaces.md"
+      ]
+    },
+    {
+      "name": "tickets",
+      "stage": "the spec loop",
+      "description": "Breaks the spec into tickets, each with the tickets that block it.",
+      "on-demand": [
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/domain.md"
+      ]
+    },
+    {
+      "name": "build",
+      "stage": "the spec loop",
+      "description": "Builds one ticket test first, and leaves the change uncommitted.",
+      "on-demand": [
+        "docs/skillworks/loop.json",
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/suite.json",
+        "docs/skillworks/domain.md",
+        "docs/skillworks/rules/testing.md",
+        "docs/skillworks/rules/determinism.md"
+      ]
+    },
+    {
+      "name": "standards",
+      "stage": "the spec loop",
+      "description": "Reviews the change against the rules and the review file for standards.",
+      "on-demand": [
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/rules/",
+        "docs/skillworks/domain.md",
+        "docs/skillworks/review-standards.md"
+      ]
+    },
+    {
+      "name": "spec",
+      "stage": "the spec loop",
+      "description": "Reviews the change against what the ticket and its spec asked for.",
+      "on-demand": [
+        "docs/skillworks/loop.json",
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/review-spec.md",
+        "docs/skillworks/surfaces.md"
+      ]
+    },
+    {
+      "name": "architecture",
+      "stage": "the spec loop",
+      "description": "Reviews where the change sits, and runs the placement checks.",
+      "on-demand": [
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/domain.md",
+        "docs/skillworks/rules/file-placement.md",
+        "docs/skillworks/placement-checks.md",
+        "docs/skillworks/review-architecture.md"
+      ]
+    },
+    {
+      "name": "fix",
+      "stage": "the spec loop",
+      "description": "Fixes what the three reviews found, or a Suite that went red.",
+      "on-demand": [
+        "docs/skillworks/loop.json",
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/suite.json"
+      ]
+    },
+    {
+      "name": "sweep",
+      "stage": "the spec loop",
+      "description": "Cuts the comments the comments rule does not keep.",
+      "on-demand": [
+        "docs/skillworks/rules/comments.md"
+      ]
+    },
+    {
+      "name": "suite",
+      "stage": "the spec loop",
+      "description": "Runs every check in the Suite file, with no Session.",
+      "on-demand": [
+        "docs/skillworks/suite.json"
+      ]
+    },
+    {
+      "name": "finish",
+      "stage": "the spec loop",
+      "description": "Commits the ticket and closes it with its Closing note.",
+      "on-demand": [
+        "docs/skillworks/loop.json",
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/suite.json"
+      ]
+    }
+  ]
+}
