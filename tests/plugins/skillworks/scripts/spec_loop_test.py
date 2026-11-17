@@ -6442,7 +6442,7 @@ def given_a_map_of(steps):
 def test_the_step_list_holds_the_twelve_steps_of_the_dev_loop_in_order():
     assert [(step["name"], step["stage"]) for step in listed_steps()] == [
         ("grill", THE_GRILL), ("gate", THE_GRILL), ("write-spec", THE_GRILL),
-        ("tickets", THE_SPEC_LOOP), ("build", THE_SPEC_LOOP), ("standards", THE_SPEC_LOOP),
+        ("cut", THE_SPEC_LOOP), ("build", THE_SPEC_LOOP), ("standards", THE_SPEC_LOOP),
         ("spec", THE_SPEC_LOOP), ("architecture", THE_SPEC_LOOP), ("fix", THE_SPEC_LOOP),
         ("sweep", THE_SPEC_LOOP), ("suite", THE_SPEC_LOOP), ("finish", THE_SPEC_LOOP)]
 

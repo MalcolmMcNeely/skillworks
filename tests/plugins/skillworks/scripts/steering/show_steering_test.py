@@ -19,7 +19,7 @@ STEP_LIST = (
     "  write-spec    Writes the spec from the settled design and publishes it to the Tracker.\n"
     "\n"
     "The spec loop\n"
-    "  tickets       Breaks the spec into tickets, each with the tickets that block it.\n"
+    "  cut           Breaks the spec into tickets, each with the tickets that block it.\n"
     "  build         Builds one ticket test first, and leaves the change uncommitted.\n"
     "  standards     Reviews the change against the rules and the review file for standards.\n"
     "  spec          Reviews the change against what the ticket and its spec asked for.\n"

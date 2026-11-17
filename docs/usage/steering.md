@@ -32,7 +32,7 @@ and write the Sidecar's copy, from the main checkout and from every worktree. Th
 `CLAUDE.md` and its imports load into each Session you start, so every skill reads your team's
 rules. The paths on this page stay the same, measured from the Sidecar instead of the repo.
 
-`show-steering` shows the repo, the Sidecar and the user layers side by side, so you can see which one a step gets.
+`show-steering` shows the repo, the Sidecar and the user places side by side, so you can see which one a step gets.
 
 With no `loop.json` in the Sidecar, every Steering file is read from the repo, as below.
 

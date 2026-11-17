@@ -173,7 +173,7 @@ SERVES = {
     "grilling": ["grill"],
     "domain-modeling": ["grill"],
     "to-spec": ["write-spec"],
-    "to-tickets": ["tickets"],
+    "to-tickets": ["cut"],
     "implement": ["build", "fix", "finish"],
     "tdd": ["build"],
     "codebase-design": ["build"],

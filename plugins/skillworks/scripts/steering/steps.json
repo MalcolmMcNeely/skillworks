@@ -28,7 +28,7 @@
       ]
     },
     {
-      "name": "tickets",
+      "name": "cut",
       "stage": "the spec loop",
       "description": "Breaks the spec into tickets, each with the tickets that block it.",
       "on-demand": [
