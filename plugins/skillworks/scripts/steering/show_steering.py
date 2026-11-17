@@ -33,7 +33,7 @@ ON_DEMAND = "on demand"
 FENCE = "---"
 
 
-# The label is a field and not text, so another place, such as remote Steering, adds a value and no new format.
+# The label is a field and not text, so another Layer, such as remote Steering, adds a value and no new format.
 @dataclass(frozen=True)
 class Section:
     when: str
@@ -93,14 +93,14 @@ def imports_of(text):
 
 
 @dataclass(frozen=True)
-class Place:
+class Layer:
     root: Path
     prefix: str
     label: str
 
 
-def shown_path(path, place, home):
-    for root, prefix in ((place.root, place.prefix), (Path(home), "~/")):
+def shown_path(path, layer, home):
+    for root, prefix in ((layer.root, layer.prefix), (Path(home), "~/")):
         try:
             return prefix + Path(path).relative_to(root).as_posix()
         except ValueError:
@@ -109,15 +109,15 @@ def shown_path(path, place, home):
 
 
 # Claude Code resolves an import from the folder of the file that holds it, and ~/ from the home folder.
-def resolved(name, holder, place, home):
+def resolved(name, holder, layer, home):
     if name.startswith("~/"):
         path = Path(os.path.normpath(Path(home, name[2:])))
-        return path, shown_path(path, Place(Path(home), "~/", "user"), home), "user"
+        return path, shown_path(path, Layer(Path(home), "~/", "user"), home), "user"
     path = Path(os.path.normpath(Path(holder.parent, name)))
-    return path, shown_path(path, place, home), place.label
+    return path, shown_path(path, layer, home), layer.label
 
 
-def walked(path, shown_as, label, place, home, hops, seen):
+def walked(path, shown_as, label, layer, home, hops, seen):
     key = key_of(path)
     if key in seen:
         return []
@@ -127,7 +127,7 @@ def walked(path, shown_as, label, place, home, hops, seen):
     if text is None or hops == 0:
         return found
     for name in imports_of(text):
-        found += walked(*resolved(name, path, place, home), place, home, hops - 1, seen)
+        found += walked(*resolved(name, path, layer, home), layer, home, hops - 1, seen)
     return found
 
 
@@ -231,18 +231,18 @@ def key_of(path):
 
 
 def always(repo, home, sidecar, all_rules):
-    places = [Place(Path(home, ".claude"), "~/.claude/", "user"), Place(Path(repo), "", "repo")]
+    layers = [Layer(Path(home, ".claude"), "~/.claude/", "user"), Layer(Path(repo), "", "repo")]
     if sidecar:
-        places.append(Place(Path(sidecar), "", "Sidecar"))
+        layers.append(Layer(Path(sidecar), "", "Sidecar"))
     seen = set()
     found = []
-    for place in places:
-        found += walked(Path(place.root, "CLAUDE.md"), place.prefix + "CLAUDE.md", place.label, place, home,
+    for layer in layers:
+        found += walked(Path(layer.root, "CLAUDE.md"), layer.prefix + "CLAUDE.md", layer.label, layer, home,
                         IMPORT_HOPS, seen)
         for rule in all_rules:
-            if rule.label == place.label and not rule.globs and key_of(rule.file) not in seen:
+            if rule.label == layer.label and not rule.globs and key_of(rule.file) not in seen:
                 seen.add(key_of(rule.file))
-                found.append(Section(ALWAYS, place.label, rule.path, rule.text))
+                found.append(Section(ALWAYS, layer.label, rule.path, rule.text))
     return found
 
 

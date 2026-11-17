@@ -1,7 +1,7 @@
 ---
 name: show-steering
 argument-hint: "[<step>] [--path <file>]"
-description: Show the Steering a step of the Dev loop reads, and the place each part comes from.
+description: Show the Steering a step of the Dev loop reads, and the Layer each part comes from.
 disable-model-invocation: true
 ---
 
