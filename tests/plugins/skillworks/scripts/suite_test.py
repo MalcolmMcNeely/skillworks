@@ -1869,7 +1869,7 @@ SCRIPT_TESTS_IGNORE = {
     "tests/Skillworks.Core.Tests/*.cs": "the tests check that the project exists, and never read its code",
     "tests/Skillworks.Architecture.Tests/*.cs": "the tests check that the folder exists, and never read its code",
     "tests/plugins/skillworks/scripts/*.mjs": "pytest collects only Python, and node --test runs these",
-    "plugins/skillworks/scripts/*.mjs": "the hooks and the session watch are Node, and no Python test opens them",
+    "plugins/skillworks/scripts/session-watch.mjs": "the session watch is Node, and no Python test opens it",
 }
 
 # The API tests read session-watch.mjs, and the AppHost image tags and the Core harness they link.

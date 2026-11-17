@@ -37,9 +37,12 @@ def top(runner, where):
     return found.out.strip()
 
 
+def folder_files(root, path):
+    return sorted(entry.name for entry in Path(root, path).iterdir() if entry.is_file())
+
+
 def disk_folder(root, path):
-    names = (entry.name for entry in Path(root, path).iterdir() if entry.is_file())
-    return "".join("{}/{}\n".format(path.rstrip("/"), name) for name in sorted(names))
+    return "".join("{}/{}\n".format(path.rstrip("/"), name) for name in folder_files(root, path))
 
 
 def main(argv, runner, out, err, where=None):

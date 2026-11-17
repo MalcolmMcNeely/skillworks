@@ -1,8 +1,12 @@
 import io
+import json
+import re
+import subprocess
+from pathlib import Path
 
 import pytest
 
-from conftest import Ran, Repo, launch
+from conftest import PLUGIN, Ran, Repo, launch
 from runner import Subprocess
 from steering import show_steering
 
@@ -34,9 +38,22 @@ def repo(tmp_path):
     return Repo(tmp_path)
 
 
-def show(*argv, where):
+@pytest.fixture
+def home(tmp_path):
+    folder = tmp_path / "home"
+    folder.mkdir()
+    return folder
+
+
+def write(root, name, text):
+    path = Path(root) / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
+def show(*argv, where, home=None):
     out, err = io.StringIO(), io.StringIO()
-    status = show_steering.main(list(argv), Subprocess(), out, err, str(where))
+    status = show_steering.main(list(argv), Subprocess(), out, err, str(where), home)
     return Ran(status, out.getvalue(), err.getvalue())
 
 
@@ -52,13 +69,253 @@ def test_a_name_that_is_not_a_step_is_turned_down_with_the_step_list(repo):
     assert (ran.status != 0, ran.out) == (True, "biuld is not a step.\n\n" + STEP_LIST), ran.err
 
 
-def test_a_step_named_from_a_folder_below_the_repo_root_is_found(repo):
+def test_a_step_named_from_a_folder_below_the_repo_root_is_found(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
     below = repo.work / "src" / "deep"
     below.mkdir(parents=True)
 
-    ran = show("build", where=below)
+    ran = show("gate", where=below, home=home)
 
-    assert (ran.status, ran.out) == (0, STEP_LIST), ran.err
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+    )), ran.err
+
+
+def test_a_step_with_only_always_files_lists_the_repo_claude_md_and_its_imports_then_their_text(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n\n@docs/a.md\n")
+    write(repo.work, "docs/a.md", "# A\n\n## Part\n\nText.\n")
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     docs/a.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "@docs/a.md\n"
+        "\n"
+        "==> [repo] docs/a.md <==\n"
+        "# A\n"
+        "\n"
+        "[repo]\n"
+        "## Part\n"
+        "\n"
+        "Text.\n"
+    )), ran.err
+
+
+def test_a_step_with_on_demand_files_shows_each_file_of_a_folder_path_sorted_by_name(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, "docs/skillworks/issue-tracker.md", "# Tracker\n")
+    write(repo.work, "docs/skillworks/rules/words.md", "# Words\n")
+    write(repo.work, "docs/skillworks/rules/comments.md", "# Comments\n")
+    write(repo.work, "docs/skillworks/domain.md", "# Domain\n")
+    write(repo.work, "docs/skillworks/review-standards.md", "# Standards\n")
+
+    ran = show("standards", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the standards step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  on demand  [repo]     docs/skillworks/issue-tracker.md\n"
+        "  on demand  [repo]     docs/skillworks/rules/comments.md\n"
+        "  on demand  [repo]     docs/skillworks/rules/words.md\n"
+        "  on demand  [repo]     docs/skillworks/domain.md\n"
+        "  on demand  [repo]     docs/skillworks/review-standards.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [repo] docs/skillworks/issue-tracker.md <==\n"
+        "# Tracker\n"
+        "\n"
+        "==> [repo] docs/skillworks/rules/comments.md <==\n"
+        "# Comments\n"
+        "\n"
+        "==> [repo] docs/skillworks/rules/words.md <==\n"
+        "# Words\n"
+        "\n"
+        "==> [repo] docs/skillworks/domain.md <==\n"
+        "# Domain\n"
+        "\n"
+        "==> [repo] docs/skillworks/review-standards.md <==\n"
+        "# Standards\n"
+    )), ran.err
+
+
+def test_a_missing_file_is_marked_missing_and_the_rest_still_shows(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n\n@docs/gone.md\n")
+    write(repo.work, "docs/skillworks/suite.json", "{}\n")
+
+    ran = show("suite", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the suite step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     docs/gone.md  missing\n"
+        "  on demand  [repo]     docs/skillworks/suite.json\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "@docs/gone.md\n"
+        "\n"
+        "==> [repo] docs/skillworks/suite.json <==\n"
+        "{}\n"
+    )), ran.err
+
+
+def test_a_missing_on_demand_file_is_marked_missing_with_exit_code_0(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+
+    ran = show("sweep", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the sweep step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  on demand  [repo]     docs/skillworks/rules/comments.md  missing\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+    )), ran.err
+
+
+def file_list(out):
+    return out.split("\n\n==> ")[0] + "\n"
+
+
+def test_under_sidecar_steering_both_claude_md_files_show_and_on_demand_files_come_from_the_sidecar(repo, home):
+    sidecar = repo.work.parent / "work-skillworks"
+    write(repo.work, "CLAUDE.md", "# Repo rules\n\n@docs/r.md\n")
+    write(repo.work, "docs/r.md", "# R\n")
+    write(repo.work, "docs/skillworks/rules/comments.md", "# The repo copy\n")
+    write(sidecar, "docs/skillworks/loop.json", '{"tracker": "files", "target-branch": "pr"}\n')
+    write(sidecar, "CLAUDE.md", "# Team rules\n\n@docs/team.md\n")
+    write(sidecar, "docs/team.md", "# Team\n")
+    write(sidecar, "docs/skillworks/rules/comments.md", "# The Sidecar copy\n")
+
+    ran = show("sweep", where=repo.work, home=home)
+
+    assert (ran.status, file_list(ran.out)) == (0, (
+        "The Steering the sweep step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     docs/r.md\n"
+        "  always     [Sidecar]  CLAUDE.md\n"
+        "  always     [Sidecar]  docs/team.md\n"
+        "  on demand  [Sidecar]  docs/skillworks/rules/comments.md\n"
+    )), ran.err
+
+
+def test_the_users_claude_md_and_its_imports_show_first_labelled_user(repo, home):
+    write(home, ".claude/CLAUDE.md", "# Mine\n\n@rules/mine.md\n")
+    write(home, ".claude/rules/mine.md", "## My part\n\nText.\n")
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md\n"
+        "  always     [user]     ~/.claude/rules/mine.md\n"
+        "  always     [repo]     CLAUDE.md  missing\n"
+        "\n"
+        "==> [user] ~/.claude/CLAUDE.md <==\n"
+        "# Mine\n"
+        "\n"
+        "@rules/mine.md\n"
+        "\n"
+        "==> [user] ~/.claude/rules/mine.md <==\n"
+        "[user]\n"
+        "## My part\n"
+        "\n"
+        "Text.\n"
+    )), ran.err
+
+
+def test_an_import_deeper_than_5_levels_is_left_out(repo, home):
+    write(repo.work, "CLAUDE.md", "@l1.md\n")
+    for level in range(1, 7):
+        write(repo.work, "l{}.md".format(level), "@l{}.md\n".format(level + 1))
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, file_list(ran.out)) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     l1.md\n"
+        "  always     [repo]     l2.md\n"
+        "  always     [repo]     l3.md\n"
+        "  always     [repo]     l4.md\n"
+        "  always     [repo]     l5.md\n"
+    )), ran.err
+
+
+def test_an_import_cycle_shows_each_file_once(repo, home):
+    write(repo.work, "CLAUDE.md", "@a.md\n")
+    write(repo.work, "a.md", "@b.md\n")
+    write(repo.work, "b.md", "@a.md\n@CLAUDE.md\n")
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, file_list(ran.out)) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     a.md\n"
+        "  always     [repo]     b.md\n"
+    )), ran.err
+
+
+def sidecar_hook_files(where):
+    payload = {"cwd": str(where), "hook_event_name": "SessionStart", "source": "startup"}
+    done = subprocess.run(
+        ["node", (PLUGIN / "scripts" / "hooks" / "sidecar-steering.mjs").as_posix()],
+        input=json.dumps(payload), capture_output=True, encoding="utf-8")
+    context = json.loads(done.stdout)["hookSpecificOutput"]["additionalContext"]
+    return re.findall(r"^## (\S+)$", context, re.MULTILINE)
+
+
+def sidecar_files_shown(out):
+    lines = file_list(out).splitlines()
+    return [line.split()[-1] for line in lines
+            if line.startswith("  always     [Sidecar]") and not line.endswith("missing")]
+
+
+def test_the_always_walk_finds_the_same_sidecar_files_as_the_sidecar_hook(repo, home):
+    sidecar = repo.work.parent / "work-skillworks"
+    write(sidecar, "docs/skillworks/loop.json", '{"tracker": "files", "target-branch": "pr"}\n')
+    write(sidecar, "CLAUDE.md", "# Team\n\n@docs/a.md\n  @docs/b.md  \n@docs/gone.md\n@l1.md\n")
+    write(sidecar, "docs/a.md", "@docs/b.md\n@CLAUDE.md\n")
+    write(sidecar, "docs/b.md", "Inline @docs/c.md is not an import.\n")
+    write(sidecar, "docs/c.md", "C\n")
+    for level in range(1, 7):
+        write(sidecar, "l{}.md".format(level), "@l{}.md\n".format(level + 1))
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert sidecar_files_shown(ran.out) == sidecar_hook_files(repo.work), ran.err
 
 
 def test_a_folder_outside_a_git_repository_is_turned_down(tmp_path):
