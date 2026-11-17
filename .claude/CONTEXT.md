@@ -194,6 +194,12 @@ Target branch, proves the work survived and the suite is green, then pushes. A t
 own, the moment it passes, so a stopped run leaves every ticket before it already on the remote.
 _Avoid_: Integrate, integration
 
+**Layer**:
+One source of the text a step reads: the repo, the Sidecar, or the developer's own user files. A step
+gets every Layer at once, and each part of the text comes from exactly one of them. The user Layer is
+true only on one machine.
+_Avoid_: Place, source, level
+
 **Load**:
 One instruction file reaching a session. It names the file, where it came from, when it came and why.
 A Load is a fact about a session, never a judgement: a file that arrives when it should not have
