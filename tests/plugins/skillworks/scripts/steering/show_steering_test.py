@@ -288,6 +288,62 @@ def test_an_import_cycle_shows_each_file_once(repo, home):
     )), ran.err
 
 
+def test_an_import_resolves_from_the_folder_of_the_file_that_holds_it(repo, home):
+    write(repo.work, "CLAUDE.md", "@docs/a.md\n")
+    write(repo.work, "docs/a.md", "@b.md\n")
+    write(repo.work, "docs/b.md", "B\n")
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, file_list(ran.out)) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     docs/a.md\n"
+        "  always     [repo]     docs/b.md\n"
+    )), ran.err
+
+
+def test_an_import_from_the_home_folder_shows_as_a_user_file(repo, home):
+    write(repo.work, "CLAUDE.md", "@~/.claude/mine.md\n")
+    write(home, ".claude/mine.md", "Mine\n")
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, file_list(ran.out)) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [user]     ~/.claude/mine.md\n"
+    )), ran.err
+
+
+def test_an_import_inside_a_sentence_loads_and_one_inside_code_does_not(repo, home):
+    write(repo.work, "CLAUDE.md", (
+        "Read @docs/a.md first, and mail me@example.invalid.\n"
+        "\n"
+        "Write `@docs/span.md` to import.\n"
+        "\n"
+        "```\n"
+        "@docs/fenced.md\n"
+        "```\n"
+    ))
+    for name in ("a", "span", "fenced"):
+        write(repo.work, "docs/{}.md".format(name), "Text.\n")
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, file_list(ran.out)) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [repo]     docs/a.md\n"
+    )), ran.err
+
+
 API_RULE = "---\npaths:\n  - \"src/api/**/*.ts\"\n  - tests/api/**\n---\n\n## The API\n\nText.\n"
 
 WEB_RULE = "---\npaths: [\"src/**/*.{ts,tsx}\"]\n---\n\nUse hooks.\n"
@@ -406,9 +462,10 @@ def test_the_always_walk_finds_the_same_sidecar_files_as_the_sidecar_hook(repo, 
     sidecar = repo.work.parent / "work-skillworks"
     write(sidecar, "docs/skillworks/loop.json", '{"tracker": "files", "target-branch": "pr"}\n')
     write(sidecar, "CLAUDE.md", "# Team\n\n@docs/a.md\n  @docs/b.md  \n@docs/gone.md\n@l1.md\n")
-    write(sidecar, "docs/a.md", "@docs/b.md\n@CLAUDE.md\n")
-    write(sidecar, "docs/b.md", "Inline @docs/c.md is not an import.\n")
-    write(sidecar, "docs/c.md", "C\n")
+    write(sidecar, "docs/a.md", "@b.md\n@../CLAUDE.md\n")
+    write(sidecar, "docs/b.md", "Read @c.md first, and not `@d.md`.\n\n```\n@e.md\n```\n")
+    for name in ("c", "d", "e"):
+        write(sidecar, "docs/{}.md".format(name), "Text.\n")
     for level in range(1, 7):
         write(sidecar, "l{}.md".format(level), "@l{}.md\n".format(level + 1))
 

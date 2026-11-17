@@ -19,7 +19,12 @@ STEP_MAP = "https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/th
 # The Sidecar hook follows imports this many hops deep, as Claude Code does, so the two walks agree.
 IMPORT_HOPS = 5
 
-IMPORT = re.compile(r"^@(\S+)$")
+# Claude Code reads an import with this pattern, so the two agree on what loads.
+IMPORT = re.compile(r"(?:^|(?<=\s))@((?:[^\s\\]|\\ )+)", re.MULTILINE)
+
+FENCE_OPEN = re.compile(r"^\s*(`{3,}|~{3,})")
+
+CODE_SPAN = re.compile(r"(`+)(?:(?!\1).)+?\1", re.DOTALL)
 
 ALWAYS = "always"
 
@@ -70,21 +75,59 @@ def read(path):
         return None
 
 
-# An import names a path from the root of its own place, the rule the Sidecar hook follows.
-def walked(root, prefix, label, name, hops, seen):
-    path = Path(root, name)
+def outside_code(text):
+    kept, fence = [], None
+    for line in text.splitlines():
+        opened = FENCE_OPEN.match(line)
+        if fence is None and opened:
+            fence = opened.group(1)
+        elif fence is not None and line.strip().startswith(fence[0] * len(fence)):
+            fence = None
+        elif fence is None:
+            kept.append(line)
+    return CODE_SPAN.sub(" ", "\n".join(kept))
+
+
+def imports_of(text):
+    return [name.replace("\\ ", " ").split("#")[0] for name in IMPORT.findall(outside_code(text))]
+
+
+@dataclass(frozen=True)
+class Place:
+    root: Path
+    prefix: str
+    label: str
+
+
+def shown_path(path, place, home):
+    for root, prefix in ((place.root, place.prefix), (Path(home), "~/")):
+        try:
+            return prefix + Path(path).relative_to(root).as_posix()
+        except ValueError:
+            pass
+    return Path(path).as_posix()
+
+
+# Claude Code resolves an import from the folder of the file that holds it, and ~/ from the home folder.
+def resolved(name, holder, place, home):
+    if name.startswith("~/"):
+        path = Path(os.path.normpath(Path(home, name[2:])))
+        return path, shown_path(path, Place(Path(home), "~/", "user"), home), "user"
+    path = Path(os.path.normpath(Path(holder.parent, name)))
+    return path, shown_path(path, place, home), place.label
+
+
+def walked(path, shown_as, label, place, home, hops, seen):
     key = key_of(path)
     if key in seen:
         return []
     seen.add(key)
     text = read(path)
-    found = [Section(ALWAYS, label, prefix + name, text)]
+    found = [Section(ALWAYS, label, shown_as, text)]
     if text is None or hops == 0:
         return found
-    for line in text.splitlines():
-        imported = IMPORT.match(line.strip())
-        if imported:
-            found += walked(root, prefix, label, imported.group(1), hops - 1, seen)
+    for name in imports_of(text):
+        found += walked(*resolved(name, path, place, home), place, home, hops - 1, seen)
     return found
 
 
@@ -188,17 +231,18 @@ def key_of(path):
 
 
 def always(repo, home, sidecar, all_rules):
-    places = [(Path(home, ".claude"), "~/.claude/", "user"), (repo, "", "repo")]
+    places = [Place(Path(home, ".claude"), "~/.claude/", "user"), Place(Path(repo), "", "repo")]
     if sidecar:
-        places.append((sidecar, "", "Sidecar"))
+        places.append(Place(Path(sidecar), "", "Sidecar"))
     seen = set()
     found = []
-    for root, prefix, label in places:
-        found += walked(root, prefix, label, "CLAUDE.md", IMPORT_HOPS, seen)
+    for place in places:
+        found += walked(Path(place.root, "CLAUDE.md"), place.prefix + "CLAUDE.md", place.label, place, home,
+                        IMPORT_HOPS, seen)
         for rule in all_rules:
-            if rule.label == label and not rule.globs and key_of(rule.file) not in seen:
+            if rule.label == place.label and not rule.globs and key_of(rule.file) not in seen:
                 seen.add(key_of(rule.file))
-                found.append(Section(ALWAYS, label, rule.path, rule.text))
+                found.append(Section(ALWAYS, place.label, rule.path, rule.text))
     return found
 
 

@@ -1,34 +1,69 @@
 // Claude Code reads CLAUDE.md only from the folders above a Session, and the Sidecar sits beside the repo, never above it.
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { text } from "node:stream/consumers";
 import { sidecarSteering } from "./steering-folder.mjs";
 
 // Claude Code follows imports this many hops deep, so a rule nested past it loads in neither place.
 const IMPORT_HOPS = 5;
 
-const IMPORT = /^@(\S+)$/;
+// Claude Code reads an import with this pattern, so the two agree on what loads.
+const IMPORT = /(?:^|(?<=\s))@((?:[^\s\\]|\\ )+)/gm;
 
-function expanded(sidecar, name, hops, seen) {
-  if (seen.has(name)) return "";
-  seen.add(name);
+const FENCE_OPEN = /^\s*(`{3,}|~{3,})/;
+
+const CODE_SPAN = /(`+)(?:(?!\1)[\s\S])+?\1/g;
+
+function outsideCode(held) {
+  const kept = [];
+  let fence;
+  for (const line of held.split(/\r?\n/)) {
+    const opened = FENCE_OPEN.exec(line);
+    if (fence === undefined && opened) fence = opened[1];
+    else if (fence !== undefined && line.trim().startsWith(fence[0].repeat(fence.length))) fence = undefined;
+    else if (fence === undefined) kept.push(line);
+  }
+  return kept.join("\n").replace(CODE_SPAN, " ");
+}
+
+function importsOf(held) {
+  return [...outsideCode(held).matchAll(IMPORT)].map((found) => found[1].replaceAll("\\ ", " ").split("#")[0]);
+}
+
+function shownPath(path, sidecar) {
+  for (const [root, prefix] of [[sidecar, ""], [homedir(), "~/"]]) {
+    const inside = relative(root, path);
+    if (inside !== "" && !inside.startsWith("..") && !isAbsolute(inside)) return prefix + inside.replaceAll("\\", "/");
+  }
+  return path.replaceAll("\\", "/");
+}
+
+// Claude Code resolves an import from the folder of the file that holds it, and ~/ from the home folder.
+function resolved(name, holder) {
+  return name.startsWith("~/") ? resolve(homedir(), name.slice(2)) : resolve(dirname(holder), name);
+}
+
+function expanded(sidecar, path, hops, seen) {
+  const key = process.platform === "win32" ? path.toLowerCase() : path;
+  if (seen.has(key)) return "";
+  seen.add(key);
   let held;
   try {
-    held = readFileSync(join(sidecar, name), "utf8");
+    held = readFileSync(path, "utf8");
   } catch {
     return "";
   }
-  const imports = held.split(/\r?\n/).map((line) => IMPORT.exec(line.trim())?.[1]).filter(Boolean);
-  const nested = hops === 0 ? [] : imports.map((imported) => expanded(sidecar, imported, hops - 1, seen));
-  return [`## ${name}\n\n${held.trimEnd()}\n`, ...nested.filter(Boolean)].join("\n");
+  const nested = hops === 0 ? [] : importsOf(held).map((name) => expanded(sidecar, resolved(name, path), hops - 1, seen));
+  return [`## ${shownPath(path, sidecar)}\n\n${held.trimEnd()}\n`, ...nested.filter(Boolean)].join("\n");
 }
 
 try {
   const payload = JSON.parse(await text(process.stdin));
   const sidecar = sidecarSteering(typeof payload.cwd === "string" ? payload.cwd : process.cwd());
   if (sidecar !== undefined) {
-    const steering = expanded(sidecar, "CLAUDE.md", IMPORT_HOPS, new Set());
+    const steering = expanded(sidecar, join(sidecar, "CLAUDE.md"), IMPORT_HOPS, new Set());
     const context =
       `Sidecar Steering is on. The Steering sits in the Sidecar at ${sidecar.replaceAll("\\", "/")}, and not in ` +
       "the repo. Read each Steering file with steering-file. The Sidecar's CLAUDE.md and each file it imports " +
