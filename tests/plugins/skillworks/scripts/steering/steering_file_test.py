@@ -2,10 +2,12 @@
 
 import contextlib
 import io
+import json
+import re
 
 import pytest
 
-from conftest import Ran, Repo, git, launch
+from conftest import PLUGIN, Ran, Repo, git, launch
 from runner import Subprocess
 from steering import steering_file
 
@@ -159,3 +161,130 @@ def test_the_command_prints_the_disk_copy_to_the_caller(work):
     ran = launch("steering-file", SURFACES, where=work.repo.work)
 
     assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
+
+
+SKILLS = PLUGIN / "skills"
+
+STEP_LIST = PLUGIN / "scripts" / "steering" / "steps.json"
+
+# A file key judges that file alone, because review-changes holds one axis file per review.
+SERVES = {
+    "grill": ["grill"],
+    "grilling": ["grill"],
+    "domain-modeling": ["grill"],
+    "to-spec": ["write-spec"],
+    "to-tickets": ["tickets"],
+    "implement": ["build", "fix", "finish"],
+    "tdd": ["build"],
+    "codebase-design": ["build"],
+    "review-standards": ["standards"],
+    "review-changes/standards.md": ["standards"],
+    "review-spec": ["spec"],
+    "review-changes/spec.md": ["spec"],
+    "review-architecture": ["architecture"],
+    "review-changes/architecture.md": ["architecture"],
+    "comment-sweep": ["sweep"],
+}
+
+READ = re.compile(r"steering-file\s+([^\s`'\"]+)")
+
+
+def listed_steps():
+    return json.loads(STEP_LIST.read_text(encoding="utf-8"))["steps"]
+
+
+def fixed_reads(text):
+    paths = [found.rstrip(".,;:)") for found in READ.findall(text)]
+    return [path for path in paths if not re.search(r"[<>${}]", path)]
+
+
+def steps_served_by(skill_file):
+    folder = skill_file.split("/")[0]
+    return SERVES.get(skill_file, SERVES.get(folder, []))
+
+
+def is_listed(path, on_demand):
+    return any(path == listed or (listed.endswith("/") and path.startswith(listed))
+               for listed in on_demand)
+
+
+def unlisted_reads(skills, steps):
+    on_demand = {step["name"]: step["on-demand"] for step in steps}
+    found = []
+    for page in sorted(skills.rglob("*.md")):
+        skill_file = page.relative_to(skills).as_posix()
+        for step in steps_served_by(skill_file):
+            for path in fixed_reads(page.read_text(encoding="utf-8")):
+                if not is_listed(path, on_demand[step]) and (skill_file, step, path) not in found:
+                    found.append((skill_file, step, path))
+    return found
+
+
+def given_a_skill(root, skill_file, text):
+    page = root / skill_file
+    page.parent.mkdir(parents=True, exist_ok=True)
+    page.write_text(text, encoding="utf-8")
+    return root
+
+
+def test_every_fixed_path_a_step_s_skill_reads_is_listed_for_that_step():
+    assert unlisted_reads(SKILLS, listed_steps()) == []
+
+
+def test_every_fixed_steering_file_call_in_a_skill_is_found():
+    text = ("Read `steering-file docs/skillworks/loop.json` first.\n"
+            "Then steering-file docs/skillworks/rules/, and `steering-file <path>` for the rest.\n"
+            "It ends with steering-file docs/skillworks/suite.json.\n")
+
+    assert fixed_reads(text) == ["docs/skillworks/loop.json", "docs/skillworks/rules/",
+                                 "docs/skillworks/suite.json"]
+
+
+def test_a_path_the_step_does_not_list_is_named_with_the_skill_and_the_step(tmp_path):
+    skills = given_a_skill(tmp_path, "comment-sweep/SKILL.md",
+                           "Read `steering-file docs/skillworks/loop.json`.\n")
+
+    assert unlisted_reads(skills, listed_steps()) == [
+        ("comment-sweep/SKILL.md", "sweep", "docs/skillworks/loop.json")]
+
+
+def test_a_skill_that_serves_several_steps_is_held_to_each_of_them(tmp_path):
+    skills = given_a_skill(tmp_path, "implement/SKILL.md",
+                           "Read `steering-file docs/skillworks/rules/testing.md`.\n")
+
+    assert unlisted_reads(skills, listed_steps()) == [
+        ("implement/SKILL.md", "fix", "docs/skillworks/rules/testing.md"),
+        ("implement/SKILL.md", "finish", "docs/skillworks/rules/testing.md")]
+
+
+def test_a_path_inside_a_folder_the_step_lists_passes(tmp_path):
+    skills = given_a_skill(tmp_path, "review-changes/standards.md",
+                           "Read `steering-file docs/skillworks/rules/words.md`.\n")
+
+    assert unlisted_reads(skills, listed_steps()) == []
+
+
+def test_a_placeholder_path_is_not_judged(tmp_path):
+    skills = given_a_skill(tmp_path, "comment-sweep/SKILL.md", "Read each with `steering-file <path>`.\n")
+
+    assert unlisted_reads(skills, listed_steps()) == []
+
+
+def test_a_skill_that_serves_no_step_is_not_judged(tmp_path):
+    skills = given_a_skill(tmp_path, "skillworks-setup/SKILL.md",
+                           "Read `steering-file docs/skillworks/nowhere.md`.\n")
+
+    assert unlisted_reads(skills, listed_steps()) == []
+
+
+def test_every_skill_file_the_map_of_served_steps_names_exists():
+    missing = [key for key in SERVES if not (SKILLS / key).exists()]
+
+    assert missing == []
+
+
+def test_every_step_the_map_of_served_steps_names_is_in_the_step_list():
+    names = {step["name"] for step in listed_steps()}
+    stray = [step for served in SERVES.values() for step in served if step not in names]
+
+    assert stray == []
