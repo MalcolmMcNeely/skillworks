@@ -310,7 +310,7 @@ _Avoid_: Config, guidance, policy
 
 **Step**:
 One part of a stage of the Dev loop, with Steering of its own to read. The Grill's steps are the
-grill, the gate and the spec. The spec loop's steps are the tickets, then each step of one ticket,
+`grill`, `gate` and `write-spec`. The spec loop's steps are the Cut, then each step of one ticket,
 from `build` to `finish`. A step is not a stage: the Dev loop has two stages, and each holds steps.
 _Avoid_: Phase, part
 
