@@ -5,12 +5,11 @@ way of working, which they keep and the client never gets. The repo's Steering h
 in the client's repo. It is part of what the developer delivers, and the client owns it when the
 developer goes.
 
-Some of the developer's way of working does not fit one client. Jakks is the first case: a rule of one
-class per concept conflicts with the client's own code style. That exception is the developer's
-decision, so it lives in their remote Steering, in a place kept for that client.
-
-So the two Layers only add. Neither replaces a section, a bullet, a table row or a sentence of the
-other, and each part of the text a step reads comes from exactly one of them.
+The two Layers only add. Neither replaces a section, a bullet, a table row or a sentence of the other,
+and each part of the text a step reads comes from exactly one of them. Skillworks does not find or
+settle a conflict between them. The developer writes both, so the developer keeps them from
+conflicting. Jakks is the first case: a rule of one class per concept conflicts with the client's own
+code style, and the developer changes one of the two texts.
 
 ## Considered options
 
@@ -19,3 +18,7 @@ Rejected. The client repo would then name every rule the developer turned off, s
 through its own exceptions. A table row or a sentence cannot be replaced alone, so the client copy has
 to hold the rest of the section, and that leaks more. The merge also needs rules for headings, bold
 bullets and YAML keys that adding does not.
+
+**The remote Steering keeps a place for each client, with the changes to the method for that client.**
+Rejected. One developer writes both Layers, so a conflict is theirs to avoid when they write, and a
+place for each client is machinery for a problem one person already controls.
