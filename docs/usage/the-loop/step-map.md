@@ -6,6 +6,9 @@ The Dev loop has two stages, the Grill and the spec loop, and each stage of the 
 Each step reads some of your Steering. This map says which files, and where your team can change what
 the step does. [Steering](../steering.md) has the detail on each file.
 
+To see the text a step reads in your repo, with the source of each part, run
+`/skillworks:show-steering <step>`. With no step, it lists the steps.
+
 Two kinds of load:
 
 - **Always** means the file is in the Session from its start. `CLAUDE.md` loads, and it imports the

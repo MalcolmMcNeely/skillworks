@@ -1497,7 +1497,7 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
     assert "disable-model-invocation: true\n" in front
 
 
-HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill")
+HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill", "show-steering")
 
 VISIBLE_SKILLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
                   "diagnosing-bugs", "prototype", "unslop", "architecture-tests", "skillsmith")
@@ -1531,6 +1531,10 @@ def test_to_spec_can_be_invoked_by_claude():
 
 
 FRONT_MATTER_KEYS = {"name", "description", "argument-hint", "disable-model-invocation"}
+
+
+def test_the_show_steering_skill_runs_the_command_with_the_arguments_the_developer_typed():
+    assert "show-steering $ARGUMENTS" in skill_text("show-steering")
 
 
 # Claude Code ignores a key it does not know and says nothing, so a misspelt flag would show a hidden skill to Claude.
@@ -2742,11 +2746,12 @@ def test_the_licence_notices_name_review_changes_among_the_skills_we_changed():
     assert "code-review" not in notices
 
 
-def test_the_licence_notices_name_skillsmith_among_the_skills_that_are_ours():
+@pytest.mark.parametrize("skill", ["skillsmith", "show-steering"])
+def test_the_licence_notices_name_the_skill_among_the_skills_that_are_ours(skill):
     notices = " ".join((ROOT / "THIRD-PARTY-NOTICES.md").read_text(encoding="utf-8").split())
     ours = notices.split(" except ", 1)[1].split("which are ours", 1)[0]
 
-    assert "`skillsmith`" in ours
+    assert f"`{skill}`" in ours
 
 
 def test_no_plugin_file_or_steering_doc_names_the_old_review_skill():
@@ -2857,6 +2862,12 @@ def test_the_drift_check_page_describes_the_gap_ticket_and_the_one_round():
             'there."') in page
     assert "on the Gap items alone" in page
     assert "through [the same steps](steps.md) as every other ticket" in page
+
+
+def test_the_step_map_opens_by_pointing_at_show_steering_for_the_text_in_your_repo():
+    opening = STEP_MAP_PAGE.read_text(encoding="utf-8").split("\nTwo kinds of load:\n", 1)[0]
+
+    assert "`/skillworks:show-steering <step>`" in opening
 
 
 def test_the_step_map_page_shows_the_gap_ticket():
