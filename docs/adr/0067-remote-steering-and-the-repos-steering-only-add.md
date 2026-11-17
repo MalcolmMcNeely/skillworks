@@ -8,7 +8,8 @@ developer goes.
 The two Layers only add. Neither replaces a section, a bullet, a table row or a sentence of the other,
 and each part of the text a step reads comes from exactly one of them. When both hold a file at the
 same path, the step reads one file: the repo's text, then the remote's. Settings stay in the repo,
-because a YAML block is a fact about one repo, so a remote file that holds one stops the run. Skillworks does not find or
+because a YAML block is a fact about one repo, so a remote file that holds one stops the run. Path
+rules stay in the repo for the same reason: a path rule names paths in one repo. Skillworks does not find or
 settle a conflict between them. The developer writes both, so the developer keeps them from
 conflicting. Jakks is the first case: a rule of one class per concept conflicts with the client's own
 code style, and the developer changes one of the two texts.
