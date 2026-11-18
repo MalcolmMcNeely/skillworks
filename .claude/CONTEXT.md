@@ -41,6 +41,11 @@ driver reads it and does not judge it. A ticket that waits on another ticket is 
 an open blocker.
 _Avoid_: Stuck, walled, refused
 
+**Check maker**:
+A command the Suite file names that prints checks, which the Suite runs as if the file named them.
+It reads the repo as it is at each run, so a new project gets its check with no edit to the file.
+_Avoid_: Check source, generator, check list
+
 **Choice**:
 What a Session settled by itself where its ticket left more than one way open. A point the ticket or
 the spec names is not open, and a part that only touches the point does not open it, so a Choice
