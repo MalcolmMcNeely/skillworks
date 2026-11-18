@@ -35,7 +35,8 @@ skillworks-suite
 
 It runs every check in `docs/skillworks/suite.json` and keeps a Proof of each one that passes. A check
 whose inputs match a Proof does not run again, so a second run after a small change is cheap.
-In a loop the driver runs the Suite as a step of its own, and it reads the Proofs your run kept.
+In a loop no Session runs the whole Suite. Each runs only Trials, and the driver runs the Suite as a
+step of its own.
 
 Docker has to be running, because the API tests start Loki in a container and the script tests run
 in a Linux image. `uv` has to be on PATH, because the command is Python.

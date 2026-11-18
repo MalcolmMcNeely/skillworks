@@ -76,7 +76,9 @@ skillworks-suite --image <the check's Dockerfile> -- <the check's command, narro
 
 A Trial prints the command's output and returns its exit code. It keeps no Proof, so it never stands in for the Suite. A test of a check with no image runs on the host as before.
 
-To check the work against the whole Suite, run `skillworks-suite`, never the test commands the Suite file names. It keeps a Proof of each check that passes, so a check whose inputs have not changed does not run again. In a loop the driver runs the Suite as a step of its own, and it reads the Proofs your run kept.
+Under the spec loop, run only the tests near your work, as Trials, and never run `skillworks-suite` over the whole Suite. The driver runs the whole Suite as a step of its own, and that run is the one that counts. The comment sweep edits files after this Session, so a whole Suite run here would be thrown away.
+
+Under a hand run, check the work against the whole Suite with `skillworks-suite`, and never with the test commands the Suite file names. It keeps a Proof of each check that passes, so a check whose inputs have not changed does not run again.
 
 Building is done when the typecheck is clean and every test the change adds or touches passes.
 
@@ -104,7 +106,7 @@ Work reaches this section three ways, and it covers all of them:
 4. **Fix a failing suite the prompt carries.** The driver ran the whole suite as often as the Suite file asks and read a failure every time, so treat it as the work. Make the suite green. Do not weaken a test to get there, and say so in your report if the failure turns out to be nothing this ticket caused. The driver runs the whole Suite after this Session, so run only the tests that failed, as a Trial, and do not run `skillworks-suite` over the whole Suite.
 5. **A prompt carrying neither a report nor a failing suite has nothing to fix**, so go straight on.
 
-Run the tests of a fix as Building runs them: a test that a check with an image runs is run as a Trial, and never on the host.
+Run the tests of a fix as Building runs them: a test that a check with an image runs is run as a Trial, and never on the host. Under the spec loop, run only the tests of your fix, as Trials, and never run `skillworks-suite` over the whole Suite.
 
 Leave the change uncommitted. The sweep has still to run, and committing is Finishing's job.
 

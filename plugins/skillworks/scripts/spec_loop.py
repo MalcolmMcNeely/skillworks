@@ -203,11 +203,11 @@ NUDGE_TAILS = {
         "build's answer in the Closing note, and do what is owed. ") + NUDGE_BLOCKED,
 }
 
-# The command keeps Proofs the driver reads, so the Suite step after runs only what changed.
-SUITE_BY_COMMAND = (
-    "\n\nWhen you check your work against the Suite, run `skillworks-suite`, and never the test "
-    "commands the Suite file names. In this loop the driver runs the whole Suite as a step of its "
-    "own.")
+# The sweep edits files after every Session, so a whole Suite run by a Session is thrown away.
+SUITE_IN_TRIALS = (
+    "\n\nIn this loop the driver runs the whole Suite as a step of its own, and that run is the one "
+    "that counts. Run only the tests near your work, as a Trial, and do not run `skillworks-suite` "
+    "over the whole Suite.")
 
 # After a red Suite the driver's own whole-Suite run comes next, so one here only doubles the wait.
 SUITE_AFTER_RED = (
@@ -773,7 +773,7 @@ class Loop:
     # The checks and the plan read `asks`, so nothing added below the command line reaches them.
     def step_body(self, ticket, step):
         after_red = step.name == "fix" and self.red_suite is not None
-        asked = (self.asks(step, ticket) + (SUITE_AFTER_RED if after_red else SUITE_BY_COMMAND)
+        asked = (self.asks(step, ticket) + (SUITE_AFTER_RED if after_red else SUITE_IN_TRIALS)
                  + "\n\n" + step.told)
         if step.name == "finish":
             return asked + self.suite_report(), ""
@@ -1616,7 +1616,7 @@ class Loop:
         if not self.job_worktree:
             raise stop("FAIL  the {} got no worktree to run in.".format(what))
 
-        ran = self.claude_p(prompt + "\n\n" + told + handed_on)
+        ran = self.claude_p(prompt + SUITE_IN_TRIALS + "\n\n" + told + handed_on)
         result = self.log_dir / (named + ".json")
         reasons = self.log_dir / (named + ".err")
         written(reasons, ran.err)

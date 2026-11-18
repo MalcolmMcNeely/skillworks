@@ -2821,7 +2821,7 @@ def test_the_first_fix_with_review_reports_only_keeps_the_brief_it_had(loop, run
 
     first = prompts_asking(runner, "/skillworks:implement 168 --fix")[0]
     assert ran.status == 1
-    assert ("When you check your work against the Suite" in first
+    assert ("Run only the tests near your work" in first
             and "The driver runs the whole Suite after this Session" not in first)
 
 
@@ -3061,7 +3061,10 @@ def test_a_proof_kept_by_skillworks_suite_in_the_build_skips_that_check_in_the_s
                      r"inputs", suite_output(loop))
 
 
-def test_every_step_session_is_told_to_check_its_work_with_skillworks_suite(loop, runner):
+TRIALS_ONLY = "as a Trial, and do not run `skillworks-suite` over the whole Suite."
+
+
+def test_every_step_session_is_told_to_run_only_trials(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     given_sessions_that_report(loop)
 
@@ -3069,9 +3072,32 @@ def test_every_step_session_is_told_to_check_its_work_with_skillworks_suite(loop
 
     assert ran.status == 1
     assert len(step_calls(runner)) == 7
-    for call in step_calls(runner):
-        assert "run `skillworks-suite`" in call[-1], call[-1]
-        assert "In this loop the driver runs the whole Suite" in call[-1], call[-1]
+    assert all(TRIALS_ONLY in call[-1] for call in step_calls(runner))
+
+
+def test_no_step_session_is_asked_to_check_its_work_against_the_whole_suite(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert not any("When you check your work against the Suite" in call[-1]
+                   for call in step_calls(runner))
+
+
+def test_the_cut_is_told_to_run_only_trials(loop, runner):
+    cut_and_built(loop)
+
+    assert TRIALS_ONLY in prompt_asking(runner, CUT_TICKETS)
+
+
+def test_the_drift_check_and_the_name_check_are_told_to_run_only_trials(loop, runner):
+    drifted(loop, drift_report())
+
+    prompts = prompts_asking(runner, "/skillworks:spec-drift") + prompts_asking(runner, NAME_CHECK)
+    assert len(prompts) == 2
+    assert all(TRIALS_ONLY in prompt for prompt in prompts)
 
 
 # One step owns the gate, so a Session cannot report a result the driver never saw.

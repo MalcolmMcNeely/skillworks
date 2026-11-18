@@ -168,8 +168,9 @@ fails in Linux, so check out every `.sh` with LF, in `.gitattributes`:
 The Suite runs once for each ticket after the build, the reviews, the fix and the comment sweep.
 Before the ticket Lands, it rebases onto the newest Target branch, and if the Target branch moved,
 the Suite runs again on the new base. A check whose inputs a Proof holds does not run, so that
-second run is usually short. No Session runs it. The driver runs it, reads the exit status itself,
-and keeps the output.
+second run is usually short. No Session in the loop runs the whole Suite. The driver runs it, reads
+the exit status itself, and keeps the output. Each Session, the build, the reviews and the fix alike,
+runs only Trials: the few tests near its work, where their check runs.
 
 1. **Ready first.** Every program a check that will run needs must be on `PATH`. Then the `ready`
    command of each check that will run runs, one by one, because two checks can share one install.
@@ -230,9 +231,9 @@ the run stops and names its path.
 ## Running the Suite yourself
 
 `skillworks-suite` is the Plugin's command for the Suite. It runs the Suite in the worktree you are
-in, with Proofs, as the loop does. The Proofs it keeps count for the loop, so an agent that checks
-its own work adds almost nothing to the ticket. Point your agents at it, in your `CLAUDE.md`, in
-place of your raw test commands.
+in, with Proofs, as the loop does. The Proofs it keeps count for the loop. Point an agent you drive by
+hand at it, in your `CLAUDE.md`, in place of your raw test commands. A Session in the loop does not
+run it over the whole Suite: it runs only Trials, and the driver runs the Suite.
 
 `skillworks-suite --fresh` is the full run, by hand. It trusts no Proof, uses no image, keeps no
 Proof, and takes away the Proofs of a check that goes red. Run it when you want to prove the Target

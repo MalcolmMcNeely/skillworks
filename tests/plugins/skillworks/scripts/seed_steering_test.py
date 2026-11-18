@@ -3892,12 +3892,25 @@ def test_implement_reads_the_suite_from_the_suite_file():
     assert read_of(WHERE["suite.json"]) in text
 
 
-def test_implement_builds_with_skillworks_suite_and_leaves_the_loop_s_suite_to_the_driver():
-    text = (SKILLS / "implement" / "SKILL.md").read_text(encoding="utf-8")
-    building = text.split("## Building", 1)[1].split("\n## ", 1)[0]
+def test_implement_s_building_runs_only_trials_under_the_spec_loop():
+    building = section(skill_text("implement"), "Building")
 
-    assert "run `skillworks-suite`" in building
-    assert "In a loop the driver runs the Suite" in building
+    assert ("Under the spec loop, run only the tests near your work, as Trials, and never run "
+            "`skillworks-suite` over the whole Suite.") in building
+
+
+def test_implement_s_building_checks_the_whole_suite_with_skillworks_suite_in_a_hand_run():
+    building = section(skill_text("implement"), "Building")
+
+    assert ("Under a hand run, check the work against the whole Suite with `skillworks-suite`"
+            in building)
+
+
+def test_implement_s_fixing_runs_only_trials_under_the_spec_loop():
+    fixing = section(skill_text("implement"), "Fixing")
+
+    assert ("Under the spec loop, run only the tests of your fix, as Trials, and never run "
+            "`skillworks-suite` over the whole Suite.") in fixing
 
 
 def test_implement_says_what_blocked_is_and_how_to_report_it_right_after_test_runs():

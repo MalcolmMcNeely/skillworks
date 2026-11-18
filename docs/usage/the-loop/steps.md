@@ -74,9 +74,10 @@ lists under `ignores`. A check whose inputs match a Proof does not run. Its line
 says so and names the Proof, so a ticket's record shows what an earlier run proved as well as what
 this one did.
 
-Proofs stay in your clone, and every worktree and every loop in it shares them. So a Session that
-runs `skillworks-suite` while it builds keeps Proofs the `suite` step reads, and the ticket does not
-pay for the same checks twice.
+Proofs stay in your clone, and every worktree and every loop in it shares them. A Session in the loop
+runs only Trials: the few tests near its work, where their check runs. It never runs
+`skillworks-suite` over the whole Suite, because the comment sweep edits files after every Session,
+and a whole run the sweep changes would be thrown away. The `suite` step is the one whole run.
 
 First the script proves the machine can run the checks that will run. Each `ready` command runs, one
 by one. A machine that is not ready is not a red Suite: the loop stops and names what is missing.

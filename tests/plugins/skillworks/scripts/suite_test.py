@@ -1955,6 +1955,37 @@ def test_the_suite_page_says_what_a_rerun_is_in_what_a_check_holds_and_where_it_
     assert "a check with a `rerun` runs it in place of its whole command" in runs[0]
 
 
+def flattened(text):
+    return " ".join(text.split())
+
+
+def flat_text(page):
+    return flattened((ROOT / page).read_text(encoding="utf-8"))
+
+
+def test_the_suite_page_says_how_the_loop_runs_the_suite_with_no_session_running_it_whole():
+    section = flattened((ROOT / SUITE_PAGE).read_text(encoding="utf-8")
+                        .split("## How the loop runs the Suite")[1].split("\n## ")[0])
+
+    for words in ("No Session in the loop runs the whole Suite", "runs only Trials"):
+        assert words in section, words
+
+
+def test_the_steps_page_says_a_session_in_the_loop_runs_only_trials():
+    text = flat_text(STEPS_PAGE)
+
+    assert "A Session in the loop runs only Trials" in text
+    assert "runs `skillworks-suite` while it builds" not in text
+
+
+def test_the_steering_page_says_a_session_in_the_loop_reads_the_suite_file_only_for_trials():
+    row = [line for line in (ROOT / "docs/usage/steering.md").read_text(encoding="utf-8")
+           .splitlines() if line.startswith("| `suite.json` |")]
+
+    assert len(row) == 1
+    assert "A Session in the loop runs only Trials" in row[0]
+
+
 def test_the_suite_page_says_what_a_trial_is_after_running_the_suite_yourself():
     headings = re.findall(r"^## (.+)$", (ROOT / SUITE_PAGE).read_text(encoding="utf-8"), re.M)
     at = headings.index("Running the Suite yourself")
@@ -2231,7 +2262,7 @@ def test_claude_md_names_skillworks_suite_in_place_of_the_checks():
     section = checks_section("CLAUDE.md", "### Checks").split("\n### ")[0]
 
     assert section.split("```")[1].strip() == "skillworks-suite"
-    assert "In a loop the driver runs the Suite" in section
+    assert "In a loop no Session runs the whole Suite" in flattened(section)
     for entry in this_repo_s_checks():
         assert " ".join(entry["command"]) not in section.replace('"', ""), entry["command"]
 
