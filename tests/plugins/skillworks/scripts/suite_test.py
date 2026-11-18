@@ -309,11 +309,18 @@ SCRIPT_TESTS_IMAGE = "docs/skillworks/script-tests.Dockerfile"
 # Tests marked this_repo read the paths the image check ignores, which its copy leaves out.
 THIS_REPO = "this_repo"
 
+# Tests marked real_dotnet need the .NET SDK and a NuGet restore, and the image has neither.
+REAL_DOTNET = "real_dotnet"
+
 SCRIPT_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "pytest-xdist",
-                        "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS, BACKFILL_EVALS, "-m", "not " + THIS_REPO]
+                        "--with", "filelock", "pytest", "-n", "auto", SCRIPT_TESTS, BACKFILL_EVALS,
+                        "-m", "not {} and not {}".format(THIS_REPO, REAL_DOTNET)]
 
 THIS_REPO_S_SUITE_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "filelock", "pytest",
                                    SCRIPT_TESTS + "/suite_test.py", BACKFILL_EVALS, "-m", THIS_REPO]
+
+REAL_DOTNET_TESTS_COMMAND = ["uv", "run", "--with", "pytest", "--with", "filelock", "pytest",
+                             SCRIPT_TESTS + "/dotnet/check_maker_test.py", "-m", REAL_DOTNET]
 
 ARCHITECTURE_TESTS = "tests/Skillworks.Architecture.Tests"
 
@@ -369,6 +376,7 @@ def test_this_repo_s_suite_file_runs_the_checks_the_contributing_page_names(runn
         ("npm run typecheck", web),
         ("npm test", web),
         (" ".join(THIS_REPO_S_SUITE_TESTS_COMMAND), ROOT.as_posix()),
+        (" ".join(REAL_DOTNET_TESTS_COMMAND), ROOT.as_posix()),
     ])
     assert ["docker", "create", "--workdir", "/repo", "an-id", *SCRIPT_TESTS_COMMAND] in runner.calls
 
@@ -2319,7 +2327,8 @@ def this_repo_s_facts():
 
 def pytest_checks():
     return [entry for entry in this_repo_s_checks()
-            if "pytest" in written(entry) and written(entry) != THIS_REPO_S_SUITE_TESTS_COMMAND]
+            if "pytest" in written(entry)
+            and written(entry) not in (THIS_REPO_S_SUITE_TESTS_COMMAND, REAL_DOTNET_TESTS_COMMAND)]
 
 
 # On Windows every git and bash process the script tests start is slow to start, and in Linux it is not.
@@ -2330,6 +2339,12 @@ def test_this_repo_s_script_tests_are_one_check_with_parallel_workers_in_the_lin
     assert scripts[0]["command"] == SCRIPT_TESTS_COMMAND
     assert scripts[0]["image"] == SCRIPT_TESTS_IMAGE
     assert (ROOT / SCRIPT_TESTS_IMAGE).is_file()
+
+
+def test_this_repo_s_suite_runs_the_real_dotnet_tests_on_the_host():
+    checks = [entry for entry in this_repo_s_checks() if written(entry) == REAL_DOTNET_TESTS_COMMAND]
+
+    assert [(entry["folder"], "image" in entry) for entry in checks] == [(".", False)]
 
 
 def test_this_repo_s_script_test_image_holds_what_the_script_tests_start():
@@ -2555,7 +2570,7 @@ def test_this_repo_s_suite_file_names_a_baseline_that_builds_the_solution():
 
 
 def test_the_contributing_page_lists_every_check_of_this_repo_s_suite():
-    assert len(this_repo_s_checks()) == 10
+    assert len(this_repo_s_checks()) == 11
     section = checks_section("docs/CONTRIBUTING.md", "## Checks").split("\n### ")[0]
     commands = section.split("```")[1].replace('"', "")
 

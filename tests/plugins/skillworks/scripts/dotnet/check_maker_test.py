@@ -1,11 +1,14 @@
-# Driven through main on a solution of fixture files, so no case needs dotnet on the machine.
+# Driven through main on a solution of fixture files, so no case needs dotnet on the machine but the real_dotnet ones.
 
 import io
 import json
+import xml.etree.ElementTree as ElementTree
+from typing import NamedTuple
 
 import pytest
 
-from dotnet import check_maker
+from dotnet import check_maker, rerun
+from runner import Subprocess
 
 TEST_SDK = '<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />'
 
@@ -361,3 +364,82 @@ def test_a_project_file_the_solution_names_and_that_is_not_there_is_named(tmp_pa
     status = check_maker.main(["Shop.slnx"], out, err, tmp_path)
 
     assert (status, "Gone.csproj" in err.getvalue()) == (1, True)
+
+
+# Only the runner, because a pinned SDK version fails on a machine that has another feature band.
+MTP_RUNNER_ONLY = '{\n  "test": {"runner": "Microsoft.Testing.Platform"}\n}\n'
+
+REAL_XUNIT_V3_PROJECT = """<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="3.2.0" />
+  </ItemGroup>
+</Project>
+"""
+
+REAL_TESTS = """namespace Shop.Tests;
+
+public sealed class Checkout
+{
+    [Xunit.Fact]
+    public void Green() => Xunit.Assert.True(true);
+
+    [Xunit.Fact]
+    public void Red() => Xunit.Assert.True(false);
+}
+"""
+
+
+def trx_outcomes(trx):
+    root = ElementTree.fromstring(trx.read_text(encoding="utf-8-sig"))
+    return sorted((element.get("testName"), element.get("outcome")) for element in root.iter()
+                  if check_maker.local_name(element) == "UnitTestResult")
+
+
+class RealRun(NamedTuple):
+    check_status: int
+    after_check: list
+    after_rerun: list
+    said: str
+
+
+# One build serves every case, because a NuGet restore and a build take most of a minute.
+@pytest.fixture(scope="module")
+def real_mtp_run(tmp_path_factory):
+    root = tmp_path_factory.mktemp("real-mtp")
+    (root / ".git").mkdir()
+    global_json(root, MTP_RUNNER_ONLY)
+    tests = root / "tests" / "Shop.Tests"
+    tests.mkdir(parents=True)
+    (tests / "Shop.Tests.csproj").write_text(REAL_XUNIT_V3_PROJECT, encoding="utf-8")
+    (tests / "Checkout.cs").write_text(REAL_TESTS, encoding="utf-8")
+    slnx(root, "Shop.slnx", ["tests/Shop.Tests/Shop.Tests.csproj"])
+    printed = made(root, "Shop.slnx")
+    check = printed["checks"][0]
+    real = Subprocess()
+
+    built = real.run(printed["prebuilds"][check["prebuild"]]["command"], str(root))
+    assert built.status == 0, built.out + built.err
+    ran = real.run(check["command"], str(root))
+    # The Rerun names its TRX file as the word after its own flags and before the check's --.
+    trx = root / check["rerun"][check["rerun"].index("--") - 1]
+    after_check = trx_outcomes(trx) if trx.is_file() else []
+    out, err = io.StringIO(), io.StringIO()
+    rerun.main(check["rerun"][1:], out, err, real, root)
+    after_rerun = trx_outcomes(trx) if trx.is_file() else []
+    return RealRun(ran.status, after_check, after_rerun, ran.out + ran.err + out.getvalue() + err.getvalue())
+
+
+@pytest.mark.real_dotnet
+def test_a_check_in_the_mtp_form_writes_its_trx_file_where_its_rerun_reads_it(real_mtp_run):
+    assert (real_mtp_run.check_status != 0, real_mtp_run.after_check) == (True, [
+        ("Shop.Tests.Checkout.Green", "Passed"), ("Shop.Tests.Checkout.Red", "Failed")]), real_mtp_run.said
+
+
+@pytest.mark.real_dotnet
+def test_a_rerun_in_the_mtp_form_runs_only_the_red_test(real_mtp_run):
+    assert real_mtp_run.after_rerun == [("Shop.Tests.Checkout.Red", "Failed")], real_mtp_run.said

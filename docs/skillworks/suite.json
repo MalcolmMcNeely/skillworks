@@ -50,7 +50,7 @@
     {
       "command": ["uv", "run", "--with", "pytest", "--with", "pytest-xdist", "--with", "filelock",
                   "pytest", "-n", "auto", "tests/plugins/skillworks/scripts", "tools/backfill_evals",
-                  "-m", "not this_repo"],
+                  "-m", "not this_repo and not real_dotnet"],
       "folder": ".",
       "image": "docs/skillworks/script-tests.Dockerfile",
       "ignores": [
@@ -72,6 +72,11 @@
     {
       "command": ["uv", "run", "--with", "pytest", "--with", "filelock", "pytest",
                   "tests/plugins/skillworks/scripts/suite_test.py", "tools/backfill_evals", "-m", "this_repo"],
+      "folder": "."
+    },
+    {
+      "command": ["uv", "run", "--with", "pytest", "--with", "filelock", "pytest",
+                  "tests/plugins/skillworks/scripts/dotnet/check_maker_test.py", "-m", "real_dotnet"],
       "folder": "."
     },
     {

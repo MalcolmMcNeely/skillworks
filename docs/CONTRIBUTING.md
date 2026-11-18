@@ -20,9 +20,11 @@ dotnet test tests/Skillworks.Architecture.Tests
 
 dotnet test Skillworks.Studio.slnf --blame-crash --blame-crash-dump-type mini
 
-uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts tools/backfill_evals -m "not this_repo"
+uv run --with pytest --with pytest-xdist --with filelock pytest -n auto tests/plugins/skillworks/scripts tools/backfill_evals -m "not this_repo and not real_dotnet"
 
 uv run --with pytest --with filelock pytest tests/plugins/skillworks/scripts/suite_test.py tools/backfill_evals -m this_repo
+
+uv run --with pytest --with filelock pytest tests/plugins/skillworks/scripts/dotnet/check_maker_test.py -m real_dotnet
 
 node --test "tests/plugins/skillworks/scripts/**/*.test.mjs"
 
@@ -51,6 +53,9 @@ on Windows each git and bash process they start is slow to start. Run by hand, t
 The tests marked `this_repo` run on the host in a check of their own, because they read the paths
 the script tests ignore, or this repo's history, and the image gets no copy of those. The backfill
 evals' Statement files are checked there, against the records and the commits at the pin.
+The tests marked `real_dotnet` run on the host in a check of their own too. They build a small xUnit
+v3 solution on Microsoft.Testing.Platform and run the Check maker's printed commands with real
+`dotnet`, so they need the .NET SDK and a NuGet restore, and the image has neither.
 `claude plugin validate` reads each skill's frontmatter with the parser Claude Code uses at runtime.
 Claude Code drops a skill whose frontmatter does not parse, so this check goes red on it. A Plugin
 with only warnings, such as no version or no author, leaves it green.

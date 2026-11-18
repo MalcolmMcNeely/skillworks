@@ -364,6 +364,7 @@ REAL_BINARIES = "real_binaries"
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "this_repo: reads the paths the image check of the script tests ignores")
+    config.addinivalue_line("markers", "real_dotnet: starts the real dotnet, which needs the .NET SDK and a NuGet restore")
 
 
 def pytest_addoption(parser):
