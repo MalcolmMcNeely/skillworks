@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import suite
+from dotnet import check_maker
 from conftest import ROOT, Ran, check, git, sidecar_steering, write_suite
 from suite import SUITE_FILE, Suite
 
@@ -318,8 +319,17 @@ ARCHITECTURE_TESTS = "tests/Skillworks.Architecture.Tests"
 
 DOCKER_TESTS = "Skillworks.Studio.slnf"
 
-# The test host has crashed after every test passed, and a crash with no dump cannot say why.
-DOCKER_TESTS_COMMAND = ["dotnet", "test", DOCKER_TESTS, "--blame-crash", "--blame-crash-dump-type", "mini"]
+DOCKER_TESTS_MAKER = ["suite-dotnet-checks", DOCKER_TESTS]
+
+DOCKER_TEST_PROJECTS = ["tests/Skillworks.Core.Tests/Skillworks.Core.Tests.csproj",
+                        "tests/Skillworks.Studio.Api.Tests/Skillworks.Studio.Api.Tests.csproj"]
+
+
+def made_from_the_docker_filter():
+    printed = io.StringIO()
+    assert check_maker.main([DOCKER_TESTS], printed, io.StringIO(), where=ROOT) == 0
+    return json.loads(printed.getvalue())
+
 
 PLUGIN = "plugins/skillworks"
 
@@ -334,25 +344,29 @@ MOD_TESTS_COMMAND = ["claude", "plugin", "test", PLUGIN]
 # git answers nothing, so no file is copied and no Proof of a made-up pass reaches this clone.
 def test_this_repo_s_suite_file_runs_the_checks_the_contributing_page_names(runner):
     given_this_repo_s_programs_pass(runner)
+    made = made_from_the_docker_filter()
+    runner.stub("suite-dotnet-checks", says=json.dumps(made))
     runner.stub("git")
 
     outcome = Suite(runner, ROOT).run()
 
     web = (ROOT / "src" / "Skillworks.Studio.Web").as_posix()
     assert outcome.passed
-    assert run_by(runner)[0] == ["docker", "info"]
-    assert sorted((" ".join(call.args), call.where) for call in made_by(runner)[1:]
-                  if call.args[0] != "docker" and call.args[:2] != ["npm", "ci"]) == [
+    assert run_by(runner)[:2] == [DOCKER_TESTS_MAKER, ["docker", "info"]]
+    assert sorted((" ".join(call.args), call.where) for call in made_by(runner)
+                  if call.args[0] != "docker" and call.args[:2] != ["npm", "ci"]) == sorted([
         (" ".join(MOD_TESTS_COMMAND), ROOT.as_posix()),
         (" ".join(PLUGIN_CHECK_COMMAND), ROOT.as_posix()),
-        (" ".join(DOCKER_TESTS_COMMAND), ROOT.as_posix()),
+        (" ".join(DOCKER_TESTS_MAKER), ROOT.as_posix()),
+        (f"dotnet build {DOCKER_TESTS}", ROOT.as_posix()),
+        *((" ".join(check["command"]), ROOT.as_posix()) for check in made["checks"]),
         (f"dotnet test {ARCHITECTURE_TESTS}", ROOT.as_posix()),
         ("node --test tests/plugins/skillworks/scripts/**/*.test.mjs", ROOT.as_posix()),
         ("npm run lint", web),
         ("npm run typecheck", web),
         ("npm test", web),
         (" ".join(THIS_REPO_S_SUITE_TESTS_COMMAND), ROOT.as_posix()),
-    ]
+    ])
     assert ["docker", "create", "--workdir", "/repo", "an-id", *SCRIPT_TESTS_COMMAND] in runner.calls
 
 
@@ -360,12 +374,16 @@ def test_this_repo_s_front_end_is_installed_when_nothing_is(tmp_path, runner):
     given_a_suite_file_reading(tmp_path, (ROOT / SUITE_FILE).read_text(encoding="utf-8"))
     (tmp_path / SCRIPT_TESTS_IMAGE).write_bytes((ROOT / SCRIPT_TESTS_IMAGE).read_bytes())
     given_this_repo_s_programs_pass(runner)
+    runner.stub("suite-dotnet-checks", says=json.dumps(made_from_the_docker_filter()))
     runner.stub("git")
 
     Suite(runner, tmp_path).run()
 
-    assert run_by(runner)[:2] == [["docker", "info"], ["npm", "ci"]]
-    assert made_by(runner)[1].where == (tmp_path / "src" / "Skillworks.Studio.Web").as_posix()
+    # Each check the Check maker prints carries the Docker ready, so docker answers more than once first.
+    asked = [call for call in made_by(runner) if call.args[0] != "docker"][:2]
+    assert [(call.args, call.where) for call in asked] == [
+        (DOCKER_TESTS_MAKER, tmp_path.as_posix()),
+        (["npm", "ci"], (tmp_path / "src" / "Skillworks.Studio.Web").as_posix())]
 
 
 def test_a_check_with_no_command_is_not_ready(tmp_path, runner):
@@ -2278,12 +2296,17 @@ def this_repo_s_checks():
     return json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["checks"]
 
 
+# A Check maker's command stands where a check's would, so one list reads both kinds of entry.
+def written(entry):
+    return entry.get("command") or entry["checks-from"]
+
+
 # A skill that names a program, folder or path from this repo's Suite works in no other repo.
 def this_repo_s_facts():
     facts = set()
     for entry in this_repo_s_checks():
-        facts.add(entry["command"][0])
-        facts.update(word for word in entry["command"][1:] if "." in word or "/" in word)
+        facts.add(written(entry)[0])
+        facts.update(word for word in written(entry)[1:] if "." in word or "/" in word)
         if entry["folder"] != ".":
             facts.add(entry["folder"])
     return facts
@@ -2291,7 +2314,7 @@ def this_repo_s_facts():
 
 def pytest_checks():
     return [entry for entry in this_repo_s_checks()
-            if "pytest" in entry["command"] and entry["command"] != THIS_REPO_S_SUITE_TESTS_COMMAND]
+            if "pytest" in written(entry) and written(entry) != THIS_REPO_S_SUITE_TESTS_COMMAND]
 
 
 # On Windows every git and bash process the script tests start is slow to start, and in Linux it is not.
@@ -2392,7 +2415,7 @@ def test_this_repo_s_script_tests_ignore_only_what_they_cannot_read():
 
 
 def test_this_repo_s_docker_tests_ignore_only_what_they_cannot_read():
-    assert sorted(ignored_by([dotnet_checks()[DOCKER_TESTS]])) == sorted(DOCKER_TESTS_IGNORE)
+    assert sorted(ignored_by(docker_tests_makers())) == sorted(DOCKER_TESTS_IGNORE)
 
 
 @pytest.mark.this_repo
@@ -2404,7 +2427,7 @@ def test_what_the_docker_tests_ignore_leaves_the_files_they_read():
 
 
 def plugin_checks(command=PLUGIN_CHECK_COMMAND):
-    return [entry for entry in this_repo_s_checks() if entry["command"] == command]
+    return [entry for entry in this_repo_s_checks() if written(entry) == command]
 
 
 def test_this_repo_s_suite_validates_the_plugin_with_claude_code_on_the_host():
@@ -2436,10 +2459,10 @@ def test_what_the_plugin_check_ignores_leaves_the_plugin():
 
 
 def test_only_the_docker_script_and_plugin_checks_ignore_anything():
-    ignoring = [entry["command"] for entry in this_repo_s_checks() if "ignores" in entry]
+    ignoring = [written(entry) for entry in this_repo_s_checks() if "ignores" in entry]
 
     assert sorted(ignoring, key=" ".join) == sorted(
-        [DOCKER_TESTS_COMMAND, SCRIPT_TESTS_COMMAND, PLUGIN_CHECK_COMMAND, MOD_TESTS_COMMAND],
+        [DOCKER_TESTS_MAKER, SCRIPT_TESTS_COMMAND, PLUGIN_CHECK_COMMAND, MOD_TESTS_COMMAND],
         key=" ".join)
 
 
@@ -2451,7 +2474,7 @@ def test_every_path_this_repo_s_suite_ignores_is_there():
 
 
 def test_the_this_repo_tests_run_on_the_host_in_a_check_that_ignores_nothing():
-    checks = [entry for entry in this_repo_s_checks() if entry["command"] == THIS_REPO_S_SUITE_TESTS_COMMAND]
+    checks = [entry for entry in this_repo_s_checks() if written(entry) == THIS_REPO_S_SUITE_TESTS_COMMAND]
 
     assert len(checks) == 1
     assert "image" not in checks[0]
@@ -2459,18 +2482,35 @@ def test_the_this_repo_tests_run_on_the_host_in_a_check_that_ignores_nothing():
 
 
 def dotnet_checks():
-    return {entry["command"][2]: entry for entry in this_repo_s_checks() if entry["command"][0] == "dotnet"}
+    return [entry for entry in this_repo_s_checks() if written(entry)[0] == "dotnet"]
+
+
+def docker_tests_makers():
+    return [entry for entry in this_repo_s_checks() if entry.get("checks-from") == DOCKER_TESTS_MAKER]
 
 
 # The Architecture tests take seconds, so they run alone and never wait on Docker.
-def test_this_repo_s_dotnet_tests_are_the_architecture_tests_alone_and_the_docker_tests_over_one_filter():
+def test_this_repo_s_architecture_tests_are_its_one_hand_written_dotnet_check():
     checks = dotnet_checks()
 
-    assert sorted(checks) == sorted([ARCHITECTURE_TESTS, DOCKER_TESTS])
-    assert checks[ARCHITECTURE_TESTS]["command"] == ["dotnet", "test", ARCHITECTURE_TESTS]
-    assert "ready" not in checks[ARCHITECTURE_TESTS]
-    assert checks[DOCKER_TESTS]["command"] == DOCKER_TESTS_COMMAND
-    assert checks[DOCKER_TESTS]["ready"]["command"] == ["docker", "info"]
+    assert [entry["command"] for entry in checks] == [["dotnet", "test", ARCHITECTURE_TESTS]]
+    assert "ready" not in checks[0]
+
+
+def test_this_repo_s_docker_tests_come_from_one_check_maker_over_their_filter_that_waits_on_docker():
+    makers = docker_tests_makers()
+
+    assert len(makers) == 1
+    assert "command" not in makers[0]
+    assert makers[0]["ready"]["command"] == ["docker", "info"]
+
+
+def test_the_check_maker_prints_one_check_per_studio_test_project_after_one_prebuild():
+    made = made_from_the_docker_filter()
+
+    assert ([check["command"][2] for check in made["checks"]], made["prebuilds"]) == (
+        DOCKER_TEST_PROJECTS,
+        {"build": {"command": ["dotnet", "build", DOCKER_TESTS], "folder": "."}})
 
 
 # One filter builds each project once, so the Core and API tests never fight over build output.
@@ -2511,10 +2551,15 @@ def test_this_repo_s_suite_file_names_a_baseline_that_builds_the_solution():
 
 def test_the_contributing_page_lists_every_check_of_this_repo_s_suite():
     assert len(this_repo_s_checks()) == 10
-    checks = checks_section("docs/CONTRIBUTING.md", "## Checks").split("```")[1].replace('"', "")
+    section = checks_section("docs/CONTRIBUTING.md", "## Checks").split("\n### ")[0]
+    commands = section.split("```")[1].replace('"', "")
 
+    # A Check maker prints checks rather than running any, so the page names it in its prose.
     for entry in this_repo_s_checks():
-        assert " ".join(entry["command"]) in checks, entry["command"]
+        if "checks-from" in entry:
+            assert "`{}`".format(" ".join(entry["checks-from"])) in section, entry["checks-from"]
+        else:
+            assert " ".join(entry["command"]) in commands, entry["command"]
 
 
 # An agent reads CLAUDE.md, and a raw command there is one it would run in place of the cheap one.
@@ -2524,7 +2569,7 @@ def test_claude_md_names_skillworks_suite_in_place_of_the_checks():
     assert section.split("```")[1].strip() == "skillworks-suite"
     assert "In a loop no Session runs the whole Suite" in flattened(section)
     for entry in this_repo_s_checks():
-        assert " ".join(entry["command"]) not in section.replace('"', ""), entry["command"]
+        assert " ".join(written(entry)) not in section.replace('"', ""), written(entry)
 
 
 def test_review_changes_and_its_axis_files_never_name_the_suite_file():
