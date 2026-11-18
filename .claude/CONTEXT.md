@@ -247,6 +247,12 @@ branch, and Skillworks makes it, or uses it when the developer made it already. 
 the pull request.
 _Avoid_: Spec mode
 
+**Prebuild**:
+The one command a set of checks shares, which the Suite runs once before them, so the checks need
+not build what they test. It runs only when a check that names it has to run, and it proves nothing
+alone. A Prebuild that fails is red for every check that names it.
+_Avoid_: Build (the loop's first step), shared build, compile step
+
 **Proof**:
 A check that passed on one exact set of its inputs, kept by the Suite. A check whose inputs match a
 Proof is not run again, so work already proved costs nothing a second time. A Proof knows only what
