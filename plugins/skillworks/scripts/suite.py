@@ -50,6 +50,8 @@ NO_WHEN = ("a check carries `when`, which the Suite no longer reads. Replace it 
            "paths, as git pathspecs from the repo root, that the check cannot be changed by. A check "
            "reads every file git does not ignore, less its `ignores`, and runs again only when one "
            "of them changes")
+RERUN_IN_IMAGE = ("a check names both `rerun` and `image`. A check that runs in an image runs on a "
+                  "copy of the files, so its Rerun cannot read what the first run left")
 
 
 class Outcome(NamedTuple):
@@ -79,6 +81,7 @@ class Check(NamedTuple):
     image: str = None
     ignores: list = ()
     keyed: str = ""
+    rerun: list = None
 
     # The image holds the check's own program, so the host needs only docker.
     def programs(self):
@@ -166,6 +169,16 @@ def ignores_of(entry):
     return entry["ignores"]
 
 
+def rerun_of(entry):
+    if "rerun" not in entry:
+        return None
+    if not is_list_of_words(entry["rerun"]):
+        raise Unreadable("a rerun that is not a list of words")
+    if "image" in entry:
+        raise Unreadable(RERUN_IN_IMAGE)
+    return entry["rerun"]
+
+
 BASELINE_FIELDS = ("command", "folder", "image")
 
 
@@ -177,7 +190,11 @@ def folder_of(entry):
 
 
 def keyed_entry(entry):
-    return json.dumps({field: entry.get(field) for field in KEYED}, sort_keys=True)
+    keyed = {field: entry.get(field) for field in KEYED}
+    # Only when named, so a check with no Rerun keeps the key, and the Proofs, it had before Reruns.
+    if "rerun" in entry:
+        keyed["rerun"] = entry["rerun"]
+    return json.dumps(keyed, sort_keys=True)
 
 
 def image_of(entry, held):
@@ -280,7 +297,7 @@ class Suite:
             image = image_of(entry, self.steering_holds)
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
                                 None if self.fresh else image, ignores_of(entry),
-                                keyed_entry(entry)))
+                                keyed_entry(entry), rerun_of(entry)))
         return wanted, runs
 
     # In the common git directory, so every worktree of the clone shares them and nothing pushes them.
@@ -390,12 +407,13 @@ class Suite:
             return Outcome(False, short, ready=False)
 
         said_red = {}
+        reds = {}
         for at in range(1, runs + 1):
             # A check that went green in the run before is proved now, so only red runs again.
             # Fresh mode keeps no Proof, so it carries the earlier pass itself.
             if at > 1 and not self.fresh:
                 keys, found = self.proved(wanted, proofs)
-            outcome, found, reds = self.run_checks(wanted, proofs, keys, found)
+            outcome, found, reds = self.run_checks(wanted, proofs, keys, found, set(reds))
             said_red.update(reds)
             if heard is not None:
                 heard(outcome, at)
@@ -407,10 +425,11 @@ class Suite:
 
     # A red check lets the others finish, so the one fix circuit reads every failure, not the first.
     # A Proof is a real pass on the same inputs, so a Suite whose every check is proved passes.
-    def run_checks(self, wanted, proofs, keys, found):
+    def run_checks(self, wanted, proofs, keys, found, red_before):
         with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
-            running = [pool.submit(self.run_check, check) if held is None else None
-                       for check, held in zip(wanted, found)]
+            running = [pool.submit(self.run_check, check, index in red_before)
+                       if held is None else None
+                       for index, (check, held) in enumerate(zip(wanted, found))]
             ran = [each.result() if each else None for each in running]
         went_red = [(check, key) for check, key, each in zip(wanted, keys, ran)
                     if each and each.status != 0]
@@ -430,9 +449,11 @@ class Suite:
                 if each and each.status != 0}
         return Outcome(not red, said, red=red), passed, reds
 
-    def run_check(self, check):
+    # The Suite reads no output, so the team's Rerun finds what went red itself, such as in a results file.
+    def run_check(self, check, red_before=False):
         if check.image is None:
-            return self.runner.run(check.command, check.folder.as_posix())
+            command = check.rerun if red_before and check.rerun else check.command
+            return self.runner.run(command, check.folder.as_posix())
         return self.run_in_image(check)
 
     def run_in_image(self, check):

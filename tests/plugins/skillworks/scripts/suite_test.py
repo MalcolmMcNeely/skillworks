@@ -545,6 +545,141 @@ def test_a_setting_that_is_not_a_count_is_not_ready(tmp_path, runner):
     assert run_by(runner) == []
 
 
+def test_a_check_red_on_the_first_run_runs_its_rerun_on_the_next_and_not_its_command(
+        tmp_path, runner):
+    write_suite(tmp_path, check("prove", "all", rerun=["prove", "failed"]), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+
+    Suite(runner, tmp_path).run()
+
+    assert run_by(runner) == [["prove", "all"], ["prove", "failed"]]
+
+
+def test_a_check_red_and_then_green_on_its_rerun_is_a_flake_with_its_red_output(tmp_path, runner):
+    write_suite(tmp_path, check("prove", "all", rerun=["prove", "failed"]), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.passed
+    assert [(flake.check, "a test failed" in flake.said) for flake in outcome.flakes] == [
+        ("prove all", True)]
+
+
+def test_a_check_green_on_its_rerun_keeps_a_proof_and_does_not_run_again(repo, runner):
+    write_suite(repo.work, check("prove", "all", rerun=["prove", "failed"]), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+    Suite(runner, repo.work).run()
+
+    Suite(runner, repo.work).run()
+
+    assert run_by(runner) == [["prove", "all"], ["prove", "failed"]]
+
+
+def test_a_check_red_on_its_rerun_is_red(tmp_path, runner):
+    write_suite(tmp_path, check("prove", "all", rerun=["prove", "failed"]), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+    runner.refuse("prove failed", "a test failed")
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, outcome.red, outcome.flakes) == (False, ("prove all",), ())
+
+
+def test_a_red_check_with_no_rerun_runs_its_command_again(tmp_path, runner):
+    write_suite(tmp_path, check("prove", "all"), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+
+    Suite(runner, tmp_path).run()
+
+    assert run_by(runner) == [["prove", "all"], ["prove", "all"]]
+
+
+def test_with_one_run_no_rerun_runs(tmp_path, runner):
+    write_suite(tmp_path, check("prove", "all", rerun=["prove", "failed"]), runs=1)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+
+    Suite(runner, tmp_path).run()
+
+    assert run_by(runner) == [["prove", "all"]]
+
+
+def test_a_rerun_runs_only_after_its_own_check_went_red(repo, runner):
+    write_suite(repo.work, check("compile", "all", rerun=["compile", "failed"]),
+                check("prove", "all", rerun=["prove", "failed"]), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+
+    Suite(runner, repo.work).run()
+
+    assert by_words(run_by(runner)) == [["compile", "all"], ["prove", "all"], ["prove", "failed"]]
+
+
+def test_a_rerun_runs_in_the_folder_of_its_check(tmp_path, runner):
+    (tmp_path / "web").mkdir()
+    write_suite(tmp_path, check("prove", "all", folder="web", rerun=["prove", "failed"]), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+
+    Suite(runner, tmp_path).run()
+
+    assert [Path(call.where) for call in made_by(runner)] == [tmp_path / "web"] * 2
+
+
+def test_the_full_run_runs_a_red_check_s_rerun_on_its_next_run(repo, runner):
+    write_suite(repo.work, check("prove", "all", rerun=["prove", "failed"]), runs=2)
+    given_every_program_passes(runner)
+    runner.refuse("prove all", "a test failed", times=1)
+
+    outcome = Suite(runner, repo.work, fresh=True).run()
+
+    assert (outcome.passed, run_by(runner)) == (True, [["prove", "all"], ["prove", "failed"]])
+
+
+# Only the key can tell the Rerun changed, because the Suite file itself is ignored here.
+def test_an_edit_to_the_rerun_is_a_new_key(repo, runner):
+    write_suite(repo.work, check("prove", ignores=[SUITE_FILE], rerun=["prove", "failed"]))
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+
+    write_suite(repo.work, check("prove", ignores=[SUITE_FILE], rerun=["prove", "red"]))
+    Suite(runner, repo.work).run()
+
+    assert len(runner.started("prove")) == 2
+
+
+def test_a_rerun_beside_an_image_makes_the_suite_file_unreadable_and_says_why(tmp_path, runner):
+    given_a_dockerfile(tmp_path)
+    given_a_suite_file_reading(tmp_path, json.dumps({"checks": [
+        {"command": ["prove"], "folder": ".", "image": DOCKERFILE, "rerun": ["prove", "failed"]}]}))
+    FakeDocker(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.ready, run_by(runner)) == (False, [])
+    for words in (SUITE_FILE, "`rerun`", "`image`", "runs on a copy of the files",
+                  "cannot read what the first run left"):
+        assert words in outcome.said, words
+
+
+def test_a_rerun_that_is_not_a_list_of_words_makes_the_suite_file_unreadable(tmp_path, runner):
+    for rerun in ([], "prove failed", [""], [3]):
+        given_a_suite_file_reading(tmp_path, json.dumps(
+            {"checks": [{"command": ["prove"], "folder": ".", "rerun": rerun}]}))
+
+        outcome = Suite(runner, tmp_path).run()
+
+        assert not outcome.ready, rerun
+        assert "rerun" in outcome.said, rerun
+    assert run_by(runner) == []
+
+
 # --- Proofs ------------------------------------------------------------------
 
 def writing(repo, name, text="changed"):
@@ -1786,6 +1921,19 @@ def test_the_suite_page_says_what_a_flake_is_where_it_says_what_runs_does():
     assert len(naming) == 1
     for words in ("`runs`", "counts as green", "always reported", "`runs: 2`"):
         assert words in naming[0], words
+
+
+def test_the_suite_page_says_what_a_rerun_is_in_what_a_check_holds_and_where_it_says_what_runs_does():
+    text = (ROOT / SUITE_PAGE).read_text(encoding="utf-8")
+    row = [line for line in text.splitlines() if line.startswith("| `rerun` |")]
+    runs = [" ".join(paragraph.split()) for paragraph in text.split("\n\n")
+            if "**Flake**" in paragraph]
+
+    assert len(row) == 1
+    for words in ("Optional", "runs after the first", "in place of `command`",
+                  "finds the tests that went red", "not allowed with `image`"):
+        assert words in row[0], words
+    assert "a check with a `rerun` runs it in place of its whole command" in runs[0]
 
 
 def test_the_suite_page_says_what_a_trial_is_after_running_the_suite_yourself():

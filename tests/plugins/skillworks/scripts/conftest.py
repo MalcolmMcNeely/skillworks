@@ -195,8 +195,11 @@ def write_steering(top):
                           encoding="utf-8", newline="\n")
 
 
-def check(*command, folder=".", ready=None, message="", unless=None, ignores=None, image=None):
+def check(*command, folder=".", ready=None, message="", unless=None, ignores=None, image=None,
+          rerun=None):
     entry = {"command": list(command), "folder": folder}
+    if rerun is not None:
+        entry["rerun"] = list(rerun)
     if ignores is not None:
         entry["ignores"] = ignores
     if image is not None:

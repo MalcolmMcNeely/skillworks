@@ -61,6 +61,7 @@ runs nothing again.
 | `ready` | Optional. A command that proves the machine can run the check, such as `docker info`, and the `message` the loop prints when it fails. With `unless`, a path from the repo root, the loop skips the command when the path is there, so an install is not done twice. |
 | `ignores` | Optional. The paths the check cannot be changed by. See below. |
 | `image` | Optional. A Dockerfile in the repo, from the repo root, or in the Sidecar under Sidecar Steering. The check runs in that image. See below. |
+| `rerun` | Optional. A **Rerun**: a command with the same shape as `command`, run in the check's `folder`. On the runs after the first, a check that went red on the run before runs it in place of `command`. The loop reads no output, so your command finds the tests that went red itself, such as from a results file the first run wrote. It is not allowed with `image`, because a check in an image runs on a copy of the files, so its Rerun cannot read what the first run left. |
 
 `runs`, beside `checks`, says how many times the loop runs a red Suite before it believes it. It is 1
 when the file leaves it out. With `runs` at 2 or more, a check that goes red and then passes on the
@@ -68,7 +69,9 @@ same inputs is a **Flake**. A Flake counts as green, so it does not stop the loo
 reported: the Suite output names each Flake after the last run, and keeps what it said when red. Set
 `runs: 2` when your checks fail now and then for reasons that are not the code, such as a busy
 machine or a process that crashes at random. Leave it at 1 when every red is real, because a second
-run of a real red only costs time.
+run of a real red only costs time. On the runs after the first, a check with a `rerun` runs it in
+place of its whole command, so a Flake costs the tests that went red and not the whole check. Red and
+then green on the Rerun is a Flake too. With `runs` at 1, no Rerun runs.
 
 ## `baseline`: the quick check of the Target branch
 
