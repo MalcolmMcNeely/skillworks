@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from output.streams import speaking_any_character
-from runner import Subprocess
+from runner import Ran, Subprocess
 from steering.steering_file import STEERING_FOLDER, steering_root
 from stop import Stop, misuse, refusal
 
@@ -53,6 +53,8 @@ NO_WHEN = ("a check carries `when`, which the Suite no longer reads. Replace it 
            "of them changes")
 RERUN_IN_IMAGE = ("a check names both `rerun` and `image`. A check that runs in an image runs on a "
                   "copy of the files, so its Rerun cannot read what the first run left")
+PREBUILD_IN_IMAGE = ("a check names both `prebuild` and `image`. A check that runs in an image runs "
+                     "on a copy of the files, apart from what the Prebuild built")
 
 
 class Outcome(NamedTuple):
@@ -75,6 +77,14 @@ class Ready(NamedTuple):
     unless: str
 
 
+class Prebuild(NamedTuple):
+    name: str
+    command: list
+    folder: Path
+    # As the file wrote it, so the key holds no worktree's path and every worktree shares the Proofs.
+    entry: dict
+
+
 class Check(NamedTuple):
     command: list
     folder: Path
@@ -83,11 +93,13 @@ class Check(NamedTuple):
     ignores: list = ()
     keyed: str = ""
     rerun: list = None
+    prebuild: Prebuild = None
 
     # The image holds the check's own program, so the host needs only docker.
     def programs(self):
         command = ["docker"] if self.image else [self.command[0]]
-        return command + ([self.ready.command[0]] if self.ready else [])
+        return (command + ([self.ready.command[0]] if self.ready else [])
+                + ([self.prebuild.command[0]] if self.prebuild else []))
 
     # Every Proof of this entry carries it, so a red fresh run can find them all.
     def named(self):
@@ -190,12 +202,26 @@ def folder_of(entry):
     return folder
 
 
-def keyed_entry(entry):
+def keyed_entry(entry, prebuild=None):
     keyed = {field: entry.get(field) for field in KEYED}
     # Only when named, so a check with no Rerun keeps the key, and the Proofs, it had before Reruns.
     if "rerun" in entry:
         keyed["rerun"] = entry["rerun"]
+    if prebuild is not None:
+        keyed["prebuild"] = {"name": prebuild.name, "entry": prebuild.entry}
     return json.dumps(keyed, sort_keys=True)
+
+
+def prebuild_of(entry, prebuilds):
+    if "prebuild" not in entry:
+        return None
+    name = entry["prebuild"]
+    if not isinstance(name, str) or name not in prebuilds:
+        raise Unreadable("a check names the Prebuild `{}`, and the file holds no Prebuild of that "
+                         "name".format(name))
+    if "image" in entry:
+        raise Unreadable(PREBUILD_IN_IMAGE)
+    return prebuilds[name]
 
 
 def image_of(entry, held):
@@ -219,6 +245,12 @@ def did_not_run(check, proof):
 def red_again(check, kept):
     return ("{} did not run, because it went red on the same inputs at this ticket's Suite step "
             "before. What it said then:\n{}").format(" ".join(check.command), kept.said)
+
+
+def prebuild_failed(check, failed):
+    return ("{} did not run, because its Prebuild {}, {}, went red. What the Prebuild said:\n{}"
+            ).format(" ".join(check.command), check.prebuild.name,
+                     " ".join(check.prebuild.command), failed.out + failed.err)
 
 
 def said_by(check, held, each):
@@ -301,6 +333,7 @@ class Suite:
         if not isinstance(entries, list) or not entries:
             raise Unreadable("it names no checks")
 
+        prebuilds = self.prebuilds_of(parsed)
         wanted = []
         for entry in entries:
             ready = entry.get("ready") if isinstance(entry, dict) else None
@@ -309,10 +342,18 @@ class Suite:
                               ready.get("unless"))
             # Read in fresh mode too, so a Suite file that names a missing image is never green.
             image = image_of(entry, self.steering_holds)
+            prebuild = prebuild_of(entry, prebuilds)
             wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
                                 None if self.fresh else image, ignores_of(entry),
-                                keyed_entry(entry), rerun_of(entry)))
+                                keyed_entry(entry, prebuild), rerun_of(entry), prebuild))
         return wanted, runs
+
+    def prebuilds_of(self, parsed):
+        named = parsed.get("prebuilds", {})
+        if not isinstance(named, dict):
+            raise Unreadable("a prebuilds that is not a set of named entries")
+        return {name: Prebuild(name, command_of(entry), self.tree / folder_of(entry), entry)
+                for name, entry in named.items()}
 
     # In the common git directory, so every worktree of the clone shares them and nothing pushes them.
     def proofs(self):
@@ -432,13 +473,15 @@ class Suite:
 
         said_red = {}
         reds = {}
+        built = {}
         for at in range(1, runs + 1):
             # A check that went green in the run before is proved now, so only red runs again.
             # Fresh mode keeps no Proof, so it carries the earlier pass itself.
             if at > 1 and not self.fresh:
                 keys, found = self.proved(wanted, proofs)
             ran_any = None in found
-            outcome, found, reds = self.run_checks(wanted, proofs, keys, found, set(reds))
+            self.prebuild([check for check, held in zip(wanted, found) if held is None], built)
+            outcome, found, reds = self.run_checks(wanted, proofs, keys, found, set(reds), built)
             said_red.update(reds)
             if heard is not None:
                 heard(outcome, at)
@@ -450,11 +493,17 @@ class Suite:
                        for index, said in sorted(said_red.items()) if found[index] is not None)
         return outcome._replace(flakes=flakes)
 
+    def prebuild(self, running, built):
+        for check in running:
+            prebuild = check.prebuild
+            if prebuild is not None and prebuild.name not in built:
+                built[prebuild.name] = self.runner.run(prebuild.command, prebuild.folder.as_posix())
+
     # A red check lets the others finish, so the one fix circuit reads every failure, not the first.
     # A Proof is a real pass on the same inputs, so a Suite whose every check is proved passes.
-    def run_checks(self, wanted, proofs, keys, found, red_before):
+    def run_checks(self, wanted, proofs, keys, found, red_before, built):
         with ThreadPoolExecutor(max_workers=len(wanted)) as pool:
-            running = [pool.submit(self.run_check, check, index in red_before)
+            running = [pool.submit(self.run_check, check, index in red_before, built)
                        if held is None else None
                        for index, (check, held) in enumerate(zip(wanted, found))]
             ran = [each.result() if each else None for each in running]
@@ -478,7 +527,10 @@ class Suite:
         return Outcome(not red, said, red=red), passed, reds
 
     # The Suite reads no output, so the team's Rerun finds what went red itself, such as in a results file.
-    def run_check(self, check, red_before=False):
+    def run_check(self, check, red_before=False, built=None):
+        failed = (built or {}).get(check.prebuild.name) if check.prebuild else None
+        if failed is not None and failed.status != 0:
+            return Ran(failed.status, prebuild_failed(check, failed), "")
         if check.image is None:
             command = check.rerun if red_before and check.rerun else check.command
             return self.runner.run(command, check.folder.as_posix())

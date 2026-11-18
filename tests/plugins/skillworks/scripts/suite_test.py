@@ -680,6 +680,102 @@ def test_a_rerun_that_is_not_a_list_of_words_makes_the_suite_file_unreadable(tmp
     assert run_by(runner) == []
 
 
+# --- Prebuilds ---------------------------------------------------------------
+
+BUILD = {"build": {"command": ["compile", "all"], "folder": "."}}
+
+
+def test_a_prebuild_two_checks_name_runs_once_and_before_either(tmp_path, runner):
+    write_suite(tmp_path, check("prove", "one", prebuild="build"),
+                check("prove", "two", prebuild="build"), prebuilds=BUILD)
+    given_every_program_passes(runner)
+    built = threading.Event()
+    saw = []
+    runner.stub("compile", does=when_started(built))
+    runner.stub("prove", does=lambda: saw.append(built.is_set()))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, saw, runner.started("compile")) == (
+        True, [True, True], [["compile", "all"]])
+
+
+def test_a_prebuild_whose_checks_all_have_proofs_does_not_run(repo, runner):
+    write_suite(repo.work, check("prove", "one", prebuild="build"),
+                check("prove", "two", prebuild="build"), prebuilds=BUILD)
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+    runner.made.clear()
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert (outcome.passed, run_by(runner)) == (True, [])
+
+
+def test_a_prebuild_that_fails_is_red_for_each_check_naming_it_and_they_do_not_run(
+        tmp_path, runner):
+    write_suite(tmp_path, check("prove", "one", prebuild="build"),
+                check("prove", "two", prebuild="build"), check("lint"), prebuilds=BUILD)
+    given_every_program_passes(runner)
+    runner.stub("compile", says="error CS1002: ; expected\n", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, outcome.ready, outcome.red, outcome.said.count("error CS1002"),
+            by_words(run_by(runner))) == (
+        False, True, ("prove one", "prove two"), 2, [["compile", "all"], ["lint"]])
+
+
+def test_a_machine_that_is_not_ready_stops_the_run_before_any_prebuild(tmp_path, runner):
+    write_suite(tmp_path, check("prove", prebuild="build", ready=["ping"], message="no store"),
+                prebuilds=BUILD)
+    given_every_program_passes(runner)
+    runner.stub("ping", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.ready, run_by(runner)) == (False, [["ping"]])
+
+
+# Only the key can tell the Prebuild changed, because the Suite file itself is ignored here.
+def test_an_edit_to_a_prebuild_is_a_new_key_for_each_check_naming_it(repo, runner):
+    checks = (check("prove", "one", prebuild="build", ignores=[SUITE_FILE]),
+              check("prove", "two", prebuild="build", ignores=[SUITE_FILE]))
+    write_suite(repo.work, *checks, prebuilds=BUILD)
+    given_every_program_passes(runner)
+    Suite(runner, repo.work).run()
+
+    write_suite(repo.work, *checks,
+                prebuilds={"build": {"command": ["compile", "release"], "folder": "."}})
+    Suite(runner, repo.work).run()
+
+    assert by_words(runner.started("prove")) == [["prove", "one"]] * 2 + [["prove", "two"]] * 2
+
+
+def test_a_check_naming_a_prebuild_the_file_does_not_hold_is_turned_down(tmp_path, runner):
+    write_suite(tmp_path, check("prove", prebuild="bulid"), prebuilds=BUILD)
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.ready, run_by(runner)) == (False, [])
+    for words in (SUITE_FILE, "`bulid`", "no Prebuild"):
+        assert words in outcome.said, words
+
+
+def test_a_prebuild_beside_an_image_is_turned_down_and_says_why(tmp_path, runner):
+    given_a_dockerfile(tmp_path)
+    write_suite(tmp_path, check("prove", prebuild="build", image=DOCKERFILE), prebuilds=BUILD)
+    FakeDocker(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.ready, run_by(runner)) == (False, [])
+    for words in (SUITE_FILE, "`prebuild`", "`image`", "runs on a copy of the files",
+                  "apart from what the Prebuild built"):
+        assert words in outcome.said, words
+
+
 # --- Proofs ------------------------------------------------------------------
 
 def writing(repo, name, text="changed"):

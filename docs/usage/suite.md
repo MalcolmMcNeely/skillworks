@@ -62,6 +62,20 @@ runs nothing again.
 | `ignores` | Optional. The paths the check cannot be changed by. See below. |
 | `image` | Optional. A Dockerfile in the repo, from the repo root, or in the Sidecar under Sidecar Steering. The check runs in that image. See below. |
 | `rerun` | Optional. A **Rerun**: a command with the same shape as `command`, run in the check's `folder`. On the runs after the first, a check that went red on the run before runs it in place of `command`. The loop reads no output, so your command finds the tests that went red itself, such as from a results file the first run wrote. It is not allowed with `image`, because a check in an image runs on a copy of the files, so its Rerun cannot read what the first run left. |
+| `prebuild` | Optional. The name of a **Prebuild** under `prebuilds`, beside `checks`. The loop runs it once, before the checks that name it, so they need not build what they test. A Prebuild that fails is red for every check that names it: each one shows what the Prebuild said, does not run, and keeps no Proof. It is not allowed with `image`, because a check in an image runs on a copy of the files, apart from what the Prebuild built. |
+
+`prebuilds`, beside `checks`, names each Prebuild, with a `command` and a `folder` in the shape of a
+check's:
+
+```json
+"prebuilds": {
+  "build": { "command": ["dotnet", "build", "Shop.slnx"], "folder": "." }
+}
+```
+
+A check that names a Prebuild the file does not hold is turned down, and the loop stops with the Suite
+not ready. A Prebuild keeps no Proof of its own, because it proves nothing alone. It is part of each
+check that names it, so an edit to it runs each of those checks again.
 
 `runs`, beside `checks`, says how many times the loop runs a red Suite before it believes it. It is 1
 when the file leaves it out. With `runs` at 2 or more, a check that goes red and then passes on the
@@ -103,7 +117,7 @@ and names the Proof and when it was made. A Suite in which every check has a Pro
 A check's inputs are every file in the worktree that git does not ignore, less the check's
 `ignores`. Uncommitted and untracked files count. The Suite reads each file as it is on disk. The
 check's own entry in the Suite file counts too, so an edit to its `command`, `folder`, `ready`,
-`ignores` or `image` runs it again.
+`ignores`, `image`, `rerun` or `prebuild`, or to the Prebuild it names, runs it again.
 
 - Only a check that passes keeps a Proof. A red check keeps none.
 - After a red Suite, a red check whose inputs did not change is red again at the ticket's next Suite
@@ -183,11 +197,17 @@ runs only Trials: the few tests near its work, where their check runs.
    path is there. A machine that is not ready stops the run before any Session starts. The `ready`
    check above still runs at each Suite step, so a container that stops during a long run still
    stops the loop.
-2. **Then the checks run together.** So a Suite takes as long as its slowest check, and not the sum
-   of them all.
-3. **A red check lets the others finish.** The fix step then reads every failure at once. The Suite
+2. **Then the Prebuilds run, once each.** A Prebuild runs when one or more of the checks that name
+   it will run, however many name it. A Prebuild whose checks all have a Proof, or a red kept from
+   this ticket, does not run. The Prebuilds run one after the other, because two of them can build
+   the same files. A Prebuild that fails is a red Suite, never a machine that is not ready, because
+   code that does not compile is the ticket's to mend.
+3. **Then the checks run together.** So a Suite takes as long as its slowest check, and not the sum
+   of them all. A check that names a Prebuild builds nothing, so checks that share a library never
+   build it at the same time.
+4. **A red check lets the others finish.** The fix step then reads every failure at once. The Suite
    is red when any check is red.
-4. **The output keeps the order of the file.** Each check's output is whole, whatever finished
+5. **The output keeps the order of the file.** Each check's output is whole, whatever finished
    first, so two runs of one Suite read the same.
 
 ```mermaid

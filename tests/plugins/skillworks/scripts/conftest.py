@@ -196,8 +196,10 @@ def write_steering(top):
 
 
 def check(*command, folder=".", ready=None, message="", unless=None, ignores=None, image=None,
-          rerun=None):
+          rerun=None, prebuild=None):
     entry = {"command": list(command), "folder": folder}
+    if prebuild is not None:
+        entry["prebuild"] = prebuild
     if rerun is not None:
         entry["rerun"] = list(rerun)
     if ignores is not None:
@@ -211,10 +213,12 @@ def check(*command, folder=".", ready=None, message="", unless=None, ignores=Non
     return entry
 
 
-def write_suite(tree, *checks, runs=None, baseline=None):
+def write_suite(tree, *checks, runs=None, baseline=None, prebuilds=None):
     path = Path(tree) / SUITE_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
     suite = {"checks": list(checks)}
+    if prebuilds is not None:
+        suite["prebuilds"] = prebuilds
     if runs is not None:
         suite["runs"] = runs
     if baseline is not None:
