@@ -218,6 +218,47 @@ Check maker printed.
   printed them, with what it said or the Proof that held its inputs.
 - **The full run** runs each Check maker and every check it prints, and trusts no Proof.
 
+## A .NET solution
+
+The Plugin ships a Check maker for .NET, `suite-dotnet-checks`. Give it a solution, and it prints
+one check for each test project in it. One entry in your Suite file then covers every test project,
+and a new test project gets its check with no edit:
+
+```json
+{
+  "checks-from": ["suite-dotnet-checks", "Shop.slnx", "--skip", "*.E2E.Tests"],
+  "folder": ".",
+  "ready": {
+    "command": ["docker", "info"],
+    "message": "Docker does not answer, and the tests need SQL Server in a container. Start Docker."
+  },
+  "ignores": ["docs", "web"]
+}
+```
+
+It reads `.sln`, `.slnx` and `.slnf` files, and the `ProjectReference` items of each project file, as
+text. It runs no `dotnet` command, so it takes a moment and builds nothing. A test project is one that
+references a test SDK package, `Microsoft.NET.Test.Sdk`.
+
+It prints one Prebuild, `dotnet build` on the solution you gave it. Each check it prints holds:
+
+- **Its command**: `dotnet test` on its test project, with `--no-build`, because the Prebuild built
+  it. It writes a TRX results file to `TestResults` in the test project's own folder, so no two
+  checks share one. Keep `TestResults` in your `.gitignore`, or each results file is a change.
+- **Its Prebuild**: the one the Check maker printed. So the loop builds the solution once, and the
+  tests then run together.
+- **`ignores` from the project graph**: the folder of every project in the solution that its test
+  project does not reach, directly or through other projects. A change to a project it does not
+  reach keeps its Proof. A file outside every project folder, such as `Directory.Build.props`,
+  `global.json` or test data, is never ignored, so a file the graph does not show never lets a red
+  land. A folder that holds a project the test project reaches is never ignored either.
+
+`--skip` takes a pattern, and a test project whose name matches it gets no check. `*` matches any
+run of characters, and nothing else is a wildcard. Give `--skip` once for each pattern. Nothing in a
+project file decides whether it gets a check, so you never edit a `.csproj` for the loop.
+
+`ready` and `ignores` beside `checks-from` reach every check it prints, as for any Check maker.
+
 ## How the loop runs the Suite
 
 The Suite runs once for each ticket after the build, the reviews, the fix and the comment sweep.
