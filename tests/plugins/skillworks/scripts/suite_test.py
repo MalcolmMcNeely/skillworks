@@ -807,10 +807,12 @@ def test_a_prebuild_beside_an_image_is_turned_down_and_says_why(tmp_path, runner
 
 # --- a Check maker -----------------------------------------------------------
 
-def maker(*command, ready=None, ignores=None):
+def maker(*command, ready=None, ignores=None, max_parallel=None):
     entry = {"checks-from": list(command or ["make-checks"]), "folder": "."}
     if ignores is not None:
         entry["ignores"] = ignores
+    if max_parallel is not None:
+        entry["max-parallel"] = max_parallel
     if ready is not None:
         entry["ready"] = {"command": list(ready), "message": "not ready"}
     return entry
@@ -933,6 +935,11 @@ def test_a_check_maker_printing_what_the_suite_cannot_read_is_one_red_line(
     dict(maker(), command=["prove"]),
     maker(ignores="docs"),
     dict(maker(), ready={"command": "ping"}),
+    maker(max_parallel=0),
+    maker(max_parallel=-1),
+    maker(max_parallel="2"),
+    maker(max_parallel=1.5),
+    maker(max_parallel=True),
 ])
 def test_a_checks_from_entry_the_suite_cannot_read_stops_before_the_check_maker_runs(
         tmp_path, runner, entry):
@@ -967,6 +974,104 @@ def test_the_fresh_run_trusts_no_proof_of_a_made_check(repo, runner):
 
     assert (runner.started("make-checks"), runner.started("prove")) == (
         [["make-checks"]] * 2, [["prove", "one"]] * 2)
+
+
+# --- a cap on a Check maker's checks ----------------------------------------
+
+class Overlap:
+    # Checks wait for the last, which starts after all the rest, so an uncapped Suite runs past the cap.
+    def __init__(self, cap):
+        self.cap = cap
+        self.seen = threading.Condition()
+        self.started = 0
+        self.running = 0
+        self.most = 0
+        self.last_started = False
+
+    def does(self):
+        with self.seen:
+            self.started += 1
+            self.running += 1
+            self.most = max(self.most, self.running)
+            self.seen.notify_all()
+            assert self.seen.wait_for(
+                lambda: self.started >= self.cap and self.last_started, NEVER_SEEN)
+            self.running -= 1
+
+    def last(self):
+        with self.seen:
+            self.last_started = True
+            self.seen.notify_all()
+
+
+def test_a_capped_check_maker_entry_never_runs_more_of_its_checks_at_once_than_its_cap(
+        tmp_path, runner):
+    write_suite(tmp_path, maker(max_parallel=2), check("lint"))
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, *(check("prove", name) for name in ("one", "two", "three", "four")))
+    overlap = Overlap(2)
+    runner.stub("prove", does=overlap.does)
+    runner.stub("lint", does=overlap.last)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, overlap.started, overlap.most) == (True, 4, 2)
+
+
+def test_a_check_outside_a_capped_entry_starts_while_the_capped_checks_wait(tmp_path, runner):
+    write_suite(tmp_path, maker(max_parallel=1), check("lint"))
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one"), check("prove", "two"))
+    lint_started = threading.Event()
+    saw = []
+    runner.stub("prove", does=lambda: saw.append(lint_started.wait(NEVER_SEEN)))
+    runner.stub("lint", does=when_started(lint_started))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, saw) == (True, [True, True])
+
+
+def test_a_capped_check_s_rerun_runs_under_the_same_cap(tmp_path, runner):
+    write_suite(tmp_path, maker(max_parallel=2), check("lint", rerun=["relint"]), runs=2)
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, *(check("prove", name, rerun=["reprove", name])
+                                     for name in ("one", "two", "three", "four")))
+    runner.stub("prove", status=1)
+    runner.stub("lint", status=1)
+    overlap = Overlap(2)
+    runner.stub("reprove", does=overlap.does)
+    runner.stub("relint", does=overlap.last)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, overlap.started, overlap.most) == (True, 4, 2)
+
+
+def test_the_checks_of_an_entry_with_no_cap_run_together(tmp_path, runner):
+    write_suite(tmp_path, maker())
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one"), check("lint"))
+    prove_started = threading.Event()
+    saw = []
+    runner.stub("lint", does=lambda: saw.append(prove_started.wait(NEVER_SEEN)))
+    runner.stub("prove", does=when_started(prove_started))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, saw) == (True, [True])
+
+
+def test_a_cap_on_an_entry_that_holds_a_command_makes_the_suite_file_unreadable(tmp_path, runner):
+    given_a_suite_file_reading(tmp_path, json.dumps(
+        {"checks": [{"command": ["prove"], "folder": ".", "max-parallel": 2}]}))
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.ready, run_by(runner)) == (False, [])
+    for words in (SUITE_FILE, "`max-parallel`", "`command`"):
+        assert words in outcome.said, words
 
 
 # --- Proofs ------------------------------------------------------------------
@@ -2258,6 +2363,20 @@ def test_the_suite_page_says_how_the_loop_runs_the_suite_with_no_session_running
 
     for words in ("No Session in the loop runs the whole Suite", "runs only Trials"):
         assert words in section, words
+
+
+def test_the_suite_page_says_what_max_parallel_caps_and_what_it_refuses_and_shows_a_dotnet_entry():
+    text = (ROOT / SUITE_PAGE).read_text(encoding="utf-8")
+    checks_from = flattened(text.split("## `checks-from`: checks a command prints")[1]
+                            .split("\n## ")[0])
+    dotnet = flattened(text.split("## A .NET solution")[1].split("\n## ")[0])
+
+    for words in ("can hold `max-parallel`", "Every other check still starts at once",
+                  "A `max-parallel` of 0, a negative number", "or text",
+                  "`max-parallel` on an entry that holds `command`"):
+        assert words in checks_from, words
+    for words in ('"max-parallel": 4', "share one database server"):
+        assert words in dotnet, words
 
 
 def test_the_steps_page_says_a_session_in_the_loop_runs_only_trials():

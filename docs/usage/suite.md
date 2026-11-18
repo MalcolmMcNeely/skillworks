@@ -218,6 +218,25 @@ Check maker printed.
   printed them, with what it said or the Proof that held its inputs.
 - **The full run** runs each Check maker and every check it prints, and trusts no Proof.
 
+### `max-parallel`: how many printed checks run at once
+
+An entry that holds `checks-from` can hold `max-parallel`, a whole number of 1 or more. No more than
+that many of the checks the entry prints run at the same time. Every other check still starts at
+once: the checks your file names itself, and the checks of other `checks-from` entries. With no
+`max-parallel`, every printed check starts at once.
+
+- **A check holds its place while it runs its command or its Rerun.** So a Rerun takes the check's
+  own place, and never runs beyond the cap.
+- **A Prebuild takes no place.** It runs before its checks, as it does with no cap.
+- **A check that does not run takes no place**: one whose Proof holds its inputs, or one red on the
+  same inputs at this ticket's Suite step before.
+- **The Suite refuses a bad `max-parallel`.** A `max-parallel` of 0, a negative number, a number
+  with a fraction, or text, makes the Suite file one the loop cannot read. So does `max-parallel` on
+  an entry that holds `command`, because a cap on one check means nothing.
+
+The cap belongs to the Suite, so it works with any Check maker. The Check maker prints nothing about
+it.
+
 ## A .NET solution
 
 The Plugin ships a Check maker for .NET, `suite-dotnet-checks`. Give it a solution, and it prints
@@ -279,6 +298,24 @@ is passed on and skips nothing:
 Under VSTest the flags go at the end of each printed command. Under Microsoft.Testing.Platform they
 go after the command's `--`, after the TRX flags, because there the test app reads them. Each Rerun
 runs the same command, so it carries the flags too.
+
+When your test projects share one database server, it may not take every project's tests at once.
+Give the entry `max-parallel`, as the `checks-from` section says, so no more than that many test
+projects run together:
+
+```json
+{
+  "checks-from": ["suite-dotnet-checks", "Shop.slnx"],
+  "folder": ".",
+  "max-parallel": 4,
+  "ready": {
+    "command": ["docker", "info"],
+    "message": "Docker does not answer, and the tests need SQL Server in a container. Start Docker."
+  }
+}
+```
+
+The lint and the front-end tests still start at once, and do not wait behind the .NET tests.
 
 ### The test runner: VSTest or Microsoft.Testing.Platform
 

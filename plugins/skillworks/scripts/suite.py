@@ -26,7 +26,9 @@ import re
 import shutil
 import sys
 import tempfile
+import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
@@ -96,6 +98,8 @@ class Check(NamedTuple):
     prebuild: Prebuild = None
     # A Check maker that made nothing, so its red stands in the place of the checks it would have made.
     failed: Ran = None
+    # Shared by every check one capped entry made, so its command and its Rerun hold one place each.
+    cap: threading.Semaphore = None
 
     # The image holds the check's own program, so the host needs only docker.
     def programs(self):
@@ -236,7 +240,18 @@ def maker_command_of(entry):
     ignores_of(entry)
     if "ready" in entry:
         command_of(entry["ready"])
+    max_parallel_of(entry)
     return command
+
+
+def max_parallel_of(entry):
+    if "max-parallel" not in entry:
+        return None
+    cap = entry["max-parallel"]
+    # Python counts a JSON true as an int, and a cap of true means nothing.
+    if not isinstance(cap, int) or isinstance(cap, bool) or cap < 1:
+        raise Unreadable("max-parallel is not a count of 1 or more")
+    return cap
 
 
 # The entry speaks for every check it made, so the team says once what all of them need.
@@ -376,6 +391,10 @@ class Suite:
         return wanted, runs
 
     def check_of(self, entry, prebuilds, keyed=None):
+        # A cap on one check means nothing, and a key that does nothing looks as if it works.
+        if isinstance(entry, dict) and "max-parallel" in entry:
+            raise Unreadable("an entry names both `command` and `max-parallel`, and only an entry "
+                             "that holds `checks-from` takes `max-parallel`")
         ready = entry.get("ready") if isinstance(entry, dict) else None
         if ready is not None:
             ready = Ready(command_of(ready), str(ready.get("message", "")), ready.get("unless"))
@@ -402,9 +421,11 @@ class Suite:
             prebuilds = self.prebuilds_of(printed)
             # The entry as the file wrote it, so an edit to it runs every check it made again.
             beside = json.dumps(entry, sort_keys=True)
-            return [self.check_of(given_beside(each, entry), prebuilds,
-                                  lambda own: json.dumps({"checks-from": beside, "check": own}))
-                    for each in made]
+            limit = max_parallel_of(entry)
+            cap = threading.Semaphore(limit) if limit else None
+            keyed = lambda own: json.dumps({"checks-from": beside, "check": own})
+            checks = [self.check_of(given_beside(each, entry), prebuilds, keyed) for each in made]
+            return [each._replace(cap=cap) for each in checks]
         except (ValueError, Unreadable) as fault:
             return [failed_maker(command, folder, ran, "the Suite cannot read what it printed: {}"
                                  .format(fault))]
@@ -595,10 +616,11 @@ class Suite:
         failed = (built or {}).get(check.prebuild.name) if check.prebuild else None
         if failed is not None and failed.status != 0:
             return Ran(failed.status, prebuild_failed(check, failed), "")
-        if check.image is None:
-            command = check.rerun if red_before and check.rerun else check.command
-            return self.runner.run(command, check.folder.as_posix())
-        return self.run_in_image(check)
+        with check.cap or nullcontext():
+            if check.image is None:
+                command = check.rerun if red_before and check.rerun else check.command
+                return self.runner.run(command, check.folder.as_posix())
+            return self.run_in_image(check)
 
     def run_in_image(self, check):
         return self.contained([check], check.command, self.in_image(check.folder))[1]
