@@ -30,6 +30,22 @@ on their own machine.
 A repo reads the remote only when its `origin` is on the list and a URL is set. In any other repo,
 `steering-file` reads exactly what it read before, and nothing warns.
 
+## What loads in every Session
+
+Your remote holds a `CLAUDE.md` at its root. Put an `@` import in it for each of your files that must
+load in every Session, such as `@docs/skillworks/rules/method.md`. An import names a path from the
+folder of the file that holds it, inside your remote.
+
+In each repo you named, the Session start loads your remote's `CLAUDE.md` and each file it imports.
+It follows imports up to five hops deep, the same as for the Sidecar's `CLAUDE.md`, and the same as
+Claude Code. The text comes from the commit the Session holds. The client's `CLAUDE.md` names nothing
+of your remote.
+
+Under [Sidecar Steering](sidecar-steering.md), the Session gets both: the Sidecar's `CLAUDE.md` and
+its imports, then your remote's.
+
+In a repo you did not name, nothing of your remote loads.
+
 ## Each Session holds one commit
 
 Every repo on your machine reads one local copy of the remote, kept in `~/.skillworks/`. Nothing

@@ -40,8 +40,8 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/sidecar-steering.mjs"],
-            "timeout": 5
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-steering.mjs"],
+            "timeout": 30
           }
         ]
       }

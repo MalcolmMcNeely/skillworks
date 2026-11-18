@@ -446,7 +446,7 @@ def test_path_with_no_matching_rule_says_so_and_exits_with_0(repo, home):
 def sidecar_hook_files(where):
     payload = {"cwd": str(where), "hook_event_name": "SessionStart", "source": "startup"}
     done = subprocess.run(
-        ["node", (PLUGIN / "scripts" / "hooks" / "sidecar-steering.mjs").as_posix()],
+        ["node", (PLUGIN / "scripts" / "hooks" / "session-steering.mjs").as_posix()],
         input=json.dumps(payload), capture_output=True, encoding="utf-8")
     context = json.loads(done.stdout)["hookSpecificOutput"]["additionalContext"]
     return re.findall(r"^## (\S+)$", context, re.MULTILINE)
