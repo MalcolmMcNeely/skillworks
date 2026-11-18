@@ -31,6 +31,7 @@
       "Bash(ticket-worktree:*)",
       "Bash(skillworks-suite:*)",
       "Bash(suite-dotnet-checks:*)",
+      "Bash(suite-dotnet-rerun:*)",
       "Bash(tracker-publish:*)",
       "Bash(tracker-show:*)",
       "Bash(tracker-close:*)",

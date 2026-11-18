@@ -13,6 +13,8 @@ TEST_SDK_PACKAGES = {"microsoft.net.test.sdk"}
 
 PREBUILD = "build"
 
+RERUN = "suite-dotnet-rerun"
+
 # A solution folder has a line of its own in a .sln, and only a project's path ends in a project file.
 SLN_PROJECT = re.compile(r'^Project\("[^"]*"\)\s*=\s*"[^"]*",\s*"([^"]+\.[A-Za-z]+proj)"', re.MULTILINE)
 
@@ -147,15 +149,17 @@ def made_checks(where, solution_given, skips):
     for project in graph.listed:
         if not project.is_test or skipped(project.name):
             continue
-        folder = from_root(root, project.path.parent)
         # A results folder of its own, so the Rerun reads this project's red tests and no other's.
+        results = from_root(root, project.path.parent) + "/TestResults"
+        trx = "{}.trx".format(project.name)
+        command = ["dotnet", "test", from_root(root, project.path), "--no-build",
+                   "--logger", "trx;LogFileName=" + trx, "--results-directory", results]
         checks.append({
-            "command": ["dotnet", "test", from_root(root, project.path), "--no-build",
-                        "--logger", "trx;LogFileName={}.trx".format(project.name),
-                        "--results-directory", folder + "/TestResults"],
+            "command": command,
             "folder": ".",
             "prebuild": PREBUILD,
             "ignores": ignores_for(root, graph, graph.reached_from(project)),
+            "rerun": [RERUN, results + "/" + trx, "--"] + command,
         })
     return {
         "prebuilds": {PREBUILD: {"command": ["dotnet", "build", from_root(root, solution)], "folder": "."}},

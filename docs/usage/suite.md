@@ -252,6 +252,11 @@ It prints one Prebuild, `dotnet build` on the solution you gave it. Each check i
   reach keeps its Proof. A file outside every project folder, such as `Directory.Build.props`,
   `global.json` or test data, is never ignored, so a file the graph does not show never lets a red
   land. A folder that holds a project the test project reaches is never ignored either.
+- **Its Rerun**: `suite-dotnet-rerun`, which the Plugin ships. It runs only the tests that went red.
+  It reads the TRX file that the check's last run wrote, and runs `dotnet test --no-build` with a
+  `--filter` that names each red test. It reads no output of the Suite. When the TRX file is
+  missing, or names no red test, it runs the check's whole command. So a Flake in a slow test
+  project costs seconds, and not the whole project's time.
 
 `--skip` takes a pattern, and a test project whose name matches it gets no check. `*` matches any
 run of characters, and nothing else is a wildcard. Give `--skip` once for each pattern. Nothing in a

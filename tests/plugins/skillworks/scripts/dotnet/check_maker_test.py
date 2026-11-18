@@ -82,14 +82,33 @@ def test_it_prints_one_prebuild_that_builds_the_solution_and_one_check_per_test_
                          "--logger", "trx;LogFileName=Shop.Api.Tests.trx",
                          "--results-directory", "tests/Shop.Api.Tests/TestResults"],
              "folder": ".", "prebuild": "build",
-             "ignores": ["src/Shop.Tool", "tests/Shop.Tool.Tests"]},
+             "ignores": ["src/Shop.Tool", "tests/Shop.Tool.Tests"],
+             "rerun": ["suite-dotnet-rerun", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--",
+                       "dotnet", "test", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+                       "--logger", "trx;LogFileName=Shop.Api.Tests.trx",
+                       "--results-directory", "tests/Shop.Api.Tests/TestResults"]},
             {"command": ["dotnet", "test", "tests/Shop.Tool.Tests/Shop.Tool.Tests.csproj", "--no-build",
                          "--logger", "trx;LogFileName=Shop.Tool.Tests.trx",
                          "--results-directory", "tests/Shop.Tool.Tests/TestResults"],
              "folder": ".", "prebuild": "build",
-             "ignores": ["src/Shop.Api", "src/Shop.Core", "tests/Shop.Api.Tests"]},
+             "ignores": ["src/Shop.Api", "src/Shop.Core", "tests/Shop.Api.Tests"],
+             "rerun": ["suite-dotnet-rerun", "tests/Shop.Tool.Tests/TestResults/Shop.Tool.Tests.trx", "--",
+                       "dotnet", "test", "tests/Shop.Tool.Tests/Shop.Tool.Tests.csproj", "--no-build",
+                       "--logger", "trx;LogFileName=Shop.Tool.Tests.trx",
+                       "--results-directory", "tests/Shop.Tool.Tests/TestResults"]},
         ],
     }
+
+
+def test_each_check_carries_a_rerun_that_reads_the_results_file_its_command_writes(shop):
+    slnx(shop, "Shop.slnx", SHOP)
+
+    check = check_for(made(shop, "Shop.slnx"), "tests/Shop.Api.Tests/Shop.Api.Tests.csproj")
+
+    assert check["rerun"] == ["suite-dotnet-rerun", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--",
+                              "dotnet", "test", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+                              "--logger", "trx;LogFileName=Shop.Api.Tests.trx",
+                              "--results-directory", "tests/Shop.Api.Tests/TestResults"]
 
 
 @pytest.mark.parametrize("solution, write", [
