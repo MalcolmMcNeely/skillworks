@@ -277,7 +277,8 @@ runs only Trials: the few tests near its work, where their check runs.
    command of each check that will run runs, one by one, because two checks can share one install.
    A check with a Proof needs nothing from the machine. A machine that is not ready is not a red
    Suite. The loop stops and prints the `message`, and no Session is asked to fix it, because no
-   Session can start Docker.
+   Session can start Docker. On Windows the Suite starts a command with no file extension, such as
+   `suite-dotnet-checks`, through `bash`, so Git Bash must be on `PATH`.
 
    Each `ready` command also runs at the start of every run, in the [Baseline](the-loop.md), before
    the Cut. There the `ready` command of every check runs, with a Proof or not, unless its `unless`

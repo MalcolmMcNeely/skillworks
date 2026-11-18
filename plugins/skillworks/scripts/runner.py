@@ -115,22 +115,47 @@ def read(output):
 
 
 class Subprocess:
+    # On the class, because a subclass with an __init__ of its own never sets it.
+    windows = os.name == "nt"
+
+    def __init__(self, windows=None):
+        if windows is not None:
+            self.windows = windows
+
     # Finding a program is the first half of reaching one, so a test answers for this too.
     def found(self, name):
-        return shutil.which(name) is not None
+        return self.started_as(name) is not None
+
+    # The Plugin's commands are bash files with no extension, which Windows neither finds nor starts.
+    def started_as(self, name):
+        # Windows reads PATHEXT and CreateProcess does not, so npm, which is npm.CMD, is lost.
+        found = shutil.which(name)
+        if not self.windows or (found and Path(found).suffix):
+            return [found] if found else None
+        if Path(name).suffix:
+            return None
+        script = found or self.bare_file_on_path(name)
+        if script is None:
+            return None
+        return [shutil.which("bash") or "bash", Path(script).as_posix()]
+
+    def bare_file_on_path(self, name):
+        for folder in os.environ.get("PATH", "").split(os.pathsep):
+            if folder and (Path(folder) / name).is_file():
+                return str(Path(folder) / name)
+        return None
 
     def run(self, args, where=None, env=None, stdin=None):
         args = [str(a) for a in args]
-        # Windows reads PATHEXT and CreateProcess does not, so npm, which is npm.CMD, is lost.
-        found = shutil.which(args[0])
-        if found is None:
+        started = self.started_as(args[0])
+        if started is None:
             return Ran(NOT_FOUND, "", args[0] + ": not found\n")
 
         # A wait short enough to catch a wedged session is short enough to kill an honest hour-long one.
         # Bytes, because a text pipe on Windows writes each "\n" as "\r\n", and a Session would then
         # read its command's arguments with a "\r" the driver never wrote.
         done = subprocess.run(
-            [found] + args[1:],
+            started + args[1:],
             cwd=where,
             env=self.environment(env),
             input=None if stdin is None else stdin.encode("utf-8"),
