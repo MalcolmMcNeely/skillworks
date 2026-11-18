@@ -5150,7 +5150,8 @@ def overview_table_links():
 
 def test_the_overview_s_table_lists_the_pages_in_run_order():
     assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
-                                      "the-loop/sidecar-steering.md", "the-loop/the-grill.md", "the-loop/tickets.md",
+                                      "the-loop/sidecar-steering.md", "the-loop/remote-steering.md",
+                                      "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
                                       "the-loop/full-run.md", "the-loop/stops.md",
@@ -5400,11 +5401,12 @@ def test_the_loop_page_never_names_main():
     assert re.search(r"\bmain\b", (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")) is None
 
 
-def test_no_page_in_the_loop_folder_but_the_target_branch_page_names_main():
+# The remote Steering page names `main` as the branch of the developer's own remote, never as a Target branch.
+def test_no_page_in_the_loop_folder_but_the_target_branch_and_remote_steering_pages_names_main():
     naming = [page.name for page in loop_folder_pages()
               if re.search(r"\bmain\b", page.read_text(encoding="utf-8"))]
 
-    assert naming == ["target-branch.md"]
+    assert sorted(naming) == ["remote-steering.md", "target-branch.md"]
 
 
 def test_the_target_branch_page_names_main_only_as_an_example_of_a_target_branch():

@@ -1,0 +1,61 @@
+# Remote Steering
+
+Part of [the Dev loop](../the-loop.md).
+
+Remote Steering is for a developer who works for a client. Part of your Steering is your own way of
+working: your method. The client must never get it. The rest is true only in the client's repo, and
+the client keeps it when you go.
+
+Keep your method in a private git repo of your own. That repo is your remote Steering. It is a fourth
+Layer, beside the repo, the Sidecar and your user files. In each repo you name for it, `steering-file`
+reads your remote Steering as well as the repo's Steering.
+
+## The client repo never names the remote
+
+The remote's URL, and the list of repos that read it, sit in one file in your own user files:
+`~/.skillworks/remote-steering.json`. That file is outside every repo, so the client repo and its
+Sidecar hold no URL, no commit and no file of your remote.
+
+```json
+{
+  "url": "https://github.com/you/your-method.git",
+  "repos": ["https://github.com/client/shop.git"]
+}
+```
+
+A repo is listed by its `origin` URL, exactly as `git remote get-url origin` prints it. So a second
+clone of the same repo reads the remote too. Each teammate who works by your method writes this file
+on their own machine.
+
+A repo reads the remote only when its `origin` is on the list and a URL is set. In any other repo,
+`steering-file` reads exactly what it read before, and nothing warns.
+
+## Each Session holds one commit
+
+Every repo on your machine reads one local copy of the remote, kept in `~/.skillworks/`. Nothing
+writes to the remote, and nothing pushes to it.
+
+A Session fetches the tip of the remote's `main` with its first Steering read, and holds that commit
+until it ends. Every later read in the Session gives the text of the commit it holds. So a change you
+push mid-Session never reaches part of the Session. The next Session reads it.
+
+When the fetch fails, the Session holds the commit last fetched to your machine. Each read then warns
+that the text may be old:
+
+```
+WARN  remote Steering at https://github.com/you/your-method.git could not be fetched, so the copy last fetched, 3f9a2c1, is read, and its text may be old: ...
+```
+
+When your machine has never fetched the remote, the read fails, and names the URL and the fetch's
+error. A repo you named must not be worked on without your method.
+
+## A file in both Layers is one file
+
+The two Layers only add. Neither replaces any part of the other. You write both, so you keep them
+from conflicting.
+
+- A file only one Layer holds is read as it is.
+- A file both Layers hold at the same path is read as one file: the repo's text, then the remote's.
+- A folder read lists the files of both Layers.
+
+Under [Sidecar Steering](sidecar-steering.md), the Sidecar's text comes first, then the remote's.
