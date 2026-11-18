@@ -2741,7 +2741,8 @@ def given_a_suite_red_until_the_loop_goes_round(runner):
 
 def test_red_on_both_runs_goes_to_fix_then_sweep_then_suite(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop, runs=2)
+    sessions = given_sessions_that_report(loop, runs=2)
+    given_a_fix_that_changes_the_work(loop, sessions)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -2826,7 +2827,8 @@ def test_the_first_fix_with_review_reports_only_keeps_the_brief_it_had(loop, run
 
 def test_the_retry_runs_under_the_fix_flag_and_no_other(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop, runs=2)
+    sessions = given_sessions_that_report(loop, runs=2)
+    given_a_fix_that_changes_the_work(loop, sessions)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -2838,7 +2840,8 @@ def test_the_retry_runs_under_the_fix_flag_and_no_other(loop, runner):
 
 def test_a_suite_green_after_the_circuit_carries_the_loop_on(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop, runs=2)
+    sessions = given_sessions_that_report(loop, runs=2)
+    given_a_fix_that_changes_the_work(loop, sessions)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -2850,7 +2853,8 @@ def test_a_suite_green_after_the_circuit_carries_the_loop_on(loop, runner):
 
 def test_a_second_circuit_never_happens(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop, runs=2)
+    sessions = given_sessions_that_report(loop, runs=2)
+    given_a_fix_that_changes_the_work(loop, sessions)
     given_a_suite_red_on_every_run(runner)
 
     ran = loop.run(SPEC)
@@ -2898,7 +2902,8 @@ def test_the_log_says_the_loop_went_round_and_where_it_went(loop, runner):
 
 def test_the_record_keeps_what_the_suite_said_on_both_sides_of_the_circuit(loop, runner):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop, runs=2)
+    sessions = given_sessions_that_report(loop, runs=2)
+    given_a_fix_that_changes_the_work(loop, sessions)
     given_a_suite_red_until_the_loop_goes_round(runner)
 
     ran = loop.run(SPEC)
@@ -2906,6 +2911,97 @@ def test_the_record_keeps_what_the_suite_said_on_both_sides_of_the_circuit(loop,
     assert ran.status == 1
     assert suite_output(loop).count("the runs before the circuit failed") == 2
     assert "the solution passed" in suite_output(loop)
+
+
+# --- a red kept for the ticket's next Suite step ----------------------------
+
+def given_a_fix_that_changes_the_work(loop, sessions):
+    fixes = []
+
+    def change():
+        fixes.append(None)
+        (Path(loop.runner.where) / "fixed.txt").write_text(
+            "fix {}\n".format(len(fixes)), encoding="utf-8", newline="\n")
+    sessions.then["--fix"] = change
+
+
+def test_a_fix_that_changes_nothing_gives_a_suite_step_that_runs_no_check(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "step suite failed check suite-green" in said(ran)
+    assert len(runner.started("dotnet")) == 2
+
+
+def test_a_suite_step_that_ran_no_check_reports_the_earlier_red_output(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert suite_output(loop).count("a test failed") == 3
+
+
+def test_a_check_red_again_with_no_run_names_the_earlier_red_on_the_same_inputs(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert ("dotnet test Skillworks.slnx did not run, because it went red on the same inputs at "
+            "this ticket's Suite step before") in suite_output(loop)
+
+
+def test_a_fix_that_changes_a_red_check_s_inputs_runs_it_again(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop, runs=2)
+    given_a_fix_that_changes_the_work(loop, sessions)
+    given_a_suite_red_on_every_run(runner)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(runner.started("dotnet")) == 4
+
+
+def test_a_kept_red_is_gone_when_the_loop_is_run_again(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop, runs=2)
+    given_a_suite_red_on_every_run(runner)
+    loop.run(SPEC)
+    before = len(runner.started("dotnet"))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert len(runner.started("dotnet")) > before
+
+
+# The second ticket takes away what the first one's fix wrote, so it has the inputs that went red.
+def test_a_new_ticket_runs_a_check_that_was_red_on_the_ticket_before(loop, runner):
+    tracker = given_the_tracker_holds(loop, TWO_OPEN_TICKETS)
+    sessions = given_sessions_that_report(loop)
+    runner.refuse(SOLUTION, "the first ticket failed", times=1)
+    sessions.then["implement 168 --fix"] = lambda: (Path(runner.where) / "fixed.txt").write_text(
+        "fixed\n", encoding="utf-8", newline="\n") if runner.started("dotnet") else None
+    sessions.then[FINISH] = all_of(committed(runner), closed(tracker))
+    sessions.then["implement 169 --stop-after-tests"] = all_of(
+        lambda: (Path(runner.where) / "fixed.txt").unlink(),
+        lambda: runner.refuse(SOLUTION, "the second ticket failed", times=1))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert "the second ticket failed" in (loop.records() / "ticket-169-suite.out").read_text(
+        encoding="utf-8")
 
 
 # --- the passing suite reaching the finishing step ---------------------------

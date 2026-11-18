@@ -85,8 +85,8 @@ Then the checks run together, so the Suite takes as long as its slowest check.
 **A red Suite goes round once.** Red on every one of its `runs` belongs to the ticket. The script puts
 the failing output into the `fix` prompt, then runs `sweep`, then the Suite again. Green carries on to
 `finish`. Red a second time stops the loop. There is never a second round. The checks that passed
-before the fix keep their Proofs, so the second Suite runs only the red checks and the checks whose
-inputs the fix changed.
+before the fix keep their Proofs, and a red check keeps its red, so the second Suite runs only the
+checks whose inputs the fix changed.
 
 **A Flake is green, and never silent.** A check that goes red and then passes on a later run of the
 same Suite is a Flake. The `suite` step counts it as passed and goes on to `finish`, with no `fix`.

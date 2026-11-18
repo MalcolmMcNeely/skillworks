@@ -105,11 +105,17 @@ A check's inputs are every file in the worktree that git does not ignore, less t
 check's own entry in the Suite file counts too, so an edit to its `command`, `folder`, `ready`,
 `ignores` or `image` runs it again.
 
-- Only a check that passes keeps a Proof. A red check keeps none, so it runs again next time.
+- Only a check that passes keeps a Proof. A red check keeps none.
+- After a red Suite, a red check whose inputs did not change is red again at the ticket's next Suite
+  step, with no run. Its line says it did not run, names the earlier red on the same inputs, and
+  shows what the check said then. A `fix` that changes nothing costs no run.
+- The loop keeps that red in memory, for one ticket. It writes nothing to disk, and a new ticket
+  starts with no kept red. `skillworks-suite`, the landing and the full run keep no red, so they run
+  a red check again.
 - Proofs stay in your clone, in its git folder. Every worktree and every loop in the clone shares
   them. Nothing pushes them, so a pass on another machine never counts here.
-- A ticket pays only for the checks its change can reach. After a red Suite, only the red checks and
-  the checks whose inputs the fix changed run again. A landing after a rebase runs only what is new.
+- A ticket pays only for the checks its change can reach. After a red Suite, only the checks whose
+  inputs the fix changed run again. A landing after a rebase runs only what is new.
 
 ## `ignores`: the paths a check cannot be changed by
 

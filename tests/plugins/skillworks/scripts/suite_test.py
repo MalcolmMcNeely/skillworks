@@ -1084,6 +1084,17 @@ def test_the_command_keeps_a_proof_the_next_suite_reads(repo, runner, monkeypatc
     assert PROVED.match(outcome.said), outcome.said
 
 
+def test_the_command_runs_a_check_again_that_was_red_on_the_same_inputs(repo, runner, monkeypatch):
+    write_suite(repo.work, check("prove"))
+    runner.stub("prove", says="a test failed\n", status=1)
+    monkeypatch.chdir(repo.work)
+    suite_command(runner)
+
+    suite_command(runner)
+
+    assert len(runner.started("prove")) == 2
+
+
 def test_a_red_suite_fails_the_command_and_says_what_went_red(repo, runner, monkeypatch):
     write_suite(repo.work, check("prove"))
     runner.stub("prove", says="a test failed\n", status=1)
@@ -1865,6 +1876,14 @@ def test_the_loop_docs_and_the_setup_docs_say_a_check_names_what_it_ignores():
         text = (ROOT / doc).read_text(encoding="utf-8")
         assert "`ignores`" in text, doc
         assert '"when"' not in text, doc
+
+
+def test_the_suite_page_says_a_red_on_the_same_inputs_is_red_again_at_the_ticket_s_next_suite_step():
+    text = " ".join((ROOT / SUITE_PAGE).read_text(encoding="utf-8").split())
+
+    assert ("a red check whose inputs did not change is red again at the ticket's next Suite step, "
+            "with no run") in text
+    assert "A red check keeps none, so it runs again next time" not in text
 
 
 LOOP_PAGES = ["docs/usage/the-loop.md"] + sorted(

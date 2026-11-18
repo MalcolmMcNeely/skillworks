@@ -531,6 +531,9 @@ class Loop:
         self.green_suite = None
         self.flakes = []
 
+        # Never on disk, so a red the machine caused, such as Docker gone, ends with its ticket.
+        self.kept_reds = {}
+
         # Every step's and not one ticket's, so the note on the spec names each Flake of the run.
         self.run_flakes = []
         self.left_full_run_tree = ""
@@ -1097,7 +1100,7 @@ class Loop:
         # The red that sent the loop round is why it ran again, so a second run adds to the record.
         if self.red_suite is None:
             written(held, "")
-        outcome = Suite(self.runner, self.job_worktree).run(
+        outcome = Suite(self.runner, self.job_worktree, kept_reds=self.kept_reds).run(
             self.suite_heard(ticket, held))
 
         # A machine short of what the checks need is nothing a Session could mend, so none is asked.
@@ -1502,6 +1505,7 @@ class Loop:
         self.red_suite = None
         self.green_suite = None
         self.flakes = []
+        self.kept_reds = {}
         self.job_worktree = self.opened("ticket-" + ticket)
         if not self.job_worktree:
             raise stop("FAIL  {} got no worktree to be built in.".format(self.named(ticket)))

@@ -15,6 +15,7 @@
 # A check red and then green is a Flake, and it is always reported, so a second run never hides it.
 # A check can name an image, for tests that start processes an OS is slow to start.
 # Fresh mode trusts no Proof and no image, so a Proof gone stale outside the repo is caught.
+# Only the driver keeps a red, in memory and for one ticket, so a red the machine caused never sticks.
 # A Trial runs part of a check, so it keeps no Proof and reads none: a part never stands for the whole.
 
 import hashlib
@@ -206,9 +207,18 @@ def image_of(entry, held):
     return image
 
 
+class KeptRed(NamedTuple):
+    said: str
+
+
 def did_not_run(check, proof):
     return "{} did not run, because Proof {}, made {}, holds its inputs\n".format(
         " ".join(check.command), proof.key[:12], proof.made)
+
+
+def red_again(check, kept):
+    return ("{} did not run, because it went red on the same inputs at this ticket's Suite step "
+            "before. What it said then:\n{}").format(" ".join(check.command), kept.said)
 
 
 def said_by(check, held, each):
@@ -216,6 +226,8 @@ def said_by(check, held, each):
         return each.out + each.err
     if isinstance(held, Proof):
         return did_not_run(check, held)
+    if isinstance(held, KeptRed):
+        return red_again(check, held)
     return held.out + held.err
 
 
@@ -232,11 +244,13 @@ def utc_now():
 
 
 class Suite:
-    def __init__(self, runner, worktree, now=utc_now, fresh=False):
+    # The driver hands in its kept reds, and every other caller none, so only a ticket's own red sticks.
+    def __init__(self, runner, worktree, now=utc_now, fresh=False, kept_reds=None):
         self.runner = runner
         self.tree = Path(worktree)
         self.now = now
         self.fresh = fresh
+        self.kept_reds = kept_reds
         self.steering = steering_root(self.tree)
 
     def steering_holds(self, path):
@@ -358,7 +372,17 @@ class Suite:
         keys = self.keys_of(wanted, proofs)
         if self.fresh:
             return keys, [None] * len(wanted)
-        return keys, [proofs.of(key) if key else None for key in keys]
+        found = [proofs.of(key) if key else None for key in keys]
+        kept = self.kept_reds or {}
+        return keys, [KeptRed(kept[key]) if held is None and key in kept else held
+                      for key, held in zip(keys, found)]
+
+    def keep_reds(self, keys, reds):
+        if self.kept_reds is None:
+            return
+        for index, said in reds.items():
+            if keys[index]:
+                self.kept_reds[keys[index]] = said
 
     # Read as facts, never out of a runner's output, which is reworded with every version.
     def short_of(self, wanted):
@@ -413,12 +437,15 @@ class Suite:
             # Fresh mode keeps no Proof, so it carries the earlier pass itself.
             if at > 1 and not self.fresh:
                 keys, found = self.proved(wanted, proofs)
+            ran_any = None in found
             outcome, found, reds = self.run_checks(wanted, proofs, keys, found, set(reds))
             said_red.update(reds)
             if heard is not None:
                 heard(outcome, at)
-            if outcome.passed:
+            # A run that ran nothing would only report the same kept reds again.
+            if outcome.passed or not ran_any:
                 break
+        self.keep_reds(keys, reds)
         flakes = tuple(Flake(" ".join(wanted[index].command), said)
                        for index, said in sorted(said_red.items()) if found[index] is not None)
         return outcome._replace(flakes=flakes)
@@ -431,8 +458,8 @@ class Suite:
                        if held is None else None
                        for index, (check, held) in enumerate(zip(wanted, found))]
             ran = [each.result() if each else None for each in running]
-        went_red = [(check, key) for check, key, each in zip(wanted, keys, ran)
-                    if each and each.status != 0]
+        went_red = [(check, key) for check, key, held, each in zip(wanted, keys, found, ran)
+                    if each and each.status != 0 or isinstance(held, KeptRed)]
         if self.fresh:
             proofs.forget({check.named() for check, _ in went_red},
                           {key for _, key in went_red if key})
@@ -442,7 +469,8 @@ class Suite:
                 if key and each and each.status == 0:
                     proofs.keep(key, made, check.named())
         said = "".join(said_by(check, held, each) for check, held, each in zip(wanted, found, ran))
-        passed = [held if each is None else each if each.status == 0 else None
+        passed = [(None if isinstance(held, KeptRed) else held) if each is None
+                  else each if each.status == 0 else None
                   for held, each in zip(found, ran)]
         red = tuple(" ".join(check.command) for check, _ in went_red)
         reds = {index: each.out + each.err for index, each in enumerate(ran)
