@@ -8,7 +8,7 @@ import re
 
 import pytest
 
-from conftest import PLUGIN, Ran, Repo, git, launch, run
+from conftest import PLUGIN, Ran, RemoteSteering, Repo, git, launch
 from runner import Subprocess
 from steering import steering_file
 
@@ -167,32 +167,6 @@ def test_the_command_prints_the_disk_copy_to_the_caller(work):
 SESSION = "4f1c0d2e-remote-steering"
 
 
-class Remote:
-    def __init__(self, root):
-        self.bare = root / "remote.git"
-        self.work = root / "remote-work"
-        run(["git", "init", "--quiet", "--bare", "--initial-branch=main", self.bare.as_posix()])
-        run(["git", "init", "--quiet", "--initial-branch=main", self.work.as_posix()])
-        for name, value in Repo.SETTINGS:
-            git(self.work, "config", name, value)
-        git(self.work, "remote", "add", "origin", self.url)
-
-    @property
-    def url(self):
-        return self.bare.as_uri()
-
-    def push(self, name, text):
-        path = self.work / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8", newline="\n")
-        git(self.work, "add", "-A")
-        git(self.work, "commit", "--quiet", "-m", "Method")
-        git(self.work, "push", "--quiet", "origin", "main")
-
-    def unreachable(self):
-        self.bare.rename(self.bare.with_name("moved.git"))
-
-
 class Named(Work):
     def __init__(self, repo, remote, home):
         super().__init__(repo)
@@ -200,9 +174,7 @@ class Named(Work):
         self.home = home
 
     def user_file(self, settings):
-        path = self.home / ".skillworks" / "remote-steering.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(settings), encoding="utf-8")
+        self.remote.name_in(self.home, settings)
 
     def named(self):
         self.user_file({"url": self.remote.url, "repos": [self.repo.origin.as_posix()]})
@@ -216,7 +188,7 @@ class Named(Work):
 
 @pytest.fixture
 def named(tmp_path):
-    work = Named(Repo(tmp_path), Remote(tmp_path), tmp_path / "home")
+    work = Named(Repo(tmp_path), RemoteSteering(tmp_path), tmp_path / "home")
     work.named()
     return work
 

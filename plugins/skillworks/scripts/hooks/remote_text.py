@@ -23,7 +23,7 @@ def main(argv, runner, out, err, home):
             out.write(json.dumps({"remote": None}))
             return 0
         out.write(json.dumps({"remote": {
-            "label": "remote@" + remote.commit[:7],
+            "label": remote.label,
             "warning": remote.warning,
             "files": {path: remote.file(runner, path) for path in paths},
         }}))

@@ -22,6 +22,10 @@ class Remote:
     commit: str
     warning: str | None
 
+    @property
+    def label(self):
+        return "remote@" + self.commit[:7]
+
     def file(self, runner, path):
         shown = git(runner, self.clone, "cat-file", "-p", self.at(path))
         return shown.out if shown.status == 0 and self.kind(runner, path) == "blob" else None

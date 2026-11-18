@@ -1,14 +1,16 @@
 import json
 import os
+import posixpath
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from layers.layers import Layer, layers_of
+from layers.remote import remote_of
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.steering_file import folder_files, top
+from steering.steering_file import SESSION_VARIABLE, folder_files, top
 from stop import Stop, misuse
 
 STEPS_FILE = Path(__file__).with_name("steps.json")
@@ -32,6 +34,8 @@ ALWAYS = "always"
 ON_DEMAND = "on demand"
 
 FENCE = "---"
+
+ROOT_FILE = "CLAUDE.md"
 
 
 @dataclass(frozen=True)
@@ -108,6 +112,31 @@ def resolved(name, holder, layer, home):
         return path, shown_path(path, Layer(Path(home), "~/", "user"), home), "user"
     path = Path(os.path.normpath(Path(holder.parent, name)))
     return path, shown_path(path, layer, home), layer.label
+
+
+def user_layer(home):
+    return Layer(Path(home), "~/", "user")
+
+
+# Matches the SessionStart hook: imports resolve in the remote's tree, but ~/ and absolute paths stay local.
+def remote_walked(remote, runner, path, home, hops, seen):
+    key = "remote:" + path
+    if key in seen:
+        return []
+    seen.add(key)
+    text = remote.file(runner, path)
+    found = [Section(ALWAYS, remote.label, path, text)]
+    if text is None or hops == 0:
+        return found
+    for name in imports_of(text):
+        if name.startswith("~/") or os.path.isabs(name):
+            found += walked(*resolved(name, Path(home, ROOT_FILE), user_layer(home), home), user_layer(home), home,
+                            hops - 1, seen)
+            continue
+        inside = posixpath.normpath(posixpath.join(posixpath.dirname(path), name))
+        if inside != ".." and not inside.startswith("../"):
+            found += remote_walked(remote, runner, inside, home, hops - 1, seen)
+    return found
 
 
 def walked(path, shown_as, label, layer, home, hops, seen):
@@ -223,16 +252,18 @@ def key_of(path):
     return os.path.normcase(os.path.normpath(path))
 
 
-def always(layers, home, all_rules):
+def always(layers, home, all_rules, remote, runner):
     seen = set()
     found = []
     for layer in [Layer(Path(home, ".claude"), "~/.claude/", "user")] + layers.each():
-        found += walked(Path(layer.root, "CLAUDE.md"), layer.prefix + "CLAUDE.md", layer.label, layer, home,
+        found += walked(Path(layer.root, ROOT_FILE), layer.prefix + ROOT_FILE, layer.label, layer, home,
                         IMPORT_HOPS, seen)
         for rule in all_rules:
             if rule.label == layer.label and not rule.globs and key_of(rule.file) not in seen:
                 seen.add(key_of(rule.file))
                 found.append(Section(ALWAYS, layer.label, rule.path, rule.text))
+    if remote:
+        found += remote_walked(remote, runner, ROOT_FILE, home, IMPORT_HOPS, seen)
     return found
 
 
@@ -253,15 +284,24 @@ def loaded_by(all_rules, path):
         with_header(Section(ALWAYS, rule.label, rule.path, rule.text)) for rule in loaded)
 
 
-def on_demand(paths, root, label):
+def parts(path, layer, remote, runner):
+    local = read(Path(layer.root, path))
+    theirs = remote.file(runner, path) if remote else None
+    found = [Section(ON_DEMAND, layer.label, path, local)] if local is not None or theirs is None else []
+    return found + ([Section(ON_DEMAND, remote.label, path, theirs)] if theirs is not None else [])
+
+
+def on_demand(paths, layer, remote, runner):
     found = []
     for path in paths:
-        folder = Path(root, path)
-        if path.endswith("/") and folder.is_dir():
-            found += [Section(ON_DEMAND, label, path + name, read(folder / name))
-                      for name in folder_files(root, path)]
+        folder = Path(layer.root, path)
+        theirs = remote.folder(runner, path) if remote and path.endswith("/") else None
+        if path.endswith("/") and (folder.is_dir() or theirs is not None):
+            names = (folder_files(layer.root, path) if folder.is_dir() else []) + (theirs or [])
+            for name in sorted(set(names)):
+                found += parts(path + name, layer, remote, runner)
         else:
-            found.append(Section(ON_DEMAND, label, path, read(Path(root, path))))
+            found += parts(path, layer, remote, runner)
     return found
 
 
@@ -297,8 +337,9 @@ def without_path(argv):
     return argv[:at] + argv[at + 2:], argv[at + 1]
 
 
-def main(argv, runner, out, err, where=None, home=None):
+def main(argv, runner, out, err, where=None, home=None, session=None):
     where = where or os.getcwd()
+    home = home or Path.home()
     try:
         repo = top(runner, where)
         all_steps = steps()
@@ -311,9 +352,12 @@ def main(argv, runner, out, err, where=None, home=None):
             out.write("{} is not a step.\n\n".format(argv[0]) + step_list(all_steps))
             return 1
         layers = layers_of(repo)
-        all_rules = path_rules(layers.repo.root, home or Path.home())
-        sections = always(layers, home or Path.home(), all_rules) + on_demand(
-            step["on-demand"], layers.steering.root, layers.steering.label)
+        all_rules = path_rules(layers.repo.root, home)
+        remote = remote_of(runner, repo, home, session)
+        if remote and remote.warning:
+            err.write("WARN  " + remote.warning + "\n")
+        sections = always(layers, home, all_rules, remote, runner) + on_demand(
+            step["on-demand"], layers.steering, remote, runner)
         out.write(shown(step["name"], sections))
         out.write(may_load(all_rules) if path is None else loaded_by(all_rules, path))
         return 0
@@ -326,4 +370,5 @@ if __name__ == "__main__":
     speaking_any_character(sys.stdout)
     speaking_any_character(sys.stderr)
     # python -m runs from the scripts folder, so the caller's folder is handed in first.
-    sys.exit(main(sys.argv[2:], Subprocess(), sys.stdout, sys.stderr, sys.argv[1], Path.home()))
+    sys.exit(main(sys.argv[2:], Subprocess(), sys.stdout, sys.stderr, sys.argv[1], Path.home(),
+                  os.environ.get(SESSION_VARIABLE)))

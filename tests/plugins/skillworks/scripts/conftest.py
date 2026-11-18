@@ -132,6 +132,41 @@ class Repo:
         return done.stdout.strip()
 
 
+class RemoteSteering:
+    def __init__(self, root):
+        self.bare = root / "remote.git"
+        self.work = root / "remote-work"
+        run(["git", "init", "--quiet", "--bare", "--initial-branch=main", self.bare.as_posix()])
+        run(["git", "init", "--quiet", "--initial-branch=main", self.work.as_posix()])
+        for name, value in Repo.SETTINGS:
+            git(self.work, "config", name, value)
+        git(self.work, "remote", "add", "origin", self.url)
+
+    @property
+    def url(self):
+        return self.bare.as_uri()
+
+    @property
+    def short_commit(self):
+        return git(self.work, "rev-parse", "--short=7", "HEAD").strip()
+
+    def push(self, name, text):
+        path = self.work / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8", newline="\n")
+        git(self.work, "add", "-A")
+        git(self.work, "commit", "--quiet", "-m", "Method")
+        git(self.work, "push", "--quiet", "origin", "main")
+
+    def unreachable(self):
+        self.bare.rename(self.bare.with_name("moved.git"))
+
+    def name_in(self, home, settings):
+        path = Path(home) / ".skillworks" / "remote-steering.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(settings), encoding="utf-8")
+
+
 # Left uncommitted, because a checkout's Target branch is read from its files and not from a commit.
 def write_loop(top, target):
     path = Path(top) / LOOP_FILE

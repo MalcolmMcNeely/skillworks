@@ -1,12 +1,13 @@
 import io
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from conftest import PLUGIN, Ran, Repo, launch
+from conftest import PLUGIN, Ran, RemoteSteering, Repo, launch
 from runner import Subprocess
 from steering import show_steering
 
@@ -51,10 +52,117 @@ def write(root, name, text):
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
-def show(*argv, where, home=None):
+def show(*argv, where, home=None, session=None):
     out, err = io.StringIO(), io.StringIO()
-    status = show_steering.main(list(argv), Subprocess(), out, err, str(where), home)
+    status = show_steering.main(list(argv), Subprocess(), out, err, str(where), home, session)
     return Ran(status, out.getvalue(), err.getvalue())
+
+
+@pytest.fixture
+def remote(tmp_path, repo, home):
+    steering = RemoteSteering(tmp_path)
+    steering.name_in(home, {"url": steering.url, "repos": [repo.origin.as_posix()]})
+    return steering
+
+
+def test_in_a_named_repo_the_remotes_claude_md_and_its_imports_are_always_loaded_and_labelled_with_its_commit(
+        repo, home, remote):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    remote.push("CLAUDE.md", "# Method\n\n@docs/method.md\n")
+    remote.push("docs/method.md", "## Tests first\n\nRed, then green.\n")
+    label = "remote@" + remote.short_commit
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [{0}]  CLAUDE.md\n"
+        "  always     [{0}]  docs/method.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [{0}] CLAUDE.md <==\n"
+        "# Method\n"
+        "\n"
+        "@docs/method.md\n"
+        "\n"
+        "==> [{0}] docs/method.md <==\n"
+        "[{0}]\n"
+        "## Tests first\n"
+        "\n"
+        "Red, then green.\n"
+    ).format(label)), ran.err
+
+
+def test_in_a_repo_not_named_the_output_shows_no_remote(repo, home, remote):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    remote.push("CLAUDE.md", "# Method\n")
+    remote.name_in(home, {"url": remote.url, "repos": ["https://example.invalid/another.git"]})
+
+    ran = show("gate", where=repo.work, home=home)
+
+    assert (ran.status, ran.out, ran.err) == (0, (
+        "The Steering the gate step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+    ), "")
+
+
+def test_in_a_named_repo_an_on_demand_file_both_layers_hold_shows_the_repos_part_then_the_remotes(
+        repo, home, remote):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, "docs/skillworks/rules/comments.md", "## The repo's comments\n")
+    remote.push("CLAUDE.md", "# Method\n")
+    remote.push("docs/skillworks/rules/comments.md", "## The method's comments\n")
+    label = "remote@" + remote.short_commit
+
+    ran = show("sweep", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the sweep step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  always     [{0}]  CLAUDE.md\n"
+        "  on demand  [repo]     docs/skillworks/rules/comments.md\n"
+        "  on demand  [{0}]  docs/skillworks/rules/comments.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [{0}] CLAUDE.md <==\n"
+        "# Method\n"
+        "\n"
+        "==> [repo] docs/skillworks/rules/comments.md <==\n"
+        "[repo]\n"
+        "## The repo's comments\n"
+        "\n"
+        "==> [{0}] docs/skillworks/rules/comments.md <==\n"
+        "[{0}]\n"
+        "## The method's comments\n"
+    ).format(label)), ran.err
+
+
+def test_in_a_named_repo_a_file_of_an_on_demand_folder_only_the_remote_holds_shows_with_the_remotes_label(
+        repo, home, remote):
+    write(repo.work, "docs/skillworks/rules/words.md", "# Words\n")
+    remote.push("docs/skillworks/rules/method.md", "# Method rule\n")
+    label = "remote@" + remote.short_commit
+
+    ran = show("standards", where=repo.work, home=home)
+
+    assert [line for line in file_list(ran.out).splitlines() if "/rules/" in line] == [
+        "  on demand  [{}]  docs/skillworks/rules/method.md".format(label),
+        "  on demand  [repo]     docs/skillworks/rules/words.md",
+    ], ran.err
 
 
 def test_with_no_step_named_the_steps_of_the_dev_loop_are_listed_by_stage(repo):
@@ -443,19 +551,41 @@ def test_path_with_no_matching_rule_says_so_and_exits_with_0(repo, home):
     )), ran.err
 
 
-def sidecar_hook_files(where):
-    payload = {"cwd": str(where), "hook_event_name": "SessionStart", "source": "startup"}
+def hook_files(where, home):
+    payload = {"cwd": str(where), "session_id": "hook-session", "hook_event_name": "SessionStart", "source": "startup"}
+    # The hook finds the remote from the home folder, so it must read the one this test wrote.
+    env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
     done = subprocess.run(
         ["node", (PLUGIN / "scripts" / "hooks" / "session-steering.mjs").as_posix()],
-        input=json.dumps(payload), capture_output=True, encoding="utf-8")
+        input=json.dumps(payload), capture_output=True, encoding="utf-8", env=env)
     context = json.loads(done.stdout)["hookSpecificOutput"]["additionalContext"]
-    return re.findall(r"^## (\S+)$", context, re.MULTILINE)
+    return re.findall(r"^## ((?:\[\S+\] )?\S+)$", context, re.MULTILINE)
 
 
-def sidecar_files_shown(out):
-    lines = file_list(out).splitlines()
-    return [line.split()[-1] for line in lines
-            if line.startswith("  always     [Sidecar]") and not line.endswith("missing")]
+def always_files_shown(out, label):
+    found = []
+    for line in file_list(out).splitlines():
+        if line.startswith("  always     [{}]".format(label)) and not line.endswith("missing"):
+            found.append(line.split()[-1] if label == "Sidecar" else "[{}] {}".format(label, line.split()[-1]))
+    return found
+
+
+def test_the_always_walk_finds_the_same_remote_files_as_the_session_hook(repo, home, remote):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    for name, text in (
+            ("CLAUDE.md", "# Method\n\n@docs/a.md\n  @docs/b.md  \n@docs/gone.md\n@l1.md\n@../outside.md\n"),
+            ("docs/a.md", "@b.md\n@../CLAUDE.md\n"),
+            ("docs/b.md", "Read @c.md first, and not `@d.md`.\n\n```\n@e.md\n```\n"),
+            *(("docs/{}.md".format(name), "Text.\n") for name in ("c", "d", "e")),
+            *(("l{}.md".format(level), "@l{}.md\n".format(level + 1)) for level in range(1, 7))):
+        remote.push(name, text)
+
+    label = "remote@" + remote.short_commit
+
+    ran = show("gate", where=repo.work, home=home)
+
+    shown = always_files_shown(ran.out, label)
+    assert (shown[:1], shown) == (["[{}] CLAUDE.md".format(label)], hook_files(repo.work, home)), ran.err
 
 
 def test_the_always_walk_finds_the_same_sidecar_files_as_the_sidecar_hook(repo, home):
@@ -471,7 +601,8 @@ def test_the_always_walk_finds_the_same_sidecar_files_as_the_sidecar_hook(repo, 
 
     ran = show("gate", where=repo.work, home=home)
 
-    assert sidecar_files_shown(ran.out) == sidecar_hook_files(repo.work), ran.err
+    shown = always_files_shown(ran.out, "Sidecar")
+    assert (shown[:1], shown) == (["CLAUDE.md"], hook_files(repo.work, home)), ran.err
 
 
 def test_a_folder_outside_a_git_repository_is_turned_down(tmp_path):
