@@ -13,14 +13,21 @@ from runner import Subprocess
 TEST_SDK = '<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />'
 
 
-def project(root, path, references=(), test=False, packages=()):
+def project(root, path, references=(), test=False, packages=(), properties=""):
     file = root / path
     file.parent.mkdir(parents=True, exist_ok=True)
     items = [TEST_SDK] if test else []
     items += ['<PackageReference Include="{}" Version="3.0.0" />'.format(package) for package in packages]
     items += ['<ProjectReference Include="{}" />'.format(reference) for reference in references]
-    file.write_text('<Project Sdk="Microsoft.NET.Sdk">\n  <ItemGroup>\n    {}\n  </ItemGroup>\n'
-                    '</Project>\n'.format("\n    ".join(items)), encoding="utf-8")
+    file.write_text('<Project Sdk="Microsoft.NET.Sdk">\n  {}\n  <ItemGroup>\n    {}\n  </ItemGroup>\n'
+                    '</Project>\n'.format(properties, "\n    ".join(items)), encoding="utf-8")
+
+
+def is_test_project_property(value, condition=None, group_condition=None):
+    def attribute(text):
+        return "" if text is None else ' Condition="{}"'.format(text)
+    return "<PropertyGroup{}>\n    <IsTestProject{}>{}</IsTestProject>\n  </PropertyGroup>".format(
+        attribute(group_condition), attribute(condition), value)
 
 
 def slnx(root, name, paths):
@@ -51,7 +58,7 @@ def made(root, *argv):
 
 
 def projects_checked(printed):
-    return [check["command"][2] for check in printed["checks"]]
+    return [next(word for word in check["command"] if word.endswith("proj")) for check in printed["checks"]]
 
 
 def check_for(printed, path):
@@ -303,6 +310,73 @@ def test_under_mtp_extra_flags_follow_the_trx_flags_in_the_command_and_the_rerun
         MTP_COMMAND + ["--timeout", "5m"],
         ["suite-dotnet-rerun", "--mtp", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--"]
         + MTP_COMMAND + ["--timeout", "5m"])
+
+
+def a_fixtures_library(root, packages, properties):
+    project(root, "tests/Shop.Fixtures/Shop.Fixtures.csproj", packages=packages, properties=properties)
+    slnx(root, "Shop.slnx", ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "tests/Shop.Fixtures/Shop.Fixtures.csproj"])
+
+
+TEST_PACKAGES = {
+    "test sdk": ["Microsoft.NET.Test.Sdk"],
+    "xunit.v3 libraries": ["Microsoft.NET.Test.Sdk", "xunit.v3.assert", "xunit.v3.extensibility.core"],
+    "xunit.v3": ["xunit.v3"],
+}
+
+
+@pytest.mark.parametrize("mtp", [False, True], ids=["VSTest", "MTP"])
+@pytest.mark.parametrize("packages", TEST_PACKAGES.values(), ids=TEST_PACKAGES.keys())
+def test_a_project_that_sets_is_test_project_false_gets_no_check_and_no_refusal(xunit_shop, mtp, packages):
+    if mtp:
+        global_json(xunit_shop)
+    a_fixtures_library(xunit_shop, packages, is_test_project_property("false"))
+
+    assert projects_checked(made(xunit_shop, "Shop.slnx")) == ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj"]
+
+
+@pytest.mark.parametrize("value", ["False", "FALSE"])
+def test_is_test_project_false_counts_in_any_letter_case(xunit_shop, value):
+    a_fixtures_library(xunit_shop, ["Microsoft.NET.Test.Sdk"], is_test_project_property(value))
+
+    assert projects_checked(made(xunit_shop, "Shop.slnx")) == ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj"]
+
+
+@pytest.mark.parametrize("value", ["true", "True"])
+def test_under_vstest_a_project_that_sets_is_test_project_true_gets_a_check_with_no_known_test_package(
+        xunit_shop, value):
+    a_fixtures_library(xunit_shop, ["NUnit"], is_test_project_property(value))
+
+    assert projects_checked(made(xunit_shop, "Shop.slnx")) == ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj",
+                                                               "tests/Shop.Fixtures/Shop.Fixtures.csproj"]
+
+
+def test_under_mtp_a_project_that_sets_is_test_project_true_and_does_not_name_xunit_v3_is_refused_by_name(
+        xunit_shop):
+    global_json(xunit_shop)
+    a_fixtures_library(xunit_shop, ["NUnit"], is_test_project_property("true"))
+    out, err = io.StringIO(), io.StringIO()
+
+    status = check_maker.main(["Shop.slnx"], out, err, xunit_shop)
+
+    assert (status, out.getvalue(), "tests/Shop.Fixtures/Shop.Fixtures.csproj" in err.getvalue(),
+            "only xUnit v3 is supported under Microsoft.Testing.Platform" in err.getvalue()) == (1, "", True, True)
+
+
+@pytest.mark.parametrize("properties", [
+    is_test_project_property("false", condition="'$(CI)' == 'true'"),
+    is_test_project_property("false", group_condition="'$(CI)' == 'true'"),
+], ids=["on the element", "on its PropertyGroup"])
+def test_an_is_test_project_under_a_condition_is_ignored_so_the_packages_decide(xunit_shop, properties):
+    a_fixtures_library(xunit_shop, ["Microsoft.NET.Test.Sdk"], properties)
+
+    assert projects_checked(made(xunit_shop, "Shop.slnx")) == ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj",
+                                                               "tests/Shop.Fixtures/Shop.Fixtures.csproj"]
+
+
+def test_a_conditioned_is_test_project_true_does_not_make_a_test_project(xunit_shop):
+    a_fixtures_library(xunit_shop, ["NUnit"], is_test_project_property("true", condition="'$(CI)' == 'true'"))
+
+    assert projects_checked(made(xunit_shop, "Shop.slnx")) == ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj"]
 
 
 def test_a_project_reached_only_through_another_project_is_not_ignored(shop):

@@ -68,6 +68,19 @@ def solution_projects(solution):
     raise Refused("{} is not a .sln, .slnx or .slnf file.".format(solution))
 
 
+# Conditions are not worked out, so a conditioned value counts as unset; as in MSBuild, the last one set wins.
+def is_test_project(root):
+    stated = None
+    for group in root:
+        if local_name(group) != "PropertyGroup" or group.get("Condition") is not None:
+            continue
+        for element in group:
+            if local_name(element) == "IsTestProject" and element.get("Condition") is None:
+                value = (element.text or "").strip().lower()
+                stated = {"true": True, "false": False}.get(value, stated)
+    return stated
+
+
 class Project:
     def __init__(self, path):
         self.path = path
@@ -77,7 +90,8 @@ class Project:
                            if local_name(element) == "ProjectReference" and element.get("Include")]
         packages = {(element.get("Include") or "").lower()
                     for element in root.iter() if local_name(element) == "PackageReference"}
-        self.is_test = bool(packages & TEST_PROJECT_PACKAGES)
+        stated = is_test_project(root)
+        self.is_test = bool(packages & TEST_PROJECT_PACKAGES) if stated is None else stated
         self.is_xunit_v3 = XUNIT_V3 in packages
 
     @property

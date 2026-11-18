@@ -256,9 +256,18 @@ and a new test project gets its check with no edit:
 ```
 
 It reads `.sln`, `.slnx` and `.slnf` files, and the `ProjectReference` items of each project file, as
-text. It runs no `dotnet` command, so it takes a moment and builds nothing. A test project is one that
-names `Microsoft.NET.Test.Sdk` or `xunit.v3` in a `PackageReference`, in any letter case. So a pure
-Microsoft.Testing.Platform project that drops `Microsoft.NET.Test.Sdk` still gets a check. `xunit.v3`
+text. It runs no `dotnet` command, so it takes a moment and builds nothing.
+
+`IsTestProject` in the project file decides which projects get a check. `true` gets one, and `false`
+gets none, whatever packages the project names. The value counts in any letter case. A test support
+library that sets `<IsTestProject>false</IsTestProject>` gets no check, even when it names
+`Microsoft.NET.Test.Sdk` or `xunit.v3`. The Check maker reads the project file only. A value set in a
+`Directory.Build.props` or `Directory.Build.targets` file is not read, and neither is one under a
+`Condition`, on the element or on its `PropertyGroup`. Use `--skip` for those projects.
+
+The packages decide only when the project file does not set `IsTestProject`. Then a test project is
+one that names `Microsoft.NET.Test.Sdk` or `xunit.v3` in a `PackageReference`, in any letter case. So
+a pure Microsoft.Testing.Platform project that drops `Microsoft.NET.Test.Sdk` still gets a check. `xunit.v3`
 counts only as that exact name. A library that names only `xunit.v3.assert`,
 `xunit.v3.extensibility.core` or another `xunit.v3.*` package is not a test project, and gets no
 check.
@@ -283,8 +292,7 @@ It prints one Prebuild, `dotnet build` on the solution you gave it. Each check i
   project costs seconds, and not the whole project's time.
 
 `--skip` takes a pattern, and a test project whose name matches it gets no check. `*` matches any
-run of characters, and nothing else is a wildcard. Give `--skip` once for each pattern. Nothing in a
-project file decides whether it gets a check, so you never edit a `.csproj` for the loop.
+run of characters, and nothing else is a wildcard. Give `--skip` once for each pattern.
 
 To add flags to each `dotnet test` command, put them after a `--` at the end of the `checks-from`
 line, after the solution and any `--skip`. Every word after the `--` is a flag, so a `--skip` there
@@ -350,8 +358,10 @@ with the test's full method name, at the end of the command, after its `--`. Whe
 missing, or names no red test, it runs the whole command, as under VSTest.
 
 Under MTP only xUnit v3 is supported. A test project that does not name `xunit.v3` makes the Check
-maker refuse. The refusal names the project and says that only xUnit v3 is supported under
-Microsoft.Testing.Platform. The Suite shows it red, as for any Check maker that fails.
+maker refuse. That holds for a project that `<IsTestProject>true</IsTestProject>` makes a test
+project too. A project that sets it to `false` is never refused. The refusal names the project and
+says that only xUnit v3 is supported under Microsoft.Testing.Platform. The Suite shows it red, as for
+any Check maker that fails.
 
 `ready` and `ignores` beside `checks-from` reach every check it prints, as for any Check maker.
 
