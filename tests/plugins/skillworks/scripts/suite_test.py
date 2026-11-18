@@ -776,6 +776,170 @@ def test_a_prebuild_beside_an_image_is_turned_down_and_says_why(tmp_path, runner
         assert words in outcome.said, words
 
 
+# --- a Check maker -----------------------------------------------------------
+
+def maker(*command, ready=None, ignores=None):
+    entry = {"checks-from": list(command or ["make-checks"]), "folder": "."}
+    if ignores is not None:
+        entry["ignores"] = ignores
+    if ready is not None:
+        entry["ready"] = {"command": list(ready), "message": "not ready"}
+    return entry
+
+
+def given_a_maker_printing(runner, *checks, prebuilds=None):
+    printed = {"checks": list(checks)}
+    if prebuilds is not None:
+        printed["prebuilds"] = prebuilds
+    runner.stub("make-checks", says=json.dumps(printed))
+
+
+def test_checks_a_check_maker_prints_run_beside_the_file_s_own(tmp_path, runner):
+    write_suite(tmp_path, check("lint"), maker())
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one"), check("prove", "two"))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, by_words(run_by(runner))) == (
+        True, [["lint"], ["make-checks"], ["prove", "one"], ["prove", "two"]])
+
+
+def test_a_new_check_the_check_maker_prints_runs_with_no_edit_to_the_file(repo, runner):
+    write_suite(repo.work, maker())
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one"))
+    Suite(runner, repo.work).run()
+
+    given_a_maker_printing(runner, check("prove", "one"), check("prove", "two"))
+    Suite(runner, repo.work).run()
+
+    assert runner.started("prove") == [["prove", "one"], ["prove", "two"]]
+
+
+def test_a_made_check_names_a_prebuild_its_check_maker_printed(tmp_path, runner):
+    write_suite(tmp_path, maker())
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one", prebuild="build"),
+                           check("prove", "two", prebuild="build"), prebuilds=BUILD)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, runner.started("compile")) == (True, [["compile", "all"]])
+
+
+def test_the_ready_beside_checks_from_reaches_every_made_check(repo, runner):
+    write_suite(repo.work, maker(ready=["ping"]))
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one"))
+    Suite(runner, repo.work).run()
+    given_a_maker_printing(runner, check("prove", "one"), check("prove", "two"))
+    runner.stub("ping", status=1)
+
+    outcome = Suite(runner, repo.work).run()
+
+    assert (outcome.ready, runner.started("prove")) == (False, [["prove", "one"]])
+
+
+def test_the_ignores_beside_checks_from_join_each_made_check_s_own(repo, runner):
+    write_suite(repo.work, maker(ignores=["docs"]))
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one", ignores=["web"]),
+                           check("prove", "two", ignores=["web"]))
+    Suite(runner, repo.work).run()
+    writing(repo, "docs/guide.md")
+    writing(repo, "web/page.ts")
+
+    Suite(runner, repo.work).run()
+
+    assert runner.started("prove") == [["prove", "one"], ["prove", "two"]]
+
+
+# Only the key can tell the entry changed, because the Suite file itself is ignored here.
+def test_an_edit_to_the_checks_from_entry_is_a_new_key_for_each_made_check(repo, runner):
+    write_suite(repo.work, maker("make-checks", ignores=[SUITE_FILE]))
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one"), check("prove", "two"))
+    Suite(runner, repo.work).run()
+
+    write_suite(repo.work, maker("make-checks", "--all", ignores=[SUITE_FILE]))
+    Suite(runner, repo.work).run()
+
+    assert by_words(runner.started("prove")) == [["prove", "one"]] * 2 + [["prove", "two"]] * 2
+
+
+def test_a_check_maker_that_fails_is_one_red_line_and_the_file_s_own_checks_still_run(
+        tmp_path, runner):
+    write_suite(tmp_path, check("lint"), maker())
+    given_every_program_passes(runner)
+    runner.stub("make-checks", says="error: Shop.Tests.csproj is not XML\n", status=1)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, outcome.ready, outcome.red, "Shop.Tests.csproj is not XML" in outcome.said,
+            by_words(run_by(runner))) == (
+        False, True, ("make-checks",), True, [["lint"], ["make-checks"]])
+
+
+@pytest.mark.parametrize("printed", [
+    "Building...\n",
+    "[]",
+    json.dumps({"checks": [check("prove", prebuild="build")]}),
+    json.dumps({"checks": [{"checks-from": ["make-checks"]}]}),
+])
+def test_a_check_maker_printing_what_the_suite_cannot_read_is_one_red_line(
+        tmp_path, runner, printed):
+    write_suite(tmp_path, check("lint"), maker())
+    given_every_program_passes(runner)
+    runner.stub("make-checks", says=printed)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.passed, outcome.ready, outcome.red, "cannot read" in outcome.said,
+            by_words(run_by(runner))) == (
+        False, True, ("make-checks",), True, [["lint"], ["make-checks"]])
+
+
+@pytest.mark.parametrize("entry", [
+    dict(maker(), command=["prove"]),
+    maker(ignores="docs"),
+    dict(maker(), ready={"command": "ping"}),
+])
+def test_a_checks_from_entry_the_suite_cannot_read_stops_before_the_check_maker_runs(
+        tmp_path, runner, entry):
+    write_suite(tmp_path, entry)
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove"))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert (outcome.ready, SUITE_FILE in outcome.said, run_by(runner)) == (False, True, [])
+
+
+def test_made_checks_are_listed_in_the_check_maker_s_order_in_the_place_of_its_entry(
+        tmp_path, runner):
+    write_suite(tmp_path, check("compile"), maker(), check("lint"))
+    for name in ("compile", "install", "prove", "lint"):
+        runner.stub(name, says=name + " said\n")
+    given_a_maker_printing(runner, check("prove"), check("install"))
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert outcome.said == "compile said\nprove said\ninstall said\nlint said\n"
+
+
+def test_the_fresh_run_trusts_no_proof_of_a_made_check(repo, runner):
+    write_suite(repo.work, maker())
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one"))
+    Suite(runner, repo.work).run()
+
+    Suite(runner, repo.work, fresh=True).run()
+
+    assert (runner.started("make-checks"), runner.started("prove")) == (
+        [["make-checks"]] * 2, [["prove", "one"]] * 2)
+
+
 # --- Proofs ------------------------------------------------------------------
 
 def writing(repo, name, text="changed"):

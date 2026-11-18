@@ -94,6 +94,8 @@ class Check(NamedTuple):
     keyed: str = ""
     rerun: list = None
     prebuild: Prebuild = None
+    # A Check maker that made nothing, so its red stands in the place of the checks it would have made.
+    failed: Ran = None
 
     # The image holds the check's own program, so the host needs only docker.
     def programs(self):
@@ -224,6 +226,37 @@ def prebuild_of(entry, prebuilds):
     return prebuilds[name]
 
 
+def maker_command_of(entry):
+    if "command" in entry:
+        raise Unreadable("an entry names both `command` and `checks-from`, and takes one of them")
+    command = entry["checks-from"]
+    if not is_list_of_words(command):
+        raise Unreadable("a checks-from that is not a list of words")
+    # Read before the Check maker runs, so a fault in the file is never read as a red Check maker.
+    ignores_of(entry)
+    if "ready" in entry:
+        command_of(entry["ready"])
+    return command
+
+
+# The entry speaks for every check it made, so the team says once what all of them need.
+def given_beside(made, entry):
+    if not isinstance(made, dict):
+        raise Unreadable("it printed a check that is not an entry")
+    given = dict(made)
+    if "ready" in entry:
+        given["ready"] = entry["ready"]
+    if "ignores" in entry:
+        given["ignores"] = list(ignores_of(made)) + list(ignores_of(entry))
+    return given
+
+
+def failed_maker(command, folder, ran, why):
+    said = ("The Check maker {} made no checks, because {}. What it said:\n{}").format(
+        " ".join(command), why, ran.out + ran.err)
+    return Check(command, folder, None, failed=Ran(ran.status or 1, said, ""))
+
+
 def image_of(entry, held):
     if "image" not in entry:
         return None
@@ -336,17 +369,45 @@ class Suite:
         prebuilds = self.prebuilds_of(parsed)
         wanted = []
         for entry in entries:
-            ready = entry.get("ready") if isinstance(entry, dict) else None
-            if ready is not None:
-                ready = Ready(command_of(ready), str(ready.get("message", "")),
-                              ready.get("unless"))
-            # Read in fresh mode too, so a Suite file that names a missing image is never green.
-            image = image_of(entry, self.steering_holds)
-            prebuild = prebuild_of(entry, prebuilds)
-            wanted.append(Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
-                                None if self.fresh else image, ignores_of(entry),
-                                keyed_entry(entry, prebuild), rerun_of(entry), prebuild))
+            if isinstance(entry, dict) and "checks-from" in entry:
+                wanted.extend(self.made_by(entry))
+            else:
+                wanted.append(self.check_of(entry, prebuilds))
         return wanted, runs
+
+    def check_of(self, entry, prebuilds, keyed=None):
+        ready = entry.get("ready") if isinstance(entry, dict) else None
+        if ready is not None:
+            ready = Ready(command_of(ready), str(ready.get("message", "")), ready.get("unless"))
+        # Read in fresh mode too, so a Suite file that names a missing image is never green.
+        image = image_of(entry, self.steering_holds)
+        prebuild = prebuild_of(entry, prebuilds)
+        own = keyed_entry(entry, prebuild)
+        return Check(command_of(entry), self.tree / entry.get("folder", "."), ready,
+                     None if self.fresh else image, ignores_of(entry),
+                     own if keyed is None else keyed(own), rerun_of(entry), prebuild)
+
+    # Run at each read, so a check the repo gained since the last run is in this one.
+    def made_by(self, entry):
+        command = maker_command_of(entry)
+        folder = self.tree / folder_of(entry)
+        ran = self.runner.run(command, folder.as_posix())
+        if ran.status != 0:
+            return [failed_maker(command, folder, ran, "it went red")]
+        try:
+            printed = json.loads(ran.out)
+            made = printed.get("checks") if isinstance(printed, dict) else None
+            if not isinstance(made, list):
+                raise Unreadable("it printed no checks")
+            prebuilds = self.prebuilds_of(printed)
+            # The entry as the file wrote it, so an edit to it runs every check it made again.
+            beside = json.dumps(entry, sort_keys=True)
+            return [self.check_of(given_beside(each, entry), prebuilds,
+                                  lambda own: json.dumps({"checks-from": beside, "check": own}))
+                    for each in made]
+        except (ValueError, Unreadable) as fault:
+            return [failed_maker(command, folder, ran, "the Suite cannot read what it printed: {}"
+                                 .format(fault))]
 
     def prebuilds_of(self, parsed):
         named = parsed.get("prebuilds", {})
@@ -406,7 +467,8 @@ class Suite:
         if proofs.path is None:
             return [None] * len(wanted)
         digests = {}
-        return [self.key_of(check, digests) for check in wanted]
+        # A failed Check maker proved nothing, so it has no key a Proof could hold.
+        return [None if check.failed else self.key_of(check, digests) for check in wanted]
 
     # Fresh mode still reads the keys, because a red check's Proof on these inputs is the stale one.
     def proved(self, wanted, proofs):
@@ -528,6 +590,8 @@ class Suite:
 
     # The Suite reads no output, so the team's Rerun finds what went red itself, such as in a results file.
     def run_check(self, check, red_before=False, built=None):
+        if check.failed is not None:
+            return check.failed
         failed = (built or {}).get(check.prebuild.name) if check.prebuild else None
         if failed is not None and failed.status != 0:
             return Ran(failed.status, prebuild_failed(check, failed), "")

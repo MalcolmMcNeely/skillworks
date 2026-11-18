@@ -177,6 +177,47 @@ fails in Linux, so check out every `.sh` with LF, in `.gitattributes`:
 *.sh text eol=lf
 ```
 
+## `checks-from`: checks a command prints
+
+An entry in `checks` can hold `checks-from` in place of `command`. It names a **Check maker**: a
+command, in the shape of `command`, that runs in the entry's `folder` and prints checks. The loop
+runs the printed checks as if your file named them, beside the checks your file names itself.
+
+```json
+{
+  "checks-from": ["make-checks", "Shop.slnx"],
+  "folder": ".",
+  "ready": { "command": ["docker", "info"], "message": "Start Docker." },
+  "ignores": ["docs"]
+}
+```
+
+The Check maker prints JSON: `checks`, a list of checks in the shape of a check in your file, and
+`prebuilds`, the Prebuilds those checks name. A printed check can name only a Prebuild that the same
+Check maker printed.
+
+```json
+{
+  "prebuilds": { "build": { "command": ["dotnet", "build", "Shop.slnx"], "folder": "." } },
+  "checks": [
+    { "command": ["dotnet", "test", "tests/Shop.Tests", "--no-build"], "folder": ".", "prebuild": "build" }
+  ]
+}
+```
+
+- **It runs at each Suite run**, before the loop works out keys and Proofs. So a new project gets
+  its check with no edit to your file.
+- **The keys beside `checks-from` reach every check it prints.** `ready` is set on each one.
+  `ignores` is added to each check's own `ignores`. The entry is part of each printed check's key,
+  so an edit to the entry runs all of them again. A change in what the Check maker prints for a
+  check runs that check again.
+- **A Check maker that fails is red.** When it exits with an error, or prints JSON the loop cannot
+  read, the output shows one red line named for the Check maker, with what it said. The Suite is
+  red, and the checks your file names itself still run.
+- **The output lists each printed check** in the place of its entry, in the order the Check maker
+  printed them, with what it said or the Proof that held its inputs.
+- **The full run** runs each Check maker and every check it prints, and trusts no Proof.
+
 ## How the loop runs the Suite
 
 The Suite runs once for each ticket after the build, the reviews, the fix and the comment sweep.
