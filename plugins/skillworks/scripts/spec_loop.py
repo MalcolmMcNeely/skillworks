@@ -47,6 +47,7 @@ from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from layers.layers import layers_of
+from layers.remote import RUN_RECORD, remote_of
 from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, END_PATIENCE, FINISHED,
                                HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE, POSITION, STOPPED,
@@ -493,8 +494,10 @@ def told_plan():
 
 
 class Loop:
-    def __init__(self, runner, spec, out, err, wait, permission_mode, clock, replace):
+    def __init__(self, runner, spec, out, err, wait, permission_mode, clock, replace, home):
         self.runner = runner
+        self.home = home
+        self.remote_commit = None
         self.spec = spec
         self.out = out
         self.err = err
@@ -699,7 +702,8 @@ class Loop:
             + ["--permission-mode", self.permission_mode, "--output-format", "json"]
             + given_every_session(sidecar_steering),
             self.job_worktree,
-            session_changes(self.tracker.commit_ticket(ticket) if ticket else None, sidecar_steering),
+            session_changes(self.tracker.commit_ticket(ticket) if ticket else None, sidecar_steering,
+                            self.remote_commit),
             stdin=prompt)
 
     # A path comes back on stdout, so a reason takes stderr, and the log too for a background run.
@@ -1120,6 +1124,7 @@ class Loop:
         missing = missing_steering(self.root) or missing_import(self.root) or missing_adr_folder(self.root)
         if missing:
             raise stop("ABORT " + missing)
+        self.hold_remote_steering()
         reason = self.tracker.connect()
         if reason:
             raise stop("ABORT " + reason)
@@ -1132,6 +1137,21 @@ class Loop:
             raise stop("ABORT spec {} is {}. The loop needs it open.".format(self.spec_named(), state))
 
         self.read_spec_tickets()
+
+    # Fetched once and held, so a push to the remote mid-run never reaches part of the run.
+    def hold_remote_steering(self):
+        record = self.log_dir / RUN_RECORD
+        try:
+            remote = remote_of(self.runner, self.root, self.home, None)
+        except Stop as stopped:
+            raise stop("ABORT " + stopped.said.removeprefix("FAIL  ").rstrip("\n"))
+        if remote is None:
+            record.unlink(missing_ok=True)
+            return
+        self.remote_commit = remote.commit
+        written(record, remote.commit + "\n")
+        if remote.warning:
+            self.say("WARN  " + remote.warning)
 
     # Before the first ticket, so a spec whose Verdicts could never be counted costs no build.
     def read_shape(self):
@@ -2012,11 +2032,11 @@ def arguments(argv):
     return spec, "--dry-run" in rest, mode
 
 
-def main(argv, runner, out, err, wait, clock, replace):
+def main(argv, runner, out, err, wait, clock, replace, home=None):
     loop = None
     try:
         spec, dry, mode = arguments(argv)
-        loop = Loop(runner, spec, out, err, wait, mode, clock, replace)
+        loop = Loop(runner, spec, out, err, wait, mode, clock, replace, home or Path.home())
         loop.run(dry)
         loop.list_what_sessions_wrote()
         loop.moved(FINISHED)

@@ -41,6 +41,9 @@ BASH_LIMIT_MS = str(45 * 60 * 1000)
 # The Plugin's commit hook reads it, and adds its value to each commit as the Ticket trailer.
 TICKET_VARIABLE = "SKILLWORKS_TICKET"
 
+# The driver hands each Session of a run the commit it fetched, so no Session of the run fetches a newer one.
+RUN_VARIABLE = "SKILLWORKS_REMOTE_STEERING_COMMIT"
+
 
 PLUGIN_FOLDER = Path(__file__).resolve().parents[1]
 
@@ -81,7 +84,7 @@ def given_every_session(sidecar_steering=None):
 
 # Here and not in the driver, because the driver imports the landing script and it starts a Session too.
 # Only a Session sets this ID and a Child inherits the attribute, so all below name the first Parent.
-def session_changes(trailer=None, sidecar_steering=None):
+def session_changes(trailer=None, sidecar_steering=None, remote_commit=None):
     # Claude Code sets this, and the session must not read as nested in this one.
     changes = {
         "CLAUDECODE": None,
@@ -90,6 +93,8 @@ def session_changes(trailer=None, sidecar_steering=None):
         # Taken away when there is none, so a Session not started for a ticket never inherits one.
         # Under Sidecar Steering no commit carries a trailer, so no Session is handed a ticket.
         TICKET_VARIABLE: None if sidecar_steering is not None else trailer,
+        # Taken away when there is none, so a Session never reads a commit another run held.
+        RUN_VARIABLE: remote_commit,
     }
     if sidecar_steering is not None:
         changes[ADDED_FOLDER_RULES] = "1"

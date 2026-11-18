@@ -13,6 +13,9 @@ CLONE = "remote-steering.git"
 
 HELD = "remote-steering-held"
 
+# Under the run's own records and never in the client repo, so the client repo holds no trace of the remote.
+RUN_RECORD = "remote-steering.sha"
+
 BRANCH = "main"
 
 
@@ -117,11 +120,16 @@ def hold(home, session, commit, warning):
     path.write_text(json.dumps({"commit": commit, "warning": warning}), encoding="utf-8")
 
 
-def remote_of(runner, top, home, session):
+def remote_of(runner, top, home, session, run_commit=None):
     url = named_url(runner, top, home)
     if url is None:
         return None
     clone = Path(home, USER_FOLDER, CLONE)
+    # A run fetched once for all its Sessions, and a resumed Session is handed no commit, so it finds the run's commit held.
+    if run_commit:
+        if session:
+            hold(home, session, run_commit, None)
+        return Remote(clone, run_commit, None)
     kept = held(home, session) if session else None
     if kept is not None:
         return Remote(clone, *kept)

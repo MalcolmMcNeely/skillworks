@@ -65,6 +65,28 @@ WARN  remote Steering at https://github.com/you/your-method.git could not be fet
 When your machine has never fetched the remote, the read fails, and names the URL and the fetch's
 error. A repo you named must not be worked on without your method.
 
+## Each run holds one commit
+
+A run fetches the tip of the remote's `main` when it starts, and holds that commit until it ends.
+Every Session of the run reads the run's commit, and none fetches a newer one. So a change you push
+mid-run never reaches part of the run. The next run reads it.
+
+The run writes the commit it holds to `.spec-loop/<n>/remote-steering.sha`, with the spec's number in
+place of `<n>`. So you can trace a run's result to the version of your method it read. Git ignores
+`.spec-loop/`, so the commit never reaches the client repo.
+
+When the fetch fails, the run holds the commit last fetched to your machine, and its log warns that
+the text may be old.
+
+When your machine has never fetched the remote, preflight stops the run before it builds anything,
+and names the URL and the fetch's error:
+
+```
+ABORT remote Steering at https://github.com/you/your-method.git could not be fetched, and this machine holds no copy of it: ...
+```
+
+In a repo you did not name, a run fetches nothing and warns about no remote.
+
 ## A file in both Layers is one file
 
 The two Layers only add. Neither replaces any part of the other. You write both, so you keep them
