@@ -9,7 +9,8 @@ from pathlib import Path
 
 USAGE = "usage: suite-dotnet-checks <solution> [--skip <pattern>]... [-- <flag>...]\n"
 
-TEST_SDK_PACKAGES = {"microsoft.net.test.sdk"}
+# Matched whole, so a library that names xunit.v3.assert or xunit.v3.extensibility.core is not a test project.
+TEST_SDK_PACKAGES = {"microsoft.net.test.sdk", "xunit.v3"}
 
 PREBUILD = "build"
 

@@ -238,7 +238,11 @@ and a new test project gets its check with no edit:
 
 It reads `.sln`, `.slnx` and `.slnf` files, and the `ProjectReference` items of each project file, as
 text. It runs no `dotnet` command, so it takes a moment and builds nothing. A test project is one that
-references a test SDK package, `Microsoft.NET.Test.Sdk`.
+names `Microsoft.NET.Test.Sdk` or `xunit.v3` in a `PackageReference`, in any letter case. So a pure
+Microsoft.Testing.Platform project that drops `Microsoft.NET.Test.Sdk` still gets a check. `xunit.v3`
+counts only as that exact name. A library that names only `xunit.v3.assert`,
+`xunit.v3.extensibility.core` or another `xunit.v3.*` package is not a test project, and gets no
+check.
 
 It prints one Prebuild, `dotnet build` on the solution you gave it. Each check it prints holds:
 

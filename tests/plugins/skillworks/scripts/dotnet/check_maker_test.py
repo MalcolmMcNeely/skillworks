@@ -10,10 +10,11 @@ from dotnet import check_maker
 TEST_SDK = '<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />'
 
 
-def project(root, path, references=(), test=False):
+def project(root, path, references=(), test=False, packages=()):
     file = root / path
     file.parent.mkdir(parents=True, exist_ok=True)
     items = [TEST_SDK] if test else []
+    items += ['<PackageReference Include="{}" Version="3.0.0" />'.format(package) for package in packages]
     items += ['<ProjectReference Include="{}" />'.format(reference) for reference in references]
     file.write_text('<Project Sdk="Microsoft.NET.Sdk">\n  <ItemGroup>\n    {}\n  </ItemGroup>\n'
                     '</Project>\n'.format("\n    ".join(items)), encoding="utf-8")
@@ -167,6 +168,22 @@ def test_flags_after_a_double_dash_work_beside_a_skip_pattern(shop):
     printed = made(shop, "Shop.slnx", "--skip", "Shop.Tool.*", "--", "--blame-crash", "--skip", "x")
 
     assert [check["command"][-3:] for check in printed["checks"]] == [["--blame-crash", "--skip", "x"]]
+
+
+@pytest.mark.parametrize("package", ["xunit.v3", "XUnit.V3"])
+def test_a_project_that_names_only_xunit_v3_gets_a_check(tmp_path, package):
+    project(tmp_path, "tests/Shop.Tests/Shop.Tests.csproj", packages=[package])
+    slnx(tmp_path, "Shop.slnx", ["tests/Shop.Tests/Shop.Tests.csproj"])
+
+    assert projects_checked(made(tmp_path, "Shop.slnx")) == ["tests/Shop.Tests/Shop.Tests.csproj"]
+
+
+@pytest.mark.parametrize("package", ["xunit.v3.assert", "xunit.v3.extensibility.core"])
+def test_a_library_that_names_an_xunit_v3_library_gets_no_check(tmp_path, package):
+    project(tmp_path, "tests/Shop.Fixtures/Shop.Fixtures.csproj", packages=[package])
+    slnx(tmp_path, "Shop.slnx", ["tests/Shop.Fixtures/Shop.Fixtures.csproj"])
+
+    assert projects_checked(made(tmp_path, "Shop.slnx")) == []
 
 
 def test_a_project_reached_only_through_another_project_is_not_ignored(shop):
