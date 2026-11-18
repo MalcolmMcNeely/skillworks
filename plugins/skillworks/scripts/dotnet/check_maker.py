@@ -10,7 +10,7 @@ from pathlib import Path
 USAGE = "usage: suite-dotnet-checks <solution> [--skip <pattern>]... [-- <flag>...]\n"
 
 # Matched whole, so a library that names xunit.v3.assert or xunit.v3.extensibility.core is not a test project.
-TEST_SDK_PACKAGES = {"microsoft.net.test.sdk", "xunit.v3"}
+TEST_PROJECT_PACKAGES = {"microsoft.net.test.sdk", "xunit.v3"}
 
 PREBUILD = "build"
 
@@ -77,7 +77,7 @@ class Project:
                            if local_name(element) == "ProjectReference" and element.get("Include")]
         packages = {(element.get("Include") or "").lower()
                     for element in root.iter() if local_name(element) == "PackageReference"}
-        self.is_test = bool(packages & TEST_SDK_PACKAGES)
+        self.is_test = bool(packages & TEST_PROJECT_PACKAGES)
         self.is_xunit_v3 = XUNIT_V3 in packages
 
     @property
