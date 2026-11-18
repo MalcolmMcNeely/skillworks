@@ -261,6 +261,13 @@ moved, and no thread says why. A person writes the reason, and the next run make
 writes `?` to talk it through. The skill never fills a reason in itself.
 _Avoid_: Unknown, mystery, inferred reason
 
+**Rerun**:
+The command a check may name that runs again only the tests that went red on the check's last run,
+and not the whole check. Its result counts, so it is not a Trial: a check red and then green on its
+Rerun is a Flake. The team's command finds the tests that went red, so the loop never reads a test
+runner's output.
+_Avoid_: Retry, recheck, failed-only run
+
 **Runner**:
 The one way the driver reaches another program. It is injected, so a test supplies its own rather
 than putting a fake on `PATH`.
