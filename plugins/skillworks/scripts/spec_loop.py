@@ -46,7 +46,7 @@ from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of
                            read_rename_verdicts, read_renames, unmade_said)
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
-from layers.layers import layers_of
+from layers.layers import repo_steering_of
 from layers.remote import RUN_RECORD, remote_of
 from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, END_PATIENCE, FINISHED,
@@ -1114,7 +1114,7 @@ class Loop:
     # --- getting started -----------------------------------------------------
 
     def preflight(self):
-        in_both = layers_of(self.root).loop_file_in_both()
+        in_both = repo_steering_of(self.root).loop_file_in_both()
         if in_both:
             raise stop("ABORT " + in_both)
         self.tracker = tracker_for(self.runner, self.root, self.spec, self.clock)

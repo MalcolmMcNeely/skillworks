@@ -24,7 +24,7 @@ class Layer:
 
 
 @dataclass(frozen=True)
-class Layers:
+class RepoSteering:
     repo: Layer
     sidecar: Layer | None
 
@@ -33,7 +33,7 @@ class Layers:
     def steering(self):
         return self.sidecar or self.repo
 
-    def each(self):
+    def layers(self):
         return [self.repo] + ([self.sidecar] if self.sidecar else [])
 
     # Neither copy may win, because the one that won would hide the newer edits in the other.
@@ -54,5 +54,5 @@ def sidecar_layer(top):
     return Layer(sidecar, "", SIDECAR) if (sidecar / LOOP_FILE).is_file() else None
 
 
-def layers_of(top):
-    return Layers(Layer(Path(top), "", REPO), sidecar_layer(top))
+def repo_steering_of(top):
+    return RepoSteering(Layer(Path(top), "", REPO), sidecar_layer(top))

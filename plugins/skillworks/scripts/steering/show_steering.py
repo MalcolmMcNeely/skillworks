@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from layers.layers import Layer, layers_of
+from layers.layers import Layer, repo_steering_of
 from layers.remote import remote_of
 from output.streams import speaking_any_character
 from runner import Subprocess
@@ -252,10 +252,10 @@ def key_of(path):
     return os.path.normcase(os.path.normpath(path))
 
 
-def always(layers, home, all_rules, remote, runner):
+def always(repo_steering, home, all_rules, remote, runner):
     seen = set()
     found = []
-    for layer in [Layer(Path(home, ".claude"), "~/.claude/", "user")] + layers.each():
+    for layer in [Layer(Path(home, ".claude"), "~/.claude/", "user")] + repo_steering.layers():
         found += walked(Path(layer.root, ROOT_FILE), layer.prefix + ROOT_FILE, layer.label, layer, home,
                         IMPORT_HOPS, seen)
         for rule in all_rules:
@@ -351,13 +351,13 @@ def main(argv, runner, out, err, where=None, home=None, session=None):
         if step is None:
             out.write("{} is not a step.\n\n".format(argv[0]) + step_list(all_steps))
             return 1
-        layers = layers_of(repo)
-        all_rules = path_rules(layers.repo.root, home)
+        repo_steering = repo_steering_of(repo)
+        all_rules = path_rules(repo_steering.repo.root, home)
         remote = remote_of(runner, repo, home, session)
         if remote and remote.warning:
             err.write("WARN  " + remote.warning + "\n")
-        sections = always(layers, home, all_rules, remote, runner) + on_demand(
-            step["on-demand"], layers.steering, remote, runner)
+        sections = always(repo_steering, home, all_rules, remote, runner) + on_demand(
+            step["on-demand"], repo_steering.steering, remote, runner)
         out.write(shown(step["name"], sections))
         out.write(may_load(all_rules) if path is None else loaded_by(all_rules, path))
         return 0

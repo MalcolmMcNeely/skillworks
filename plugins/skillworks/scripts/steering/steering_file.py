@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from layers.layers import LOOP_FILE, STEERING_FOLDER, layers_of
+from layers.layers import LOOP_FILE, STEERING_FOLDER, repo_steering_of
 from layers.remote import remote_of
 from output.streams import speaking_any_character
 from runner import RUN_VARIABLE, Subprocess
@@ -17,12 +17,12 @@ SESSION_VARIABLE = "CLAUDE_CODE_SESSION_ID"
 
 
 def sidecar_steering(top):
-    sidecar = layers_of(top).sidecar
+    sidecar = repo_steering_of(top).sidecar
     return sidecar.root if sidecar else None
 
 
 def steering_root(top):
-    return layers_of(top).steering.root
+    return repo_steering_of(top).steering.root
 
 
 def top(runner, where):

@@ -6,7 +6,7 @@ import re
 import sys
 
 from configuration.checks import check_configuration
-from layers.layers import layers_of
+from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.adr_folder import adr_folder
@@ -68,8 +68,8 @@ class Preflight:
         if found.status != 0:
             raise refusal("not inside a git repository")
         self.top = found.out.strip()
-        self.layers = layers_of(self.top)
-        in_both = self.layers.loop_file_in_both()
+        self.repo_steering = repo_steering_of(self.top)
+        in_both = self.repo_steering.loop_file_in_both()
         if in_both:
             raise refusal(in_both)
 
@@ -97,7 +97,7 @@ class Preflight:
             self.out.write("\nReady. Next: the rest of /skillworks:skillworks-setup.\n")
 
     def check_rule_imports(self):
-        if not (self.layers.steering.root / RULES_FOLDER).is_dir():
+        if not (self.repo_steering.steering.root / RULES_FOLDER).is_dir():
             return
         missing = missing_import(self.top)
         if missing:
@@ -105,7 +105,7 @@ class Preflight:
         ok(self.out, "CLAUDE.md imports every rule in " + RULES_FOLDER)
 
     def check_sidecar_steering(self):
-        self.sidecar = sidecar = self.layers.sidecar.root if self.layers.sidecar else None
+        self.sidecar = sidecar = self.repo_steering.sidecar.root if self.repo_steering.sidecar else None
         if sidecar is None:
             return
         steering_on = "the Sidecar holds {}, so Sidecar Steering is on, and it names the ".format(LOOP_FILE)
