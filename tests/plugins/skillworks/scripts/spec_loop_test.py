@@ -6832,3 +6832,51 @@ def test_no_file_in_the_client_repo_s_history_names_the_remote_s_url_or_commit(l
 
     history = git(loop.repo.work, "log", "--all", "-p")
     assert (remote.url in history, remote_held_by_the_run(loop) in history) == (False, False)
+
+
+# --- what the remote Steering may never hold ----------------------------------
+
+SETTINGS_BLOCK = "# Placement\n\nKeep folders small.\n\n```yaml\nmax-types-per-folder: 4\n```\n"
+
+
+def test_a_run_whose_remote_holds_a_yaml_settings_block_stops_naming_the_file(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    remote = given_a_remote_that_names_the_repo(loop)
+    remote.push("docs/skillworks/rules/placement.md", SETTINGS_BLOCK)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ("ABORT remote Steering at {} holds a YAML settings block in docs/skillworks/rules/placement.md. "
+            "A setting is a fact about one repo, so every YAML block is read from the repo's Steering alone. "
+            "Move each block to the repo's Steering.").format(remote.url) in said(ran)
+
+
+def test_a_run_whose_remote_holds_path_rules_stops_saying_they_stay_in_the_repo(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    remote = given_a_remote_that_names_the_repo(loop)
+    remote.push(".claude/rules/api.md", "---\npaths: [\"src/api/**\"]\n---\n\nValidate every input.\n")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ("ABORT remote Steering at {} holds .claude/rules/. A path rule names paths in one repo, so path "
+            "rules stay in the repo's Steering. Move them to the repo's .claude/rules/.").format(
+                remote.url) in said(ran)
+
+
+def test_a_run_whose_remote_holds_neither_settings_nor_path_rules_passes_preflight(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_remote_that_names_the_repo(loop)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert "the next ticket is #168" in said(ran)
+
+
+def test_the_repo_s_settings_block_is_read_when_the_remote_holds_the_same_file_without_one(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    remote = given_a_remote_that_names_the_repo(loop)
+    remote.push("docs/skillworks/domain.md", "# Domain Docs\n\nRead the glossary before each change.\n")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert "the next ticket is #168" in said(ran)

@@ -18,9 +18,15 @@ RUN_RECORD = "remote-steering.sha"
 
 BRANCH = "main"
 
+PATH_RULES = ".claude/rules"
+
+# The fence the readers of a settings block look for, so any block that could be read as a setting is found.
+SETTINGS_FENCE = r"^[[:space:]]*```yaml[[:space:]]*$"
+
 
 @dataclass(frozen=True)
 class Remote:
+    url: str
     clone: Path
     commit: str
     warning: str | None
@@ -45,6 +51,19 @@ class Remote:
 
     def at(self, path):
         return "{}:{}".format(self.commit, path.strip("/"))
+
+    # A setting is a fact about one repo, and a path rule names one repo's paths, so neither may come from the remote.
+    def misplaced(self, runner):
+        found = git(runner, self.clone, "grep", "-I", "-l", "-E", SETTINGS_FENCE, self.commit)
+        holding = [line.removeprefix(self.commit + ":") for line in found.out.splitlines()]
+        if holding:
+            return ("remote Steering at {} holds a YAML settings block in {}. A setting is a fact about one repo, "
+                    "so every YAML block is read from the repo's Steering alone. Move each block to the repo's "
+                    "Steering.").format(self.url, ", ".join(sorted(holding)))
+        if self.kind(runner, PATH_RULES) == "tree":
+            return ("remote Steering at {} holds {}/. A path rule names paths in one repo, so path rules stay in "
+                    "the repo's Steering. Move them to the repo's {}/.").format(self.url, PATH_RULES, PATH_RULES)
+        return None
 
 
 def git(runner, clone, *args):
@@ -129,11 +148,11 @@ def remote_of(runner, top, home, session, run_commit=None):
     if run_commit:
         if session:
             hold(home, session, run_commit, None)
-        return Remote(clone, run_commit, None)
+        return Remote(url, clone, run_commit, None)
     kept = held(home, session) if session else None
     if kept is not None:
-        return Remote(clone, *kept)
+        return Remote(url, clone, *kept)
     commit, warning = fetched_or_last_copy(runner, url, clone)
     if session:
         hold(home, session, commit, warning)
-    return Remote(clone, commit, warning)
+    return Remote(url, clone, commit, warning)

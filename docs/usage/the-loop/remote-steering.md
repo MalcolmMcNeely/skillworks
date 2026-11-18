@@ -87,6 +87,25 @@ ABORT remote Steering at https://github.com/you/your-method.git could not be fet
 
 In a repo you did not name, a run fetches nothing and warns about no remote.
 
+## The remote holds no settings and no path rules
+
+A setting is a fact about one repo. So every YAML block is read from the repo's Steering alone. When a
+file in your remote holds a YAML settings block, preflight stops the run and names the file:
+
+```
+ABORT remote Steering at https://github.com/you/your-method.git holds a YAML settings block in docs/skillworks/rules/placement.md. A setting is a fact about one repo, so every YAML block is read from the repo's Steering alone. Move each block to the repo's Steering.
+```
+
+A path rule names paths in one repo. So path rules stay in the repo's Steering. When your remote holds
+`.claude/rules/`, preflight stops the run:
+
+```
+ABORT remote Steering at https://github.com/you/your-method.git holds .claude/rules/. A path rule names paths in one repo, so path rules stay in the repo's Steering. Move them to the repo's .claude/rules/.
+```
+
+A remote that holds neither passes. Preflight reads the commit the run holds. A repo you did not name
+is not checked.
+
 ## A file in both Layers is one file
 
 The two Layers only add. Neither replaces any part of the other. You write both, so you keep them

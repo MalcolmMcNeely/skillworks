@@ -1148,6 +1148,9 @@ class Loop:
         if remote is None:
             record.unlink(missing_ok=True)
             return
+        misplaced = remote.misplaced(self.runner)
+        if misplaced:
+            raise stop("ABORT " + misplaced)
         self.remote_commit = remote.commit
         written(record, remote.commit + "\n")
         if remote.warning:
