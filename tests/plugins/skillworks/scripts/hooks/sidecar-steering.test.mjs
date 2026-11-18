@@ -118,6 +118,50 @@ test("a Session started with no loop.json in the Sidecar gets nothing from the h
   assert.equal(context, undefined);
 });
 
+const IN_BOTH = "both the repo and the Sidecar hold docs/skillworks/loop.json";
+
+async function inRepo(name, text) {
+  await mkdir(dirname(join(work, name)), { recursive: true });
+  await writeFile(join(work, name), text);
+}
+
+test("a Session started with a loop.json in both the repo and the Sidecar is warned, naming both", async () => {
+  // Arrange
+  await sidecarSteering();
+  await inRepo("docs/skillworks/loop.json", JSON.stringify({ tracker: "files", "target-branch": "pr" }));
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  const repoCopy = join(work, "docs/skillworks/loop.json").replaceAll("\\", "/");
+  const sidecarCopy = join(sidecar, "docs/skillworks/loop.json").replaceAll("\\", "/");
+  assert.ok(context.includes(`${IN_BOTH}, so neither may win: ${repoCopy} and ${sidecarCopy}. Remove one of the two.`),
+    context);
+});
+
+test("a Session started with a loop.json in the repo alone gets nothing from the hook", async () => {
+  // Arrange
+  await inRepo("docs/skillworks/loop.json", JSON.stringify({ tracker: "github", "target-branch": "main" }));
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.equal(context, undefined);
+});
+
+test("a Session started under Sidecar Steering alone is not warned of a loop.json in both", async () => {
+  // Arrange
+  await sidecarSteering();
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.ok(!context.includes(IN_BOTH), context);
+});
+
 test("a Session started outside any repo gets nothing from the hook", async () => {
   // Act
   const context = await contextFor(temp);

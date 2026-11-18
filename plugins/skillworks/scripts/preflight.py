@@ -69,6 +69,9 @@ class Preflight:
             raise refusal("not inside a git repository")
         self.top = found.out.strip()
         self.layers = layers_of(self.top)
+        in_both = self.layers.loop_file_in_both()
+        if in_both:
+            raise refusal(in_both)
 
         self.check_rule_imports()
         self.tracker = tracker_setting(self.top)

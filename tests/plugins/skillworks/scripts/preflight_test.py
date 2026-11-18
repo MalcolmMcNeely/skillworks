@@ -754,6 +754,46 @@ def test_under_sidecar_steering_pr_mode_with_the_files_tracker_passes_on_the_sid
     assert "ok    target-branch pr, each reviewed into main" in ran.out
 
 
+IN_BOTH = "both the repo and the Sidecar hold docs/skillworks/loop.json"
+
+
+def test_a_loop_file_in_both_the_repo_and_the_sidecar_fails_naming_both_and_saying_to_remove_one(work):
+    work.serve(GITLAB, "main")
+    sidecar_steering(work, "pr", "files")
+    work.target("main", "files")
+    work.runner.hide("gh")
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert ("FAIL  both the repo and the Sidecar hold docs/skillworks/loop.json, so neither may win: {} and {}. "
+            "Remove one of the two.").format(
+        (work.repo / "docs" / "skillworks" / "loop.json").as_posix(),
+        (work.root / "work-skillworks" / "docs" / "skillworks" / "loop.json").as_posix()) in ran.err
+
+
+def test_a_loop_file_in_the_sidecar_alone_passes_with_no_word_of_both(work):
+    work.serve(GITLAB, "main")
+    sidecar_steering(work, "pr", "files")
+    work.runner.hide("gh")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert IN_BOTH not in said(ran)
+
+
+def test_a_loop_file_in_the_repo_alone_passes_with_no_word_of_both(work):
+    work.serve(GITLAB, "main")
+    work.target("main", "files")
+    work.runner.hide("gh")
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+    assert IN_BOTH not in said(ran)
+
+
 def sidecar_settings(work, text):
     folder = work.root / "work-skillworks" / ".claude"
     folder.mkdir(exist_ok=True)

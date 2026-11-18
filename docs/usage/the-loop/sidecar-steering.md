@@ -12,6 +12,15 @@ so nothing in it is ever pushed. The Steering being there is what turns the mode
 holds `docs/skillworks/loop.json`, every read of a Steering file goes to the Sidecar, and none to the
 repo. No setting turns it on, so no setting can disagree with where the Steering sits.
 
+## Steering in both places stops the run
+
+The Steering sits in one place: the repo or the Sidecar. When both the repo and the Sidecar hold
+`docs/skillworks/loop.json`, neither copy wins. The preflight stops the run, and names both paths.
+Each Session you start warns you, and names both paths, but it still starts.
+
+Remove one of the two. This happens most often when a client takes its Steering from the Sidecar
+into its repo: when the repo's copy is the new one, remove the Sidecar's.
+
 ## Turn it on
 
 Run setup, with `/skillworks:skillworks-setup`. Its first question asks whether the work goes to a

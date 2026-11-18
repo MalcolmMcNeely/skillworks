@@ -588,6 +588,21 @@ def test_an_old_spec_value_stops_the_dry_run_and_says_to_write_pr(loop):
     assert "DRY" not in ran.out
 
 
+def test_a_loop_file_in_both_the_repo_and_the_sidecar_stops_the_dry_run_naming_both(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    repo_copy = loop.repo.work / "docs" / "skillworks" / "loop.json"
+    sidecar_copy = loop.repo.work.with_name(loop.repo.work.name + "-skillworks") / "docs" / "skillworks" / "loop.json"
+    sidecar_copy.parent.mkdir(parents=True)
+    sidecar_copy.write_text(repo_copy.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert ("ABORT both the repo and the Sidecar hold docs/skillworks/loop.json, so neither may win: {} and {}. "
+            "Remove one of the two.").format(repo_copy.as_posix(), sidecar_copy.as_posix()) in said(ran)
+    assert "DRY" not in ran.out
+
+
 def test_a_repo_holding_every_seeded_file_passes_the_steering_check(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 

@@ -36,6 +36,14 @@ class Layers:
     def each(self):
         return [self.repo] + ([self.sidecar] if self.sidecar else [])
 
+    # Neither copy may win, because the one that won would hide the newer edits in the other.
+    def loop_file_in_both(self):
+        repo_copy = self.repo.root / LOOP_FILE
+        if self.sidecar is None or not repo_copy.is_file():
+            return None
+        return ("both the repo and the Sidecar hold {}, so neither may win: {} and {}. Remove one of the two.".format(
+            LOOP_FILE, repo_copy.as_posix(), (self.sidecar.root / LOOP_FILE).as_posix()))
+
 
 # The fact turns the mode on and no setting does, so a setting can never disagree with where the Steering sits.
 def sidecar_layer(top):

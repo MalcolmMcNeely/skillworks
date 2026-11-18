@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { text } from "node:stream/consumers";
-import { sidecarSteering } from "./steering-folder.mjs";
+import { loopFileInBoth, sidecarSteering } from "./steering-folder.mjs";
 
 // Claude Code follows imports this many hops deep, so a rule nested past it loads in neither place.
 const IMPORT_HOPS = 5;
@@ -61,11 +61,14 @@ function expanded(sidecar, path, hops, seen) {
 
 try {
   const payload = JSON.parse(await text(process.stdin));
-  const sidecar = sidecarSteering(typeof payload.cwd === "string" ? payload.cwd : process.cwd());
+  const where = typeof payload.cwd === "string" ? payload.cwd : process.cwd();
+  const sidecar = sidecarSteering(where);
   if (sidecar !== undefined) {
     const steering = expanded(sidecar, join(sidecar, "CLAUDE.md"), IMPORT_HOPS, new Set());
+    const inBoth = loopFileInBoth(where);
+    const warning = inBoth === undefined ? "" : `WARNING: ${inBoth} Preflight stops every run until you do.\n\n`;
     const context =
-      `Sidecar Steering is on. The Steering sits in the Sidecar at ${sidecar.replaceAll("\\", "/")}, and not in ` +
+      `${warning}Sidecar Steering is on. The Steering sits in the Sidecar at ${sidecar.replaceAll("\\", "/")}, and not in ` +
       "the repo. Read each Steering file with steering-file. The Sidecar's CLAUDE.md and each file it imports " +
       `follow, and they hold the team's rules.\n\n${steering}`;
     process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } }));
