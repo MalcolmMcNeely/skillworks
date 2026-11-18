@@ -143,6 +143,32 @@ def test_a_skip_pattern_leaves_a_matching_test_project_with_no_check(shop):
     assert projects_checked(printed) == ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj"]
 
 
+def test_flags_after_a_double_dash_end_each_command_and_the_command_inside_each_rerun(shop):
+    slnx(shop, "Shop.slnx", SHOP)
+
+    check = check_for(made(shop, "Shop.slnx", "--", "--blame-crash", "--blame-crash-dump-type", "mini"),
+                      "tests/Shop.Api.Tests/Shop.Api.Tests.csproj")
+
+    assert (check["command"], check["rerun"]) == (
+        ["dotnet", "test", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+         "--logger", "trx;LogFileName=Shop.Api.Tests.trx",
+         "--results-directory", "tests/Shop.Api.Tests/TestResults",
+         "--blame-crash", "--blame-crash-dump-type", "mini"],
+        ["suite-dotnet-rerun", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--",
+         "dotnet", "test", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+         "--logger", "trx;LogFileName=Shop.Api.Tests.trx",
+         "--results-directory", "tests/Shop.Api.Tests/TestResults",
+         "--blame-crash", "--blame-crash-dump-type", "mini"])
+
+
+def test_flags_after_a_double_dash_work_beside_a_skip_pattern(shop):
+    slnx(shop, "Shop.slnx", SHOP)
+
+    printed = made(shop, "Shop.slnx", "--skip", "Shop.Tool.*", "--", "--blame-crash", "--skip", "x")
+
+    assert [check["command"][-3:] for check in printed["checks"]] == [["--blame-crash", "--skip", "x"]]
+
+
 def test_a_project_reached_only_through_another_project_is_not_ignored(shop):
     slnx(shop, "Shop.slnx", SHOP)
 

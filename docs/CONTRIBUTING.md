@@ -40,10 +40,14 @@ The loop runs the same checks from `docs/skillworks/suite.json`. A new check goe
 [The Suite](usage/suite.md) says how the loop runs them. This repo's Suite file sets `runs` to 2,
 so that a check that goes red and then passes shows as a Flake. The Architecture tests run
 alone, so they never wait on Docker. The loop gets the Core and API test checks from the Check
-maker `suite-dotnet-checks Skillworks.Studio.slnf`: one check per test project, after one Prebuild
-that builds the filter once. A change then runs only the test projects it reaches. The loop runs the script
-tests in the Linux image `docs/skillworks/script-tests.Dockerfile`, because on Windows each git and bash
-process they start is slow to start. Run by hand, the command above runs them on your own machine.
+maker
+`bash plugins/skillworks/bin/suite-dotnet-checks Skillworks.Studio.slnf -- --blame-crash --blame-crash-dump-type mini`:
+one check per test project, after one Prebuild that builds the filter once. A change then runs only
+the test projects it reaches. The flags after `--` make a crash of a test host leave a mini dump.
+The Suite runs the Check maker from this checkout, and not the one on PATH. The Plugin on PATH is
+the one on `main`, so a change to the Check maker would otherwise be judged by the old one.
+The loop runs the script tests in the Linux image `docs/skillworks/script-tests.Dockerfile`, because
+on Windows each git and bash process they start is slow to start. Run by hand, the command above runs them on your own machine.
 The tests marked `this_repo` run on the host in a check of their own, because they read the paths
 the script tests ignore, or this repo's history, and the image gets no copy of those. The backfill
 evals' Statement files are checked there, against the records and the commits at the pin.

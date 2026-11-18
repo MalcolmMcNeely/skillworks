@@ -7,7 +7,7 @@ import sys
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
-USAGE = "usage: suite-dotnet-checks <solution> [--skip <pattern>]...\n"
+USAGE = "usage: suite-dotnet-checks <solution> [--skip <pattern>]... [-- <flag>...]\n"
 
 TEST_SDK_PACKAGES = {"microsoft.net.test.sdk"}
 
@@ -140,7 +140,7 @@ def ignores_for(root, graph, reached):
                   if not any(holds(folder, inner) for inner in reached_folders))
 
 
-def made_checks(where, solution_given, skips):
+def made_checks(where, solution_given, skips, flags):
     root = repo_root(where)
     solution = joined(where, solution_given)
     graph = Graph(solution_projects(solution))
@@ -153,7 +153,7 @@ def made_checks(where, solution_given, skips):
         results = from_root(root, project.path.parent) + "/TestResults"
         trx = "{}.trx".format(project.name)
         command = ["dotnet", "test", from_root(root, project.path), "--no-build",
-                   "--logger", "trx;LogFileName=" + trx, "--results-directory", results]
+                   "--logger", "trx;LogFileName=" + trx, "--results-directory", results] + flags
         checks.append({
             "command": command,
             "folder": ".",
@@ -168,10 +168,12 @@ def made_checks(where, solution_given, skips):
 
 
 def arguments(argv):
-    solution, skips, given = None, [], list(argv)
+    solution, skips, flags, given = None, [], [], list(argv)
     while given:
         word = given.pop(0)
-        if word == "--skip" and given:
+        if word == "--":
+            flags, given = given, []
+        elif word == "--skip" and given:
             skips.append(given.pop(0))
         elif solution is None and not word.startswith("--"):
             solution = word
@@ -179,14 +181,14 @@ def arguments(argv):
             raise Refused(USAGE.rstrip("\n"))
     if solution is None:
         raise Refused(USAGE.rstrip("\n"))
-    return solution, skips
+    return solution, skips, flags
 
 
 def main(argv, out, err, where=None):
     where = Path(where or os.getcwd()).resolve()
     try:
-        solution, skips = arguments(argv)
-        printed = made_checks(where, solution, skips)
+        solution, skips, flags = arguments(argv)
+        printed = made_checks(where, solution, skips, flags)
     except Refused as refused:
         err.write(str(refused) + "\n")
         return 1

@@ -319,7 +319,10 @@ ARCHITECTURE_TESTS = "tests/Skillworks.Architecture.Tests"
 
 DOCKER_TESTS = "Skillworks.Studio.slnf"
 
-DOCKER_TESTS_MAKER = ["suite-dotnet-checks", DOCKER_TESTS]
+DOCKER_TESTS_MAKER_ARGS = [DOCKER_TESTS, "--", "--blame-crash", "--blame-crash-dump-type", "mini"]
+
+# The Plugin on PATH is the one on main, so this repo's Suite runs the Check maker its own change holds.
+DOCKER_TESTS_MAKER = ["bash", "plugins/skillworks/bin/suite-dotnet-checks", *DOCKER_TESTS_MAKER_ARGS]
 
 DOCKER_TEST_PROJECTS = ["tests/Skillworks.Core.Tests/Skillworks.Core.Tests.csproj",
                         "tests/Skillworks.Studio.Api.Tests/Skillworks.Studio.Api.Tests.csproj"]
@@ -327,7 +330,7 @@ DOCKER_TEST_PROJECTS = ["tests/Skillworks.Core.Tests/Skillworks.Core.Tests.cspro
 
 def made_from_the_docker_filter():
     printed = io.StringIO()
-    assert check_maker.main([DOCKER_TESTS], printed, io.StringIO(), where=ROOT) == 0
+    assert check_maker.main(DOCKER_TESTS_MAKER_ARGS, printed, io.StringIO(), where=ROOT) == 0
     return json.loads(printed.getvalue())
 
 
@@ -345,7 +348,7 @@ MOD_TESTS_COMMAND = ["claude", "plugin", "test", PLUGIN]
 def test_this_repo_s_suite_file_runs_the_checks_the_contributing_page_names(runner):
     given_this_repo_s_programs_pass(runner)
     made = made_from_the_docker_filter()
-    runner.stub("suite-dotnet-checks", says=json.dumps(made))
+    runner.stub("bash", says=json.dumps(made))
     runner.stub("git")
 
     outcome = Suite(runner, ROOT).run()
@@ -374,7 +377,7 @@ def test_this_repo_s_front_end_is_installed_when_nothing_is(tmp_path, runner):
     given_a_suite_file_reading(tmp_path, (ROOT / SUITE_FILE).read_text(encoding="utf-8"))
     (tmp_path / SCRIPT_TESTS_IMAGE).write_bytes((ROOT / SCRIPT_TESTS_IMAGE).read_bytes())
     given_this_repo_s_programs_pass(runner)
-    runner.stub("suite-dotnet-checks", says=json.dumps(made_from_the_docker_filter()))
+    runner.stub("bash", says=json.dumps(made_from_the_docker_filter()))
     runner.stub("git")
 
     Suite(runner, tmp_path).run()
@@ -2305,7 +2308,9 @@ def written(entry):
 def this_repo_s_facts():
     facts = set()
     for entry in this_repo_s_checks():
-        facts.add(written(entry)[0])
+        # Every Plugin command runs in bash, so a page may name it, and the script after it is the fact.
+        if written(entry)[0] != "bash":
+            facts.add(written(entry)[0])
         facts.update(word for word in written(entry)[1:] if "." in word or "/" in word)
         if entry["folder"] != ".":
             facts.add(entry["folder"])

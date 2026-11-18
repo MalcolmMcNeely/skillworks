@@ -262,6 +262,18 @@ It prints one Prebuild, `dotnet build` on the solution you gave it. Each check i
 run of characters, and nothing else is a wildcard. Give `--skip` once for each pattern. Nothing in a
 project file decides whether it gets a check, so you never edit a `.csproj` for the loop.
 
+To add flags to each `dotnet test` command, put them after a `--` at the end of the `checks-from`
+line, after the solution and any `--skip`. Every word after the `--` is a flag, so a `--skip` there
+is passed on and skips nothing:
+
+```json
+"checks-from": ["suite-dotnet-checks", "Shop.slnx", "--skip", "*.E2E.Tests",
+                "--", "--blame-crash", "--blame-crash-dump-type", "mini"]
+```
+
+Under VSTest the flags go at the end of each printed command. Each Rerun runs the same command, so
+the flags go at the end of each Rerun's command too.
+
 `ready` and `ignores` beside `checks-from` reach every check it prints, as for any Check maker.
 
 ## How the loop runs the Suite

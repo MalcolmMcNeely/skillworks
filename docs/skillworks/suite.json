@@ -10,7 +10,8 @@
       "folder": "."
     },
     {
-      "checks-from": ["suite-dotnet-checks", "Skillworks.Studio.slnf"],
+      "checks-from": ["bash", "plugins/skillworks/bin/suite-dotnet-checks", "Skillworks.Studio.slnf",
+                      "--", "--blame-crash", "--blame-crash-dump-type", "mini"],
       "folder": ".",
       "ready": {
         "command": ["docker", "info"],
