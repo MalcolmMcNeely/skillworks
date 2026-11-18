@@ -38,6 +38,7 @@ The outputs:
 | `"idleCompaction": false` in `.claude/settings.json` | A Grill stays in one unbroken context when the developer steps away, also when they turn auto-compaction back on. |
 | `"disableWorkflows": true` in `.claude/settings.json` | One workflow can start dozens of agents and use a large number of tokens. |
 | `"disableClaudeAiConnectors": true` in `.claude/settings.json` | The loop and most repos never use the claude.ai connectors, so they cost context on every turn for nothing. |
+| `~/.skillworks/remote-steering.json`, on a yes to the remote Steering question | The URL of the developer's remote Steering and the `origin` of each repo that reads it. It sits in the developer's user files, so the repo and the Sidecar never name the remote. |
 | `permissions.deny` in `.claude/settings.json` | Each name is a tool Skillworks never calls, and a denied tool costs no context. The plan mode tools are among them, because the Grill does the planning. The list never names `Skill`, `Agent`, `Bash`, `PowerShell`, `Read`, `Edit`, `Write`, `ToolSearch` or `SendMessage`. |
 
 ## Process
@@ -232,6 +233,23 @@ Without Sidecar Steering, leave `.claude/settings.local.json` alone. Do not read
 
 Write nothing under `~/.claude`.
 
+#### Remote Steering
+
+Remote Steering is a developer's own way of working, kept in a private git repo of their own. In a repo they name for it, every step reads it as well as the repo's Steering. Its URL, and the list of repos that read it, sit in the developer's user file `~/.skillworks/remote-steering.json`, outside every repo.
+
+Ask one question, with or without Sidecar Steering: does this repo read your remote Steering? Suggest no, so the common answer is one keypress.
+
+- `no`: run `set-remote-steering no`. It changes nothing about the remote.
+- `yes`: run `set-remote-steering yes`. It adds the repo's `origin` to the list in the user file, once, so a second clone of the same repo reads the remote too. When the URL is already set, it asks nothing more.
+
+When `set-remote-steering yes` says `asks the URL`, no URL is set and nothing was written. Ask the developer for the URL of their remote Steering, and run it again with the URL:
+
+```bash
+set-remote-steering yes <url>
+```
+
+Write the user file with `set-remote-steering` and never by hand. It writes nothing about the remote into the repo or the Sidecar. A teammate answers the same question on their own machine.
+
 ### 7. Report
 
 Say what was written and what was kept. Under Sidecar Steering, say that each path below sits in the Sidecar and not in the repo, and that the repo's tracked files did not change. Say where each Steering file lives:
@@ -239,7 +257,7 @@ Say what was written and what was kept. Under Sidecar Steering, say that each pa
 - `docs/skillworks/rules/`: `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
 - `docs/skillworks/`: `issue-tracker.md`, `domain.md`, `adr-format.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
 
-Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude. Then tell them what the team fills in before the loop can finish a ticket:
+Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude. Say whether this repo reads the developer's remote Steering. Then tell them what the team fills in before the loop can finish a ticket:
 
 - `docs/skillworks/suite.json`: the checks that prove their code, each with a command, the folder it runs in, and optionally a readiness command with its message. A check that passes keeps a Proof of its inputs, and does not run again until one of them changes. A check may also name the paths it cannot be changed by, as `"ignores": ["docs", "web"]`: each is a git pathspec from the repo root. A path left off only costs a run, so a slow check is the one to give `ignores`. A check may name an `image`, a Dockerfile in `docs/skillworks/`, to run in a container. A check that did not run says so in the Suite output, and names its Proof. `runs` says how many times a red Suite runs before the loop believes it. It starts at 1, and a team with tests that flake raises it. `baseline` names one quick command, such as a build of the solution, with its `folder` and optionally an `image`: the command a run checks the Target branch with before the Cut, so a red Target branch stops the run before any Session starts. Until it names a check, the loop stops with the Suite not ready.
 - The allowlist: each tool the Suite runs, such as a build or a test runner, so the loop can run it without a prompt.

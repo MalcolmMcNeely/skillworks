@@ -7,6 +7,8 @@ import pytest
 import seed_steering
 from branches.open_the_pull_request import open_the_pull_request
 from conftest import PLUGIN, ROOT, Ran, Repo, git, launch, sidecar_steering, write_steering
+from layers import remote_naming
+from runner import Subprocess
 from seeds import agent_skills
 from suite import Suite
 from tracker.files import CLOSING_NOTE
@@ -2214,7 +2216,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 18
+    assert len(commands) == 19
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -3552,6 +3554,19 @@ def test_setup_asks_whether_commits_credit_claude_and_suggests_hide():
     assert "rewrites the `attribution` block of `.claude/settings.json` from the answer every time it runs" in step
     assert "read the memory line and the credit answer out with it" in step
     assert "Never write `\"attribution\": false`" in step
+
+
+def test_setup_asks_whether_this_repo_reads_the_remote_steering_and_asks_for_a_url_when_the_command_does(repo):
+    step = " ".join(setup_section("### 6. Write the settings").split("#### Remote Steering", 1)[1].split())
+    out = io.StringIO()
+    remote_naming.main([repo.work.as_posix(), "yes"], Subprocess(), out, io.StringIO(), home=repo.work.parent / "home")
+
+    assert ("does this repo read your remote Steering?" in step,
+            "`set-remote-steering no`" in step,
+            "`set-remote-steering yes`" in step,
+            "set-remote-steering yes <url>" in step,
+            "When `set-remote-steering yes` says `{}`".format(" ".join(out.getvalue().split()[:3])) in step) == (
+        True, True, True, True, True)
 
 
 def test_no_skill_seed_or_allowlist_names_the_old_credit_command():

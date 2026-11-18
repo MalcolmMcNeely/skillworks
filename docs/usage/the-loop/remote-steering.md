@@ -27,6 +27,19 @@ A repo is listed by its `origin` URL, exactly as `git remote get-url origin` pri
 clone of the same repo reads the remote too. Each teammate who works by your method writes this file
 on their own machine.
 
+## Setup names a repo
+
+You name a repo by answering yes when setup asks: does this repo read your remote Steering? You never
+write the file by hand. `set-remote-steering` writes it, and [Setup](../setup.md#remote-steering) says
+what each answer writes.
+
+- On yes with no URL set, setup asks for your remote's URL, and writes it with the repo's `origin`.
+- On yes with a URL set, setup asks nothing more, and adds the repo's `origin` to the list, once.
+- On no, setup changes nothing about your remote.
+
+To name a repo without running setup, run `set-remote-steering yes` in it, or
+`set-remote-steering yes <url>` for the first one.
+
 A repo reads the remote only when its `origin` is on the list and a URL is set. In any other repo,
 `steering-file` reads exactly what it read before, and nothing warns.
 
