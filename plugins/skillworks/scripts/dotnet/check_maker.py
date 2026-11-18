@@ -16,6 +16,11 @@ PREBUILD = "build"
 
 RERUN = "suite-dotnet-rerun"
 
+XUNIT_V3 = "xunit.v3"
+
+# Matched in the text, so a global.json that dotnet reads with comments or trailing commas still picks MTP.
+MTP_RUNNER = re.compile(r'"runner"\s*:\s*"Microsoft\.Testing\.Platform"', re.IGNORECASE)
+
 # A solution folder has a line of its own in a .sln, and only a project's path ends in a project file.
 SLN_PROJECT = re.compile(r'^Project\("[^"]*"\)\s*=\s*"[^"]*",\s*"([^"]+\.[A-Za-z]+proj)"', re.MULTILINE)
 
@@ -70,9 +75,10 @@ class Project:
         self.references = [joined(path.parent, element.get("Include"))
                            for element in root.iter()
                            if local_name(element) == "ProjectReference" and element.get("Include")]
-        self.is_test = any(local_name(element) == "PackageReference"
-                           and (element.get("Include") or "").lower() in TEST_SDK_PACKAGES
-                           for element in root.iter())
+        packages = {(element.get("Include") or "").lower()
+                    for element in root.iter() if local_name(element) == "PackageReference"}
+        self.is_test = bool(packages & TEST_SDK_PACKAGES)
+        self.is_xunit_v3 = XUNIT_V3 in packages
 
     @property
     def name(self):
@@ -141,26 +147,54 @@ def ignores_for(root, graph, reached):
                   if not any(holds(folder, inner) for inner in reached_folders))
 
 
+# Every made check runs from the repo root, so dotnet reads the global.json there or above it, never one further down.
+def picks_mtp(root):
+    for folder in [root] + list(root.parents):
+        file = folder / "global.json"
+        if file.is_file():
+            try:
+                return bool(MTP_RUNNER.search(file.read_text(encoding="utf-8-sig")))
+            except OSError:
+                raise Refused("{} cannot be read.".format(file))
+    return False
+
+
+def vstest_check(project, results, trx, flags):
+    command = ["dotnet", "test", project, "--no-build",
+               "--logger", "trx;LogFileName=" + trx, "--results-directory", results] + flags
+    return command, [RERUN, results + "/" + trx, "--"] + command
+
+
+# --results-directory is read by dotnet, and everything after -- by the test app.
+def mtp_check(project, results, trx, flags):
+    command = ["dotnet", "test", "--project", project, "--no-build", "--results-directory", results,
+               "--", "--report-xunit-trx", "--report-xunit-trx-filename", trx] + flags
+    return command, [RERUN, "--mtp", results + "/" + trx, "--"] + command
+
+
 def made_checks(where, solution_given, skips, flags):
     root = repo_root(where)
     solution = joined(where, solution_given)
     graph = Graph(solution_projects(solution))
     skipped = skip_matcher(skips)
+    mtp = picks_mtp(root)
     checks = []
     for project in graph.listed:
         if not project.is_test or skipped(project.name):
             continue
+        if mtp and not project.is_xunit_v3:
+            raise Refused("{} does not name xunit.v3, and only xUnit v3 is supported under "
+                          "Microsoft.Testing.Platform.".format(from_root(root, project.path)))
         # A results folder of its own, so the Rerun reads this project's red tests and no other's.
         results = from_root(root, project.path.parent) + "/TestResults"
         trx = "{}.trx".format(project.name)
-        command = ["dotnet", "test", from_root(root, project.path), "--no-build",
-                   "--logger", "trx;LogFileName=" + trx, "--results-directory", results] + flags
+        command, rerun = (mtp_check if mtp else vstest_check)(from_root(root, project.path), results, trx, flags)
         checks.append({
             "command": command,
             "folder": ".",
             "prebuild": PREBUILD,
             "ignores": ignores_for(root, graph, graph.reached_from(project)),
-            "rerun": [RERUN, results + "/" + trx, "--"] + command,
+            "rerun": rerun,
         })
     return {
         "prebuilds": {PREBUILD: {"command": ["dotnet", "build", from_root(root, solution)], "folder": "."}},

@@ -186,6 +186,122 @@ def test_a_library_that_names_an_xunit_v3_library_gets_no_check(tmp_path, packag
     assert projects_checked(made(tmp_path, "Shop.slnx")) == []
 
 
+MTP_GLOBAL_JSON = '{\n  "sdk": {"version": "10.0.100"},\n  "test": {"runner": "Microsoft.Testing.Platform"}\n}\n'
+
+
+def global_json(folder, text=MTP_GLOBAL_JSON):
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "global.json").write_text(text, encoding="utf-8")
+
+
+@pytest.fixture
+def xunit_shop(tmp_path):
+    (tmp_path / ".git").mkdir()
+    project(tmp_path, "src/Shop.Api/Shop.Api.csproj")
+    project(tmp_path, "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", [r"..\..\src\Shop.Api\Shop.Api.csproj"],
+            test=True, packages=["xunit.v3"])
+    slnx(tmp_path, "Shop.slnx", ["src/Shop.Api/Shop.Api.csproj", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj"])
+    return tmp_path
+
+
+MTP_COMMAND = ["dotnet", "test", "--project", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+               "--results-directory", "tests/Shop.Api.Tests/TestResults", "--",
+               "--report-xunit-trx", "--report-xunit-trx-filename", "Shop.Api.Tests.trx"]
+
+VSTEST_COMMAND = ["dotnet", "test", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+                  "--logger", "trx;LogFileName=Shop.Api.Tests.trx",
+                  "--results-directory", "tests/Shop.Api.Tests/TestResults"]
+
+VSTEST_CHECKS = {
+    "prebuilds": {"build": {"command": ["dotnet", "build", "Shop.slnx"], "folder": "."}},
+    "checks": [{"command": VSTEST_COMMAND, "folder": ".", "prebuild": "build", "ignores": [],
+                "rerun": ["suite-dotnet-rerun", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--"]
+                + VSTEST_COMMAND}],
+}
+
+
+def test_a_repo_that_picks_mtp_in_global_json_gets_checks_and_reruns_in_the_mtp_form(xunit_shop):
+    global_json(xunit_shop)
+
+    printed = made(xunit_shop, "Shop.slnx")
+
+    assert printed == {
+        "prebuilds": {"build": {"command": ["dotnet", "build", "Shop.slnx"], "folder": "."}},
+        "checks": [{"command": MTP_COMMAND, "folder": ".", "prebuild": "build", "ignores": [],
+                    "rerun": ["suite-dotnet-rerun", "--mtp", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx",
+                              "--"] + MTP_COMMAND}],
+    }
+
+
+@pytest.mark.parametrize("text", [
+    None,
+    '{"sdk": {"version": "10.0.100"}}',
+    '{"test": {"runner": "VSTest"}}',
+], ids=["no global.json", "no runner", "VSTest"])
+def test_a_repo_that_does_not_pick_mtp_gets_checks_in_the_vstest_form(xunit_shop, text):
+    if text is not None:
+        global_json(xunit_shop, text)
+
+    assert made(xunit_shop, "Shop.slnx") == VSTEST_CHECKS
+
+
+def test_a_global_json_above_the_repo_root_picks_the_runner(tmp_path):
+    global_json(tmp_path)
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    project(repo, "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", test=True, packages=["xunit.v3"])
+    slnx(repo, "Shop.slnx", ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj"])
+
+    assert made(repo, "Shop.slnx")["checks"][0]["command"] == MTP_COMMAND
+
+
+def test_the_global_json_nearest_the_repo_root_wins_over_one_above_it(tmp_path):
+    global_json(tmp_path)
+    repo = tmp_path / "repo"
+    global_json(repo, '{"test": {"runner": "VSTest"}}')
+    (repo / ".git").mkdir(parents=True)
+    project(repo, "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", test=True, packages=["xunit.v3"])
+    slnx(repo, "Shop.slnx", ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj"])
+
+    assert made(repo, "Shop.slnx")["checks"][0]["command"] == VSTEST_COMMAND
+
+
+def test_a_global_json_only_beside_a_solution_below_the_repo_root_is_not_read(tmp_path):
+    (tmp_path / ".git").mkdir()
+    sub = tmp_path / "app"
+    global_json(sub)
+    project(sub, "tests/Lib.Tests/Lib.Tests.csproj", test=True, packages=["xunit.v3"])
+    slnx(sub, "App.slnx", ["tests/Lib.Tests/Lib.Tests.csproj"])
+
+    assert made(sub, "App.slnx")["checks"][0]["command"] == [
+        "dotnet", "test", "app/tests/Lib.Tests/Lib.Tests.csproj", "--no-build",
+        "--logger", "trx;LogFileName=Lib.Tests.trx", "--results-directory", "app/tests/Lib.Tests/TestResults"]
+
+
+def test_under_mtp_a_test_project_that_does_not_name_xunit_v3_is_refused_by_name(xunit_shop):
+    global_json(xunit_shop)
+    project(xunit_shop, "tests/Shop.NUnit.Tests/Shop.NUnit.Tests.csproj", test=True, packages=["NUnit"])
+    slnx(xunit_shop, "Shop.slnx", ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj",
+                                   "tests/Shop.NUnit.Tests/Shop.NUnit.Tests.csproj"])
+    out, err = io.StringIO(), io.StringIO()
+
+    status = check_maker.main(["Shop.slnx"], out, err, xunit_shop)
+
+    assert (status, out.getvalue(), "Shop.NUnit.Tests" in err.getvalue(),
+            "only xUnit v3 is supported under Microsoft.Testing.Platform" in err.getvalue()) == (1, "", True, True)
+
+
+def test_under_mtp_extra_flags_follow_the_trx_flags_in_the_command_and_the_rerun(xunit_shop):
+    global_json(xunit_shop)
+
+    check = made(xunit_shop, "Shop.slnx", "--", "--timeout", "5m")["checks"][0]
+
+    assert (check["command"], check["rerun"]) == (
+        MTP_COMMAND + ["--timeout", "5m"],
+        ["suite-dotnet-rerun", "--mtp", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--"]
+        + MTP_COMMAND + ["--timeout", "5m"])
+
+
 def test_a_project_reached_only_through_another_project_is_not_ignored(shop):
     slnx(shop, "Shop.slnx", SHOP)
 

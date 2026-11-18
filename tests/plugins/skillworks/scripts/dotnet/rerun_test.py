@@ -105,6 +105,49 @@ def test_a_results_file_that_is_not_xml_runs_the_whole_command(tmp_path):
     assert runner.ran == [COMMAND]
 
 
+MTP_COMMAND = ["dotnet", "test", "--project", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+               "--results-directory", "tests/Shop.Api.Tests/TestResults", "--",
+               "--report-xunit-trx", "--report-xunit-trx-filename", "Shop.Api.Tests.trx"]
+
+
+def mtp_rerun_in(root, runner):
+    out, err = io.StringIO(), io.StringIO()
+    status = rerun.main(["--mtp", TRX, "--"] + MTP_COMMAND, out, err, runner, root)
+    return status, out.getvalue(), err.getvalue()
+
+
+def test_under_mtp_each_red_test_runs_again_through_a_filter_method_after_the_double_dash(tmp_path):
+    trx(tmp_path, [
+        ("Shop.Api.Tests.CartTests", "Checkout", "Shop.Api.Tests.CartTests.Checkout", "Failed"),
+        ("Shop.Api.Tests.CartTests", "Empty", "Shop.Api.Tests.CartTests.Empty", "Passed"),
+        ("Shop.Api.Tests.PriceTests", "Rounds", "Shop.Api.Tests.PriceTests.Rounds(value: 2.5)", "Failed"),
+        ("Shop.Api.Tests.PriceTests", "Rounds", "Shop.Api.Tests.PriceTests.Rounds(value: 3.5)", "Failed"),
+    ])
+    runner = Runner()
+
+    mtp_rerun_in(tmp_path, runner)
+
+    assert runner.ran == [MTP_COMMAND + ["--filter-method", "Shop.Api.Tests.CartTests.Checkout",
+                                         "--filter-method", "Shop.Api.Tests.PriceTests.Rounds"]]
+
+
+def test_under_mtp_a_missing_results_file_runs_the_whole_command(tmp_path):
+    runner = Runner()
+
+    mtp_rerun_in(tmp_path, runner)
+
+    assert runner.ran == [MTP_COMMAND]
+
+
+def test_under_mtp_a_results_file_with_no_red_test_runs_the_whole_command(tmp_path):
+    trx(tmp_path, [("Shop.Api.Tests.CartTests", "Checkout", "Shop.Api.Tests.CartTests.Checkout", "Passed")])
+    runner = Runner()
+
+    mtp_rerun_in(tmp_path, runner)
+
+    assert runner.ran == [MTP_COMMAND]
+
+
 def test_a_rerun_with_no_command_is_turned_down(tmp_path):
     out, err = io.StringIO(), io.StringIO()
 

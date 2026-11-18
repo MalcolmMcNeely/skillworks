@@ -258,7 +258,8 @@ It prints one Prebuild, `dotnet build` on the solution you gave it. Each check i
   land. A folder that holds a project the test project reaches is never ignored either.
 - **Its Rerun**: `suite-dotnet-rerun`, which the Plugin ships. It runs only the tests that went red.
   It reads the TRX file that the check's last run wrote, and runs `dotnet test --no-build` with a
-  `--filter` that names each red test. It reads no output of the Suite. When the TRX file is
+  `--filter` that names each red test. Under Microsoft.Testing.Platform the filter takes another form,
+  as the section below says. It reads no output of the Suite. When the TRX file is
   missing, or names no red test, it runs the check's whole command. So a Flake in a slow test
   project costs seconds, and not the whole project's time.
 
@@ -275,8 +276,45 @@ is passed on and skips nothing:
                 "--", "--blame-crash", "--blame-crash-dump-type", "mini"]
 ```
 
-Under VSTest the flags go at the end of each printed command. Each Rerun runs the same command, so
-the flags go at the end of each Rerun's command too.
+Under VSTest the flags go at the end of each printed command. Under Microsoft.Testing.Platform they
+go after the command's `--`, after the TRX flags, because there the test app reads them. Each Rerun
+runs the same command, so it carries the flags too.
+
+### The test runner: VSTest or Microsoft.Testing.Platform
+
+The Check maker reads `global.json` as text to find your test runner. It looks in the repo root
+first, then in each folder above it, and the nearest `global.json` wins. That is where `dotnet` looks,
+because every printed check runs from the repo root. A `global.json` beside a solution in a subfolder
+is not read.
+
+The runner is Microsoft.Testing.Platform (MTP) when `global.json` names it:
+
+```json
+{
+  "test": { "runner": "Microsoft.Testing.Platform" }
+}
+```
+
+With no `global.json`, or one that names no runner or names VSTest, the runner is VSTest, and every
+check is printed as above.
+
+Under MTP each check's command is:
+
+```
+dotnet test --project <project> --no-build --results-directory <project folder>/TestResults
+  -- --report-xunit-trx --report-xunit-trx-filename <project name>.trx <your flags>
+```
+
+`--results-directory` is a `dotnet` flag, so it goes before the `--`. The TRX file is written by
+xUnit's own TRX flag, so you need no extra TRX package. It lands in the same folder as under VSTest.
+
+Under MTP the Rerun is `suite-dotnet-rerun --mtp`. It adds one `--filter-method` for each red test,
+with the test's full method name, at the end of the command, after its `--`. When the TRX file is
+missing, or names no red test, it runs the whole command, as under VSTest.
+
+Under MTP only xUnit v3 is supported. A test project that does not name `xunit.v3` makes the Check
+maker refuse. The refusal names the project and says that only xUnit v3 is supported under
+Microsoft.Testing.Platform. The Suite shows it red, as for any Check maker that fails.
 
 `ready` and `ignores` beside `checks-from` reach every check it prints, as for any Check maker.
 

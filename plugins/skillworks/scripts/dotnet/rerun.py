@@ -10,7 +10,9 @@ if __name__ == "__main__":
 
 from runner import Subprocess
 
-USAGE = "usage: suite-dotnet-rerun <trx file> -- <the check's command>...\n"
+USAGE = "usage: suite-dotnet-rerun [--mtp] <trx file> -- <the check's command>...\n"
+
+MTP = "--mtp"
 
 RED = {"failed", "error", "timeout", "aborted"}
 
@@ -47,17 +49,23 @@ def red_tests(trx):
     return names
 
 
-def command_for(trx, command):
+def command_for(trx, command, mtp):
     red = red_tests(trx)
     if not red:
         return command
+    # The MTP command already ends inside its own --, where the test app reads the filter.
+    if mtp:
+        return command + [word for name in red for word in ("--filter-method", name)]
     return command + ["--filter", "|".join("FullyQualifiedName=" + escaped(name) for name in red)]
 
 
 def arguments(argv):
+    mtp = bool(argv) and argv[0] == MTP
+    if mtp:
+        argv = argv[1:]
     if len(argv) < 3 or argv[1] != "--":
         return None
-    return argv[0], argv[2:]
+    return argv[0], argv[2:], mtp
 
 
 def main(argv, out, err, runner, where=None):
@@ -66,8 +74,8 @@ def main(argv, out, err, runner, where=None):
     if given is None:
         err.write(USAGE)
         return 2
-    trx, command = given
-    ran = runner.run(command_for(where / trx, command), str(where))
+    trx, command, mtp = given
+    ran = runner.run(command_for(where / trx, command, mtp), str(where))
     out.write(ran.out)
     err.write(ran.err)
     return ran.status
