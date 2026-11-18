@@ -5,9 +5,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from layers.layers import Layer, layers_of
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.steering_file import folder_files, sidecar_steering, steering_root, top
+from steering.steering_file import folder_files, top
 from stop import Stop, misuse
 
 STEPS_FILE = Path(__file__).with_name("steps.json")
@@ -33,7 +34,6 @@ ON_DEMAND = "on demand"
 FENCE = "---"
 
 
-# The label is a field and not text, so another Layer, such as remote Steering, adds a value and no new format.
 @dataclass(frozen=True)
 class Section:
     when: str
@@ -90,13 +90,6 @@ def outside_code(text):
 
 def imports_of(text):
     return [name.replace("\\ ", " ").split("#")[0] for name in IMPORT.findall(outside_code(text))]
-
-
-@dataclass(frozen=True)
-class Layer:
-    root: Path
-    prefix: str
-    label: str
 
 
 def shown_path(path, layer, home):
@@ -230,13 +223,10 @@ def key_of(path):
     return os.path.normcase(os.path.normpath(path))
 
 
-def always(repo, home, sidecar, all_rules):
-    layers = [Layer(Path(home, ".claude"), "~/.claude/", "user"), Layer(Path(repo), "", "repo")]
-    if sidecar:
-        layers.append(Layer(Path(sidecar), "", "Sidecar"))
+def always(layers, home, all_rules):
     seen = set()
     found = []
-    for layer in layers:
+    for layer in [Layer(Path(home, ".claude"), "~/.claude/", "user")] + layers.each():
         found += walked(Path(layer.root, "CLAUDE.md"), layer.prefix + "CLAUDE.md", layer.label, layer, home,
                         IMPORT_HOPS, seen)
         for rule in all_rules:
@@ -320,10 +310,10 @@ def main(argv, runner, out, err, where=None, home=None):
         if step is None:
             out.write("{} is not a step.\n\n".format(argv[0]) + step_list(all_steps))
             return 1
-        sidecar = sidecar_steering(repo)
-        all_rules = path_rules(repo, home or Path.home())
-        sections = always(repo, home or Path.home(), sidecar, all_rules) + on_demand(
-            step["on-demand"], steering_root(repo), "Sidecar" if sidecar else "repo")
+        layers = layers_of(repo)
+        all_rules = path_rules(layers.repo.root, home or Path.home())
+        sections = always(layers, home or Path.home(), all_rules) + on_demand(
+            step["on-demand"], layers.steering.root, layers.steering.label)
         out.write(shown(step["name"], sections))
         out.write(may_load(all_rules) if path is None else loaded_by(all_rules, path))
         return 0

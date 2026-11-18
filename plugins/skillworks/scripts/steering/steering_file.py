@@ -4,30 +4,21 @@ import os
 import sys
 from pathlib import Path
 
+from layers.layers import LOOP_FILE, STEERING_FOLDER, layers_of
 from output.streams import speaking_any_character
 from runner import Subprocess
-from sidecar.locator import sidecar_of
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: steering-file <path>\n"
 
-# Every script builds its Steering paths from this one name, so the folder moves in one line.
-STEERING_FOLDER = "docs/skillworks"
 
-LOOP_FILE = STEERING_FOLDER + "/loop.json"
-
-
-# The fact turns the mode on and no setting does, so a setting can never disagree with where the Steering sits.
 def sidecar_steering(top):
-    try:
-        sidecar = sidecar_of(Subprocess(), top)
-    except Stop:
-        return None
-    return sidecar if (sidecar / LOOP_FILE).is_file() else None
+    sidecar = layers_of(top).sidecar
+    return sidecar.root if sidecar else None
 
 
 def steering_root(top):
-    return sidecar_steering(top) or Path(top)
+    return layers_of(top).steering.root
 
 
 def top(runner, where):
