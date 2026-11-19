@@ -110,9 +110,9 @@ MTP_COMMAND = ["dotnet", "test", "--project", "tests/Shop.Api.Tests/Shop.Api.Tes
                "--report-xunit-trx", "--report-xunit-trx-filename", "Shop.Api.Tests.trx"]
 
 
-def mtp_rerun_in(root, runner):
+def mtp_rerun_in(root, runner, command=MTP_COMMAND):
     out, err = io.StringIO(), io.StringIO()
-    status = rerun.main(["--mtp", TRX, "--"] + MTP_COMMAND, out, err, runner, root)
+    status = rerun.main(["--mtp", TRX, "--"] + command, out, err, runner, root)
     return status, out.getvalue(), err.getvalue()
 
 
@@ -146,6 +146,32 @@ def test_under_mtp_a_results_file_with_no_red_test_runs_the_whole_command(tmp_pa
     mtp_rerun_in(tmp_path, runner)
 
     assert runner.ran == [MTP_COMMAND]
+
+
+MTP_COMMAND_WITH_NO_DOUBLE_DASH = ["dotnet", "test", "--project", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj",
+                                   "--no-build", "--results-directory", "tests/Shop.Api.Tests/TestResults"]
+
+
+def test_under_mtp_a_command_with_no_double_dash_gets_one_so_the_filter_reaches_the_test_app(tmp_path):
+    trx(tmp_path, [
+        ("Shop.Api.Tests.CartTests", "Checkout", "Shop.Api.Tests.CartTests.Checkout", "Failed"),
+        ("Shop.Api.Tests.PriceTests", "Rounds", "Shop.Api.Tests.PriceTests.Rounds", "Failed"),
+    ])
+    runner = Runner()
+
+    mtp_rerun_in(tmp_path, runner, MTP_COMMAND_WITH_NO_DOUBLE_DASH)
+
+    assert runner.ran == [MTP_COMMAND_WITH_NO_DOUBLE_DASH + ["--", "--filter-method", "Shop.Api.Tests.CartTests.Checkout",
+                                                             "--filter-method", "Shop.Api.Tests.PriceTests.Rounds"]]
+
+
+def test_under_mtp_a_command_with_no_double_dash_and_no_red_test_runs_as_given(tmp_path):
+    trx(tmp_path, [("Shop.Api.Tests.CartTests", "Checkout", "Shop.Api.Tests.CartTests.Checkout", "Passed")])
+    runner = Runner()
+
+    mtp_rerun_in(tmp_path, runner, MTP_COMMAND_WITH_NO_DOUBLE_DASH)
+
+    assert runner.ran == [MTP_COMMAND_WITH_NO_DOUBLE_DASH]
 
 
 def test_a_rerun_with_no_command_is_turned_down(tmp_path):

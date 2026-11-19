@@ -53,9 +53,10 @@ def command_for(trx, command, mtp):
     red = red_tests(trx)
     if not red:
         return command
-    # The MTP command already ends inside its own --, where the test app reads the filter.
+    # Only the test app reads --filter-method, and dotnet test hands it only what follows a --.
     if mtp:
-        return command + [word for name in red for word in ("--filter-method", name)]
+        opening = [] if "--" in command else ["--"]
+        return command + opening + [word for name in red for word in ("--filter-method", name)]
     return command + ["--filter", "|".join("FullyQualifiedName=" + escaped(name) for name in red)]
 
 

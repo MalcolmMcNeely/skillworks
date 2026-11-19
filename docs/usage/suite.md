@@ -354,7 +354,8 @@ dotnet test --project <project> --no-build --results-directory <project folder>/
 xUnit's own TRX flag, so you need no extra TRX package. It lands in the same folder as under VSTest.
 
 Under MTP the Rerun is `suite-dotnet-rerun --mtp`. It adds one `--filter-method` for each red test,
-with the test's full method name, at the end of the command, after its `--`. When the TRX file is
+with the test's full method name, at the end of the command, after its `--`. A command with no `--`
+gets one before the first `--filter-method`, so the filter reaches the test app. When the TRX file is
 missing, or names no red test, it runs the whole command, as under VSTest.
 
 Under MTP only xUnit v3 is supported. A test project that does not name `xunit.v3` makes the Check
