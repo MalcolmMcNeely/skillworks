@@ -3,8 +3,9 @@
 Part of [the Dev loop](../the-loop.md).
 
 A Proof knows only the files in your repo. A change outside it, such as a new SDK, can leave a Proof
-stale. So after each loop run that landed at least one ticket, the script runs the whole Suite once
-more, on the newest Target branch on `origin`, in a worktree of its own.
+stale. So after each loop run that landed at least one ticket, the script runs the Suite once more,
+every check or only the touched ones, on the newest Target branch on `origin`, in a worktree of its
+own.
 
 It runs once, at the end, after the drift check, its count and [the Name check](name-check.md).
 When the count finds a Gap, it runs after [the Gap round](drift-check.md#the-gap-round) too, and when the Name
@@ -16,8 +17,28 @@ so it has no full run. Under Sidecar Steering, a loop that finds its branch [rew
 list](stops.md) before any ticket stops there too, with no full run. One that finds it at a landing
 runs the full run when an earlier ticket landed in the run.
 
-The full run trusts no Proof and uses no image, so every check runs on your own machine. A check that
+The full run trusts no Proof and uses no image, so each check runs on your own machine. A check that
 goes red there loses all its Proofs, so a stale Proof cannot skip it again.
+
+## Only the touched checks
+
+A Suite file with `"full-run": "touched"` runs only the Touched checks in the full run: the checks
+with an input that changed after the spec's base commit. [The Suite](../suite.md#the-full-run) says
+how a check is touched. The log says how many checks are touched, and names each one that runs:
+
+```
+2026-09-28 18:40:02 FULL  2 of 5 checks are touched after the base commit 1f0a3c8e5b22, and these ran:
+      dotnet test tests/Shop.Api.Tests
+      npm test
+```
+
+When no check is touched, nothing runs, the full run is green, and the log says why:
+
+```
+2026-09-28 18:40:02 FULL  0 of 5 checks are touched after the base commit 1f0a3c8e5b22, so none ran
+```
+
+With `"all"`, or with no `"full-run"` key, every check runs and the log has neither line.
 
 A red full run stops the loop, and there is no clean finish. The `RED` line names the red checks
 and the tickets that landed in the run. The spec stays open, and no Session is asked to fix it: a red

@@ -456,12 +456,13 @@ ends when `dotnet test`, the slowest, ends.
 ## The full run
 
 A Proof knows only the files in the repo. A change outside the repo, such as a new SDK, can leave a
-Proof stale. So after each loop run that landed at least one ticket, the driver runs the whole Suite
-again on the newest Target branch from `origin`, in a new worktree. It runs once, at the end, after
+Proof stale. So after each loop run that landed at least one ticket, the driver runs the Suite
+again on the newest Target branch from `origin`, in a new worktree: every check, or only the
+touched ones, as [`full-run`](#full-run-every-check-or-only-the-touched-ones) says. It runs once, at the end, after
 the drift check. It does this when the loop stopped early too, because the tickets that landed are on
 the Target branch all the same.
 
-The full run trusts no Proof and uses no image. Every check runs, on your own machine, so the code is
+The full run trusts no Proof and uses no image. Each check runs on your own machine, so the code is
 proved on the OS your team uses. It keeps no Proof. A check that goes red there loses all its
 Proofs, so a stale Proof cannot skip it again.
 
@@ -473,6 +474,43 @@ A full run with a red or a Flake leaves its worktree in place, so a crash dump o
 wrote there survives for you to read. A full run with neither removes its worktree. The next full
 run of that spec removes a left worktree before it opens its own. If the left worktree will not go,
 the run stops and names its path.
+
+### `full-run`: every check, or only the touched ones
+
+On a large repo, a full run of every check can take hours. Most of that work checks code the spec
+never changed. The Suite file's top-level key `"full-run"` takes `"all"` or `"touched"`. `"all"` is
+the default, so a Suite file with no `"full-run"` key runs every check in the full run.
+
+```json
+{
+  "full-run": "touched",
+  "checks": [
+    { "command": ["dotnet", "test"], "folder": ".", "ignores": ["docs", "web"] },
+    { "command": ["npm", "test"], "folder": "web" }
+  ]
+}
+```
+
+With `"touched"`, the full run runs only the Touched checks. A **Touched check** is a check with an
+input that changed after the spec's base commit. A check's inputs are the same as for its Proof:
+every file git does not ignore, less the check's `ignores`. A check with no `ignores` is touched by
+any change. Each check that `checks-from` prints is judged on its own `ignores`.
+
+The base commit is the Target branch on `origin` when the spec's first run started, and never `main`
+unless `main` is your Target branch. A resumed run uses the same base commit. Every change after it
+counts, whoever made it: a teammate's push and a merge into the Target branch count too.
+
+A Touched check runs as every check does in the full run: with no Proof and no image. A Touched check
+that goes red loses all its Proofs. When no check is touched, the full run is green, the spec can
+finish, and the log says so:
+
+```
+FULL  0 of 4 checks are touched after the base commit 1f0a3c8e5b22, so none ran
+```
+
+With `"touched"`, a change outside the repo, such as a new SDK, is found only by a Touched check. A
+check that no spec touches keeps its Proof, though the SDK changed. To check everything once, delete
+the Proofs, so that the next Suite runs every check, or set `"full-run": "all"` for one run.
 
 ## Running the Suite yourself
 

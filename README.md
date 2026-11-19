@@ -107,8 +107,9 @@ ticket in a worktree of its own:
 5. The loop commits the ticket, closes it, and lands it on your Target branch.
 
 When the last ticket lands, a drift check reads the whole spec against what was built. The loop
-builds any Gap it finds as one more ticket. Then the whole Suite runs once more. You come back to a
-finished spec, or to a log that says where the loop stopped and why.
+builds any Gap it finds as one more ticket. Then the Suite runs once more, every check or only the
+touched ones, as your Suite file says. You come back to a finished spec, or to a log that says where
+the loop stopped and why.
 
 The Target branch is where each ticket Lands. It can be a branch you push to, such as `main`. Or, in
 PR mode, you name a branch for each spec, Skillworks makes it, and you open one pull request from it.

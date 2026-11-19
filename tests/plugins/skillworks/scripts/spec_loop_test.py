@@ -5114,6 +5114,56 @@ def test_the_suite_page_describes_the_baseline_key_with_its_command_folder_and_i
             ) in page
 
 
+def suite_page_full_run():
+    return flat(page_text("docs/usage/suite.md").split("\n## The full run\n")[1].split("\n## ")[0])
+
+
+def test_the_readme_says_the_suite_runs_once_more_with_every_check_or_the_touched_ones():
+    readme = flat(page_text("README.md"))
+
+    assert ("Then the Suite runs once more, every check or only the touched ones, as your Suite file "
+            "says.") in readme
+    assert "Then the whole Suite runs once more." not in readme
+
+
+def test_the_suite_page_names_the_full_run_key_its_two_values_and_its_default():
+    section = suite_page_full_run()
+
+    assert '`"full-run"` takes `"all"` or `"touched"`. `"all"` is the default' in section
+    assert '"full-run": "touched",' in section
+
+
+def test_the_suite_page_says_a_touched_check_is_measured_from_the_spec_s_base_on_the_target():
+    section = suite_page_full_run()
+
+    assert "A **Touched check** is a check with an input that changed after the spec's base commit" in section
+    assert "`ignores`" in section
+    assert "the Target branch on `origin` when the spec's first run started, and never `main`" in section
+
+
+def test_the_suite_page_says_no_touched_check_is_green_and_logged():
+    section = suite_page_full_run()
+
+    assert "When no check is touched, the full run is green" in section
+    assert "checks are touched after the base commit 1f0a3c8e5b22, so none ran" in section
+
+
+def test_the_suite_page_says_a_change_outside_the_repo_needs_a_touched_check_or_everything():
+    section = suite_page_full_run()
+
+    assert "a change outside the repo, such as a new SDK, is found only by a Touched check" in section
+    assert "delete the Proofs" in section
+    assert 'set `"full-run": "all"`' in section
+
+
+def test_the_full_run_page_shows_the_touched_log_lines_and_links_the_suite_page():
+    page = page_text(FULL_RUN_PAGE)
+
+    assert "FULL  2 of 5 checks are touched after the base commit 1f0a3c8e5b22, and these ran:\n" in page
+    assert "FULL  0 of 5 checks are touched after the base commit 1f0a3c8e5b22, so none ran\n" in page
+    assert "](../suite.md#the-full-run)" in page
+
+
 def test_the_suite_page_says_each_readiness_command_also_runs_at_the_start_of_a_run():
     assert ("Each `ready` command also runs at the start of every run, in the "
             "[Baseline](the-loop.md)") in flat(page_text("docs/usage/suite.md"))
@@ -5965,6 +6015,83 @@ def test_the_log_shows_the_full_run_and_its_result_before_the_end_line(loop):
     started = log.index("FULL  #168 landed in this run")
     passed = log.index("FULL  run 1 passed")
     assert started < passed < log.index("END   spec #158 complete")
+
+
+# --- a Full run of the Touched checks alone -------------------------------------
+
+# The build writes built.txt, so a check that ignores it is touched by nothing the ticket does.
+EVERY_PATH = check("dotnet", "test", "Skillworks.slnx")
+NOT_BUILT = check("dotnet", "test", "Docs.slnx", ignores=["built.txt"])
+
+
+def given_a_run_that_lands_under(loop, full_run, *checks):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    write_suite(loop.repo.work, *checks, full_run=full_run)
+    git(loop.repo.work, "add", "-A")
+    git(loop.repo.work, "commit", "--quiet", "-m", "A Suite that names the Full run's scope")
+    git(loop.repo.work, "push", "--quiet", "origin", loop.repo.target)
+    loop.runner.stub("dotnet", says="the solution passed")
+    sessions = Sessions(loop.repo, loop.runner)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    return tracker
+
+
+def test_a_touched_full_run_runs_only_the_checks_with_an_input_changed_after_the_base_commit(loop):
+    given_a_run_that_lands_under(loop, "touched", EVERY_PATH, NOT_BUILT)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert full_run_calls(loop, "dotnet") == [["dotnet", "test", "Skillworks.slnx"]]
+
+
+def test_a_resumed_run_finds_the_touched_checks_from_the_first_run_s_base_commit(loop):
+    given_a_run_that_lands_under(loop, "touched", NOT_BUILT)
+    held = loop.records() / "base.sha"
+    held.parent.mkdir(parents=True, exist_ok=True)
+    first = git(loop.repo.work, "rev-parse", "origin/" + loop.repo.target).strip()
+    held.write_text(first + "\n", encoding="utf-8", newline="\n")
+    loop.repo.push_from_elsewhere("early.txt", "early", "Pushed before the run stopped")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert full_run_calls(loop, "dotnet") == [["dotnet", "test", "Docs.slnx"]]
+    assert "after the base commit {},".format(first) in loop.log()
+
+
+def test_the_touched_full_run_logs_how_many_checks_are_touched_and_names_each_one_it_runs(loop):
+    given_a_run_that_lands_under(loop, "touched", EVERY_PATH, NOT_BUILT)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert ("FULL  1 of 2 checks are touched after the base commit {}, and these ran:\n"
+            "      dotnet test Skillworks.slnx\n").format(base_of(loop)) in loop.log()
+
+
+def test_a_touched_full_run_with_no_touched_check_is_green_and_the_spec_completes(loop):
+    given_a_run_that_lands_under(loop, "touched", NOT_BUILT)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    assert full_run_calls(loop, "dotnet") == []
+    assert ("FULL  0 of 1 checks are touched after the base commit {}, so none ran\n".format(
+        base_of(loop))) in log
+    assert "END   spec #158 complete" in log
+
+
+def test_a_full_run_of_every_check_logs_as_it_did_before_the_key(loop):
+    given_a_run_that_lands_under(loop, "all", EVERY_PATH, NOT_BUILT)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert sorted(full_run_calls(loop, "dotnet")) == [["dotnet", "test", "Docs.slnx"],
+                                                      ["dotnet", "test", "Skillworks.slnx"]]
+    assert "touched" not in loop.log()
 
 
 # --- a full run with a red or a Flake leaves its worktree --------------------

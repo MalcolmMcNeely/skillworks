@@ -1548,7 +1548,7 @@ class Loop:
     # --- the full run --------------------------------------------------------
 
     # Tickets leaned on Proofs and images, so this trusts neither; its red is the Target branch's.
-    def run_full(self, stopped=None):
+    def run_full(self, base, stopped=None):
         if not self.landed:
             return
         landed = ", ".join(self.named(ticket) for ticket in self.landed)
@@ -1568,7 +1568,9 @@ class Loop:
         def heard(outcome, run):
             appended(held, "--- suite run {}\n{}".format(run, outcome.said))
             self.say("FULL  run {} {}".format(run, suite_verdict(outcome, run)))
-        outcome = Suite(self.runner, tree, fresh=True).run(heard)
+        outcome = Suite(self.runner, tree, fresh=True, base=base).run(heard)
+        if outcome.touched is not None:
+            self.say_touched(outcome, base)
         for flake in outcome.flakes:
             self.keep_flake_output(FULL_RUN, "{:<18}".format(FULL_RUN), "the full run", flake)
 
@@ -1594,6 +1596,15 @@ class Loop:
         if stuck:
             raise after(stop("FAIL  the full run's worktree at {} would not go.".format(tree)),
                         stopped)
+
+    def say_touched(self, outcome, base):
+        if not outcome.touched:
+            self.say("FULL  0 of {} checks are touched after the base commit {}, so none ran".format(
+                outcome.checks, base))
+            return
+        self.say("FULL  {} of {} checks are touched after the base commit {}, and these ran:\n{}".format(
+            len(outcome.touched), outcome.checks, base,
+            "\n".join("      " + name for name in outcome.touched)))
 
     def remove_left_full_run(self, stopped):
         tree, branch, _ = columns(self.worktree("plan", FULL_RUN)[1].strip())
@@ -2013,9 +2024,9 @@ class Loop:
                 self.close_gaps(base)
                 self.close_renames(base)
             except Stop as stopped:
-                self.run_full(stopped)
+                self.run_full(base, stopped)
                 raise
-            self.run_full()
+            self.run_full(base)
         finally:
             self.note_flakes()
 
