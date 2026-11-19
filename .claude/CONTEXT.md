@@ -142,6 +142,12 @@ opposite is a resumed Session, which carries on with all it already read and did
 judges work it has no memory of writing, and starts in the Smart zone.
 _Avoid_: Cold, blank, new
 
+**Full run**:
+The Suite run the driver makes once a spec run has Landed a ticket, on the newest Target branch, and
+trusting no Proof. It proves the whole spec as it ships. By default it runs every check. A team whose
+Suite is too large for that can make it run only the Touched checks.
+_Avoid_: End run, final run, whole run
+
 **Gap**:
 An item of a spec the finished work does not yet deliver: a story or a decision the drift check found
 Missing or Partial, or did not judge exactly once, or a Surface it found Out of step. The loop builds
@@ -349,6 +355,11 @@ _Avoid_: Axis, touchpoint, artefact
 The branch a ticket Lands on. It is `main` for a team that pushes straight to it. In PR mode, it is the
 branch the developer named when the design began.
 _Avoid_: Runway, trunk, base branch
+
+**Touched check**:
+A check with an input that changed between the spec's base commit and the newest Target branch,
+whoever changed it. A check that ignores no path is always touched.
+_Avoid_: Changed check, affected check, impacted check
 
 **Tracker**:
 Where a repo keeps its specs and tickets, and their state: GitHub Issues, or files in the Sidecar.
