@@ -694,7 +694,7 @@ APART = {
     "suite.json": {
         "base": '{\n  "runs": 2,\n  "checks": []\n}\n',
         "yours": '{\n  "runs": 2,\n  "checks": [{"name": "unit", "run": ["pytest"]}]\n}\n',
-        "merged": '{\n  "runs": 1,\n  "checks": [{"name": "unit", "run": ["pytest"]}]\n}\n',
+        "merged": '{\n  "runs": 1,\n  "full-run": "all",\n  "checks": [{"name": "unit", "run": ["pytest"]}]\n}\n',
     },
 }
 
@@ -2092,7 +2092,7 @@ def test_the_starting_suite_is_valid_and_left_empty_is_not_ready(repo, runner):
     parsed = json.loads((repo.work / "docs" / "skillworks" / "suite.json").read_text(encoding="utf-8"))
     ran = Suite(runner, repo.work).run()
 
-    assert parsed == {"runs": 1, "checks": []}
+    assert parsed == {"runs": 1, "full-run": "all", "checks": []}
     assert not ran.passed
     assert not ran.ready
 

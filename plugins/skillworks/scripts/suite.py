@@ -311,6 +311,16 @@ def said_by(check, held, each):
     return held.out + held.err
 
 
+FULL_RUNS = ("all", "touched")
+
+
+def full_run_of(parsed):
+    full_run = parsed.get("full-run", "all")
+    if full_run not in FULL_RUNS:
+        raise Unreadable("full-run is not {}".format(" or ".join('"{}"'.format(each) for each in FULL_RUNS)))
+    return full_run
+
+
 def unreadable(fault):
     return "the Suite file {} cannot be run, because {}\n".format(SUITE_FILE, fault)
 
@@ -377,6 +387,7 @@ class Suite:
         # Python counts a JSON true as an int, and a Suite run true times means nothing.
         if not isinstance(runs, int) or isinstance(runs, bool) or runs < 1:
             raise Unreadable("runs is not a count of 1 or more")
+        full_run_of(parsed)
         entries = parsed.get("checks")
         if not isinstance(entries, list) or not entries:
             raise Unreadable("it names no checks")

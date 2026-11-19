@@ -1,4 +1,5 @@
 {
   "runs": 1,
+  "full-run": "all",
   "checks": []
 }

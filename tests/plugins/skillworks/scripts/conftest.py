@@ -213,10 +213,15 @@ def check(*command, folder=".", ready=None, message="", unless=None, ignores=Non
     return entry
 
 
-def write_suite(tree, *checks, runs=None, baseline=None, prebuilds=None):
+ABSENT = object()
+
+
+def write_suite(tree, *checks, runs=None, baseline=None, prebuilds=None, full_run=ABSENT):
     path = Path(tree) / SUITE_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
     suite = {"checks": list(checks)}
+    if full_run is not ABSENT:
+        suite["full-run"] = full_run
     if prebuilds is not None:
         suite["prebuilds"] = prebuilds
     if runs is not None:

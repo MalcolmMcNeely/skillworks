@@ -12,7 +12,7 @@ import pytest
 
 import suite
 from dotnet import check_maker
-from conftest import ROOT, Ran, check, git, sidecar_steering, write_suite
+from conftest import ABSENT, ROOT, Ran, check, git, sidecar_steering, write_suite
 from suite import SUITE_FILE, Suite
 
 
@@ -571,6 +571,30 @@ def test_a_setting_that_is_not_a_count_is_not_ready(tmp_path, runner):
 
         assert not outcome.ready, runs
         assert "runs" in outcome.said, runs
+    assert run_by(runner) == []
+
+
+@pytest.mark.parametrize("fresh", [False, True])
+@pytest.mark.parametrize("full_run", ["all", "touched", ABSENT])
+def test_a_full_run_of_all_or_touched_or_none_still_runs_every_check(tmp_path, runner, full_run, fresh):
+    write_suite(tmp_path, check("prove"), check("lint"), full_run=full_run)
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path, fresh=fresh).run()
+
+    assert outcome.passed
+    assert run_by(runner) == [["prove"], ["lint"]]
+
+
+@pytest.mark.parametrize("full_run", ["some", "ALL", "", 1, True, None, ["all"], {"all": True}])
+def test_a_full_run_that_is_not_all_or_touched_is_refused_with_the_two_values(tmp_path, runner, full_run):
+    write_suite(tmp_path, check("prove"), full_run=full_run)
+    given_every_program_passes(runner)
+
+    outcome = Suite(runner, tmp_path).run()
+
+    assert not outcome.ready
+    assert '"all"' in outcome.said and '"touched"' in outcome.said, outcome.said
     assert run_by(runner) == []
 
 
@@ -2242,6 +2266,10 @@ def test_a_trial_keeps_no_proof_reads_none_and_forgets_none(repo, runner, monkey
 
 def test_this_repo_s_suite_file_runs_a_red_suite_twice():
     assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["runs"] == 2
+
+
+def test_this_repo_s_suite_file_runs_every_check_in_the_full_run():
+    assert json.loads((ROOT / SUITE_FILE).read_text(encoding="utf-8"))["full-run"] == "all"
 
 
 STEPS_PAGE = "docs/usage/the-loop/steps.md"

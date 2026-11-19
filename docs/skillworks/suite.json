@@ -1,5 +1,6 @@
 {
   "runs": 2,
+  "full-run": "all",
   "baseline": {
     "command": ["dotnet", "build", "Skillworks.slnx"],
     "folder": "."
