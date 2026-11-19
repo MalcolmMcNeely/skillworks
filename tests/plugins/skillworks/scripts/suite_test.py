@@ -1565,7 +1565,7 @@ def test_a_machine_short_of_what_the_suite_needs_fails_the_command_naming_it(
     assert not runner.started("prove")
 
 
-USAGE = "usage: skillworks-suite [--fresh | --image <Dockerfile> -- <command>]\n"
+USAGE = "usage: skillworks-suite [--fresh [--base <commit>] | --image <Dockerfile> -- <command>]\n"
 
 
 def test_the_command_takes_no_argument_but_fresh_or_a_trial(repo, runner, monkeypatch):
@@ -1573,7 +1573,9 @@ def test_the_command_takes_no_argument_but_fresh_or_a_trial(repo, runner, monkey
     given_every_program_passes(runner)
     monkeypatch.chdir(repo.work)
 
-    for args in (["--all"], ["--fresh", "--fresh"], ["--fresh", "now"]):
+    for args in (["--all"], ["--fresh", "--fresh"], ["--fresh", "now"], ["--base", "HEAD"],
+                 ["--fresh", "--base"], ["--base", "HEAD", "--fresh"], ["--fresh", "--base", ""],
+                 ["--fresh", "--base", "HEAD", "now"]):
         ran = suite_command(runner, *args)
 
         assert ran.status == 64, args
@@ -1605,6 +1607,177 @@ def test_the_command_outside_a_repository_runs_nothing(tmp_path, runner, monkeyp
     assert ran.status == 1
     assert "is not in a git repository" in ran.err
     assert not runner.started("prove")
+
+
+# --- the Touched checks ------------------------------------------------------
+
+def given_a_base_commit(repo, *checks, full_run="touched", **settings):
+    write_suite(repo.work, *checks, full_run=full_run, **settings)
+    git(repo.work, "add", "-A")
+    git(repo.work, "commit", "--quiet", "-m", "Suite")
+    return git(repo.work, "rev-parse", "HEAD").strip()
+
+
+def from_base(runner, repo, monkeypatch, base):
+    monkeypatch.chdir(repo.work)
+    return suite_command(runner, "--fresh", "--base", base)
+
+
+def test_under_touched_a_check_runs_when_a_path_it_reads_changed(repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]))
+    given_every_program_passes(runner)
+    committing(repo, "src/app.txt")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, run_by(runner)) == (0, [["prove"]]), ran.err
+
+
+def test_under_touched_a_check_whose_ignores_hold_every_change_is_reported_neither_red_nor_green(
+        repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]),
+                               check("lint", "web", ignores=["src"]))
+    given_every_program_passes(runner)
+    committing(repo, "src/app.txt")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, runner.started("lint"), "lint web" in ran.out + ran.err) == (
+        0, [], False), ran.out
+
+
+@pytest.mark.parametrize("full_run", ["all", ABSENT])
+def test_under_all_or_no_full_run_a_base_commit_still_runs_every_check(
+        repo, runner, monkeypatch, full_run):
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]), check("lint", ignores=["src"]),
+                               full_run=full_run)
+    given_every_program_passes(runner)
+    committing(repo, "src/app.txt")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, run_by(runner)) == (0, [["prove"], ["lint"]]), ran.err
+
+
+def test_under_touched_a_check_with_no_ignores_runs_on_any_change(repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove"))
+    given_every_program_passes(runner)
+    committing(repo, "docs/notes.md")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, run_by(runner)) == (0, [["prove"]]), ran.err
+
+
+def test_under_touched_a_check_reading_a_renamed_path_runs(repo, runner, monkeypatch):
+    committing(repo, "src/old.txt")
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]))
+    given_every_program_passes(runner)
+    git(repo.work, "mv", "src/old.txt", "docs/new.txt")
+    git(repo.work, "commit", "--quiet", "-m", "Move")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, run_by(runner)) == (0, [["prove"]]), ran.err
+
+
+def test_under_touched_an_uncommitted_new_file_touches_the_check_that_reads_it(
+        repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]))
+    given_every_program_passes(runner)
+    writing(repo, "src/new.txt")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, run_by(runner)) == (0, [["prove"]]), ran.err
+
+
+def test_under_touched_a_check_a_check_maker_printed_is_judged_on_its_own_ignores(
+        repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, maker())
+    given_every_program_passes(runner)
+    given_a_maker_printing(runner, check("prove", "one", ignores=["docs"]),
+                           check("prove", "two", ignores=["src"]))
+    committing(repo, "src/app.txt")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, runner.started("prove")) == (0, [["prove", "one"]]), ran.err
+
+
+def test_under_touched_a_prebuild_runs_only_when_a_touched_check_names_it(repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove", prebuild="build", ignores=["src"]),
+                               check("lint", ignores=["docs"]), prebuilds=BUILD)
+    given_every_program_passes(runner)
+    committing(repo, "src/app.txt")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, run_by(runner)) == (0, [["lint"]]), ran.err
+
+
+def test_under_touched_with_no_touched_check_the_suite_is_green_and_says_none_ran(
+        repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]),
+                               check("lint", ignores=["docs"]))
+    given_every_program_passes(runner)
+    committing(repo, "docs/notes.md")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert (ran.status, run_by(runner)) == (0, []), ran.err
+    assert ("0 of 2 checks are touched after the base commit {}, so none ran\n".format(base)
+            in ran.out), ran.out
+    assert "ok    the Suite passed" in ran.out
+
+
+def test_under_touched_the_outcome_names_the_touched_checks_out_of_every_check(
+        repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]), check("lint", "web"),
+                               check("compile", ignores=["src"]))
+    given_every_program_passes(runner)
+    committing(repo, "src/app.txt")
+
+    ran = from_base(runner, repo, monkeypatch, base)
+
+    assert ("2 of 3 checks are touched after the base commit {}, and these ran:\n"
+            "  prove\n  lint web\n".format(base) in ran.out), ran.out
+
+
+def test_under_touched_a_touched_check_that_goes_red_loses_its_proofs(repo, runner, monkeypatch):
+    base = given_a_base_commit(repo, check("prove", ignores=["docs"]))
+    given_every_program_passes(runner)
+    committing(repo, "src/app.txt")
+    Suite(runner, repo.work).run()
+    given_a_check_red_on_its_first_run_alone(runner)
+
+    red = from_base(runner, repo, monkeypatch, base)
+    after = Suite(runner, repo.work).run()
+
+    assert red.status == 1, red.out
+    assert after.passed and not PROVED.search(after.said), after.said
+
+
+def test_under_touched_a_suite_with_no_base_commit_runs_every_check(repo, runner, monkeypatch):
+    given_a_base_commit(repo, check("prove", ignores=["docs"]), check("lint", ignores=["docs"]))
+    given_every_program_passes(runner)
+    committing(repo, "docs/notes.md")
+    monkeypatch.chdir(repo.work)
+
+    ran = suite_command(runner, "--fresh")
+
+    assert (ran.status, run_by(runner), "touched" in ran.out) == (
+        0, [["prove"], ["lint"]], False), ran.err
+
+
+def test_under_touched_a_base_commit_git_cannot_read_runs_no_check(repo, runner, monkeypatch):
+    given_a_base_commit(repo, check("prove"))
+    given_every_program_passes(runner)
+
+    ran = from_base(runner, repo, monkeypatch, "no-such-commit")
+
+    assert (ran.status, run_by(runner)) == (1, [])
+    assert "the base commit no-such-commit is not a commit git can read" in ran.err
 
 
 def test_a_suite_file_carrying_when_is_unreadable_and_says_to_use_ignores(tmp_path, runner):

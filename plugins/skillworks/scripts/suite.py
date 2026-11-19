@@ -38,7 +38,7 @@ from runner import Ran, Subprocess
 from steering.steering_file import STEERING_FOLDER, steering_root
 from stop import Stop, misuse, refusal
 
-USAGE = "usage: skillworks-suite [--fresh | --image <Dockerfile> -- <command>]\n"
+USAGE = "usage: skillworks-suite [--fresh [--base <commit>] | --image <Dockerfile> -- <command>]\n"
 SUITE_FILE = STEERING_FOLDER + "/suite.json"
 REPO_IN_IMAGE = "/repo"
 PROOFS = "skillworks/proofs"
@@ -66,6 +66,9 @@ class Outcome(NamedTuple):
     ready: bool = True
     red: tuple = ()
     flakes: tuple = ()
+    # None when every check was in play, so a caller can tell a Suite that skipped none from one that touched none.
+    touched: tuple = None
+    checks: int = 0
 
 
 class Flake(NamedTuple):
@@ -325,6 +328,10 @@ def unreadable(fault):
     return "the Suite file {} cannot be run, because {}\n".format(SUITE_FILE, fault)
 
 
+def inputs_of(check):
+    return [":(top)", *(":(top,exclude)" + path for path in check.ignores)]
+
+
 def same_path(one, other):
     return posixpath.normpath(one.replace("\\", "/")) == posixpath.normpath(other.replace("\\", "/"))
 
@@ -335,11 +342,12 @@ def utc_now():
 
 class Suite:
     # The driver hands in its kept reds, and every other caller none, so only a ticket's own red sticks.
-    def __init__(self, runner, worktree, now=utc_now, fresh=False, kept_reds=None):
+    def __init__(self, runner, worktree, now=utc_now, fresh=False, kept_reds=None, base=None):
         self.runner = runner
         self.tree = Path(worktree)
         self.now = now
         self.fresh = fresh
+        self.base = base
         self.kept_reds = kept_reds
         self.steering = steering_root(self.tree)
 
@@ -461,7 +469,27 @@ class Suite:
         tree = self.tree.as_posix()
         return self.runner.run(
             ["git", "-C", tree, "ls-files", "--cached", "--others", "--exclude-standard", "-z",
-             "--", ":(top)", *(":(top,exclude)" + path for path in check.ignores)], tree)
+             "--", *inputs_of(check)], tree)
+
+    def base_unreadable(self):
+        tree = self.tree.as_posix()
+        asked = self.runner.run(
+            ["git", "-C", tree, "rev-parse", "--verify", "--quiet", self.base + "^{commit}"], tree)
+        if asked.status == 0:
+            return ""
+        return ("the base commit {} is not a commit git can read in {}, so the Suite cannot tell "
+                "which checks are touched.\n").format(self.base, tree)
+
+    # A rename is read as a delete and an add, so a check that read the old path is touched too.
+    # A git that cannot answer counts as a change, so a fault costs a run and never a skipped check.
+    def touches(self, check):
+        tree = self.tree.as_posix()
+        for asked in (["diff", "--name-only", "--no-renames", "-z", self.base],
+                      ["ls-files", "--others", "--exclude-standard", "-z"]):
+            listed = self.runner.run(["git", "-C", tree, *asked, "--", *inputs_of(check)], tree)
+            if listed.status != 0 or listed.out.strip("\0"):
+                return True
+        return False
 
     def key_of(self, check, digests):
         listed = self.listed_inputs(check)
@@ -559,6 +587,20 @@ class Suite:
         except Unreadable as fault:
             return Outcome(False, unreadable(fault), ready=False)
 
+        reach = None
+        if self.base is not None and full_run_of(self.parsed()) == "touched":
+            short = self.base_unreadable()
+            if short:
+                return Outcome(False, short, ready=False)
+            every = len(wanted)
+            wanted = [check for check in wanted if self.touches(check)]
+            reach = dict(touched=tuple(" ".join(check.command) for check in wanted), checks=every)
+            if not wanted:
+                return Outcome(True, "", **reach)
+        outcome = self.run_wanted(wanted, runs, heard)
+        return outcome._replace(**reach) if reach else outcome
+
+    def run_wanted(self, wanted, runs, heard):
         proofs = self.proofs()
         keys, found = self.proved(wanted, proofs)
         short = self.short_of([check for check, proof in zip(wanted, found) if proof is None])
@@ -703,6 +745,15 @@ class Suite:
                 self.runner.run(["docker", "rm", "--force", container], tree)
 
 
+def touched_said(outcome, base):
+    if not outcome.touched:
+        return "0 of {} checks are touched after the base commit {}, so none ran\n".format(
+            outcome.checks, base)
+    return "{} of {} checks are touched after the base commit {}, and these ran:\n{}".format(
+        len(outcome.touched), outcome.checks, base,
+        "".join("  {}\n".format(name) for name in outcome.touched))
+
+
 def printed(out):
     def heard(outcome, at):
         out.write("--- suite run {}\n{}".format(at, outcome.said))
@@ -714,7 +765,8 @@ def printed(out):
 def main(argv, runner, out, err):
     try:
         trying = argv[:1] == ["--image"]
-        if not trying and argv not in ([], ["--fresh"]):
+        based = len(argv) == 3 and argv[:2] == ["--fresh", "--base"] and bool(argv[2])
+        if not trying and not based and argv not in ([], ["--fresh"]):
             raise misuse(USAGE)
         if trying and (len(argv) < 4 or argv[1] == "--" or argv[2] != "--"):
             raise misuse(USAGE)
@@ -727,12 +779,15 @@ def main(argv, runner, out, err):
             out.write(ran.out)
             err.write(ran.err)
             return ran.status
-        outcome = Suite(runner, found.out.strip(), fresh=argv == ["--fresh"]).run(printed(out))
+        outcome = Suite(runner, found.out.strip(), fresh=argv[:1] == ["--fresh"],
+                        base=argv[2] if based else None).run(printed(out))
         if not outcome.ready:
             raise refusal(outcome.said.rstrip("\n"))
         for flake in outcome.flakes:
             out.write("FLAKE {} went red and then passed. What it said when red is above.\n".format(
                 flake.check))
+        if outcome.touched is not None:
+            out.write(touched_said(outcome, argv[2]))
         if not outcome.passed:
             raise refusal("the Suite went red. What each check said is above.")
         out.write("ok    the Suite passed\n")
