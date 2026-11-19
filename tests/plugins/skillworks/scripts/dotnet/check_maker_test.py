@@ -450,7 +450,7 @@ REAL_XUNIT_V3_PROJECT = """<Project Sdk="Microsoft.NET.Sdk">
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="xunit.v3" Version="3.2.0" />
+    <PackageReference Include="xunit.v3" Version="{version}" />
   </ItemGroup>
 </Project>
 """
@@ -481,15 +481,19 @@ class RealRun(NamedTuple):
     said: str
 
 
-# One build serves every case, because a NuGet restore and a build take most of a minute.
-@pytest.fixture(scope="module")
-def real_mtp_run(tmp_path_factory):
-    root = tmp_path_factory.mktemp("real-mtp")
+# Pinned in full so every Suite run agrees; the newest release moves by hand.
+REAL_XUNIT_V3_VERSIONS = ["3.2.0", "4.0.3"]
+
+
+# One build per version serves every case, because a NuGet restore and a build take most of a minute.
+@pytest.fixture(scope="module", params=REAL_XUNIT_V3_VERSIONS)
+def real_mtp_run(tmp_path_factory, request):
+    root = tmp_path_factory.mktemp(f"real-mtp-{request.param}")
     (root / ".git").mkdir()
     global_json(root, MTP_RUNNER_ONLY)
     tests = root / "tests" / "Shop.Tests"
     tests.mkdir(parents=True)
-    (tests / "Shop.Tests.csproj").write_text(REAL_XUNIT_V3_PROJECT, encoding="utf-8")
+    (tests / "Shop.Tests.csproj").write_text(REAL_XUNIT_V3_PROJECT.format(version=request.param), encoding="utf-8")
     (tests / "Checkout.cs").write_text(REAL_TESTS, encoding="utf-8")
     slnx(root, "Shop.slnx", ["tests/Shop.Tests/Shop.Tests.csproj"])
     printed = made(root, "Shop.slnx")
