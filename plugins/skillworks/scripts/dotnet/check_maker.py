@@ -7,7 +7,9 @@ import sys
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
-USAGE = "usage: suite-dotnet-checks <solution> [--skip <pattern>]... [-- <flag>...]\n"
+USAGE = "usage: suite-dotnet-checks <solution> [--skip <pattern>]... [--trx-from-build] [-- <flag>...]\n"
+
+TRX_FROM_BUILD = "--trx-from-build"
 
 # Matched whole, so a library that names xunit.v3.assert or xunit.v3.extensibility.core is not a test project.
 TEST_PROJECT_PACKAGES = {"microsoft.net.test.sdk", "xunit.v3"}
@@ -173,20 +175,23 @@ def picks_mtp(root):
     return False
 
 
-def vstest_check(project, results, trx, flags):
-    command = ["dotnet", "test", project, "--no-build",
-               "--logger", "trx;LogFileName=" + trx, "--results-directory", results] + flags
+def vstest_check(project, results, trx, flags, trx_from_build):
+    logger = [] if trx_from_build else ["--logger", "trx;LogFileName=" + trx]
+    command = ["dotnet", "test", project, "--no-build"] + logger + ["--results-directory", results] + flags
     return command, [RERUN, results + "/" + trx, "--"] + command
 
 
 # --results-directory is read by dotnet, and everything after -- by the test app.
-def mtp_check(project, results, trx, flags):
-    command = ["dotnet", "test", "--project", project, "--no-build", "--results-directory", results,
-               "--", "--report-xunit-trx", "--report-xunit-trx-filename", trx] + flags
+# The test app refuses a one-value option given twice, so a build that names the file gets no second name.
+def mtp_check(project, results, trx, flags, trx_from_build):
+    for_app = ([] if trx_from_build else ["--report-xunit-trx", "--report-xunit-trx-filename", trx]) + flags
+    command = ["dotnet", "test", "--project", project, "--no-build", "--results-directory", results]
+    if for_app:
+        command += ["--"] + for_app
     return command, [RERUN, "--mtp", results + "/" + trx, "--"] + command
 
 
-def made_checks(where, solution_given, skips, flags):
+def made_checks(where, solution_given, skips, flags, trx_from_build):
     root = repo_root(where)
     solution = joined(where, solution_given)
     graph = Graph(solution_projects(solution))
@@ -202,7 +207,8 @@ def made_checks(where, solution_given, skips, flags):
         # A results folder of its own, so the Rerun reads this project's red tests and no other's.
         results = from_root(root, project.path.parent) + "/TestResults"
         trx = "{}.trx".format(project.name)
-        command, rerun = (mtp_check if mtp else vstest_check)(from_root(root, project.path), results, trx, flags)
+        command, rerun = (mtp_check if mtp else vstest_check)(
+            from_root(root, project.path), results, trx, flags, trx_from_build)
         checks.append({
             "command": command,
             "folder": ".",
@@ -217,27 +223,29 @@ def made_checks(where, solution_given, skips, flags):
 
 
 def arguments(argv):
-    solution, skips, flags, given = None, [], [], list(argv)
+    solution, skips, flags, trx_from_build, given = None, [], [], False, list(argv)
     while given:
         word = given.pop(0)
         if word == "--":
             flags, given = given, []
         elif word == "--skip" and given:
             skips.append(given.pop(0))
+        elif word == TRX_FROM_BUILD:
+            trx_from_build = True
         elif solution is None and not word.startswith("--"):
             solution = word
         else:
             raise Refused(USAGE.rstrip("\n"))
     if solution is None:
         raise Refused(USAGE.rstrip("\n"))
-    return solution, skips, flags
+    return solution, skips, flags, trx_from_build
 
 
 def main(argv, out, err, where=None):
     where = Path(where or os.getcwd()).resolve()
     try:
-        solution, skips, flags = arguments(argv)
-        printed = made_checks(where, solution, skips, flags)
+        solution, skips, flags, trx_from_build = arguments(argv)
+        printed = made_checks(where, solution, skips, flags, trx_from_build)
     except Refused as refused:
         err.write(str(refused) + "\n")
         return 1

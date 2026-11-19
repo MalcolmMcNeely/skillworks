@@ -312,6 +312,74 @@ def test_under_mtp_extra_flags_follow_the_trx_flags_in_the_command_and_the_rerun
         + MTP_COMMAND + ["--timeout", "5m"])
 
 
+VSTEST_COMMAND_TRX_FROM_BUILD = ["dotnet", "test", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "--no-build",
+                                 "--results-directory", "tests/Shop.Api.Tests/TestResults"]
+
+MTP_COMMAND_TRX_FROM_BUILD = ["dotnet", "test", "--project", "tests/Shop.Api.Tests/Shop.Api.Tests.csproj",
+                              "--no-build", "--results-directory", "tests/Shop.Api.Tests/TestResults"]
+
+
+def test_under_vstest_a_build_that_names_its_own_trx_file_gets_checks_with_no_logger(xunit_shop):
+    assert made(xunit_shop, "Shop.slnx", "--trx-from-build") == {
+        "prebuilds": {"build": {"command": ["dotnet", "build", "Shop.slnx"], "folder": "."}},
+        "checks": [{"command": VSTEST_COMMAND_TRX_FROM_BUILD, "folder": ".", "prebuild": "build", "ignores": [],
+                    "rerun": ["suite-dotnet-rerun", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--"]
+                    + VSTEST_COMMAND_TRX_FROM_BUILD}],
+    }
+
+
+def test_under_mtp_a_build_that_names_its_own_trx_file_gets_checks_with_no_trx_flags_and_no_double_dash(
+        xunit_shop):
+    global_json(xunit_shop)
+
+    assert made(xunit_shop, "Shop.slnx", "--trx-from-build") == {
+        "prebuilds": {"build": {"command": ["dotnet", "build", "Shop.slnx"], "folder": "."}},
+        "checks": [{"command": MTP_COMMAND_TRX_FROM_BUILD, "folder": ".", "prebuild": "build", "ignores": [],
+                    "rerun": ["suite-dotnet-rerun", "--mtp", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx",
+                              "--"] + MTP_COMMAND_TRX_FROM_BUILD}],
+    }
+
+
+def test_under_vstest_a_build_that_names_its_own_trx_file_keeps_the_extra_flags(xunit_shop):
+    check = made(xunit_shop, "Shop.slnx", "--trx-from-build", "--", "--blame-crash")["checks"][0]
+
+    assert (check["command"], check["rerun"]) == (
+        VSTEST_COMMAND_TRX_FROM_BUILD + ["--blame-crash"],
+        ["suite-dotnet-rerun", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--"]
+        + VSTEST_COMMAND_TRX_FROM_BUILD + ["--blame-crash"])
+
+
+def test_under_mtp_a_build_that_names_its_own_trx_file_puts_the_extra_flags_after_a_double_dash(xunit_shop):
+    global_json(xunit_shop)
+
+    check = made(xunit_shop, "Shop.slnx", "--trx-from-build", "--", "--timeout", "5m")["checks"][0]
+
+    assert (check["command"], check["rerun"]) == (
+        MTP_COMMAND_TRX_FROM_BUILD + ["--", "--timeout", "5m"],
+        ["suite-dotnet-rerun", "--mtp", "tests/Shop.Api.Tests/TestResults/Shop.Api.Tests.trx", "--"]
+        + MTP_COMMAND_TRX_FROM_BUILD + ["--", "--timeout", "5m"])
+
+
+@pytest.mark.parametrize("mtp", [False, True], ids=["VSTest", "MTP"])
+def test_trx_from_build_given_twice_prints_the_same_checks_as_once(xunit_shop, mtp):
+    if mtp:
+        global_json(xunit_shop)
+
+    check = made(xunit_shop, "Shop.slnx", "--trx-from-build", "--skip", "x", "--trx-from-build")["checks"][0]
+
+    assert check["command"] == (MTP_COMMAND_TRX_FROM_BUILD if mtp else VSTEST_COMMAND_TRX_FROM_BUILD)
+
+
+@pytest.mark.parametrize("word", ["--trx-from-builds", "--trx-from", "--trxfrombuild"])
+def test_a_misspelled_word_is_refused_with_a_usage_line_that_names_trx_from_build(xunit_shop, word):
+    out, err = io.StringIO(), io.StringIO()
+
+    status = check_maker.main(["Shop.slnx", word], out, err, xunit_shop)
+
+    assert (status, out.getvalue(), err.getvalue()) == (
+        1, "", "usage: suite-dotnet-checks <solution> [--skip <pattern>]... [--trx-from-build] [-- <flag>...]\n")
+
+
 def a_fixtures_library(root, packages, properties):
     project(root, "tests/Shop.Fixtures/Shop.Fixtures.csproj", packages=packages, properties=properties)
     slnx(root, "Shop.slnx", ["tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "tests/Shop.Fixtures/Shop.Fixtures.csproj"])
@@ -485,18 +553,15 @@ class RealRun(NamedTuple):
 REAL_XUNIT_V3_VERSIONS = ["3.2.0", "4.0.3"]
 
 
-# One build per version serves every case, because a NuGet restore and a build take most of a minute.
-@pytest.fixture(scope="module", params=REAL_XUNIT_V3_VERSIONS)
-def real_mtp_run(tmp_path_factory, request):
-    root = tmp_path_factory.mktemp(f"real-mtp-{request.param}")
+def real_run(root, version, *argv):
     (root / ".git").mkdir()
     global_json(root, MTP_RUNNER_ONLY)
     tests = root / "tests" / "Shop.Tests"
     tests.mkdir(parents=True)
-    (tests / "Shop.Tests.csproj").write_text(REAL_XUNIT_V3_PROJECT.format(version=request.param), encoding="utf-8")
+    (tests / "Shop.Tests.csproj").write_text(REAL_XUNIT_V3_PROJECT.format(version=version), encoding="utf-8")
     (tests / "Checkout.cs").write_text(REAL_TESTS, encoding="utf-8")
     slnx(root, "Shop.slnx", ["tests/Shop.Tests/Shop.Tests.csproj"])
-    printed = made(root, "Shop.slnx")
+    printed = made(root, "Shop.slnx", *argv)
     check = printed["checks"][0]
     real = Subprocess()
 
@@ -512,6 +577,28 @@ def real_mtp_run(tmp_path_factory, request):
     return RealRun(ran.status, after_check, after_rerun, ran.out + ran.err + out.getvalue() + err.getvalue())
 
 
+# One build per version serves every case, because a NuGet restore and a build take most of a minute.
+@pytest.fixture(scope="module", params=REAL_XUNIT_V3_VERSIONS)
+def real_mtp_run(tmp_path_factory, request):
+    return real_run(tmp_path_factory.mktemp(f"real-mtp-{request.param}"), request.param)
+
+
+# The shape of a build whose CI needs the TRX files named per project, so it passes the flags itself.
+BUILD_NAMES_ITS_TRX_FILE = """<Project>
+  <PropertyGroup>
+    <TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --report-xunit-trx --report-xunit-trx-filename $(MSBuildProjectName).trx</TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+</Project>
+"""
+
+
+@pytest.fixture(scope="module")
+def real_trx_from_build_run(tmp_path_factory):
+    root = tmp_path_factory.mktemp("real-trx-from-build")
+    (root / "Directory.Build.targets").write_text(BUILD_NAMES_ITS_TRX_FILE, encoding="utf-8")
+    return real_run(root, "4.0.3", "--trx-from-build")
+
+
 @pytest.mark.real_dotnet
 def test_a_check_in_the_mtp_form_writes_its_trx_file_where_its_rerun_reads_it(real_mtp_run):
     assert (real_mtp_run.check_status != 0, real_mtp_run.after_check) == (True, [
@@ -521,3 +608,16 @@ def test_a_check_in_the_mtp_form_writes_its_trx_file_where_its_rerun_reads_it(re
 @pytest.mark.real_dotnet
 def test_a_rerun_in_the_mtp_form_runs_only_the_red_test(real_mtp_run):
     assert real_mtp_run.after_rerun == [("Shop.Tests.Checkout.Red", "Failed")], real_mtp_run.said
+
+
+@pytest.mark.real_dotnet
+def test_a_check_made_with_trx_from_build_writes_the_trx_file_the_build_names_where_its_rerun_reads_it(
+        real_trx_from_build_run):
+    assert (real_trx_from_build_run.check_status != 0, real_trx_from_build_run.after_check) == (True, [
+        ("Shop.Tests.Checkout.Green", "Passed"), ("Shop.Tests.Checkout.Red", "Failed")]), real_trx_from_build_run.said
+
+
+@pytest.mark.real_dotnet
+def test_a_rerun_of_a_check_made_with_trx_from_build_runs_only_the_red_test(real_trx_from_build_run):
+    assert real_trx_from_build_run.after_rerun == [
+        ("Shop.Tests.Checkout.Red", "Failed")], real_trx_from_build_run.said

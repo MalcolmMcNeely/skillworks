@@ -364,6 +364,42 @@ project too. A project that sets it to `false` is never refused. The refusal nam
 says that only xUnit v3 is supported under Microsoft.Testing.Platform. The Suite shows it red, as for
 any Check maker that fails.
 
+### A build that names its own TRX file
+
+Your build may already pass the TRX flags to each test project, for example through
+`TestingPlatformCommandLineArguments` or `VSTestLogger` in a `Directory.Build.targets` file. Then add
+`--trx-from-build` to the `checks-from` line. It is a word beside `--skip`, before any `--`, and it
+takes no value:
+
+```json
+"checks-from": ["suite-dotnet-checks", "Shop.slnx", "--skip", "*.E2E.Tests", "--trx-from-build"]
+```
+
+With the word, each check adds no TRX flags, and your build's own flags write the file. Your build
+must name each file `<project name>.trx`, because the Rerun reads
+`<project folder>/TestResults/<project name>.trx`. With another name, the Rerun finds no red test and
+runs the whole check.
+
+Under VSTest each check's command is then:
+
+```
+dotnet test <project> --no-build --results-directory <project folder>/TestResults <your flags>
+```
+
+Under MTP each check's command is then:
+
+```
+dotnet test --project <project> --no-build --results-directory <project folder>/TestResults
+  -- <your flags>
+```
+
+With no flags of your own, the MTP command ends with no `--`. The Rerun adds the `--` its filter needs.
+
+Without the word, a build that also names the file makes each MTP check fail with "Zero tests ran",
+exit code 5 and "Handshake failures". The test app refuses `--report-xunit-trx-filename` when it gets
+it twice, and `dotnet test` hides that reason. To see the real reason, run the test app's executable
+directly, such as `bin/Debug/net10.0/Shop.Tests.exe`, with the arguments after `--`.
+
 `ready` and `ignores` beside `checks-from` reach every check it prints, as for any Check maker.
 
 ## How the loop runs the Suite
