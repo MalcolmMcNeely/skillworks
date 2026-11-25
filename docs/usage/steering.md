@@ -186,6 +186,22 @@ back from a bad Plugin. Give the full sha. The command prints the old and the ne
 It commits nothing. Review the edit, then commit and push it with git, like every other Steering
 edit.
 
+A member's machine keeps the Marketplace it registered, at the old commit, so a pull alone does not
+move their Plugin. An add of a Marketplace that is already registered changes nothing, and an
+update reads only the registered commit. So after each member pulls the new pin, they run these
+three commands in their repo's main checkout, with the new `ref` from the shared settings:
+
+```bash
+claude plugin marketplace remove skillworks
+claude plugin marketplace add MalcolmMcNeely/skillworks#<the new ref> --scope project
+claude plugin install skillworks@skillworks --scope project
+```
+
+Under Sidecar Steering the add and the install take `--scope local`. The remove drops the old
+commit and uninstalls the Plugin, the add registers the new commit, and the install puts the Plugin
+back at it. Then they quit and restart Claude Code, because a running Session keeps the skills it
+loaded when it started.
+
 The command writes nothing when the shared settings name the Plugin by a folder source, or name no
 Marketplace. A folder source pins no commit.
 

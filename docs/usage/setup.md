@@ -55,18 +55,41 @@ Then run setup:
 /skillworks:skillworks-setup
 ```
 
+## Install the Plugin from GitHub
+
 Setup installs the Plugin from GitHub at a pinned commit. It writes the Marketplace and the Plugin
 into the shared settings file: the Sidecar's `.claude/settings.json` under Sidecar Steering, and your
 repo's `.claude/settings.json` otherwise. The Marketplace names the Skillworks repo on GitHub and a
 `ref` that pins one commit. It names no `path`, because the install reads the `marketplace.json` at
 the root of the Skillworks repo and nothing else. The pin starts at the tip of the
 Skillworks main branch when setup runs. Nothing in the file belongs to one machine, so a teammate
-gets the Plugin on trust, at the same commit as you. Setup then runs the Plugin install once on your
-machine, so your own Sessions load the Plugin the settings name. A commit pin needs Claude Code
-v2.1.324 or later.
+gets the Plugin on trust, at the same commit as you. A commit pin needs Claude Code v2.1.324 or
+later.
+
+Setup then installs the Plugin once on your machine, so your own Sessions load the Plugin the
+settings name. Claude Code reads a Marketplace from the settings only when a Session starts, and
+setup wrote the settings after yours started. So setup registers the Marketplace itself, at the
+pinned commit, and then installs:
+
+```
+claude plugin marketplace add MalcolmMcNeely/skillworks#<the pinned commit> --scope project
+claude plugin install skillworks@skillworks --scope project
+```
+
+Under Sidecar Steering both take `--scope local`. You see each command run, and setup says whether it succeeded.
+When it is your first time, Claude Code may ask you to allow each one.
+
+If either fails, setup says so and gives you one command. Quit and restart Claude Code in your
+repo, so the new Session registers the Marketplace from the settings. Then run the command setup
+gave you, such as:
+
+```
+claude plugin install skillworks@skillworks --scope project
+```
 
 A repo that holds the Plugin's `marketplace.json` itself, which is Skillworks, keeps a folder source,
-so a Skillworks developer tests the Plugin in their own checkout.
+so a Skillworks developer tests the Plugin in their own checkout. Setup registers that folder in
+place of the GitHub repo.
 
 ## What setup does
 

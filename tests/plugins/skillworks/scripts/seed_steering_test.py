@@ -2274,9 +2274,43 @@ def test_setup_writes_no_read_rule_for_a_plugin_folder_outside_the_repo():
 
 
 def test_setup_runs_the_plugin_install_once():
-    step = setup_section("### 6. Write the settings")
+    blocks = re.findall(r"```bash\n(.*?)```", setup_section("### 6. Write the settings"), re.S)
 
-    assert step.count("claude plugin install skillworks@skillworks") == 1
+    assert "".join(blocks).count("claude plugin install skillworks@skillworks") == 1
+
+
+def test_setup_registers_the_marketplace_at_the_pinned_commit_before_the_install():
+    step = setup_section("### 6. Write the settings")
+    add = step.find("claude plugin marketplace add MalcolmMcNeely/skillworks#<the ref the settings hold>")
+
+    assert -1 < add < step.find("claude plugin install skillworks@skillworks")
+
+
+def test_setup_tells_the_member_to_restart_and_run_the_one_install_command_when_the_install_fails():
+    step = " ".join(setup_section("### 6. Write the settings").split())
+    part = step.split("If the add or the install fails", 1)[1]
+
+    assert ("quit and restart Claude Code" in part, "claude plugin install skillworks@skillworks" in part) == (
+        True, True)
+
+
+def test_the_setup_page_says_what_a_new_member_sees_and_does_at_the_plugin_install():
+    page = " ".join(SETUP_PAGE.read_text(encoding="utf-8").split())
+    part = page.split("## Install the Plugin from GitHub", 1)[1].split(" ## ", 1)[0]
+
+    assert ("claude plugin marketplace add" in part, "restart Claude Code" in part,
+            "claude plugin install skillworks@skillworks" in part) == (True, True, True)
+
+
+def test_the_steering_page_says_the_steps_that_bring_a_moved_pin_to_a_member():
+    page = " ".join((USER_DOCS / "steering.md").read_text(encoding="utf-8").split())
+    part = page.split("## Move the Plugin pin", 1)[1].split(" ## ", 1)[0]
+
+    remove = part.find("claude plugin marketplace remove skillworks")
+    add = part.find("claude plugin marketplace add MalcolmMcNeely/skillworks#<the new ref>")
+    install = part.find("claude plugin install skillworks@skillworks")
+
+    assert (-1 < remove < add < install, "restart Claude Code" in part) == (True, True)
 
 
 def test_the_setup_page_says_setup_installs_the_plugin_from_github_at_a_pinned_commit():

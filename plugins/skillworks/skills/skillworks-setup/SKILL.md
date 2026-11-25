@@ -257,13 +257,16 @@ Without Sidecar Steering, leave `.claude/settings.local.json` alone. Do not read
 
 Write nothing under `~/.claude` by hand. The Plugin install below writes there through Claude Code, and nothing else does.
 
-After the file is written, install the Plugin once on this machine, from the repo's main checkout, so the developer's own Sessions load the Plugin the settings name:
+After the file is written, install the Plugin once on this machine, from the repo's main checkout, so the developer's own Sessions load the Plugin the settings name. Claude Code registers a Marketplace from the settings only when an interactive Session starts, and this Session started before the file was written, so the install alone finds no Marketplace. Register it first, at the commit the settings pin, then install:
 
 ```bash
+claude plugin marketplace add MalcolmMcNeely/skillworks#<the ref the settings hold> --scope project
 claude plugin install skillworks@skillworks --scope project
 ```
 
-Under Sidecar Steering give `--scope local` in place of `--scope project`, because the developer's own Sessions read `.claude/settings.local.json` and the repo's `.claude/settings.json` stays as the team has it. The settings name the Marketplace, so the install finds it there. A second run of setup on the same machine installs nothing new, because the Plugin is already there.
+Under Sidecar Steering give `--scope local` in place of `--scope project` in both, because the developer's own Sessions read `.claude/settings.local.json` and the repo's `.claude/settings.json` stays as the team has it. With the folder source, give the folder the settings hold, such as `./plugins`, in place of `MalcolmMcNeely/skillworks#<the ref the settings hold>`. When the add says the Marketplace is already there, go on to the install. A second run of setup on the same machine installs nothing new, because the Plugin is already there.
+
+If the add or the install fails, never leave the developer there. Tell them to quit and restart Claude Code in the repo's main checkout, so the new Session registers the Marketplace from the settings, and then to run the one command `claude plugin install skillworks@skillworks` with the scope above. Put that command in the report, word for word.
 
 ### 7. Report
 
