@@ -9,6 +9,7 @@ from configuration.checks import check_configuration
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
 from runner import Subprocess
+from sidecar.pull import MOST_PULL_SECONDS, PULL_SECONDS_KEY, is_pull_limit
 from steering.adr_folder import adr_folder
 from steering.rule_imports import RULES_FOLDER, missing_import
 from steering.target_branch import LOOP_FILE, PR_MODE, settings, target_setting, tracker_setting
@@ -23,11 +24,6 @@ CACHING_CLAUDE = (2, 1, 242)
 RULES_THAT_REFUSE = ("pull_request", "update", "required_status_checks", "required_deployments", "merge_queue")
 
 LABEL = ("ready-for-agent", "0e8a16", "Fully specified. An agent can take it.")
-
-PULL_SECONDS_KEY = "steering-pull-seconds"
-
-# The Plugin's hooks file gives the SessionStart hook 300 seconds, and the pull must stop well inside it.
-MOST_PULL_SECONDS = 240
 
 
 def ok(out, said):
@@ -132,7 +128,7 @@ class Preflight:
         if PULL_SECONDS_KEY not in held:
             return
         seconds = held[PULL_SECONDS_KEY]
-        if isinstance(seconds, bool) or not isinstance(seconds, int) or not 1 <= seconds <= MOST_PULL_SECONDS:
+        if not is_pull_limit(seconds):
             raise refusal(("{} says \"{}\": {}, and it must be a whole number from 1 to {}, because Claude Code "
                            "stops the hook that pulls the Steering repo at 300 seconds, and the pull has to stop "
                            "first.").format(LOOP_FILE, PULL_SECONDS_KEY, json.dumps(seconds), MOST_PULL_SECONDS))

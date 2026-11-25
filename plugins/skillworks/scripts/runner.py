@@ -17,8 +17,10 @@
 # a name set to None is taken away, and any other value is put in. `stdin` is text the
 # program reads as its input.
 
+import contextlib
 import os
 import shutil
+import signal
 import subprocess
 from pathlib import Path
 from typing import NamedTuple
@@ -32,6 +34,9 @@ class Ran(NamedTuple):
 
 # What a shell answers for a name it could not find, so a caller reads one number either way.
 NOT_FOUND = 127
+
+# What coreutils' timeout answers for a program it stopped, so a caller reads a familiar number.
+PAST_LIMIT = 124
 
 PARENT_KEY = "skillworks.parent.session.id"
 
@@ -144,11 +149,13 @@ class Subprocess:
                 return str(Path(folder) / name)
         return None
 
-    def run(self, args, where=None, env=None, stdin=None):
+    def run(self, args, where=None, env=None, stdin=None, limit=None):
         args = [str(a) for a in args]
         started = self.started_as(args[0])
         if started is None:
             return Ran(NOT_FOUND, "", args[0] + ": not found\n")
+        if limit is not None:
+            return self.run_held_to(limit, started + args[1:], where, env, stdin)
 
         # A wait short enough to catch a wedged session is short enough to kill an honest hour-long one.
         # Bytes, because a text pipe on Windows writes each "\n" as "\r\n", and a Session would then
@@ -161,6 +168,34 @@ class Subprocess:
             capture_output=True,
         )
         return Ran(done.returncode, read(done.stdout), read(done.stderr))
+
+    # A program can hand its work to children of its own, and a child left alive holds the pipes open.
+    def run_held_to(self, seconds, command, where, env, stdin):
+        child = subprocess.Popen(
+            command,
+            cwd=where,
+            env=self.environment(env),
+            stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=not self.windows,
+        )
+        try:
+            out, err = child.communicate(None if stdin is None else stdin.encode("utf-8"), timeout=seconds)
+        except subprocess.TimeoutExpired:
+            self.stop_all(child)
+            out, err = child.communicate()
+            return Ran(PAST_LIMIT, read(out), read(err))
+        return Ran(child.returncode, read(out), read(err))
+
+    def stop_all(self, child):
+        if self.windows:
+            subprocess.run(["taskkill", "/pid", str(child.pid), "/t", "/f"], capture_output=True)
+        else:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(child.pid, signal.SIGKILL)
+        with contextlib.suppress(ProcessLookupError):
+            child.kill()
 
     def environment(self, env):
         if not env:

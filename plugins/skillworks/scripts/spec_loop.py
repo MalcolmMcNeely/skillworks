@@ -56,8 +56,9 @@ from runner import Subprocess, given_every_session, session_changes
 from seed_steering import missing_steering
 from sidecar.landed import Landed
 from sidecar.locator import main_checkout_of
+from sidecar.pull import pull_steering, sidecar_commit
 from steering.adr_folder import missing_adr_folder
-from steering.steering_file import sidecar_steering
+from steering.steering_file import LOOP_FILE, sidecar_steering
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
@@ -74,6 +75,9 @@ BYPASS_MODE = "bypassPermissions"
 
 RUNNING_LOCK = "running.lock"
 RUNNING_LOG = "running.log-path"
+
+# The Sidecar's commit the run read, so a run's result can be traced to its Steering.
+STEERING_RECORD = "steering.sha"
 
 FULL_RUN = ticket_worktree.FULL_RUN
 
@@ -1112,6 +1116,22 @@ class Loop:
 
     # --- getting started -----------------------------------------------------
 
+    # Once, before preflight reads it: the loop's Sessions pull nothing, so every ticket reads this commit.
+    def pull_steering(self):
+        record = self.log_dir / STEERING_RECORD
+        sidecar = sidecar_steering(self.root)
+        if sidecar is None:
+            record.unlink(missing_ok=True)
+            return
+        fault = pull_steering(self.runner, sidecar, Path(sidecar) / LOOP_FILE)
+        if fault:
+            self.say("WARN  " + fault)
+        commit = sidecar_commit(self.runner, sidecar)
+        if commit:
+            written(record, commit + "\n")
+        else:
+            record.unlink(missing_ok=True)
+
     def preflight(self):
         in_both = repo_steering_of(self.root).loop_file_in_both()
         if in_both:
@@ -1962,6 +1982,7 @@ class Loop:
             self.hold_the_spec()
         self.writes_position = not dry
 
+        self.pull_steering()
         self.preflight()
         if dry:
             return self.dry_run()

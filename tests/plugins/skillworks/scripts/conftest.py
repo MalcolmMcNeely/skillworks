@@ -285,7 +285,7 @@ class RecordingRunner:
     def stub(self, name, says="", status=0, does=None):
         self.stubs[name] = (says, status, does)
 
-    def run(self, args, where=None, env=None, stdin=None):
+    def run(self, args, where=None, env=None, stdin=None, limit=None):
         args = [str(a) for a in args]
         self.made.append(Call(args, where, env, stdin))
         line = " ".join(self.calls[-1])
@@ -308,7 +308,7 @@ class RecordingRunner:
                     return answered
             return Ran(status, says, "")
         assert args[0] not in NEVER_REAL, "this case would have started " + args[0] + " for real"
-        return self.real.run(args, where, env, stdin)
+        return self.real.run(args, where, env, stdin, limit)
 
     def built(self, mark):
         return [call for call in self.calls if mark in " ".join(call)]

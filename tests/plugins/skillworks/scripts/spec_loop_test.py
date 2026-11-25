@@ -6,6 +6,7 @@ import io
 import json
 import os
 import re
+import socket
 import threading
 import uuid
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -6986,3 +6987,159 @@ def test_the_result_file_of_a_nudged_step_keeps_its_name_and_holds_the_newest_re
 
     assert spec_loop.field(loop.records() / "ticket-168-standards.json", "result") == (
         "## Standards. Nothing found.")
+
+
+# --- the Steering repo a run pulls ------------------------------------------------
+
+WORDS_RULE = "docs/skillworks/rules/words.md"
+
+NEWER_WORDS = "# Words\n\nA teammate pushed these words.\n"
+
+
+# The Sidecar is a clone of a real bare repo, so the run's pull meets git as a team member's would.
+class SteeringRepo:
+    def __init__(self, loop, limit=None):
+        self.repo = loop.repo
+        self.bare = self.repo.root / "steering.git"
+        self.sidecar = self.repo.work.with_name(self.repo.work.name + "-skillworks")
+        git(self.repo.root, "init", "--quiet", "--bare", "--initial-branch=main", self.bare.as_posix())
+        git(self.repo.root, "clone", "--quiet", "-c", "core.autocrlf=false", self.bare.as_posix(),
+            self.sidecar.as_posix())
+        self.repo.configure(self.sidecar)
+        # Under Sidecar Steering the repo holds no loop.json, or neither copy may win.
+        (self.repo.work / "docs" / "skillworks" / "loop.json").unlink()
+        write_loop(self.sidecar, self.repo.target)
+        if limit is not None:
+            path = self.sidecar / "docs" / "skillworks" / "loop.json"
+            held = json.loads(path.read_text(encoding="utf-8"))
+            held["steering-pull-seconds"] = limit
+            path.write_text(json.dumps(held), encoding="utf-8", newline="\n")
+        write_steering(self.sidecar)
+        git(self.sidecar, "add", "-A")
+        git(self.sidecar, "commit", "--quiet", "-m", "The team's Steering")
+        git(self.sidecar, "push", "--quiet", "origin", "main")
+
+    def teammate_pushes(self, name, text):
+        teammate = self.repo.root / "teammate"
+        git(self.repo.root, "clone", "--quiet", "-c", "core.autocrlf=false", self.bare.as_posix(),
+            teammate.as_posix())
+        self.repo.configure(teammate)
+        (teammate / name).write_text(text, encoding="utf-8", newline="\n")
+        git(teammate, "commit", "--quiet", "-am", "A teammate's Steering")
+        git(teammate, "push", "--quiet", "origin", "main")
+        return git(teammate, "rev-parse", "HEAD").strip()
+
+    def gone(self):
+        git(self.sidecar, "remote", "set-url", "origin", (self.repo.root / "gone.git").as_posix())
+
+    def commit(self):
+        return git(self.sidecar, "rev-parse", "HEAD").strip()
+
+
+def steering_held_by_the_run(loop):
+    return (loop.records() / "steering.sha").read_text(encoding="utf-8").strip()
+
+
+def pulls_of(runner, sidecar):
+    return [call for call in runner.calls if call[:4] == ["git", "-C", sidecar.as_posix(), "pull"]]
+
+
+def pull_warnings(ran):
+    return [unstamped(line) for line in ran.out.split("\n") if "the pull of the Steering repo" in line]
+
+
+def test_a_run_pulls_the_steering_repo_once_and_its_sessions_read_the_pulled_steering(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    steering = SteeringRepo(loop)
+    steering.teammate_pushes(WORDS_RULE, NEWER_WORDS)
+    read = []
+    sessions.then["--stop-after-tests"] = lambda: read.append(
+        (steering.sidecar / WORDS_RULE).read_text(encoding="utf-8"))
+
+    loop.run(SPEC)
+
+    assert (len(pulls_of(runner, steering.sidecar)), read) == (1, [NEWER_WORDS])
+
+
+def test_a_run_writes_the_sidecar_s_pulled_commit_under_its_records(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    steering = SteeringRepo(loop)
+    pushed = steering.teammate_pushes(WORDS_RULE, NEWER_WORDS)
+
+    loop.run(SPEC, "--dry-run")
+
+    assert steering_held_by_the_run(loop) == pushed
+
+
+def test_a_run_whose_sidecar_has_no_remote_writes_the_sidecar_s_commit_and_pulls_nothing(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    steering = SteeringRepo(loop)
+    git(steering.sidecar, "remote", "remove", "origin")
+
+    loop.run(SPEC, "--dry-run")
+
+    assert (steering_held_by_the_run(loop), pulls_of(runner, steering.sidecar)) == (steering.commit(), [])
+
+
+def test_a_run_whose_steering_repo_is_gone_warns_once_and_goes_on_with_the_files_on_disk(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    steering = SteeringRepo(loop)
+    steering.gone()
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    warnings = pull_warnings(ran)
+    assert (len(warnings), warnings[0].endswith("The Steering files on disk are read."),
+            "DRY   the next ticket is #168" in ran.out) == (1, True, True), said(ran)
+
+
+def test_a_run_whose_steering_repo_is_gone_still_writes_the_sidecar_s_commit(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    steering = SteeringRepo(loop)
+    steering.gone()
+
+    loop.run(SPEC, "--dry-run")
+
+    assert steering_held_by_the_run(loop) == steering.commit()
+
+
+# It takes git's connection and never answers it, so only the pull's limit can end the pull.
+@pytest.fixture
+def silent_remote():
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen()
+    held = []
+
+    def hold():
+        while True:
+            try:
+                held.append(server.accept()[0])
+            except OSError:
+                return
+    threading.Thread(target=hold, daemon=True).start()
+    yield "git://127.0.0.1:{}/steering.git".format(server.getsockname()[1])
+    for connection in held:
+        connection.close()
+    server.close()
+
+
+def test_a_run_whose_steering_repo_never_answers_warns_once_the_pull_runs_past_its_limit(loop, silent_remote):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    steering = SteeringRepo(loop, limit=1)
+    git(steering.sidecar, "remote", "set-url", "origin", silent_remote)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert pull_warnings(ran) == [
+        "WARN  the pull of the Steering repo into the Sidecar ran past its limit of 1 second. "
+        "The Steering files on disk are read."], said(ran)
+
+
+def test_a_run_without_sidecar_steering_writes_no_steering_commit(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    loop.run(SPEC, "--dry-run")
+
+    assert not (loop.records() / "steering.sha").exists()

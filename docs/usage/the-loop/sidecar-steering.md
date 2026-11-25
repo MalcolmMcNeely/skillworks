@@ -52,14 +52,22 @@ imports. So every text in the Session comes from one commit. `/skillworks:grill`
 
 A Sidecar with no remote is not pulled, and the Session says nothing about a pull.
 
-A Session the loop starts does not pull. The loop marks each Session it starts, and the hook skips the
-pull when it sees the mark.
+### When a run pulls
+
+A run pulls the Steering repo once, when it starts. `spec-loop` runs the same fast-forward-only pull
+in the Sidecar before its preflight reads the Steering. The Sessions of the run pull nothing: the loop
+marks each Session it starts, and the hook skips the pull when it sees the mark. So every ticket of the
+run reads one commit, even when a teammate pushes while the run goes on.
+
+The run writes the Sidecar's commit to `.spec-loop/<spec>/steering.sha` in your repo, so you can trace
+a run's result to the Steering it read. It writes the commit after the pull, and also when the Sidecar
+has no remote or the pull failed.
 
 ### A failed or slow pull
 
-A failed pull does not stop the Session. The hook stops the pull and gives you one warning. The
-warning names the reason, and says that the Steering files on disk are read. The Session then goes on
-with those files.
+A failed pull does not stop the Session or the run. The hook or the run stops the pull and gives you one
+warning. The warning names the reason, and says that the Steering files on disk are read. The Session
+or the run then goes on with those files.
 
 The pull fails when:
 
@@ -97,8 +105,8 @@ slow machine or a slow network:
 The limit must be a whole number from 1 to 240. The preflight stops on any other value, and says why.
 Claude Code stops the hook at 300 seconds, so a limit of 240 or less always stops the pull first.
 
-The hook reads the limit from the copy of `loop.json` on disk, before the pull. A new limit that a pull
-brings applies from the next Session.
+The hook and the run read the limit from the copy of `loop.json` on disk, before the pull. A new limit
+that a pull brings applies from the next Session or the next run.
 
 ## It needs PR mode and the files Tracker
 
