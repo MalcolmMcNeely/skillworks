@@ -206,9 +206,8 @@ own, the moment it passes, so a stopped run leaves every ticket before it alread
 _Avoid_: Integrate, integration
 
 **Layer**:
-One source of the text a step reads: the repo, the Sidecar, the developer's own user files, or the
-developer's remote Steering at the tip of its `main`. A step gets every Layer at once, and each part of the
-text comes from exactly one of them. The user Layer is true only on one machine.
+One source of the text a step reads: the repo, the Sidecar, or the developer's own user files. A
+step gets every Layer at once, and each part of the text comes from exactly one of them. The user Layer is true only on one machine.
 _Avoid_: Place, source, level
 
 **Load**:
@@ -303,8 +302,9 @@ _Avoid_: Conversation, chat, transcript
 
 **Sidecar**:
 A folder beside the repo, named for it with `-skillworks` on the end, that holds the files Tracker's
-specs, tickets and the numbers they take, and with Sidecar Steering the Steering too. It is never
-pushed, so it serves the one machine it sits on.
+specs, tickets and the numbers they take, and with Sidecar Steering the Steering too. Its Steering
+can go to a Steering repo, so a team shares it. Its specs and tickets never leave it, so they serve
+the one machine it sits on.
 _Avoid_: Sibling folder, specs folder, store
 
 **Sidecar Steering**:
@@ -328,10 +328,15 @@ _Avoid_: Claim (the Tracker's word for taking a ticket), fact, assertion
 **Steering**:
 What the loop reads about how to work: rules, tracker docs, review files and the Suite. A repo's
 Steering holds what is true only in that repo. Setup copies a starting version into the repo, or into
-the Sidecar, as files, and the team owns them from then on. A developer's remote Steering holds their
-own way of working, which goes with them to each repo they name for it, and only they write it.
-A skill reads a fact about one repo from its Steering and never carries it.
+the Sidecar, as files, and the team owns them from then on. A skill reads a fact about one repo from
+its Steering and never carries it.
 _Avoid_: Config, guidance, policy
+
+**Steering repo**:
+The private git repo a Sidecar clones and pushes to, so a team under Sidecar Steering shares one copy
+of its Steering. It holds the Steering of one repo, and each repo names its own. A Session reads the
+copy on disk, as it stood when the Session started.
+_Avoid_: Remote Steering, steering remote
 
 **Step**:
 One part of a stage of the Dev loop, with Steering of its own to read. The Grill's steps are the
