@@ -25,3 +25,6 @@ bullets and YAML keys that adding does not.
 **The remote Steering keeps a place for each client, with the changes to the method for that client.**
 Rejected. One developer writes both Layers, so a conflict is theirs to avoid when they write, and a
 place for each client is machinery for a problem one person already controls.
+
+_Superseded by [ADR 0074](0074-a-team-shares-its-sidecar-steering-through-a-steering-repo.md). A team now
+shares its Sidecar Steering through a Steering repo, and remote Steering is gone._

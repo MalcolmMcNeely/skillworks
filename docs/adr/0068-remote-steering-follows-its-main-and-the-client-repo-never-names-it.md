@@ -25,3 +25,6 @@ developer has to move every client's pin by hand to share one change to the meth
 
 **The URL in the client's `loop.json`.** Rejected. It names the developer's private repo to the
 client.
+
+_Superseded by [ADR 0074](0074-a-team-shares-its-sidecar-steering-through-a-steering-repo.md). A team now
+shares its Sidecar Steering through a Steering repo, and remote Steering is gone._
