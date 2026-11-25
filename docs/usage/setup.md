@@ -71,7 +71,7 @@ Setup runs these steps on the branch you are on.
    [Sidecar Steering](#sidecar-steering) says.
 2. **Ask for the Tracker.** Setup suggests `github` when `origin` names `github.com`, and `files`
    otherwise. It writes your answer into `tracker` in `docs/skillworks/loop.json`. With `files`, it tells
-   you that `.specs/` sits in the Sidecar and is never pushed.
+   you that `.specs/` sits in the Sidecar and never leaves your machine.
 3. **Ask for the Target branch.** Setup suggests your remote's default branch, and offers `pr`. It
    writes your answer into `target-branch` in `docs/skillworks/loop.json`.
 4. **Point `CLAUDE.md` at the docs.** Setup asks where your ADRs go, and writes your answer into
@@ -108,11 +108,12 @@ Setup asks six things on a clean repo: whether the work goes to a team that does
 Skillworks, your Tracker, your Target branch, where your ADRs go, whether commits credit Claude, and
 the one yes it needs. It asks more only where your repo already holds an answer of its own. Under
 Sidecar Steering it asks three of them: the Tracker, the Target branch and the credit are already
-settled.
+settled. It also asks for the Steering repo's URL, and asks that only under Sidecar Steering.
 
 | Question | When setup asks it |
 |---|---|
 | Does the work go to a team that does not use Skillworks? | Always, first. Setup suggests no, so the common answer is one keypress. If the Sidecar already holds `docs/skillworks/loop.json`, an earlier run said yes, and setup suggests yes. Yes turns on [Sidecar Steering](#sidecar-steering). |
+| What is the Steering repo's URL? | Only under Sidecar Steering, right after the first question. A team shares its Steering through a [Steering repo](the-loop/sidecar-steering.md#share-the-steering-through-a-steering-repo). Leave it empty to keep the Sidecar as it is. [A Steering repo](#a-steering-repo) says what setup does with a URL. |
 | Which Tracker does your team use? | Always. Setup suggests `github` when `origin` names `github.com`, and `files` otherwise, so the common answer is one keypress. If `tracker` in `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
 | Which is your Target branch? | Always. Setup suggests your remote's default branch, so the common answer is one keypress, and offers `pr` for one pull request per spec: you name the branch and open the pull request. If `docs/skillworks/loop.json` already names another answer, setup suggests that one. |
 | Where do your ADRs go? | Always. Setup writes your answer into `adr-folder` in `docs/skillworks/domain.md`, and every new ADR goes to that one folder. It suggests one folder. On a second run, it suggests the folder `adr-folder` already names, so your answer survives. Else it looks for folders that hold numbered Markdown files, such as `0001-event-sourced-orders.md`, and have `adr` or `decision` in their path. It lists every one it finds, and suggests the one with the most files. Else it suggests `docs/adr`. A repo set up before this question existed stops at preflight until setup runs again, and one run clears the stop. |
@@ -181,6 +182,7 @@ then writes:
 | The Sidecar: the folder beside your main checkout with `-skillworks` on the end of its name | Every Steering file above and its base copy, under `docs/skillworks/`. `loop.json` with `target-branch` as `pr` and `tracker` as `files`. `CLAUDE.md` with the `## Agent skills` block and its imports. `.claude/settings.json` with the settings, which the loop hands to every Session. |
 | `.claude/settings.local.json` in your main checkout | The same settings, for the sessions you start yourself. After each pull that changes the Sidecar's `.claude/settings.json`, the SessionStart hook merges it into this file again and keeps your own entries. [The team's settings](the-loop/sidecar-steering.md#the-teams-settings) says how. |
 | Your repo's git exclude file, `.git/info/exclude` | The working folders and `.claude/settings.local.json`. Git reads it like `.gitignore`, but nobody else sees it. |
+| The Sidecar's `.gitignore` | `.specs/` and `landed-commits.tsv`, so a push of the Sidecar sends only Steering. A Sidecar set up before this file existed gets it the next time setup runs. |
 
 The repo's tracked files never change: not `.gitignore`, not `CLAUDE.md`, not `.claude/settings.json`.
 
@@ -190,6 +192,21 @@ The repo's tracked files never change: not `.gitignore`, not `CLAUDE.md`, not `.
   `set-co-authored-by` turns Claude Code's own credit off in both settings files.
 - **A second run seeds the Sidecar again.** The Steering being in the Sidecar is what turns the mode
   on.
+
+### A Steering repo
+
+Give the Steering repo's URL when your team shares its Steering. Setup puts the URL only in the
+Sidecar's own git `origin`. No file in your repo, in the Sidecar's Steering or in your user files
+names it, so each repo can have its own Steering repo.
+
+| Your Sidecar | What setup does |
+|---|---|
+| Not on disk | Clones the Steering repo as your Sidecar. It writes none of the team's Steering, only your repo's git exclude lines and `.claude/settings.local.json`. When the Steering repo is empty, it seeds the clone as a first run does. |
+| On disk, with no remote, and the Steering repo is empty | Adds the URL as the Sidecar's remote, and tells you to commit and push the Steering. |
+| On disk, with no remote, and the Steering repo holds a commit | Stops and writes nothing. Move your local Sidecar away first, then run setup again to clone the team's Steering. |
+| On disk, with a remote | Uses the Sidecar as it is. |
+
+An empty answer leaves the Sidecar as it is. Setup never commits or pushes to the Steering repo.
 
 Setup does not write `.git/config`. The Plugin's hook writes three rules there on the first commit it
 rewrites in each clone: `trailer.Skillworks-Session.ifExists=addIfDifferent`,

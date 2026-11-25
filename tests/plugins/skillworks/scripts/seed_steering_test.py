@@ -2261,11 +2261,11 @@ def test_setup_asks_for_the_tracker_and_suggests_one_from_the_remote():
     assert "`docs/skillworks/loop.json`" in step
 
 
-def test_setup_says_the_files_tracker_folder_sits_in_the_sidecar_and_is_never_pushed():
+def test_setup_says_the_files_tracker_folder_sits_in_the_sidecar_and_never_leaves_the_machine():
     step = setup_section("### 2. Ask for the Tracker")
 
     assert "`.specs/` sits in the Sidecar" in step
-    assert "never pushed" in step
+    assert "never leave this machine" in step
     assert "cannot be gitignored" not in step
 
 
@@ -4126,4 +4126,225 @@ def test_a_seed_with_no_answer_on_sidecar_steering_still_writes_the_repo_as_befo
     assert (ran.status, (repo.work / WHERE["loop.json"]).is_file(), sidecar_of(repo).exists(),
             ".spec-loop/" in (repo.work / ".gitignore").read_text(encoding="utf-8").splitlines()) == (
         0, True, False, True), ran.err
+
+
+TEAM_DOMAIN = "# The team's domain notes\n"
+
+
+def steering_repo(repo):
+    bare = repo.root / "steering.git"
+    git(repo.root, "init", "--quiet", "--bare", "--initial-branch=main", bare.as_posix())
+    return bare
+
+
+def steering_repo_holding_steering(repo):
+    bare = steering_repo(repo)
+    first = repo.root / "first-member"
+    git(repo.root, "clone", "--quiet", "-c", "core.autocrlf=false", bare.as_posix(), first.as_posix())
+    repo.configure(first)
+    write_steering(first)
+    seed_steering.write(first / WHERE["domain.md"], TEAM_DOMAIN)
+    git(first, "add", "--all")
+    git(first, "commit", "--quiet", "-m", "The team's Steering")
+    git(first, "push", "--quiet", "origin", "HEAD:main")
+    return bare
+
+
+def run_seed_joining(runner, repo, url, *flags):
+    return run_seed(runner, repo.work, "--sidecar-steering", "--steering-repo", Path(url).as_posix(), *flags)
+
+
+def remote_of(folder):
+    return git(folder, "remote", "get-url", "origin").strip()
+
+
+def test_with_no_sidecar_the_steering_repo_is_cloned_as_the_sidecar(repo, runner):
+    url = steering_repo_holding_steering(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert (ran.status, remote_of(sidecar_of(repo)), (sidecar_of(repo) / WHERE["domain.md"]).read_text(
+        encoding="utf-8")) == (0, url.as_posix(), TEAM_DOMAIN), ran.err
+
+
+def test_a_clone_of_the_steering_repo_writes_nothing_into_the_teams_steering(repo, runner):
+    url = steering_repo_holding_steering(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert (ran.status, git(sidecar_of(repo), "status", "--porcelain", "--untracked-files=all")) == (0, ""), ran.err
+
+
+def test_a_clone_of_the_steering_repo_still_writes_the_repos_git_exclude_lines(repo, runner):
+    url = steering_repo_holding_steering(repo)
+
+    run_seed_joining(runner, repo, url)
+
+    excluded = (repo.work / ".git" / "info" / "exclude").read_text(encoding="utf-8").splitlines()
+    assert [line for line in WORKING_FOLDERS + [".claude/settings.local.json"] if line not in excluded] == []
+
+
+def test_a_clone_of_an_empty_steering_repo_is_seeded_and_the_member_told_to_commit_and_push(repo, runner):
+    url = steering_repo(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert (ran.status, remote_of(sidecar_of(repo)), (sidecar_of(repo) / WHERE["loop.json"]).is_file(),
+            "commit and push" in ran.out) == (0, url.as_posix(), True, True), ran.err
+
+
+def test_a_sidecar_with_no_remote_and_an_empty_steering_repo_gets_the_remote(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    git(sidecar_of(repo), "init", "--quiet")
+    url = steering_repo(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert (ran.status, remote_of(sidecar_of(repo))) == (0, url.as_posix()), ran.err
+
+
+def test_a_sidecar_given_a_remote_tells_the_member_to_commit_and_push(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    url = steering_repo(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert "commit and push" in ran.out
+
+
+def test_a_sidecar_that_is_not_yet_a_git_repo_is_made_one_before_it_gets_the_remote(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    assert not (sidecar_of(repo) / ".git").exists()
+    url = steering_repo(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert (ran.status, remote_of(sidecar_of(repo))) == (0, url.as_posix()), ran.err
+
+
+def test_a_sidecar_with_no_remote_and_a_steering_repo_that_holds_a_commit_stops_and_writes_nothing(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    before = on_disk(sidecar_of(repo)), on_disk(repo.work)
+    url = steering_repo_holding_steering(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert (ran.status, (on_disk(sidecar_of(repo)), on_disk(repo.work)), (sidecar_of(repo) / ".git").exists()) == (
+        1, before, False), ran.err
+
+
+def test_a_sidecar_that_stops_on_a_steering_repo_with_a_commit_is_told_to_move_away(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    url = steering_repo_holding_steering(repo)
+
+    ran = run_seed_joining(runner, repo, url)
+
+    assert "Move the local Sidecar away" in ran.err and sidecar_of(repo).as_posix() in ran.err and "Nothing was written." in ran.err
+
+
+def test_a_sidecar_that_already_has_a_remote_is_used_as_it_is(repo, runner):
+    url = steering_repo_holding_steering(repo)
+    run_seed_joining(runner, repo, url)
+    other = repo.root / "other-steering.git"
+    git(repo.root, "init", "--quiet", "--bare", other.as_posix())
+
+    ran = run_seed_joining(runner, repo, other)
+
+    assert (ran.status, remote_of(sidecar_of(repo))) == (0, url.as_posix()), ran.err
+
+
+def test_an_unreachable_steering_repo_stops_and_writes_nothing(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    before = on_disk(sidecar_of(repo))
+
+    ran = run_seed_joining(runner, repo, repo.root / "gone.git")
+
+    assert (ran.status, on_disk(sidecar_of(repo)), "Nothing was written." in ran.err) == (1, before, True), ran.err
+
+
+def test_an_empty_answer_leaves_the_sidecar_with_no_remote(repo, runner):
+    ran = run_seed(runner, repo.work, "--sidecar-steering", "--steering-repo", "")
+
+    assert (ran.status, (sidecar_of(repo) / WHERE["loop.json"]).is_file(),
+            (sidecar_of(repo) / ".git").exists()) == (0, True, False), ran.err
+
+
+def test_a_steering_repo_without_sidecar_steering_is_refused_and_nothing_is_written(repo, runner):
+    url = steering_repo(repo)
+
+    ran = run_seed(runner, repo.work, "--steering-repo", url.as_posix())
+
+    assert (ran.status, sidecar_of(repo).exists(), (repo.work / "docs").exists()) == (1, False, False), ran.err
+
+
+def test_no_file_in_the_client_repo_names_the_steering_repos_url(repo, runner):
+    url = steering_repo_holding_steering(repo)
+
+    run_seed_joining(runner, repo, url)
+
+    held = on_disk(repo.work)
+    naming = [path for path, text in held.items() if url.as_posix().encode("utf-8") in text]
+    assert held and naming == [] and url.as_posix() not in (repo.work / ".git" / "config").read_text(encoding="utf-8")
+
+
+SIDECAR_IGNORES = [".specs/", "landed-commits.tsv"]
+
+
+def sidecar_ignores(repo):
+    return (sidecar_of(repo) / ".gitignore").read_text(encoding="utf-8").splitlines()
+
+
+def test_under_sidecar_steering_the_sidecars_gitignore_keeps_the_specs_and_the_landed_record_out(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+
+    assert [line for line in SIDECAR_IGNORES if line not in sidecar_ignores(repo)] == []
+
+
+def test_a_sidecar_from_before_the_gitignore_gets_it_on_a_rerun(repo, runner):
+    run_seed(runner, repo.work, "--sidecar-steering")
+    (sidecar_of(repo) / ".gitignore").unlink()
+
+    ran = run_seed(runner, repo.work)
+
+    assert (ran.status, [line for line in SIDECAR_IGNORES if line not in sidecar_ignores(repo)]) == (0, []), ran.err
+
+
+def test_without_sidecar_steering_no_sidecar_gitignore_is_written(repo, runner):
+    run_seed(runner, repo.work)
+
+    assert not (sidecar_of(repo) / ".gitignore").exists()
+
+
+def test_setup_asks_for_the_steering_repo_only_under_sidecar_steering():
+    step = " ".join(setup_section("### 1. Seed the Steering").split())
+
+    assert "Under Sidecar Steering, and only then, ask a second question: the Steering repo's URL" in step
+    assert "seed-steering --sidecar-steering --steering-repo <url>" in step
+    assert "With no, ask nothing about a Steering repo." in step
+
+
+def test_setup_says_the_specs_never_leave_the_machine_and_not_that_the_sidecar_has_no_remote():
+    step = " ".join(setup_section("### 2. Ask for the Tracker").split())
+
+    assert "The Sidecar is a git repo with no remote" not in step
+    assert "its specs never leave this machine" in step
+
+
+def test_the_readme_says_the_sidecars_specs_never_leave_the_machine():
+    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+
+    assert ("or in Markdown files in the Sidecar: a folder beside your repo, whose specs never leave your "
+            "machine.") in readme
+    assert "a folder beside your repo that is never pushed" not in readme
+
+
+def test_the_setup_page_asks_the_steering_repo_question_under_sidecar_steering():
+    page = SETUP_PAGE.read_text(encoding="utf-8")
+
+    assert "| What is the Steering repo's URL? |" in page
+
+
+@pytest.mark.parametrize("heading", ["### The first member pushes", "### A new member joins"])
+def test_the_sidecar_steering_page_says_how_the_first_member_pushes_and_a_new_member_joins(heading):
+    assert heading in SIDECAR_STEERING_PAGE.read_text(encoding="utf-8").splitlines()
 

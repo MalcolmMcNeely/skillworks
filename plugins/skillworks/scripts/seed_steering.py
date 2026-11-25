@@ -9,14 +9,18 @@ from runner import Subprocess
 from seeds import merge, old_folder
 from seeds.answers import took_an_answer
 from seeds.outcome import ASKS, BASES, Outcome, report, write
+from sidecar.landed import LIST
 from sidecar.locator import sidecar_of
+from sidecar.pull import NO_PROMPT, has_remote, reason_in
+from sidecar.sidecar import LOCK, Sidecar
 from steering.co_authored_by import LOCAL_SETTINGS_FILE, with_member
 from steering.rule_imports import RULES_FOLDER
 from steering.steering_file import STEERING_FOLDER, sidecar_steering, steering_root
 from steering.target_branch import PR_MODE
 from stop import Stop, misuse, refusal
+from tracker.files import SPECS
 
-USAGE = ("usage: seed-steering [folder] [--sidecar-steering] [--keep <file>:<overlap>=yours|seed]... "
+USAGE = ("usage: seed-steering [folder] [--sidecar-steering] [--steering-repo <url>] [--keep <file>:<overlap>=yours|seed]... "
          "[--blend <file>:<overlap>=<blend file>]... [--settled <file>]...\n")
 
 SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "seeds"
@@ -46,6 +50,14 @@ HANDOFF = ".handoff/"
 WORKING_FOLDERS = [".spec-loop/", HANDOFF, ".claude/worktrees/", ".context-backfill/"]
 
 SIDECAR_STEERING = "--sidecar-steering"
+
+STEERING_REPO = "--steering-repo"
+
+SIDECAR_IGNORES = [SPECS + "/", LIST]
+
+WORKING_FOLDERS_WHY = "# The Skillworks working folders. Transient, and never committed."
+
+SIDECAR_IGNORES_WHY = "# The specs and the landed record stay on this machine, so a push sends only Steering."
 
 LOOP_SEED = "loop.json"
 
@@ -131,17 +143,75 @@ def exclude_working_folders(runner, top):
     return ignore(path, path.as_posix(), WORKING_FOLDERS + [LOCAL_SETTINGS_FILE])
 
 
-def ignore(path, name, wanted):
+def ignore_in_the_sidecar(sidecar):
+    return ignore(sidecar / ".gitignore", "the Sidecar's .gitignore", SIDECAR_IGNORES, SIDECAR_IGNORES_WHY)
+
+
+def ignore(path, name, wanted, why=WORKING_FOLDERS_WHY):
     held = path.read_text(encoding="utf-8") if path.exists() else ""
     missing = [folder for folder in wanted if folder not in held.splitlines()]
     if not missing:
         return []
     if held and not held.endswith("\n"):
         held += "\n"
-    lines = ["# The Skillworks working folders. Transient, and never committed."] + missing
+    lines = [why] + missing
     named = ", ".join(missing)
     return [Outcome("added {} to {}\n".format(named, name), "would add {} to {}\n".format(named, name),
                     writes=[(path, held + "\n".join(lines) + "\n")])]
+
+
+def push_first(sidecar):
+    return ("The Steering repo is empty. In the Sidecar, commit and push the Steering, so your team can "
+            "clone it:\n"
+            "  git -C {0} add --all\n"
+            "  git -C {0} commit -m \"The team's Steering\"\n"
+            "  git -C {0} push -u origin HEAD\n").format(sidecar.as_posix())
+
+
+# Asked before anything is written, so a Steering repo that cannot be read stops the run with nothing changed.
+def holds_a_commit(runner, url):
+    listed = runner.run(["git", "ls-remote", url], env=NO_PROMPT)
+    if listed.status != 0:
+        raise refusal("the Steering repo {} could not be read: {} Nothing was written."
+                      .format(url, reason_in(listed.out + listed.err)))
+    return listed.out.strip() != ""
+
+
+def clone(runner, url, sidecar):
+    cloned = runner.run(["git", "clone", "--quiet", url, sidecar.as_posix()], env=NO_PROMPT)
+    if cloned.status != 0:
+        raise refusal("the clone of the Steering repo {} failed: {}".format(url, reason_in(cloned.out + cloned.err)))
+    # The files Tracker takes this lock beside the Steering, and a push must never carry it.
+    with (sidecar / ".git" / "info" / "exclude").open("a", encoding="utf-8", newline="\n") as exclude:
+        exclude.write("/{}\n".format(LOCK))
+
+
+def give_remote(runner, sidecar, url):
+    held = Sidecar(runner, sidecar, None, None)
+    if not (sidecar / ".git").exists():
+        held.make()
+    held.git("remote", "add", "origin", url)
+
+
+# Two Steerings are never merged by guess, so a local Sidecar meets only an empty Steering repo.
+def join_steering_repo(runner, sidecar, url):
+    if (sidecar / ".git").exists() and has_remote(runner, sidecar):
+        return Outcome("kept the Sidecar's remote, and used the Sidecar as it is\n"), False
+    holds = holds_a_commit(runner, url)
+    if sidecar.exists():
+        if holds:
+            raise refusal("the Steering repo already holds Steering, and the Sidecar at {0} holds its own. "
+                          "Move the local Sidecar away first, such as to {0}-old, and run setup again to clone "
+                          "the team's. Nothing was written.".format(sidecar.as_posix()))
+        return Outcome("added the Steering repo as the Sidecar's origin\n",
+                       "would add the Steering repo as the Sidecar's origin\n",
+                       shown=[push_first(sidecar)], does=[lambda: give_remote(runner, sidecar, url)]), False
+    named = "the Steering repo into {}".format(sidecar.as_posix())
+    if holds:
+        return Outcome("cloned {}, and wrote none of its Steering\n".format(named),
+                       "would clone {}\n".format(named), does=[lambda: clone(runner, url, sidecar)]), True
+    return Outcome("cloned {}\n".format(named), "would clone {}\n".format(named), shown=[push_first(sidecar)],
+                   does=[lambda: clone(runner, url, sidecar)]), False
 
 
 def make_handoff_folder(top):
@@ -168,23 +238,27 @@ def next_step(runner, top, sidecar_steering):
 
 
 def parsed(argv):
-    where, choices, settled, sidecar = None, {}, set(), False
+    where, choices, settled, sidecar, url = None, {}, set(), False, None
     rest = iter(argv)
     for arg in rest:
         if took_an_answer(arg, rest, choices, settled, USAGE):
             continue
         if arg == SIDECAR_STEERING and not sidecar:
             sidecar = True
+        elif arg == STEERING_REPO and url is None:
+            url = next(rest, None)
+            if url is None or url.startswith("--"):
+                raise misuse(USAGE)
         elif where is None and not arg.startswith("--"):
             where = arg
         else:
             raise misuse(USAGE)
-    return where or ".", choices, settled, sidecar
+    return where or ".", choices, settled, sidecar, url
 
 
 def main(argv, runner, out, err):
     try:
-        where, choices, settled, asked_for_sidecar = parsed(argv)
+        where, choices, settled, asked_for_sidecar, url = parsed(argv)
         found = runner.run(["git", "-C", where, "rev-parse", "--show-toplevel"])
         if found.status != 0:
             raise refusal("{} is not in a git repository. Nothing was written.".format(where))
@@ -192,11 +266,17 @@ def main(argv, runner, out, err):
         default = default_branch(runner, top)
         # Once the Sidecar holds the loop file the mode is on, so a later run with no answer still seeds the Sidecar.
         sidecar = sidecar_of(runner, top) if asked_for_sidecar else sidecar_steering(top)
+        if url and sidecar is None:
+            raise refusal("a Steering repo serves Sidecar Steering only, so run with {} to name one. "
+                          "Nothing was written.".format(SIDECAR_STEERING))
         if sidecar is None:
             outcomes = seed(runner, top, default, choices, settled) + ignore_working_folders(top)
         else:
-            outcomes = (seed(runner, sidecar, PR_MODE, choices, settled, sidecar_steering=True)
-                        + exclude_working_folders(runner, top))
+            joined, took_the_teams = join_steering_repo(runner, sidecar, url) if url else (None, False)
+            # A clone of the team's Steering takes only what belongs to this machine.
+            steering = [] if took_the_teams else (seed(runner, sidecar, PR_MODE, choices, settled, sidecar_steering=True)
+                                          + ignore_in_the_sidecar(sidecar))
+            outcomes = ([joined] if joined else []) + steering + exclude_working_folders(runner, top)
         report(outcomes + make_handoff_folder(top), next_step(runner, top, sidecar is not None), out)
         return 0
     except Stop as stop:

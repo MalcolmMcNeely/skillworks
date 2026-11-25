@@ -114,7 +114,7 @@ the loop stopped and why.
 The Target branch is where each ticket Lands. It can be a branch you push to, such as `main`. Or, in
 PR mode, you name a branch for each spec, Skillworks makes it, and you open one pull request from it.
 Either way, you can grill and loop many specs at once. The specs and tickets live in GitHub Issues,
-or in Markdown files in the Sidecar: a folder beside your repo that is never pushed.
+or in Markdown files in the Sidecar: a folder beside your repo, whose specs never leave your machine.
 
 Skillworks is built this way. Its specs and tickets are its
 [GitHub issues](https://github.com/MalcolmMcNeely/skillworks/issues).

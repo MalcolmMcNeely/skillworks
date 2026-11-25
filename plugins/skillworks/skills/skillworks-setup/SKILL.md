@@ -52,7 +52,24 @@ Yes turns Sidecar Steering on. Every Steering file, the `## Agent skills` block 
 seed-steering --sidecar-steering
 ```
 
-It writes `loop.json` in the Sidecar with `target-branch` as `pr` and `tracker` as `files`. It adds the working folders and `.claude/settings.local.json` to the repo's own git exclude file, and never to `.gitignore`, because `.gitignore` is a file the team tracks. Once the Sidecar holds `loop.json`, a run with no flag seeds the Sidecar too, because the Steering being there is what turns the mode on. With no, run the seed with no flag, as below.
+It writes `loop.json` in the Sidecar with `target-branch` as `pr` and `tracker` as `files`. It adds the working folders and `.claude/settings.local.json` to the repo's own git exclude file, and never to `.gitignore`, because `.gitignore` is a file the team tracks. It writes a `.gitignore` in the Sidecar that ignores `.specs/` and `landed-commits.tsv`, so a push of the Sidecar sends only Steering, and an older Sidecar gets it on this run. Once the Sidecar holds `loop.json`, a run with no flag seeds the Sidecar too, because the Steering being there is what turns the mode on. With no, run the seed with no flag, as below.
+
+Under Sidecar Steering, and only then, ask a second question: the Steering repo's URL. A Steering repo is the git repo through which a team shares the whole Steering of this repo, and each member's Sidecar is a clone of it. The answer may be left empty, and an empty answer leaves the Sidecar as it is. With a URL, run the seed with both flags:
+
+```bash
+seed-steering --sidecar-steering --steering-repo <url>
+```
+
+The URL goes only into the Sidecar's own git `origin`. Write it nowhere else: not in the repo, not in a Steering file, and not in the user's files. With no, ask nothing about a Steering repo. The seed handles each case and says which one it met:
+
+| The Sidecar | What `seed-steering` does |
+|---|---|
+| Not on disk | Clones the Steering repo as the Sidecar. When the Steering repo holds Steering, it writes none of it, and writes only the repo's git exclude lines. Step 6 then writes only `.claude/settings.local.json`. When the Steering repo is empty, it seeds the clone as a first run does, and prints the commands that commit and push it. |
+| On disk, with no remote, and the Steering repo is empty | Adds the URL as the Sidecar's `origin`, seeds as usual, and prints the commands that commit and push the Steering. Show the user those commands. Setup runs neither. |
+| On disk, with no remote, and the Steering repo holds a commit | Stops and writes nothing. Tell the user to move the local Sidecar away first, and to run setup again to clone the team's Steering. |
+| On disk, with a remote | Uses the Sidecar as it is, and changes no remote. |
+
+No script commits or pushes to the Steering repo. The member does that with plain git in the Sidecar.
 
 Under Sidecar Steering, every `docs/skillworks/` path in the steps below names the Sidecar's copy. Read each one with `steering-file <path>`, and write each one in the Sidecar, never in the repo. That holds for `adr-folder` in `docs/skillworks/domain.md`, which you read before the seed and write in step 4.
 
@@ -128,7 +145,7 @@ Read `git remote get-url origin`. When it names `github.com`, suggest `github`. 
 
 Write the answer into `tracker` in `docs/skillworks/loop.json`, and change no other key.
 
-With `files`, tell the team that `.specs/` sits in the Sidecar, the folder beside the repo's main checkout with `-skillworks` on the end of its name. The Sidecar is a git repo with no remote, so it is never pushed and it serves this machine alone. Every worktree of the repo finds the same Sidecar, and a Session reads it with `tracker-show` and closes a ticket with `tracker-close`.
+With `files`, tell the team that `.specs/` sits in the Sidecar, the folder beside the repo's main checkout with `-skillworks` on the end of its name. The Sidecar is a git repo whose `.gitignore` keeps `.specs/` out of every push, so its specs never leave this machine. Every worktree of the repo finds the same Sidecar, and a Session reads it with `tracker-show` and closes a ticket with `tracker-close`.
 
 ### 3. Ask for the Target branch
 
@@ -187,7 +204,7 @@ If it fails, stop and report. Every step below assumes the remote works, and wit
 
 ### 6. Write the settings
 
-Under Sidecar Steering, write the settings below to two files, and never to the repo's `.claude/settings.json`, which the team owns. Write them to the Sidecar's `.claude/settings.json`, which the driver hands to every loop Session. Write the same to `.claude/settings.local.json` in the main checkout, because the developer's own sessions run there and never read the Sidecar's file. Merge into each file as below. Ask no credit question, and run `set-co-authored-by hide`: the team the work goes to sees no credit for Claude, so the command turns Claude Code's own credit off in both files, whatever the answer.
+Under Sidecar Steering, write the settings below to two files, and never to the repo's `.claude/settings.json`, which the team owns. Write them to the Sidecar's `.claude/settings.json`, which the driver hands to every loop Session. Write the same to `.claude/settings.local.json` in the main checkout, because the developer's own sessions run there and never read the Sidecar's file. Merge into each file as below. Ask no credit question, and run `set-co-authored-by hide`: the team the work goes to sees no credit for Claude, so the command turns Claude Code's own credit off in both files, whatever the answer. When step 1 cloned a Steering repo that holds Steering, the Sidecar's `.claude/settings.json` is the team's: leave it as it is, and merge it into `.claude/settings.local.json` alone.
 
 Copy [settings.json](./settings.json) to `.claude/settings.json`. The Marketplace `path` in it is a placeholder. Write the folder that holds this Plugin's `.claude-plugin/marketplace.json`, which is three folders above this skill's base directory. Write it relative to the repo root, starting `./`, when it sits inside the repo, and in full otherwise.
 

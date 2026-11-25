@@ -34,6 +34,8 @@ team that does not use Skillworks. Answer yes. Setup then writes:
   in `.claude/settings.local.json` in the checkout you cloned, for the sessions you start yourself.
 - The working folders and `.claude/settings.local.json` in your repo's git exclude file,
   `.git/info/exclude`, and never in `.gitignore`.
+- A `.gitignore` in the Sidecar that ignores `.specs/` and `landed-commits.tsv`, so a push of the
+  Sidecar sends only Steering. An older Sidecar gets it the next time setup runs.
 
 The repo's tracked files never change. [Setup](../setup.md#sidecar-steering) says more.
 
@@ -42,6 +44,41 @@ The repo's tracked files never change. [Setup](../setup.md#sidecar-steering) say
 A team shares its Steering through a Steering repo: a git repo that holds the whole Steering of one
 repo. Each member's Sidecar is a clone of it. The Steering repo's URL sits in the Sidecar's own git
 remote, so your repo never names it.
+
+Setup asks for the Steering repo's URL right after you answer yes to Sidecar Steering. You can leave
+it empty. [Setup](../setup.md#a-steering-repo) says what it does in each case.
+
+### The first member pushes
+
+The first member already has a Sidecar, with the Steering setup wrote. To share it:
+
+1. Make an empty git repo for the Steering, on your team's host or on a shared drive.
+2. Run `/skillworks:skillworks-setup`, answer yes to Sidecar Steering, and give the empty repo's URL.
+   Setup adds it as the Sidecar's remote, and prints the commands to run next.
+3. Commit the Steering in the Sidecar, and push it. With the Sidecar's name in place of
+   `shop-skillworks`:
+
+   ```
+   cd ../shop-skillworks
+   git add --all
+   git commit -m "The team's Steering"
+   git push -u origin HEAD
+   ```
+
+The Sidecar's `.gitignore` keeps `.specs/` and `landed-commits.tsv` out, so the push sends only
+Steering. Setup commits and pushes nothing itself.
+
+When the Steering repo already holds a commit, setup stops and writes nothing, because it never
+merges two Steerings by guess. Move your local Sidecar away, and run setup again to clone the team's.
+
+### A new member joins
+
+A new member needs one setup run and the Steering repo's URL. With no Sidecar on disk, run
+`/skillworks:skillworks-setup`, answer yes to Sidecar Steering, and give the URL. Setup clones the
+Steering repo as the Sidecar. It writes none of the team's Steering: it writes only your repo's git
+exclude lines and `.claude/settings.local.json`, from the team's settings.
+
+A Sidecar that already has a remote is used as it is.
 
 ### When a Session pulls
 

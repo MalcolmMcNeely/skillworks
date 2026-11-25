@@ -20,7 +20,8 @@ says which step loads each file.
 ## Steering in the Sidecar
 
 The Steering can sit in the Sidecar instead of the repo. The Sidecar is the folder beside your repo,
-named for it with `-skillworks` on the end, that is never pushed. Its being there turns Sidecar
+named for it with `-skillworks` on the end. A team can share it through a
+[Steering repo](the-loop/sidecar-steering.md#share-the-steering-through-a-steering-repo). Its being there turns Sidecar
 Steering on: when the Sidecar holds `docs/skillworks/loop.json`, every Steering file is read from the
 Sidecar, and none from the repo. No setting turns it on, so no setting can disagree with where the
 Steering sits.
