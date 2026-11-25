@@ -88,9 +88,7 @@ Setup runs these steps on the branch you are on.
    `"autoMemoryEnabled": false` and the prompt cache keys into `.claude/settings.json`. Then
    `set-co-authored-by` writes your answer on the credit for Claude into `co-authored-by` in
    `docs/skillworks/loop.json`, and rewrites the `attribution` block from it, as
-   [Credit for Claude](#credit-for-claude) says. Last, setup asks whether this repo reads your remote
-   Steering, and `set-remote-steering` writes your answer into your own user files, as
-   [Remote Steering](#remote-steering) says.
+   [Credit for Claude](#credit-for-claude) says.
 7. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
@@ -106,11 +104,10 @@ in step 6.
 
 ## The questions setup asks
 
-Setup asks seven things on a clean repo: whether the work goes to a team that does not use
-Skillworks, your Tracker, your Target branch, where your ADRs go, whether commits credit Claude, the
-one yes it needs, and whether this repo reads your remote Steering. It asks more only where your repo
-already holds an answer of its own, or where you say yes to remote Steering and no URL is set. Under
-Sidecar Steering it asks four of them: the Tracker, the Target branch and the credit are already
+Setup asks six things on a clean repo: whether the work goes to a team that does not use
+Skillworks, your Tracker, your Target branch, where your ADRs go, whether commits credit Claude, and
+the one yes it needs. It asks more only where your repo already holds an answer of its own. Under
+Sidecar Steering it asks three of them: the Tracker, the Target branch and the credit are already
 settled.
 
 | Question | When setup asks it |
@@ -121,8 +118,6 @@ settled.
 | Where do your ADRs go? | Always. Setup writes your answer into `adr-folder` in `docs/skillworks/domain.md`, and every new ADR goes to that one folder. It suggests one folder. On a second run, it suggests the folder `adr-folder` already names, so your answer survives. Else it looks for folders that hold numbered Markdown files, such as `0001-event-sourced-orders.md`, and have `adr` or `decision` in their path. It lists every one it finds, and suggests the one with the most files. Else it suggests `docs/adr`. A repo set up before this question existed stops at preflight until setup runs again, and one run clears the stop. |
 | Should commits and pull requests credit Claude? | Always. On a first run setup suggests `hide`, so the common answer is one keypress. If `co-authored-by` in `docs/skillworks/loop.json` already names an answer, setup suggests that one. [Credit for Claude](#credit-for-claude) says what each answer does. |
 | Do you agree to the allowlist and to turning auto-memory off? | Always, once, before it writes `.claude/settings.json`. It reads each allowlist entry out, and the memory line and your answer on the credit for Claude with them. The allowlist lets the loop run `git push`, `gh issue close` and `tracker-publish` with no prompt. That is the point, and also the risk. |
-| Does this repo read your remote Steering? | Always, last, with or without Sidecar Steering. Setup suggests no, so the common answer is one keypress. [Remote Steering](#remote-steering) says what each answer writes. |
-| What is the URL of your remote Steering? | When you answer yes to remote Steering and your user file holds no URL yet. Setup asks it once on your machine, and never again in a later repo. |
 | Which do you keep for this overlap: yours, the Seed's, or a blend? | On a second run, when your edit and the newer Seed's change touch the same lines, in a Steering file or in the `## Agent skills` block. Setup shows both sides, and a blend of the two that the agent writes to fit your repo. It asks once for each overlap, and the script writes the one you pick. |
 | Which lines of the newer Seed do you want? | When a Steering file, or the `## Agent skills` block, differs from its Seed and has no base copy, because your repo was set up before base copies existed. Setup shows the difference and changes the file only by the lines you pick. |
 | Which Marketplace, or which Plugin setting, do you keep? | When `.claude/settings.json` already names the `skillworks` Marketplace or the Plugin with another value. Setup shows both. |
@@ -172,8 +167,7 @@ Setup never denies a tool Skillworks calls, such as `Skill`, `Agent`, `Bash` or 
 run, setup reads out each default it would add back and adds only what you agree to. It removes no
 deny line, so a tool you got back stays back unless you agree to deny it again.
 
-Setup writes nothing under `~/.claude`. On a yes to remote Steering, it writes
-`~/.skillworks/remote-steering.json`, as [Remote Steering](#remote-steering) says. Without Sidecar Steering, it leaves
+Setup writes nothing under `~/.claude`. Without Sidecar Steering, it leaves
 `.claude/settings.local.json` alone.
 
 ## Sidecar Steering
@@ -235,28 +229,6 @@ Claude Code's `attribution` block in `.claude/settings.json` from the answer.
   so a loop worktree never sees it, and the choice is your team's and not one developer's.
 
 The `Skillworks-Session` trailer stays on every commit, whichever you answer.
-
-## Remote Steering
-
-[Remote Steering](the-loop/remote-steering.md) is your own way of working, kept in a private git repo
-of your own. Setup asks one question: does this repo read your remote Steering? `set-remote-steering`
-writes your answer into `~/.skillworks/remote-steering.json`, a file in your own user files.
-
-| Answer | What setup writes |
-|---|---|
-| No | Nothing. Your user file stays as it was. |
-| Yes, with no URL set | Setup asks for the URL of your remote Steering. It writes the URL to your user file, and adds this repo's `origin` to the list of repos that read the remote. |
-| Yes, with a URL set | Setup asks nothing more. It adds this repo's `origin` to the list. |
-
-- **A repo is listed once.** A yes for a repo already on the list leaves the file as it was.
-- **A repo is listed by its `origin`.** A second clone of the same repo reads the remote too.
-- **Setup writes nothing about the remote into the repo or the Sidecar.** No file, no URL and no
-  commit of your remote reaches them, so your client never sees where your method lives.
-- **Each teammate answers on their own machine.** The user file is per machine, so a teammate who
-  works by your method runs setup, or `set-remote-steering yes`, on their own.
-- **To set the URL by hand, pass it.** `set-remote-steering yes <url>` writes the URL when none is
-  set. When another URL is set, it refuses and writes nothing, because every repo on the list reads
-  that one.
 
 ## What your team fills in
 

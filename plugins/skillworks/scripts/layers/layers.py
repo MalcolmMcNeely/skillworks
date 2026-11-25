@@ -15,7 +15,7 @@ REPO = "repo"
 SIDECAR = "Sidecar"
 
 
-# The label is a field and not text, so another Layer, such as remote Steering, adds a value and no new format.
+# The label is a field and not text, so another Layer adds a value and no new format.
 @dataclass(frozen=True)
 class Layer:
     root: Path

@@ -198,6 +198,17 @@ def test_after_a_ticket_lands_the_list_holds_exactly_its_landed_commits(steered)
                                                    for commit in landed])
 
 
+def test_a_run_under_sidecar_steering_lands_and_hands_its_sessions_no_remote_commit(steered):
+    given_tickets_that_land(steered, (1, ("one.txt",)))
+
+    ran = steered.run()
+
+    sessions = [call for call in steered.runner.made if call.args[:2] == ["claude", "-p"]]
+    assert (ran.status, len(sessions) > 0,
+            [call.env for call in sessions if "SKILLWORKS_REMOTE_STEERING_COMMIT" in (call.env or {})]) == (
+        0, True, []), said(ran)
+
+
 # The Steering moves into the repo, so the Sidecar holds the Tracker alone and the mode is off.
 def test_outside_sidecar_steering_a_landed_ticket_writes_no_list_and_its_trailer_scopes_the_spec(
         steered):

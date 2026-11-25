@@ -24,7 +24,6 @@
       "Bash(seed-steering:*)",
       "Bash(seed-agent-skills:*)",
       "Bash(set-co-authored-by:*)",
-      "Bash(set-remote-steering:*)",
       "Bash(allow-commands:*)",
       "Bash(spec-loop:*)",
       "Bash(land-ticket:*)",

@@ -36,18 +36,6 @@ rules. The paths on this page stay the same, measured from the Sidecar instead o
 
 With no `loop.json` in the Sidecar, every Steering file is read from the repo, as below.
 
-## Your remote Steering
-
-Your remote Steering is a fourth Layer: a private git repo of your own that holds your way of
-working. In each repo you name for it, `steering-file` reads it as well as the repo's Steering. A
-file both Layers hold is read as the repo's text, then the remote's. The client repo never names the
-remote. [Remote Steering](the-loop/remote-steering.md) says how to set it up.
-
-In a repo you named, `show-steering` fetches your remote as a Session does. It labels each part of
-the remote's text `[remote@<sha>]`, with the short commit it read, beside `[repo]`, `[Sidecar]` and
-`[user]`. A file both Layers hold shows the repo's part, then the remote's part. In a repo you did
-not name, `show-steering` shows no remote.
-
 ## Every Steering file always exists
 
 Each step of the loop leans on its Steering file, so every file setup seeds always exists. To want

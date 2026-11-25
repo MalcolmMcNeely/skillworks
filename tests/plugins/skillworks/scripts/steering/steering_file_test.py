@@ -3,12 +3,11 @@
 import contextlib
 import io
 import json
-import os
 import re
 
 import pytest
 
-from conftest import PLUGIN, Ran, RemoteSteering, Repo, git, launch
+from conftest import PLUGIN, Ran, Repo, git, launch
 from runner import Subprocess
 from steering import steering_file
 
@@ -164,223 +163,13 @@ def test_the_command_prints_the_disk_copy_to_the_caller(work):
     assert (ran.status, ran.out) == (0, "# Surfaces\n\nThe disk copy.\n"), ran.err
 
 
-SESSION = "4f1c0d2e-remote-steering"
+def test_the_command_lists_a_sidecar_folder_to_the_caller(work):
+    work.in_sidecar(LOOP, '{"target-branch": "pr"}\n')
+    work.in_sidecar(RULES + "words.md", "# Words")
 
+    ran = launch("steering-file", RULES, where=work.repo.work)
 
-class Named(Work):
-    def __init__(self, repo, remote, home):
-        super().__init__(repo)
-        self.remote = remote
-        self.home = home
-
-    def user_file(self, settings):
-        self.remote.name_in(self.home, settings)
-
-    def named(self):
-        self.user_file({"url": self.remote.url, "repos": [self.repo.origin.as_posix()]})
-
-    def run(self, *argv, where=None, session=SESSION):
-        out, err = io.StringIO(), io.StringIO()
-        with contextlib.chdir(where or self.repo.work):
-            status = steering_file.main(list(argv), Subprocess(), out, err, home=self.home, session=session)
-        return Ran(status, out.getvalue(), err.getvalue())
-
-
-@pytest.fixture
-def named(tmp_path):
-    work = Named(Repo(tmp_path), RemoteSteering(tmp_path), tmp_path / "home")
-    work.named()
-    return work
-
-
-METHOD = "docs/skillworks/method.md"
-
-
-def test_in_a_named_repo_a_file_only_the_remote_holds_is_given_as_it_is(named):
-    named.remote.push(METHOD, "# Method\n\nThe remote's way of working.\n")
-
-    ran = named.run(METHOD)
-
-    assert (ran.status, ran.out, ran.err) == (0, "# Method\n\nThe remote's way of working.\n", "")
-
-
-def test_in_a_named_repo_a_file_both_layers_hold_is_the_repos_text_then_the_remotes(named):
-    named.on_disk(SURFACES, "# Surfaces\n\nThe repo's part.\n")
-    named.remote.push(SURFACES, "## The method's Surface\n\nThe remote's part.\n")
-
-    ran = named.run(SURFACES)
-
-    assert (ran.status, ran.out) == (
-        0, "# Surfaces\n\nThe repo's part.\n## The method's Surface\n\nThe remote's part.\n"), ran.err
-
-
-def test_in_a_named_repo_a_repo_file_with_no_last_newline_still_ends_its_line_before_the_remotes_text(named):
-    named.on_disk(SURFACES, "# Surfaces")
-    named.remote.push(SURFACES, "The remote's part.\n")
-
-    ran = named.run(SURFACES)
-
-    assert (ran.status, ran.out) == (0, "# Surfaces\nThe remote's part.\n"), ran.err
-
-
-def test_in_a_named_repo_a_folder_read_lists_the_files_of_both_layers(named):
-    named.on_disk(RULES + "words.md", "# Words")
-    named.on_disk(RULES + "testing.md", "# Testing")
-    named.remote.push(RULES + "method.md", "# Method")
-    named.remote.push(RULES + "testing.md", "# More testing")
-
-    ran = named.run(RULES)
-
-    assert (ran.status, ran.out) == (0, RULES + "method.md\n" + RULES + "testing.md\n" + RULES + "words.md\n"), ran.err
-
-
-def test_in_a_named_repo_a_folder_only_the_remote_holds_lists_its_files(named):
-    named.remote.push(RULES + "method.md", "# Method")
-
-    ran = named.run(RULES)
-
-    assert (ran.status, ran.out) == (0, RULES + "method.md\n"), ran.err
-
-
-def test_a_push_to_the_remote_after_the_session_fetched_does_not_change_a_later_read_in_that_session(named):
-    named.remote.push(METHOD, "# Method\n\nThe first version.\n")
-    named.run(METHOD)
-    named.remote.push(METHOD, "# Method\n\nThe second version.\n")
-
-    ran = named.run(METHOD)
-
-    assert (ran.status, ran.out) == (0, "# Method\n\nThe first version.\n"), ran.err
-
-
-def test_a_new_session_reads_the_remotes_new_tip(named):
-    named.remote.push(METHOD, "# Method\n\nThe first version.\n")
-    named.run(METHOD)
-    named.remote.push(METHOD, "# Method\n\nThe second version.\n")
-
-    ran = named.run(METHOD, session="a-later-session")
-
-    assert (ran.status, ran.out) == (0, "# Method\n\nThe second version.\n"), ran.err
-
-
-def test_with_an_unreachable_remote_a_new_session_reads_the_last_copy_fetched(named):
-    named.remote.push(METHOD, "# Method\n\nThe copy fetched.\n")
-    named.run(METHOD)
-    named.remote.unreachable()
-
-    ran = named.run(METHOD, session="a-later-session")
-
-    assert (ran.status, ran.out) == (0, "# Method\n\nThe copy fetched.\n"), ran.err
-
-
-def test_with_an_unreachable_remote_the_session_is_warned_that_the_text_may_be_old(named):
-    named.remote.push(METHOD, "# Method\n\nThe copy fetched.\n")
-    named.run(METHOD)
-    named.remote.unreachable()
-
-    ran = named.run(METHOD, session="a-later-session")
-
-    assert (ran.err.startswith("WARN  remote Steering at {} could not be fetched".format(named.remote.url)),
-            "may be old" in ran.err) == (True, True), ran.err
-
-
-def test_with_an_unreachable_remote_every_read_in_the_session_warns(named):
-    named.remote.push(METHOD, "# Method")
-    named.run(METHOD)
-    named.remote.unreachable()
-    named.run(METHOD, session="a-later-session")
-
-    ran = named.run(METHOD, session="a-later-session")
-
-    assert "may be old" in ran.err, ran.err
-
-
-def test_with_an_unreachable_remote_and_no_copy_on_the_machine_the_read_fails_and_names_the_url(named):
-    named.on_disk(SURFACES, "# Surfaces")
-    named.remote.unreachable()
-
-    ran = named.run(SURFACES)
-
-    assert (ran.status, ran.out, ran.err.startswith("FAIL  remote Steering at {} could not be fetched, and this "
-                                                    "machine holds no copy of it".format(named.remote.url))) == (
-        1, "", True), ran.err
-
-
-def test_a_read_outside_a_session_reads_the_remotes_tip_each_time(named):
-    named.remote.push(METHOD, "# Method\n\nThe first version.\n")
-    named.run(METHOD, session=None)
-    named.remote.push(METHOD, "# Method\n\nThe second version.\n")
-
-    ran = named.run(METHOD, session=None)
-
-    assert (ran.status, ran.out) == (0, "# Method\n\nThe second version.\n"), ran.err
-
-
-def test_in_a_repo_whose_origin_is_not_on_the_list_the_read_is_the_same_as_today(named):
-    named.user_file({"url": named.remote.url, "repos": ["https://example.invalid/another.git"]})
-    named.on_disk(SURFACES, "# Surfaces\n\nThe repo's part.\n")
-    named.remote.push(SURFACES, "The remote's part.\n")
-
-    ran = named.run(SURFACES)
-
-    assert (ran.status, ran.out, ran.err) == (0, "# Surfaces\n\nThe repo's part.\n", "")
-
-
-def test_with_no_url_set_the_read_is_the_same_as_today(named):
-    named.user_file({"repos": [named.repo.origin.as_posix()]})
-    named.on_disk(SURFACES, "# Surfaces\n\nThe repo's part.\n")
-    named.remote.push(SURFACES, "The remote's part.\n")
-
-    ran = named.run(SURFACES)
-
-    assert (ran.status, ran.out, ran.err) == (0, "# Surfaces\n\nThe repo's part.\n", "")
-
-
-def test_with_no_user_file_a_path_only_the_remote_holds_is_missing_and_nothing_warns(named):
-    (named.home / ".skillworks" / "remote-steering.json").unlink()
-    named.remote.push(METHOD, "# Method")
-
-    ran = named.run(METHOD)
-
-    assert (ran.status, ran.out, ran.err) == (1, "", "FAIL  {} is missing.\n".format(METHOD))
-
-
-def test_under_sidecar_steering_a_named_repo_reads_the_sidecars_text_then_the_remotes(named):
-    named.in_sidecar(LOOP, '{"target-branch": "pr"}\n')
-    named.in_sidecar(SURFACES, "The Sidecar's part.\n")
-    named.remote.push(SURFACES, "The remote's part.\n")
-
-    ran = named.run(SURFACES)
-
-    assert (ran.status, ran.out) == (0, "The Sidecar's part.\nThe remote's part.\n"), ran.err
-
-
-def every_file(root):
-    return {path.relative_to(root).as_posix(): path.read_bytes() for path in root.rglob("*") if path.is_file()}
-
-
-def test_reads_leave_no_file_url_or_commit_of_the_remote_in_the_repo_or_the_sidecar(named):
-    named.in_sidecar(LOOP, '{"target-branch": "pr"}\n')
-    named.remote.push(METHOD, "# Method")
-    sidecar = named.repo.work.parent / "work-skillworks"
-    before = (every_file(named.repo.work), every_file(sidecar))
-
-    named.run(METHOD)
-    named.run("docs/skillworks/")
-    named.remote.unreachable()
-    named.run(METHOD, session="a-later-session")
-
-    assert (every_file(named.repo.work), every_file(sidecar)) == before
-
-
-def test_the_command_reads_the_remote_held_for_the_session_it_runs_in(named):
-    named.remote.push(METHOD, "# Method\n\nThe first version.\n")
-    env = dict(os.environ, HOME=str(named.home), USERPROFILE=str(named.home), CLAUDE_CODE_SESSION_ID=SESSION)
-    launch("steering-file", METHOD, where=named.repo.work, env=env)
-    named.remote.push(METHOD, "# Method\n\nThe second version.\n")
-
-    ran = launch("steering-file", METHOD, where=named.repo.work, env=env)
-
-    assert (ran.status, ran.out) == (0, "# Method\n\nThe first version.\n"), ran.err
+    assert (ran.status, ran.out) == (0, RULES + "words.md\n"), ran.err
 
 
 SKILLS = PLUGIN / "skills"

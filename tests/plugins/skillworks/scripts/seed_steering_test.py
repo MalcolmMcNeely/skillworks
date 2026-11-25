@@ -7,8 +7,6 @@ import pytest
 import seed_steering
 from branches.open_the_pull_request import open_the_pull_request
 from conftest import PLUGIN, ROOT, Ran, Repo, git, launch, sidecar_steering, write_steering
-from layers import remote_naming
-from runner import Subprocess
 from seeds import agent_skills
 from suite import Suite
 from tracker.files import CLOSING_NOTE
@@ -2216,7 +2214,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 21
+    assert len(commands) == 20
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -3556,17 +3554,19 @@ def test_setup_asks_whether_commits_credit_claude_and_suggests_hide():
     assert "Never write `\"attribution\": false`" in step
 
 
-def test_setup_asks_whether_this_repo_reads_the_remote_steering_and_asks_for_a_url_when_the_command_does(repo):
-    step = " ".join(setup_section("### 6. Write the settings").split("#### Remote Steering", 1)[1].split())
-    out = io.StringIO()
-    remote_naming.main([repo.work.as_posix(), "yes"], Subprocess(), out, io.StringIO(), home=repo.work.parent / "home")
+def test_the_allowlist_setup_writes_holds_no_remote_steering_command():
+    allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
 
-    assert ("does this repo read your remote Steering?" in step,
-            "`set-remote-steering no`" in step,
-            "`set-remote-steering yes`" in step,
-            "set-remote-steering yes <url>" in step,
-            "When `set-remote-steering yes` says `{}`".format(" ".join(out.getvalue().split()[:3])) in step) == (
-        True, True, True, True, True)
+    assert [rule for rule in allowed if "set-remote-steering" in rule] == []
+
+
+def test_no_skill_or_seed_names_remote_steering():
+    pages = sorted(path for path in SKILLS.rglob("*") if path.is_file() and "__pycache__" not in path.parts)
+
+    named = [page.relative_to(SKILLS).as_posix() for page in pages
+             if re.search(r"remote[ -]steering", page.read_text(encoding="utf-8", errors="replace"), re.IGNORECASE)]
+
+    assert (len(pages) > 0, named) == (True, [])
 
 
 def test_no_skill_seed_or_allowlist_names_the_old_credit_command():

@@ -16,9 +16,8 @@ import land_ticket
 import seed_steering
 import spec_loop
 import ticket_worktree
-from steering import steering_file
 from clock.held_clock import HeldClock
-from conftest import (ROOT, SCRIPTS, Ran, RecordingRunner, RemoteSteering, Repo, check, git, launch,
+from conftest import (ROOT, SCRIPTS, Ran, RecordingRunner, Repo, check, git, launch,
                       no_wait, project_suite, write_loop, write_steering, write_suite)
 from output.streams import speaking_any_character
 from runner import Subprocess, plugin_read_rule
@@ -46,8 +45,6 @@ class Driver:
         self.clock = HeldClock()
         # Swapped mid-run by a case, so a write of the Position can fail on purpose.
         self.replace = os.replace
-        # A home of the case's own, so a developer's remote Steering never reaches a case.
-        self.home = repo.root / "home"
 
     def replaced(self, source, target):
         self.replace(source, target)
@@ -56,7 +53,7 @@ class Driver:
         out, err = io.StringIO(), io.StringIO()
         status = spec_loop.main(
             [str(a) for a in args], self.runner, out, err, self.waits.append, self.clock,
-            self.replaced, self.home)
+            self.replaced)
         return Ran(status, out.getvalue(), err.getvalue())
 
     def records(self):
@@ -5325,7 +5322,7 @@ def overview_table_links():
 
 def test_the_overview_s_table_lists_the_pages_in_run_order():
     assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
-                                      "the-loop/sidecar-steering.md", "the-loop/remote-steering.md",
+                                      "the-loop/sidecar-steering.md", "the-loop/sidecar-steering.md",
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
@@ -5576,12 +5573,11 @@ def test_the_loop_page_never_names_main():
     assert re.search(r"\bmain\b", (ROOT / LOOP_OVERVIEW).read_text(encoding="utf-8")) is None
 
 
-# The remote Steering page names `main` as the branch of the developer's own remote, never as a Target branch.
-def test_no_page_in_the_loop_folder_but_the_target_branch_and_remote_steering_pages_names_main():
+def test_no_page_in_the_loop_folder_but_the_target_branch_page_names_main():
     naming = [page.name for page in loop_folder_pages()
               if re.search(r"\bmain\b", page.read_text(encoding="utf-8"))]
 
-    assert sorted(naming) == ["remote-steering.md", "target-branch.md"]
+    assert naming == ["target-branch.md"]
 
 
 def test_the_target_branch_page_names_main_only_as_an_example_of_a_target_branch():
@@ -6975,157 +6971,3 @@ def test_the_result_file_of_a_nudged_step_keeps_its_name_and_holds_the_newest_re
 
     assert spec_loop.field(loop.records() / "ticket-168-standards.json", "result") == (
         "## Standards. Nothing found.")
-
-
-# --- the remote Steering a run holds -------------------------------------------
-
-METHOD = "docs/skillworks/rules/method.md"
-
-# Each Session's steering-file reads this name, so it is written out here and not imported from the driver.
-REMOTE_VARIABLE = "SKILLWORKS_REMOTE_STEERING_COMMIT"
-
-
-def given_a_remote_that_names_the_repo(loop, text="held\n"):
-    remote = RemoteSteering(loop.repo.root)
-    remote.push(METHOD, text)
-    remote.name_in(loop.home, {"url": remote.url, "repos": [loop.repo.origin.as_posix()]})
-    return remote
-
-
-def remote_held_by_the_run(loop):
-    return (loop.records() / "remote-steering.sha").read_text(encoding="utf-8").strip()
-
-
-def test_a_run_in_a_named_repo_writes_the_commit_it_holds_under_its_records(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = given_a_remote_that_names_the_repo(loop)
-    tip = git(remote.work, "rev-parse", "HEAD").strip()
-
-    loop.run(SPEC, "--dry-run")
-
-    assert remote_held_by_the_run(loop) == tip
-
-
-def test_a_read_in_the_run_after_a_push_to_the_remote_still_gives_the_held_text(loop, runner):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    sessions = given_sessions_that_report(loop)
-    remote = given_a_remote_that_names_the_repo(loop, "held\n")
-    read = []
-
-    def push_then_read():
-        remote.push(METHOD, "pushed mid-run\n")
-        out, err = io.StringIO(), io.StringIO()
-        steering_file.main([METHOD], Subprocess(), out, err, where=runner.where, home=loop.home,
-                           session=str(uuid.uuid4()), run_commit=runner.made[-1].env.get(REMOTE_VARIABLE))
-        read.append(out.getvalue())
-    sessions.then["--stop-after-tests"] = push_then_read
-
-    loop.run(SPEC)
-
-    assert read == ["held\n"]
-
-
-def test_a_run_with_an_unreachable_remote_and_an_earlier_clone_holds_the_last_copy(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = given_a_remote_that_names_the_repo(loop)
-    loop.run(SPEC, "--dry-run")
-    last = remote_held_by_the_run(loop)
-    remote.unreachable()
-
-    loop.run(SPEC, "--dry-run")
-
-    assert remote_held_by_the_run(loop) == last
-
-
-def test_a_run_with_an_unreachable_remote_and_an_earlier_clone_warns_that_the_text_may_be_old(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = given_a_remote_that_names_the_repo(loop)
-    loop.run(SPEC, "--dry-run")
-    remote.unreachable()
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert ("WARN  remote Steering at {} could not be fetched, so the copy last fetched, {}, is read, "
-            "and its text may be old: ").format(remote.url, remote.short_commit) in ran.out
-
-
-def test_a_run_with_an_unreachable_remote_and_no_clone_stops_naming_the_url_and_the_fetch_s_error(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = given_a_remote_that_names_the_repo(loop)
-    remote.unreachable()
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert re.search(re.escape("ABORT remote Steering at {} could not be fetched, and this machine holds no "
-                               "copy of it: ".format(remote.url)) + r".*does not appear to be a git repository",
-                     said(ran))
-
-
-def test_a_run_in_a_repo_not_named_neither_fetches_nor_warns_about_a_remote(loop, runner):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = RemoteSteering(loop.repo.root)
-    remote.push(METHOD, "held\n")
-    remote.name_in(loop.home, {"url": remote.url, "repos": ["https://example.invalid/other.git"]})
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert (runner.built(remote.url), "remote Steering" in said(ran)) == ([], False)
-
-
-def test_no_file_in_the_client_repo_s_history_names_the_remote_s_url_or_commit(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_sessions_that_report(loop)
-    remote = given_a_remote_that_names_the_repo(loop)
-
-    loop.run(SPEC)
-
-    history = git(loop.repo.work, "log", "--all", "-p")
-    assert (remote.url in history, remote_held_by_the_run(loop) in history) == (False, False)
-
-
-# --- what the remote Steering may never hold ----------------------------------
-
-SETTINGS_BLOCK = "# Placement\n\nKeep folders small.\n\n```yaml\nmax-types-per-folder: 4\n```\n"
-
-
-def test_a_run_whose_remote_holds_a_yaml_settings_block_stops_naming_the_file(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = given_a_remote_that_names_the_repo(loop)
-    remote.push("docs/skillworks/rules/placement.md", SETTINGS_BLOCK)
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert ("ABORT remote Steering at {} holds a YAML settings block in docs/skillworks/rules/placement.md. "
-            "A setting is a fact about one repo, so every YAML block is read from the repo's Steering alone. "
-            "Move each block to the repo's Steering.").format(remote.url) in said(ran)
-
-
-def test_a_run_whose_remote_holds_path_rules_stops_saying_they_stay_in_the_repo(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = given_a_remote_that_names_the_repo(loop)
-    remote.push(".claude/rules/api.md", "---\npaths: [\"src/api/**\"]\n---\n\nValidate every input.\n")
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert ("ABORT remote Steering at {} holds .claude/rules/. A path rule names paths in one repo, so path "
-            "rules stay in the repo's Steering. Move them to the repo's .claude/rules/.").format(
-                remote.url) in said(ran)
-
-
-def test_a_run_whose_remote_holds_neither_settings_nor_path_rules_passes_preflight(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    given_a_remote_that_names_the_repo(loop)
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert "the next ticket is #168" in said(ran)
-
-
-def test_the_repo_s_settings_block_is_read_when_the_remote_holds_the_same_file_without_one(loop):
-    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
-    remote = given_a_remote_that_names_the_repo(loop)
-    remote.push("docs/skillworks/domain.md", "# Domain Docs\n\nRead the glossary before each change.\n")
-
-    ran = loop.run(SPEC, "--dry-run")
-
-    assert "the next ticket is #168" in said(ran)

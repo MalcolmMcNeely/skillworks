@@ -1,16 +1,14 @@
 import json
 import os
-import posixpath
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from layers.layers import Layer, repo_steering_of
-from layers.remote import remote_of
 from output.streams import speaking_any_character
 from runner import Subprocess
-from steering.steering_file import SESSION_VARIABLE, folder_files, top
+from steering.steering_file import folder_files, top
 from stop import Stop, misuse
 
 STEPS_FILE = Path(__file__).with_name("steps.json")
@@ -112,31 +110,6 @@ def resolved(name, holder, layer, home):
         return path, shown_path(path, Layer(Path(home), "~/", "user"), home), "user"
     path = Path(os.path.normpath(Path(holder.parent, name)))
     return path, shown_path(path, layer, home), layer.label
-
-
-def user_layer(home):
-    return Layer(Path(home), "~/", "user")
-
-
-# Matches the SessionStart hook: imports resolve in the remote's tree, but ~/ and absolute paths stay local.
-def remote_walked(remote, runner, path, home, hops, seen):
-    key = "remote:" + path
-    if key in seen:
-        return []
-    seen.add(key)
-    text = remote.file(runner, path)
-    found = [Section(ALWAYS, remote.label, path, text)]
-    if text is None or hops == 0:
-        return found
-    for name in imports_of(text):
-        if name.startswith("~/") or os.path.isabs(name):
-            found += walked(*resolved(name, Path(home, ROOT_FILE), user_layer(home), home), user_layer(home), home,
-                            hops - 1, seen)
-            continue
-        inside = posixpath.normpath(posixpath.join(posixpath.dirname(path), name))
-        if inside != ".." and not inside.startswith("../"):
-            found += remote_walked(remote, runner, inside, home, hops - 1, seen)
-    return found
 
 
 def walked(path, shown_as, label, layer, home, hops, seen):
@@ -252,7 +225,7 @@ def key_of(path):
     return os.path.normcase(os.path.normpath(path))
 
 
-def always(repo_steering, home, all_rules, remote, runner):
+def always(repo_steering, home, all_rules):
     seen = set()
     found = []
     for layer in [Layer(Path(home, ".claude"), "~/.claude/", "user")] + repo_steering.layers():
@@ -262,8 +235,6 @@ def always(repo_steering, home, all_rules, remote, runner):
             if rule.label == layer.label and not rule.globs and key_of(rule.file) not in seen:
                 seen.add(key_of(rule.file))
                 found.append(Section(ALWAYS, layer.label, rule.path, rule.text))
-    if remote:
-        found += remote_walked(remote, runner, ROOT_FILE, home, IMPORT_HOPS, seen)
     return found
 
 
@@ -284,24 +255,17 @@ def loaded_by(all_rules, path):
         with_header(Section(ALWAYS, rule.label, rule.path, rule.text)) for rule in loaded)
 
 
-def parts(path, layer, remote, runner):
-    local = read(Path(layer.root, path))
-    theirs = remote.file(runner, path) if remote else None
-    found = [Section(ON_DEMAND, layer.label, path, local)] if local is not None or theirs is None else []
-    return found + ([Section(ON_DEMAND, remote.label, path, theirs)] if theirs is not None else [])
+def part(path, layer):
+    return Section(ON_DEMAND, layer.label, path, read(Path(layer.root, path)))
 
 
-def on_demand(paths, layer, remote, runner):
+def on_demand(paths, layer):
     found = []
     for path in paths:
-        folder = Path(layer.root, path)
-        theirs = remote.folder(runner, path) if remote and path.endswith("/") else None
-        if path.endswith("/") and (folder.is_dir() or theirs is not None):
-            names = (folder_files(layer.root, path) if folder.is_dir() else []) + (theirs or [])
-            for name in sorted(set(names)):
-                found += parts(path + name, layer, remote, runner)
+        if path.endswith("/") and Path(layer.root, path).is_dir():
+            found += [part(path + name, layer) for name in folder_files(layer.root, path)]
         else:
-            found += parts(path, layer, remote, runner)
+            found.append(part(path, layer))
     return found
 
 
@@ -337,7 +301,7 @@ def without_path(argv):
     return argv[:at] + argv[at + 2:], argv[at + 1]
 
 
-def main(argv, runner, out, err, where=None, home=None, session=None):
+def main(argv, runner, out, err, where=None, home=None):
     where = where or os.getcwd()
     home = home or Path.home()
     try:
@@ -353,11 +317,7 @@ def main(argv, runner, out, err, where=None, home=None, session=None):
             return 1
         repo_steering = repo_steering_of(repo)
         all_rules = path_rules(repo_steering.repo.root, home)
-        remote = remote_of(runner, repo, home, session)
-        if remote and remote.warning:
-            err.write("WARN  " + remote.warning + "\n")
-        sections = always(repo_steering, home, all_rules, remote, runner) + on_demand(
-            step["on-demand"], repo_steering.steering, remote, runner)
+        sections = always(repo_steering, home, all_rules) + on_demand(step["on-demand"], repo_steering.steering)
         out.write(shown(step["name"], sections))
         out.write(may_load(all_rules) if path is None else loaded_by(all_rules, path))
         return 0
@@ -370,5 +330,4 @@ if __name__ == "__main__":
     speaking_any_character(sys.stdout)
     speaking_any_character(sys.stderr)
     # python -m runs from the scripts folder, so the caller's folder is handed in first.
-    sys.exit(main(sys.argv[2:], Subprocess(), sys.stdout, sys.stderr, sys.argv[1], Path.home(),
-                  os.environ.get(SESSION_VARIABLE)))
+    sys.exit(main(sys.argv[2:], Subprocess(), sys.stdout, sys.stderr, sys.argv[1], Path.home()))
