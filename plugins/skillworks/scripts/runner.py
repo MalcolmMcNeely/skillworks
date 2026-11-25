@@ -41,6 +41,9 @@ BASH_LIMIT_MS = str(45 * 60 * 1000)
 # The Plugin's commit hook reads it, and adds its value to each commit as the Ticket trailer.
 TICKET_VARIABLE = "SKILLWORKS_TICKET"
 
+# The Plugin's SessionStart hook reads it, and pulls no Steering, because the run holds one commit to its end.
+LOOP_SESSION_VARIABLE = "SKILLWORKS_LOOP_SESSION"
+
 
 PLUGIN_FOLDER = Path(__file__).resolve().parents[1]
 
@@ -90,6 +93,7 @@ def session_changes(trailer=None, sidecar_steering=None):
         # Taken away when there is none, so a Session not started for a ticket never inherits one.
         # Under Sidecar Steering no commit carries a trailer, so no Session is handed a ticket.
         TICKET_VARIABLE: None if sidecar_steering is not None else trailer,
+        LOOP_SESSION_VARIABLE: "1",
     }
     if sidecar_steering is not None:
         changes[ADDED_FOLDER_RULES] = "1"

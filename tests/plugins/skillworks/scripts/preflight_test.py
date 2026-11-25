@@ -380,6 +380,49 @@ def test_an_old_export_key_passes_whatever_its_value(work, target_branch, export
     assert ran.status == 0, said(ran)
 
 
+PULL_SECONDS_REASON = ("must be a whole number from 1 to 240, because Claude Code stops the hook that pulls the "
+                       "Steering repo at 300 seconds, and the pull has to stop first.")
+
+
+@pytest.mark.parametrize("seconds", [241, 0])
+def test_a_steering_pull_limit_outside_1_to_240_fails_and_says_why(work, seconds):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": "main", "steering-pull-seconds": seconds}))
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert ('FAIL  docs/skillworks/loop.json says "steering-pull-seconds": {}, and it {}'
+            .format(seconds, PULL_SECONDS_REASON)) in ran.err
+
+
+@pytest.mark.parametrize("seconds", [2.5, "30", True])
+def test_a_steering_pull_limit_that_is_not_a_whole_number_fails_and_says_why(work, seconds):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": "main", "steering-pull-seconds": seconds}))
+
+    ran = preflight(work)
+
+    assert ran.status == 1, said(ran)
+    assert ('FAIL  docs/skillworks/loop.json says "steering-pull-seconds": {}, and it {}'
+            .format(json.dumps(seconds), PULL_SECONDS_REASON)) in ran.err
+
+
+@pytest.mark.parametrize("seconds", [1, 240])
+def test_a_steering_pull_limit_from_1_to_240_passes(work, seconds):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": "main", "steering-pull-seconds": seconds}))
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+
+
+def test_a_loop_file_with_no_steering_pull_limit_passes(work):
+    work.loop_file(json.dumps({"tracker": "github", "target-branch": "main"}))
+
+    ran = preflight(work)
+
+    assert ran.status == 0, said(ran)
+
+
 def test_an_old_spec_value_fails_before_any_check_of_the_remote_and_says_to_write_pr(work):
     work.target("spec")
 

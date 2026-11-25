@@ -41,7 +41,7 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-steering.mjs"],
-            "timeout": 30
+            "timeout": 300
           }
         ]
       }

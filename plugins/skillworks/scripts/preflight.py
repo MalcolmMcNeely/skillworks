@@ -11,7 +11,7 @@ from output.streams import speaking_any_character
 from runner import Subprocess
 from steering.adr_folder import adr_folder
 from steering.rule_imports import RULES_FOLDER, missing_import
-from steering.target_branch import LOOP_FILE, PR_MODE, target_setting, tracker_setting
+from steering.target_branch import LOOP_FILE, PR_MODE, settings, target_setting, tracker_setting
 from stop import Stop, misuse, refusal
 
 USAGE = "usage: skillworks-preflight [--check-only]\n"
@@ -23,6 +23,11 @@ CACHING_CLAUDE = (2, 1, 242)
 RULES_THAT_REFUSE = ("pull_request", "update", "required_status_checks", "required_deployments", "merge_queue")
 
 LABEL = ("ready-for-agent", "0e8a16", "Fully specified. An agent can take it.")
+
+PULL_SECONDS_KEY = "steering-pull-seconds"
+
+# The Plugin's hooks file gives the SessionStart hook 300 seconds, and the pull must stop well inside it.
+MOST_PULL_SECONDS = 240
 
 
 def ok(out, said):
@@ -77,6 +82,7 @@ class Preflight:
         self.tracker = tracker_setting(self.top)
         self.target = target_setting(self.top)
         self.check_sidecar_steering()
+        self.check_pull_seconds()
         ok(self.out, "adr-folder " + adr_folder(self.top))
         self.check_claude()
         self.origin = self.check_origin()
@@ -119,6 +125,18 @@ class Preflight:
                                          "Skillworks, so write \"tracker\": \"files\" in the Sidecar's {}.")
                           .format(self.tracker, LOOP_FILE))
         ok(self.out, "Sidecar Steering, from " + sidecar.as_posix())
+
+    # A missing limit means 30, so a team that never set one is never stopped.
+    def check_pull_seconds(self):
+        held = settings(self.top)
+        if PULL_SECONDS_KEY not in held:
+            return
+        seconds = held[PULL_SECONDS_KEY]
+        if isinstance(seconds, bool) or not isinstance(seconds, int) or not 1 <= seconds <= MOST_PULL_SECONDS:
+            raise refusal(("{} says \"{}\": {}, and it must be a whole number from 1 to {}, because Claude Code "
+                           "stops the hook that pulls the Steering repo at 300 seconds, and the pull has to stop "
+                           "first.").format(LOOP_FILE, PULL_SECONDS_KEY, json.dumps(seconds), MOST_PULL_SECONDS))
+        ok(self.out, "{} {}".format(PULL_SECONDS_KEY, seconds))
 
     def check_claude(self):
         said = self.runner.run(["claude", "--version"]).out.split()

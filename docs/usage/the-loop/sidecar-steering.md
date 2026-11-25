@@ -7,8 +7,9 @@ must be able to go on without the Plugin, so its repo holds no trace of it: no S
 trailer and no credit for Claude.
 
 The Steering sits in the Sidecar, the folder beside your repo with `-skillworks` on the end of its
-name, such as `shop-skillworks` beside `shop`. The Sidecar is a local git repo with no remote,
-so nothing in it is ever pushed. The Steering being there is what turns the mode on: when the Sidecar
+name, such as `shop-skillworks` beside `shop`. The Sidecar is a local git repo. It has no remote
+unless your team shares its Steering through a
+[Steering repo](#share-the-steering-through-a-steering-repo). The Steering being there is what turns the mode on: when the Sidecar
 holds `docs/skillworks/loop.json`, every read of a Steering file goes to the Sidecar, and none to the
 repo. No setting turns it on, so no setting can disagree with where the Steering sits.
 
@@ -35,6 +36,69 @@ team that does not use Skillworks. Answer yes. Setup then writes:
   `.git/info/exclude`, and never in `.gitignore`.
 
 The repo's tracked files never change. [Setup](../setup.md#sidecar-steering) says more.
+
+## Share the Steering through a Steering repo
+
+A team shares its Steering through a Steering repo: a git repo that holds the whole Steering of one
+repo. Each member's Sidecar is a clone of it. The Steering repo's URL sits in the Sidecar's own git
+remote, so your repo never names it.
+
+### When a Session pulls
+
+Each Session you start pulls the Steering repo once, before it loads the rules. The SessionStart hook
+runs one fast-forward-only pull in the Sidecar, and only then reads the Sidecar's `CLAUDE.md` and its
+imports. So every text in the Session comes from one commit. `/skillworks:grill`,
+`/skillworks:implement` and a plain Session all get the newest Steering.
+
+A Sidecar with no remote is not pulled, and the Session says nothing about a pull.
+
+A Session the loop starts does not pull. The loop marks each Session it starts, and the hook skips the
+pull when it sees the mark.
+
+### A failed or slow pull
+
+A failed pull does not stop the Session. The hook stops the pull and gives you one warning. The
+warning names the reason, and says that the Steering files on disk are read. The Session then goes on
+with those files.
+
+The pull fails when:
+
+- The Steering repo cannot be reached.
+- The pull would overwrite an edit you have not committed. Your file on disk loads, so your edit wins
+  on your machine until you push it.
+- The pull runs past its limit. [The pull's limit](#the-pulls-limit) says how to set it.
+
+### Change the Steering
+
+Use plain git in the Sidecar: edit, commit, push. With the Sidecar's name in place of
+`shop-skillworks`:
+
+```
+cd ../shop-skillworks
+git add docs/skillworks
+git commit -m "Add a rule on test names"
+git push
+```
+
+No Skillworks command commits or pushes the Steering. A skill that writes Steering leaves its edit
+uncommitted, so you check it before you push. Each teammate gets the change when they next start a
+Session.
+
+### The pull's limit
+
+`steering-pull-seconds` in the Sidecar's `docs/skillworks/loop.json` sets how many seconds the pull
+can run. When the key is missing, the limit is 30 seconds, so setup does not write it. Raise it on a
+slow machine or a slow network:
+
+```json
+"steering-pull-seconds": 90
+```
+
+The limit must be a whole number from 1 to 240. The preflight stops on any other value, and says why.
+Claude Code stops the hook at 300 seconds, so a limit of 240 or less always stops the pull first.
+
+The hook reads the limit from the copy of `loop.json` on disk, before the pull. A new limit that a pull
+brings applies from the next Session.
 
 ## It needs PR mode and the files Tracker
 

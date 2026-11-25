@@ -3947,6 +3947,20 @@ def test_every_nudge_is_handed_the_trailer_of_the_ticket_it_works_on(loop, runne
     assert set(nudged) == {"#168"}
 
 
+# The Plugin's SessionStart hook reads this name, and pulls no Steering in a Session that carries it.
+LOOP_SESSION_VARIABLE = "SKILLWORKS_LOOP_SESSION"
+
+
+def test_every_session_of_a_run_is_handed_the_mark_that_stops_its_steering_pull(loop, runner):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_sessions_that_report(loop)
+
+    loop.run(SPEC)
+
+    marks = [(call.env or {}).get(LOOP_SESSION_VARIABLE) for call in runner.made if call.args[0] == "claude"]
+    assert marks and set(marks) == {"1"}
+
+
 def test_the_cut_is_handed_no_ticket_trailer(loop, runner, monkeypatch):
     monkeypatch.setenv(TICKET_VARIABLE, "#1")
     tracker = given_the_tracker_holds(loop, ())
@@ -5322,7 +5336,8 @@ def overview_table_links():
 
 def test_the_overview_s_table_lists_the_pages_in_run_order():
     assert overview_table_links() == ["the-loop/target-branch.md", "the-loop/tracker.md",
-                                      "the-loop/sidecar-steering.md", "the-loop/sidecar-steering.md",
+                                      "the-loop/sidecar-steering.md",
+                                      "the-loop/sidecar-steering.md#share-the-steering-through-a-steering-repo",
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",

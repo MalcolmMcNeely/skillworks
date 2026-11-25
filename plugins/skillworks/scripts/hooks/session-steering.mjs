@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { text } from "node:stream/consumers";
 import { loopFileInBoth, sidecarSteering } from "./steering-folder.mjs";
+import { pullSteering } from "./steering-pull.mjs";
 
 // Claude Code follows imports this many hops deep, so a rule nested past it loads in neither place.
 const IMPORT_HOPS = 5;
@@ -76,14 +77,23 @@ try {
   const where = typeof payload.cwd === "string" ? payload.cwd : process.cwd();
   const sidecar = sidecarSteering(where);
   if (sidecar !== undefined) {
+    // Before the rules load, so every text in the Session comes from one commit.
+    const pullFault = await pullSteering(sidecar);
     const steering = expanded(join(sidecar, ROOT_FILE), sidecar, IMPORT_HOPS, new Set());
     const inBoth = loopFileInBoth(where);
-    const warning = inBoth === undefined ? "" : `WARNING: ${inBoth} Preflight stops every run until you do.\n\n`;
+    const warnings = [
+      pullFault === undefined ? undefined : `WARNING: ${pullFault}`,
+      inBoth === undefined ? undefined : `WARNING: ${inBoth} Preflight stops every run until you do.`,
+    ].filter(Boolean);
+    const warningText = warnings.map((said) => `${said}\n\n`).join("");
     const context =
-      `${warning}Sidecar Steering is on. The Steering sits in the Sidecar at ${sidecar.replaceAll("\\", "/")}, and not in ` +
+      `${warningText}Sidecar Steering is on. The Steering sits in the Sidecar at ${sidecar.replaceAll("\\", "/")}, and not in ` +
       "the repo. Read each Steering file with steering-file. The Sidecar's CLAUDE.md and each file it imports " +
       `follow, and they hold the team's rules.\n\n${steering}`;
-    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } }));
+    const answer = { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } };
+    // The context reaches only the model, and the person has to see that their Steering may be stale.
+    if (pullFault !== undefined) answer.systemMessage = `WARNING: ${pullFault}`;
+    process.stdout.write(JSON.stringify(answer));
   }
 } catch {
   // A Session must start even when the Sidecar cannot be read, and the rules then load from the repo as before.

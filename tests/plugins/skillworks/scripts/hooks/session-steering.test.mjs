@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
@@ -45,7 +46,8 @@ async function sidecarSteering() {
   await inSidecar("docs/skillworks/rules/words.md", "# Words\n\nNo source file uses a word that lost.\n");
 }
 
-function start(cwd) {
+// The developer's own Session may carry the driver's mark, and the hook would then never pull.
+function start(cwd, marks = {}) {
   const payload = {
     session_id: "3f2a9c1e-5b7d-4e8f-a1c2-9d0e6b4f7a31",
     transcript_path: "/home/dev/.claude/projects/work/3f2a9c1e.jsonl",
@@ -54,7 +56,8 @@ function start(cwd) {
     source: "startup",
   };
   return new Promise((done, fail) => {
-    const child = spawn(process.execPath, [SCRIPT], { cwd: temp });
+    const env = { ...process.env, SKILLWORKS_LOOP_SESSION: "", ...marks };
+    const child = spawn(process.execPath, [SCRIPT], { cwd: temp, env });
     let out = "";
     let err = "";
     child.stdout.on("data", (chunk) => (out += chunk));
@@ -65,8 +68,8 @@ function start(cwd) {
   });
 }
 
-async function contextFor(cwd) {
-  const ran = await start(cwd);
+async function contextFor(cwd, marks) {
+  const ran = await start(cwd, marks);
   assert.equal(ran.status, 0, ran.err);
   assert.equal(ran.err, "");
   if (ran.out === "") return undefined;
@@ -83,6 +86,16 @@ test("the Plugin runs this script when a Session starts, from the Plugin root", 
   const entries = hooks.SessionStart.flatMap((group) => group.hooks);
   assert.ok(entries.some((entry) => entry.command === "node" &&
     entry.args.join(" ") === "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-steering.mjs"));
+});
+
+test("the Plugin gives this script 300 seconds, so a pull held to 240 always stops first", async () => {
+  // Act
+  const hooks = JSON.parse(await readFile(join(PLUGIN, "hooks", "hooks.json"), "utf8")).hooks;
+
+  // Assert
+  const entry = hooks.SessionStart.flatMap((group) => group.hooks)
+    .find((held) => held.args.join(" ").endsWith("/scripts/hooks/session-steering.mjs"));
+  assert.equal(entry.timeout, 300);
 });
 
 test("a Session started under Sidecar Steering gets the Sidecar's CLAUDE.md", async () => {
@@ -189,4 +202,148 @@ test("a Session started outside any repo gets nothing from the hook", async () =
 
   // Assert
   assert.equal(context, undefined);
+});
+
+const IDENTITY = ["-c", "user.name=Test", "-c", "user.email=test@example.invalid"];
+
+const STEERING_REPO = () => join(temp, "steering.git");
+
+const TEAMMATE = () => join(temp, "teammate");
+
+async function commitAll(where, files) {
+  for (const [name, text] of Object.entries(files)) {
+    await mkdir(dirname(join(where, name)), { recursive: true });
+    await writeFile(join(where, name), text);
+  }
+  git(where, "add", "-A");
+  git(where, ...IDENTITY, "commit", "--quiet", "-m", "Steering");
+}
+
+const TEAM_STEERING = {
+  "docs/skillworks/loop.json": JSON.stringify({ tracker: "files", "target-branch": "pr" }),
+  "CLAUDE.md": "# The team's rules\n\n@docs/skillworks/rules/words.md\n",
+  "docs/skillworks/rules/words.md": "# Words\n\nThe first version of the words.\n",
+};
+
+async function steeringRepo(files = TEAM_STEERING) {
+  execFileSync("git", ["init", "--quiet", "--bare", "--initial-branch=main", STEERING_REPO()]);
+  clone(STEERING_REPO(), TEAMMATE());
+  await commitAll(TEAMMATE(), files);
+  git(TEAMMATE(), "push", "--quiet", "-u", "origin", "main");
+  clone(STEERING_REPO(), sidecar);
+}
+
+// The machine's own autocrlf would turn the rules' line ends, and the context shows them as they sit.
+function clone(from, to) {
+  execFileSync("git", ["clone", "--quiet", "-c", "core.autocrlf=false", from, to], { stdio: "ignore" });
+}
+
+async function teammatePushes(files) {
+  await commitAll(TEAMMATE(), files);
+  git(TEAMMATE(), "push", "--quiet", "origin", "main");
+}
+
+const NEWER_WORDS = { "docs/skillworks/rules/words.md": "# Words\n\nThe second version of the words.\n" };
+
+test("a Session started under Sidecar Steering with a Steering repo loads the rules a teammate pushed", async () => {
+  // Arrange
+  await steeringRepo();
+  await teammatePushes(NEWER_WORDS);
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.match(context, /The second version of the words\./);
+});
+
+const PULL_WARNING = /WARNING: the pull of the Steering repo into the Sidecar [^\n]+\. The Steering files on disk are read\./g;
+
+function warningsIn(context) {
+  return context.match(PULL_WARNING) ?? [];
+}
+
+test("a Session whose Steering repo is gone is warned once and loads the rules on disk", async () => {
+  // Arrange
+  await steeringRepo();
+  await rm(STEERING_REPO(), { recursive: true, force: true });
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.deepEqual([warningsIn(context).length, /The first version of the words\./.test(context)], [1, true], context);
+});
+
+test("a Session whose uncommitted edit the pull would overwrite is warned and loads the edit", async () => {
+  // Arrange
+  await steeringRepo();
+  await teammatePushes(NEWER_WORDS);
+  await inSidecar("docs/skillworks/rules/words.md", "# Words\n\nMy own edit of the words.\n");
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.deepEqual([warningsIn(context).length, /My own edit of the words\./.test(context)], [1, true], context);
+});
+
+test("a Session whose Sidecar has no remote loads its rules and says nothing of a pull", async () => {
+  // Arrange
+  await sidecarSteering();
+  execFileSync("git", ["init", "--quiet", sidecar]);
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.deepEqual([/pull/i.test(context), /No source file uses a word that lost\./.test(context)], [false, true], context);
+});
+
+// It takes git's connection and never answers it, so only the pull's limit can end the pull.
+async function silentRemote() {
+  const held = [];
+  const server = createServer((socket) => {
+    // The hook stops git mid-connection, and the reset it causes is what the stand-in expects.
+    socket.on("error", () => {});
+    held.push(socket);
+  });
+  await new Promise((done) => server.listen(0, "127.0.0.1", done));
+  return {
+    url: `git://127.0.0.1:${server.address().port}/steering.git`,
+    close: () => {
+      held.forEach((socket) => socket.destroy());
+      server.close();
+    },
+  };
+}
+
+test("a Session whose Steering repo never answers is warned once the pull runs past its limit", async (t) => {
+  // Arrange
+  const loop = { tracker: "files", "target-branch": "pr", "steering-pull-seconds": 1 };
+  await steeringRepo({ ...TEAM_STEERING, "docs/skillworks/loop.json": JSON.stringify(loop) });
+  const remote = await silentRemote();
+  t.after(remote.close);
+  git(sidecar, "remote", "set-url", "origin", remote.url);
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.deepEqual(warningsIn(context), [
+    "WARNING: the pull of the Steering repo into the Sidecar ran past its limit of 1 second. " +
+    "The Steering files on disk are read.",
+  ]);
+});
+
+test("a loop Session, given the driver's mark, loads the rules on disk and does not pull", async () => {
+  // Arrange
+  await steeringRepo();
+  await teammatePushes(NEWER_WORDS);
+
+  // Act
+  const context = await contextFor(work, { SKILLWORKS_LOOP_SESSION: "1" });
+
+  // Assert
+  assert.match(context, /The first version of the words\./);
 });
