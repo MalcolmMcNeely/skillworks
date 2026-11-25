@@ -167,6 +167,28 @@ These files stay where a tool or a design places them.
 | The folder `adr-folder` names, `docs/adr/` by default | Your decisions, one file each, with the options you turned down. | The grill writes an ADR as a decision settles. The `architecture` review reads the ADRs that touch the change. | All of it. Write a new ADR to change a decision, rather than editing an old one. |
 | A linter's own rules file, such as `.dependency-cruiser.cjs` | The rules a linter enforces, in the place the linter looks. | The linter, when a Suite check or a placement check runs it. | All of it. A review skips what a linter already enforces. |
 
+## Move the Plugin pin
+
+The shared `.claude/settings.json` installs the Plugin from GitHub at one commit, the `ref` of its
+Marketplace. Every member runs the Plugin at that commit. Under Sidecar Steering the shared file is
+the Sidecar's, and otherwise it is the repo's.
+
+`set-plugin-commit` moves the pin:
+
+```bash
+set-plugin-commit
+set-plugin-commit <sha>
+```
+
+With no sha, it pins the tip of Skillworks `main`. With a sha, it pins that commit, so you can step
+back from a bad Plugin. Give the full sha. The command prints the old and the new commit.
+
+It commits nothing. Review the edit, then commit and push it with git, like every other Steering
+edit.
+
+The command writes nothing when the shared settings name the Plugin by a folder source, or name no
+Marketplace. A folder source pins no commit.
+
 ## What is fixed
 
 Some opinions are how Skillworks works. They are Machinery: the same in every repo, run from the

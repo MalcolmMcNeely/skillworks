@@ -2214,7 +2214,7 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
     commands = sorted(path.name for path in (PLUGIN / "bin").iterdir())
 
-    assert len(commands) == 20
+    assert len(commands) == 21
     for command in commands:
         assert "Bash({}:*)".format(command) in allowed
     assert "Bash(git commit:*)" in allowed
@@ -2224,6 +2224,20 @@ def test_the_allowlist_names_the_short_commands_and_no_tool_of_a_suite():
     for entry in [entry for entry in allowed if entry.startswith("Bash(")]:
         tool = entry[len("Bash("):].split(" ")[0].split(":")[0]
         assert tool in ["gh", "git"] + commands, entry
+
+
+def test_the_allowlist_setup_writes_holds_set_plugin_commit():
+    allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
+
+    assert "Bash(set-plugin-commit:*)" in allowed
+
+
+def test_the_steering_page_says_what_set_plugin_commit_pins_and_that_the_developer_pushes_after():
+    page = " ".join((USER_DOCS / "steering.md").read_text(encoding="utf-8").split())
+    part = page.split("## Move the Plugin pin", 1)[1].split(" ## ", 1)[0]
+
+    assert ("set-plugin-commit" in part, "tip of Skillworks `main`" in part, "commit and push" in part) == (
+        True, True, True)
 
 
 def test_the_allowlist_lets_a_skill_read_the_files_of_an_installed_plugin():
