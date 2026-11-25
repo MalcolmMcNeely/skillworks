@@ -92,6 +92,21 @@ No Skillworks command commits or pushes the Steering. A skill that writes Steeri
 uncommitted, so you check it before you push. Each teammate gets the change when they next start a
 Session.
 
+### The team's settings
+
+The Sidecar's `.claude/settings.json` holds the team's shared Claude Code settings, and you push it
+with the rest of the Steering. When a Session's pull changes that file, the hook merges it into
+`.claude/settings.local.json` in the checkout you cloned:
+
+- A key in the shared file wins over the same key in your local file.
+- The shared entries join your `permissions.allow` and `permissions.deny`.
+- Every entry and key that only your local file holds stays. So the "always allow" rules you clicked
+  are kept.
+
+Claude Code reads its settings once, when a Session starts. So a settings change applies from the next
+Session, and the hook says so. A pull that does not change the shared settings file merges nothing,
+and the hook says nothing about settings.
+
 ### The pull's limit
 
 `steering-pull-seconds` in the Sidecar's `docs/skillworks/loop.json` sets how many seconds the pull

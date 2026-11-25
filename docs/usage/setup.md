@@ -179,7 +179,7 @@ then writes:
 | Where | What |
 |---|---|
 | The Sidecar: the folder beside your main checkout with `-skillworks` on the end of its name | Every Steering file above and its base copy, under `docs/skillworks/`. `loop.json` with `target-branch` as `pr` and `tracker` as `files`. `CLAUDE.md` with the `## Agent skills` block and its imports. `.claude/settings.json` with the settings, which the loop hands to every Session. |
-| `.claude/settings.local.json` in your main checkout | The same settings, for the sessions you start yourself. |
+| `.claude/settings.local.json` in your main checkout | The same settings, for the sessions you start yourself. After each pull that changes the Sidecar's `.claude/settings.json`, the SessionStart hook merges it into this file again and keeps your own entries. [The team's settings](the-loop/sidecar-steering.md#the-teams-settings) says how. |
 | Your repo's git exclude file, `.git/info/exclude` | The working folders and `.claude/settings.local.json`. Git reads it like `.gitignore`, but nobody else sees it. |
 
 The repo's tracked files never change: not `.gitignore`, not `CLAUDE.md`, not `.claude/settings.json`.

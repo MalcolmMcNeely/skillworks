@@ -336,6 +336,101 @@ test("a Session whose Steering repo never answers is warned once the pull runs p
   ]);
 });
 
+const SHARED_SETTINGS = ".claude/settings.json";
+
+const LOCAL_SETTINGS = () => join(work, ".claude", "settings.local.json");
+
+const TEAM_SETTINGS = {
+  permissions: { allow: ["Bash(git push)"], deny: ["WebSearch"] },
+  autoMemoryEnabled: false,
+};
+
+const NEWER_SETTINGS = {
+  permissions: { allow: ["Bash(git push)", "Bash(gh issue close:*)"], deny: ["WebSearch", "WebFetch"] },
+  autoMemoryEnabled: false,
+  promptCacheTtl: "1h",
+  enabledPlugins: { "skillworks@skillworks": true },
+};
+
+const MY_SETTINGS = {
+  permissions: { allow: ["Bash(git push)", "Bash(npm test)"], deny: ["Read(./.env)"], ask: ["Bash(rm:*)"] },
+  autoMemoryEnabled: true,
+  outputStyle: "Explanatory",
+  enabledPlugins: { "mine@mine": true },
+};
+
+async function settingsRepo() {
+  await steeringRepo({ ...TEAM_STEERING, [SHARED_SETTINGS]: JSON.stringify(TEAM_SETTINGS) });
+  await mkdir(dirname(LOCAL_SETTINGS()), { recursive: true });
+  await writeFile(LOCAL_SETTINGS(), JSON.stringify(MY_SETTINGS, null, 2));
+}
+
+async function localSettings() {
+  return JSON.parse(await readFile(LOCAL_SETTINGS(), "utf8"));
+}
+
+test("a pull that changes the team's shared settings merges them into the main checkout's local settings", async () => {
+  // Arrange
+  await settingsRepo();
+  await teammatePushes({ [SHARED_SETTINGS]: JSON.stringify(NEWER_SETTINGS) });
+
+  // Act
+  await contextFor(nested);
+
+  // Assert
+  const merged = await localSettings();
+  assert.deepEqual(
+    [merged.permissions.allow.includes("Bash(gh issue close:*)"), merged.permissions.deny.includes("WebFetch"),
+      merged.promptCacheTtl, merged.autoMemoryEnabled],
+    [true, true, "1h", false],
+    JSON.stringify(merged));
+});
+
+test("a merge of the team's shared settings keeps every entry and key only the local settings held", async () => {
+  // Arrange
+  await settingsRepo();
+  await teammatePushes({ [SHARED_SETTINGS]: JSON.stringify(NEWER_SETTINGS) });
+
+  // Act
+  await contextFor(work);
+
+  // Assert
+  const merged = await localSettings();
+  assert.deepEqual(
+    [merged.permissions.allow.includes("Bash(npm test)"), merged.permissions.deny.includes("Read(./.env)"),
+      merged.permissions.ask, merged.outputStyle, merged.enabledPlugins["mine@mine"]],
+    [true, true, ["Bash(rm:*)"], "Explanatory", true],
+    JSON.stringify(merged));
+});
+
+test("a Session whose pull changed the team's shared settings is told the change applies from the next Session", async () => {
+  // Arrange
+  await settingsRepo();
+  await teammatePushes({ [SHARED_SETTINGS]: JSON.stringify(NEWER_SETTINGS) });
+
+  // Act
+  const ran = await start(work);
+
+  // Assert
+  const answer = JSON.parse(ran.out);
+  const told = /The change applies from the next Session\./;
+  assert.deepEqual([told.test(answer.systemMessage), told.test(answer.hookSpecificOutput.additionalContext)],
+    [true, true], ran.out);
+});
+
+test("a pull that leaves the team's shared settings as they were leaves the local settings untouched", async () => {
+  // Arrange
+  await settingsRepo();
+  await teammatePushes(NEWER_WORDS);
+  const before = await readFile(LOCAL_SETTINGS(), "utf8");
+
+  // Act
+  const context = await contextFor(work);
+
+  // Assert
+  assert.deepEqual([await readFile(LOCAL_SETTINGS(), "utf8"), /settings/i.test(context)], [before, false], context);
+});
+
 test("a loop Session, given the driver's mark, loads the rules on disk and does not pull", async () => {
   // Arrange
   await steeringRepo();

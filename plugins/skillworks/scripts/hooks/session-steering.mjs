@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { text } from "node:stream/consumers";
 import { loopFileInBoth, sidecarSteering } from "./steering-folder.mjs";
+import { mergeSharedSettings, sharedSettingsText } from "./shared-settings.mjs";
 import { pullSteering } from "./steering-pull.mjs";
 
 // Claude Code follows imports this many hops deep, so a rule nested past it loads in neither place.
@@ -78,21 +79,29 @@ try {
   const sidecar = sidecarSteering(where);
   if (sidecar !== undefined) {
     // Before the rules load, so every text in the Session comes from one commit.
+    const settingsBefore = sharedSettingsText(sidecar);
     const pullFault = await pullSteering(sidecar);
+    const settingsAfter = sharedSettingsText(sidecar);
+    const settings = settingsAfter === undefined || settingsAfter === settingsBefore
+      ? {}
+      : mergeSharedSettings(where, sidecar);
     const steering = expanded(join(sidecar, ROOT_FILE), sidecar, IMPORT_HOPS, new Set());
     const inBoth = loopFileInBoth(where);
-    const warnings = [
-      pullFault === undefined ? undefined : `WARNING: ${pullFault}`,
+    const faults = [pullFault, settings.warning].filter(Boolean).map((fault) => `WARNING: ${fault}`);
+    const notices = [
+      ...faults,
       inBoth === undefined ? undefined : `WARNING: ${inBoth} Preflight stops every run until you do.`,
+      settings.said,
     ].filter(Boolean);
-    const warningText = warnings.map((said) => `${said}\n\n`).join("");
+    const noticeText = notices.map((said) => `${said}\n\n`).join("");
     const context =
-      `${warningText}Sidecar Steering is on. The Steering sits in the Sidecar at ${sidecar.replaceAll("\\", "/")}, and not in ` +
+      `${noticeText}Sidecar Steering is on. The Steering sits in the Sidecar at ${sidecar.replaceAll("\\", "/")}, and not in ` +
       "the repo. Read each Steering file with steering-file. The Sidecar's CLAUDE.md and each file it imports " +
       `follow, and they hold the team's rules.\n\n${steering}`;
     const answer = { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } };
-    // The context reaches only the model, and the person has to see that their Steering may be stale.
-    if (pullFault !== undefined) answer.systemMessage = `WARNING: ${pullFault}`;
+    // The context reaches only the model, and the person has to see that their Steering may be stale or their settings wait for the next Session.
+    const toPerson = [...faults, settings.said].filter(Boolean);
+    if (toPerson.length > 0) answer.systemMessage = toPerson.join("\n");
     process.stdout.write(JSON.stringify(answer));
   }
 } catch {
