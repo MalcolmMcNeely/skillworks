@@ -57,8 +57,9 @@ Then run setup:
 
 Setup installs the Plugin from GitHub at a pinned commit. It writes the Marketplace and the Plugin
 into the shared settings file: the Sidecar's `.claude/settings.json` under Sidecar Steering, and your
-repo's `.claude/settings.json` otherwise. The Marketplace names the Skillworks repo on GitHub, the
-path of its `marketplace.json`, and a `ref` that pins one commit. The pin starts at the tip of the
+repo's `.claude/settings.json` otherwise. The Marketplace names the Skillworks repo on GitHub and a
+`ref` that pins one commit. It names no `path`, because the install reads the `marketplace.json` at
+the root of the Skillworks repo and nothing else. The pin starts at the tip of the
 Skillworks main branch when setup runs. Nothing in the file belongs to one machine, so a teammate
 gets the Plugin on trust, at the same commit as you. Setup then runs the Plugin install once on your
 machine, so your own Sessions load the Plugin the settings name. A commit pin needs Claude Code

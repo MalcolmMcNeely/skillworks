@@ -64,7 +64,6 @@
       "source": {
         "source": "github",
         "repo": "MalcolmMcNeely/skillworks",
-        "path": "plugins/.claude-plugin/marketplace.json",
         "ref": "<the commit at the tip of Skillworks main>"
       }
     }

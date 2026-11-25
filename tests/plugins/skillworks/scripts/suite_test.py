@@ -346,6 +346,9 @@ PLUGIN = "plugins/skillworks"
 # Claude Code drops a skill whose frontmatter does not parse, and only its own parser says so.
 PLUGIN_CHECK_COMMAND = ["claude", "plugin", "validate", PLUGIN]
 
+# A GitHub install reads the Marketplace at the repo root, so Claude Code's own parser judges that one too.
+ROOT_MARKETPLACE_CHECK_COMMAND = ["claude", "plugin", "validate", "."]
+
 # The mod tests run against the Claude Code installed, so they catch an API that moved.
 MOD_TESTS_COMMAND = ["claude", "plugin", "test", PLUGIN]
 
@@ -367,6 +370,7 @@ def test_this_repo_s_suite_file_runs_the_checks_the_contributing_page_names(runn
                   if call.args[0] != "docker" and call.args[:2] != ["npm", "ci"]) == sorted([
         (" ".join(MOD_TESTS_COMMAND), ROOT.as_posix()),
         (" ".join(PLUGIN_CHECK_COMMAND), ROOT.as_posix()),
+        (" ".join(ROOT_MARKETPLACE_CHECK_COMMAND), ROOT.as_posix()),
         (" ".join(DOCKER_TESTS_MAKER), ROOT.as_posix()),
         (f"dotnet build {DOCKER_TESTS}", ROOT.as_posix()),
         *((" ".join(check["command"]), ROOT.as_posix()) for check in made["checks"]),
@@ -2639,7 +2643,8 @@ def this_repo_s_facts():
         # Every Plugin command runs in bash, so a page may name it, and the script after it is the fact.
         if written(entry)[0] != "bash":
             facts.add(written(entry)[0])
-        facts.update(word for word in written(entry)[1:] if "." in word or "/" in word)
+        # A bare `.` names the folder a check runs in, which is no fact of this repo.
+        facts.update(word for word in written(entry)[1:] if ("." in word or "/" in word) and word.strip("./"))
         if entry["folder"] != ".":
             facts.add(entry["folder"])
     return facts
@@ -2714,6 +2719,7 @@ DOCKER_TESTS_IGNORE = {
     "src/Skillworks.AppHost/*.yaml": "the tests start Tempo with the Core tests' own settings",
     "tests/Skillworks.Architecture.Tests": "it is in no project of the filter",
     "tests/plugins": "the Python and Node tests are no part of the filter",
+    ".claude-plugin": "the API tests read a test Marketplace of their own",
     "plugins/.claude-plugin": "the API tests read a test Marketplace of their own",
     "plugins/skillworks/.claude-plugin": "the API tests read a test Marketplace of their own",
     "plugins/skillworks/bin": "of the Plugin the tests read only session-watch.mjs",
@@ -2741,6 +2747,7 @@ PLUGIN_CHECK_IGNORE = {
     "aspire.config.json": "only the Aspire CLI reads it",
     "Skillworks.slnx": "the Plugin builds no C#",
     "Skillworks.Studio.slnf": "the Plugin builds no C#",
+    ".claude-plugin": "the Marketplace sits beside the Plugin's folder, not in it",
     "plugins/.claude-plugin": "the Marketplace sits beside the Plugin's folder, not in it",
 }
 
@@ -2772,6 +2779,21 @@ def test_this_repo_holds_the_plugin_and_keeps_the_folder_source():
         "extraKnownMarketplaces"]["skillworks"]["source"]
 
     assert source == {"source": "directory", "path": "./plugins"}
+
+
+def marketplace_less_its_plugin_source(folder, plugin_source):
+    held = json.loads((ROOT / folder / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    assert held["plugins"], folder
+    for plugin in held["plugins"]:
+        assert plugin.pop("source") == plugin_source
+    return held
+
+
+# A GitHub install reads the root Marketplace, and this repo's own settings read the one under plugins.
+@pytest.mark.this_repo
+def test_the_root_marketplace_names_what_the_marketplace_under_plugins_names():
+    assert marketplace_less_its_plugin_source(".", "./plugins/skillworks") == marketplace_less_its_plugin_source(
+        "plugins", "./skillworks")
 
 
 def plugin_checks(command=PLUGIN_CHECK_COMMAND):
@@ -2898,7 +2920,7 @@ def test_this_repo_s_suite_file_names_a_baseline_that_builds_the_solution():
 
 
 def test_the_contributing_page_lists_every_check_of_this_repo_s_suite():
-    assert len(this_repo_s_checks()) == 11
+    assert len(this_repo_s_checks()) == 12
     section = checks_section("docs/CONTRIBUTING.md", "## Checks").split("\n### ")[0]
     commands = section.split("```")[1].replace('"', "")
 

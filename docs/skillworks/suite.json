@@ -38,6 +38,7 @@
         "src/Skillworks.AppHost/*.yaml",
         "tests/Skillworks.Architecture.Tests",
         "tests/plugins",
+        ".claude-plugin",
         "plugins/.claude-plugin",
         "plugins/skillworks/.claude-plugin",
         "plugins/skillworks/bin",
@@ -102,8 +103,13 @@
         "aspire.config.json",
         "Skillworks.slnx",
         "Skillworks.Studio.slnf",
+        ".claude-plugin",
         "plugins/.claude-plugin"
       ]
+    },
+    {
+      "command": ["claude", "plugin", "validate", "."],
+      "folder": "."
     },
     {
       "command": ["claude", "plugin", "test", "plugins/skillworks"],
@@ -123,6 +129,7 @@
         "aspire.config.json",
         "Skillworks.slnx",
         "Skillworks.Studio.slnf",
+        ".claude-plugin",
         "plugins/.claude-plugin"
       ]
     },

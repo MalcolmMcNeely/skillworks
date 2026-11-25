@@ -2251,7 +2251,6 @@ def test_the_settings_seed_names_the_plugin_by_a_github_source_pinned_to_a_commi
         "extraKnownMarketplaces"]["skillworks"]["source"]
 
     assert source == {"source": "github", "repo": "MalcolmMcNeely/skillworks",
-                      "path": "plugins/.claude-plugin/marketplace.json",
                       "ref": "<the commit at the tip of Skillworks main>"}
 
 
