@@ -2766,6 +2766,14 @@ def test_what_the_docker_tests_ignore_leaves_the_files_they_read():
         assert not any(read == path or read.startswith(path + "/") for path in DOCKER_TESTS_IGNORE), read
 
 
+@pytest.mark.this_repo
+def test_this_repo_holds_the_plugin_and_keeps_the_folder_source():
+    source = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))[
+        "extraKnownMarketplaces"]["skillworks"]["source"]
+
+    assert source == {"source": "directory", "path": "./plugins"}
+
+
 def plugin_checks(command=PLUGIN_CHECK_COMMAND):
     return [entry for entry in this_repo_s_checks() if written(entry) == command]
 

@@ -61,8 +61,10 @@
   "extraKnownMarketplaces": {
     "skillworks": {
       "source": {
-        "source": "directory",
-        "path": "<the folder that holds .claude-plugin/marketplace.json>"
+        "source": "github",
+        "repo": "MalcolmMcNeely/skillworks",
+        "path": "plugins/.claude-plugin/marketplace.json",
+        "ref": "<the commit at the tip of Skillworks main>"
       }
     }
   },

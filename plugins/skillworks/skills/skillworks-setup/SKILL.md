@@ -28,8 +28,8 @@ The outputs:
 | `docs/skillworks/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
 | `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. Under Sidecar Steering they go to the repo's git exclude file instead, with `.claude/settings.local.json`. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/skillworks/` does not. The block is a Seed: `seed-agent-skills` builds it, and a second run merges a person's edits. |
-| The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. |
-| The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes. It lets a skill read its own files, with `Read(~/.claude/plugins/**)` and, when the Marketplace folder sits outside the repo, a read rule for that folder, because a Session run by hand would stop to ask on a read outside the repo. The driver gives a loop Session its own read rule. It names no tool the Suite runs: those are the team's to add. |
+| The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. The Marketplace is a GitHub source pinned to one commit, so every member runs the Plugin at the commit the Steering pins. A repo that holds the Plugin's `marketplace.json` keeps a folder source. |
+| The allowlist in `.claude/settings.json` | Without it every `gh` and `git push` in the loop stops for a prompt, so the loop is not unattended. It names the Plugin's short commands and the `gh` and `git` calls the loop makes. It lets a skill read its own files from the installed Plugin's folder, with `Read(~/.claude/plugins/**)`, because a Session run by hand would stop to ask on a read outside the repo. The driver gives a loop Session its own read rule. It names no tool the Suite runs: those are the team's to add. |
 | An `attribution` block in `.claude/settings.json`, rewritten from `co-authored-by` every time setup runs | Claude Code credits Claude on each commit and pull request unless `attribution` says otherwise. Its commit credit is always off, because the Plugin's hook adds the credit line when `co-authored-by` says `show`. Its pull request credit is off for `hide` only. The block follows the answer in `loop.json`, so a block someone edited by hand comes back into step. |
 | Three trailer rules in `.git/config`, written by the Plugin's hook and not by setup, on the first commit it rewrites in each clone | `trailer.Skillworks-Session.ifExists=addIfDifferent`, `trailer.Co-Authored-By.ifExists=addIfDifferent` and `trailer.Ticket.ifExists=replace`. They make a typed `Ticket` line give way to the hook's, and keep an amend by the same Session from adding a line twice. They sit in the config and not in the command, so a team's allow rule for `git commit` still matches. Setup writes nothing for them. |
 | `"promptCacheTtl": "1h"` and `"subagentPromptCacheTtl": "1h"` in `.claude/settings.json` | A loop Session waits on the Suite and on its sub-agents for longer than the default five minutes of prompt cache. With one hour, each ticket reads its prompt from a warm cache and does not pay for a cold one. |
@@ -206,9 +206,17 @@ If it fails, stop and report. Every step below assumes the remote works, and wit
 
 Under Sidecar Steering, write the settings below to two files, and never to the repo's `.claude/settings.json`, which the team owns. Write them to the Sidecar's `.claude/settings.json`, which the driver hands to every loop Session. Write the same to `.claude/settings.local.json` in the main checkout, because the developer's own sessions run there and never read the Sidecar's file. Merge into each file as below. Ask no credit question, and run `set-co-authored-by hide`: the team the work goes to sees no credit for Claude, so the command turns Claude Code's own credit off in both files, whatever the answer. When step 1 cloned a Steering repo that holds Steering, the Sidecar's `.claude/settings.json` is the team's: leave it as it is, and merge it into `.claude/settings.local.json` alone.
 
-Copy [settings.json](./settings.json) to `.claude/settings.json`. The Marketplace `path` in it is a placeholder. Write the folder that holds this Plugin's `.claude-plugin/marketplace.json`, which is three folders above this skill's base directory. Write it relative to the repo root, starting `./`, when it sits inside the repo, and in full otherwise.
+Copy [settings.json](./settings.json) to `.claude/settings.json`. It names the Marketplace by a GitHub source: the Skillworks repo, the path of its `marketplace.json` inside that repo, and a `ref` that pins one commit, so nothing in the file belongs to one machine and every member runs the Plugin at the commit the Steering pins. The `ref` in it is a placeholder. Write the full commit at the tip of the Skillworks main branch, the first field of what this prints:
 
-When the Marketplace folder sits outside the repo, add a read rule for it to `permissions.allow`: `Read(//<the folder in full>/**)`. Write the folder with forward slashes, and on Windows write its drive as a folder, so `C:\tools\skillworks\plugins` becomes `Read(//c/tools/skillworks/plugins/**)`. A skill reads its own files from the Plugin's folder, and a read outside the repo needs a rule that allows it. `Read(~/.claude/plugins/**)` in the file already opens an installed Plugin's folder. The driver gives each loop Session a read rule for the Plugin's folder itself, so these rules are for a Session run by hand: without them, `tdd` stops to ask before it reads its guides.
+```bash
+git ls-remote https://github.com/MalcolmMcNeely/skillworks.git refs/heads/main
+```
+
+A commit pin as `ref` needs Claude Code v2.1.324 or later.
+
+Only in a repo that holds this Plugin's `.claude-plugin/marketplace.json` itself, write the folder source in its place: `"source": "directory"` with `"path"` the folder that holds `.claude-plugin/marketplace.json`, relative to the repo root and starting `./`. That repo is Skillworks, and a Skillworks developer tests the Plugin in their own checkout. Write no `ref` with the folder source.
+
+`Read(~/.claude/plugins/**)` in the file opens the installed Plugin's folder, so a skill reads its own files with no prompt. Write no other read rule for the Plugin.
 
 If the file exists, merge:
 
@@ -243,11 +251,19 @@ The command writes the answer into `co-authored-by` in `docs/skillworks/loop.jso
 
 Settle `co-authored-by` and `attribution` with `set-co-authored-by` and never by hand. Never write `"attribution": false`: Claude Code before v2.1.281 rejects it and skips the whole file, which drops the allowlist and the Plugin with it.
 
-Read the allowlist out loud to the user before writing, the read rules among it, and read the memory line and the credit answer out with it. Read the four lines that turn off auto-compaction, idle compaction, workflows and the claude.ai connectors out in the same pass. Read out each entry of `permissions.deny` the file is missing, in the same pass, and add only the ones the user agrees to. Remove none. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all of it knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
+Read the allowlist out loud to the user before writing, the read rule among it, and read the memory line and the credit answer out with it. Read the four lines that turn off auto-compaction, idle compaction, workflows and the claude.ai connectors out in the same pass. Read out each entry of `permissions.deny` the file is missing, in the same pass, and add only the ones the user agrees to. Remove none. The allowlist lets an unattended loop run `git push` and `gh issue close` with no prompt, which is the whole point and also the whole risk. The memory line turns off the memory files Claude Code keeps on this machine, for this repository only. They should agree to all of it knowingly, in this one pass, with no second prompt. Then write the file, and run `set-co-authored-by` with the answer.
 
 Without Sidecar Steering, leave `.claude/settings.local.json` alone. Do not read it and do not change it. The `/config` memory toggle writes to the user's own settings, which lose to `.claude/settings.json`, so a local file that turns memory back on was put there on purpose.
 
-Write nothing under `~/.claude`.
+Write nothing under `~/.claude` by hand. The Plugin install below writes there through Claude Code, and nothing else does.
+
+After the file is written, install the Plugin once on this machine, from the repo's main checkout, so the developer's own Sessions load the Plugin the settings name:
+
+```bash
+claude plugin install skillworks@skillworks --scope project
+```
+
+Under Sidecar Steering give `--scope local` in place of `--scope project`, because the developer's own Sessions read `.claude/settings.local.json` and the repo's `.claude/settings.json` stays as the team has it. The settings name the Marketplace, so the install finds it there. A second run of setup on the same machine installs nothing new, because the Plugin is already there.
 
 ### 7. Report
 

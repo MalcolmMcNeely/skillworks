@@ -55,10 +55,17 @@ Then run setup:
 /skillworks:skillworks-setup
 ```
 
-Setup writes the Marketplace and the Plugin into `.claude/settings.json`, so a teammate who clones
-your repo gets the Plugin on trust, with no install by hand. The Marketplace path is relative when
-the clone of Skillworks sits inside your repo, and in full when it does not. In full, each teammate
-needs their clone of Skillworks at the same path.
+Setup installs the Plugin from GitHub at a pinned commit. It writes the Marketplace and the Plugin
+into the shared settings file: the Sidecar's `.claude/settings.json` under Sidecar Steering, and your
+repo's `.claude/settings.json` otherwise. The Marketplace names the Skillworks repo on GitHub, the
+path of its `marketplace.json`, and a `ref` that pins one commit. The pin starts at the tip of the
+Skillworks main branch when setup runs. Nothing in the file belongs to one machine, so a teammate
+gets the Plugin on trust, at the same commit as you. Setup then runs the Plugin install once on your
+machine, so your own Sessions load the Plugin the settings name. A commit pin needs Claude Code
+v2.1.324 or later.
+
+A repo that holds the Plugin's `marketplace.json` itself, which is Skillworks, keeps a folder source,
+so a Skillworks developer tests the Plugin in their own checkout.
 
 ## What setup does
 
@@ -88,16 +95,15 @@ Setup runs these steps on the branch you are on.
    `"autoMemoryEnabled": false` and the prompt cache keys into `.claude/settings.json`. Then
    `set-co-authored-by` writes your answer on the credit for Claude into `co-authored-by` in
    `docs/skillworks/loop.json`, and rewrites the `attribution` block from it, as
-   [Credit for Claude](#credit-for-claude) says.
+   [Credit for Claude](#credit-for-claude) says. Last, setup runs the Plugin install once on your
+   machine.
 7. **Report.** Setup says what it wrote and what it kept, and what your team fills in before the loop
    can finish a ticket.
 
-The allowlist holds two read rules as well. `Read(~/.claude/plugins/**)` opens an installed Plugin's
-folder to reading. When the Marketplace folder sits outside your repo, setup adds a read rule for
-that folder too, such as `Read(//c/tools/skillworks/plugins/**)`. A skill must read its own files,
-such as the guides `tdd` reads. The loop's driver gives each of its Sessions a read rule for the
-Plugin's folder, so these two rules are for a Session you run by hand. Without them it stops to ask
-you before each read outside the repo.
+The allowlist holds a read rule as well. `Read(~/.claude/plugins/**)` opens the installed Plugin's
+folder to reading. A skill must read its own files, such as the guides `tdd` reads. The loop's driver
+gives each of its Sessions a read rule for the Plugin's folder, so this rule is for a Session you run
+by hand. Without it the Session stops to ask you before each read outside the repo.
 
 Expect a permission prompt on a first run, at the seeding and at the preflight. The allowlist that clears it is written
 in step 6.
@@ -148,7 +154,7 @@ Review these before you commit them.
 | `docs/skillworks/.seeds/` | A base copy of each Seed, exactly as setup last copied it, and a README. `agent-skills.md` is the base copy of the `## Agent skills` block, exactly as setup last wrote it. Setup keeps these, and a second run reads them. Do not edit them. |
 | `.gitignore` | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. Each machine has its own, and nobody commits them. Setup also creates `.handoff/`, where `handoff` saves. `.context-backfill/` holds the Answer sheet of the [Context backfill](context-backfill.md). |
 | `CLAUDE.md` | The `## Agent skills` block. A second run merges the block with your edits to it. If your repo has `AGENTS.md` and no `CLAUDE.md`, setup edits `AGENTS.md` instead. |
-| `.claude/settings.json` | The Marketplace, the Plugin, the allowlist with its read rules for the Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. The four feature defaults below, and the deny list. An `attribution` block, which setup rewrites from `co-authored-by` each time it runs. On a second run, setup adds a cache key that is missing and keeps one your team set. |
+| `.claude/settings.json` | The Marketplace as a GitHub source pinned to one commit, the Plugin, the allowlist with its read rule for the installed Plugin's folder, `"autoMemoryEnabled": false`, and the prompt cache keys `promptCacheTtl` and `subagentPromptCacheTtl`, each `"1h"`. The four feature defaults below, and the deny list. An `attribution` block, which setup rewrites from `co-authored-by` each time it runs. On a second run, setup adds a cache key that is missing and keeps one your team set. |
 
 The settings turn off four features Skillworks never uses:
 

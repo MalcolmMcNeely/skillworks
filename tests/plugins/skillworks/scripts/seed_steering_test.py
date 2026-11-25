@@ -2232,6 +2232,50 @@ def test_the_allowlist_lets_a_skill_read_the_files_of_an_installed_plugin():
     assert "Read(~/.claude/plugins/**)" in allowed
 
 
+def test_the_settings_seed_names_the_plugin_by_a_github_source_pinned_to_a_commit():
+    source = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))[
+        "extraKnownMarketplaces"]["skillworks"]["source"]
+
+    assert source == {"source": "github", "repo": "MalcolmMcNeely/skillworks",
+                      "path": "plugins/.claude-plugin/marketplace.json",
+                      "ref": "<the commit at the tip of Skillworks main>"}
+
+
+def test_setup_writes_the_folder_source_only_in_a_repo_that_holds_the_marketplace():
+    step = " ".join(setup_section("### 6. Write the settings").split())
+
+    assert ("Only in a repo that holds this Plugin's `.claude-plugin/marketplace.json` itself, "
+            "write the folder source in its place") in step
+
+
+def test_setup_pins_the_commit_at_the_tip_of_skillworks_main():
+    step = setup_section("### 6. Write the settings")
+
+    assert "git ls-remote https://github.com/MalcolmMcNeely/skillworks.git refs/heads/main" in step
+
+
+def test_setup_writes_no_read_rule_for_a_plugin_folder_outside_the_repo():
+    text = (SETUP / "SKILL.md").read_text(encoding="utf-8")
+
+    assert ("Read(//" in text, "outside the repo, a read rule" in text) == (False, False)
+
+
+def test_setup_runs_the_plugin_install_once():
+    step = setup_section("### 6. Write the settings")
+
+    assert step.count("claude plugin install skillworks@skillworks") == 1
+
+
+def test_the_setup_page_says_setup_installs_the_plugin_from_github_at_a_pinned_commit():
+    page = " ".join(SETUP_PAGE.read_text(encoding="utf-8").split())
+
+    assert "Setup installs the Plugin from GitHub at a pinned commit" in page
+
+
+def test_the_setup_page_names_no_read_rule_for_a_plugin_folder_outside_the_repo():
+    assert "Read(//" not in SETUP_PAGE.read_text(encoding="utf-8")
+
+
 def test_the_allowlist_keeps_the_pull_request_commands_a_review_reads_with():
     allowed = json.loads((SETUP / "settings.json").read_text(encoding="utf-8"))["permissions"]["allow"]
 
