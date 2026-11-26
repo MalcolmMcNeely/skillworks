@@ -118,11 +118,13 @@ function count(n: number, one: string): string {
   return `${n} ${n === 1 ? one : `${one}s`}`
 }
 
-function span(ms: number): string {
+function hoursAndMinutes(ms: number): string {
   const minutes = Math.floor(Math.max(0, ms) / 60000)
-  if (minutes < 1) return `${Math.floor(Math.max(0, ms) / 1000)}s`
-  if (minutes < 60) return `${minutes}m`
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+  return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
+
+function span(ms: number): string {
+  return ms < 60000 ? `${Math.floor(Math.max(0, ms) / 1000)}s` : hoursAndMinutes(ms)
 }
 
 const DONE = 'done'
@@ -135,6 +137,14 @@ const JUDGE_SHORT: Record<string, string> = {
   'simplify-check': 'simplify',
   'drift-check': 'drift',
   'name-check': 'names',
+}
+
+function shortName(name: string): string {
+  return JUDGE_SHORT[name] ?? name
+}
+
+function foundText(judge: Judge): string {
+  return judge.found == null ? '' : ` · ${judge.found}${judge.word ? ` ${judge.word}` : ''}`
 }
 
 const JUDGE_LONG: Record<string, string> = {
@@ -181,11 +191,10 @@ function pathOf(loop: Position): Path {
     : loop.doing === 'building tickets' || loop.doing === 'cutting' ? NOW : TO_COME
 
   const judgeText = (judge: Judge) => {
-    const name = JUDGE_SHORT[judge.name] ?? judge.name
+    const name = shortName(judge.name)
     if (judge.state !== DONE) return name
-    const found = judge.found == null ? '' : ` · ${judge.found}${judge.word ? ` ${judge.word}` : ''}`
     const filed = judge.filed.length === 0 ? '' : ` → ${count(judge.filed.length, 'ticket')}`
-    return `${name}${found}${filed}`
+    return `${name}${foundText(judge)}${filed}`
   }
 
   const value = ownLanded + on.reduce((sum, judge) => sum + judgePart(judge), 0) + (fullRun === DONE ? 1 : 0)
@@ -216,9 +225,7 @@ function spinnerAt(now: number): string {
 
 // The time a loop worked, so the hours it sat stopped between two starts do not count.
 function timeTaken(loop: Loop): string {
-  const ms = loop.stepTimes.reduce((sum, piece) => sum + Date.parse(piece.ended) - Date.parse(piece.started), 0)
-  const minutes = Math.floor(Math.max(0, ms) / 60000)
-  return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+  return hoursAndMinutes(loop.stepTimes.reduce((sum, piece) => sum + lengthOf(piece), 0))
 }
 
 // A developer reads the end against the clock on their own wall, so it is shown in the machine's zone.
@@ -291,7 +298,7 @@ function kindsOf(loop: Loop): Kind[] {
   let spare = 0
   return [...ms.entries()].map(([name, time], k) => ({
     name,
-    shown: JUDGE_SHORT[name] ?? name,
+    shown: shortName(name),
     color: KIND_COLOR[name] ?? SPARE_COLORS[spare++ % SPARE_COLORS.length] ?? 'white',
     ms: time,
     share: shares[k] ?? 0,
@@ -301,17 +308,15 @@ function kindsOf(loop: Loop): Kind[] {
 
 function longestOf(loop: Loop): string {
   const longest = loop.stepTimes.reduce((most, piece) => lengthOf(piece) > lengthOf(most) ? piece : most)
-  const name = JUDGE_SHORT[longest.name] ?? longest.name
-  return `Longest: ${longest.ticket ? `#${longest.ticket} ` : ''}${name}, ${span(lengthOf(longest))}`
+  return `Longest: ${longest.ticket ? `#${longest.ticket} ` : ''}${shortName(longest.name)}, ${span(lengthOf(longest))}`
 }
 
 function foundBy(judge: Judge): string {
-  const name = JUDGE_SHORT[judge.name] ?? judge.name
+  const name = shortName(judge.name)
   if (judge.state === OFF) return `${name} · off, did not run`
   if (judge.state === NOW) return `${name} · did not end`
   if (judge.state !== DONE) return `${name} · did not run`
-  const found = judge.found == null ? '' : ` · ${judge.found}${judge.word ? ` ${judge.word}` : ''}`
-  return `${name}${found} → ${count(judge.filed.length, 'ticket')}`
+  return `${name}${foundText(judge)} → ${count(judge.filed.length, 'ticket')}`
 }
 
 type Loop = Position & { folder: string; stepTimes: StepTime[] }
@@ -432,7 +437,7 @@ export const register: Register = on => {
             {row.landed ? '✓ Landed ' : isNow ? '▶ now    ' : '· to come'} #{row.number} {row.title}
           </Text>
           {row.judge ? (
-            <Text color={JUDGE_COLOR[row.judge]}>  ◆ {JUDGE_SHORT[row.judge] ?? row.judge}</Text>
+            <Text color={JUDGE_COLOR[row.judge]}>  ◆ {shortName(row.judge)}</Text>
           ) : null}
         </Box>
       )

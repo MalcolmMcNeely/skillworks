@@ -54,10 +54,10 @@ from judges.judges import DEEPENING, DRIFT, JUDGES, NAME, SIMPLIFY, told_to_judg
 from judges.earlier_run import earlier_run
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
-from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DRIFT_CHECK,
-                               END_PATIENCE, FINISHED, HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE,
-                               POSITION, SIMPLIFY_CHECK, STOPPED, Position, position_time,
-                               written_whole)
+from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DONE, DRIFT_CHECK,
+                               END_PATIENCE, FINISHED, HEARTBEAT_SECONDS, NAME_CHECK, NOW, OFF,
+                               PATIENCE, POSITION, SIMPLIFY_CHECK, STOPPED, Position,
+                               position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import Subprocess, given_every_session, session_changes
 from seed_steering import missing_steering
@@ -661,9 +661,9 @@ class Loop:
     # Read leniently, so a Steering file the judge's own read stops on still shows the judge to come.
     def judges_off(self):
         if limit_in(self.steering_text(DEEPENING_FILE)) == 0:
-            self.position.judge_off(DEEPENING)
+            self.position.judge_is(DEEPENING, OFF)
         if enabled_in(self.steering_text(SIMPLIFY_FILE)) is False:
-            self.position.judge_off(SIMPLIFY)
+            self.position.judge_is(SIMPLIFY, OFF)
 
     def started(self, ticket, title):
         self.position.started(ticket, title, [step.name for step in STEPS] + ["land"])
@@ -675,6 +675,10 @@ class Loop:
 
     def landed_now(self, ticket):
         self.position.landed(ticket)
+        self.moved()
+
+    def judge_moved(self, judge, state):
+        self.position.judge_is(judge, state)
         self.moved()
 
     def stopped_on(self, said):
@@ -1789,8 +1793,7 @@ class Loop:
                        "and does not run again".format(
                            self.spec_named(), judge.what,
                            ", ".join(self.named(number) for number, _ in earlier.tickets)))
-        self.position.judge_done(judge)
-        self.moved()
+        self.judge_moved(judge, DONE)
         self.run_tickets()
         return True
 
@@ -1812,8 +1815,7 @@ class Loop:
         else:
             def read():
                 return judge.read(self.tracker, self.spec)
-        self.position.judge_now(judge)
-        self.moved()
+        self.judge_moved(judge, NOW)
         # A re-check is kept under its judge's step, so the pieces match the steps the pane lists.
         with self.step_time(judge.name):
             result = self.run_clean_session(
@@ -1894,8 +1896,7 @@ class Loop:
         filed = self.read_deepening(report, limit)
         for strong in filed:
             self.file_deepening_ticket(strong)
-        self.position.judge_done(DEEPENING)
-        self.moved()
+        self.judge_moved(DEEPENING, DONE)
         if filed:
             self.run_tickets()
 
@@ -1954,8 +1955,7 @@ class Loop:
         findings = self.read_simplify(report)
         if findings:
             self.file_simplify_ticket(findings)
-        self.position.judge_done(SIMPLIFY)
-        self.moved()
+        self.judge_moved(SIMPLIFY, DONE)
         if findings:
             self.run_tickets()
 
@@ -2043,8 +2043,7 @@ class Loop:
                 self.file_gap_ticket(gaps)
                 self.run_tickets()
             self.check_drift(base, [gap.item.name for gap in gaps])
-        self.position.judge_done(DRIFT)
-        self.moved()
+        self.judge_moved(DRIFT, DONE)
 
     # --- the Name check ------------------------------------------------------
 
@@ -2129,8 +2128,7 @@ class Loop:
                 ticket = self.file_rename_ticket(renames)
                 self.run_tickets()
             self.check_renames(base, ticket, renames)
-        self.position.judge_done(NAME)
-        self.moved()
+        self.judge_moved(NAME, DONE)
 
     # --- the note of the run's Flakes ----------------------------------------
 

@@ -38,7 +38,7 @@ class Position:
         self.judges = judges
         self.doing = None
         self.judged = {judge.name: {"name": judge.name, "state": TO_COME, "found": None,
-                                    "word": judge.word, "filed": []} for judge in judges}
+                                    "word": judge.word} for judge in judges}
         self.tickets = []
         self.ticket_now = None
 
@@ -49,27 +49,18 @@ class Position:
     def tickets_read(self, rows):
         self.tickets = [{"number": number, "title": title, "landed": state == "closed",
                          "judge": self.filed_by(title)} for number, state, title in rows]
-        for name, judged in self.judged.items():
-            judged["filed"] = [row["number"] for row in self.tickets if row["judge"] == name]
 
     def filed_by(self, title):
         return next((judge.name for judge in self.judges if judge.filed(title)), None)
 
     def filed(self, ticket, title, judge):
         self.tickets.append({"number": ticket, "title": title, "landed": False, "judge": judge.name})
-        self.judged[judge.name]["filed"].append(ticket)
 
-    def judge_off(self, judge):
-        self.judged[judge.name]["state"] = OFF
-
-    def judge_now(self, judge):
-        self.judged[judge.name]["state"] = NOW
+    def judge_is(self, judge, state):
+        self.judged[judge.name]["state"] = state
 
     def judge_found(self, judge, count):
         self.judged[judge.name]["found"] = count
-
-    def judge_done(self, judge):
-        self.judged[judge.name]["state"] = DONE
 
     def started(self, ticket, title, steps):
         self.ticket_now = {"number": ticket, "title": title, "steps": steps,
@@ -92,7 +83,8 @@ class Position:
             "run": run,
             "heartbeat": position_time(now),
             "doing": self.doing,
-            "judges": list(self.judged.values()),
+            "judges": [{**judged, "filed": [row["number"] for row in self.tickets if row["judge"] == name]}
+                       for name, judged in self.judged.items()],
             "tickets": self.tickets,
             "ticket": self.ticket_now,
             "at": at or None,
