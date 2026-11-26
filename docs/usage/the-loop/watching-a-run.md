@@ -140,9 +140,10 @@ The pane reads the Position, `.spec-loop/<spec>/position.json`, and the Step tim
 `.spec-loop/<spec>/step-times.jsonl`, every few seconds. It never reads `loop.log`, and it shows no
 log lines. [Reading a run](reading-a-run.md) says what the log and the Step times hold.
 
-A loop folder whose Position has no judges, or that has no Step times, is a run from a Plugin older
-than this pane. The pane shows no card for it. A new run shows its card once its first piece, the
-baseline, has ended, because that is when the driver writes its first Step time.
+A loop folder whose Position has no judges is a run from a Plugin older than this pane. The pane
+shows no card for it. A new run shows its card as soon as it starts, while the baseline still runs and
+before the driver writes its first Step time. An ended loop with no Step times shows no card, because
+it has no time to fold into a summary.
 
 ## Finished, stopped and gone
 

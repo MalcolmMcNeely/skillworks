@@ -325,20 +325,30 @@ function stepTimesIn(text: string): StepTime[] {
   return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line))
 }
 
-async function loopsIn($: EngineInterface, root: string): Promise<Loop[]> {
+async function stepTimesAt($: EngineInterface, path: string): Promise<StepTime[]> {
+  try {
+    return stepTimesIn(String(await $.fs.read(path)))
+  } catch {
+    return []
+  }
+}
+
+// No judges means a run from before this pane; no Step times means still in the baseline, or ended with no summary.
+async function loopsIn($: EngineInterface, root: string, now: number): Promise<Loop[]> {
   if (!(await $.fs.exists(root))) return []
   const found: Loop[] = []
   for (const entry of await $.fs.list(root)) {
     if (entry.kind !== 'dir') continue
+    let position: Position
     try {
-      const position: Position = JSON.parse(String(await $.fs.read(`${root}/${entry.name}/position.json`)))
-      const stepTimes = stepTimesIn(String(await $.fs.read(`${root}/${entry.name}/step-times.jsonl`)))
-      if (Array.isArray(position.judges) && position.judges.length > 0 && stepTimes.length > 0) {
-        found.push({ ...position, folder: entry.name, stepTimes })
-      }
+      position = JSON.parse(String(await $.fs.read(`${root}/${entry.name}/position.json`)))
     } catch {
-      // A spec folder missing either file is a run from before this pane, and shows no card.
+      continue
     }
+    if (!Array.isArray(position.judges) || position.judges.length === 0) continue
+    const stepTimes = await stepTimesAt($, `${root}/${entry.name}/step-times.jsonl`)
+    if (stepTimes.length === 0 && hasEnded(position, now)) continue
+    found.push({ ...position, folder: entry.name, stepTimes })
   }
   return found
 }
@@ -400,8 +410,8 @@ export const register: Register = on => {
     cleared = new Set(await clearsKept($))
     const root = `${e.cwd}/.spec-loop`
     const poll = async () => {
-      const found = (await loopsIn($, root)).filter(loop => !cleared.has(loop.run))
       now = await $.clock.now()
+      const found = (await loopsIn($, root, now)).filter(loop => !cleared.has(loop.run))
       loops = stacked(found, now)
       const fresh = loops.filter(loop => !hasEnded(loop, now) && !seen.has(loop.run))
       for (const loop of loops) seen.add(loop.run)

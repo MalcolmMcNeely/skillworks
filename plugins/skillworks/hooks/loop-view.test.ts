@@ -1079,10 +1079,10 @@ test('a loop folder whose Position has no judges shows no card', async ($, on) =
   expect(await lines($)).toEqual(['No loop has a Position in this clone.'])
 })
 
-test('a loop folder with no Step times shows no card', async ($, on) => {
+test('an ended loop folder with no Step times shows no card', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })
-  cloneHolding(on, { '589': running() }, { '589': null })
+  cloneHolding(on, { '589': FINISHED }, { '589': null })
   const { start } = claudeCode(on)
 
   // Act
@@ -1090,6 +1090,47 @@ test('a loop folder with no Step times shows no card', async ($, on) => {
 
   // Assert
   expect(await lines($)).toEqual(['No loop has a Position in this clone.'])
+})
+
+const AT_THE_BASELINE = running({ doing: 'baseline', ticket: null, at: null, seconds_left: null })
+
+test('a first start still in its baseline, with no Step times yet, shows a running card', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_BASELINE }, { '589': null })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($)).filter(line => line.startsWith('Spec #'))).toEqual(['Spec #589 · baseline'])
+})
+
+test('a first start still in its baseline, with an empty Step times record, shows a running card', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_BASELINE }, { '589': [] })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($)).filter(line => line.startsWith('Spec #'))).toEqual(['Spec #589 · baseline'])
+})
+
+test('a first start still in its baseline opens the pane by itself', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_BASELINE }, { '589': null })
+  const { pane, start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(pane.isOpen).toBe(true)
 })
 
 const AT_THE_NAME_CHECK = running({
