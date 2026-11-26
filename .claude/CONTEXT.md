@@ -320,6 +320,14 @@ the Sidecar and never in the repo, so each spec's branch holds only the work. It
 with the files Tracker.
 _Avoid_: Export, Export branch, Steering branch, clean branch
 
+**Simplify check**:
+The judge that reads the commits a spec's tickets Landed, once every ticket has Landed and before
+the drift check, and looks for code the work made harder than it has to be: what it does again that
+the codebase already has, complexity it does not need, work it wastes, and a patch on a symptom
+where a deeper fix belongs. What it finds becomes one simplify ticket, which the loop builds like any
+ticket. It changes no code itself, and it judges no code outside those commits.
+_Avoid_: Cleanup check, tidy check, quality check
+
 **Smart zone**:
 The part of a context window in which a model still keeps every instruction it was given. A session
 is planned to finish its work inside it.
