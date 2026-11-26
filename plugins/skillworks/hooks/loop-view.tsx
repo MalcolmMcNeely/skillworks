@@ -242,6 +242,69 @@ function pieceOf(loop: Position): string {
   return shown(DOING, loop.doing).name
 }
 
+// A terminal names 15 colours that show on a dark background, one short of a run's 16 kinds, so the Cut takes a hex.
+const KIND_COLOR: Record<string, string> = {
+  ...JUDGE_COLOR,
+  baseline: 'gray',
+  cut: '#ff8700',
+  build: 'green',
+  standards: 'yellow',
+  spec: 'yellowBright',
+  architecture: 'red',
+  fix: 'redBright',
+  sweep: 'greenBright',
+  suite: 'blueBright',
+  finish: 'cyanBright',
+  land: 'magentaBright',
+  'full-run': 'whiteBright',
+}
+// A driver newer than the Plugin can write a kind with no colour here, so it borrows one.
+const SPARE_COLORS = ['magenta', 'cyan', 'blue', 'white']
+const TIME_CELLS = 40
+
+function lengthOf(piece: StepTime): number {
+  return Math.max(0, Date.parse(piece.ended) - Date.parse(piece.started))
+}
+
+// Rounding each part on its own can leave the shares at 99% or 101%, so the leftovers go to the largest remainders.
+function splitInto(whole: number, amounts: number[]): number[] {
+  const total = amounts.reduce((sum, amount) => sum + amount, 0)
+  if (total === 0) return amounts.map(() => 0)
+  const exact = amounts.map(amount => (whole * amount) / total)
+  const short = whole - exact.reduce((sum, value) => sum + Math.floor(value), 0)
+  const topped = new Set(exact.map((value, k) => ({ k, rest: value - Math.floor(value) }))
+    .sort((a, b) => b.rest - a.rest || a.k - b.k)
+    .slice(0, short)
+    .map(({ k }) => k))
+  return exact.map((value, k) => Math.floor(value) + (topped.has(k) ? 1 : 0))
+}
+
+type Kind = { name: string; shown: string; color: string; ms: number; share: number; cells: number }
+
+function kindsOf(loop: Loop): Kind[] {
+  const ms = new Map<string, number>()
+  const inRunOrder = [...loop.stepTimes].sort((a, b) => Date.parse(a.started) - Date.parse(b.started))
+  for (const piece of inRunOrder) ms.set(piece.name, (ms.get(piece.name) ?? 0) + lengthOf(piece))
+  const amounts = [...ms.values()]
+  const shares = splitInto(100, amounts)
+  const cells = splitInto(TIME_CELLS, amounts)
+  let spare = 0
+  return [...ms.entries()].map(([name, time], k) => ({
+    name,
+    shown: JUDGE_SHORT[name] ?? name,
+    color: KIND_COLOR[name] ?? SPARE_COLORS[spare++ % SPARE_COLORS.length] ?? 'white',
+    ms: time,
+    share: shares[k] ?? 0,
+    cells: cells[k] ?? 0,
+  }))
+}
+
+function longestOf(loop: Loop): string {
+  const longest = loop.stepTimes.reduce((most, piece) => lengthOf(piece) > lengthOf(most) ? piece : most)
+  const name = JUDGE_SHORT[longest.name] ?? longest.name
+  return `Longest: ${longest.ticket ? `#${longest.ticket} ` : ''}${name}, ${span(lengthOf(longest))}`
+}
+
 function foundBy(judge: Judge): string {
   const name = JUDGE_SHORT[judge.name] ?? judge.name
   if (judge.state === OFF) return `${name} · off, did not run`
@@ -379,6 +442,7 @@ export const register: Register = on => {
           if (hasEnded(loop, now)) {
             const state = stateOf(loop, now)
             const landed = loop.tickets.filter(row => row.landed).length
+            const kinds = kindsOf(loop)
             return (
               <Box key={`card-${loop.spec}`} flexDirection="column" borderStyle="round"
                 borderColor={BORDER[state]} paddingX={1}>
@@ -395,6 +459,22 @@ export const register: Register = on => {
                     <Text color={JUDGE_COLOR[judge.name]}>{foundBy(judge)}</Text>
                   </Box>
                 ))}
+                <Text dimColor>Where the time went</Text>
+                <Box key={`where-bar-${loop.spec}`} flexDirection="row">
+                  {kinds.filter(kind => kind.cells > 0).map(kind => (
+                    <Box key={`cells-${loop.spec}-${kind.name}`}>
+                      <Text color={kind.color}>{'█'.repeat(kind.cells)}</Text>
+                    </Box>
+                  ))}
+                </Box>
+                {kinds.map(kind => (
+                  <Box key={`share-${loop.spec}-${kind.name}`}>
+                    <Text color={kind.color}>■ {kind.shown} · {kind.share}% · {span(kind.ms)}</Text>
+                  </Box>
+                ))}
+                <Box key={`longest-${loop.spec}`}>
+                  <Text bold>{longestOf(loop)}</Text>
+                </Box>
                 <Button key={`clear-${loop.run}`} label="Clear" onPress={() => clear(loop.run)} />
               </Box>
             )

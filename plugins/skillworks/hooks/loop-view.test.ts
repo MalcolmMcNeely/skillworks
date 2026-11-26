@@ -211,7 +211,7 @@ test('a finished card folds into the tickets Landed, the Choices, the Denials an
   await $.session.start(start)
 
   // Assert
-  expect((await lines($)).slice(1)).toEqual([
+  expect((await lines($)).slice(1, 6)).toEqual([
     '3 tickets Landed · 2 Choices · 1 Denial',
     'deepen · 2 Strong → 2 tickets',
     'simplify · off, did not run',
@@ -247,7 +247,9 @@ test('a stopped card names a judge that had not run as one that did not run', as
   await $.session.start(start)
 
   // Assert
-  expect((await lines($)).slice(-4)).toEqual([
+  const shown = await lines($)
+  const first = shown.indexOf('deepen · did not run')
+  expect(shown.slice(first, first + 4)).toEqual([
     'deepen · did not run',
     'simplify · did not run',
     'drift · did not run',
@@ -295,6 +297,138 @@ test('an ended card shows no ticket list', async ($, on) => {
 
   // Assert
   expect(await ticketList($)).toEqual([])
+})
+
+const FORTY_MINUTES: StepTime[] = [
+  piece('baseline', null, 'run-a', '2026-11-07T16:00:00Z', '2026-11-07T16:02:00Z'),
+  piece('build', '590', 'run-a', '2026-11-07T16:02:00Z', '2026-11-07T16:16:00Z'),
+  piece('land', '590', 'run-a', '2026-11-07T16:16:00Z', '2026-11-07T16:20:00Z'),
+  piece('deepening-check', null, 'run-a', '2026-11-07T16:20:00Z', '2026-11-07T16:26:00Z'),
+  piece('build', '601', 'run-a', '2026-11-07T16:26:00Z', '2026-11-07T16:36:00Z'),
+  piece('full-run', null, 'run-a', '2026-11-07T16:36:00Z', '2026-11-07T16:40:00Z'),
+]
+
+function whereTheTimeWent($: Engine) {
+  return shownInBoxesKeyed($, 'share-')
+}
+
+test('an ended card lists each kind of piece under the bar with its share and its time', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': JUDGED }, { '589': FORTY_MINUTES })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await whereTheTimeWent($)).toEqual([
+    '■ baseline · 5% · 2m',
+    '■ build · 60% · 24m',
+    '■ land · 10% · 4m',
+    '■ deepen · 15% · 6m',
+    '■ full-run · 10% · 4m',
+  ])
+})
+
+test('the shares under the bar add up to the whole when the time does not split evenly', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': JUDGED }, {
+    '589': [
+      piece('baseline', null, 'run-a', '2026-11-07T16:00:00Z', '2026-11-07T16:10:00Z'),
+      piece('build', '590', 'run-a', '2026-11-07T16:10:00Z', '2026-11-07T16:20:00Z'),
+      piece('land', '590', 'run-a', '2026-11-07T16:20:00Z', '2026-11-07T16:30:00Z'),
+    ],
+  })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await whereTheTimeWent($)).toEqual([
+    '■ baseline · 34% · 10m',
+    '■ build · 33% · 10m',
+    '■ land · 33% · 10m',
+  ])
+})
+
+async function timeBar($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const bars = (await ui.findAll({ type: 'Box' })).filter(box => box.key?.startsWith('where-bar-'))
+  const texts = await ui.findAll({ type: 'Text' })
+  const shown = bars.map(shownIn)
+  const segments = texts.filter(text => /^█+$/.test(text.text) && shown.some(bar => bar.includes(text.text)))
+    .map(text => ({ color: text.props.color, cells: text.text.length }))
+  await ui.unmount()
+  return { bars: bars.length, segments }
+}
+
+test('the bar gives each kind of piece its own colour, as wide as its share', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': JUDGED }, { '589': FORTY_MINUTES })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  const { segments } = await timeBar($)
+  expect({
+    cells: segments.map(segment => segment.cells),
+    colours: new Set(segments.map(segment => segment.color)).size,
+  }).toEqual({ cells: [2, 24, 4, 6, 4], colours: 5 })
+})
+
+function longestPiece($: Engine) {
+  return shownInBoxesKeyed($, 'longest-')
+}
+
+test('an ended card names the longest piece with its ticket, the piece and its time', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': JUDGED }, { '589': FORTY_MINUTES })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await longestPiece($)).toEqual(['Longest: #590 build, 14m'])
+})
+
+test('an ended card names a judge as the longest piece when its check took the longest', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': JUDGED }, {
+    '589': [
+      piece('build', '590', 'run-a', '2026-11-07T16:00:00Z', '2026-11-07T16:10:00Z'),
+      piece('drift-check', null, 'run-a', '2026-11-07T16:10:00Z', '2026-11-07T16:31:00Z'),
+    ],
+  })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await longestPiece($)).toEqual(['Longest: drift, 21m'])
+})
+
+test('a running card shows no bar of where the time went', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() }, { '589': FORTY_MINUTES })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect({ bars: (await timeBar($)).bars, shares: await whereTheTimeWent($), longest: await longestPiece($) })
+    .toEqual({ bars: 0, shares: [], longest: [] })
 })
 
 test('two loops show as two cards, one for each spec', async ($, on) => {

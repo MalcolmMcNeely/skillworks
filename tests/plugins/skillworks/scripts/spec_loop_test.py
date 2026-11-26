@@ -5842,6 +5842,17 @@ def test_the_watching_a_run_page_says_a_stopped_or_gone_card_keeps_the_stop_line
     assert "A gone card shows the path to the log and the last piece it reached" in watching
 
 
+def test_the_watching_a_run_page_says_where_the_time_went_with_one_colour_for_each_piece_and_the_longest_piece():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert "Under the judges, the summary shows where the time went. It is one bar across the card." in watching
+    assert "Each kind of piece has one colour of its own" in watching
+    assert "`■ build · 71% · 30m`" in watching
+    assert "The last line names the longest piece: its ticket or its judge, the piece and its time" in watching
+    assert "`Longest: #590 build, 22m`" in watching
+    assert "A running card shows no bar of where the time went." in watching
+
+
 @pytest.mark.parametrize("step", ["baseline", "cut", "deepening-check", "simplify-check", "drift-check",
                                   "name-check", "full-run"])
 def test_the_watching_a_run_page_names_each_piece_beyond_the_ticket_steps(step):

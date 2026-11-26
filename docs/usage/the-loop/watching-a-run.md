@@ -169,6 +169,17 @@ not run says `did not run`, so you do not mistake it for one that found nothing.
 turned off says `off, did not run`, and a judge that was running when the loop ended says `did not
 end`.
 
+Under the judges, the summary shows where the time went. It is one bar across the card. Each kind of
+piece has one colour of its own, such as `build`, `land`, `baseline` or `deepen`, and its part of the
+bar is as wide as its share of the time taken. So a piece that took far longer than it should stands
+out. Under the bar, each kind of piece has a line in its colour with its share and its time, such as
+`■ build · 71% · 30m`. The shares add up to 100%. Nothing marks a piece as slow: you judge that from
+the colours and the times.
+
+The last line names the longest piece: its ticket or its judge, the piece and its time, such as
+`Longest: #590 build, 22m`, or `Longest: drift, 21m` when a judge took the longest. A running card
+shows no bar of where the time went.
+
 A stopped or gone card keeps what you need to act:
 
 - A stopped card shows the stop line, the path to the log, such as `Log: .spec-loop/589/loop.log`,
@@ -186,6 +197,12 @@ deepen · did not run
 simplify · off, did not run
 drift · did not run
 names · did not run
+Where the time went
+████████████████████████████████████████
+■ baseline · 10% · 4m
+■ build · 71% · 30m
+■ land · 19% · 8m
+Longest: #590 build, 22m
 ```
 
 ## Clear
