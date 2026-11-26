@@ -1617,7 +1617,7 @@ def test_the_walk_for_skill_tool_calls_finds_the_grills_call_to_to_spec():
 
 
 # A loop Session may not write outside its checkout, and one rule for all four stops a copy bringing it back.
-@pytest.mark.parametrize("skill", ["to-spec", "to-tickets", "spec-drift-check", "spec-names"])
+@pytest.mark.parametrize("skill", ["to-spec", "to-tickets", "spec-drift-check", "spec-name-check"])
 def test_a_skill_that_publishes_writes_its_file_in_the_ignored_loop_folder(skill):
     text = skill_text(skill)
 
@@ -1793,12 +1793,12 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
     assert "**List what is open**" in files
     assert "tracker-publish drift-check <spec> <file>" in files
     assert "`{}`".format(DRIFT_REPORT) in files
-    assert "tracker-publish names <spec> <file>" in files
+    assert "tracker-publish name-check <spec> <file>" in files
     assert "`{}`".format(NAME_REPORT) in files
 
 
 @pytest.mark.parametrize("page", [SKILLS / "what-next" / "SKILL.md", SKILLS / "review-changes" / "spec.md",
-                                  SKILLS / "spec-drift-check" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md",
+                                  SKILLS / "spec-drift-check" / "SKILL.md", SKILLS / "spec-name-check" / "SKILL.md",
                                   SKILLS / "spec-deepening-check" / "SKILL.md", SKILLS / "spec-simplify-check" / "SKILL.md"],
                          ids=lambda page: page.relative_to(SKILLS).as_posix())
 def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(page):
@@ -1901,42 +1901,42 @@ def test_spec_drift_check_ends_a_command_that_refuses_twice_on_the_blocked_line_
             for paragraph in refused] == [True]
 
 
-def test_spec_names_reads_only_the_spec_commits_and_the_glossary_and_records_a_name_report():
-    spec_names = skill_text("spec-names")
+def test_spec_name_check_reads_only_the_spec_commits_and_the_glossary_and_records_a_name_report():
+    spec_name_check = skill_text("spec-name-check")
 
-    assert "spec-commits <spec> <base>" in spec_names
-    assert "git diff <base>..origin/<target>" not in spec_names
-    assert "**The glossary of each context the spec's commits touch.**" in spec_names
-    assert "**List a name only when it still stands on the Target branch.**" in spec_names
-    assert "Read nothing else: not the spec, not its tickets, not the drift report" in spec_names
-    assert "**A name whose meaning moved.**" in spec_names
-    assert "**A concept two tickets named two ways.**" in spec_names
-    assert 'A rename is never "Optional"' in spec_names
-    assert "The first line is `{}`.".format(NAME_REPORT) in spec_names
-    assert "The `### Renames` list comes next." in spec_names
-    assert "tracker-publish names <spec> .spec-loop/<spec>/names-report.md" in spec_names
+    assert "spec-commits <spec> <base>" in spec_name_check
+    assert "git diff <base>..origin/<target>" not in spec_name_check
+    assert "**The glossary of each context the spec's commits touch.**" in spec_name_check
+    assert "**List a name only when it still stands on the Target branch.**" in spec_name_check
+    assert "Read nothing else: not the spec, not its tickets, not the drift report" in spec_name_check
+    assert "**A name whose meaning moved.**" in spec_name_check
+    assert "**A concept two tickets named two ways.**" in spec_name_check
+    assert 'A rename is never "Optional"' in spec_name_check
+    assert "The first line is `{}`.".format(NAME_REPORT) in spec_name_check
+    assert "The `### Renames` list comes next." in spec_name_check
+    assert "tracker-publish name-check <spec> .spec-loop/<spec>/name-report.md" in spec_name_check
 
 
-def test_spec_names_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
-    spec_names = skill_text("spec-names")
+def test_spec_name_check_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    spec_name_check = skill_text("spec-name-check")
 
-    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_names
-    assert "CONTEXT.md" not in spec_names
+    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_name_check
+    assert "CONTEXT.md" not in spec_name_check
 
 
 # Each fence says to read nothing else, so one that names no Steering file cuts the team's files out.
-def test_spec_names_keeps_the_steering_files_it_names_outside_both_read_fences():
-    spec_names = skill_text("spec-names")
-    fence = [paragraph for paragraph in spec_names.split("\n\n") if paragraph.startswith("Read nothing else")]
+def test_spec_name_check_keeps_the_steering_files_it_names_outside_both_read_fences():
+    spec_name_check = skill_text("spec-name-check")
+    fence = [paragraph for paragraph in spec_name_check.split("\n\n") if paragraph.startswith("Read nothing else")]
 
     assert ["the Steering files this skill reads through `steering-file`" in paragraph for paragraph in fence] == [True]
     assert ("The same three reads go beyond the two as in [What you read](#what-you-read)."
-            in section(spec_names, "The Name re-check"))
+            in section(spec_name_check,"The Name re-check"))
 
 
 @pytest.mark.parametrize("command", ["spec-commits", "tracker-publish"])
-def test_spec_names_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
-    refused = [paragraph for paragraph in skill_text("spec-names").split("\n\n")
+def test_spec_name_check_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
+    refused = [paragraph for paragraph in skill_text("spec-name-check").split("\n\n")
                if "If `{}` refuses".format(command) in paragraph]
 
     assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
@@ -2239,15 +2239,15 @@ def test_spec_drift_check_begins_its_last_message_with_a_blocked_line_under_the_
     assert stops("spec-drift-check", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_DRIFT_CHECK_READS)
 
 
-SPEC_NAMES_READS = [read_of(WHERE[name]) for name in ("loop.json", "issue-tracker.md", "domain.md")]
+SPEC_NAME_CHECK_READS = [read_of(WHERE[name]) for name in ("loop.json", "issue-tracker.md", "domain.md")]
 
 
-def test_spec_names_stops_when_a_steering_file_it_reads_is_missing():
-    assert stops("spec-names", *SPEC_NAMES_READS)
+def test_spec_name_check_stops_when_a_steering_file_it_reads_is_missing():
+    assert stops("spec-name-check", *SPEC_NAME_CHECK_READS)
 
 
-def test_spec_names_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_steering_file_is_missing():
-    assert stops("spec-names", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_NAMES_READS)
+def test_spec_name_check_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_steering_file_is_missing():
+    assert stops("spec-name-check", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_NAME_CHECK_READS)
 
 
 def test_implement_stops_on_the_blocked_line_when_a_steering_file_it_reads_is_missing():
@@ -2776,11 +2776,11 @@ STEERING_READERS = {
     "determinism.md": ["tdd/tests.md"],
     "file-placement.md": ["review-changes/architecture.md"],
     "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md", "codebase-design/DEEPENING.md"],
-    "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift-check/SKILL.md", "spec-names/SKILL.md",
+    "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift-check/SKILL.md", "spec-name-check/SKILL.md",
                          "spec-deepening-check/SKILL.md", "spec-simplify-check/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md",
                          "review-changes/SKILL.md", "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift-check/SKILL.md",
-                  "spec-names/SKILL.md", "spec-deepening-check/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
+                  "spec-name-check/SKILL.md", "spec-deepening-check/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
                   "codebase-design/DESIGN-IT-TWICE.md", "context-backfill/SKILL.md",
                   "improve-codebase-architecture/SKILL.md"],
     "adr-format.md": ["domain-modeling/WRITING-ADRS.md", "context-backfill/SKILL.md",
@@ -2790,7 +2790,7 @@ STEERING_READERS = {
     "review-architecture.md": ["review-changes/architecture.md"],
     "review-spec.md": ["review-changes/spec.md"],
     "suite.json": ["implement/SKILL.md", "architecture-tests/SKILL.md", "resolve-conflict/SKILL.md"],
-    "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift-check/SKILL.md", "spec-names/SKILL.md",
+    "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift-check/SKILL.md", "spec-name-check/SKILL.md",
                   "spec-deepening-check/SKILL.md", "spec-simplify-check/SKILL.md", "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
     "surfaces.md": ["grill/SKILL.md", "to-spec/SKILL.md", "spec-drift-check/SKILL.md", "review-changes/spec.md"],
     "deepening-check.md": ["spec-deepening-check/SKILL.md"],
@@ -3197,11 +3197,11 @@ def test_the_name_check_page_describes_the_name_check_and_its_report():
 
     assert text.startswith("# The Name check\n")
     assert "\n## The Name report\n" in text
-    assert "/skillworks:spec-names <spec> <base>" in page
+    assert "/skillworks:spec-name-check <spec> <base>" in page
     assert "the commits the spec's tickets Landed after the base commit, through `spec-commits`" in page
     assert "A name is a finding only while it still stands on the Target branch." in page
     assert "A rename is never \"Optional\"." in page
-    assert "`.spec-loop/<spec>/names.md`, beside `drift-check.md`" in page
+    assert "`.spec-loop/<spec>/name-check.md`, beside `drift-check.md`" in page
     assert "With no rename there is no rename ticket and no Name re-check" in page
     assert "## The Name check" not in LOOP_OVERVIEW.read_text(encoding="utf-8")
 
@@ -3211,7 +3211,7 @@ def test_the_full_run_page_shows_the_name_check_in_its_chart():
 
 
 def test_the_step_map_page_shows_the_name_check():
-    assert "| The Name check |" in STEP_MAP_PAGE.read_text(encoding="utf-8")
+    assert "| `name-check` | the spec loop |" in STEP_MAP_PAGE.read_text(encoding="utf-8")
 
 
 def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check():
@@ -3221,8 +3221,8 @@ def test_the_name_check_page_describes_the_rename_ticket_and_the_name_re_check()
     assert "\n## The rename ticket\n" in text
     assert "\n## The Name re-check\n" in text
     assert "The build never edits a glossary." in page
-    assert "/skillworks:spec-names <spec> <base> <rename ticket>" in page
-    assert "`.spec-loop/<spec>/names-renames.md`" in page
+    assert "/skillworks:spec-name-check <spec> <base> <rename ticket>" in page
+    assert "`.spec-loop/<spec>/name-re-check.md`" in page
     assert "the way it files [the Gap ticket](drift-check.md#the-gap-round)" in page
     assert "as [When a step fails](stops.md) shows" in page
 

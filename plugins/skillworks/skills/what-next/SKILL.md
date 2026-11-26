@@ -56,7 +56,7 @@ The Dev loop runs each of these itself. A developer may type one for a reason th
 - **The review axes**, **`/skillworks:review-standards`**, **`/skillworks:review-spec`** and **`/skillworks:review-architecture`** — the `standards`, `spec` and `architecture` steps. Each reads the uncommitted change against its review file.
 - **`/skillworks:comment-sweep`** — the `sweep` step. It cuts comments back to what the comments rule keeps.
 - **`/skillworks:spec-drift-check`** — the drift check, which reads the whole diff against the spec after the last ticket.
-- **`/skillworks:spec-names`** — the Name check, which reads the whole diff against the glossary after the drift check.
+- **`/skillworks:spec-name-check`** — the Name check, which reads the whole diff against the glossary after the drift check.
 - **`/skillworks:resolve-conflict`** — resolves the conflict a ticket's rebase onto its Target branch hits, in the session that built the ticket, against **the other side** the driver hands it. The landing script runs it when its rebase conflicts.
 
 ## Skills for any time

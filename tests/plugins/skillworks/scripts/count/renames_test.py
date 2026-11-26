@@ -8,7 +8,7 @@ from count.renames import (count_renames, has_no_glossary_word, name_of, read_re
                            read_renames, unmade_said)
 from tracker.reading import NAME_REPORT
 
-SPEC_NAMES = PLUGIN / "skills" / "spec-names" / "SKILL.md"
+SPEC_NAME_CHECK =PLUGIN / "skills" / "spec-name-check" / "SKILL.md"
 
 
 def report(*sections):
@@ -125,19 +125,19 @@ def test_a_verdict_for_a_rename_the_ticket_does_not_owe_counts_for_nothing():
     assert counted.verdicts_given == 3
 
 
-# --- what spec-names is told to write ------------------------------------------
+# --- what spec-name-check is told to write -----------------------------------
 
 def skill_text():
-    return SPEC_NAMES.read_text(encoding="utf-8")
+    return SPEC_NAME_CHECK.read_text(encoding="utf-8")
 
 
 def example_report(at=0):
     found = re.findall(r"```markdown\n(.*?)```", skill_text(), re.DOTALL)
-    assert len(found) > at, "spec-names shows no example report"
+    assert len(found) > at, "spec-name-check shows no example report"
     return textwrap.dedent(found[at])
 
 
-def test_spec_names_reads_the_spec_commits_and_the_glossary_and_nothing_else():
+def test_spec_name_check_reads_the_spec_commits_and_the_glossary_and_nothing_else():
     text = skill_text()
 
     assert "spec-commits <spec> <base>" in text
@@ -145,7 +145,7 @@ def test_spec_names_reads_the_spec_commits_and_the_glossary_and_nothing_else():
     assert "Read nothing else" in text
 
 
-def test_spec_names_lists_moved_names_and_concepts_named_two_ways():
+def test_spec_name_check_lists_moved_names_and_concepts_named_two_ways():
     text = skill_text()
 
     assert "whose meaning moved" in text
@@ -153,16 +153,16 @@ def test_spec_names_lists_moved_names_and_concepts_named_two_ways():
     assert 'A rename is never "Optional"' in text
 
 
-def test_spec_names_records_the_report_with_the_spec_under_the_heading_the_loop_reads():
+def test_spec_name_check_records_the_report_with_the_spec_under_the_heading_the_loop_reads():
     text = skill_text()
 
     assert "`{}`".format(NAME_REPORT) in text
     assert "`### Renames`" in text
-    assert "tracker-publish names <spec> .spec-loop/<spec>/names-report.md" in text
+    assert "tracker-publish name-check <spec> .spec-loop/<spec>/name-report.md" in text
     assert "comment on the spec issue" in text
 
 
-def test_the_report_spec_names_shows_reads_as_the_loop_reads_it():
+def test_the_report_spec_name_check_shows_reads_as_the_loop_reads_it():
     example = example_report()
 
     assert example.startswith(NAME_REPORT + "\n")
@@ -172,20 +172,20 @@ def test_the_report_spec_names_shows_reads_as_the_loop_reads_it():
     ]
 
 
-def test_spec_names_marks_a_concept_with_no_glossary_word_in_the_words_the_loop_reads():
+def test_spec_name_check_marks_a_concept_with_no_glossary_word_in_the_words_the_loop_reads():
     assert "write `no glossary word` on the line" in skill_text()
 
 
-def test_spec_names_given_a_rename_ticket_judges_only_that_tickets_renames_and_diff():
+def test_spec_name_check_given_a_rename_ticket_judges_only_that_tickets_renames_and_diff():
     text = skill_text()
 
     assert "## The Name re-check" in text
-    assert "/skillworks:spec-names 42 a1b2c3d 57" in text
+    assert "/skillworks:spec-name-check 42 a1b2c3d 57" in text
     assert "spec-commits <spec> <base> <ticket>" in text
     assert "Do not look for new renames." in text
 
 
-def test_the_name_re_check_spec_names_shows_reads_as_the_loop_counts_it():
+def test_the_name_re_check_spec_name_check_shows_reads_as_the_loop_counts_it():
     example = example_report(at=1)
 
     assert example.startswith(NAME_REPORT + "\n")

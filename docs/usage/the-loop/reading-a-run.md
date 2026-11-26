@@ -142,7 +142,7 @@ drift check, then the Name check, then the full run:
 2026-09-28 18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
 2026-09-28 18:40:13 SCOPE the Name check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 18:40:13 NAMES checking the names spec #200 brought in against the glossary.
-2026-09-28 18:44:02 NAMES the report is recorded on spec #200. Read it at .spec-loop/200/names.md
+2026-09-28 18:44:02 NAMES the report is recorded on spec #200. Read it at .spec-loop/200/name-check.md
 2026-09-28 18:44:02 NAMES no rename is owed on spec #200
 2026-09-28 18:44:02 FULL  #202, #203 landed in this run, so the whole Suite runs on the newest origin/master with no Proofs and no images
 2026-09-28 18:52:30 FULL  run 1 passed
@@ -243,6 +243,13 @@ the log says so:
 2026-09-28 18:36:13 DRIFT spec #200 already holds the drift report, so the check runs once and does not run again
 ```
 
+The Name check works the same way. On a rerun it reads the Name report already on the Tracker, and
+the log says so:
+
+```
+2026-09-28 18:40:13 NAMES spec #200 already holds the Name report, so the check runs once and does not run again
+```
+
 When the count finds a Gap, [the Gap round](drift-check.md#the-gap-round) adds its lines before the full run's. A
 `GAP` line names each Gap, and the `FILED` line names the Gap ticket. The ticket's own lines follow,
 then the drift re-check's:
@@ -299,7 +306,10 @@ with its call, `claude -p "/skillworks:spec-simplify-check <spec> <base>" --sess
 `simplify-ticket` line says the ticket it files is built through every step. The drift check prints
 as the `drift-check` step, with its call, `claude -p "/skillworks:spec-drift-check <spec> <base>"
 --session-id <new id>`. The drift re-check is not a step, and it prints on its own `drift-re-check`
-line, with the Gap items after the base. A judge your team turned
+line, with the Gap items after the base. The Name check prints as the `name-check` step, with its
+call, `claude -p "/skillworks:spec-name-check <spec> <base>" --session-id <new id>`. The Name
+re-check is not a step either, and it prints on its own `name-re-check` line, with the rename ticket
+after the base. A judge your team turned
 off prints as its step with `off:` and the setting that turns it off, such as `deepening-check off:
 docs/skillworks/deepening-check.md sets limit to 0`, and its ticket line is left out.
 Last, it prints the paragraph every Session is told after its command. A
@@ -331,7 +341,7 @@ One entry holds:
 | `at` | The date and the time in UTC, as on a log line: `2026-09-28 15:59:37` |
 | `ticket` | The ticket number, or `null` for the Cut and the checks |
 | `spec_step` | `Cut`, `Deepening check`, `Simplify check`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
-| `step` | The step, such as `build`, `standards` or `resolve`, or the name of the Cut or the check, such as `cut`, `drift-check` or `drift-re-check` |
+| `step` | The step, such as `build`, `standards` or `resolve`, or the name of the Cut or the check, such as `cut`, `drift-check`, `drift-re-check`, `name-check` or `name-re-check` |
 | `attempt` | `0` for the first result of the step, `1` and `2` for the answer to the first and the second Nudge |
 | `status` | The exit status of the Session |
 | `failed` | The checks the result failed. It is `[]` when none failed, and `null` when no check was judged, such as after a non-zero exit |

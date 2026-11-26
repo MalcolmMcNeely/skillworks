@@ -104,8 +104,8 @@ The drift check answers Blocked for a missing file as well, when it is `loop.jso
 
 The Name check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md` or `domain.md`. It answers Blocked too when `spec-commits` or
-`tracker-publish names` refused twice, and its line names the command. The Name re-check does the
-same for a missing file and for `tracker-publish names`.
+`tracker-publish name-check` refused twice, and its line names the command. The Name re-check does the
+same for a missing file and for `tracker-publish name-check`.
 
 **A stop.** Every other failure stops the run where it stands. The one rescue is the round a red Suite
 goes, in [the Suite](steps.md#the-suite). The script reopens the ticket, because `finish` may have closed it before its work
@@ -283,7 +283,7 @@ run still runs first. The line names each rename not made:
 ```
 STOP  the Name re-check finds 1 rename not made on spec #200 after the rename ticket was built. A person decides.
       Not made: Batch is Not done: Batch is still the name in two files.
-      Read it at .spec-loop/200/names-renames.md
+      Read it at .spec-loop/200/name-re-check.md
 ```
 
 The loop built the rename once and it is still owed. Make it in a ticket of your own, and run the loop

@@ -100,7 +100,7 @@ def drift_report(*extra, unrequested=(), **given):
     return said
 
 
-NAME_CHECK = "/skillworks:spec-names"
+NAME_CHECK = "/skillworks:spec-name-check"
 
 DEEPENING_CHECK = "/skillworks:spec-deepening-check"
 
@@ -833,7 +833,7 @@ def test_the_dry_run_names_the_nudges_of_the_checks(loop):
     ran = loop.run(SPEC, "--dry-run")
 
     assert [planned_nudges(ran, step) for step in
-            ("drift-check", "drift-re-check", "names", "name-re-check")] == [
+            ("drift-check", "drift-re-check", "name-check", "name-re-check")] == [
         "up to 2, on report-recorded", "up to 2, on new-report-recorded",
         "up to 2, on report-recorded", "up to 2, on new-report-recorded"]
 
@@ -844,7 +844,7 @@ def test_the_dry_run_names_the_gap_round_between_the_drift_check_and_the_full_ru
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0, said(ran)
-    assert planned_steps(ran)[-7:-3] == ["drift-check", "gap-ticket", "drift-re-check", "names"]
+    assert planned_steps(ran)[-7:-3] == ["drift-check", "gap-ticket", "drift-re-check", "name-check"]
     assert planned_steps(ran)[-1] == "full-run"
     assert planned_call(ran, "drift-check") == (
         'drift-check  claude -p "/skillworks:spec-drift-check 158 <base>" --session-id <new id>')
@@ -862,8 +862,9 @@ def test_the_dry_run_names_the_name_check_after_the_gap_round(loop):
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0, said(ran)
-    assert '"/skillworks:spec-names 158 <base>"' in planned_call(ran, "names")
-    assert planned_checks(ran, "names") == "a Name report recorded, a Renames list"
+    assert planned_call(ran, "name-check") == (
+        'name-check   claude -p "/skillworks:spec-name-check 158 <base>" --session-id <new id>')
+    assert planned_checks(ran, "name-check") == "a Name report recorded, a Renames list"
 
 
 def test_the_dry_run_names_the_rename_steps_between_the_name_check_and_the_full_run(loop):
@@ -872,11 +873,12 @@ def test_the_dry_run_names_the_rename_steps_between_the_name_check_and_the_full_
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0, said(ran)
-    assert planned_steps(ran)[-4:] == ["names", "rename-ticket", "name-re-check", "full-run"]
+    assert planned_steps(ran)[-4:] == ["name-check", "rename-ticket", "name-re-check", "full-run"]
     assert ("one ticket under the spec when the Name check finds a rename"
             in planned_call(ran, "rename-ticket"))
-    assert ('"/skillworks:spec-names 158 <base> <the rename ticket>"'
-            in planned_call(ran, "name-re-check"))
+    assert planned_call(ran, "name-re-check") == (
+        'name-re-check claude -p "/skillworks:spec-name-check 158 <base> <the rename ticket>" '
+        '--session-id <new id>, once')
     assert planned_checks(ran, "name-re-check") == "a new Name report, a Verdicts list, every rename Done"
 
 
@@ -3406,7 +3408,7 @@ def test_the_drift_check_leaves_its_count_of_denials(loop):
 def test_the_name_check_leaves_its_count_of_denials(loop):
     named_back(loop, NO_RENAMES)
 
-    assert "DENY  spec #158 names        0 Denials\n" in loop.log()
+    assert "DENY  spec #158 name-check   0 Denials\n" in loop.log()
 
 
 # --- the Choices and Hand checks a Session names ------------------------------
@@ -3527,8 +3529,7 @@ def test_the_dry_run_prints_each_set_of_words_beside_the_steps_that_get_it(loop)
     assert ("  each Session above is told, after its command\n"
             "    build, fix, cut:\n    " + TOLD_TO_BUILD + "\n"
             "    standards, spec, architecture, sweep, deepening-check, simplify-check, drift-check, drift-re-check, "
-            "names, "
-            "name-re-check:\n"
+            "name-check, name-re-check:\n"
             "    " + TOLD_TO_JUDGE + "\n"
             "    finish:\n    " + TOLD_TO_FINISH + "\n") in ran.out
 
@@ -3554,13 +3555,13 @@ def test_a_hand_check_a_session_named_reaches_the_log_with_its_ticket_and_its_st
 def test_a_choice_a_check_session_made_reaches_the_log_with_the_check(loop):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
-    sessions.says["spec-names"] = "Recorded.\n" + A_CHOICE
+    sessions.says["spec-name-check"] = "Recorded.\n" + A_CHOICE
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.name_report = NO_RENAMES
 
     loop.run(SPEC)
 
-    assert "CHOSE spec #158 names        " + A_CHOICE + "\n" in loop.log()
+    assert "CHOSE spec #158 name-check   " + A_CHOICE + "\n" in loop.log()
 
 
 def test_a_choice_that_does_not_open_its_line_is_not_read(loop):
@@ -3613,7 +3614,7 @@ def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
     sessions.says["spec-drift-check"] = "Recorded.\n" + A_HAND_CHECK
-    sessions.says["spec-names"] = "Recorded.\n" + A_CHOICE
+    sessions.says["spec-name-check"] = "Recorded.\n" + A_CHOICE
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = drift_report()
 
@@ -3623,7 +3624,7 @@ def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run
     header = "LIST  this run wrote 0 Departures, made 1 Choice and named 1 Hand check"
     assert last_stamped(loop) == header
     assert lines_under(loop, header) == [
-        "      spec #158 names        " + A_CHOICE,
+        "      spec #158 name-check   " + A_CHOICE,
         "      spec #158 drift-check  " + A_HAND_CHECK]
 
 
@@ -4440,7 +4441,7 @@ def test_a_contradicts_in_the_re_check_stops_the_loop(loop):
 
 def named_back(loop, report, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    given_a_session_that_was_denied(given_sessions_that_report(loop), "spec-names", *denials)
+    given_a_session_that_was_denied(given_sessions_that_report(loop), "spec-name-check", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.name_report = report
     return loop.run(SPEC)
@@ -4455,7 +4456,7 @@ def test_a_name_check_that_finds_no_rename_goes_on_to_a_clean_finish(loop, runne
     log = loop.log()
     assert "NAMES the report is recorded on spec #{}".format(SPEC) in log
     assert "NAMES no rename is owed on spec #{}".format(SPEC) in log
-    assert (loop.records() / "names.md").read_text(encoding="utf-8") == "### Renames\n\n- None\n"
+    assert (loop.records() / "name-check.md").read_text(encoding="utf-8") == "### Renames\n\n- None\n"
     assert log.index("COUNT") < log.index("NAMES") < log.index("END   spec #{}".format(SPEC))
 
 
@@ -4489,7 +4490,7 @@ def test_a_name_check_that_recorded_no_report_stops_the_loop(loop):
     assert ran.status == 1
     assert ("STOP  the Name check recorded no report on spec #{}, so no name was read and the "
             "spec stays open.").format(SPEC) in loop.log()
-    assert not (loop.records() / "names.md").exists()
+    assert not (loop.records() / "name-check.md").exists()
     assert "END" not in loop.log()
 
 
@@ -4546,13 +4547,13 @@ def given_name_reports(sessions, tracker, *reports):
 
     def record():
         tracker.name_report = waiting.pop(0)
-    sessions.then["spec-names"] = record
+    sessions.then["spec-name-check"] = record
 
 
 def renamed_in_a_round(loop, second, first=name_report(*RENAMED), *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
-    given_a_session_that_was_denied(sessions, "spec-names", *denials)
+    given_a_session_that_was_denied(sessions, "spec-name-check", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     given_a_filed_ticket_that_lands(loop, tracker, sessions, RENAME_TICKET)
     given_name_reports(sessions, tracker, first, second)
@@ -4616,7 +4617,7 @@ def test_a_rename_made_is_checked_on_the_rename_ticket_alone_and_ends_the_run(lo
     log = loop.log()
     assert "COUNT the rename ticket owes 2 renames, and the Name re-check gives 2 Verdicts" in log
     assert "NAMES every rename is made on spec #{}".format(SPEC) in log
-    assert (loop.records() / "names-renames.md").is_file()
+    assert (loop.records() / "name-re-check.md").is_file()
     assert "STOP" not in log
     assert log.index("NAMES every rename") < log.index("END   spec #{}".format(SPEC))
 
@@ -4686,7 +4687,7 @@ def test_a_name_re_check_with_no_verdicts_list_stops_the_loop(loop):
 DRIFT_OWED = ("Spec #158 holds no drift report yet. Record the report you wrote with "
               "tracker-publish drift-check 158 .spec-loop/158/drift-report.md")
 NAMES_OWED = ("Spec #158 holds no Name report yet. Record the report you wrote with "
-              "tracker-publish names 158 .spec-loop/158/names-report.md")
+              "tracker-publish name-check 158 .spec-loop/158/name-report.md")
 
 
 def unstamped_nudges(loop):
@@ -4778,8 +4779,8 @@ def test_a_name_check_that_recorded_no_report_has_a_nudge_line_for_each_nudge(lo
     named_back(loop, "Looks good to me.\n")
 
     assert unstamped_nudges(loop) == [
-        "NUDGE spec #158 names        1 of 2, failed report-recorded",
-        "NUDGE spec #158 names        2 of 2, failed report-recorded"]
+        "NUDGE spec #158 name-check   1 of 2, failed report-recorded",
+        "NUDGE spec #158 name-check   2 of 2, failed report-recorded"]
 
 
 def test_a_name_check_that_recorded_no_report_still_stops_the_loop_after_the_last_nudge(loop):
@@ -4807,7 +4808,7 @@ def test_a_name_check_that_records_its_report_after_a_nudge_lets_the_run_carry_o
     sessions = given_sessions_that_report(loop)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.name_report = "Looks good to me.\n"
-    sessions.when_nudged["spec-names"] = lambda: setattr(tracker, "name_report", NO_RENAMES)
+    sessions.when_nudged["spec-name-check"] = lambda: setattr(tracker, "name_report", NO_RENAMES)
 
     ran = loop.run(SPEC)
 
@@ -4819,8 +4820,8 @@ def test_a_name_re_check_that_recorded_no_new_report_is_nudged(loop):
     renamed_in_a_round(loop, report, report)
 
     assert unstamped_nudges(loop) == [
-        "NUDGE spec #158 names-renames 1 of 2, failed new-report-recorded",
-        "NUDGE spec #158 names-renames 2 of 2, failed new-report-recorded"]
+        "NUDGE spec #158 name-re-check 1 of 2, failed new-report-recorded",
+        "NUDGE spec #158 name-re-check 2 of 2, failed new-report-recorded"]
 
 
 def test_a_name_re_check_that_records_a_new_report_after_a_nudge_lets_the_run_carry_on(loop):
@@ -4830,7 +4831,7 @@ def test_a_name_re_check_that_records_a_new_report_after_a_nudge_lets_the_run_ca
     given_a_filed_ticket_that_lands(loop, tracker, sessions, RENAME_TICKET)
     report = name_report(*RENAMED)
     given_name_reports(sessions, tracker, report, report)
-    sessions.when_nudged["spec-names"] = lambda: setattr(
+    sessions.when_nudged["spec-name-check"] = lambda: setattr(
         tracker, "name_report", rename_verdicts(Batch="Done", Gap_and_Hole="Done"))
 
     ran = loop.run(SPEC)
@@ -5406,6 +5407,36 @@ def test_a_drift_report_recorded_under_the_old_drift_kind_stops_the_check_from_r
     assert (ran.status, prompts_asking(runner, "/skillworks:spec-drift-check")) == (0, []), said(ran)
     assert ("DRIFT spec #158 already holds the drift report, so the check runs once and does not run "
             "again") in loop.log()
+
+
+# The report kind names, now name-check, wrote this same heading, so a report it recorded still counts.
+def test_a_name_report_recorded_under_the_old_names_kind_stops_the_check_from_running_again(loop, runner):
+    tracker, _ = rerun_holding(loop)
+    tracker.posted_before = [drift_report(), NO_RENAMES]
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, prompts_asking(runner, NAME_CHECK)) == (0, []), said(ran)
+    assert ("NAMES spec #158 already holds the Name report, so the check runs once and does not run "
+            "again") in loop.log()
+
+
+RENAME_STILL_OPEN = (RENAME_TICKET, "open", "TICKET: Make the renames the Name check found")
+
+
+def test_a_spec_that_holds_the_rename_ticket_builds_it_files_no_second_and_runs_only_the_re_check(
+        loop, runner):
+    tracker, sessions = rerun_holding(loop, RENAME_STILL_OPEN)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, RENAME_TICKET)
+    tracker.posted_before = [drift_report(), name_report(*RENAMED)]
+    tracker.name_report = rename_verdicts(Batch="Done", Gap_and_Hole="Done")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert commands_asking(runner, NAME_CHECK) == [
+        "{} {} {} {}".format(NAME_CHECK, SPEC, base_of(loop), RENAME_TICKET)]
+    assert not runner.built("issue create")
 
 
 GAP_STILL_OPEN = (GAP_TICKET, "open", "TICKET: Build the Gaps the drift check found")
@@ -7415,7 +7446,7 @@ def test_the_step_list_holds_the_steps_of_the_dev_loop_in_order():
         ("spec", THE_SPEC_LOOP), ("architecture", THE_SPEC_LOOP), ("fix", THE_SPEC_LOOP),
         ("sweep", THE_SPEC_LOOP), ("suite", THE_SPEC_LOOP), ("finish", THE_SPEC_LOOP),
         ("deepening-check", THE_SPEC_LOOP), ("simplify-check", THE_SPEC_LOOP),
-        ("drift-check", THE_SPEC_LOOP)]
+        ("drift-check", THE_SPEC_LOOP), ("name-check", THE_SPEC_LOOP)]
 
 
 def test_the_deepening_check_reads_its_own_file_the_tracker_and_the_domain_docs_on_demand():
@@ -7436,6 +7467,13 @@ def test_the_drift_check_reads_the_loop_file_the_tracker_the_domain_docs_and_the
 
     assert held["drift-check"] == ["docs/skillworks/loop.json", "docs/skillworks/issue-tracker.md",
                                    "docs/skillworks/domain.md", "docs/skillworks/surfaces.md"]
+
+
+def test_the_name_check_reads_the_loop_file_the_tracker_and_the_domain_docs_on_demand():
+    held = {step["name"]: step["on-demand"] for step in listed_steps()}
+
+    assert held["name-check"] == ["docs/skillworks/loop.json", "docs/skillworks/issue-tracker.md",
+                                  "docs/skillworks/domain.md"]
 
 
 def test_no_two_steps_in_the_step_list_share_a_name():
@@ -7469,6 +7507,14 @@ def test_the_step_map_agrees_with_the_step_list():
     held = page_text(STEP_MAP_PAGE)
 
     assert steps_in_the_map(held) == steps_of(listed_steps())
+
+
+def test_the_step_map_lists_no_step_among_what_runs_besides_the_steps():
+    besides = page_text(STEP_MAP_PAGE).split("| What runs |", 1)[1].split("\n\n", 1)[0]
+    named = [row.split("|")[1].strip().removeprefix("The ").lower().replace(" ", "-")
+             for row in besides.splitlines()[2:]]
+
+    assert (len(named), set(named) & {step["name"] for step in listed_steps()}) == (7, set())
 
 
 def test_a_map_that_misses_a_step_is_caught():
@@ -7671,13 +7717,13 @@ def test_the_drift_check_and_each_of_its_nudges_leave_a_journal_entry(loop):
 def test_the_name_check_and_each_of_its_nudges_leave_a_journal_entry(loop):
     named_back(loop, "Looks good to me.\n")
 
-    assert attempts_of(loop, "names") == [0, 1, 2]
+    assert attempts_of(loop, "name-check") == [0, 1, 2]
 
 
 def test_a_check_that_recorded_its_report_leaves_one_journal_entry_with_nothing_failed(loop):
     named_back(loop, NO_RENAMES)
 
-    assert [entry["failed"] for entry in entries_of(loop, "names")] == [[]]
+    assert [entry["failed"] for entry in entries_of(loop, "name-check")] == [[]]
 
 
 def test_the_conflict_session_of_the_landing_leaves_a_journal_entry(loop):

@@ -169,7 +169,7 @@ def given_tickets_that_land(steered, *tickets, trailer=True):
     sessions.then["spec-deepening-check"] = recording(steered, "deepening-check", DEEPENINGS)
     sessions.then["spec-simplify-check"] = recording(steered, "simplify-check", NO_FINDINGS)
     sessions.then["spec-drift-check"] = recording(steered, "drift-check", DRIFT)
-    sessions.then["spec-names"] = recording(steered, "names", NAMES)
+    sessions.then["spec-name-check"] = recording(steered, "name-check", NAMES)
     return sessions
 
 

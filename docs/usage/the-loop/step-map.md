@@ -38,11 +38,13 @@ use with nobody watching.
 | `deepening-check` | the spec loop | `CLAUDE.md` and the rules | `docs/skillworks/deepening-check.md`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`. Then the glossary and the folder `adr-folder` names. | What counts as Strong, your checks, "Do not report" and `limit` in `deepening-check.md`. A `limit` of 0 turns the check off, and it is still a step. |
 | `simplify-check` | the spec loop | `CLAUDE.md` and the rules | `docs/skillworks/simplify-check.md`, `docs/skillworks/issue-tracker.md` | The four angles, your checks and "Do not report" in `simplify-check.md`. `enabled: false` turns the check off, and it is still a step. |
 | `drift-check` | the spec loop | `CLAUDE.md` and the rules | `docs/skillworks/loop.json`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`, `docs/skillworks/surfaces.md`. Then the glossary. | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
+| `name-check` | the spec loop | `CLAUDE.md` and the rules | `docs/skillworks/loop.json`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`. Then the glossary. | The glossary, which decides the word a moved name or a concept named two ways should take. |
 
-A judge at the end of the loop that is a step works with `/skillworks:show-steering <step>` like any
-other step, such as `/skillworks:show-steering deepening-check`.
+Each of the four judges at the end of the loop is a step, and works with
+`/skillworks:show-steering <step>` like any other step: `deepening-check`, `simplify-check`,
+`drift-check` and `name-check`.
 
-The loop runs more than the fifteen steps. What it runs besides them reads Steering too:
+The loop runs more than the sixteen steps. What it runs besides them reads Steering too:
 
 | What runs | Always loads | Loads on demand | What your team can change |
 |---|---|---|---|
@@ -50,7 +52,6 @@ The loop runs more than the fifteen steps. What it runs besides them reads Steer
 | A deepening ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of one line of the Deepening report's `### Strong` list. |
 | The simplify ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of every line of the Simplify report's `### Findings` list. |
 | The Gap ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of the drift report's Verdicts and reasons. |
-| The Name check | `CLAUDE.md` and the rules | `docs/skillworks/loop.json`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`. Then the glossary. | The glossary, which decides the word a moved name or a concept named two ways should take. |
 | The rename ticket | What each step above loads, since it is built through them | The same as each step | The glossary, whose word each rename takes. The script writes the ticket from a fixed template, out of the Name report's lines. |
 | The full run | Nothing. No Session runs. | `docs/skillworks/suite.json` | The checks in `suite.json`. |
 | Context backfill | `CLAUDE.md` and the rules | `docs/skillworks/loop.json`, `docs/skillworks/domain.md`, `docs/skillworks/adr-format.md`, `docs/skillworks/suite.json`. Then the glossary and the folder `adr-folder` names. | The shape in `adr-format.md`, which each ADR Draft fills. `adr-folder` in `domain.md`, which says where each accepted ADR goes. It runs once after setup and never in the loop. |

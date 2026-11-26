@@ -32,6 +32,7 @@ STEP_LIST = (
     "  deepening-check  Looks for modules the spec left shallow, and files a ticket to deepen each one.\n"
     "  simplify-check   Looks for code the spec made harder than it has to be, and files one ticket to clean it up.\n"
     "  drift-check      Reads the finished work against the spec, and files one ticket for any Gap it finds.\n"
+    "  name-check       Reads the names the spec brought in against the glossary, and files one ticket for the renames it finds.\n"
     "\n"
     "The step map: https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/the-loop/step-map.md\n"
 )
@@ -299,6 +300,37 @@ def test_the_drift_check_shows_the_loop_file_the_tracker_the_domain_docs_and_the
         "\n"
         "==> [repo] docs/skillworks/surfaces.md <==\n"
         "# Surfaces\n"
+    )), ran.err
+
+
+def test_the_name_check_shows_the_loop_file_the_tracker_and_the_domain_docs(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, "docs/skillworks/loop.json", '{"tracker": "github"}\n')
+    write(repo.work, "docs/skillworks/issue-tracker.md", "# Tracker\n")
+    write(repo.work, "docs/skillworks/domain.md", "# Domain\n")
+
+    ran = show("name-check", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the name-check step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  on demand  [repo]     docs/skillworks/loop.json\n"
+        "  on demand  [repo]     docs/skillworks/issue-tracker.md\n"
+        "  on demand  [repo]     docs/skillworks/domain.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [repo] docs/skillworks/loop.json <==\n"
+        '{"tracker": "github"}\n'
+        "\n"
+        "==> [repo] docs/skillworks/issue-tracker.md <==\n"
+        "# Tracker\n"
+        "\n"
+        "==> [repo] docs/skillworks/domain.md <==\n"
+        "# Domain\n"
     )), ran.err
 
 

@@ -8,7 +8,8 @@ the names still say what the code means. A small question in a small context mis
 It runs once, after the drift check and its count, or after [the Gap
 round](drift-check.md#the-gap-round) when the count found a Gap, so it sees every name the spec
 brought in, the Gap ticket's too. The script opens one more worktree and runs
-`/skillworks:spec-names <spec> <base>` in a Fresh Session. It reads two things, and nothing else:
+`/skillworks:spec-name-check <spec> <base>` in a Fresh Session. The plan and the log name it as the
+`name-check` step. It reads two things, and nothing else:
 
 - the commits the spec's tickets Landed after the base commit, through `spec-commits`, in place of
   the spec's whole diff. A commit with no `Ticket:` trailer is not read, and neither is another
@@ -36,7 +37,7 @@ whether to fix it.
 ## The Name report
 
 The Session records a **Name report** with the spec, as the drift check records its report, through
-`tracker-publish names` with either Tracker. With the GitHub Tracker it is a new comment on the spec
+`tracker-publish name-check` with either Tracker. With the GitHub Tracker it is a new comment on the spec
 issue, and a rerun adds another comment below it. With the files Tracker it goes at the end of
 `spec.md`, below the drift report. A new drift report takes an old Name report away, because a new
 drift check starts the judging again.
@@ -54,15 +55,20 @@ names the name or the concept and says in one sentence why it must change. A con
 has no word for says `no glossary word` on its line. With nothing to rename, the list says `- None`.
 
 The script reads the report back from the Tracker, so a finding the Session only said and never
-recorded is caught. It keeps a copy at `.spec-loop/<spec>/names.md`, beside `drift-check.md`, and writes a
+recorded is caught. It keeps a copy at `.spec-loop/<spec>/name-check.md`, beside `drift-check.md`, and writes a
 `NAME` line for each rename. A Name check that recorded no report is Nudged: the script resumes the
-same Session in its own worktree, and names what is missing and the `tracker-publish names` command
+same Session in its own worktree, and names what is missing and the `tracker-publish name-check` command
 that records it. Each Nudge writes a `NUDGE` line. No report after two Nudges stops the loop, and so
 does a report with no `### Renames` list, which gets no Nudge.
 
 A Name check that began its last message with a `BLOCKED` line stops the loop at once, with no
 Nudge, as [When a step fails](stops.md) shows. It does so when a Steering file it reads is missing,
-or when `spec-commits` or `tracker-publish names` refused twice.
+or when `spec-commits` or `tracker-publish name-check` refused twice.
+
+A loop run again on a spec that already holds a Name report does not run the Name check again. It
+reads the report it finds, and the log gets a `NAMES` line that says so. When the spec already holds
+the rename ticket, the loop builds it if it is still open, files no second one, and goes on to the
+`name-re-check`.
 
 With no rename there is no rename ticket and no Name re-check, and the loop goes on to the full run.
 
@@ -83,7 +89,8 @@ the concept has no glossary word. The build never edits a glossary. A new word i
 ## The Name re-check
 
 After the rename ticket Lands, the script runs the Name check again, on the rename ticket alone:
-`/skillworks:spec-names <spec> <base> <rename ticket>`. It reads the rename ticket's list and the
+`/skillworks:spec-name-check <spec> <base> <rename ticket>`. The plan and the log name it as the
+`name-re-check`. It reads the rename ticket's list and the
 diff of that ticket's commits. The one read of the code beyond them is a search of the Target
 branch, which shows where an old name still stands, because a diff does not show what a commit left
 behind. It records a new Name report with a `### Verdicts` list, one line for each rename:
@@ -100,7 +107,7 @@ behind. It records a new Name report with a `### Verdicts` list, one line for ea
 Each rename is Done or Not done, and a Not done carries one sentence of reason. An old name that
 still stands only in a glossary's own file does not make a rename Not done, because the build never
 edits a glossary. The script keeps a
-copy at `.spec-loop/<spec>/names-renames.md` and counts it the way it counts the drift check's
+copy at `.spec-loop/<spec>/name-re-check.md` and counts it the way it counts the drift check's
 Verdicts. A rename with no Verdict, or with two, counts as not made. A Verdict for a rename the
 ticket does not owe gets a `WARN` line and counts for nothing. A rename not made stops the loop and
 names it, as [When a step fails](stops.md) shows. With every rename Done, the

@@ -430,3 +430,6 @@ class GitHub:
 
     def earlier_drift_report(self, spec):
         return self.newest_report(spec, DRIFT_REPORT)
+
+    def earlier_name_report(self, spec):
+        return self.newest_report(spec, NAME_REPORT)

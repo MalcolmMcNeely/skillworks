@@ -11,7 +11,7 @@ to run only Trials, as the drift check is. It changes no code. It records one re
 under the heading `## Deepening report`, through `tracker-publish deepening-check` with either Tracker. With the
 GitHub Tracker the report is a new comment on the spec issue. With the files Tracker the report goes
 at the end of the spec's `spec.md`, above any drift report. The script then reads the report back from
-the Tracker and keeps a copy at `.spec-loop/<spec>/deepening-check.md`, beside `drift-check.md` and `names.md`.
+the Tracker and keeps a copy at `.spec-loop/<spec>/deepening-check.md`, beside `drift-check.md` and `name-check.md`.
 
 ## What it reads
 

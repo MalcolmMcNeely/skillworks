@@ -1,17 +1,17 @@
 ---
-name: spec-names
+name: spec-name-check
 argument-hint: "<spec> <base> [<rename ticket>]"
 description: Read a spec's own commits against the glossary, list every name whose meaning moved and every concept two tickets named two ways, and record the Name report with the spec.
 disable-model-invocation: true
 ---
 
-# Spec Names
+# Spec Name Check
 
 The Name check. `/skillworks:spec-loop` runs it after the drift check and its Gap round, so it sees every name the spec brought in, the Gap build's too. The drift check judges whether the work is there. This judges one thing only: whether the names still say what the code means.
 
 Two arguments: the spec's number, then the commit the loop started from. The number is the spec's issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, with the files Tracker.
 
-`/skillworks:spec-names 42 a1b2c3d`
+`/skillworks:spec-name-check 42 a1b2c3d`
 
 The base commit bounds the search for the spec's commits. If it was not passed, read `.spec-loop/<spec>/base.sha`. If that is missing too, stop and ask. Do not guess a base.
 
@@ -84,10 +84,10 @@ The loop reads its list, so its shape is fixed:
 
 Record the report with the spec. Its first line is `## Name report`, with either Tracker, because the loop finds the report by that heading and reads it back. A finding you only say in this Session is lost.
 
-Write it with the Write tool to `.spec-loop/<spec>/names-report.md` in this checkout, and record it with this one command, whichever the Tracker:
+Write it with the Write tool to `.spec-loop/<spec>/name-report.md` in this checkout, and record it with this one command, whichever the Tracker:
 
 ```bash
-tracker-publish names <spec> .spec-loop/<spec>/names-report.md
+tracker-publish name-check <spec> .spec-loop/<spec>/name-report.md
 ```
 
 Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.
@@ -103,7 +103,7 @@ The report is recorded when the command prints the comment's URL, or the path of
 
 The loop files every rename in your report as one rename ticket, builds it, and then runs you again with that ticket as the third argument:
 
-`/skillworks:spec-names 42 a1b2c3d 57`
+`/skillworks:spec-name-check 42 a1b2c3d 57`
 
 The ticket is named the way the Tracker names it: the issue number with GitHub, and `<spec>/<ticket>` with files. This time you judge one thing: whether the rename ticket made each rename it lists.
 

@@ -401,6 +401,9 @@ class Files:
     def name_report(self, spec):
         return section_in(self.spec_body(spec), NAME_REPORT)
 
+    def earlier_name_report(self, spec):
+        return self.name_report(spec)
+
     # The file is read again inside the lock, so a change builds on the last write and not on a stale read.
     def changed(self, spec, ticket, message, change):
         path = self.path_of(spec, ticket)

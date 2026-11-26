@@ -368,7 +368,7 @@ def given_sessions_that_finish(driver, runs=None, **finish):
     sessions.then["spec-deepening-check"] = deepening(driver)
     sessions.then["spec-simplify-check"] = simplifying(driver)
     sessions.then["spec-drift-check"] = drifting(driver)
-    sessions.then["spec-names"] = naming(driver)
+    sessions.then["spec-name-check"] = naming(driver)
     driver.put({
         FOLDER + "/spec.md": spec_file(),
         ticket_path("01-read-loop-json"): ticket_file("Read loop.json"),
@@ -503,7 +503,7 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     sessions.then["spec-deepening-check"] = deepening(driver)
     sessions.then["spec-simplify-check"] = simplifying(driver)
     sessions.then["spec-drift-check"] = drifting(driver)
-    sessions.then["spec-names"] = naming(driver)
+    sessions.then["spec-name-check"] = naming(driver)
     return sessions
 
 
@@ -565,7 +565,7 @@ NAMES = "## Name report\n\n" + RENAMES
 
 
 def naming(driver, report=NAMES):
-    return recording(driver, "names", report)
+    return recording(driver, "name-check", report)
 
 
 DEEPENINGS = "## Deepening report\n\n### Strong\n\n- None\n"
@@ -602,14 +602,14 @@ def test_the_loop_reads_back_the_name_report_recorded_below_the_drift_report(dri
 
     assert ran.status == 0, said(ran)
     assert driver.held(FOLDER + "/spec.md").endswith(NAMES)
-    held = driver.repo.work / ".spec-loop" / SPEC / "names.md"
+    held = driver.repo.work / ".spec-loop" / SPEC / "name-check.md"
     assert held.read_text(encoding="utf-8") == RENAMES
     assert "NAMES no rename is owed on spec 7" in ran.out
 
 
 def test_a_name_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):
     sessions = given_sessions_that_finish(driver)
-    del sessions.then["spec-names"]
+    del sessions.then["spec-name-check"]
 
     ran = driver.run()
 
@@ -722,7 +722,7 @@ def given_a_rename_round(driver, *reports):
     sessions = given_sessions_that_finish(driver)
     given_a_filed_ticket_that_lands(driver, sessions)
     waiting = list(reports)
-    sessions.then["spec-names"] = lambda: naming(driver, waiting.pop(0))()
+    sessions.then["spec-name-check"] = lambda: naming(driver, waiting.pop(0))()
     return sessions
 
 

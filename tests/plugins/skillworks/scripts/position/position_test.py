@@ -65,7 +65,7 @@ def test_the_drift_check_shows_as_what_the_loop_does_now(loop):
 def test_the_name_check_shows_as_what_the_loop_does_now(loop):
     sessions = given_a_run_that_lands(loop)
     seen = []
-    read_while(sessions, "spec-names", loop, seen)
+    read_while(sessions, "spec-name-check", loop, seen)
 
     loop.run(SPEC)
 

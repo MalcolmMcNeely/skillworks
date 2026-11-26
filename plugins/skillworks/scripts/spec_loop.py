@@ -44,7 +44,7 @@ from count.deepenings import STRONG, filed_within, limit_in, read_strong
 from count.gap_ticket import TITLE as GAP_TITLE, gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items, with_readme
-from count.rename_ticket import rename_ticket
+from count.rename_ticket import TITLE as RENAME_TITLE, rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
 from count.findings import FINDINGS, enabled_in, read_findings
@@ -504,7 +504,7 @@ def told_plan():
     named = {told: [step.name for step in STEPS if step.told == told]
              for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
     named[TOLD_TO_BUILD].append("cut")
-    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify-check", "drift-check", "drift-re-check", "names", "name-re-check"]
+    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify-check", "drift-check", "drift-re-check", "name-check", "name-re-check"]
     return "  each Session above is told, after its command\n" + "".join(
         "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
 
@@ -1307,7 +1307,7 @@ class Loop:
         deepening_check = 'claude -p "{}spec-deepening-check {} <base>'.format(PLUGIN, self.spec)
         simplify_check = 'claude -p "{}spec-simplify-check {} <base>'.format(PLUGIN, self.spec)
         drift_check = 'claude -p "{}spec-drift-check {} <base>'.format(PLUGIN, self.spec)
-        names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
+        name_check = 'claude -p "{}spec-name-check {} <base>'.format(PLUGIN, self.spec)
         deepening = (plan_line("deepening-check", deepening_check + '" --session-id <new id>',
                                "a Deepening report recorded, a Strong list")
                      + nudges_line(REPORT_RECORDED)
@@ -1334,12 +1334,12 @@ class Loop:
                 + plan_line("drift-re-check", drift_check + ' <the Gap items>" --session-id <new id>, once',
                             "no Gap left, no Contradicts")
                 + nudges_line(NEW_REPORT_RECORDED)
-                + plan_line("names", names + '" --session-id <new id>',
+                + plan_line("name-check", name_check + '" --session-id <new id>',
                             "a Name report recorded, a Renames list")
                 + nudges_line(REPORT_RECORDED)
                 + plan_line("rename-ticket", "one ticket under the spec when the Name check finds "
                             "a rename, built through every step above")
-                + plan_line("name-re-check", names + ' <the rename ticket>" --session-id <new id>, '
+                + plan_line("name-re-check", name_check + ' <the rename ticket>" --session-id <new id>, '
                             'once', "a new Name report, a Verdicts list, every rename Done")
                 + nudges_line(NEW_REPORT_RECORDED)
                 + plan_line("full-run", "the whole Suite on the newest origin/<target>, with no "
@@ -2033,10 +2033,11 @@ class Loop:
         self.say_scope("Name check", base)
         self.say("NAMES checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
-        result = self.run_clean_session("names", "Name check", PLUGIN + "spec-names {} {}".format(
-            self.spec, base), Recorded(
+        result = self.run_clean_session(
+            "name-check", "Name check", PLUGIN + "spec-name-check {} {}".format(
+                self.spec, base), Recorded(
                 REPORT_RECORDED, lambda: self.tracker.name_report(self.spec),
-                self.report_owed("Name report", "names", "names-report.md")))
+                self.report_owed("Name report", "name-check", "name-report.md")))
 
         # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
         report = self.tracker.name_report(self.spec)
@@ -2044,8 +2045,11 @@ class Loop:
             raise self.stop_naming_denials("STOP  the Name check recorded no report on spec {}, so no name "
                                    "was read and the spec stays open.".format(
                                        self.spec_named()), result)
+        return self.read_held_names(report)
+
+    def read_held_names(self, report):
         self.names_read = report
-        held = self.log_dir / "names.md"
+        held = self.log_dir / "name-check.md"
         written(held, report + "\n")
         self.say("NAMES the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
@@ -2083,17 +2087,17 @@ class Loop:
         self.say("NAMES the rename ticket {} is closed. Checking it made each rename on spec "
                  "{}.".format(self.named(ticket), self.spec_named()))
         result = self.run_clean_session(
-            "names-renames", "Name re-check", PLUGIN + "spec-names {} {} {}".format(
+            "name-re-check", "Name re-check", PLUGIN + "spec-name-check {} {} {}".format(
                 self.spec, base, self.tracker.reference(ticket)), Recorded(
                     NEW_REPORT_RECORDED, self.new_name_report,
-                    self.report_owed("new Name report", "names", "names-report.md")))
+                    self.report_owed("new Name report", "name-check", "name-report.md")))
 
         report = self.new_name_report()
         if not report:
             raise self.stop_naming_denials("STOP  the Name re-check recorded no new report on spec {}, so no "
                                    "rename was checked and the spec stays open.".format(
                                        self.spec_named()), result)
-        held = self.log_dir / "names-renames.md"
+        held = self.log_dir / "name-re-check.md"
         written(held, report + "\n")
         verdicts = read_rename_verdicts(report)
         if verdicts is None:
@@ -2123,12 +2127,19 @@ class Loop:
         return report if report != self.names_read else None
 
     # Its own ticket after the Gap ticket, so each build has one job and no later build brings a name.
+    # A rerun reads the report an earlier run recorded, so the Name check and its rename ticket come once.
     def close_renames(self, base):
-        renames = self.check_names(base)
+        earlier = self.earlier_report(self.tracker.earlier_name_report(self.spec), "Name", "NAMES")
+        renames = self.read_held_names(earlier) if earlier else self.check_names(base)
         if not renames:
             return
-        ticket = self.file_rename_ticket(renames)
-        self.run_tickets()
+        filed = [number for number, _, title in self.tracker.ticket_rows(self.spec)
+                 if title == RENAME_TITLE]
+        if filed:
+            ticket = filed[0]
+        else:
+            ticket = self.file_rename_ticket(renames)
+            self.run_tickets()
         self.check_renames(base, ticket, renames)
 
     # --- the note of the run's Flakes ----------------------------------------

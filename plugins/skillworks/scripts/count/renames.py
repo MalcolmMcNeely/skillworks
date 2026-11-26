@@ -11,7 +11,7 @@ NOT_DONE = "Not done"
 
 RENAME_WORDS = (NOT_DONE, DONE)
 
-# The words spec-names is told to write, so the driver can say which concept no glossary names.
+# The words spec-name-check is told to write, so the driver can say which concept no glossary names.
 NO_GLOSSARY_WORD = "no glossary word"
 
 

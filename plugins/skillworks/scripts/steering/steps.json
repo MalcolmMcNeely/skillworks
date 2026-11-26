@@ -148,6 +148,16 @@
         "docs/skillworks/domain.md",
         "docs/skillworks/surfaces.md"
       ]
+    },
+    {
+      "name": "name-check",
+      "stage": "the spec loop",
+      "description": "Reads the names the spec brought in against the glossary, and files one ticket for the renames it finds.",
+      "on-demand": [
+        "docs/skillworks/loop.json",
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/domain.md"
+      ]
     }
   ]
 }
