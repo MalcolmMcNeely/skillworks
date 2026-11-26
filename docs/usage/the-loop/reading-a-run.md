@@ -356,6 +356,35 @@ One entry holds:
 {"at": "2026-09-28 15:59:37", "ticket": "202", "spec_step": null, "step": "standards", "attempt": 0, "status": 0, "failed": ["axis-reported"], "denials": 1, "blocked": null, "choices": [], "hand_checks": [], "departures": [], "result": {"is_error": false, "session_id": "...", "result": "I will wait for the tests to finish."}}
 ```
 
+## Step times
+
+A Step time says when one piece of a run started and when it ended. A piece is a step, or work the
+driver does itself between steps: the baseline, each ticket's Land and the full run. The Cut, each
+step of a ticket and each check are pieces too.
+
+The Step times are `.spec-loop/<spec>/step-times.jsonl`, beside the Position and the Journal. The
+file has one JSON object on each line, and each one is the Step time of one piece. The driver adds
+the entry when the piece ends, a stop included. A piece that is still running has no entry yet.
+
+The driver never changes or removes an entry. A spec that stops and starts again adds the entries of
+its new run below the old ones, so the file holds one entry for each piece of each start. A re-check
+adds an entry under its check's step, such as `drift-check`, and never under a name of its own. A
+dry run adds no entry.
+
+One entry holds:
+
+| Field | What it holds |
+|---|---|
+| `name` | The piece: `baseline`, `cut`, a ticket step such as `build` or `suite`, `land`, a check such as `drift-check`, or `full-run` |
+| `ticket` | The ticket number, or `null` for a piece of the spec, such as the baseline or a check |
+| `run` | The run the piece belongs to. It is the `run` the Position names while that run goes on |
+| `started` | When the piece started, in UTC, as in the Position: `2026-09-28T15:59:37Z` |
+| `ended` | When the piece ended, in the same form |
+
+```
+{"name": "standards", "ticket": "202", "run": "4f6c...", "started": "2026-09-28T15:59:37Z", "ended": "2026-09-28T16:03:12Z"}
+```
+
 ## Counting runs
 
 `spec-loop-counts` counts how the steps of the loop's runs ended. It reads the Journal and the log,

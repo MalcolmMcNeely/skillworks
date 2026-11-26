@@ -70,6 +70,7 @@ from steering.steering_file import LOOP_FILE, STEERING_FOLDER, sidecar_steering,
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
+from step_times.step_times import kept
 from stop import MISUSED, REFUSED, Stop, is_a_number, misuse
 from suite import Suite, Unreadable, unreadable
 from tracker.reading import FLAKES, listed
@@ -643,6 +644,25 @@ class Loop:
         with contextlib.suppress(OSError):
             self.say("WARN  the Position was not written, {}: {}".format(type(failed).__name__, failed))
 
+    # Kept as the piece ends, a stop included, so the pieces of a run that stopped still add up.
+    @contextlib.contextmanager
+    def step_time(self, name, ticket=None):
+        started = self.clock.now()
+        try:
+            yield
+        finally:
+            if self.writes_position:
+                self.step_time_kept(name, ticket, started)
+
+    # A record that cannot be written must not end a run, nor take the place of why it ended.
+    def step_time_kept(self, name, ticket, started):
+        try:
+            kept(self.log_dir, name, ticket, self.run_id, started, self.clock.now())
+        except OSError as failed:
+            with contextlib.suppress(OSError):
+                self.say("WARN  the Step time of {} was not kept, {}: {}".format(
+                    name, type(failed).__name__, failed))
+
     def read_spec_tickets(self):
         rows = self.tracker.ticket_rows(self.spec)
         self.spec_tickets = [{"number": number, "title": title, "landed": state == "closed"}
@@ -1011,6 +1031,10 @@ class Loop:
         self.say("STEP  {} {:<13}{}".format(
             self.named(ticket), step.name,
             place_suffix(self.place, self.ticket_count, self.mean_seconds)))
+        with self.step_time(step.name, ticket):
+            self.run_step_within(ticket, step, held, reasons, rest)
+
+    def run_step_within(self, ticket, step, held, reasons, rest):
         self.on_step(step.name)
 
         # Built before the session starts, so two axes out of three never reach the fix step.
@@ -1127,6 +1151,10 @@ class Loop:
         self.say("STEP  {} {:<13}{}".format(
             self.named(ticket), step.name,
             place_suffix(self.place, self.ticket_count, self.mean_seconds)))
+        with self.step_time(step.name, ticket):
+            return self.run_suite_within(ticket, step, held)
+
+    def run_suite_within(self, ticket, step, held):
         self.on_step(step.name)
 
         # The red that sent the loop round is why it ran again, so a second run adds to the record.
@@ -1210,6 +1238,10 @@ class Loop:
     def run_baseline(self):
         self.say("STEP  baseline the readiness of each check in the Suite file, then its baseline, "
                  "on origin/{}".format(self.target))
+        with self.step_time(BASELINE_JOB):
+            self.run_baseline_within()
+
+    def run_baseline_within(self):
         self.moved(BASELINE)
         self.remove_left_baseline()
         tree = self.opened(BASELINE_JOB)
@@ -1281,10 +1313,11 @@ class Loop:
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
             self.spec_named()))
         self.moved(CUTTING)
-        result = self.run_clean_session(
-            "cut", "Cut", self.cut_asks(),
-            Recorded(CUT_RECORDED, lambda: self.tracker.tickets(self.spec), self.cut_owed()),
-            TOLD_TO_BUILD + CUT_UNATTENDED, NUDGE_TAILS[TOLD_TO_BUILD])
+        with self.step_time("cut"):
+            result = self.run_clean_session(
+                "cut", "Cut", self.cut_asks(),
+                Recorded(CUT_RECORDED, lambda: self.tracker.tickets(self.spec), self.cut_owed()),
+                TOLD_TO_BUILD + CUT_UNATTENDED, NUDGE_TAILS[TOLD_TO_BUILD])
         shown = str(field(result, "result")).rstrip("\n")
         if shown:
             self.wrote(shown + "\n")
@@ -1502,6 +1535,10 @@ class Loop:
 
     # The session that wrote the ticket goes too, to resolve what its work conflicts with.
     def land(self, ticket, session):
+        with self.step_time("land", ticket):
+            self.land_within(ticket, session)
+
+    def land_within(self, ticket, session):
         held = self.step_file(ticket, "land", "out")
         written(held, "")
         self.on_step("land")
@@ -1600,6 +1637,10 @@ class Loop:
     def run_full(self, base, stopped=None):
         if not self.landed:
             return
+        with self.step_time(FULL_RUN):
+            self.run_full_within(base, stopped)
+
+    def run_full_within(self, base, stopped):
         landed = ", ".join(self.named(ticket) for ticket in self.landed)
         self.say("FULL  {} landed in this run, so the whole Suite runs on the newest origin/{} "
                  "with no Proofs and no images".format(landed, self.target))
@@ -1780,12 +1821,14 @@ class Loop:
         else:
             def read():
                 return judge.read(self.tracker, self.spec)
-        result = self.run_clean_session(
-            judge.session(again), judge.said_as(again), PLUGIN + "{} {} {}{}".format(
-                judge.skill, self.spec, base, " " + handed if handed else ""),
-            Recorded(NEW_REPORT_RECORDED if again else REPORT_RECORDED, read,
-                     self.report_owed(judge, again)),
-            handed_on=handed_on)
+        # A re-check is kept under its judge's step, so the pieces match the steps the pane lists.
+        with self.step_time(judge.name):
+            result = self.run_clean_session(
+                judge.session(again), judge.said_as(again), PLUGIN + "{} {} {}{}".format(
+                    judge.skill, self.spec, base, " " + handed if handed else ""),
+                Recorded(NEW_REPORT_RECORDED if again else REPORT_RECORDED, read,
+                         self.report_owed(judge, again)),
+                handed_on=handed_on)
         report = read()
         if not report:
             raise self.stop_naming_denials(
