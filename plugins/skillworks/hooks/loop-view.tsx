@@ -137,6 +137,13 @@ const JUDGE_SHORT: Record<string, string> = {
   'name-check': 'names',
 }
 
+const JUDGE_LONG: Record<string, string> = {
+  'deepening-check': shown(DOING, 'Deepening check').name,
+  'simplify-check': shown(DOING, 'Simplify check').name,
+  'drift-check': shown(DOING, 'drift check').name,
+  'name-check': shown(DOING, 'Name check').name,
+}
+
 // The state colours green, yellow, red and gray stay off this list, so a tag never reads as a state.
 const JUDGE_COLOR: Record<string, string> = {
   'deepening-check': 'magenta',
@@ -207,7 +214,44 @@ function spinnerAt(now: number): string {
   return SPINNER.charAt(Math.floor(now / POLL_MS) % SPINNER.length)
 }
 
-type Loop = Position & { stepTimes: StepTime[] }
+// The time a loop worked, so the hours it sat stopped between two starts do not count.
+function timeTaken(loop: Loop): string {
+  const ms = loop.stepTimes.reduce((sum, piece) => sum + Date.parse(piece.ended) - Date.parse(piece.started), 0)
+  const minutes = Math.floor(Math.max(0, ms) / 60000)
+  return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
+
+// A developer reads the end against the clock on their own wall, so it is shown in the machine's zone.
+function onTheWall(at: number): string {
+  const when = new Date(at)
+  return `${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}`
+}
+
+function headerOf(loop: Loop, state: string): string {
+  const restarts = new Set(loop.stepTimes.map(piece => piece.run)).size - 1
+  const restarted = restarts > 0 ? ` · restarted ${count(restarts, 'time')}` : ''
+  return `Spec #${loop.spec} · ${state} · ${timeTaken(loop)} · ended ${onTheWall(lastEnd(loop))}${restarted}`
+}
+
+// A stop writes `stopped` over what the loop did, so a stop at a judge is read from the judge still marked now.
+function pieceOf(loop: Position): string {
+  const ticket = loop.ticket
+  if (ticket) return `#${ticket.number}${ticket.step ? ` ${shown(STEP, ticket.step).name}` : ''}`
+  const judge = (loop.judges ?? []).find(each => each.state === NOW)
+  if (judge) return JUDGE_LONG[judge.name] ?? judge.name
+  return shown(DOING, loop.doing).name
+}
+
+function foundBy(judge: Judge): string {
+  const name = JUDGE_SHORT[judge.name] ?? judge.name
+  if (judge.state === OFF) return `${name} · off, did not run`
+  if (judge.state === NOW) return `${name} · did not end`
+  if (judge.state !== DONE) return `${name} · did not run`
+  const found = judge.found == null ? '' : ` · ${judge.found}${judge.word ? ` ${judge.word}` : ''}`
+  return `${name}${found} → ${count(judge.filed.length, 'ticket')}`
+}
+
+type Loop = Position & { folder: string; stepTimes: StepTime[] }
 
 function stepTimesIn(text: string): StepTime[] {
   return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line))
@@ -222,7 +266,7 @@ async function loopsIn($: EngineInterface, root: string): Promise<Loop[]> {
       const position: Position = JSON.parse(String(await $.fs.read(`${root}/${entry.name}/position.json`)))
       const stepTimes = stepTimesIn(String(await $.fs.read(`${root}/${entry.name}/step-times.jsonl`)))
       if (Array.isArray(position.judges) && position.judges.length > 0 && stepTimes.length > 0) {
-        found.push({ ...position, stepTimes })
+        found.push({ ...position, folder: entry.name, stepTimes })
       }
     } catch {
       // A spec folder missing either file is a run from before this pane, and shows no card.
@@ -332,41 +376,58 @@ export const register: Register = on => {
       <Box flexDirection="column">
         {loops.length === 0 && <Text dimColor>No loop has a Position in this clone.</Text>}
         {loops.map(loop => {
+          if (hasEnded(loop, now)) {
+            const state = stateOf(loop, now)
+            const landed = loop.tickets.filter(row => row.landed).length
+            return (
+              <Box key={`card-${loop.spec}`} flexDirection="column" borderStyle="round"
+                borderColor={BORDER[state]} paddingX={1}>
+                <Text bold>{headerOf(loop, shown(DOING, state).name)}</Text>
+                {loop.stop && <Text color="red">{loop.stop.line}</Text>}
+                {state !== 'finished' && <Text>Log: {loop.stop?.log ?? `.spec-loop/${loop.folder}/loop.log`}</Text>}
+                {state === 'stopped' && <Text>Stopped at {pieceOf(loop)}</Text>}
+                {state === GONE && <Text>Last reached {pieceOf(loop)}</Text>}
+                <Text dimColor>
+                  {count(landed, 'ticket')} Landed · {count(loop.choices, 'Choice')} · {count(loop.denials, 'Denial')}
+                </Text>
+                {(loop.judges ?? []).map(judge => (
+                  <Box key={`found-${loop.spec}-${judge.name}`}>
+                    <Text color={JUDGE_COLOR[judge.name]}>{foundBy(judge)}</Text>
+                  </Box>
+                ))}
+                <Button key={`clear-${loop.run}`} label="Clear" onPress={() => clear(loop.run)} />
+              </Box>
+            )
+          }
           const ticket = loop.ticket
           const stepAt = ticket?.step ? ticket.steps.indexOf(ticket.step) : -1
-          const doing = shown(DOING, isGone(loop, now) ? GONE : loop.doing)
+          const doing = shown(DOING, loop.doing)
           const left = loop.seconds_left == null ? '' : `~${span(loop.seconds_left * 1000)} left · `
-          const path = hasEnded(loop, now) ? null : pathOf(loop)
+          const path = pathOf(loop)
           const hint = ticket?.step ? shown(STEP, ticket.step).hint : ''
           return (
             <Box key={`card-${loop.spec}`} flexDirection="column" borderStyle="round"
               borderColor={BORDER[stateOf(loop, now)]} paddingX={1}>
               <Text bold>Spec #{loop.spec} · {doing.name}</Text>
               {!ticket && doing.hint && <Text dimColor>{doing.hint}</Text>}
-              {path && (
-                <Box key={`bar-${loop.spec}`}>
-                  <Text color="yellow">{barOf(path)}</Text>
-                </Box>
-              )}
-              {path && (
-                <Box key={`bar-text-${loop.spec}`}>
-                  <Text>{path.text}</Text>
-                </Box>
-              )}
-              {path && (
-                <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
-                  {path.chips.map(chip => (
-                    <Box key={`chip-${loop.spec}-${chip.key}`}>
-                      <Text color={CHIP_COLOR[chip.state]} dimColor={chip.state === TO_COME || chip.state === OFF}
-                        strikethrough={chip.state === OFF}>
-                        {chip.state === NOW ? spinnerAt(now) : MARK[chip.state] ?? MARK[TO_COME]} {chip.text}
-                      </Text>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-              {path && ticket && <Text bold>Ticket {loop.at} of {loop.of}: #{ticket.number}</Text>}
-              {path && ticket && (
+              <Box key={`bar-${loop.spec}`}>
+                <Text color="yellow">{barOf(path)}</Text>
+              </Box>
+              <Box key={`bar-text-${loop.spec}`}>
+                <Text>{path.text}</Text>
+              </Box>
+              <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+                {path.chips.map(chip => (
+                  <Box key={`chip-${loop.spec}-${chip.key}`}>
+                    <Text color={CHIP_COLOR[chip.state]} dimColor={chip.state === TO_COME || chip.state === OFF}
+                      strikethrough={chip.state === OFF}>
+                      {chip.state === NOW ? spinnerAt(now) : MARK[chip.state] ?? MARK[TO_COME]} {chip.text}
+                    </Text>
+                  </Box>
+                ))}
+              </Box>
+              {ticket && <Text bold>Ticket {loop.at} of {loop.of}: #{ticket.number}</Text>}
+              {ticket && (
                 <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
                   {ticket.steps.map((step, k) => {
                     const state = k < stepAt ? DONE : k === stepAt ? NOW : TO_COME
@@ -380,20 +441,15 @@ export const register: Register = on => {
                   })}
                 </Box>
               )}
-              {path && ticket?.step_started ? (
+              {ticket?.step_started ? (
                 <Text>{span(now - Date.parse(ticket.step_started))} in step</Text>
               ) : null}
-              {path && hint ? (
+              {hint ? (
                 <Box marginLeft={2}>
                   <Text dimColor>{hint}</Text>
                 </Box>
               ) : null}
               <Text dimColor>{left}{count(loop.choices, 'Choice')} · {count(loop.denials, 'Denial')}</Text>
-              {hasEnded(loop, now) && (
-                <Button key={`clear-${loop.run}`} label="Clear" onPress={() => clear(loop.run)} />
-              )}
-              {loop.stop && <Text color="red">{loop.stop.line}</Text>}
-              {loop.stop && <Text>Log: {loop.stop.log}</Text>}
               {loop.tickets.filter(isOwn).map(row => ticketRow(loop, row))}
               {loop.tickets.some(row => !isOwn(row)) && (
                 <Box key={`filed-${loop.spec}`}>

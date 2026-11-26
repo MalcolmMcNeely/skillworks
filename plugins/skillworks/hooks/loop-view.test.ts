@@ -138,7 +138,89 @@ const FINISHED = running({
   seconds_left: null,
 })
 
-test('a stopped loop shows its stop line and the path to its log', async ($, on) => {
+const JUDGED = running({
+  doing: 'finished',
+  tickets: [
+    { number: '590', title: 'TICKET: The driver writes a Position', landed: true, judge: null },
+    { number: '601', title: 'TICKET: Deepen the Position', landed: true, judge: 'deepening-check' },
+    { number: '602', title: 'TICKET: Deepen the pane', landed: true, judge: 'deepening-check' },
+  ],
+  judges: [
+    { name: 'deepening-check', state: 'done', found: 2, word: 'Strong', filed: ['601', '602'] },
+    { name: 'simplify-check', state: 'off', found: null, word: 'findings', filed: [] },
+    { name: 'drift-check', state: 'done', found: 0, word: 'Gaps', filed: [] },
+    { name: 'name-check', state: 'done', found: 3, word: 'renames', filed: [] },
+  ],
+  ticket: null,
+  at: null,
+  of: null,
+  seconds_left: null,
+})
+
+// The pane shows the end in the machine's own zone, so the test reads it in that zone too.
+function onTheWall(at: string): string {
+  return new Date(at).toTimeString().slice(0, 5)
+}
+
+function piece(name: string, ticket: string | null, run: string, started: string, ended: string): StepTime {
+  return { name, ticket, run, started, ended }
+}
+
+// The first start stopped at 14:50 and sat until 16:00, so the hour between the two starts is not work.
+const TWO_STARTS: StepTime[] = [
+  piece('baseline', null, 'run-old', '2026-11-07T14:00:00Z', '2026-11-07T14:02:00Z'),
+  piece('build', '590', 'run-old', '2026-11-07T14:02:00Z', '2026-11-07T14:50:30Z'),
+  piece('baseline', null, 'run-a', '2026-11-07T16:00:00Z', '2026-11-07T16:02:00Z'),
+  piece('land', '592', 'run-a', '2026-11-07T16:02:00Z', '2026-11-07T16:58:45Z'),
+]
+
+test('an ended card reads the time taken as the sum of every start, with the end and the restarts', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': FINISHED }, { '589': TWO_STARTS })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($))[0])
+    .toBe(`Spec #589 · finished · 1h 49m · ended ${onTheWall('2026-11-07T16:58:45Z')} · restarted 1 time`)
+})
+
+test('an ended card of a spec that started once says nothing of restarts', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': FINISHED }, { '589': TWO_STARTS.filter(entry => entry.run === 'run-a') })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($))[0]).toBe(`Spec #589 · finished · 58m · ended ${onTheWall('2026-11-07T16:58:45Z')}`)
+})
+
+test('a finished card folds into the tickets Landed, the Choices, the Denials and what each judge found', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': JUDGED })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($)).slice(1)).toEqual([
+    '3 tickets Landed · 2 Choices · 1 Denial',
+    'deepen · 2 Strong → 2 tickets',
+    'simplify · off, did not run',
+    'drift · 0 Gaps → 0 tickets',
+    'names · 3 renames → 0 tickets',
+  ])
+})
+
+test('a stopped card keeps the stop line, the log and the ticket and step it stopped at', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })
   cloneHolding(on, { '589': STOPPED })
@@ -148,30 +230,71 @@ test('a stopped loop shows its stop line and the path to its log', async ($, on)
   await $.session.start(start)
 
   // Assert
-  expect(await lines($)).toEqual(expect.arrayContaining([
-    'Spec #589 · stopped',
+  expect((await lines($)).slice(1, 4)).toEqual([
     'STOP  #592 build        the build Session answered BLOCKED',
     'Log: .spec-loop/589/loop.log',
-  ]))
+    'Stopped at #592 review: standards',
+  ])
 })
 
-test('a finished loop shows as finished, with no step', async ($, on) => {
+test('a stopped card names a judge that had not run as one that did not run', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })
-  cloneHolding(on, { '589': FINISHED })
+  cloneHolding(on, { '589': STOPPED })
   const { start } = claudeCode(on)
 
   // Act
   await $.session.start(start)
 
   // Assert
-  expect(await lines($)).toEqual([
-    'Spec #589 · finished',
-    'Every ticket is on the Target branch.',
-    '2 Choices · 1 Denial',
-    '✓ Landed  #590 TICKET: The driver writes a Position',
-    '✓ Landed  #592 TICKET: A pane shows every running loop',
+  expect((await lines($)).slice(-4)).toEqual([
+    'deepen · did not run',
+    'simplify · did not run',
+    'drift · did not run',
+    'names · did not run',
   ])
+})
+
+test('a stopped card at a judge names the judge it stopped at', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': { ...JUDGED, doing: 'stopped', stop: STOPPED.stop, judges: AT_THE_NAME_CHECK.judges } })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await lines($)).toEqual(expect.arrayContaining(['Stopped at the Name check', 'names · did not end']))
+})
+
+test('a gone card keeps the path to the log and the last piece it reached', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': GONE })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($)).slice(1, 3)).toEqual([
+    'Log: .spec-loop/589/loop.log',
+    'Last reached #592 review: standards',
+  ])
+})
+
+test('an ended card shows no ticket list', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': JUDGED })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await ticketList($)).toEqual([])
 })
 
 test('two loops show as two cards, one for each spec', async ($, on) => {
@@ -318,7 +441,7 @@ test('a running loop whose heartbeat is older than 2 minutes shows as gone', asy
   await $.session.start(start)
 
   // Assert
-  expect((await lines($))[0]).toBe('Spec #589 · gone')
+  expect((await lines($))[0]).toMatch(/^Spec #589 · gone · /)
 })
 
 test('a running loop whose heartbeat stops moving shows as gone once 2 minutes pass', async ($, on) => {
@@ -332,7 +455,7 @@ test('a running loop whose heartbeat stops moving shows as gone once 2 minutes p
   await clock.advance(120_000)
 
   // Assert
-  expect((await lines($))[0]).toBe('Spec #589 · gone')
+  expect((await lines($))[0]).toMatch(/^Spec #589 · gone · /)
 })
 
 test('a running loop with a heartbeat under 2 minutes old shows as running', async ($, on) => {
@@ -930,5 +1053,5 @@ test('a single Choice and a single Denial read in the singular', async ($, on) =
   await $.session.start(start)
 
   // Assert
-  expect(await lines($)).toContain('1 Choice · 1 Denial')
+  expect(await lines($)).toContain('2 tickets Landed · 1 Choice · 1 Denial')
 })

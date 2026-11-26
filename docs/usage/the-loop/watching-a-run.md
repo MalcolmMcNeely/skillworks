@@ -40,7 +40,8 @@ A running card shows, from the top:
   checks` and the tickets a judge filed. `✓ Landed` is a ticket that Landed, `▶ now` is the ticket
   the loop builds now, and `· to come` is a ticket still to come.
 
-A card of a loop that ended shows no bar, no path row and no step strip.
+A card of a loop that ended shows no bar, no path row, no step strip and no ticket list. It folds
+into a summary, as [Finished, stopped and gone](#finished-stopped-and-gone) says.
 
 ```
 Spec #589 · building tickets
@@ -148,14 +149,44 @@ baseline, has ended, because that is when the driver writes its first Step time.
 A loop that is **finished** reached its end, and every ticket is on the Target branch. Its card says
 `finished`.
 
-A loop that is **stopped** ended early. Its card says `stopped`, and shows the stop line and the path
-to the log, such as `Log: .spec-loop/589/loop.log`. [When a step fails](stops.md) says what each stop
-line means and how to restart.
+A loop that is **stopped** ended early. [When a step fails](stops.md) says what each stop line means
+and how to restart.
 
 A loop that is **gone** has a driver that died before it could write its end. The driver writes a
 heartbeat time into the Position every 30 seconds while it runs. When that time is more than 2
-minutes old, and the loop is not finished or stopped, its card says `gone`. Read `loop.log` to see
-the last step it reached.
+minutes old, and the loop is not finished or stopped, its card says `gone`.
+
+An ended card folds into a summary, so old loops take little room. The header holds the spec, the
+state, the time taken and when the loop ended, such as `Spec #589 · finished · 1h 50m · ended 17:00`.
+The time taken adds up the Step times of every start of the spec, in hours and minutes. So the time a
+loop sat stopped does not count. When the spec stopped and ran again, the header ends with
+`· restarted N times`, such as `· restarted 1 time`. The end is the time on your own clock.
+
+Below the header, the summary shows how many tickets Landed with the counts of Choices and Denials,
+such as `3 tickets Landed · 2 Choices · 1 Denial`. Then each judge has a line that says what the
+checks found and how many tickets it filed, such as `deepen · 2 Strong → 2 tickets`. A judge that did
+not run says `did not run`, so you do not mistake it for one that found nothing. A judge your team
+turned off says `off, did not run`, and a judge that was running when the loop ended says `did not
+end`.
+
+A stopped or gone card keeps what you need to act:
+
+- A stopped card shows the stop line, the path to the log, such as `Log: .spec-loop/589/loop.log`,
+  and where it stopped, such as `Stopped at #592 review: standards`.
+- A gone card shows the path to the log and the last piece it reached, such as `Last reached #592
+  review: standards`.
+
+```
+Spec #589 · stopped · 42m · ended 17:00 · restarted 1 time
+STOP  #592 build        the build Session answered BLOCKED
+Log: .spec-loop/589/loop.log
+Stopped at #592 build
+1 ticket Landed · 2 Choices · 1 Denial
+deepen · did not run
+simplify · off, did not run
+drift · did not run
+names · did not run
+```
 
 ## Clear
 

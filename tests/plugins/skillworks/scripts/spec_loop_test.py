@@ -5823,6 +5823,25 @@ def test_the_watching_a_run_page_draws_a_running_card_with_the_step_strip_and_a_
     assert "Filed by the checks\n▶ now     #601 TICKET: Deepen the Position  ◆ deepen\n" in watching
 
 
+def test_the_watching_a_run_page_says_an_ended_card_folds_into_a_summary_of_the_time_and_the_checks():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert "An ended card folds into a summary, so old loops take little room." in watching
+    assert "Spec #589 · finished · 1h 50m · ended 17:00" in watching
+    assert "So the time a loop sat stopped does not count." in watching
+    assert "`· restarted N times`" in watching
+    assert "deepen · 2 Strong → 2 tickets" in watching
+    assert "A judge that did not run says `did not run`" in watching
+
+
+def test_the_watching_a_run_page_says_a_stopped_or_gone_card_keeps_the_stop_line_the_log_and_where_it_stopped():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert ("A stopped card shows the stop line, the path to the log, such as `Log: .spec-loop/589/loop.log`, "
+            "and where it stopped") in watching
+    assert "A gone card shows the path to the log and the last piece it reached" in watching
+
+
 @pytest.mark.parametrize("step", ["baseline", "cut", "deepening-check", "simplify-check", "drift-check",
                                   "name-check", "full-run"])
 def test_the_watching_a_run_page_names_each_piece_beyond_the_ticket_steps(step):
