@@ -5753,6 +5753,30 @@ STEP_MAP_PAGE = LOOP_FOLDER + "/step-map.md"
 
 SESSIONS_PAGE = LOOP_FOLDER + "/sessions.md"
 
+WATCHING_A_RUN_PAGE = LOOP_FOLDER + "/watching-a-run.md"
+
+
+def test_the_watching_a_run_page_calls_each_loop_a_card_and_never_a_block():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert "The pane draws each loop as a card." in watching
+    assert not re.search(r"\b(a|one|its|the|each) block\b", watching, re.IGNORECASE)
+
+
+def test_the_watching_a_run_page_says_how_the_cards_stack_and_what_each_border_means():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert "Running cards come first, then cards of loops that ended. In each group the newest comes first" in watching
+    for border in ["| yellow | running |", "| green | finished |", "| red | stopped |", "| grey | gone |"]:
+        assert border in watching, border
+
+
+def test_the_watching_a_run_page_says_the_pane_reads_the_position_and_the_step_times_and_never_the_log():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert ("The pane reads the Position, `.spec-loop/<spec>/position.json`, and the Step times, "
+            "`.spec-loop/<spec>/step-times.jsonl`, every few seconds. It never reads `loop.log`") in watching
+
 
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))

@@ -8,7 +8,20 @@ started in another terminal shows there too.
 
 ## What the pane shows
 
-The pane has one block for each loop. A block shows:
+The pane draws each loop as a card. A card has a border, and the colour of the border says the
+state of the loop:
+
+| Border | State |
+|---|---|
+| yellow | running |
+| green | finished |
+| red | stopped |
+| grey | gone |
+
+The cards stack. Running cards come first, then cards of loops that ended. In each group the newest
+comes first: a running loop by when its run started, and a loop that ended by when it ended.
+
+A card shows:
 
 - The spec, and what the loop does now: cutting tickets, building tickets, the full run, the drift
   check, the Name check, finished, stopped or gone. Between tickets, a line under it says what that
@@ -49,30 +62,35 @@ step's own name, as [the steps of one ticket](steps.md) lists them:
 | `finish` | close ticket and commit |
 | `land` | rebase, verify, and push |
 
-The pane reads the Position, `.spec-loop/<spec>/position.json`, every few seconds. It never reads
-`loop.log`, and it shows no log lines. [Reading a run](reading-a-run.md) says what the log holds.
+The pane reads the Position, `.spec-loop/<spec>/position.json`, and the Step times,
+`.spec-loop/<spec>/step-times.jsonl`, every few seconds. It never reads `loop.log`, and it shows no
+log lines. [Reading a run](reading-a-run.md) says what the log and the Step times hold.
+
+A loop folder whose Position has no judges, or that has no Step times, is a run from a Plugin older
+than this pane. The pane shows no card for it. A new run shows its card once its first piece, the
+baseline, has ended, because that is when the driver writes its first Step time.
 
 ## Finished, stopped and gone
 
-A loop that is **finished** reached its end, and every ticket is on the Target branch. Its block says
+A loop that is **finished** reached its end, and every ticket is on the Target branch. Its card says
 `finished`.
 
-A loop that is **stopped** ended early. Its block says `stopped`, and shows the stop line and the path
+A loop that is **stopped** ended early. Its card says `stopped`, and shows the stop line and the path
 to the log, such as `Log: .spec-loop/589/loop.log`. [When a step fails](stops.md) says what each stop
 line means and how to restart.
 
 A loop that is **gone** has a driver that died before it could write its end. The driver writes a
 heartbeat time into the Position every 30 seconds while it runs. When that time is more than 2
-minutes old, and the loop is not finished or stopped, its block says `gone`. Read `loop.log` to see
+minutes old, and the loop is not finished or stopped, its card says `gone`. Read `loop.log` to see
 the last step it reached.
 
 ## Clear
 
 A loop that ended, as finished, stopped or gone, stays in the pane until you clear it. So you do not
-miss a stop while you are away. Its block has a `Clear` button, and a block of a running loop has
+miss a stop while you are away. Its card has a `Clear` button, and a card of a running loop has
 none.
 
-Press `Clear` to take the block out of the pane. The mod keeps the clear against that run of the
+Press `Clear` to take the card out of the pane. The mod keeps the clear against that run of the
 driver, so the same run does not come back in your next Session. When you start that spec again, the
 new run shows in the pane.
 

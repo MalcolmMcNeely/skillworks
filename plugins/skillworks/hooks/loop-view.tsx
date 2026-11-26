@@ -19,11 +19,16 @@ type TicketNow = {
   step_started: string | null
 }
 
+type Judge = { name: string; state: string; found: number | null; filed: string[] }
+
+type StepTime = { name: string; ticket: string | null; run: string; started: string; ended: string }
+
 type Position = {
   spec: string
   run: string
   heartbeat: string
   doing: string
+  judges?: Judge[]
   tickets: TicketRow[]
   ticket: TicketNow | null
   at: number | null
@@ -120,18 +125,54 @@ function span(ms: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
-async function positions($: EngineInterface, root: string): Promise<Position[]> {
+type Loop = Position & { stepTimes: StepTime[] }
+
+function stepTimesIn(text: string): StepTime[] {
+  return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line))
+}
+
+async function loopsIn($: EngineInterface, root: string): Promise<Loop[]> {
   if (!(await $.fs.exists(root))) return []
-  const found: Position[] = []
+  const found: Loop[] = []
   for (const entry of await $.fs.list(root)) {
     if (entry.kind !== 'dir') continue
     try {
-      found.push(JSON.parse(String(await $.fs.read(`${root}/${entry.name}/position.json`))))
+      const position: Position = JSON.parse(String(await $.fs.read(`${root}/${entry.name}/position.json`)))
+      const stepTimes = stepTimesIn(String(await $.fs.read(`${root}/${entry.name}/step-times.jsonl`)))
+      if (Array.isArray(position.judges) && position.judges.length > 0 && stepTimes.length > 0) {
+        found.push({ ...position, stepTimes })
+      }
     } catch {
-      // A spec folder from a run before the driver wrote a Position holds none, and shows no block.
+      // A spec folder missing either file is a run from before this pane, and shows no card.
     }
   }
-  return found.sort((a, b) => Number(a.spec) - Number(b.spec))
+  return found
+}
+
+// A run whose first piece has not ended yet started after every run that has one.
+function startOfRun(loop: Loop): number {
+  const own = loop.stepTimes.filter(piece => piece.run === loop.run).map(piece => Date.parse(piece.started))
+  return own.length > 0 ? Math.min(...own) : Infinity
+}
+
+function lastEnd(loop: Loop): number {
+  return Math.max(...loop.stepTimes.map(piece => Date.parse(piece.ended)))
+}
+
+function stacked(loops: Loop[], now: number): Loop[] {
+  const bySpec = (a: Loop, b: Loop) => Number(a.spec) - Number(b.spec)
+  const live = loops.filter(loop => !hasEnded(loop, now))
+    .sort((a, b) => startOfRun(b) - startOfRun(a) || bySpec(a, b))
+  const ended = loops.filter(loop => hasEnded(loop, now))
+    .sort((a, b) => lastEnd(b) - lastEnd(a) || bySpec(a, b))
+  return [...live, ...ended]
+}
+
+const BORDER: Record<string, string> = { running: 'yellow', finished: 'green', stopped: 'red', [GONE]: 'gray' }
+
+function stateOf(loop: Position, now: number): string {
+  if (isGone(loop, now)) return GONE
+  return wroteItsEnd(loop) ? loop.doing : 'running'
 }
 
 function wroteItsEnd(loop: Position): boolean {
@@ -152,7 +193,7 @@ async function clearsKept($: EngineInterface): Promise<string[]> {
 }
 
 export const register: Register = on => {
-  let loops: Position[] = []
+  let loops: Loop[] = []
   let now = 0
   let cleared = new Set<string>()
   const seen = new Set<string>()
@@ -165,8 +206,9 @@ export const register: Register = on => {
     cleared = new Set(await clearsKept($))
     const root = `${e.cwd}/.spec-loop`
     const poll = async () => {
-      loops = (await positions($, root)).filter(loop => !cleared.has(loop.run))
+      const found = (await loopsIn($, root)).filter(loop => !cleared.has(loop.run))
       now = await $.clock.now()
+      loops = stacked(found, now)
       const fresh = loops.filter(loop => !hasEnded(loop, now) && !seen.has(loop.run))
       for (const loop of loops) seen.add(loop.run)
       // Only a run not seen before opens it, so a pane the developer closed stays closed.
@@ -200,7 +242,8 @@ export const register: Register = on => {
           const doing = shown(DOING, isGone(loop, now) ? GONE : loop.doing)
           const left = loop.seconds_left == null ? '' : `~${span(loop.seconds_left * 1000)} left · `
           return (
-            <Box flexDirection="column">
+            <Box key={`card-${loop.spec}`} flexDirection="column" borderStyle="round"
+              borderColor={BORDER[stateOf(loop, now)]} paddingX={1}>
               <Text bold>Spec #{loop.spec} · {doing.name}</Text>
               {!ticket && doing.hint && <Text dimColor>{doing.hint}</Text>}
               <Text dimColor>{left}{count(loop.choices, 'Choice')} · {count(loop.denials, 'Denial')}</Text>

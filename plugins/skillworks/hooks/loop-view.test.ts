@@ -20,6 +20,11 @@ const PANE = {
 } as const
 
 type Position = Record<string, unknown>
+type StepTime = { name: string; ticket: string | null; run: string; started: string; ended: string }
+
+const JUDGES = ['deepening-check', 'simplify-check', 'drift-check', 'name-check'].map(name => ({
+  name, state: 'to come', found: null, filed: [],
+}))
 
 function running(changes: Position = {}): Position {
   return {
@@ -27,6 +32,7 @@ function running(changes: Position = {}): Position {
     run: 'run-a',
     heartbeat: '2026-11-07T17:09:50Z',
     doing: 'building tickets',
+    judges: JUDGES,
     tickets: [
       { number: '590', title: 'TICKET: The driver writes a Position', landed: true },
       { number: '592', title: 'TICKET: A pane shows every running loop', landed: false },
@@ -49,10 +55,24 @@ function running(changes: Position = {}): Position {
   }
 }
 
+function baselineOf(position: Position, started = '2026-11-07T16:00:00Z', ended = '2026-11-07T16:02:00Z'): StepTime {
+  return { name: 'baseline', ticket: null, run: String(position.run), started, ended }
+}
+
 // Claude Code spells the session's folder in the machine's own form, so a path is read by its parts.
-function cloneHolding(on: On, positions: Record<string, Position>) {
+function cloneHolding(on: On, positions: Record<string, Position>,
+  stepTimes: Record<string, StepTime[] | null> = {}) {
   const reads: string[] = []
   const under = (path: string) => path.replace(/\\/g, '/').split('/.spec-loop')[1]
+  const fileAt = (path: string) => {
+    const [, folder = '', name = ''] = (under(path) ?? '').split('/')
+    const position = positions[folder]
+    if (position === undefined) return undefined
+    if (name === 'position.json') return JSON.stringify(position)
+    if (name !== 'step-times.jsonl') return undefined
+    const kept = folder in stepTimes ? stepTimes[folder] : [baselineOf(position)]
+    return kept?.map(entry => JSON.stringify(entry) + '\n').join('')
+  }
   on('fs.exists', (_, e) => {
     reads.push(e.path)
     return { value: under(e.path) === '' && Object.keys(positions).length > 0 }
@@ -67,9 +87,9 @@ function cloneHolding(on: On, positions: Record<string, Position>) {
   })
   on('fs.read', (_, e) => {
     reads.push(e.path)
-    const position = positions[(under(e.path) ?? '').split('/')[1] ?? '']
-    if (position === undefined) throw new Error(`no file at ${e.path}`)
-    return { value: JSON.stringify(position) }
+    const file = fileAt(e.path)
+    if (file === undefined) throw new Error(`no file at ${e.path}`)
+    return { value: file }
   })
   return { positions, reads }
 }
@@ -154,7 +174,7 @@ test('a finished loop shows as finished, with no step', async ($, on) => {
   ])
 })
 
-test('two loops show as two blocks, one for each spec', async ($, on) => {
+test('two loops show as two cards, one for each spec', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })
   cloneHolding(on, { '589': running(), '600': running({ spec: '600', run: 'run-c', ticket: null, tickets: [] }) })
@@ -511,6 +531,87 @@ test('a step the pane has no name for shows as the driver names it, with no hint
   // Assert
   const shown = await lines($)
   expect(shown.slice(shown.indexOf('▶ deploy  4m in step'))).toEqual(['▶ deploy  4m in step'])
+})
+
+async function cards($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const found = (await ui.findAll({ type: 'Box' }))
+    .filter(box => box.key?.startsWith('card-'))
+    .map(box => ({ spec: box.key?.slice('card-'.length), border: box.props.borderColor }))
+  await ui.unmount()
+  return found
+}
+
+test('each card has a border coloured by its state: running, finished, stopped or gone', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, {
+    '589': running(),
+    '600': { ...FINISHED, spec: '600', run: 'run-c' },
+    '601': { ...STOPPED, spec: '601', run: 'run-d' },
+    '602': { ...GONE, spec: '602', run: 'run-e' },
+  })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(Object.fromEntries((await cards($)).map(card => [card.spec, card.border]))).toEqual({
+    '589': 'yellow',
+    '600': 'green',
+    '601': 'red',
+    '602': 'gray',
+  })
+})
+
+test('running cards stack above ended cards, with the newest first in each group', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  const older = running({ spec: '589', run: 'run-a' })
+  const newer = running({ spec: '590', run: 'run-b' })
+  const endedFirst = { ...FINISHED, spec: '591', run: 'run-c' }
+  const endedLast = { ...STOPPED, spec: '592', run: 'run-d' }
+  cloneHolding(on, { '589': older, '590': newer, '591': endedFirst, '592': endedLast }, {
+    '589': [baselineOf(older, '2026-11-07T15:00:00Z', '2026-11-07T15:02:00Z')],
+    '590': [baselineOf(newer, '2026-11-07T16:30:00Z', '2026-11-07T16:32:00Z')],
+    '591': [baselineOf(endedFirst, '2026-11-07T14:00:00Z', '2026-11-07T16:40:00Z')],
+    '592': [baselineOf(endedLast, '2026-11-07T12:00:00Z', '2026-11-07T17:00:00Z')],
+  })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await cards($)).map(card => card.spec)).toEqual(['590', '589', '592', '591'])
+})
+
+test('a loop folder whose Position has no judges shows no card', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  const { judges: _, ...before } = running()
+  cloneHolding(on, { '589': before })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await lines($)).toEqual(['No loop has a Position in this clone.'])
+})
+
+test('a loop folder with no Step times shows no card', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() }, { '589': null })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await lines($)).toEqual(['No loop has a Position in this clone.'])
 })
 
 test('a single Choice and a single Denial read in the singular', async ($, on) => {
