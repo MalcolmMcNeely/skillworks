@@ -439,7 +439,7 @@ test('a new run of a cleared spec shows in the pane again', async ($, on) => {
   expect((await lines($))[0]).toBe('Spec #589 · building tickets')
 })
 
-test('a running ticket shows each step by its plain name, with a hint under the step it is on', async ($, on) => {
+test('a running card shows, from the top, the bar, the path row, the ticket with its steps, the time left and the tickets', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })
   cloneHolding(on, { '589': running() })
@@ -459,17 +459,132 @@ test('a running ticket shows each step by its plain name, with a hint under the 
     '○ drift',
     '○ names',
     '○ full run',
+    'Ticket 2 of 3: #592',
+    '✓ build',
+    '* review: standards',
+    '○ review: spec',
+    '○ rebase, verify, and push',
+    '4m in step',
+    'Reviews the change against your rules. Fixes what it can, and reports the rest.',
     '~1h 5m left · 2 Choices · 1 Denial',
     '✓ Landed  #590 TICKET: The driver writes a Position',
     '▶ now     #592 TICKET: A pane shows every running loop',
     '· to come #593 TICKET: Clear a loop that ended',
-    'Ticket 2 of 3: #592',
+  ])
+})
+
+async function shownInBoxesKeyed($: Engine, ...prefixes: string[]) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const found = (await ui.findAll({ type: 'Box' }))
+    .filter(box => prefixes.some(prefix => box.key?.startsWith(prefix)))
+    .map(shownIn)
+  await ui.unmount()
+  return found
+}
+
+function stepStrip($: Engine) {
+  return shownInBoxesKeyed($, 'step-')
+}
+
+test('the step strip marks the steps done, the step now with a spinner, and the steps to come', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await stepStrip($)).toEqual([
     '✓ build',
-    '▶ review: standards  4m in step',
-    'Reviews the change against your rules. Fixes what it can, and reports the rest.',
+    expect.stringMatching(/^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] review: standards$/),
     '○ review: spec',
     '○ rebase, verify, and push',
   ])
+})
+
+test('under the step strip, the time in the step follows the Clock, and the hint says what the step does', async ($, on) => {
+  // Arrange
+  const clock = mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() })
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+
+  // Act
+  await clock.advance(60_000)
+
+  // Assert
+  const shown = await lines($)
+  expect(shown.slice(shown.indexOf('5m in step'), shown.indexOf('5m in step') + 2)).toEqual([
+    '5m in step',
+    'Reviews the change against your rules. Fixes what it can, and reports the rest.',
+  ])
+})
+
+test('a running card on a judge still shows the time left, the Choices and the Denials', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_NAME_CHECK })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await lines($)).toContain('~1h 5m left · 2 Choices · 1 Denial')
+})
+
+function ticketList($: Engine) {
+  return shownInBoxesKeyed($, 'ticket-', 'filed-')
+}
+
+test('the ticket list shows the own tickets, then the tickets the checks filed, each tagged with its judge', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_NAME_CHECK })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await ticketList($)).toEqual([
+    '✓ Landed  #590 TICKET: The driver writes a Position',
+    '✓ Landed  #592 TICKET: A pane shows every running loop',
+    'Filed by the checks',
+    '✓ Landed  #601 TICKET: Deepen the Position  ◆ deepen',
+    '· to come #602 TICKET: Deepen the pane  ◆ deepen',
+  ])
+})
+
+test("a filed ticket's tag is drawn in its judge's colour", async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_NAME_CHECK })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const tags = (await ui.findAll({ type: 'Text' })).filter(text => text.text.includes('◆'))
+  await ui.unmount()
+  expect(tags.map(tag => tag.props.color)).toEqual(['magenta', 'magenta'])
+})
+
+test('a spec whose checks filed nothing shows no line for filed tickets', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await lines($)).not.toContain('Filed by the checks')
 })
 
 test('a loop between tickets shows what it does now, with a hint', async ($, on) => {
@@ -537,8 +652,12 @@ test('a step the pane has no name for shows as the driver names it, with no hint
   await $.session.start(start)
 
   // Assert
-  const shown = await lines($)
-  expect(shown.slice(shown.indexOf('▶ deploy  4m in step'))).toEqual(['▶ deploy  4m in step'])
+  const shown = (await lines($)).map(line => line.replace(SPINNER, '* '))
+  expect(shown.slice(shown.indexOf('* deploy'), shown.indexOf('* deploy') + 3)).toEqual([
+    '* deploy',
+    '4m in step',
+    '~1h 5m left · 2 Choices · 1 Denial',
+  ])
 })
 
 async function cards($: Engine) {
@@ -652,13 +771,8 @@ function shownIn(drawn: unknown): string {
   return ''
 }
 
-async function bar($: Engine) {
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const found = (await ui.findAll({ type: 'Box' }))
-    .filter(box => box.key?.startsWith('bar-'))
-    .map(shownIn)
-  await ui.unmount()
-  return found
+function bar($: Engine) {
+  return shownInBoxesKeyed($, 'bar-')
 }
 
 async function pathRow($: Engine) {

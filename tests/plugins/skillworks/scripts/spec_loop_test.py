@@ -5797,6 +5797,32 @@ def test_the_watching_a_run_page_says_what_the_path_row_shows():
     assert "An off chip is drawn crossed out" in watching
 
 
+def test_the_watching_a_run_page_says_what_the_step_strip_and_the_time_in_the_step_show():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert ("the step strip: one chip for each step of the ticket, from `build` to `land`. `✓` is a step "
+            "that is done, a spinner such as `⠋` is the step the loop is on now, and `○` is a step still to "
+            "come.") in watching
+    assert ("The time in the step, which is how long the step now has run, and under it a line that says "
+            "what the step does.") in watching
+
+
+def test_the_watching_a_run_page_says_the_ticket_list_splits_in_two_with_each_judge_s_tag():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert ("First come the spec's own tickets. Then come the line `Filed by the checks` and the tickets a "
+            "judge filed.") in watching
+    assert ("Each ticket a judge filed carries a tag: a diamond, `◆`, and the judge's short name, such as "
+            "`◆ deepen`. The tag is drawn in the judge's own colour") in watching
+
+
+def test_the_watching_a_run_page_draws_a_running_card_with_the_step_strip_and_a_filed_ticket():
+    watching = page_text(WATCHING_A_RUN_PAGE)
+
+    assert "✓ build  ✓ review: standards  ⠋ review: spec  ○ rebase, verify, and push\n4m in step\n" in watching
+    assert "Filed by the checks\n▶ now     #601 TICKET: Deepen the Position  ◆ deepen\n" in watching
+
+
 @pytest.mark.parametrize("step", ["baseline", "cut", "deepening-check", "simplify-check", "drift-check",
                                   "name-check", "full-run"])
 def test_the_watching_a_run_page_names_each_piece_beyond_the_ticket_steps(step):

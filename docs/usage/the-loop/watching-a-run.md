@@ -21,38 +21,58 @@ state of the loop:
 The cards stack. Running cards come first, then cards of loops that ended. In each group the newest
 comes first: a running loop by when its run started, and a loop that ended by when it ended.
 
-A card shows:
+A running card shows, from the top:
 
 - The spec, and what the loop does now: cutting tickets, building tickets, the full run, the drift
   check, the Name check, finished, stopped or gone. Between tickets, a line under it says what that
   part of the loop does.
-- On a running card, a progress bar for the whole path of the spec, and a line of text under it,
-  such as `64% · tickets 4/4 · checks 1/4 · full run to come`. Progress below says how it counts.
-- On a running card, the path row, a row of chips for the whole path of the spec. Progress below
-  says what each chip shows.
+- A progress bar for the whole path of the spec, and a line of text under it, such as
+  `64% · tickets 4/4 · checks 1/4 · full run to come`. Progress below says how it counts.
+- The path row, a row of chips for the whole path of the spec. Progress below says what each chip
+  shows.
+- The current ticket, and under it the step strip: one chip for each step of the ticket, from
+  `build` to `land`. `✓` is a step that is done, a spinner such as `⠋` is the step the loop is on
+  now, and `○` is a step still to come.
+- The time in the step, which is how long the step now has run, and under it a line that says what
+  the step does.
 - The time left, when the driver knows it, and the counts of Choices and Denials so far.
-- Each ticket of the spec. `✓ Landed` is a ticket that Landed, `▶ now` is the ticket the loop builds
-  now, and `· to come` is a ticket still to come.
-- The steps of the current ticket. `✓` is a step that is done, `▶` is the step the loop is on, and
-  `○` is a step still to come. The time the step has run shows beside `▶`, and a line under it says
-  what the step does.
+- The ticket list, in two parts. First come the spec's own tickets. Then come the line `Filed by the
+  checks` and the tickets a judge filed. `✓ Landed` is a ticket that Landed, `▶ now` is the ticket
+  the loop builds now, and `· to come` is a ticket still to come.
+
+A card of a loop that ended shows no bar, no path row and no step strip.
 
 ```
 Spec #589 · building tickets
-██░░░░░░░░░░░░░░░░░░
-12% · tickets 1/3 · checks 0/4 · full run to come
-⠋ tickets 1/3  ○ deepen  ○ simplify  ○ drift  ○ names  ○ full run
+███████████░░░░░░░░░
+56% · tickets 3/3 · checks 2/4 · full run to come
+✓ tickets 3/3  ✓ deepen · 1 Strong → 1 ticket  ✓ simplify · 0 findings
+○ drift  ○ names  ○ full run
+Ticket 4 of 4: #601
+✓ build  ✓ review: standards  ⠋ review: spec  ○ rebase, verify, and push
+4m in step
+  Reviews the change against the ticket and the spec. Fixes what it can, and reports the rest.
 ~1h 5m left · 2 Choices · 1 Denial
 ✓ Landed  #590 TICKET: The driver writes a Position
-▶ now     #592 TICKET: A pane shows every running loop
-· to come #593 TICKET: Clear a loop that ended
-Ticket 2 of 3: #592
-✓ build
-▶ review: standards  4m in step
-  Reviews the change against your rules. Fixes what it can, and reports the rest.
-○ review: spec
-○ rebase, verify, and push
+✓ Landed  #592 TICKET: A pane shows every running loop
+✓ Landed  #593 TICKET: Clear a loop that ended
+Filed by the checks
+▶ now     #601 TICKET: Deepen the Position  ◆ deepen
 ```
+
+Each ticket a judge filed carries a tag: a diamond, `◆`, and the judge's short name, such as
+`◆ deepen`. The tag is drawn in the judge's own colour, so you see at a glance which judge asked for
+the ticket:
+
+| Tag | Judge | Colour |
+|---|---|---|
+| `◆ deepen` | the Deepening check | magenta |
+| `◆ simplify` | the Simplify check | cyan |
+| `◆ drift` | the drift check | blue |
+| `◆ names` | the Name check | white |
+
+A ticket a judge filed shows only once the Position holds it, which is when the judge has filed it on
+the Tracker. When no judge filed a ticket, the card has no `Filed by the checks` line.
 
 The pane names a step for someone who has not read these pages. The log and the Position use the
 step's own name, as [the steps of one ticket](steps.md) lists them:
