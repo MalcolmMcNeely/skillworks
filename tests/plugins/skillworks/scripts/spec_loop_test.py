@@ -182,6 +182,8 @@ class Tracker:
         self.deepening_report = NO_STRONG
         # A Simplify check that found nothing, so only a case about cleanups files a ticket.
         self.simplify_report = NO_FINDINGS
+        # What an earlier run's judges posted, so a case about a rerun sees what it left behind.
+        self.posted_before = []
         self.filed = []
         self.notes = []
         runner.stub("gh", does=self.answer)
@@ -235,6 +237,8 @@ class Tracker:
             return self.spec_close
         if asked == "issue view {} --json comments --jq .comments[-1].body".format(SPEC):
             return Ran(0, self.newest_comment(), "")
+        if asked == "issue view {} --json comments --jq [.comments[].body]".format(SPEC):
+            return Ran(0, json.dumps(self.posted_before + self.posted()), "")
         # The body file is gone once gh returns, so it is read while the call is made.
         if asked.startswith("issue comment {} --body-file ".format(SPEC)):
             self.notes.append(Path(self.runner.calls[-1][-1]).read_text(encoding="utf-8"))
@@ -243,15 +247,14 @@ class Tracker:
 
     # Each judge posts its report as it runs, so the newest comment is the last judge's.
     def newest_comment(self):
-        judges = [call[-1] for call in self.runner.calls
-                  if call[0] == "claude" and call[-1].startswith(JUDGES)]
-        if judges and judges[-1].startswith(NAME_CHECK):
-            return self.name_report
-        if judges and judges[-1].startswith(DEEPENING_CHECK):
-            return self.deepening_report
-        if judges and judges[-1].startswith(SIMPLIFY_CHECK):
-            return self.simplify_report
-        return self.drift_report
+        posted = self.posted()
+        return posted[-1] if posted else self.drift_report
+
+    def posted(self):
+        reports = {NAME_CHECK: self.name_report, DEEPENING_CHECK: self.deepening_report,
+                   SIMPLIFY_CHECK: self.simplify_report}
+        return [reports.get(call[-1].split()[0], self.drift_report) for call in self.runner.calls
+                if call[0] == "claude" and call[-1].startswith(JUDGES)]
 
     # Numbered after the last ticket, and open, so the loop's next read of the spec finds it.
     def file(self, called):
@@ -5353,6 +5356,47 @@ def test_a_spec_that_holds_an_open_simplify_ticket_builds_it_and_runs_no_simplif
     assert prompts_asking(runner, SIMPLIFY_CHECK) == []
     assert "DONE  #162" in loop.log()
     assert not runner.built("issue create")
+
+
+def test_a_rerun_after_a_deepening_check_that_filed_nothing_runs_no_deepening_check(loop, runner):
+    tracker, _ = rerun_holding(loop)
+    tracker.posted_before = [NO_STRONG]
+    tracker.deepening_report = deepening_report(FOLDED)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, DEEPENING_CHECK) == []
+    assert not runner.built("issue create")
+    assert ("DEEPEN spec #158 already holds the Deepening report, so the check runs once and does "
+            "not run again") in loop.log()
+
+
+def test_a_rerun_after_a_simplify_check_that_filed_nothing_runs_no_simplify_check(loop, runner):
+    tracker, _ = rerun_holding(loop)
+    tracker.posted_before = [NO_FINDINGS]
+    tracker.simplify_report = simplify_report(PARSED)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, SIMPLIFY_CHECK) == []
+    assert not runner.built("issue create")
+    assert ("SIMPLIFY spec #158 already holds the Simplify report, so the check runs once and does "
+            "not run again") in loop.log()
+
+
+def test_a_rerun_files_the_tickets_a_recorded_deepening_report_owes_without_the_check(
+        loop, runner):
+    tracker, sessions = rerun_holding(loop)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, FIRST_DEEPENING)
+    tracker.posted_before = [deepening_report(FOLDED)]
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, DEEPENING_CHECK) == []
+    assert filed_titles(runner) == ["TICKET: Deepen The order intake module"]
 
 
 def test_a_rerun_files_no_deepening_ticket_past_the_limit_for_the_whole_spec(loop, runner):

@@ -70,6 +70,14 @@ def ticket_spec_line(spec):
     return "<!-- skillworks-ticket spec:{} -->".format(spec)
 
 
+# The heading tells the report from a comment a person left, so a comment without it holds no report.
+def report_in(comment, heading):
+    lines = comment.replace("\r\n", "\n").split("\n")
+    if lines[0].strip() != heading:
+        return None
+    return "\n".join(lines[1:]).strip("\n")
+
+
 def branch_named_in(spec):
     lines = [line.strip() for line in spec.splitlines()]
     if BRANCH_HEADING in lines:
@@ -394,12 +402,8 @@ class GitHub:
     def closing_note(self, trailer):
         return self.last_comment(trailer.removeprefix("#"))
 
-    # The heading tells the report from a comment a person left after it, or from none at all.
     def report_below(self, spec, heading):
-        lines = (self.last_comment(spec) or "").replace("\r\n", "\n").split("\n")
-        if lines[0].strip() != heading:
-            return ""
-        return "\n".join(lines[1:]).strip("\n")
+        return report_in(self.last_comment(spec) or "", heading) or ""
 
     def drift_report(self, spec):
         return self.report_below(spec, DRIFT_REPORT)
@@ -407,8 +411,19 @@ class GitHub:
     def name_report(self, spec):
         return self.report_below(spec, NAME_REPORT)
 
+    # Every comment, not the last: later judges post below this report, and a rerun reads it to skip the judge.
+    def newest_report(self, spec, heading):
+        ran = self.gh("issue", "view", spec, "--json", "comments", "--jq", "[.comments[].body]")
+        if ran.status != 0:
+            return ""
+        for comment in reversed(json.loads(ran.out or "[]")):
+            report = report_in(comment, heading)
+            if report is not None:
+                return report
+        return ""
+
     def deepening_report(self, spec):
-        return self.report_below(spec, DEEPENING_REPORT)
+        return self.newest_report(spec, DEEPENING_REPORT)
 
     def simplify_report(self, spec):
-        return self.report_below(spec, SIMPLIFY_REPORT)
+        return self.newest_report(spec, SIMPLIFY_REPORT)

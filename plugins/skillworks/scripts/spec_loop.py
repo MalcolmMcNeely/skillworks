@@ -1764,8 +1764,15 @@ class Loop:
         self.run_tickets()
         return True
 
+    # A judge that filed nothing leaves no ticket behind, so only its report shows that it ran.
+    def earlier_report(self, report, what, said_as):
+        if report:
+            self.say("{} spec {} already holds the {} report, so the check runs once and does not run "
+                     "again".format(said_as, self.spec_named(), what))
+        return report
+
     # Before the drift check, so the drift check and the Name check judge the code the refactors left.
-    def check_deepening(self, base, limit):
+    def check_deepening(self, base):
         self.moved(DEEPENING_CHECK)
         self.say_scope("Deepening check", base)
         self.say("DEEPEN looking for modules spec {} left shallow.".format(self.spec_named()))
@@ -1780,6 +1787,9 @@ class Loop:
             raise self.stop_naming_denials("STOP  the Deepening check recorded no report on spec {}, "
                                            "so no deepening was read and the spec stays open.".format(
                                                self.spec_named()), result)
+        return report
+
+    def read_deepening(self, report, limit):
         held = self.log_dir / "deepening.md"
         written(held, report + "\n")
         self.say("DEEPEN the report is recorded on spec {}. Read it at {}".format(
@@ -1821,7 +1831,9 @@ class Loop:
         if self.build_earlier_tickets(lambda title: title.startswith(DEEPENING_TITLE),
                                       self.deepening_tickets, "Deepening check", "DEEPEN"):
             return
-        filed = self.check_deepening(base, limit)
+        report = (self.earlier_report(self.tracker.deepening_report(self.spec), "Deepening", "DEEPEN")
+                  or self.check_deepening(base))
+        filed = self.read_deepening(report, limit)
         if not filed:
             return
         for strong in filed:
@@ -1847,6 +1859,9 @@ class Loop:
             raise self.stop_naming_denials("STOP  the Simplify check recorded no report on spec {}, "
                                            "so no cleanup was read and the spec stays open.".format(
                                                self.spec_named()), result)
+        return report
+
+    def read_simplify(self, report):
         held = self.log_dir / "simplify.md"
         written(held, report + "\n")
         self.say("SIMPLIFY the report is recorded on spec {}. Read it at {}".format(
@@ -1888,7 +1903,9 @@ class Loop:
         if self.build_earlier_tickets(lambda title: title == SIMPLIFY_TITLE,
                                       self.simplify_tickets, "Simplify check", "SIMPLIFY"):
             return
-        findings = self.check_simplify(base)
+        report = (self.earlier_report(self.tracker.simplify_report(self.spec), "Simplify", "SIMPLIFY")
+                  or self.check_simplify(base))
+        findings = self.read_simplify(report)
         if not findings:
             return
         self.file_simplify_ticket(findings)

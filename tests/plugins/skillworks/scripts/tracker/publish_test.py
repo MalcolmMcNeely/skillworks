@@ -598,6 +598,8 @@ class Comments:
             self.posted.append((called[2], body))
             return Ran(0, "https://github.com/owner/repo/issues/{}#issuecomment-{}\n".format(
                 called[2], len(self.posted)), "")
+        if called[:2] == ["issue", "view"] and called[-1] == "[.comments[].body]":
+            return Ran(0, json.dumps([body for _, body in self.posted]), "")
         if called[:2] == ["issue", "view"]:
             return Ran(0, self.posted[-1][1] if self.posted else "", "")
         return None
@@ -639,6 +641,18 @@ def test_on_github_a_second_report_is_a_second_comment_and_the_first_stays(write
     assert ran.out == "https://github.com/owner/repo/issues/158#issuecomment-2\n"
     assert on_github.posted == [("158", REPORT), ("158", "## Drift report\n\nAll done.\n")]
     assert github(writer.runner).drift_report("158") == "All done."
+
+
+@pytest.mark.parametrize("command, report, read_back", [
+    ("deepen", DEEPENING, GitHub.deepening_report),
+    ("simplify", SIMPLIFY, GitHub.simplify_report),
+])
+def test_on_github_an_end_judge_s_report_reads_back_after_a_later_judge_s_report(
+        writer, on_github, command, report, read_back):
+    writer.run(command, "158", writer.written("report.md", report))
+    writer.run("drift", "158", writer.written("drift.md", REPORT))
+
+    assert read_back(github(writer.runner), "158") == report.split("\n", 2)[2].strip("\n")
 
 
 @pytest.mark.parametrize("command, report, heading", [

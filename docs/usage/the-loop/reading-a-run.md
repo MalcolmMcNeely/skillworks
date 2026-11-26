@@ -229,6 +229,13 @@ the loop builds each one still open:
 2026-09-28 18:24:10 DEEPEN spec #200 already holds the Deepening check's tickets, #209, so the check runs once and does not run again
 ```
 
+A judge that filed no ticket does not run again either, because its report is on the Tracker. The
+log gets one line that says so, and the loop reads that report as the check's:
+
+```
+2026-09-28 18:24:10 SIMPLIFY spec #200 already holds the Simplify report, so the check runs once and does not run again
+```
+
 When the count finds a Gap, [the Gap round](drift-check.md#the-gap-round) adds its lines before the full run's. A
 `GAP` line names each Gap, and the `FILED` line names the Gap ticket. The ticket's own lines follow,
 then the re-check's:

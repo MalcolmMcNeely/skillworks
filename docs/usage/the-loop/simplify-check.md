@@ -63,6 +63,13 @@ under the spec, open or closed. It knows the ticket by its title. When it finds 
 the check again. It writes a `SIMPLIFY` line that names the ticket, and it builds the ticket if it is
 still open, as it builds any open ticket.
 
+A check that filed no ticket still leaves its report on the Tracker. When the script finds no
+simplify ticket but finds a Simplify report, it does not run the check again either. It writes a
+`SIMPLIFY` line that says the spec already holds the report, and it reads that report as if the check
+had just recorded it. A report that says `- None` files nothing. A report whose `### Findings` list
+names findings files the simplify ticket, which is what a first run that stopped before it filed the
+ticket owes.
+
 ## Turning it off
 
 Set `enabled: false` in `docs/skillworks/simplify-check.md` to turn the Simplify check off. A check

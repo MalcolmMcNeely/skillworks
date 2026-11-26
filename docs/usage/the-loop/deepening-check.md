@@ -60,6 +60,13 @@ the spec, open or closed. It knows one by its title, `TICKET: Deepen <module>`. 
 does not run the check again. It writes a `DEEPEN` line that names each one it found, and it builds
 each one still open as it builds any open ticket.
 
+A check that filed no ticket still leaves its report on the Tracker. When the script finds no
+deepening ticket but finds a Deepening report, it does not run the check again either. It writes a
+`DEEPEN` line that says the spec already holds the report, and it reads that report as if the check
+had just recorded it. A report that says `- None` files nothing. A report whose `### Strong` list
+names candidates files them up to the limit, which is what a first run that stopped before it filed
+them owes.
+
 ## Turning it off
 
 Set `limit: 0` in `docs/skillworks/deepening-check.md` to turn the Deepening check off. A check that
