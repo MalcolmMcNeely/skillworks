@@ -33,6 +33,77 @@ def position_time(moment):
     return moment.strftime(TIME_FORM)
 
 
+class Position:
+    def __init__(self, judges):
+        self.judges = judges
+        self.doing = None
+        self.judged = {judge.name: {"name": judge.name, "state": TO_COME, "found": None,
+                                    "word": judge.word, "filed": []} for judge in judges}
+        self.tickets = []
+        self.ticket_now = None
+
+    @property
+    def ticket_count(self):
+        return len(self.tickets)
+
+    def tickets_read(self, rows):
+        self.tickets = [{"number": number, "title": title, "landed": state == "closed",
+                         "judge": self.filed_by(title)} for number, state, title in rows]
+        for name, judged in self.judged.items():
+            judged["filed"] = [row["number"] for row in self.tickets if row["judge"] == name]
+
+    def filed_by(self, title):
+        return next((judge.name for judge in self.judges if judge.filed(title)), None)
+
+    def filed(self, ticket, title, judge):
+        self.tickets.append({"number": ticket, "title": title, "landed": False, "judge": judge.name})
+        self.judged[judge.name]["filed"].append(ticket)
+
+    def judge_off(self, judge):
+        self.judged[judge.name]["state"] = OFF
+
+    def judge_now(self, judge):
+        self.judged[judge.name]["state"] = NOW
+
+    def judge_found(self, judge, count):
+        self.judged[judge.name]["found"] = count
+
+    def judge_done(self, judge):
+        self.judged[judge.name]["state"] = DONE
+
+    def started(self, ticket, title, steps):
+        self.ticket_now = {"number": ticket, "title": title, "steps": steps,
+                           "step": None, "step_started": None}
+
+    def on_step(self, name, now):
+        if self.ticket_now is not None:
+            self.ticket_now["step"] = name
+            self.ticket_now["step_started"] = position_time(now)
+
+    def landed(self, ticket):
+        for row in self.tickets:
+            if row["number"] == ticket:
+                row["landed"] = True
+        self.ticket_now = None
+
+    def to_write(self, spec, run, now, at, seconds_left, choices, denials, stop):
+        return {
+            "spec": spec,
+            "run": run,
+            "heartbeat": position_time(now),
+            "doing": self.doing,
+            "judges": list(self.judged.values()),
+            "tickets": self.tickets,
+            "ticket": self.ticket_now,
+            "at": at or None,
+            "of": self.ticket_count or None,
+            "seconds_left": seconds_left,
+            "choices": choices,
+            "denials": denials,
+            "stop": stop,
+        }
+
+
 # Short, because the write holds the lock both writers share, so a step change waits this long at most.
 PATIENCE = timedelta(seconds=1)
 # Long, because the heartbeat stops before the end write and nothing writes the Position after it.

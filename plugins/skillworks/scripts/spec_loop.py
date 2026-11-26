@@ -50,15 +50,14 @@ from count.findings import FINDINGS, enabled_in, read_findings
 from count.simplify_ticket import simplify_ticket
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
-from judges.judges import DEEPENING, DRIFT, JUDGES, NAME, SIMPLIFY, filed_by, told_to_judge
+from judges.judges import DEEPENING, DRIFT, JUDGES, NAME, SIMPLIFY, told_to_judge
 from judges.earlier_run import earlier_run
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
-from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DONE, DRIFT_CHECK,
-                               END_PATIENCE, FINISHED,
-                               HEARTBEAT_SECONDS, NAME_CHECK, NOW, OFF, PATIENCE, POSITION,
-                               SIMPLIFY_CHECK, STOPPED, TO_COME,
-                               position_time, written_whole)
+from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DRIFT_CHECK,
+                               END_PATIENCE, FINISHED, HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE,
+                               POSITION, SIMPLIFY_CHECK, STOPPED, Position, position_time,
+                               written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import Subprocess, given_every_session, session_changes
 from seed_steering import missing_steering
@@ -529,7 +528,6 @@ class Loop:
         self.pr_mode = False
         self.tracker = None
         self.spec_title = ""
-        self.ticket_count = 0
         # Read before the first ticket, so the count judges the report by the spec the run began on.
         self.items = None
         self.reports_read = {}
@@ -569,11 +567,7 @@ class Loop:
         self.run_id = str(uuid.uuid4())
         # A dry run moves nothing, so it leaves no Position for the pane to show.
         self.writes_position = False
-        self.doing = None
-        self.spec_tickets = []
-        self.judged = {judge.name: {"name": judge.name, "state": TO_COME, "found": None,
-                                    "word": judge.word, "filed": []} for judge in JUDGES}
-        self.ticket_now = None
+        self.position = Position(JUDGES)
         self.denied = 0
         self.stop_line = None
 
@@ -588,31 +582,26 @@ class Loop:
 
     # --- the Position --------------------------------------------------------
 
+    @property
+    def ticket_count(self):
+        return self.position.ticket_count
+
     def position_now(self):
-        return {
-            "spec": self.spec,
-            "run": self.run_id,
-            "heartbeat": position_time(self.clock.now()),
-            "doing": self.doing,
-            "judges": list(self.judged.values()),
-            "tickets": self.spec_tickets,
-            "ticket": self.ticket_now,
-            "at": self.place or None,
-            "of": self.ticket_count or None,
-            "seconds_left": seconds_left(self.place, self.ticket_count, self.mean_seconds)
+        return self.position.to_write(
+            spec=self.spec, run=self.run_id, now=self.clock.now(), at=self.place,
+            seconds_left=seconds_left(self.place, self.ticket_count, self.mean_seconds)
             if self.place else None,
-            "choices": sum(1 for opening, _ in self.listed if opening == "CHOSE"),
-            "denials": self.denied,
-            "stop": None if self.stop_line is None else {
+            choices=sum(1 for opening, _ in self.listed if opening == "CHOSE"),
+            denials=self.denied,
+            stop=None if self.stop_line is None else {
                 "line": self.stop_line,
                 "log": self.log.relative_to(self.root).as_posix()
-                if self.log.is_relative_to(self.root) else self.log.as_posix()},
-        }
+                if self.log.is_relative_to(self.root) else self.log.as_posix()})
 
     # Written over whole at every move, so it holds the present and the Journal keeps the past.
     def moved(self, doing=None):
         if doing is not None:
-            self.doing = doing
+            self.position.doing = doing
         # Stopped before the last write, so no beat lands after it and the end stays the end.
         if doing in (FINISHED, STOPPED):
             self.heartbeat_stopped()
@@ -667,53 +656,25 @@ class Loop:
                     name, type(failed).__name__, failed))
 
     def read_spec_tickets(self):
-        rows = self.tracker.ticket_rows(self.spec)
-        self.spec_tickets = [{"number": number, "title": title, "landed": state == "closed",
-                              "judge": filed_by(title)} for number, state, title in rows]
-        self.ticket_count = len(self.spec_tickets)
-        for name, judged in self.judged.items():
-            judged["filed"] = [row["number"] for row in self.spec_tickets if row["judge"] == name]
-
-    def filed(self, ticket, title, judge):
-        self.spec_tickets.append({"number": ticket, "title": title, "landed": False,
-                                  "judge": judge.name})
-        self.judged[judge.name]["filed"].append(ticket)
+        self.position.tickets_read(self.tracker.ticket_rows(self.spec))
 
     # Read leniently, so a Steering file the judge's own read stops on still shows the judge to come.
     def judges_off(self):
         if limit_in(self.steering_text(DEEPENING_FILE)) == 0:
-            self.judged[DEEPENING.name]["state"] = OFF
+            self.position.judge_off(DEEPENING)
         if enabled_in(self.steering_text(SIMPLIFY_FILE)) is False:
-            self.judged[SIMPLIFY.name]["state"] = OFF
-
-    def judge_found(self, judge, count):
-        self.judged[judge.name]["found"] = count
-
-    def judge_now(self, judge):
-        self.judged[judge.name]["state"] = NOW
-        self.moved()
-
-    def judge_done(self, judge):
-        self.judged[judge.name]["state"] = DONE
-        self.moved()
+            self.position.judge_off(SIMPLIFY)
 
     def started(self, ticket, title):
-        self.ticket_now = {"number": ticket, "title": title,
-                           "steps": [step.name for step in STEPS] + ["land"],
-                           "step": None, "step_started": None}
+        self.position.started(ticket, title, [step.name for step in STEPS] + ["land"])
         self.moved(BUILDING)
 
     def on_step(self, name):
-        if self.ticket_now is not None:
-            self.ticket_now["step"] = name
-            self.ticket_now["step_started"] = position_time(self.clock.now())
+        self.position.on_step(name, self.clock.now())
         self.moved()
 
     def landed_now(self, ticket):
-        for row in self.spec_tickets:
-            if row["number"] == ticket:
-                row["landed"] = True
-        self.ticket_now = None
+        self.position.landed(ticket)
         self.moved()
 
     def stopped_on(self, said):
@@ -1823,12 +1784,13 @@ class Loop:
         held.update(earlier.tickets)
         found = listed(earlier.report) if earlier.report else None
         if found is not None:
-            self.judge_found(judge, len(found))
+            self.position.judge_found(judge, len(found))
         self.say_judge(judge, "spec {} already holds the {}'s tickets, {}, so the check runs once "
                        "and does not run again".format(
                            self.spec_named(), judge.what,
                            ", ".join(self.named(number) for number, _ in earlier.tickets)))
-        self.judge_done(judge)
+        self.position.judge_done(judge)
+        self.moved()
         self.run_tickets()
         return True
 
@@ -1850,7 +1812,8 @@ class Loop:
         else:
             def read():
                 return judge.read(self.tracker, self.spec)
-        self.judge_now(judge)
+        self.position.judge_now(judge)
+        self.moved()
         # A re-check is kept under its judge's step, so the pieces match the steps the pane lists.
         with self.step_time(judge.name):
             result = self.run_clean_session(
@@ -1898,7 +1861,7 @@ class Loop:
                            self.spec_named(), STRONG, held))
         for said in strong:
             self.say("STRONG " + said)
-        self.judge_found(DEEPENING, len(strong))
+        self.position.judge_found(DEEPENING, len(strong))
         filed, over = filed_within(strong, limit)
         if over:
             self.say("WARN  the Deepening report on spec {} lists {} and the limit is {}, so only "
@@ -1913,9 +1876,8 @@ class Loop:
     def file_deepening_ticket(self, strong):
         title, body = deepening_ticket(strong)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title, DEEPENING)
+        self.position.filed(ticket, title, DEEPENING)
         self.deepening_tickets[ticket] = title
-        self.ticket_count += 1
         self.say("FILED {} under spec {} deepens {}, so the loop builds it through every step".format(
             self.named(ticket), self.spec_named(), name_of(strong)))
 
@@ -1932,7 +1894,8 @@ class Loop:
         filed = self.read_deepening(report, limit)
         for strong in filed:
             self.file_deepening_ticket(strong)
-        self.judge_done(DEEPENING)
+        self.position.judge_done(DEEPENING)
+        self.moved()
         if filed:
             self.run_tickets()
 
@@ -1958,7 +1921,7 @@ class Loop:
                            self.spec_named(), FINDINGS, held))
         for said in findings:
             self.say("FINDING " + said)
-        self.judge_found(SIMPLIFY, len(findings))
+        self.position.judge_found(SIMPLIFY, len(findings))
         if not findings:
             self.say_judge(SIMPLIFY, "no cleanup is owed on spec {}".format(self.spec_named()))
         return findings
@@ -1967,9 +1930,8 @@ class Loop:
     def file_simplify_ticket(self, findings):
         title, body = simplify_ticket(findings)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title, SIMPLIFY)
+        self.position.filed(ticket, title, SIMPLIFY)
         self.simplify_tickets[ticket] = title
-        self.ticket_count += 1
         self.say("FILED {} under spec {} makes {}, so the loop builds it through every step".format(
             self.named(ticket), self.spec_named(), how_many(len(findings), "cleanup", "cleanups")))
 
@@ -1992,7 +1954,8 @@ class Loop:
         findings = self.read_simplify(report)
         if findings:
             self.file_simplify_ticket(findings)
-        self.judge_done(SIMPLIFY)
+        self.position.judge_done(SIMPLIFY)
+        self.moved()
         if findings:
             self.run_tickets()
 
@@ -2027,7 +1990,7 @@ class Loop:
         items = every.only(asked) if asked else every
         counted = count_verdicts(items, report.verdicts)
         if not asked:
-            self.judge_found(DRIFT, len(counted.gaps))
+            self.position.judge_found(DRIFT, len(counted.gaps))
         self.say("COUNT {} {}, and the drift report gives {}".format(
             "the re-check was asked about" if asked else "the spec holds",
             how_many(len(items.every()), "item", "items"),
@@ -2065,8 +2028,7 @@ class Loop:
             self.say("GAP   " + gap_said(gap))
         title, body = gap_ticket(gaps)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title, DRIFT)
-        self.ticket_count += 1
+        self.position.filed(ticket, title, DRIFT)
         self.say("FILED {} under spec {} builds {}, so the loop goes round once".format(
             self.named(ticket), self.spec_named(), how_many(len(gaps), "Gap", "Gaps")))
 
@@ -2081,7 +2043,8 @@ class Loop:
                 self.file_gap_ticket(gaps)
                 self.run_tickets()
             self.check_drift(base, [gap.item.name for gap in gaps])
-        self.judge_done(DRIFT)
+        self.position.judge_done(DRIFT)
+        self.moved()
 
     # --- the Name check ------------------------------------------------------
 
@@ -2105,7 +2068,7 @@ class Loop:
                            self.spec_named(), RENAMES, held))
         for said in renames:
             self.say("NAME  " + said)
-        self.judge_found(NAME, len(renames))
+        self.position.judge_found(NAME, len(renames))
         if not renames:
             self.say_judge(NAME, "no rename is owed on spec {}".format(self.spec_named()))
         return renames
@@ -2120,8 +2083,7 @@ class Loop:
                          "the spec use most. A person settles the word.".format(name_of(said)))
         title, body = rename_ticket(renames)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title, NAME)
-        self.ticket_count += 1
+        self.position.filed(ticket, title, NAME)
         self.say("FILED {} under spec {} makes {}, so the loop builds it and checks each one".format(
             self.named(ticket), self.spec_named(), how_many(len(renames), "rename", "renames")))
         return ticket
@@ -2167,7 +2129,8 @@ class Loop:
                 ticket = self.file_rename_ticket(renames)
                 self.run_tickets()
             self.check_renames(base, ticket, renames)
-        self.judge_done(NAME)
+        self.position.judge_done(NAME)
+        self.moved()
 
     # --- the note of the run's Flakes ----------------------------------------
 

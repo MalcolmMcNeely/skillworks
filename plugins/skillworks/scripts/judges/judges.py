@@ -71,10 +71,6 @@ NAME = Judge(
 JUDGES = (DEEPENING, SIMPLIFY, DRIFT, NAME)
 
 
-def filed_by(title):
-    return next((judge.name for judge in JUDGES if judge.filed(title)), None)
-
-
 def told_to_judge():
     return [session for judge in JUDGES
             for session in ([judge.session(), judge.session(again=True)] if judge.has_re_check
