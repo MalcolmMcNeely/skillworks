@@ -18,15 +18,22 @@ The script then reads the report back from the Tracker and keeps a copy at
 `.spec-loop/<spec>/drift.md`.
 
 The drift check reads the spec's commits through `spec-commits`: the commits after the base commit
-that the spec's tickets Landed, the Gap ticket's among them. A commit is the spec's only when its
-`Ticket:` trailer names one of the spec's tickets, so a commit with no `Ticket:` trailer is not read,
-and neither is another spec's work. A hand fix that should count for the spec carries the trailer of
-one of its tickets, such as `Ticket: #<n>`, or `Ticket: <spec>/<n>` with the files Tracker.
+that the spec's tickets Landed, the deepening tickets', the simplify ticket's and the Gap ticket's
+among them. A commit is the spec's only when its `Ticket:` trailer names one of the spec's tickets,
+so a commit with no `Ticket:` trailer is not read, and neither is another spec's work. A hand fix
+that should count for the spec carries the trailer of one of its tickets, such as `Ticket: #<n>`, or
+`Ticket: <spec>/<n>` with the files Tracker.
 
 The spec's commits show where the work is. The Verdict judges the newest Target branch as it stands,
 so a story done by a hand fix or by another spec counts as Done, and code from any source that does
 what the spec ruled out is Contradicts. Unrequested work and two names for one idea come only from
 the spec's commits, and an item is listed only while it still stands on the Target branch.
+
+The deepening tickets and the simplify ticket Land before the drift check, so it judges the Target
+branch with their work on it, and a refactor that breaks a story gets Missing or Contradicts. It reads
+their commits for its Verdicts, and leaves them out of Unrequested, because the loop asked for that
+work itself. [The Name check](name-check.md) reads their commits like every other commit of the spec,
+so a name a refactor brought in is judged.
 
 The drift check reads every `DEPARTS` line the spec's builds wrote, in this run and in any earlier run
 on the same spec. The script reads them from the Journal. A build writes a `DEPARTS` line when two

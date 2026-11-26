@@ -5280,6 +5280,19 @@ def test_the_list_at_the_end_names_the_simplify_ticket_the_run_built(loop):
             "      #162 TICKET: Make the cleanups the Simplify check found\n") in loop.log()
 
 
+# Numbered after the one deepening ticket filed before it.
+SIMPLIFY_AFTER_DEEPENING = "163"
+
+
+def test_the_name_check_reads_the_deepening_and_simplify_tickets_commits_as_the_spec_s(loop):
+    _, ran = simplified(loop, simplify_report(PARSED), FIRST_DEEPENING, SIMPLIFY_AFTER_DEEPENING,
+                        deepening=deepening_report(FOLDED))
+
+    assert ran.status == 0, said(ran)
+    assert ("SCOPE the Name check reads 3 commits of spec #158, and leaves out 0 other commits "
+            "after the base commit\n") in loop.log()
+
+
 def test_the_dry_run_names_the_deepening_check_then_the_simplify_check_then_the_drift_check(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
 

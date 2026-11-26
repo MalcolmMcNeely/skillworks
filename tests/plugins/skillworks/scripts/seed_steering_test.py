@@ -7,6 +7,8 @@ import pytest
 import seed_steering
 from branches.open_the_pull_request import open_the_pull_request
 from conftest import PLUGIN, ROOT, Ran, Repo, git, launch, sidecar_steering, write_steering
+from count.deepening_ticket import TITLE as DEEPENING_TITLE
+from count.simplify_ticket import TITLE as SIMPLIFY_TITLE
 from seeds import agent_skills
 from suite import Suite
 from tracker.files import CLOSING_NOTE
@@ -1852,6 +1854,18 @@ def test_spec_drift_reads_the_spec_commits_and_judges_the_target_branch_as_it_st
     assert "Judge the Target branch as it stands" in spec_drift
     assert "behaviour in the spec's commits that no story and no ticket asked for" in spec_drift
     assert "only when it still stands on `origin/<target>`" in spec_drift
+
+
+def test_spec_drift_judges_the_deepening_and_simplify_tickets_work_and_lists_none_of_it_as_unrequested():
+    spec_drift = skill_text("spec-drift")
+    unrequested = next(paragraph for paragraph in spec_drift.split("\n\n")
+                       if "List **Unrequested** work" in paragraph)
+
+    assert "the deepening tickets and the simplify ticket among them" in spec_drift
+    assert "read their commits for your Verdicts" in unrequested
+    assert "list none of their work as Unrequested" in unrequested
+    assert "`{}`".format(DEEPENING_TITLE.rstrip()) in unrequested
+    assert "`{}`".format(SIMPLIFY_TITLE) in unrequested
 
 
 def test_spec_drift_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
