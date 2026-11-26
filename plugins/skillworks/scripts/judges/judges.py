@@ -1,4 +1,4 @@
-# All of a judge comes from its step name, so its skill, Sessions, kind and log files cannot drift apart.
+# All of a judge comes from its step name, so its skill, Sessions, report file and log files cannot drift apart.
 
 from typing import Callable, NamedTuple
 
@@ -14,7 +14,6 @@ class Judge(NamedTuple):
     what: str
     tag: str
     report: str
-    report_file: str
     read: Callable
     earlier: Callable
     filed: Callable
@@ -26,8 +25,8 @@ class Judge(NamedTuple):
         return "spec-" + self.name
 
     @property
-    def kind(self):
-        return self.name
+    def report_file(self):
+        return self.name.replace("-check", "-report") + ".md"
 
     @property
     def rechecks(self):
@@ -44,25 +43,25 @@ class Judge(NamedTuple):
 
 
 DEEPENING = Judge(
-    "deepening-check", DEEPENING_CHECK, "DEEPEN", "Deepening report", "deepening-report.md",
+    "deepening-check", DEEPENING_CHECK, "DEEPEN", "Deepening report",
     read=lambda tracker, spec: tracker.deepening_report(spec),
     earlier=lambda tracker, spec: tracker.deepening_report(spec),
     filed=lambda title: title.startswith(DEEPENING_TITLE),
     lost="no deepening was read")
 SIMPLIFY = Judge(
-    "simplify-check", SIMPLIFY_CHECK, "SIMPLIFY", "Simplify report", "simplify-report.md",
+    "simplify-check", SIMPLIFY_CHECK, "SIMPLIFY", "Simplify report",
     read=lambda tracker, spec: tracker.simplify_report(spec),
     earlier=lambda tracker, spec: tracker.simplify_report(spec),
     filed=lambda title: title == SIMPLIFY_TITLE,
     lost="no cleanup was read")
 DRIFT = Judge(
-    "drift-check", DRIFT_CHECK, "DRIFT", "drift report", "drift-report.md",
+    "drift-check", DRIFT_CHECK, "DRIFT", "drift report",
     read=lambda tracker, spec: tracker.drift_report(spec),
     earlier=lambda tracker, spec: tracker.earlier_drift_report(spec),
     filed=lambda title: title == GAP_TITLE,
     lost="nothing was counted", lost_again="the Gap items were not judged again")
 NAMES = Judge(
-    "name-check", NAME_CHECK, "NAMES", "Name report", "name-report.md",
+    "name-check", NAME_CHECK, "NAMES", "Name report",
     read=lambda tracker, spec: tracker.name_report(spec),
     earlier=lambda tracker, spec: tracker.earlier_name_report(spec),
     filed=lambda title: title == RENAME_TITLE,

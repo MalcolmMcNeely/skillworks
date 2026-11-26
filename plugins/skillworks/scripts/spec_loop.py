@@ -1275,7 +1275,7 @@ class Loop:
     def report_owed(self, judge, again=False):
         return ("Spec {} holds no {}{} yet. Record the report you wrote with tracker-publish {} {} "
                 ".spec-loop/{}/{}\n".format(self.spec_named(), "new " if again else "", judge.report,
-                                            judge.kind, self.spec, self.spec, judge.report_file))
+                                            judge.name, self.spec, self.spec, judge.report_file))
 
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
