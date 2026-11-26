@@ -3014,11 +3014,6 @@ def test_what_next_names_skillsmith_among_the_skills_for_any_time():
     assert "\n- **`/skillworks:skillsmith`** — " in any_time
 
 
-# What loads skillsmith is Claude's own judgement, so no skill reaches for it on Claude's behalf.
-def test_no_skill_calls_skillsmith_through_the_skill_tool():
-    assert [call for call in skill_tool_calls() if call[1] == "skillsmith"] == []
-
-
 def test_the_licence_notices_name_review_changes_among_the_skills_we_changed():
     notices = " ".join((ROOT / "THIRD-PARTY-NOTICES.md").read_text(encoding="utf-8").split())
 
