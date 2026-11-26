@@ -47,7 +47,7 @@ from count.items import read_items, with_readme
 from count.rename_ticket import rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
-from count.simplifications import FINDINGS, enabled_in, read_findings
+from count.findings import FINDINGS, enabled_in, read_findings
 from count.simplify_ticket import TITLE as SIMPLIFY_TITLE
 from count.simplify_ticket import simplify_ticket
 from count.verdicts import VERDICTS, read_verdicts
@@ -1896,7 +1896,7 @@ class Loop:
                        "to write it again.".format(SIMPLIFY_FILE))
         return enabled
 
-    def close_simplifications(self, base):
+    def close_findings(self, base):
         if not self.simplify_enabled():
             self.say("NOTE  the Simplify check is off, because " + SIMPLIFY_OFF)
             return
@@ -2247,7 +2247,7 @@ class Loop:
             try:
                 self.run_tickets()
                 self.close_deepenings(base)
-                self.close_simplifications(base)
+                self.close_findings(base)
                 self.close_gaps(base)
                 self.close_renames(base)
             except Stop as stopped:

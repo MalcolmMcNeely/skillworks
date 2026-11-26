@@ -575,10 +575,10 @@ def deepening(driver, report=DEEPENINGS):
     return recording(driver, "deepen", report)
 
 
-SIMPLIFICATIONS = "## Simplify report\n\n### Findings\n\n- None\n"
+NO_FINDINGS = "## Simplify report\n\n### Findings\n\n- None\n"
 
 
-def simplifying(driver, report=SIMPLIFICATIONS):
+def simplifying(driver, report=NO_FINDINGS):
     return recording(driver, "simplify", report)
 
 

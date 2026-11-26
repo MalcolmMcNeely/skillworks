@@ -1,4 +1,4 @@
-from count.simplifications import enabled_in, read_findings
+from count.findings import enabled_in, read_findings
 
 PARSED = ("`src/orders/intake.py`, `parse_lines`, reuse: it splits each line by hand. Call the CSV "
           "reader.")
