@@ -212,6 +212,23 @@ own:
       #210 TICKET: Make the cleanups the Simplify check found
 ```
 
+A judge your team turned off does not run. In place of its lines, the log gets one `NOTE` line that
+says so, and [the Deepening check](deepening-check.md#turning-it-off) and [the Simplify
+check](simplify-check.md#turning-it-off) say how to turn each one off:
+
+```
+2026-09-28 18:24:10 NOTE  the Deepening check is off, because docs/skillworks/deepening-check.md sets limit to 0
+2026-09-28 18:24:10 NOTE  the Simplify check is off, because docs/skillworks/simplify-check.md sets enabled to false
+```
+
+Each judge runs once for each spec. On a rerun, a judge that already filed a ticket under the spec
+does not run again. In place of its lines, the log gets one line that names the tickets it filed, and
+the loop builds each one still open:
+
+```
+2026-09-28 18:24:10 DEEPEN spec #200 already holds the Deepening check's tickets, #209, so the check runs once and does not run again
+```
+
 When the count finds a Gap, [the Gap round](drift-check.md#the-gap-round) adds its lines before the full run's. A
 `GAP` line names each Gap, and the `FILED` line names the Gap ticket. The ticket's own lines follow,
 then the re-check's:
@@ -265,7 +282,9 @@ full run. The Deepening check prints as the `deepen` step, with its call, `claud
 "/skillworks:spec-deepen <spec> <base>" --session-id <new id>`, and the `deepening-ticket` line says
 each ticket it files is built through every step. The Simplify check prints as the `simplify` step,
 with its call, `claude -p "/skillworks:spec-simplify <spec> <base>" --session-id <new id>`, and the
-`simplify-ticket` line says the ticket it files is built through every step.
+`simplify-ticket` line says the ticket it files is built through every step. A judge your team turned
+off prints as its step with `off:` and the setting that turns it off, such as `deepen       off:
+docs/skillworks/deepening-check.md sets limit to 0`, and its ticket line is left out.
 Last, it prints the paragraph every Session is told after its command. A
 spec in another shape stops the dry run at its `ABORT` line, as it would stop a run. It starts no
 Session and reaches no remote.

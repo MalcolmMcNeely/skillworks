@@ -38,6 +38,7 @@ import ticket_worktree
 from filelock import FileLock, Timeout
 from branches.open_the_pull_request import open_the_pull_request
 from clock.clock import Clock
+from count.deepening_ticket import TITLE as DEEPENING_TITLE
 from count.deepening_ticket import deepening_ticket
 from count.deepenings import STRONG, filed_within, limit_in, read_strong
 from count.gap_ticket import gap_ticket
@@ -46,7 +47,8 @@ from count.items import read_items, with_readme
 from count.rename_ticket import rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
-from count.simplifications import FINDINGS, read_findings
+from count.simplifications import FINDINGS, enabled_in, read_findings
+from count.simplify_ticket import TITLE as SIMPLIFY_TITLE
 from count.simplify_ticket import simplify_ticket
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
@@ -238,6 +240,11 @@ CUT_UNATTENDED = (
 CUT_RECORDED = "tickets-filed"
 REPORT_RECORDED = "report-recorded"
 NEW_REPORT_RECORDED = "new-report-recorded"
+
+DEEPENING_FILE = STEERING_FOLDER + "/deepening-check.md"
+SIMPLIFY_FILE = STEERING_FOLDER + "/simplify-check.md"
+DEEPENING_OFF = DEEPENING_FILE + " sets limit to 0"
+SIMPLIFY_OFF = SIMPLIFY_FILE + " sets enabled to false"
 
 UNCUT_NUMBER = "<ticket>"
 UNCUT_JOB_NUMBER = "UNCUT"
@@ -1301,17 +1308,24 @@ class Loop:
         simplify = 'claude -p "{}spec-simplify {} <base>'.format(PLUGIN, self.spec)
         drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
         names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
+        deepening = (plan_line("deepen", deepen + '" --session-id <new id>',
+                               "a Deepening report recorded, a Strong list")
+                     + nudges_line(REPORT_RECORDED)
+                     + plan_line("deepening-ticket", "one ticket under the spec for each line of "
+                                 "the Strong list, up to the limit, each built through every step "
+                                 "above")
+                     if self.deepening_limit() else
+                     plan_line("deepen", "off: " + DEEPENING_OFF))
+        simplifying = (plan_line("simplify", simplify + '" --session-id <new id>',
+                                 "a Simplify report recorded, a Findings list")
+                       + nudges_line(REPORT_RECORDED)
+                       + plan_line("simplify-ticket", "one ticket under the spec that quotes every "
+                                   "line of the Findings list, built through every step above")
+                       if self.simplify_enabled() else
+                       plan_line("simplify", "off: " + SIMPLIFY_OFF))
         return ("  after every ticket is closed\n"
-                + plan_line("deepen", deepen + '" --session-id <new id>',
-                            "a Deepening report recorded, a Strong list")
-                + nudges_line(REPORT_RECORDED)
-                + plan_line("deepening-ticket", "one ticket under the spec for each line of the "
-                            "Strong list, up to the limit, each built through every step above")
-                + plan_line("simplify", simplify + '" --session-id <new id>',
-                            "a Simplify report recorded, a Findings list")
-                + nudges_line(REPORT_RECORDED)
-                + plan_line("simplify-ticket", "one ticket under the spec that quotes every line "
-                            "of the Findings list, built through every step above")
+                + deepening
+                + simplifying
                 + plan_line("drift", drift + '" --session-id <new id>',
                             "a report recorded, a Verdicts list, no Contradicts")
                 + nudges_line(REPORT_RECORDED)
@@ -1724,20 +1738,34 @@ class Loop:
 
     # --- the Deepening check -------------------------------------------------
 
+    def steering_text(self, named):
+        path = steering_root(self.root) / named
+        return path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+
     # Read before the Session, so a file the count cannot use costs no judge.
     def deepening_limit(self):
-        named = STEERING_FOLDER + "/deepening-check.md"
-        path = steering_root(self.root) / named
-        limit = limit_in(path.read_text(encoding="utf-8", errors="replace")) if path.is_file() else None
+        limit = limit_in(self.steering_text(DEEPENING_FILE))
         if limit is None:
             raise stop("STOP  {} names no whole limit in the YAML block at its end, so the "
                        "Deepening check did not run. Run /skillworks:skillworks-setup to write it "
-                       "again.".format(named))
+                       "again.".format(DEEPENING_FILE))
         return limit
 
+    # Found by the title its template writes, since the Tracker keeps no other mark of who filed a ticket.
+    def build_earlier_tickets(self, filed_by_judge, held, what, said_as):
+        found = [(number, title) for number, _, title in self.tracker.ticket_rows(self.spec)
+                 if filed_by_judge(title)]
+        if not found:
+            return False
+        held.update(found)
+        self.say("{} spec {} already holds the {}'s tickets, {}, so the check runs once and does "
+                 "not run again".format(said_as, self.spec_named(), what,
+                                        ", ".join(self.named(number) for number, _ in found)))
+        self.run_tickets()
+        return True
+
     # Before the drift check, so the drift check and the Name check judge the code the refactors left.
-    def check_deepening(self, base):
-        limit = self.deepening_limit()
+    def check_deepening(self, base, limit):
         self.moved(DEEPENING_CHECK)
         self.say_scope("Deepening check", base)
         self.say("DEEPEN looking for modules spec {} left shallow.".format(self.spec_named()))
@@ -1784,8 +1812,16 @@ class Loop:
         self.say("FILED {} under spec {} deepens {}, so the loop builds it through every step".format(
             self.named(ticket), self.spec_named(), name_of(strong)))
 
+    # Once for each spec, so a rerun builds what the first run filed and the limit holds for the spec.
     def close_deepenings(self, base):
-        filed = self.check_deepening(base)
+        limit = self.deepening_limit()
+        if not limit:
+            self.say("NOTE  the Deepening check is off, because " + DEEPENING_OFF)
+            return
+        if self.build_earlier_tickets(lambda title: title.startswith(DEEPENING_TITLE),
+                                      self.deepening_tickets, "Deepening check", "DEEPEN"):
+            return
+        filed = self.check_deepening(base, limit)
         if not filed:
             return
         for strong in filed:
@@ -1837,7 +1873,21 @@ class Loop:
         self.say("FILED {} under spec {} makes {}, so the loop builds it through every step".format(
             self.named(ticket), self.spec_named(), how_many(len(findings), "cleanup", "cleanups")))
 
+    def simplify_enabled(self):
+        enabled = enabled_in(self.steering_text(SIMPLIFY_FILE))
+        if enabled is None:
+            raise stop("STOP  {} says neither true nor false for enabled in the YAML block at its "
+                       "end, so the Simplify check did not run. Run /skillworks:skillworks-setup "
+                       "to write it again.".format(SIMPLIFY_FILE))
+        return enabled
+
     def close_simplifications(self, base):
+        if not self.simplify_enabled():
+            self.say("NOTE  the Simplify check is off, because " + SIMPLIFY_OFF)
+            return
+        if self.build_earlier_tickets(lambda title: title == SIMPLIFY_TITLE,
+                                      self.simplify_tickets, "Simplify check", "SIMPLIFY"):
+            return
         findings = self.check_simplify(base)
         if not findings:
             return

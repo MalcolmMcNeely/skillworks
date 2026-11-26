@@ -5297,6 +5297,118 @@ def test_the_dry_run_names_the_deepening_check_then_the_simplify_check_then_the_
             "every step above") in planned_call(ran, "simplify-ticket")
 
 
+# --- each end judge runs once for each spec, and can be off -------------------
+
+DEEPENED_BEFORE = ("162", "closed", "TICKET: Deepen The order intake module")
+SIMPLIFY_STILL_OPEN = ("162", "open", "TICKET: Make the cleanups the Simplify check found")
+
+
+def given_simplify_enabled(loop, enabled):
+    held = loop.repo.work / "docs" / "skillworks" / "simplify-check.md"
+    held.write_text(held.read_text(encoding="utf-8").replace("enabled: true", "enabled: " + enabled),
+                    encoding="utf-8", newline="\n")
+
+
+def rerun_holding(loop, *held):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET + held)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    return tracker, sessions
+
+
+def test_a_spec_that_already_holds_a_closed_deepening_ticket_runs_no_deepening_check(loop, runner):
+    tracker, _ = rerun_holding(loop, DEEPENED_BEFORE)
+    tracker.deepening_report = deepening_report(FOLDED)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, DEEPENING_CHECK) == []
+    assert ("DEEPEN spec #158 already holds the Deepening check's tickets, #162, so the check runs "
+            "once and does not run again") in loop.log()
+
+
+def test_a_spec_that_holds_an_open_simplify_ticket_builds_it_and_runs_no_simplify_check(
+        loop, runner):
+    tracker, sessions = rerun_holding(loop, SIMPLIFY_STILL_OPEN)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "162")
+    tracker.simplify_report = simplify_report(PARSED)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, SIMPLIFY_CHECK) == []
+    assert "DONE  #162" in loop.log()
+    assert not runner.built("issue create")
+
+
+def test_a_rerun_files_no_deepening_ticket_past_the_limit_for_the_whole_spec(loop, runner):
+    tracker, sessions = rerun_holding(loop, ("162", "open", "TICKET: Deepen The order intake module"))
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "162")
+    given_a_deepening_limit(loop, "1")
+    tracker.deepening_report = deepening_report(PRICED, LEDGER)
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert not runner.built("issue create")
+    assert ("LIST  this run built 1 deepening ticket\n"
+            "      #162 TICKET: Deepen The order intake module\n") in loop.log()
+
+
+def test_a_limit_of_0_skips_the_deepening_check_with_a_note(loop, runner):
+    _, ran = deepened(loop, deepening_report(FOLDED), limit="0")
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, DEEPENING_CHECK) == []
+    assert not runner.built("issue create")
+    assert ("NOTE  the Deepening check is off, because docs/skillworks/deepening-check.md sets "
+            "limit to 0") in loop.log()
+
+
+def test_enabled_false_skips_the_simplify_check_with_a_note(loop, runner):
+    tracker, _ = rerun_holding(loop)
+    tracker.simplify_report = simplify_report(PARSED)
+    given_simplify_enabled(loop, "false")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert prompts_asking(runner, SIMPLIFY_CHECK) == []
+    assert not runner.built("issue create")
+    assert ("NOTE  the Simplify check is off, because docs/skillworks/simplify-check.md sets "
+            "enabled to false") in loop.log()
+
+
+def test_a_simplify_check_file_with_no_enabled_stops_the_loop_before_the_check_runs(loop, runner):
+    rerun_holding(loop)
+    given_simplify_enabled(loop, "maybe")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert ("STOP  docs/skillworks/simplify-check.md says neither true nor false for enabled in the "
+            "YAML block at its end, so the Simplify check did not run. Run "
+            "/skillworks:skillworks-setup to write it again.") in loop.log()
+    assert prompts_asking(runner, SIMPLIFY_CHECK) == []
+
+
+def test_the_dry_run_shows_each_judge_that_is_off(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    given_a_deepening_limit(loop, "0")
+    given_simplify_enabled(loop, "false")
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    steps = planned_steps(ran)
+    assert steps[:steps.index("drift")][-2:] == ["deepen", "simplify"]
+    assert planned_call(ran, "deepen") == (
+        "deepen       off: docs/skillworks/deepening-check.md sets limit to 0")
+    assert planned_call(ran, "simplify") == (
+        "simplify     off: docs/skillworks/simplify-check.md sets enabled to false")
+
+
 # --- the Bash limit each Session runs with -----------------------------------
 
 FORTY_FIVE_MINUTES_MS = "2700000"

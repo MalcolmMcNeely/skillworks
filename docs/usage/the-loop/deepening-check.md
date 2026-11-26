@@ -50,6 +50,27 @@ candidates, strongest first. The script counts: a `### Strong` list longer than 
 `WARN` line, and only the first lines up to the limit are filed. A file whose YAML block names no
 whole `limit` stops the loop before the check runs, and names setup.
 
+The limit holds for the whole spec, and not for each run, because the check runs once for each spec.
+
+## Once for each spec
+
+The Deepening check runs once for each spec, so a rerun finishes what the first run started and files
+no more tickets. Before it runs the check, the script looks on the Tracker for a deepening ticket under
+the spec, open or closed. It knows one by its title, `TICKET: Deepen <module>`. When it finds one, it
+does not run the check again. It writes a `DEEPEN` line that names each one it found, and it builds
+each one still open as it builds any open ticket.
+
+## Turning it off
+
+Set `limit: 0` in `docs/skillworks/deepening-check.md` to turn the Deepening check off. A check that
+is off does not run, and the log gets a `NOTE` line that says so:
+
+```
+2026-09-28 18:24:10 NOTE  the Deepening check is off, because docs/skillworks/deepening-check.md sets limit to 0
+```
+
+A dry run shows the `deepen` step as off, and shows no `deepening-ticket` line.
+
 ## The deepening tickets
 
 The script writes one deepening ticket for each line of the `### Strong` list, up to the limit, from a

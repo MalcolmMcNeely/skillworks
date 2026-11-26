@@ -55,6 +55,25 @@ they do for any ticket. Then the drift check, the Gap round, the Name check and 
 
 The list at the end of a run names the simplify ticket the run built.
 
+## Once for each spec
+
+The Simplify check runs once for each spec, so a rerun finishes what the first run started and files
+no more tickets. Before it runs the check, the script looks on the Tracker for the simplify ticket
+under the spec, open or closed. It knows the ticket by its title. When it finds it, it does not run
+the check again. It writes a `SIMPLIFY` line that names the ticket, and it builds the ticket if it is
+still open, as it builds any open ticket.
+
+## Turning it off
+
+Set `enabled: false` in `docs/skillworks/simplify-check.md` to turn the Simplify check off. A check
+that is off does not run, and the log gets a `NOTE` line that says so:
+
+```
+2026-09-28 18:31:40 NOTE  the Simplify check is off, because docs/skillworks/simplify-check.md sets enabled to false
+```
+
+A dry run shows the `simplify` step as off, and shows no `simplify-ticket` line.
+
 ## When it stops the loop
 
 The loop stops, and the spec stays open, when:
