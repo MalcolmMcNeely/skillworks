@@ -45,6 +45,8 @@ git diff HEAD --stat
 
 If the diff is empty, there is nothing to review. Say so under the `## Spec` heading and end the turn.
 
+Run no tests. This axis judges the change by reading the code and its tests. In loop mode the driver runs the whole Suite as a step of its own, after the review, so a test run here only repeats it and slows the loop.
+
 ## What to look for
 
 Three kinds of finding, and every one of them quotes the ticket line it turns on:

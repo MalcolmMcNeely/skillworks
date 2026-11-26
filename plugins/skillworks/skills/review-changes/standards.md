@@ -26,6 +26,8 @@ git diff HEAD --stat
 
 If the diff is empty, there is nothing to review. Say so under the `## Standards` heading and end the turn.
 
+Run no tests. This axis judges the change by reading the code and its tests. In loop mode the driver runs the whole Suite as a step of its own, after the review, so a test run here only repeats it and slows the loop.
+
 ### The standards
 
 Read every file `steering-file docs/skillworks/rules/` lists, each with `steering-file <path>`. The agent wrote this code under those rules, so the review holds it to the same ones. Read any other file the repo uses to say how code is written, such as a `CODING_STANDARDS.md` or a `CONTRIBUTING.md`.
