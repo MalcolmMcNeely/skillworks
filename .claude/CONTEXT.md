@@ -362,7 +362,9 @@ _Avoid_: Remote Steering, steering remote
 **Step**:
 One part of a stage of the Dev loop, with Steering of its own to read. The Grill's steps are the
 `grill`, `gate` and `write-spec`. The spec loop's steps are the Cut, then each step of one ticket,
-from `build` to `finish`. A step is not a stage: the Dev loop has two stages, and each holds steps.
+from `build` to `finish`, then the four judges at the end: the Deepening check, the Simplify check,
+the drift check and the Name check. A judge is a step because it reads Steering of its own, the same
+as `build` does. A step is not a stage: the Dev loop has two stages, and each holds steps.
 _Avoid_: Phase, part
 
 **Suite**:
