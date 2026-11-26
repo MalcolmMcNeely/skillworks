@@ -1755,18 +1755,22 @@ class Loop:
         if not earlier.tickets:
             return False
         held.update(earlier.tickets)
-        self.say("{} spec {} already holds the {}'s tickets, {}, so the check runs once and does "
-                 "not run again".format(judge.tag, self.spec_named(), judge.what,
-                                        ", ".join(self.named(number) for number, _ in earlier.tickets)))
+        self.say_judge(judge, "spec {} already holds the {}'s tickets, {}, so the check runs once "
+                       "and does not run again".format(
+                           self.spec_named(), judge.what,
+                           ", ".join(self.named(number) for number, _ in earlier.tickets)))
         self.run_tickets()
         return True
 
     # A judge that filed nothing leaves no ticket behind, so only its report shows that it ran.
     def earlier_report(self, judge, earlier):
         if earlier.report:
-            self.say("{} spec {} already holds the {}, so the check runs once and does not run "
-                     "again".format(judge.tag, self.spec_named(), judge.report))
+            self.say_judge(judge, "spec {} already holds the {}, so the check runs once and does "
+                           "not run again".format(self.spec_named(), judge.report))
         return earlier.report
+
+    def say_judge(self, judge, said, again=False):
+        self.say("{} {}".format(judge.session(again), said))
 
     # Read back from the Tracker, so a report the Session only said and never recorded is caught.
     def run_judge(self, judge, base, handed="", again=False, handed_on=""):
@@ -1805,12 +1809,13 @@ class Loop:
     def check_deepening(self, base):
         self.moved(DEEPENING_CHECK)
         self.say_scope(DEEPENING.what, base)
-        self.say("DEEPEN looking for modules spec {} left shallow.".format(self.spec_named()))
+        self.say_judge(DEEPENING, "looking for modules spec {} left shallow.".format(
+            self.spec_named()))
         return self.run_judge(DEEPENING, base)
 
     def read_deepening(self, report, limit):
         held = self.hold_report(DEEPENING, report)
-        self.say("DEEPEN the report is recorded on spec {}. Read it at {}".format(
+        self.say_judge(DEEPENING, "the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
 
         strong = read_strong(report)
@@ -1827,7 +1832,7 @@ class Loop:
                          self.spec_named(), how_many(len(strong), "Strong line", "Strong lines"),
                          limit, "is" if limit == 1 else "{} are".format(limit)))
         if not filed:
-            self.say("DEEPEN no deepening is owed on spec {}".format(self.spec_named()))
+            self.say_judge(DEEPENING, "no deepening is owed on spec {}".format(self.spec_named()))
         return filed
 
     # One ticket for each line, so each refactor gets a Fresh build and one that fails holds no other.
@@ -1863,13 +1868,13 @@ class Loop:
     def check_simplify(self, base):
         self.moved(SIMPLIFY_CHECK)
         self.say_scope(SIMPLIFY.what, base)
-        self.say("SIMPLIFY looking for code spec {} made harder than it has to be.".format(
+        self.say_judge(SIMPLIFY, "looking for code spec {} made harder than it has to be.".format(
             self.spec_named()))
         return self.run_judge(SIMPLIFY, base)
 
     def read_simplify(self, report):
         held = self.hold_report(SIMPLIFY, report)
-        self.say("SIMPLIFY the report is recorded on spec {}. Read it at {}".format(
+        self.say_judge(SIMPLIFY, "the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
 
         findings = read_findings(report)
@@ -1880,7 +1885,7 @@ class Loop:
         for said in findings:
             self.say("FINDING " + said)
         if not findings:
-            self.say("SIMPLIFY no cleanup is owed on spec {}".format(self.spec_named()))
+            self.say_judge(SIMPLIFY, "no cleanup is owed on spec {}".format(self.spec_named()))
         return findings
 
     # One ticket for every finding, so the cleanups are built together in one Session.
@@ -1921,10 +1926,10 @@ class Loop:
         self.moved(DRIFT_CHECK)
         self.say_scope(DRIFT.said_as(again), base)
         if asked:
-            self.say("DRIFT the Gap ticket is closed. Checking {} against spec {} again.".format(
-                ", ".join(asked), self.spec_named()))
+            self.say_judge(DRIFT, "the Gap ticket is closed. Checking {} against spec {} "
+                           "again.".format(", ".join(asked), self.spec_named()), again)
         else:
-            self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
+            self.say_judge(DRIFT, "all tickets closed. Checking the result against spec {}.".format(
                 self.spec_named()))
         report = self.run_judge(DRIFT, base, ITEM_SEPARATOR.join(asked), again,
                                 self.spec_departures())
@@ -1932,8 +1937,8 @@ class Loop:
 
     def count_held_drift(self, report, asked):
         held = self.hold_report(DRIFT, report, again=bool(asked))
-        self.say("DRIFT the report is recorded on spec {}. Read it at {}".format(
-            self.spec_named(), held))
+        self.say_judge(DRIFT, "the report is recorded on spec {}. Read it at {}".format(
+            self.spec_named(), held), again=bool(asked))
         return self.count_drift(read_verdicts(report), held, asked)
 
     # The driver judges nothing: it counts, so a skipped item is caught by arithmetic.
@@ -2006,13 +2011,13 @@ class Loop:
     def check_names(self, base):
         self.moved(NAME_CHECK)
         self.say_scope(NAMES.what, base)
-        self.say("NAMES checking the names spec {} brought in against the glossary.".format(
+        self.say_judge(NAMES, "checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
         return self.read_held_names(self.run_judge(NAMES, base))
 
     def read_held_names(self, report):
         held = self.hold_report(NAMES, report)
-        self.say("NAMES the report is recorded on spec {}. Read it at {}".format(
+        self.say_judge(NAMES, "the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
 
         renames = read_renames(report)
@@ -2023,7 +2028,7 @@ class Loop:
         for said in renames:
             self.say("NAME  " + said)
         if not renames:
-            self.say("NAMES no rename is owed on spec {}".format(self.spec_named()))
+            self.say_judge(NAMES, "no rename is owed on spec {}".format(self.spec_named()))
         return renames
 
     # --- the rename ticket ---------------------------------------------------
@@ -2045,8 +2050,8 @@ class Loop:
     # The rename ticket's diff alone, so the check that each rename was made has a small context.
     def check_renames(self, base, ticket, renames):
         self.moved(NAME_CHECK)
-        self.say("NAMES the rename ticket {} is closed. Checking it made each rename on spec "
-                 "{}.".format(self.named(ticket), self.spec_named()))
+        self.say_judge(NAMES, "the rename ticket {} is closed. Checking it made each rename on "
+                       "spec {}.".format(self.named(ticket), self.spec_named()), again=True)
         report = self.run_judge(NAMES, base, self.tracker.reference(ticket), again=True)
         held = self.hold_report(NAMES, report, again=True)
         verdicts = read_rename_verdicts(report)
@@ -2069,7 +2074,7 @@ class Loop:
                            self.spec_named(),
                            "".join("      Not made: {}\n".format(unmade_said(unmade))
                                    for unmade in counted.unmade), held))
-        self.say("NAMES every rename is made on spec {}".format(self.spec_named()))
+        self.say_judge(NAMES, "every rename is made on spec {}".format(self.spec_named()), again=True)
 
     # Its own ticket after the Gap ticket, so each build has one job and no later build brings a name.
     # A rerun reads the report an earlier run recorded, so the Name check and its rename ticket come once.

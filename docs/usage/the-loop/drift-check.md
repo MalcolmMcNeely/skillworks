@@ -18,7 +18,7 @@ The script then reads the report back from the Tracker and keeps a copy at
 `.spec-loop/<spec>/drift-check.md`.
 
 A loop run again on a spec that already holds a drift report does not run the drift check again. It
-counts the report it finds, and the log gets a `DRIFT` line that says so. When the spec already holds
+counts the report it finds, and the log gets a `drift-check` line that says so. When the spec already holds
 the Gap ticket, the loop builds it if it is still open, files no second one, and goes on to the
 `drift-re-check`.
 

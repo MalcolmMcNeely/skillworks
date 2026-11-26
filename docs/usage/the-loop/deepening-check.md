@@ -57,12 +57,12 @@ The limit holds for the whole spec, and not for each run, because the check runs
 The Deepening check runs once for each spec, so a rerun finishes what the first run started and files
 no more tickets. Before it runs the check, the script looks on the Tracker for a deepening ticket under
 the spec, open or closed. It knows one by its title, `TICKET: Deepen <module>`. When it finds one, it
-does not run the check again. It writes a `DEEPEN` line that names each one it found, and it builds
+does not run the check again. It writes a `deepening-check` line that names each one it found, and it builds
 each one still open as it builds any open ticket.
 
 A check that filed no ticket still leaves its report on the Tracker. When the script finds no
 deepening ticket but finds a Deepening report, it does not run the check again either. It writes a
-`DEEPEN` line that says the spec already holds the report, and it reads that report as if the check
+`deepening-check` line that says the spec already holds the report, and it reads that report as if the check
 had just recorded it. A report that says `- None` files nothing. A report whose `### Strong` list
 names candidates files them up to the limit, which is what a first run that stopped before it filed
 them owes.

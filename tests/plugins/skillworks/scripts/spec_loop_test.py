@@ -4079,7 +4079,7 @@ def test_the_log_says_how_many_commits_the_drift_check_reads_and_leaves_out(loop
     line = ("SCOPE the drift check reads 1 commit of spec #{}, and leaves out 1 other commit after "
             "the base commit\n").format(SPEC)
     assert line in log
-    assert log.index(line) < log.index("DRIFT all tickets closed")
+    assert log.index(line) < log.index("drift-check all tickets closed")
 
 
 def test_the_re_check_and_the_name_check_each_say_they_read_the_gap_ticket_s_commit_too(loop):
@@ -4090,8 +4090,8 @@ def test_the_re_check_and_the_name_check_each_say_they_read_the_gap_ticket_s_com
     scope = ("SCOPE the {} reads {} of spec #" + SPEC + ", and leaves out 0 other commits after the "
              "base commit\n")
     assert log.index(scope.format("drift re-check", "2 commits")) < log.index(
-        "DRIFT the Gap ticket is closed")
-    assert log.index(scope.format("Name check", "2 commits")) < log.index("NAMES checking")
+        "drift-re-check the Gap ticket is closed")
+    assert log.index(scope.format("Name check", "2 commits")) < log.index("name-check checking")
 
 
 def test_a_spec_with_no_commit_after_the_base_stops_before_any_check_and_stays_open(loop, runner):
@@ -4130,7 +4130,7 @@ def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runn
     assert ran.status == 0, said(ran)
     assert (loop.records() / "drift-check.md").read_text(encoding="utf-8") == (
         drift_report().removeprefix("## Drift report\n\n"))
-    assert "DRIFT the report is recorded on spec #{}".format(SPEC) in ran.out
+    assert "drift-check the report is recorded on spec #{}".format(SPEC) in ran.out
 
 
 # --- the count ---------------------------------------------------------------
@@ -4454,10 +4454,10 @@ def test_a_name_check_that_finds_no_rename_goes_on_to_a_clean_finish(loop, runne
     assert commands_asking(runner, NAME_CHECK) == [
         "{} {} {}".format(NAME_CHECK, SPEC, base_of(loop))]
     log = loop.log()
-    assert "NAMES the report is recorded on spec #{}".format(SPEC) in log
-    assert "NAMES no rename is owed on spec #{}".format(SPEC) in log
+    assert "name-check the report is recorded on spec #{}".format(SPEC) in log
+    assert "name-check no rename is owed on spec #{}".format(SPEC) in log
     assert (loop.records() / "name-check.md").read_text(encoding="utf-8") == "### Renames\n\n- None\n"
-    assert log.index("COUNT") < log.index("NAMES") < log.index("END   spec #{}".format(SPEC))
+    assert log.index("COUNT") < log.index("name-check no rename") < log.index("END   spec #{}".format(SPEC))
 
 
 def test_the_name_check_runs_after_the_gap_round(loop, runner):
@@ -4616,10 +4616,10 @@ def test_a_rename_made_is_checked_on_the_rename_ticket_alone_and_ends_the_run(lo
         "{} {} {} {}".format(NAME_CHECK, SPEC, base_of(loop), RENAME_TICKET)]
     log = loop.log()
     assert "COUNT the rename ticket owes 2 renames, and the Name re-check gives 2 Verdicts" in log
-    assert "NAMES every rename is made on spec #{}".format(SPEC) in log
+    assert "name-re-check every rename is made on spec #{}".format(SPEC) in log
     assert (loop.records() / "name-re-check.md").is_file()
     assert "STOP" not in log
-    assert log.index("NAMES every rename") < log.index("END   spec #{}".format(SPEC))
+    assert log.index("name-re-check every rename") < log.index("END   spec #{}".format(SPEC))
 
 
 def test_a_rename_not_made_stops_the_loop_naming_it(loop, runner):
@@ -4949,7 +4949,8 @@ def test_the_deepening_check_runs_after_the_last_ticket_lands_and_before_the_dri
     judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
     assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift-check", NAME_CHECK]
     log = loop.log()
-    assert log.index("DONE  #168") < log.index("DEEPEN") < log.index("DRIFT")
+    assert log.index("DONE  #168") < log.index("deepening-check looking") < log.index(
+        "drift-check all tickets closed")
 
 
 def test_the_deepening_check_is_fresh_in_a_worktree_of_its_own_and_runs_only_trials(loop, runner):
@@ -4970,9 +4971,9 @@ def test_the_deepening_check_s_log_names_its_scope_its_start_and_its_report(loop
     assert ran.status == 0, said(ran)
     log = loop.log()
     assert "SCOPE the Deepening check reads 1 commit of spec #158" in log
-    assert "DEEPEN looking for modules spec #158 left shallow." in log
-    assert "DEEPEN the report is recorded on spec #158. Read it at" in log
-    assert "DEEPEN no deepening is owed on spec #158" in log
+    assert "deepening-check looking for modules spec #158 left shallow." in log
+    assert "deepening-check the report is recorded on spec #158. Read it at" in log
+    assert "deepening-check no deepening is owed on spec #158" in log
     assert (loop.records() / "deepening-check.md").read_text(encoding="utf-8") == (
         NO_STRONG.removeprefix("## Deepening report\n\n"))
 
@@ -5065,7 +5066,8 @@ def test_each_deepening_ticket_is_built_through_every_step_and_lands_before_the_
         "implement", "review-standards", "review-spec", "review-architecture", "implement",
         "implement")]
     log = loop.log()
-    assert log.index("FILED") < log.index("DONE  #" + FIRST_DEEPENING) < log.index("DRIFT")
+    assert log.index("FILED") < log.index("DONE  #" + FIRST_DEEPENING) < log.index(
+        "drift-check all tickets closed")
 
 
 def test_a_strong_list_longer_than_the_limit_is_warned_of_and_files_only_its_first_lines(
@@ -5155,7 +5157,8 @@ def test_the_simplify_check_runs_after_the_deepening_tickets_land_and_before_the
     judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
     assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift-check", NAME_CHECK]
     log = loop.log()
-    assert log.index("DONE  #" + FIRST_DEEPENING) < log.index("SIMPLIFY") < log.index("DRIFT")
+    assert log.index("DONE  #" + FIRST_DEEPENING) < log.index("simplify-check looking") < log.index(
+        "drift-check all tickets closed")
 
 
 def test_the_simplify_check_is_fresh_in_a_worktree_of_its_own_and_runs_only_trials(loop, runner):
@@ -5176,9 +5179,9 @@ def test_the_simplify_check_s_log_names_its_scope_its_start_and_its_report(loop)
     assert ran.status == 0, said(ran)
     log = loop.log()
     assert "SCOPE the Simplify check reads 1 commit of spec #158" in log
-    assert "SIMPLIFY looking for code spec #158 made harder than it has to be." in log
-    assert "SIMPLIFY the report is recorded on spec #158. Read it at" in log
-    assert "SIMPLIFY no cleanup is owed on spec #158" in log
+    assert "simplify-check looking for code spec #158 made harder than it has to be." in log
+    assert "simplify-check the report is recorded on spec #158. Read it at" in log
+    assert "simplify-check no cleanup is owed on spec #158" in log
     assert (loop.records() / "simplify-check.md").read_text(encoding="utf-8") == (
         NO_FINDINGS.removeprefix("## Simplify report\n\n"))
 
@@ -5269,7 +5272,8 @@ def test_the_simplify_ticket_is_built_through_every_step_and_lands_before_the_dr
         "implement", "review-standards", "review-spec", "review-architecture", "implement",
         "implement")]
     log = loop.log()
-    assert log.index("FILED") < log.index("DONE  #" + SIMPLIFY_TICKET) < log.index("DRIFT")
+    assert log.index("FILED") < log.index("DONE  #" + SIMPLIFY_TICKET) < log.index(
+        "drift-check all tickets closed")
 
 
 def test_a_simplify_ticket_that_fails_stops_the_loop_before_the_drift_check(loop, runner):
@@ -5345,7 +5349,7 @@ def test_a_spec_that_already_holds_a_closed_deepening_ticket_runs_no_deepening_c
 
     assert ran.status == 0, said(ran)
     assert prompts_asking(runner, DEEPENING_CHECK) == []
-    assert ("DEEPEN spec #158 already holds the Deepening check's tickets, #162, so the check runs "
+    assert ("deepening-check spec #158 already holds the Deepening check's tickets, #162, so the check runs "
             "once and does not run again") in loop.log()
 
 
@@ -5373,7 +5377,7 @@ def test_a_rerun_after_a_deepening_check_that_filed_nothing_runs_no_deepening_ch
     assert ran.status == 0, said(ran)
     assert prompts_asking(runner, DEEPENING_CHECK) == []
     assert not runner.built("issue create")
-    assert ("DEEPEN spec #158 already holds the Deepening report, so the check runs once and does "
+    assert ("deepening-check spec #158 already holds the Deepening report, so the check runs once and does "
             "not run again") in loop.log()
 
 
@@ -5405,7 +5409,7 @@ def test_a_drift_report_recorded_under_the_old_drift_kind_stops_the_check_from_r
     ran = loop.run(SPEC)
 
     assert (ran.status, prompts_asking(runner, "/skillworks:spec-drift-check")) == (0, []), said(ran)
-    assert ("DRIFT spec #158 already holds the drift report, so the check runs once and does not run "
+    assert ("drift-check spec #158 already holds the drift report, so the check runs once and does not run "
             "again") in loop.log()
 
 
@@ -5417,7 +5421,7 @@ def test_a_name_report_recorded_under_the_old_names_kind_stops_the_check_from_ru
     ran = loop.run(SPEC)
 
     assert (ran.status, prompts_asking(runner, NAME_CHECK)) == (0, []), said(ran)
-    assert ("NAMES spec #158 already holds the Name report, so the check runs once and does not run "
+    assert ("name-check spec #158 already holds the Name report, so the check runs once and does not run "
             "again") in loop.log()
 
 
@@ -5468,7 +5472,7 @@ def test_a_rerun_after_a_simplify_check_that_filed_nothing_runs_no_simplify_chec
     assert ran.status == 0, said(ran)
     assert prompts_asking(runner, SIMPLIFY_CHECK) == []
     assert not runner.built("issue create")
-    assert ("SIMPLIFY spec #158 already holds the Simplify report, so the check runs once and does "
+    assert ("simplify-check spec #158 already holds the Simplify report, so the check runs once and does "
             "not run again") in loop.log()
 
 
@@ -6609,7 +6613,7 @@ def test_the_full_run_runs_once_and_last_after_the_drift_check_and_its_count(loo
     assert len(full_run_calls(loop, "dotnet")) == 1
     log = loop.log()
     assert log.count("FULL  #168 landed in this run") == 1
-    assert log.index("DRIFT") < log.index("COUNT") < log.index("FULL  #168 landed in this run")
+    assert log.index("drift-check the report is recorded") < log.index("COUNT") < log.index("FULL  #168 landed in this run")
     drift = next(at for at, call in enumerate(runner.made)
                  if call.args[0] == "claude" and call.stdin.startswith("/skillworks:spec-drift-check"))
     full = next(at for at, call in enumerate(runner.made)
@@ -6664,7 +6668,7 @@ def test_the_full_run_runs_after_the_name_check(loop, runner):
 
     assert ran.status == 0, said(ran)
     log = loop.log()
-    assert log.index("NAMES no rename is owed") < log.index("FULL  #168 landed in this run")
+    assert log.index("name-check no rename is owed") < log.index("FULL  #168 landed in this run")
     names = next(at for at, call in enumerate(runner.made)
                  if call.args[0] == "claude" and call.stdin.startswith(NAME_CHECK))
     full = next(at for at, call in enumerate(runner.made)
@@ -6708,7 +6712,7 @@ def test_every_rename_made_is_a_clean_finish_after_the_full_run(loop):
 
     assert ran.status == 0, said(ran)
     log = loop.log()
-    assert log.index("NAMES every rename is made") < log.index("FULL  #168, #169 landed")
+    assert log.index("name-re-check every rename is made") < log.index("FULL  #168, #169 landed")
     assert log.index("FULL  main at") < log.index("END   spec #{}".format(SPEC))
 
 

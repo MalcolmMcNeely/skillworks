@@ -66,7 +66,7 @@ Nudge, as [When a step fails](stops.md) shows. It does so when a Steering file i
 or when `spec-commits` or `tracker-publish name-check` refused twice.
 
 A loop run again on a spec that already holds a Name report does not run the Name check again. It
-reads the report it finds, and the log gets a `NAMES` line that says so. When the spec already holds
+reads the report it finds, and the log gets a `name-check` line that says so. When the spec already holds
 the rename ticket, the loop builds it if it is still open, files no second one, and goes on to the
 `name-re-check`.
 

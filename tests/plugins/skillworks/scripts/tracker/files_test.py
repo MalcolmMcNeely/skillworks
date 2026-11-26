@@ -467,7 +467,7 @@ def test_after_the_last_ticket_and_the_drift_check_the_spec_is_closed_in_the_sid
 
     assert ran.status == 0, said(ran)
     assert driver.status_of(FOLDER + "/spec.md") == "closed"
-    assert (ran.out.index("DRIFT") < ran.out.index("FULL  main at")
+    assert (ran.out.index("drift-check the report is recorded") < ran.out.index("FULL  main at")
             < ran.out.index("CLOSE spec 7 is closed in the Sidecar") < ran.out.index("END   spec 7"))
 
 
@@ -591,7 +591,7 @@ def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
     assert REPORT + "\n" + NAMES in driver.held(FOLDER + "/spec.md")
     held = driver.repo.work / ".spec-loop" / SPEC / "drift-check.md"
     assert held.read_text(encoding="utf-8") == VERDICTS
-    assert "DRIFT the report is recorded on spec 7" in ran.out
+    assert "drift-check the report is recorded on spec 7" in ran.out
     assert "COUNT the spec holds 3 items, and the drift report gives 3 Verdicts" in ran.out
 
 
@@ -604,7 +604,7 @@ def test_the_loop_reads_back_the_name_report_recorded_below_the_drift_report(dri
     assert driver.held(FOLDER + "/spec.md").endswith(NAMES)
     held = driver.repo.work / ".spec-loop" / SPEC / "name-check.md"
     assert held.read_text(encoding="utf-8") == RENAMES
-    assert "NAMES no rename is owed on spec 7" in ran.out
+    assert "name-check no rename is owed on spec 7" in ran.out
 
 
 def test_a_name_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):
@@ -736,7 +736,7 @@ def test_a_rename_is_filed_as_a_ticket_file_in_the_sidecar_and_a_rename_made_clo
     filed = driver.held(ticket_path(RENAME_TICKET))
     assert "### Batch\n\n> `Batch`: it now holds a whole spec.\n" in filed
     assert driver.status_of(ticket_path(RENAME_TICKET)) == "closed"
-    assert "NAMES every rename is made on spec 7" in ran.out
+    assert "name-re-check every rename is made on spec 7" in ran.out
     assert driver.status_of(FOLDER + "/spec.md") == "closed"
 
 

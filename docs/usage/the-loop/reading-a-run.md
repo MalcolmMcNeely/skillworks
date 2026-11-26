@@ -128,22 +128,22 @@ drift check, then the Name check, then the full run:
 
 ```
 2026-09-28 18:24:10 SCOPE the Deepening check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
-2026-09-28 18:24:10 DEEPEN looking for modules spec #200 left shallow.
-2026-09-28 18:31:39 DEEPEN the report is recorded on spec #200. Read it at .spec-loop/200/deepening-check.md
-2026-09-28 18:31:39 DEEPEN no deepening is owed on spec #200
+2026-09-28 18:24:10 deepening-check looking for modules spec #200 left shallow.
+2026-09-28 18:31:39 deepening-check the report is recorded on spec #200. Read it at .spec-loop/200/deepening-check.md
+2026-09-28 18:31:39 deepening-check no deepening is owed on spec #200
 2026-09-28 18:31:40 SCOPE the Simplify check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
-2026-09-28 18:31:40 SIMPLIFY looking for code spec #200 made harder than it has to be.
-2026-09-28 18:36:12 SIMPLIFY the report is recorded on spec #200. Read it at .spec-loop/200/simplify-check.md
-2026-09-28 18:36:12 SIMPLIFY no cleanup is owed on spec #200
+2026-09-28 18:31:40 simplify-check looking for code spec #200 made harder than it has to be.
+2026-09-28 18:36:12 simplify-check the report is recorded on spec #200. Read it at .spec-loop/200/simplify-check.md
+2026-09-28 18:36:12 simplify-check no cleanup is owed on spec #200
 2026-09-28 18:36:13 SCOPE the drift check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
-2026-09-28 18:36:13 DRIFT all tickets closed. Checking the result against spec #200.
-2026-09-28 18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift-check.md
+2026-09-28 18:36:13 drift-check all tickets closed. Checking the result against spec #200.
+2026-09-28 18:40:12 drift-check the report is recorded on spec #200. Read it at .spec-loop/200/drift-check.md
 2026-09-28 18:40:12 COUNT the spec holds 21 items, and the drift report gives 21 Verdicts
 2026-09-28 18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
 2026-09-28 18:40:13 SCOPE the Name check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
-2026-09-28 18:40:13 NAMES checking the names spec #200 brought in against the glossary.
-2026-09-28 18:44:02 NAMES the report is recorded on spec #200. Read it at .spec-loop/200/name-check.md
-2026-09-28 18:44:02 NAMES no rename is owed on spec #200
+2026-09-28 18:40:13 name-check checking the names spec #200 brought in against the glossary.
+2026-09-28 18:44:02 name-check the report is recorded on spec #200. Read it at .spec-loop/200/name-check.md
+2026-09-28 18:44:02 name-check no rename is owed on spec #200
 2026-09-28 18:44:02 FULL  #202, #203 landed in this run, so the whole Suite runs on the newest origin/master with no Proofs and no images
 2026-09-28 18:52:30 FULL  run 1 passed
 2026-09-28 18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
@@ -226,28 +226,28 @@ does not run again. In place of its lines, the log gets one line that names the 
 the loop builds each one still open:
 
 ```
-2026-09-28 18:24:10 DEEPEN spec #200 already holds the Deepening check's tickets, #209, so the check runs once and does not run again
+2026-09-28 18:24:10 deepening-check spec #200 already holds the Deepening check's tickets, #209, so the check runs once and does not run again
 ```
 
 A judge that filed no ticket does not run again either, because its report is on the Tracker. The
 log gets one line that says so, and the loop reads that report as the check's:
 
 ```
-2026-09-28 18:24:10 SIMPLIFY spec #200 already holds the Simplify report, so the check runs once and does not run again
+2026-09-28 18:24:10 simplify-check spec #200 already holds the Simplify report, so the check runs once and does not run again
 ```
 
 The drift check works the same way. On a rerun it counts the drift report already on the Tracker, and
 the log says so:
 
 ```
-2026-09-28 18:36:13 DRIFT spec #200 already holds the drift report, so the check runs once and does not run again
+2026-09-28 18:36:13 drift-check spec #200 already holds the drift report, so the check runs once and does not run again
 ```
 
 The Name check works the same way. On a rerun it reads the Name report already on the Tracker, and
 the log says so:
 
 ```
-2026-09-28 18:40:13 NAMES spec #200 already holds the Name report, so the check runs once and does not run again
+2026-09-28 18:40:13 name-check spec #200 already holds the Name report, so the check runs once and does not run again
 ```
 
 When the count finds a Gap, [the Gap round](drift-check.md#the-gap-round) adds its lines before the full run's. A
@@ -262,8 +262,8 @@ then the drift re-check's:
 2026-09-28 18:40:15 START #210 TICKET: Build the Gaps the drift check found
 2026-09-28 19:31:02 DONE  #210  9e3a1f0
 2026-09-28 19:31:03 SCOPE the drift re-check reads 24 commits of spec #200, and leaves out 4 other commits after the base commit
-2026-09-28 19:31:03 DRIFT the Gap ticket is closed. Checking S4, The user docs against spec #200 again.
-2026-09-28 19:39:47 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift-re-check.md
+2026-09-28 19:31:03 drift-re-check the Gap ticket is closed. Checking S4, The user docs against spec #200 again.
+2026-09-28 19:39:47 drift-re-check the report is recorded on spec #200. Read it at .spec-loop/200/drift-re-check.md
 2026-09-28 19:39:47 COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts
 ```
 
@@ -279,9 +279,9 @@ re-check's:
 2026-09-28 18:44:04 FILED #211 under spec #200 makes 2 renames, so the loop builds it and checks each one
 2026-09-28 18:44:05 START #211 TICKET: Make the renames the Name check found
 2026-09-28 19:20:41 DONE  #211  5b7c2d4
-2026-09-28 19:20:42 NAMES the rename ticket #211 is closed. Checking it made each rename on spec #200.
+2026-09-28 19:20:42 name-re-check the rename ticket #211 is closed. Checking it made each rename on spec #200.
 2026-09-28 19:24:10 COUNT the rename ticket owes 2 renames, and the Name re-check gives 2 Verdicts
-2026-09-28 19:24:10 NAMES every rename is made on spec #200
+2026-09-28 19:24:10 name-re-check every rename is made on spec #200
 ```
 
 A `STOP` line names each Gap left after the round, each Contradicts, each rename not made and a spec

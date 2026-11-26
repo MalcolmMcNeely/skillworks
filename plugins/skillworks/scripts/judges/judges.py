@@ -12,7 +12,6 @@ from position.position import DEEPENING_CHECK, DRIFT_CHECK, NAME_CHECK, SIMPLIFY
 class Judge(NamedTuple):
     name: str
     what: str
-    tag: str
     report: str
     read: Callable
     earlier: Callable
@@ -43,25 +42,25 @@ class Judge(NamedTuple):
 
 
 DEEPENING = Judge(
-    "deepening-check", DEEPENING_CHECK, "DEEPEN", "Deepening report",
+    "deepening-check", DEEPENING_CHECK, "Deepening report",
     read=lambda tracker, spec: tracker.deepening_report(spec),
     earlier=lambda tracker, spec: tracker.deepening_report(spec),
     filed=lambda title: title.startswith(DEEPENING_TITLE),
     lost="no deepening was read")
 SIMPLIFY = Judge(
-    "simplify-check", SIMPLIFY_CHECK, "SIMPLIFY", "Simplify report",
+    "simplify-check", SIMPLIFY_CHECK, "Simplify report",
     read=lambda tracker, spec: tracker.simplify_report(spec),
     earlier=lambda tracker, spec: tracker.simplify_report(spec),
     filed=lambda title: title == SIMPLIFY_TITLE,
     lost="no cleanup was read")
 DRIFT = Judge(
-    "drift-check", DRIFT_CHECK, "DRIFT", "drift report",
+    "drift-check", DRIFT_CHECK, "drift report",
     read=lambda tracker, spec: tracker.drift_report(spec),
     earlier=lambda tracker, spec: tracker.earlier_drift_report(spec),
     filed=lambda title: title == GAP_TITLE,
     lost="nothing was counted", lost_again="the Gap items were not judged again")
 NAMES = Judge(
-    "name-check", NAME_CHECK, "NAMES", "Name report",
+    "name-check", NAME_CHECK, "Name report",
     read=lambda tracker, spec: tracker.name_report(spec),
     earlier=lambda tracker, spec: tracker.earlier_name_report(spec),
     filed=lambda title: title == RENAME_TITLE,

@@ -60,12 +60,12 @@ The list at the end of a run names the simplify ticket the run built.
 The Simplify check runs once for each spec, so a rerun finishes what the first run started and files
 no more tickets. Before it runs the check, the script looks on the Tracker for the simplify ticket
 under the spec, open or closed. It knows the ticket by its title. When it finds it, it does not run
-the check again. It writes a `SIMPLIFY` line that names the ticket, and it builds the ticket if it is
+the check again. It writes a `simplify-check` line that names the ticket, and it builds the ticket if it is
 still open, as it builds any open ticket.
 
 A check that filed no ticket still leaves its report on the Tracker. When the script finds no
 simplify ticket but finds a Simplify report, it does not run the check again either. It writes a
-`SIMPLIFY` line that says the spec already holds the report, and it reads that report as if the check
+`simplify-check` line that says the spec already holds the report, and it reads that report as if the check
 had just recorded it. A report that says `- None` files nothing. A report whose `### Findings` list
 names findings files the simplify ticket, which is what a first run that stopped before it filed the
 ticket owes.
