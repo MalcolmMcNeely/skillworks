@@ -82,6 +82,13 @@ spec into tickets. It runs once for a spec and never for a ticket, so it is not 
 ticket takes.
 _Avoid_: Ticket step, tickets step, breakdown
 
+**Deepening check**:
+The judge that reads the commits a spec's tickets Landed, once every ticket has Landed and before
+the drift check, and looks for modules the work left shallow. Each Strong deepening opportunity it
+finds becomes a deepening ticket of its own, up to a limit, and the loop builds each one like any
+ticket. It changes no code itself, and it asks nobody which opportunity to take.
+_Avoid_: Architecture check, architecture survey, refactor check
+
 **Denial**:
 A tool call Claude Code turned down because the session had no permission for it: a write to a
 protected path, or a command no allow rule names. A session with no human cannot be asked, so a
