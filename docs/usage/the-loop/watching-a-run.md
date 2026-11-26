@@ -26,6 +26,10 @@ A card shows:
 - The spec, and what the loop does now: cutting tickets, building tickets, the full run, the drift
   check, the Name check, finished, stopped or gone. Between tickets, a line under it says what that
   part of the loop does.
+- On a running card, a progress bar for the whole path of the spec, and a line of text under it,
+  such as `64% · tickets 4/4 · checks 1/4 · full run to come`. Progress below says how it counts.
+- On a running card, the path row, a row of chips for the whole path of the spec. Progress below
+  says what each chip shows.
 - The time left, when the driver knows it, and the counts of Choices and Denials so far.
 - Each ticket of the spec. `✓ Landed` is a ticket that Landed, `▶ now` is the ticket the loop builds
   now, and `· to come` is a ticket still to come.
@@ -35,6 +39,9 @@ A card shows:
 
 ```
 Spec #589 · building tickets
+██░░░░░░░░░░░░░░░░░░
+12% · tickets 1/3 · checks 0/4 · full run to come
+⠋ tickets 1/3  ○ deepen  ○ simplify  ○ drift  ○ names  ○ full run
 ~1h 5m left · 2 Choices · 1 Denial
 ✓ Landed  #590 TICKET: The driver writes a Position
 ▶ now     #592 TICKET: A pane shows every running loop
@@ -61,6 +68,52 @@ step's own name, as [the steps of one ticket](steps.md) lists them:
 | `suite` | suite |
 | `finish` | close ticket and commit |
 | `land` | rebase, verify, and push |
+
+The pieces of a run beyond the steps of one ticket have names of their own too. The path row uses
+the short name:
+
+| In the log | In the pane |
+|---|---|
+| `baseline` | the baseline, which runs before the first ticket |
+| `cut` | cutting tickets |
+| `deepening-check` | the Deepening check, `deepen` in the path row |
+| `simplify-check` | the Simplify check, `simplify` in the path row |
+| `drift-check` | the drift check, `drift` in the path row |
+| `name-check` | the Name check, `names` in the path row |
+| `full-run` | the full run, `full run` in the path row |
+
+## Progress
+
+The progress bar counts the whole path of the spec, and not only its tickets. So a card does not
+say done while the judges and the full run still have to run. The judges are the four checks at the
+end of a spec: the Deepening check, the Simplify check, the drift check and the Name check.
+
+The bar counts one share for each of the spec's own tickets, one for each judge that is not off, and
+one for the full run. A ticket fills its share when it Lands. A judge that filed no ticket fills its
+share when it is done. A judge that filed tickets fills half its share when it is done, and its own
+tickets fill the second half as they Land. The full run fills its share when it is done.
+
+A ticket a judge files adds no share, so the bar never moves back when a judge files one.
+
+The text under the bar says the percentage, how many of the spec's own tickets Landed, how many of
+the judges that are not off are done, and where the full run is: `64% · tickets 4/4 · checks 1/4 ·
+full run to come`.
+
+The path row has one chip for the spec's own tickets, one for each judge in the order the loop runs
+them, and one for the full run. The tickets chip shows how many Landed over how many there are, such
+as `tickets 2/3`. Each chip has a mark:
+
+| Mark | The piece |
+|---|---|
+| `✓` | done |
+| a spinner, such as `⠋` | runs now |
+| `○` | to come |
+| `✕` | off |
+
+An off chip is drawn crossed out. Your team turned that judge off in its Steering file, so do not
+wait for it. When a judge is done, its chip adds what it found and the tickets it filed, such as
+`deepen · 2 Strong → 2 tickets`. Each judge counts in its own word: Strong for the Deepening check,
+findings for the Simplify check, Gaps for the drift check and renames for the Name check.
 
 The pane reads the Position, `.spec-loop/<spec>/position.json`, and the Step times,
 `.spec-loop/<spec>/step-times.jsonl`, every few seconds. It never reads `loop.log`, and it shows no

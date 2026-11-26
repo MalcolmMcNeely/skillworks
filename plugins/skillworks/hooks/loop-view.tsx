@@ -9,7 +9,7 @@ const CLEARED = 'cleared'
 // The store holds every plugin's values in one file with a 4 MiB cap, so the oldest clears go first.
 const CLEARS_KEPT = 500
 
-type TicketRow = { number: string; title: string; landed: boolean }
+type TicketRow = { number: string; title: string; landed: boolean; judge?: string | null }
 
 type TicketNow = {
   number: string
@@ -19,7 +19,7 @@ type TicketNow = {
   step_started: string | null
 }
 
-type Judge = { name: string; state: string; found: number | null; filed: string[] }
+type Judge = { name: string; state: string; found: number | null; word?: string; filed: string[] }
 
 type StepTime = { name: string; ticket: string | null; run: string; started: string; ended: string }
 
@@ -123,6 +123,80 @@ function span(ms: number): string {
   if (minutes < 1) return `${Math.floor(Math.max(0, ms) / 1000)}s`
   if (minutes < 60) return `${minutes}m`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
+
+const DONE = 'done'
+const NOW = 'now'
+const TO_COME = 'to come'
+const OFF = 'off'
+
+const JUDGE_SHORT: Record<string, string> = {
+  'deepening-check': 'deepen',
+  'simplify-check': 'simplify',
+  'drift-check': 'drift',
+  'name-check': 'names',
+}
+
+const SPINNER = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+const MARK: Record<string, string> = { [DONE]: '✓', [TO_COME]: '○', [OFF]: '✕' }
+const CHIP_COLOR: Record<string, string | undefined> = { [DONE]: 'green', [NOW]: 'yellow' }
+const BAR_CELLS = 20
+
+type Chip = { key: string; state: string; text: string }
+
+type Path = { chips: Chip[]; value: number; max: number; text: string }
+
+function isOwn(row: TicketRow): boolean {
+  return !row.judge
+}
+
+// The total counts each judge once however many tickets it files, so a filing never moves the bar back.
+function pathOf(loop: Position): Path {
+  const own = loop.tickets.filter(isOwn)
+  const ownLanded = own.filter(row => row.landed).length
+  const landed = new Set(loop.tickets.filter(row => row.landed).map(row => row.number))
+  const judges = loop.judges ?? []
+  const on = judges.filter(judge => judge.state !== OFF)
+  const judgePart = (judge: Judge) =>
+    judge.state !== DONE ? 0
+      : judge.filed.length === 0 ? 1
+        : 0.5 + (0.5 * judge.filed.filter(number => landed.has(number)).length) / judge.filed.length
+  const fullRun = loop.doing === 'finished' ? DONE : loop.doing === 'full run' ? NOW : TO_COME
+  const ownState = own.length > 0 && ownLanded === own.length ? DONE
+    : loop.doing === 'building tickets' || loop.doing === 'cutting' ? NOW : TO_COME
+
+  const judgeText = (judge: Judge) => {
+    const name = JUDGE_SHORT[judge.name] ?? judge.name
+    if (judge.state !== DONE) return name
+    const found = judge.found == null ? '' : ` · ${judge.found}${judge.word ? ` ${judge.word}` : ''}`
+    const filed = judge.filed.length === 0 ? '' : ` → ${count(judge.filed.length, 'ticket')}`
+    return `${name}${found}${filed}`
+  }
+
+  const value = ownLanded + on.reduce((sum, judge) => sum + judgePart(judge), 0) + (fullRun === DONE ? 1 : 0)
+  const max = own.length + on.length + 1
+  const percent = Math.floor((100 * value) / max)
+  const ownText = `tickets ${ownLanded}/${own.length}`
+  return {
+    chips: [
+      { key: 'tickets', state: ownState, text: ownText },
+      ...judges.map(judge => ({ key: judge.name, state: judge.state, text: judgeText(judge) })),
+      { key: 'full-run', state: fullRun, text: 'full run' },
+    ],
+    value,
+    max,
+    text: `${percent}% · ${ownText} · checks ${on.filter(judge => judge.state === DONE).length}/${on.length} · full run ${fullRun}`,
+  }
+}
+
+function barOf(path: Path): string {
+  const filled = Math.floor((BAR_CELLS * path.value) / path.max)
+  return '█'.repeat(filled) + '░'.repeat(BAR_CELLS - filled)
+}
+
+// Turned by the Clock and not by a timer of its own, so a test that holds the Clock still holds the spinner.
+function spinnerAt(now: number): string {
+  return SPINNER.charAt(Math.floor(now / POLL_MS) % SPINNER.length)
 }
 
 type Loop = Position & { stepTimes: StepTime[] }
@@ -241,11 +315,34 @@ export const register: Register = on => {
           const stepAt = ticket?.step ? ticket.steps.indexOf(ticket.step) : -1
           const doing = shown(DOING, isGone(loop, now) ? GONE : loop.doing)
           const left = loop.seconds_left == null ? '' : `~${span(loop.seconds_left * 1000)} left · `
+          const path = hasEnded(loop, now) ? null : pathOf(loop)
           return (
             <Box key={`card-${loop.spec}`} flexDirection="column" borderStyle="round"
               borderColor={BORDER[stateOf(loop, now)]} paddingX={1}>
               <Text bold>Spec #{loop.spec} · {doing.name}</Text>
               {!ticket && doing.hint && <Text dimColor>{doing.hint}</Text>}
+              {path && (
+                <Box key={`bar-${loop.spec}`}>
+                  <Text color="yellow">{barOf(path)}</Text>
+                </Box>
+              )}
+              {path && (
+                <Box key={`bar-text-${loop.spec}`}>
+                  <Text>{path.text}</Text>
+                </Box>
+              )}
+              {path && (
+                <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+                  {path.chips.map(chip => (
+                    <Box key={`chip-${loop.spec}-${chip.key}`}>
+                      <Text color={CHIP_COLOR[chip.state]} dimColor={chip.state === TO_COME || chip.state === OFF}
+                        strikethrough={chip.state === OFF}>
+                        {chip.state === NOW ? spinnerAt(now) : MARK[chip.state] ?? MARK[TO_COME]} {chip.text}
+                      </Text>
+                    </Box>
+                  ))}
+                </Box>
+              )}
               <Text dimColor>{left}{count(loop.choices, 'Choice')} · {count(loop.denials, 'Denial')}</Text>
               {hasEnded(loop, now) && (
                 <Button key={`clear-${loop.run}`} label="Clear" onPress={() => clear(loop.run)} />

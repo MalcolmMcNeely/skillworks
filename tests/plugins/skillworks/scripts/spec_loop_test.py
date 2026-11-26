@@ -5778,6 +5778,33 @@ def test_the_watching_a_run_page_says_the_pane_reads_the_position_and_the_step_t
             "`.spec-loop/<spec>/step-times.jsonl`, every few seconds. It never reads `loop.log`") in watching
 
 
+def test_the_watching_a_run_page_says_the_bar_counts_the_whole_path_and_a_judge_s_tickets_fill_half_its_share():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert ("The bar counts one share for each of the spec's own tickets, one for each judge that is "
+            "not off, and one for the full run.") in watching
+    assert ("A judge that filed tickets fills half its share when it is done, and its own tickets fill "
+            "the second half as they Land.") in watching
+    assert "64% · tickets 4/4 · checks 1/4 · full run to come" in watching
+
+
+def test_the_watching_a_run_page_says_what_the_path_row_shows():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert ("The path row has one chip for the spec's own tickets, one for each judge in the order the "
+            "loop runs them, and one for the full run.") in watching
+    assert "deepen · 2 Strong → 2 tickets" in watching
+    assert "An off chip is drawn crossed out" in watching
+
+
+@pytest.mark.parametrize("step", ["baseline", "cut", "deepening-check", "simplify-check", "drift-check",
+                                  "name-check", "full-run"])
+def test_the_watching_a_run_page_names_each_piece_beyond_the_ticket_steps(step):
+    watching = page_text(WATCHING_A_RUN_PAGE)
+
+    assert re.search(r"^\| `{}` \| .+ \|$".format(re.escape(step)), watching, re.MULTILINE), step
+
+
 def loop_folder_pages():
     return sorted((ROOT / LOOP_FOLDER).glob("*.md"))
 

@@ -449,8 +449,16 @@ test('a running ticket shows each step by its plain name, with a hint under the 
   await $.session.start(start)
 
   // Assert
-  expect(await lines($)).toEqual([
+  expect((await lines($)).map(line => line.replace(SPINNER, '* '))).toEqual([
     'Spec #589 · building tickets',
+    '██░░░░░░░░░░░░░░░░░░',
+    '12% · tickets 1/3 · checks 0/4 · full run to come',
+    '* tickets 1/3',
+    '○ deepen',
+    '○ simplify',
+    '○ drift',
+    '○ names',
+    '○ full run',
     '~1h 5m left · 2 Choices · 1 Denial',
     '✓ Landed  #590 TICKET: The driver writes a Position',
     '▶ now     #592 TICKET: A pane shows every running loop',
@@ -612,6 +620,190 @@ test('a loop folder with no Step times shows no card', async ($, on) => {
 
   // Assert
   expect(await lines($)).toEqual(['No loop has a Position in this clone.'])
+})
+
+const AT_THE_NAME_CHECK = running({
+  doing: 'Name check',
+  tickets: [
+    { number: '590', title: 'TICKET: The driver writes a Position', landed: true, judge: null },
+    { number: '592', title: 'TICKET: A pane shows every running loop', landed: true, judge: null },
+    { number: '601', title: 'TICKET: Deepen the Position', landed: true, judge: 'deepening-check' },
+    { number: '602', title: 'TICKET: Deepen the pane', landed: false, judge: 'deepening-check' },
+  ],
+  judges: [
+    { name: 'deepening-check', state: 'done', found: 2, word: 'Strong', filed: ['601', '602'] },
+    { name: 'simplify-check', state: 'off', found: null, word: 'findings', filed: [] },
+    { name: 'drift-check', state: 'done', found: 0, word: 'Gaps', filed: [] },
+    { name: 'name-check', state: 'now', found: null, word: 'renames', filed: [] },
+  ],
+  ticket: null,
+  at: null,
+  of: null,
+})
+
+// A Text carries no key, so each piece sits in a keyed Box and is read through it.
+function shownIn(drawn: unknown): string {
+  if (typeof drawn === 'string') return drawn
+  if (Array.isArray(drawn)) return drawn.map(shownIn).join('')
+  if (drawn && typeof drawn === 'object') {
+    const element = drawn as { text?: unknown; children?: unknown }
+    return typeof element.text === 'string' && element.text ? element.text : shownIn(element.children ?? [])
+  }
+  return ''
+}
+
+async function bar($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const found = (await ui.findAll({ type: 'Box' }))
+    .filter(box => box.key?.startsWith('bar-'))
+    .map(shownIn)
+  await ui.unmount()
+  return found
+}
+
+async function pathRow($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const texts = await ui.findAll({ type: 'Text' })
+  const found = (await ui.findAll({ type: 'Box' }))
+    .filter(box => box.key?.startsWith('chip-'))
+    .map(shownIn)
+    .map(text => ({
+      text,
+      crossedOut: texts.find(drawn => drawn.text === text)?.props.strikethrough === true,
+    }))
+  await ui.unmount()
+  return found
+}
+
+function percentOf(barText: string[]): number {
+  return Number(/^(\d+)%/.exec(barText[1] ?? '')?.[1])
+}
+
+const SPINNER = /^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] /
+
+test('the bar counts each own ticket, each judge not off and the full run, with half a share for filing', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_NAME_CHECK })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await bar($)).toEqual([
+    '████████████░░░░░░░░',
+    '62% · tickets 2/2 · checks 2/3 · full run to come',
+  ])
+})
+
+test('the bar never moves back when a judge files a ticket', async ($, on) => {
+  // Arrange
+  const clock = mock.clock(on, { now: NOW })
+  const judging = running({
+    doing: 'Deepening check',
+    ticket: null,
+    tickets: [{ number: '590', title: 'TICKET: The driver writes a Position', landed: true, judge: null }],
+    judges: JUDGES.map(judge => judge.name === 'deepening-check' ? { ...judge, state: 'now' } : judge),
+  })
+  const { positions } = cloneHolding(on, { '589': judging })
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+  const before = percentOf(await bar($))
+
+  // Act
+  positions['589'] = running({
+    heartbeat: '2026-11-07T17:10:00Z',
+    doing: 'building tickets',
+    ticket: null,
+    tickets: [
+      { number: '590', title: 'TICKET: The driver writes a Position', landed: true, judge: null },
+      { number: '601', title: 'TICKET: Deepen the Position', landed: false, judge: 'deepening-check' },
+      { number: '602', title: 'TICKET: Deepen the pane', landed: false, judge: 'deepening-check' },
+      { number: '603', title: 'TICKET: Deepen the driver', landed: false, judge: 'deepening-check' },
+      { number: '604', title: 'TICKET: Deepen the Step times', landed: false, judge: 'deepening-check' },
+    ],
+    judges: JUDGES.map(judge => judge.name === 'deepening-check'
+      ? { ...judge, state: 'done', found: 4, filed: ['601', '602', '603', '604'] } : judge),
+  })
+  await clock.advance(3_000)
+
+  // Assert
+  expect(percentOf(await bar($))).toBeGreaterThanOrEqual(before)
+})
+
+test('the path row shows the own tickets, each judge with its mark, and the full run', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_NAME_CHECK })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  const row = await pathRow($)
+  expect(row.map(chip => chip.text.replace(SPINNER, '* '))).toEqual([
+    '✓ tickets 2/2',
+    '✓ deepen · 2 Strong → 2 tickets',
+    '✕ simplify',
+    '✓ drift · 0 Gaps',
+    '* names',
+    '○ full run',
+  ])
+})
+
+test('an off judge is drawn crossed out in the path row', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_NAME_CHECK })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await pathRow($)).filter(chip => chip.crossedOut).map(chip => chip.text)).toEqual(['✕ simplify'])
+})
+
+test('the piece running now carries a spinner in the path row', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': AT_THE_NAME_CHECK })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await pathRow($)).filter(chip => SPINNER.test(chip.text)).map(chip => chip.text.slice(2)))
+    .toEqual(['names'])
+})
+
+test('while tickets build, the own-tickets chip carries the spinner with Landed over total', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running() })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await pathRow($))[0]?.text).toMatch(/^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] tickets 1\/3$/)
+})
+
+test('an ended loop shows no bar and no path row', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': FINISHED })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect([...(await bar($)), ...(await pathRow($))]).toEqual([])
 })
 
 test('a single Choice and a single Denial read in the singular', async ($, on) => {
