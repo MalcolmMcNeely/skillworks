@@ -106,7 +106,8 @@ ticket in a worktree of its own:
    the fix once. A second red stops the loop.
 5. The loop commits the ticket, closes it, and lands it on your Target branch.
 
-When the last ticket lands, a drift check reads the whole spec against what was built. The loop
+When the last ticket lands, a Deepening check and a Simplify check look for refactors and cleanups
+to build, and then a drift check reads the whole spec against what was built. The loop
 builds any Gap it finds as one more ticket. Then the Suite runs once more, every check or only the
 touched ones, as your Suite file says. You come back to a finished spec, or to a log that says where
 the loop stopped and why.

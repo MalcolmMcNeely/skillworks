@@ -366,6 +366,7 @@ def given_sessions_that_finish(driver, runs=None, **finish):
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner, **finish)
     sessions.then["spec-deepen"] = deepening(driver)
+    sessions.then["spec-simplify"] = simplifying(driver)
     sessions.then["spec-drift"] = drifting(driver)
     sessions.then["spec-names"] = naming(driver)
     driver.put({
@@ -500,6 +501,7 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner)
     sessions.then["spec-deepen"] = deepening(driver)
+    sessions.then["spec-simplify"] = simplifying(driver)
     sessions.then["spec-drift"] = drifting(driver)
     sessions.then["spec-names"] = naming(driver)
     return sessions
@@ -571,6 +573,13 @@ DEEPENINGS = "## Deepening report\n\n### Strong\n\n- None\n"
 
 def deepening(driver, report=DEEPENINGS):
     return recording(driver, "deepen", report)
+
+
+SIMPLIFICATIONS = "## Simplify report\n\n### Findings\n\n- None\n"
+
+
+def simplifying(driver, report=SIMPLIFICATIONS):
+    return recording(driver, "simplify", report)
 
 
 def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):

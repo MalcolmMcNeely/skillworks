@@ -5,7 +5,9 @@ Part of [the Dev loop](../the-loop.md).
 Every ticket passed its own acceptance criteria. Nothing so far has asked whether all of them together
 are what the spec wanted.
 
-So when no open ticket is left, the script opens one more worktree and runs
+So when no open ticket is left, after the two judges that look for work to build, [the Deepening
+check](deepening-check.md) and [the Simplify check](simplify-check.md), and after every ticket they
+filed has Landed, the script opens one more worktree and runs
 `/skillworks:spec-drift <spec> <base>` in a Fresh Session. It judges the work against the spec, not the
 tickets, because a ticket that drifted still passed its own criteria. It records one report with the
 spec, under the heading `## Drift report`, through `tracker-publish drift` with either Tracker. With

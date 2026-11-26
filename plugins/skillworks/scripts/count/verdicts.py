@@ -73,6 +73,14 @@ def bullets(lines):
     return [text_of(held, 2).strip() for _, held in listed_in(lines, BULLETED)]
 
 
+# None when the report holds no list under the heading, which is a different fault from an empty one.
+def lines_under(report, heading):
+    held = subsections_of(report)
+    if heading not in held:
+        return None
+    return [said for said in bullets(held[heading]) if said.rstrip(".") != "None"]
+
+
 def read_verdicts(report):
     held = subsections_of(report)
     verdicts = None

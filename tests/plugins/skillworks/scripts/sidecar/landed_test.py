@@ -30,6 +30,7 @@ COUNTED = ("## User Stories\n\n1. As a team member, I want a list.\n\n"
 DRIFT = "## Drift report\n\n### Verdicts\n\n- S1: Done\n- D1: Done\n- The README: In step\n"
 NAMES = "## Name report\n\n### Renames\n\n- None\n"
 DEEPENINGS = "## Deepening report\n\n### Strong\n\n- None\n"
+SIMPLIFICATIONS = "## Simplify report\n\n### Findings\n\n- None\n"
 
 
 def spec_file(status="open"):
@@ -166,6 +167,7 @@ def given_tickets_that_land(steered, *tickets, trailer=True):
             steered.runner, reference, *names, trailer=trailer)
     steered.put(files)
     sessions.then["spec-deepen"] = recording(steered, "deepen", DEEPENINGS)
+    sessions.then["spec-simplify"] = recording(steered, "simplify", SIMPLIFICATIONS)
     sessions.then["spec-drift"] = recording(steered, "drift", DRIFT)
     sessions.then["spec-names"] = recording(steered, "names", NAMES)
     return sessions

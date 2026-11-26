@@ -83,6 +83,10 @@ const DOING: Record<string, Shown> = {
     name: 'the Deepening check',
     hint: 'A new Session looks for modules the spec left shallow. Each one it is sure of becomes a ticket.',
   },
+  'Simplify check': {
+    name: 'the Simplify check',
+    hint: 'A new Session looks for code the spec made harder than it has to be. What it finds becomes one ticket.',
+  },
   'drift check': {
     name: 'the drift check',
     hint: 'A new Session checks that the finished work does what the spec asked.',

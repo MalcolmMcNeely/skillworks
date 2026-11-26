@@ -71,8 +71,8 @@ allowed to make. The line is there when the count is 0 as well, and when the ste
 Session that found a way round a Denial still shows it. A Nudged step has one `DENY` line for each
 result. The Session that resolves a conflict at the landing has one too, as
 `DENY  #202 resolve      0 Denials`, and its result sits beside the log as `ticket-202-resolve.json`.
-The `suite` step starts no Session, so it has none. The Cut, the Deepening check, the drift check
-and the Name check name the spec, and the file their result sits in:
+The `suite` step starts no Session, so it has none. The Cut, the Deepening check, the Simplify
+check, the drift check and the Name check name the spec, and the file their result sits in:
 
 ```
 2026-09-28 15:55:21 DENY  spec #200 cut          5 Denials, and the first 3 follow
@@ -123,16 +123,20 @@ the check and the file that keeps its red output:
 2026-09-28 16:27:40 FLAKE #202 suite        dotnet test Skillworks.slnx went red and then passed. Its red output is kept at .spec-loop/200/flake-ticket-202-suite-20260928T162740512804Z.out
 ```
 
-After the last ticket, the Deepening check adds its own lines, then the drift check, then the Name
-check, then the full run:
+After the last ticket, the Deepening check adds its own lines, then the Simplify check, then the
+drift check, then the Name check, then the full run:
 
 ```
 2026-09-28 18:24:10 SCOPE the Deepening check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 18:24:10 DEEPEN looking for modules spec #200 left shallow.
 2026-09-28 18:31:39 DEEPEN the report is recorded on spec #200. Read it at .spec-loop/200/deepening.md
 2026-09-28 18:31:39 DEEPEN no deepening is owed on spec #200
-2026-09-28 18:31:40 SCOPE the drift check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
-2026-09-28 18:31:40 DRIFT all tickets closed. Checking the result against spec #200.
+2026-09-28 18:31:40 SCOPE the Simplify check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
+2026-09-28 18:31:40 SIMPLIFY looking for code spec #200 made harder than it has to be.
+2026-09-28 18:36:12 SIMPLIFY the report is recorded on spec #200. Read it at .spec-loop/200/simplify.md
+2026-09-28 18:36:12 SIMPLIFY no cleanup is owed on spec #200
+2026-09-28 18:36:13 SCOPE the drift check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
+2026-09-28 18:36:13 DRIFT all tickets closed. Checking the result against spec #200.
 2026-09-28 18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift.md
 2026-09-28 18:40:12 COUNT the spec holds 21 items, and the drift report gives 21 Verdicts
 2026-09-28 18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
@@ -156,8 +160,8 @@ leaves:
 2026-09-28 18:52:30 FULL  master at 4c1d9e2 passed the whole Suite
 ```
 
-A `SCOPE` line comes before the Deepening check, the drift check, the drift re-check and the Name
-check. It says how many
+A `SCOPE` line comes before the Deepening check, the Simplify check, the drift check, the drift
+re-check and the Name check. It says how many
 of the spec's commits the check reads, and how many other commits after the base commit it leaves
 out: a hand commit with no `Ticket:` trailer, or another spec's ticket. Under Sidecar Steering it
 leaves out every commit the list in the Sidecar does not hold, a hand commit with a `Ticket:` line
@@ -186,6 +190,26 @@ own:
 ```
 2026-09-28 20:02:11 LIST  this run built 1 deepening ticket
       #209 TICKET: Deepen The order intake module
+```
+
+When the Simplify check lists a finding, [the simplify ticket](simplify-check.md#the-simplify-ticket)
+adds its lines after the deepening tickets' and before the drift check's. A `FINDING` line names each
+line of the `### Findings` list, and a `FILED` line names the simplify ticket. The ticket's own lines
+follow:
+
+```
+2026-09-28 19:16:30 FINDING `src/orders/totals.py`, efficiency: the tax rate is read for every line. Read it once before the loop.
+2026-09-28 19:16:31 FILED #210 under spec #200 makes 1 cleanup, so the loop builds it through every step
+2026-09-28 19:16:32 START #210 TICKET: Make the cleanups the Simplify check found
+2026-09-28 19:48:05 DONE  #210  6a2e9d4
+```
+
+The list at the end of the run names the simplify ticket the run built, after a `LIST` line of its
+own:
+
+```
+2026-09-28 20:02:11 LIST  this run built the simplify ticket
+      #210 TICKET: Make the cleanups the Simplify check found
 ```
 
 When the count finds a Gap, [the Gap round](drift-check.md#the-gap-round) adds its lines before the full run's. A
@@ -235,10 +259,13 @@ Expect a long run. A ticket can take from half an hour to a few hours.
 
 `spec-loop <spec> --dry-run` prints the whole plan instead of running it: the `SHAPE` line, every
 ticket, its worktree and Job branch, every step's command and facts, the landing steps, and what comes
-after the last ticket: the Deepening check, the deepening tickets, the drift check, the Gap round,
-the Name check, the rename ticket, the Name re-check and the full run. The Deepening check prints as
-the `deepen` step, with its call, `claude -p "/skillworks:spec-deepen <spec> <base>" --session-id
-<new id>`, and the `deepening-ticket` line says each ticket it files is built through every step.
+after the last ticket: the Deepening check, the deepening tickets, the Simplify check, the simplify
+ticket, the drift check, the Gap round, the Name check, the rename ticket, the Name re-check and the
+full run. The Deepening check prints as the `deepen` step, with its call, `claude -p
+"/skillworks:spec-deepen <spec> <base>" --session-id <new id>`, and the `deepening-ticket` line says
+each ticket it files is built through every step. The Simplify check prints as the `simplify` step,
+with its call, `claude -p "/skillworks:spec-simplify <spec> <base>" --session-id <new id>`, and the
+`simplify-ticket` line says the ticket it files is built through every step.
 Last, it prints the paragraph every Session is told after its command. A
 spec in another shape stops the dry run at its `ABORT` line, as it would stop a run. It starts no
 Session and reaches no remote.
@@ -257,8 +284,8 @@ The Journal is `.spec-loop/<spec>/journal.jsonl`, beside the log. It has one JSO
 line, and each one is an entry for one Session result. The driver adds the entry as the result
 comes in, before it acts on the result. It never changes or removes an entry, so a rerun adds new
 entries below the old ones. Ticket steps, the Session that resolves a conflict at the landing, the
-Cut, the Deepening check, the drift check, the Name check, their re-checks, and each Nudge of any
-of them all add entries.
+Cut, the Deepening check, the Simplify check, the drift check, the Name check, their re-checks, and
+each Nudge of any of them all add entries.
 The `suite` step starts no Session, so it adds none.
 
 One entry holds:
@@ -267,7 +294,7 @@ One entry holds:
 |---|---|
 | `at` | The date and the time in UTC, as on a log line: `2026-09-28 15:59:37` |
 | `ticket` | The ticket number, or `null` for the Cut and the checks |
-| `spec_step` | `Cut`, `Deepening check`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
+| `spec_step` | `Cut`, `Deepening check`, `Simplify check`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
 | `step` | The step, such as `build`, `standards` or `resolve`, or the name of the Cut or the check, such as `cut` or `drift-gaps` |
 | `attempt` | `0` for the first result of the step, `1` and `2` for the answer to the first and the second Nudge |
 | `status` | The exit status of the Session |

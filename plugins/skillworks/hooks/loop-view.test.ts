@@ -476,6 +476,22 @@ test('a loop at the Deepening check shows its name and a hint', async ($, on) =>
   ])
 })
 
+test('a loop at the Simplify check shows its name and a hint', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': running({ doing: 'Simplify check', ticket: null, at: null, of: null }) })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await lines($)).slice(0, 2)).toEqual([
+    'Spec #589 · the Simplify check',
+    'A new Session looks for code the spec made harder than it has to be. What it finds becomes one ticket.',
+  ])
+})
+
 test('a step the pane has no name for shows as the driver names it, with no hint', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })

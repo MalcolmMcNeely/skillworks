@@ -46,6 +46,7 @@ A Fresh call is `claude -p "<prompt>" --session-id <new id>`. A resumed call is
 | `finish` | Resumed | `--resume <build session>` | It commits and closes the work that the build Session did. |
 | The resolve of a conflict at Landing | Resumed | `--resume <build session>` | The build Session wrote one side of the conflict. |
 | The Deepening check | Fresh, in a worktree of its own | `--session-id <new id>` | A judge with no memory of the build judges the work and not the intent. |
+| The Simplify check | Fresh, in a worktree of its own | `--session-id <new id>` | A judge with no memory of the build judges the work and not the intent. |
 | The drift check | Fresh, in a worktree of its own | `--session-id <new id>` | A judge with no memory of the build judges the work and not the intent. |
 | The drift re-check | Fresh, in a worktree of its own | `--session-id <new id>` | A judge with no memory of the build judges the work and not the intent. |
 | The Name check | Fresh, in a worktree of its own | `--session-id <new id>` | A judge with no memory of the build judges the work and not the intent. |
@@ -57,8 +58,8 @@ A Fresh call is `claude -p "<prompt>" --session-id <new id>`. A resumed call is
 - **A Nudge** resumes the Session that the step's own result names, so it carries on with what it
   knows. A step gets two at most. A step of a ticket gets one, and so does the Cut when it filed no
   ticket. The Cut's Nudge resumes the Cut's Session in the Cut's own worktree. The Deepening check,
-  the drift check and the Name check are Nudged before they stop the loop, when they recorded no
-  report, and so are
+  the Simplify check, the drift check and the Name check are Nudged before they stop the loop, when
+  they recorded no report, and so are
   their re-checks, when they recorded no new report. Each one resumes the check's Session in its own
   worktree.
 - **The round of a red Suite** runs `fix`, `sweep` and `suite` once more. `fix` resumes the build
@@ -66,6 +67,7 @@ A Fresh call is `claude -p "<prompt>" --session-id <new id>`. A resumed call is
 - **A restart after [a Keep](stops.md#restarting-a-stopped-run-the-keep)** starts the ticket again
   with a Fresh build Session. The Session of the first try is not resumed.
 - **[Each deepening ticket](deepening-check.md#the-deepening-tickets),
+  [the simplify ticket](simplify-check.md#the-simplify-ticket),
   [the Gap ticket](drift-check.md#the-gap-round) and
   [the rename ticket](name-check.md#the-rename-ticket)** are built like any ticket, so each gets a
   build Session of its own.
@@ -81,7 +83,7 @@ question.
 | Kind of step | The steps | What the words let it write |
 |---|---|---|
 | A step that builds | The build, `fix` and the Cut | `CHOSE`, `DEPARTS` and `HAND CHECK` |
-| A step that judges | The three reviews, `sweep`, the Deepening check, the drift check and the Name check | None of the three |
+| A step that judges | The three reviews, `sweep`, the Deepening check, the Simplify check, the drift check and the Name check | None of the three |
 | Finishing | `finish` | `DEPARTS` only |
 
 Only a step that builds makes a Choice or names a Hand check. A review that finds the change differs

@@ -46,13 +46,16 @@ from count.items import read_items, with_readme
 from count.rename_ticket import rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
+from count.simplifications import FINDINGS, read_findings
+from count.simplify_ticket import simplify_ticket
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DRIFT_CHECK,
                                END_PATIENCE, FINISHED,
-                               HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE, POSITION, STOPPED,
+                               HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE, POSITION, SIMPLIFY_CHECK,
+                               STOPPED,
                                position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import Subprocess, given_every_session, session_changes
@@ -494,7 +497,7 @@ def told_plan():
     named = {told: [step.name for step in STEPS if step.told == told]
              for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
     named[TOLD_TO_BUILD].append("cut")
-    named[TOLD_TO_JUDGE] += ["deepen", "drift", "re-check", "names", "name-re-check"]
+    named[TOLD_TO_JUDGE] += ["deepen", "simplify", "drift", "re-check", "names", "name-re-check"]
     return "  each Session above is told, after its command\n" + "".join(
         "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
 
@@ -545,6 +548,7 @@ class Loop:
         self.listed = []
         self.built = {}
         self.deepening_tickets = {}
+        self.simplify_tickets = {}
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -955,6 +959,7 @@ class Loop:
     # Said at a stop as well as at a clean finish, so a Hand check is never lost mid-log.
     def list_what_sessions_wrote(self):
         self.list_deepenings_built()
+        self.list_simplify_built()
         if not self.listed:
             return
         counts = []
@@ -975,6 +980,12 @@ class Loop:
             how_many(len(built), "deepening ticket", "deepening tickets"),
             "".join("\n      {} {}".format(self.named(ticket), self.deepening_tickets[ticket])
                     for ticket in built)))
+
+    def list_simplify_built(self):
+        for ticket in self.landed:
+            if ticket in self.simplify_tickets:
+                self.say("LIST  this run built the simplify ticket\n      {} {}".format(
+                    self.named(ticket), self.simplify_tickets[ticket]))
 
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
@@ -1287,6 +1298,7 @@ class Loop:
 
     def after_tickets_plan(self):
         deepen = 'claude -p "{}spec-deepen {} <base>'.format(PLUGIN, self.spec)
+        simplify = 'claude -p "{}spec-simplify {} <base>'.format(PLUGIN, self.spec)
         drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
         names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
         return ("  after every ticket is closed\n"
@@ -1295,6 +1307,11 @@ class Loop:
                 + nudges_line(REPORT_RECORDED)
                 + plan_line("deepening-ticket", "one ticket under the spec for each line of the "
                             "Strong list, up to the limit, each built through every step above")
+                + plan_line("simplify", simplify + '" --session-id <new id>',
+                            "a Simplify report recorded, a Findings list")
+                + nudges_line(REPORT_RECORDED)
+                + plan_line("simplify-ticket", "one ticket under the spec that quotes every line "
+                            "of the Findings list, built through every step above")
                 + plan_line("drift", drift + '" --session-id <new id>',
                             "a report recorded, a Verdicts list, no Contradicts")
                 + nudges_line(REPORT_RECORDED)
@@ -1775,6 +1792,58 @@ class Loop:
             self.file_deepening_ticket(strong)
         self.run_tickets()
 
+    # --- the Simplify check --------------------------------------------------
+
+    # After the deepening tickets, so it also judges the code their refactors left.
+    def check_simplify(self, base):
+        self.moved(SIMPLIFY_CHECK)
+        self.say_scope("Simplify check", base)
+        self.say("SIMPLIFY looking for code spec {} made harder than it has to be.".format(
+            self.spec_named()))
+        result = self.run_clean_session("simplify", "Simplify check", PLUGIN + "spec-simplify {} {}".format(
+            self.spec, base), Recorded(
+                REPORT_RECORDED, lambda: self.tracker.simplify_report(self.spec),
+                self.report_owed("Simplify report", "simplify", "simplify-report.md")))
+
+        # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
+        report = self.tracker.simplify_report(self.spec)
+        if not report:
+            raise self.stop_naming_denials("STOP  the Simplify check recorded no report on spec {}, "
+                                           "so no cleanup was read and the spec stays open.".format(
+                                               self.spec_named()), result)
+        held = self.log_dir / "simplify.md"
+        written(held, report + "\n")
+        self.say("SIMPLIFY the report is recorded on spec {}. Read it at {}".format(
+            self.spec_named(), held))
+
+        findings = read_findings(report)
+        if findings is None:
+            raise stop("STOP  the Simplify report on spec {} holds no {} list, so no cleanup was "
+                       "read and the spec stays open. Read it at {}".format(
+                           self.spec_named(), FINDINGS, held))
+        for said in findings:
+            self.say("FINDING " + said)
+        if not findings:
+            self.say("SIMPLIFY no cleanup is owed on spec {}".format(self.spec_named()))
+        return findings
+
+    # One ticket for every finding, so the cleanups are built together in one Session.
+    def file_simplify_ticket(self, findings):
+        title, body = simplify_ticket(findings)
+        ticket = self.tracker.file_ticket(self.spec, title, body)
+        self.filed(ticket, title)
+        self.simplify_tickets[ticket] = title
+        self.ticket_count += 1
+        self.say("FILED {} under spec {} makes {}, so the loop builds it through every step".format(
+            self.named(ticket), self.spec_named(), how_many(len(findings), "cleanup", "cleanups")))
+
+    def close_simplifications(self, base):
+        findings = self.check_simplify(base)
+        if not findings:
+            return
+        self.file_simplify_ticket(findings)
+        self.run_tickets()
+
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
         named = "drift-gaps" if asked else "drift"
@@ -2111,6 +2180,7 @@ class Loop:
             try:
                 self.run_tickets()
                 self.close_deepenings(base)
+                self.close_simplifications(base)
                 self.close_gaps(base)
                 self.close_renames(base)
             except Stop as stopped:

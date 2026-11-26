@@ -2,19 +2,15 @@
 
 from steering.yaml_block import last_yaml_span
 
-from count.verdicts import bullets, subsections_of
+from count.verdicts import lines_under
 
 STRONG = "### Strong"
 
 LIMIT = "limit"
 
 
-# None when the report holds no Strong list, which is a different fault from an empty one.
 def read_strong(report):
-    held = subsections_of(report)
-    if STRONG not in held:
-        return None
-    return [said for said in bullets(held[STRONG]) if said.rstrip(".") != "None"]
+    return lines_under(report, STRONG)
 
 
 # The judge ranks strongest first, so the script keeps the head and the count never trusts the judge.
