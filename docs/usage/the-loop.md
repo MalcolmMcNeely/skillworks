@@ -18,7 +18,8 @@ flowchart TD
     tickets --> steps["The steps of one ticket"]
     steps --> land["Landing"]
     land -- "another open ticket" --> steps
-    land -- "the last ticket" --> checks["The checks at the end<br/>drift check, Name check, full run"]
+    land -- "the last ticket" --> deepen["The Deepening check<br/>each deepening ticket built"]
+    deepen --> checks["The checks at the end<br/>drift check, Name check, full run"]
     checks --> finish(["The finish"])
 ```
 
@@ -64,6 +65,7 @@ Each page below holds one part of the loop, in the order a run takes them.
 | [The tickets](the-loop/tickets.md) | How the Cut makes the tickets, how a ticket is picked and claimed, and where it is built. |
 | [The steps of one ticket](the-loop/steps.md) | What is done to a ticket before it Lands, from `build` to `finish`, and how the Suite runs. |
 | [Rebasing and Landing](the-loop/landing.md) | How a ticket reaches the Target branch: the rebase, the push race and the Turn. |
+| [The Deepening check](the-loop/deepening-check.md) | How the loop finds modules the spec left shallow, and builds each Strong one as a deepening ticket. |
 | [The drift check](the-loop/drift-check.md) | How the finished work is judged against the spec: the Verdicts, the count and the Gap round. |
 | [The Name check](the-loop/name-check.md) | How the names the spec brought in are judged: the Name report, the rename ticket and the Name re-check. |
 | [The full run](the-loop/full-run.md) | What the whole Suite proves once the checks at the end are done, and what has to be true before the loop writes `END`. |

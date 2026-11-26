@@ -102,7 +102,9 @@ def drift_report(*extra, unrequested=(), **given):
 
 NAME_CHECK = "/skillworks:spec-names"
 
-JUDGES = ("/skillworks:spec-drift", NAME_CHECK)
+DEEPENING_CHECK = "/skillworks:spec-deepen"
+
+JUDGES = (DEEPENING_CHECK, "/skillworks:spec-drift", NAME_CHECK)
 
 
 def name_report(*renames):
@@ -111,6 +113,15 @@ def name_report(*renames):
 
 
 NO_RENAMES = name_report()
+
+
+def deepening_report(*strong):
+    return ("## Deepening report\n\n### Strong\n\n"
+            + "".join("- {}\n".format(line) for line in strong or ("None",))
+            + "\n### Worth exploring\n\nThe cache is shallow.\n")
+
+
+NO_STRONG = deepening_report()
 
 
 # The checkout sits on the spec's branch, so what a case commits there reaches it and not main.
@@ -157,6 +168,8 @@ class Tracker:
         self.drift_report = drift_report()
         # A Name check that found no rename, so only a case about the names reads a stop.
         self.name_report = NO_RENAMES
+        # A Deepening check that found nothing Strong, so only a case about deepening files a ticket.
+        self.deepening_report = NO_STRONG
         self.filed = []
         self.notes = []
         runner.stub("gh", does=self.answer)
@@ -222,6 +235,8 @@ class Tracker:
                   if call[0] == "claude" and call[-1].startswith(JUDGES)]
         if judges and judges[-1].startswith(NAME_CHECK):
             return self.name_report
+        if judges and judges[-1].startswith(DEEPENING_CHECK):
+            return self.deepening_report
         return self.drift_report
 
     # Numbered after the last ticket, and open, so the loop's next read of the spec finds it.
@@ -3491,7 +3506,8 @@ def test_the_dry_run_prints_each_set_of_words_beside_the_steps_that_get_it(loop)
 
     assert ("  each Session above is told, after its command\n"
             "    build, fix, cut:\n    " + TOLD_TO_BUILD + "\n"
-            "    standards, spec, architecture, sweep, drift, re-check, names, name-re-check:\n"
+            "    standards, spec, architecture, sweep, deepen, drift, re-check, names, "
+            "name-re-check:\n"
             "    " + TOLD_TO_JUDGE + "\n"
             "    finish:\n    " + TOLD_TO_FINISH + "\n") in ran.out
 
@@ -4219,7 +4235,8 @@ def given_drift_reports(sessions, tracker, *reports):
 # A file of its own, since a ticket landed before it already holds what every build writes.
 def given_a_filed_ticket_that_lands(loop, tracker, sessions, ticket):
     def build():
-        (Path(loop.runner.where) / "filed.txt").write_text("built\n", encoding="utf-8", newline="\n")
+        (Path(loop.runner.where) / "filed-{}.txt".format(ticket)).write_text(
+            "built\n", encoding="utf-8", newline="\n")
     sessions.then["implement {} --stop-after-tests".format(ticket)] = build
     sessions.then["implement {} --finish".format(ticket)] = all_of(
         committed(loop.runner, ticket), closed(tracker, ticket))
@@ -4426,7 +4443,7 @@ def test_the_name_check_runs_after_the_gap_round(loop, runner):
 
     assert ran.status == 0, said(ran)
     judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
-    assert judged == ["/skillworks:spec-drift", "/skillworks:spec-drift", NAME_CHECK]
+    assert judged == [DEEPENING_CHECK, "/skillworks:spec-drift", "/skillworks:spec-drift", NAME_CHECK]
 
 
 def test_the_name_check_names_the_session_that_started_the_driver(loop, runner, monkeypatch):
@@ -4858,6 +4875,229 @@ def test_a_driver_started_by_hand_names_no_parent(loop, runner, monkeypatch):
     assert changes
     for change in changes:
         assert "OTEL_RESOURCE_ATTRIBUTES" not in change
+
+
+# --- the Deepening check ------------------------------------------------------
+
+FOLDED = ("`The order intake module`: three shallow modules each parse one part of an order. Fold "
+          "them into one module whose interface takes the whole order.")
+PRICED = "The pricing adapter: one implementation behind a seam. Make it a plain module."
+LEDGER = "The ledger writer: it leaks its rows. Hide them behind its interface."
+
+# Numbered after the one closed ticket, in the order the Strong list names them.
+FIRST_DEEPENING = "162"
+SECOND_DEEPENING = "163"
+
+DEEPENING_OWED = ("Spec #158 holds no Deepening report yet. Record the report you wrote with "
+                  "tracker-publish deepen 158 .spec-loop/158/deepening-report.md")
+
+
+def given_a_deepening_limit(loop, limit):
+    held = loop.repo.work / "docs" / "skillworks" / "deepening-check.md"
+    held.write_text(held.read_text(encoding="utf-8").replace("limit: 3", "limit: " + limit),
+                    encoding="utf-8", newline="\n")
+
+
+def deepened(loop, report, *landing, limit=None):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    for ticket in landing:
+        given_a_filed_ticket_that_lands(loop, tracker, sessions, ticket)
+    if limit is not None:
+        given_a_deepening_limit(loop, limit)
+    tracker.deepening_report = report
+    return sessions, loop.run(SPEC)
+
+
+def filed_titles(runner):
+    return [made[made.index("--title") + 1] for made in runner.built("issue create")]
+
+
+def test_the_deepening_check_runs_after_the_last_ticket_lands_and_before_the_drift_check(
+        loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then["implement 168 --finish"] = all_of(committed(runner), closed(tracker))
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
+    assert judged == [DEEPENING_CHECK, "/skillworks:spec-drift", NAME_CHECK]
+    log = loop.log()
+    assert log.index("DONE  #168") < log.index("DEEPEN") < log.index("DRIFT")
+
+
+def test_the_deepening_check_is_fresh_in_a_worktree_of_its_own_and_runs_only_trials(loop, runner):
+    deepened(loop, NO_STRONG)
+
+    made = [call for call in runner.made if call.args[0] == "claude"]
+    check = next(call for call in made if call.stdin.startswith(DEEPENING_CHECK))
+    assert check.stdin.split("\n")[0] == "{} {} {}".format(DEEPENING_CHECK, SPEC, base_of(loop))
+    assert "--session-id" in check.args and "--resume" not in check.args
+    assert all(call.where != check.where for call in made if call is not check)
+    assert spec_loop.SUITE_IN_TRIALS in check.stdin
+    assert spec_loop.TOLD_TO_JUDGE in check.stdin
+
+
+def test_the_deepening_check_s_log_names_its_scope_its_start_and_its_report(loop):
+    _, ran = deepened(loop, NO_STRONG)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    assert "SCOPE the Deepening check reads 1 commit of spec #158" in log
+    assert "DEEPEN looking for modules spec #158 left shallow." in log
+    assert "DEEPEN the report is recorded on spec #158. Read it at" in log
+    assert "DEEPEN no deepening is owed on spec #158" in log
+    assert (loop.records() / "deepening.md").read_text(encoding="utf-8") == (
+        NO_STRONG.removeprefix("## Deepening report\n\n"))
+
+
+def test_a_strong_list_that_says_none_files_nothing_and_the_loop_goes_straight_on(loop, runner):
+    _, ran = deepened(loop, NO_STRONG)
+
+    assert ran.status == 0, said(ran)
+    assert not runner.built("issue create")
+    assert "END   spec #158" in loop.log()
+
+
+def test_a_deepening_check_that_records_no_report_is_nudged_twice_then_stops_the_loop(loop, runner):
+    _, ran = deepened(loop, "Looks good to me.\n")
+
+    assert ran.status == 1
+    assert unstamped_nudges(loop) == [
+        "NUDGE spec #158 deepen       1 of 2, failed report-recorded",
+        "NUDGE spec #158 deepen       2 of 2, failed report-recorded"]
+    assert stopped_after_the_last_nudge(loop)
+    assert ("STOP  the Deepening check recorded no report on spec #158, so no deepening was "
+            "read and the spec stays open.") in loop.log()
+    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+
+
+def test_a_deepening_check_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
+    deepened(loop, "Looks good to me.\n")
+
+    assert nudge_calls(runner)[0][-1].split("\n") == [
+        DEEPENING_OWED, BACKGROUND_LINE, FINDING_LINE, ""]
+
+
+def test_a_deepening_report_with_no_strong_list_stops_the_loop_with_no_nudge(loop, runner):
+    _, ran = deepened(loop, "## Deepening report\n\nEvery module is deep.\n")
+
+    assert ran.status == 1
+    assert nudge_lines(loop) == []
+    assert ("STOP  the Deepening report on spec #158 holds no ### Strong list, so no deepening "
+            "was read and the spec stays open.") in loop.log()
+    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+
+
+def test_a_blocked_deepening_check_stops_the_loop_at_once(loop, runner):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    tracker.deepening_report = "Looks good to me.\n"
+    sessions.says["spec-deepen"] = "BLOCKED docs/skillworks/deepening-check.md is missing."
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 1
+    assert nudge_lines(loop) == []
+    assert ("STOP  spec #158 deepen is Blocked: BLOCKED docs/skillworks/deepening-check.md is "
+            "missing.") in loop.log()
+    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+
+
+def test_each_strong_line_is_filed_as_a_deepening_ticket_of_its_own(loop, runner):
+    _, ran = deepened(loop, deepening_report(FOLDED, PRICED), FIRST_DEEPENING, SECOND_DEEPENING)
+
+    assert ran.status == 0, said(ran)
+    assert filed_titles(runner) == ["TICKET: Deepen The order intake module",
+                                    "TICKET: Deepen The pricing adapter"]
+    first = runner.built("issue create")[0]
+    assert "- [ ] " + FOLDED + "\n" in first[first.index("--body") + 1]
+    assert "ready-for-agent" in first
+
+
+def test_each_strong_line_and_the_ticket_filed_for_it_are_logged(loop):
+    _, ran = deepened(loop, deepening_report(FOLDED, PRICED), FIRST_DEEPENING, SECOND_DEEPENING)
+
+    assert ran.status == 0, said(ran)
+    log = loop.log()
+    assert "STRONG " + FOLDED + "\n" in log
+    assert ("FILED #162 under spec #158 deepens The order intake module, so the loop builds it "
+            "through every step") in log
+    assert ("FILED #163 under spec #158 deepens The pricing adapter, so the loop builds it "
+            "through every step") in log
+
+
+def test_each_deepening_ticket_is_built_through_every_step_and_lands_before_the_drift_check(
+        loop, runner):
+    _, ran = deepened(loop, deepening_report(FOLDED), FIRST_DEEPENING)
+
+    assert ran.status == 0, said(ran)
+    asked = [call[-1].split()[0] for call in step_calls(runner)
+             if call[-1].split()[1:2] == [FIRST_DEEPENING]]
+    assert asked == ["/skillworks:" + name for name in (
+        "implement", "review-standards", "review-spec", "review-architecture", "implement",
+        "implement")]
+    log = loop.log()
+    assert log.index("FILED") < log.index("DONE  #" + FIRST_DEEPENING) < log.index("DRIFT")
+
+
+def test_a_strong_list_longer_than_the_limit_is_warned_of_and_files_only_its_first_lines(
+        loop, runner):
+    _, ran = deepened(loop, deepening_report(FOLDED, PRICED, LEDGER), FIRST_DEEPENING,
+                      limit="1")
+
+    assert ran.status == 0, said(ran)
+    assert filed_titles(runner) == ["TICKET: Deepen The order intake module"]
+    assert ("WARN  the Deepening report on spec #158 lists 3 Strong lines and the limit is 1, so "
+            "only the first is filed") in loop.log()
+
+
+def test_a_deepening_check_file_with_no_limit_stops_the_loop_before_the_check_runs(loop, runner):
+    _, ran = deepened(loop, NO_STRONG, limit="many")
+
+    assert ran.status == 1
+    assert ("STOP  docs/skillworks/deepening-check.md names no whole limit in the YAML block at "
+            "its end, so the Deepening check did not run. Run /skillworks:skillworks-setup to "
+            "write it again.") in loop.log()
+    assert prompts_asking(runner, DEEPENING_CHECK) == []
+
+
+def test_a_deepening_ticket_that_fails_stops_the_loop_before_the_drift_check(loop, runner):
+    _, ran = deepened(loop, deepening_report(FOLDED))
+
+    assert ran.status == 1
+    assert "FAIL  #{} step finish".format(FIRST_DEEPENING) in loop.log()
+    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+
+
+def test_the_list_at_the_end_names_each_deepening_ticket_the_run_built(loop):
+    _, ran = deepened(loop, deepening_report(FOLDED, PRICED), FIRST_DEEPENING, SECOND_DEEPENING)
+
+    assert ran.status == 0, said(ran)
+    assert ("LIST  this run built 2 deepening tickets\n"
+            "      #162 TICKET: Deepen The order intake module\n"
+            "      #163 TICKET: Deepen The pricing adapter\n") in loop.log()
+
+
+def test_the_dry_run_names_the_deepening_check_before_the_drift_check(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 0, said(ran)
+    steps = planned_steps(ran)
+    assert steps[steps.index("deepen"):steps.index("drift") + 1] == [
+        "deepen", "deepening-ticket", "drift"]
+    assert planned_call(ran, "deepen") == (
+        'deepen       claude -p "/skillworks:spec-deepen 158 <base>" --session-id <new id>')
+    assert planned_checks(ran, "deepen") == "a Deepening report recorded, a Strong list"
+    assert planned_nudges(ran, "deepen") == "up to 2, on report-recorded"
+    assert ("one ticket under the spec for each line of the Strong list, up to the limit, each "
+            "built through every step above") in planned_call(ran, "deepening-ticket")
 
 
 # --- the Bash limit each Session runs with -----------------------------------
@@ -5365,6 +5605,7 @@ def test_the_overview_s_table_lists_the_pages_in_run_order():
                                       "the-loop/sidecar-steering.md#share-the-steering-through-a-steering-repo",
                                       "the-loop/the-grill.md", "the-loop/tickets.md",
                                       "the-loop/steps.md", "the-loop/landing.md",
+                                      "the-loop/deepening-check.md",
                                       "the-loop/drift-check.md", "the-loop/name-check.md",
                                       "the-loop/full-run.md", "the-loop/stops.md",
                                       "the-loop/reading-a-run.md", "the-loop/watching-a-run.md",
@@ -5507,7 +5748,8 @@ def test_the_check_stops_and_sessions_pages_say_the_checks_are_nudged_before_the
         "No report after two Nudges stops the loop" in said[1],
         "A Name re-check that recorded no new report is Nudged" in said[1],
         "A check that still recorded nothing after two Nudges stops the loop" in said[2],
-        "The drift check and the Name check are Nudged before they stop the loop" in said[3],
+        "The Deepening check, the drift check and the Name check are Nudged before they stop the "
+        "loop" in said[3],
     ] == [True] * 6
 
 

@@ -41,6 +41,8 @@ The loop runs more than the twelve steps. What it runs besides them reads Steeri
 | What runs | Always loads | Loads on demand | What your team can change |
 |---|---|---|---|
 | Landing | `CLAUDE.md` and the rules, in the Session that resolves a conflict | `docs/skillworks/suite.json`, for the Suite again | The checks in `suite.json`. |
+| The Deepening check | `CLAUDE.md` and the rules | `docs/skillworks/deepening-check.md`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`. Then the glossary and the folder `adr-folder` names. | What counts as Strong, your checks, "Do not report" and `limit` in `deepening-check.md`. |
+| A deepening ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of one line of the Deepening report's `### Strong` list. |
 | The drift check | `CLAUDE.md` and the rules | `docs/skillworks/loop.json`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`, `docs/skillworks/surfaces.md`. Then the glossary. | The glossary, which judges the names two tickets brought in. The Surfaces in `surfaces.md`, which say where each Surface the spec names lives. |
 | The Gap ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of the drift report's Verdicts and reasons. |
 | The Name check | `CLAUDE.md` and the rules | `docs/skillworks/loop.json`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`. Then the glossary. | The glossary, which decides the word a moved name or a concept named two ways should take. |

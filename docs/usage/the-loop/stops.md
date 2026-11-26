@@ -27,7 +27,8 @@ with a choice the Session put to a person. That part follows the kind of step:
 
 - **A step that builds** (the build, `fix` and the Cut) makes that Choice itself, within what its
   step allows, and writes a `CHOSE` line.
-- **A step that judges** (the three reviews, `sweep`, the drift check and the Name check) makes no
+- **A step that judges** (the three reviews, `sweep`, the Deepening check, the drift check and the
+  Name check) makes no
   Choice. A review reports the choice as a finding, and a check gives the Verdict.
 - **Finishing** closes the ticket, with the question and the build's answer in the Closing note.
 
@@ -41,12 +42,13 @@ names what is missing and the command that records it, then ends as every Nudge 
 writes a `NUDGE` line. A Cut that still filed nothing after two Nudges stops the loop with a `STOP`
 line, as [the tickets](tickets.md) says.
 
-**A Nudge for the checks.** The drift check and the Name check are Nudged too, when the Tracker holds
+**A Nudge for the checks.** The Deepening check, the drift check and the Name check are Nudged too,
+when the Tracker holds
 no report after them, and so are their re-checks, when the Tracker holds no new report. The Nudge
 names what is missing and the command that records it, then ends as every Nudge does, and writes a
 `NUDGE` line. A check that still recorded nothing after two Nudges stops the loop with a `STOP`
-line. Only a missing report earns a Nudge. A report with no Verdicts list, a tree left changed and a
-non-zero exit stop or warn as before, with no Nudge.
+line. Only a missing report earns a Nudge. A report with no Verdicts list, a Deepening report with no
+`### Strong` list, a tree left changed and a non-zero exit stop or warn as before, with no Nudge.
 
 **A Blocked step.** A Session that cannot do its work begins its report with a line that starts
 with `BLOCKED`, as [Sessions](sessions.md#nobody-answers-in-the-loop) says. The script reads only the
@@ -62,8 +64,8 @@ STOP  #203 step build is Blocked: BLOCKED .claude/settings.json: the write was r
       Its worktree is at .claude/worktrees/spec-200/ticket-203. See ...
 ```
 
-A Blocked Cut, drift check or Name check stops the loop the same way, and its `STOP` line names the
-check.
+A Blocked Cut, Deepening check, drift check or Name check stops the loop the same way, and its `STOP`
+line names the check.
 
 **A fault Finishing may not fix.** Finishing fixes nothing, so a fault it finds is not a stop. It
 writes a line that starts with `DEPARTS`, with the fault and why it may not fix it, and the loop goes
@@ -87,6 +89,10 @@ below says.
 A build answers Blocked for a missing file too, when it is `loop.json`, `issue-tracker.md` or
 `suite.json`, and for a ticket that has an open blocker. The script picks only a ticket with no open
 blocker, so that can happen only when a blocker opens after the pick.
+
+The Deepening check answers Blocked for a missing file as well, when it is `loop.json`,
+`issue-tracker.md`, `domain.md` or `deepening-check.md`. It answers Blocked too when `spec-commits`
+or `tracker-publish deepen` refused twice, and its line names the command.
 
 The drift check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md`, `surfaces.md` or `domain.md`. It answers Blocked too when `spec-commits` or
@@ -197,7 +203,8 @@ same words:
 ABORT docs/skillworks/loop.json says "target-branch": "spec", and spec mode is now PR mode. To go on, write "target-branch": "pr" in docs/skillworks/loop.json.
 ```
 
-**A spec with no commit to read.** Before the drift check, the drift re-check and the Name check, the
+**A spec with no commit to read.** Before the Deepening check, the drift check, the drift re-check
+and the Name check, the
 script looks up the spec's commits the way `spec-commits` does. Every Landed ticket's commit names its
 ticket in a `Ticket:` trailer, so a spec with no such commit after the base commit and no closed
 ticket means the lookup broke. A closed ticket with no such commit gets a line of its own, as [the
@@ -206,7 +213,7 @@ so a broken lookup never reads as a clean report. The spec stays open, and the f
 first:
 
 ```
-STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2c3e8a5d6f1b4 whose Ticket: trailer names one of its tickets. Every Landed ticket's commit names it, so the lookup broke. The drift check did not run and the spec stays open.
+STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2c3e8a5d6f1b4 whose Ticket: trailer names one of its tickets. Every Landed ticket's commit names it, so the lookup broke. The Deepening check did not run and the spec stays open.
 ```
 
 Check that `git log` on the Target branch shows each Landed ticket's `Ticket:` trailer, and run the
@@ -214,7 +221,21 @@ loop again. Under Sidecar Steering, the line says "that the list in the Sidecar 
 tickets" in place of the trailer. Check the list in the Sidecar instead, as "A branch rewritten
 under the list" above says.
 
-**A drift report that leaves work owed.** After the last ticket, the script [counts the drift
+**A Deepening report the loop cannot read.** After the last ticket, the script runs [the Deepening
+check](deepening-check.md). No Deepening report after two Nudges, a report with no `### Strong`
+list, or a Blocked Deepening check stops the loop with a `STOP` line, and the spec stays open. A
+Deepening check file whose YAML block names no whole `limit` stops it before the check runs:
+
+```
+STOP  docs/skillworks/deepening-check.md names no whole limit in the YAML block at its end, so the Deepening check did not run. Run /skillworks:skillworks-setup to write it again.
+```
+
+**A deepening ticket that fails.** Each [deepening
+ticket](deepening-check.md#the-deepening-tickets) is built like any ticket, so a failed one stops
+the loop with its `FAIL` or `STOP` line, as any failed ticket does. The drift check does not run on
+half-changed code. The Keep and the restart work as they do for any ticket.
+
+**A drift report that leaves work owed.** After the Deepening check, the script [counts the drift
 check's Verdicts](drift-check.md#the-count). No report, a report with no `### Verdicts` list, or a Contradicts
 stops the loop with a `STOP` line, and the spec stays open. A Gap does not stop it at once: the loop
 builds its Gaps in [one round](drift-check.md#the-gap-round). A Gap still left after that round stops the loop.
@@ -319,7 +340,7 @@ then end before its commit reaches the Target branch. The rerun picks only open 
 that ticket and finds no commit of the spec. The line names each closed ticket:
 
 ```
-STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2c3e8a5d6f1b4 whose Ticket: trailer names one of its tickets. #203 is closed with no Landed commit. Reopen it, then rerun with: spec-loop 200. The drift check did not run and the spec stays open.
+STOP  spec #200 has no commit after the base commit 7c41e0a9d2f3b8c56e1a4d7f09b2c3e8a5d6f1b4 whose Ticket: trailer names one of its tickets. #203 is closed with no Landed commit. Reopen it, then rerun with: spec-loop 200. The Deepening check did not run and the spec stays open.
 ```
 
 Reopen it by hand, and run the loop again.

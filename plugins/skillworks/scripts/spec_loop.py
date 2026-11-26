@@ -38,6 +38,8 @@ import ticket_worktree
 from filelock import FileLock, Timeout
 from branches.open_the_pull_request import open_the_pull_request
 from clock.clock import Clock
+from count.deepening_ticket import deepening_ticket
+from count.deepenings import STRONG, filed_within, limit_in, read_strong
 from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items, with_readme
@@ -48,7 +50,8 @@ from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
-from position.position import (BASELINE, BUILDING, CUTTING, DRIFT_CHECK, END_PATIENCE, FINISHED,
+from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DRIFT_CHECK,
+                               END_PATIENCE, FINISHED,
                                HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE, POSITION, STOPPED,
                                position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
@@ -58,7 +61,7 @@ from sidecar.landed import Landed
 from sidecar.locator import main_checkout_of
 from sidecar.pull import pull_steering, sidecar_commit
 from steering.adr_folder import missing_adr_folder
-from steering.steering_file import LOOP_FILE, sidecar_steering
+from steering.steering_file import LOOP_FILE, STEERING_FOLDER, sidecar_steering, steering_root
 from steering.readme_surface import readme_surface_of
 from steering.rule_imports import missing_import
 from steering.target_branch import in_pr_mode, target_branch_for, tracker_for
@@ -491,7 +494,7 @@ def told_plan():
     named = {told: [step.name for step in STEPS if step.told == told]
              for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
     named[TOLD_TO_BUILD].append("cut")
-    named[TOLD_TO_JUDGE] += ["drift", "re-check", "names", "name-re-check"]
+    named[TOLD_TO_JUDGE] += ["deepen", "drift", "re-check", "names", "name-re-check"]
     return "  each Session above is told, after its command\n" + "".join(
         "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
 
@@ -541,6 +544,7 @@ class Loop:
 
         self.listed = []
         self.built = {}
+        self.deepening_tickets = {}
 
         # This run's alone, so a rerun proves the Target branch again only when it lands something.
         self.landed = []
@@ -950,6 +954,7 @@ class Loop:
 
     # Said at a stop as well as at a clean finish, so a Hand check is never lost mid-log.
     def list_what_sessions_wrote(self):
+        self.list_deepenings_built()
         if not self.listed:
             return
         counts = []
@@ -960,6 +965,16 @@ class Loop:
             lines += of_kind
         self.say("LIST  this run {}, {} and {}{}".format(
             *counts, "".join("\n      " + said for said in lines)))
+
+    # Landed ones alone, so a deepening ticket that failed is read in its stop and not here.
+    def list_deepenings_built(self):
+        built = [ticket for ticket in self.landed if ticket in self.deepening_tickets]
+        if not built:
+            return
+        self.say("LIST  this run built {}{}".format(
+            how_many(len(built), "deepening ticket", "deepening tickets"),
+            "".join("\n      {} {}".format(self.named(ticket), self.deepening_tickets[ticket])
+                    for ticket in built)))
 
     def stop_step(self, ticket, step, reason, see, result=None):
         self.reopen(ticket)
@@ -1271,9 +1286,15 @@ class Loop:
         return listed(out.getvalue())
 
     def after_tickets_plan(self):
+        deepen = 'claude -p "{}spec-deepen {} <base>'.format(PLUGIN, self.spec)
         drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
         names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
         return ("  after every ticket is closed\n"
+                + plan_line("deepen", deepen + '" --session-id <new id>',
+                            "a Deepening report recorded, a Strong list")
+                + nudges_line(REPORT_RECORDED)
+                + plan_line("deepening-ticket", "one ticket under the spec for each line of the "
+                            "Strong list, up to the limit, each built through every step above")
                 + plan_line("drift", drift + '" --session-id <new id>',
                             "a report recorded, a Verdicts list, no Contradicts")
                 + nudges_line(REPORT_RECORDED)
@@ -1684,6 +1705,76 @@ class Loop:
             in_words(closed), "is" if len(closed) == 1 else "are",
             "it" if len(closed) == 1 else "each one", self.spec)
 
+    # --- the Deepening check -------------------------------------------------
+
+    # Read before the Session, so a file the count cannot use costs no judge.
+    def deepening_limit(self):
+        named = STEERING_FOLDER + "/deepening-check.md"
+        path = steering_root(self.root) / named
+        limit = limit_in(path.read_text(encoding="utf-8", errors="replace")) if path.is_file() else None
+        if limit is None:
+            raise stop("STOP  {} names no whole limit in the YAML block at its end, so the "
+                       "Deepening check did not run. Run /skillworks:skillworks-setup to write it "
+                       "again.".format(named))
+        return limit
+
+    # Before the drift check, so the drift check and the Name check judge the code the refactors left.
+    def check_deepening(self, base):
+        limit = self.deepening_limit()
+        self.moved(DEEPENING_CHECK)
+        self.say_scope("Deepening check", base)
+        self.say("DEEPEN looking for modules spec {} left shallow.".format(self.spec_named()))
+        result = self.run_clean_session("deepen", "Deepening check", PLUGIN + "spec-deepen {} {}".format(
+            self.spec, base), Recorded(
+                REPORT_RECORDED, lambda: self.tracker.deepening_report(self.spec),
+                self.report_owed("Deepening report", "deepen", "deepening-report.md")))
+
+        # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
+        report = self.tracker.deepening_report(self.spec)
+        if not report:
+            raise self.stop_naming_denials("STOP  the Deepening check recorded no report on spec {}, "
+                                           "so no deepening was read and the spec stays open.".format(
+                                               self.spec_named()), result)
+        held = self.log_dir / "deepening.md"
+        written(held, report + "\n")
+        self.say("DEEPEN the report is recorded on spec {}. Read it at {}".format(
+            self.spec_named(), held))
+
+        strong = read_strong(report)
+        if strong is None:
+            raise stop("STOP  the Deepening report on spec {} holds no {} list, so no deepening was "
+                       "read and the spec stays open. Read it at {}".format(
+                           self.spec_named(), STRONG, held))
+        for said in strong:
+            self.say("STRONG " + said)
+        filed, over = filed_within(strong, limit)
+        if over:
+            self.say("WARN  the Deepening report on spec {} lists {} and the limit is {}, so only "
+                     "the first {} filed".format(
+                         self.spec_named(), how_many(len(strong), "Strong line", "Strong lines"),
+                         limit, "is" if limit == 1 else "{} are".format(limit)))
+        if not filed:
+            self.say("DEEPEN no deepening is owed on spec {}".format(self.spec_named()))
+        return filed
+
+    # One ticket for each line, so each refactor gets a Fresh build and one that fails holds no other.
+    def file_deepening_ticket(self, strong):
+        title, body = deepening_ticket(strong)
+        ticket = self.tracker.file_ticket(self.spec, title, body)
+        self.filed(ticket, title)
+        self.deepening_tickets[ticket] = title
+        self.ticket_count += 1
+        self.say("FILED {} under spec {} deepens {}, so the loop builds it through every step".format(
+            self.named(ticket), self.spec_named(), name_of(strong)))
+
+    def close_deepenings(self, base):
+        filed = self.check_deepening(base)
+        if not filed:
+            return
+        for strong in filed:
+            self.file_deepening_ticket(strong)
+        self.run_tickets()
+
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
         named = "drift-gaps" if asked else "drift"
@@ -2019,6 +2110,7 @@ class Loop:
         try:
             try:
                 self.run_tickets()
+                self.close_deepenings(base)
                 self.close_gaps(base)
                 self.close_renames(base)
             except Stop as stopped:
