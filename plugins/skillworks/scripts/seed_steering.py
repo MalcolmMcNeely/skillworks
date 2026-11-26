@@ -28,7 +28,8 @@ SEEDS = Path(__file__).resolve().parents[1] / "skills" / "skillworks-setup" / "s
 RULES = ("comments.md", "determinism.md", "file-placement.md", "testing.md", "words.md")
 
 FILES = ("issue-tracker.md", "domain.md", "adr-format.md", "placement-checks.md", "review-standards.md",
-         "review-architecture.md", "review-spec.md", "suite.json", "loop.json", "surfaces.md", "deepening-check.md")
+         "review-architecture.md", "review-spec.md", "suite.json", "loop.json", "surfaces.md", "deepening-check.md",
+         "simplify-check.md")
 
 PLACES = {**{name: "{}/{}".format(RULES_FOLDER, name) for name in RULES},
           **{name: "{}/{}".format(STEERING_FOLDER, name) for name in FILES}}

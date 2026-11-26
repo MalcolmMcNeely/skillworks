@@ -477,6 +477,92 @@ def test_a_deepening_report_without_its_heading_is_turned_down(writer):
     assert writer.tracker("1").deepening_report("1") == ""
 
 
+SIMPLIFY = ("## Simplify report\n\n### Findings\n\n"
+            "- `tracker/files.py`, reuse: two readers cut a section by hand, so call `section_in`.\n")
+
+
+def test_a_simplify_report_is_written_to_the_end_of_the_specs_file_and_reads_back(writer):
+    writer.spec()
+
+    ran = writer.run("simplify", "1", writer.written("simplify.md", SIMPLIFY))
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == (writer.sidecar() / ".specs/0001-local-tracker/spec.md").as_posix() + "\n"
+    assert writer.held(".specs/0001-local-tracker/spec.md") == spec_text() + "\n" + SIMPLIFY
+    assert writer.tracker("1").simplify_report("1") == (
+        "### Findings\n\n- `tracker/files.py`, reuse: two readers cut a section by hand, so call `section_in`.")
+
+
+def test_the_simplify_report_goes_below_the_deepening_report_and_above_the_drift_and_name_reports(writer):
+    writer.spec()
+    writer.run("deepen", "1", writer.written("deepen.md", DEEPENING))
+    writer.run("simplify", "1", writer.written("simplify.md", SIMPLIFY))
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    ran = writer.run("names", "1", writer.written("names.md", NAMES))
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/spec.md") == (
+        spec_text() + "\n" + DEEPENING + "\n" + SIMPLIFY + "\n" + REPORT + "\n" + NAMES)
+
+
+def test_each_report_reads_back_alone_with_the_simplify_report_among_them(writer):
+    writer.spec()
+    for command, report in (("deepen", DEEPENING), ("simplify", SIMPLIFY), ("drift", REPORT), ("names", NAMES)):
+        writer.run(command, "1", writer.written(command + ".md", report))
+    tracker = writer.tracker("1")
+
+    assert [tracker.deepening_report("1"), tracker.simplify_report("1"), tracker.drift_report("1")] == [
+        "### Strong\n\n- The Tracker readers: two shallow modules share one parse, so fold them into one.",
+        "### Findings\n\n- `tracker/files.py`, reuse: two readers cut a section by hand, so call `section_in`.",
+        "- Story 1: Done\n- Story 2: Missing"]
+
+
+def test_a_second_simplify_report_takes_the_place_of_the_first_and_keeps_the_reports_below_it(writer):
+    writer.spec()
+    writer.run("simplify", "1", writer.written("simplify.md", SIMPLIFY))
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("names", "1", writer.written("names.md", NAMES))
+
+    ran = writer.run("simplify", "1", writer.written("again.md", "## Simplify report\n\n### Findings\n\n- None\n"))
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/spec.md") == (
+        spec_text() + "\n## Simplify report\n\n### Findings\n\n- None\n\n" + REPORT + "\n" + NAMES)
+
+
+def test_a_second_deepening_report_keeps_the_simplify_report_below_it(writer):
+    writer.spec()
+    writer.run("deepen", "1", writer.written("deepen.md", DEEPENING))
+    writer.run("simplify", "1", writer.written("simplify.md", SIMPLIFY))
+
+    ran = writer.run("deepen", "1", writer.written("again.md", "## Deepening report\n\n### Strong\n\n- None\n"))
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/spec.md") == (
+        spec_text() + "\n## Deepening report\n\n### Strong\n\n- None\n\n" + SIMPLIFY)
+
+
+def test_a_first_simplify_report_on_a_spec_that_holds_a_drift_report_goes_above_it(writer):
+    writer.spec()
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    ran = writer.run("simplify", "1", writer.written("simplify.md", SIMPLIFY))
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/spec.md") == spec_text() + "\n" + SIMPLIFY + "\n" + REPORT
+
+
+def test_a_simplify_report_without_its_heading_is_turned_down(writer):
+    writer.spec()
+
+    ran = writer.run("simplify", "1", writer.written("simplify.md", "### Findings\n\n- None\n"))
+
+    assert ran.status == 1
+    assert "## Simplify report" in ran.err
+    assert writer.tracker("1").simplify_report("1") == ""
+
+
 def test_publishing_a_spec_its_tickets_and_its_reports_neither_pushes_nor_fetches(writer):
     write_loop(writer.repo.work, "pr")
     before = refs_of(writer.repo)
@@ -532,6 +618,7 @@ def github(runner):
     ("drift", REPORT, GitHub.drift_report),
     ("names", NAMES, GitHub.name_report),
     ("deepen", DEEPENING, GitHub.deepening_report),
+    ("simplify", SIMPLIFY, GitHub.simplify_report),
 ])
 def test_on_github_a_report_is_posted_as_a_comment_on_the_spec_and_its_url_printed(
         writer, on_github, command, report, read_back):
@@ -558,6 +645,7 @@ def test_on_github_a_second_report_is_a_second_comment_and_the_first_stays(write
     ("drift", "- Story 1: Done\n", "## Drift report"),
     ("names", "### Renames\n\n- None\n", "## Name report"),
     ("deepen", "### Strong\n\n- None\n", "## Deepening report"),
+    ("simplify", "### Findings\n\n- None\n", "## Simplify report"),
 ])
 def test_on_github_a_report_without_its_heading_is_turned_down(writer, on_github, command, report,
                                                                 heading):

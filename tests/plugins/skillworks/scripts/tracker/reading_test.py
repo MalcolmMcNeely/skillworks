@@ -3,7 +3,7 @@ import ast
 from conftest import SCRIPTS
 from tracker.reading import listed
 
-ONE_COPY = {"listed", "DRIFT_REPORT", "NAME_REPORT", "DEEPENING_REPORT"}
+ONE_COPY = {"listed", "DRIFT_REPORT", "NAME_REPORT", "DEEPENING_REPORT", "SIMPLIFY_REPORT"}
 
 
 def defined_in(tree):

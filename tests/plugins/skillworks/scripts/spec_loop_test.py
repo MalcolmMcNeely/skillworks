@@ -565,6 +565,18 @@ def test_a_repo_with_no_deepening_check_file_stops_the_dry_run_naming_setup(loop
     assert "DRY" not in ran.out
 
 
+def test_a_repo_with_no_simplify_check_file_stops_the_dry_run_naming_setup(loop):
+    given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    (loop.repo.work / "docs" / "skillworks" / "simplify-check.md").unlink()
+
+    ran = loop.run(SPEC, "--dry-run")
+
+    assert ran.status == 1
+    assert ("ABORT docs/skillworks/simplify-check.md is missing, and setup seeds it. "
+            "Run /skillworks:skillworks-setup to write it again.") in said(ran)
+    assert "DRY" not in ran.out
+
+
 def test_a_repo_with_no_adr_shape_file_stops_the_dry_run_as_missing_steering(loop):
     given_the_tracker_holds(loop, ONE_OPEN_TICKET)
     (loop.repo.work / "docs" / "skillworks" / "adr-format.md").unlink()

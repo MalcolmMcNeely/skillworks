@@ -8,7 +8,7 @@ from typing import NamedTuple
 from clock.clock import Clock
 from sidecar.sidecar import Sidecar
 from stop import is_a_number, refusal
-from tracker.reading import DEEPENING_REPORT, DRIFT_REPORT, FLAKES, NAME_REPORT, listed
+from tracker.reading import DEEPENING_REPORT, DRIFT_REPORT, FLAKES, NAME_REPORT, SIMPLIFY_REPORT, listed
 
 SPECS = ".specs"
 SPEC_FILE = "spec.md"
@@ -27,9 +27,10 @@ HEAD = "HEAD"
 LOOP_STATE = ".spec-loop"
 LOOP_BRANCHES = "spec-loop/"
 
-REPORTS = (DEEPENING_REPORT, DRIFT_REPORT, NAME_REPORT)
+REPORTS = (DEEPENING_REPORT, SIMPLIFY_REPORT, DRIFT_REPORT, NAME_REPORT)
 
-JUDGED_LATER = {DEEPENING_REPORT: (DRIFT_REPORT, NAME_REPORT)}
+JUDGED_LATER = {DEEPENING_REPORT: (SIMPLIFY_REPORT, DRIFT_REPORT, NAME_REPORT),
+                SIMPLIFY_REPORT: (DRIFT_REPORT, NAME_REPORT)}
 
 
 class Ticket(NamedTuple):
@@ -389,6 +390,9 @@ class Files:
 
     def deepening_report(self, spec):
         return section_in(self.spec_body(spec), DEEPENING_REPORT, *JUDGED_LATER[DEEPENING_REPORT])
+
+    def simplify_report(self, spec):
+        return section_in(self.spec_body(spec), SIMPLIFY_REPORT, *JUDGED_LATER[SIMPLIFY_REPORT])
 
     def name_report(self, spec):
         return section_in(self.spec_body(spec), NAME_REPORT)

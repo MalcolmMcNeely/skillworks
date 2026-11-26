@@ -4,6 +4,8 @@ NAME_REPORT = "## Name report"
 
 DEEPENING_REPORT = "## Deepening report"
 
+SIMPLIFY_REPORT = "## Simplify report"
+
 FLAKES = "## Flakes"
 
 
