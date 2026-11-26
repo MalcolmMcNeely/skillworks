@@ -367,6 +367,13 @@ the drift check and the Name check. A judge is a step because it reads Steering 
 as `build` does. A step is not a stage: the Dev loop has two stages, and each holds steps.
 _Avoid_: Phase, part
 
+**Step time**:
+When one step of a run started and when it ended, the steps the script runs as well as the steps a
+Session runs. The driver keeps one for every step it runs, a rerun's too, and never writes over one,
+so the time a run took can be read back after it ends. The Position holds only the step now, and the
+Journal holds only what each Session gave back.
+_Avoid_: Timing, span, lap, duration
+
 **Suite**:
 The checks a repo names for the loop to run before a ticket Lands. The repo owns the list, so each
 team says what green means for its own code. A Suite ends one of two ways that are never confused: it
