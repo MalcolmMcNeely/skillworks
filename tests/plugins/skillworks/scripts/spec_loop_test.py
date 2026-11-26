@@ -4397,7 +4397,7 @@ def test_a_re_check_that_recorded_no_new_report_stops_the_loop_saying_so(loop):
 
     assert ran.status == 1
     log = loop.log()
-    assert ("STOP  the re-check recorded no new report on spec #{}, so the Gap items were not "
+    assert ("STOP  the drift re-check recorded no new report on spec #{}, so the Gap items were not "
             "judged again").format(SPEC) in log
     assert "still finds" not in log
     assert "END" not in log

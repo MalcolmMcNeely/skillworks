@@ -52,6 +52,7 @@ from count.simplify_ticket import TITLE as SIMPLIFY_TITLE
 from count.simplify_ticket import simplify_ticket
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
+from judges.judges import DEEPENING, DRIFT, NAMES, SIMPLIFY, told_to_judge
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DRIFT_CHECK,
@@ -504,7 +505,7 @@ def told_plan():
     named = {told: [step.name for step in STEPS if step.told == told]
              for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
     named[TOLD_TO_BUILD].append("cut")
-    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify-check", "drift-check", "drift-re-check", "name-check", "name-re-check"]
+    named[TOLD_TO_JUDGE] += told_to_judge()
     return "  each Session above is told, after its command\n" + "".join(
         "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
 
@@ -531,8 +532,7 @@ class Loop:
         self.ticket_count = 0
         # Read before the first ticket, so the count judges the report by the spec the run began on.
         self.items = None
-        self.drift_read = None
-        self.names_read = None
+        self.reports_read = {}
 
         self.job_worktree = ""
         self.ticket_base = ""
@@ -1273,10 +1273,10 @@ class Loop:
                     self.spec_named(), self.spec, self.spec))
 
     # A re-check records with the same command as its check, so one sentence serves all four.
-    def report_owed(self, report, kind, file):
-        return ("Spec {} holds no {} yet. Record the report you wrote with tracker-publish {} {} "
-                ".spec-loop/{}/{}\n".format(self.spec_named(), report, kind, self.spec, self.spec,
-                                            file))
+    def report_owed(self, judge, again=False):
+        return ("Spec {} holds no {}{} yet. Record the report you wrote with tracker-publish {} {} "
+                ".spec-loop/{}/{}\n".format(self.spec_named(), "new " if again else "", judge.report,
+                                            judge.kind, self.spec, self.spec, judge.report_file))
 
     def cut_tickets(self):
         self.say("CUT   spec {} has no tickets, so a Session cuts them first".format(
@@ -1304,43 +1304,44 @@ class Loop:
         return listed(out.getvalue())
 
     def after_tickets_plan(self):
-        deepening_check = 'claude -p "{}spec-deepening-check {} <base>'.format(PLUGIN, self.spec)
-        simplify_check = 'claude -p "{}spec-simplify-check {} <base>'.format(PLUGIN, self.spec)
-        drift_check = 'claude -p "{}spec-drift-check {} <base>'.format(PLUGIN, self.spec)
-        name_check = 'claude -p "{}spec-name-check {} <base>'.format(PLUGIN, self.spec)
-        deepening = (plan_line("deepening-check", deepening_check + '" --session-id <new id>',
+        def call(judge):
+            return 'claude -p "{}{} {} <base>'.format(PLUGIN, judge.skill, self.spec)
+
+        deepening = (plan_line(DEEPENING.name, call(DEEPENING) + '" --session-id <new id>',
                                "a Deepening report recorded, a Strong list")
                      + nudges_line(REPORT_RECORDED)
                      + plan_line("deepening-ticket", "one ticket under the spec for each line of "
                                  "the Strong list, up to the limit, each built through every step "
                                  "above")
                      if self.deepening_limit() else
-                     plan_line("deepening-check", "off: " + DEEPENING_OFF))
-        simplifying = (plan_line("simplify-check", simplify_check + '" --session-id <new id>',
+                     plan_line(DEEPENING.name, "off: " + DEEPENING_OFF))
+        simplifying = (plan_line(SIMPLIFY.name, call(SIMPLIFY) + '" --session-id <new id>',
                                  "a Simplify report recorded, a Findings list")
                        + nudges_line(REPORT_RECORDED)
                        + plan_line("simplify-ticket", "one ticket under the spec that quotes every "
                                    "line of the Findings list, built through every step above")
                        if self.simplify_enabled() else
-                       plan_line("simplify-check", "off: " + SIMPLIFY_OFF))
+                       plan_line(SIMPLIFY.name, "off: " + SIMPLIFY_OFF))
         return ("  after every ticket is closed\n"
                 + deepening
                 + simplifying
-                + plan_line("drift-check", drift_check + '" --session-id <new id>',
+                + plan_line(DRIFT.name, call(DRIFT) + '" --session-id <new id>',
                             "a report recorded, a Verdicts list, no Contradicts")
                 + nudges_line(REPORT_RECORDED)
                 + plan_line("gap-ticket", "one ticket under the spec when the count finds a Gap, "
                             "built through every step above")
-                + plan_line("drift-re-check", drift_check + ' <the Gap items>" --session-id <new id>, once',
+                + plan_line(DRIFT.session(again=True),
+                            call(DRIFT) + ' <the Gap items>" --session-id <new id>, once',
                             "no Gap left, no Contradicts")
                 + nudges_line(NEW_REPORT_RECORDED)
-                + plan_line("name-check", name_check + '" --session-id <new id>',
+                + plan_line(NAMES.name, call(NAMES) + '" --session-id <new id>',
                             "a Name report recorded, a Renames list")
                 + nudges_line(REPORT_RECORDED)
                 + plan_line("rename-ticket", "one ticket under the spec when the Name check finds "
                             "a rename, built through every step above")
-                + plan_line("name-re-check", name_check + ' <the rename ticket>" --session-id <new id>, '
-                            'once', "a new Name report, a Verdicts list, every rename Done")
+                + plan_line(NAMES.session(again=True),
+                            call(NAMES) + ' <the rename ticket>" --session-id <new id>, once',
+                            "a new Name report, a Verdicts list, every rename Done")
                 + nudges_line(NEW_REPORT_RECORDED)
                 + plan_line("full-run", "the whole Suite on the newest origin/<target>, with no "
                             "Proofs and no images, once and last"))
@@ -1771,28 +1772,48 @@ class Loop:
                      "again".format(said_as, self.spec_named(), what))
         return report
 
+    # Read back from the Tracker, so a report the Session only said and never recorded is caught.
+    def run_judge(self, judge, base, handed="", again=False, handed_on=""):
+        if again:
+            def read():
+                return self.new_report(judge)
+        else:
+            def read():
+                return judge.read(self.tracker, self.spec)
+        result = self.run_clean_session(
+            judge.session(again), judge.said_as(again), PLUGIN + "{} {} {}{}".format(
+                judge.skill, self.spec, base, " " + handed if handed else ""),
+            Recorded(NEW_REPORT_RECORDED if again else REPORT_RECORDED, read,
+                     self.report_owed(judge, again)),
+            handed_on=handed_on)
+        report = read()
+        if not report:
+            raise self.stop_naming_denials(
+                "STOP  the {} recorded no {}report on spec {}, so {} and the spec stays open.".format(
+                    judge.said_as(again), "new " if again else "", self.spec_named(),
+                    judge.lost_again if again else judge.lost), result)
+        return report
+
+    # The Tracker hands back the newest report, so a re-check that recorded none reads the first.
+    def new_report(self, judge):
+        report = judge.read(self.tracker, self.spec)
+        return report if report != self.reports_read.get(judge.name) else None
+
+    def hold_report(self, judge, report, again=False):
+        self.reports_read[judge.name] = report
+        held = self.log_dir / judge.log_file(again)
+        written(held, report + "\n")
+        return held
+
     # Before the drift check, so the drift check and the Name check judge the code the refactors left.
     def check_deepening(self, base):
         self.moved(DEEPENING_CHECK)
-        self.say_scope("Deepening check", base)
+        self.say_scope(DEEPENING.what, base)
         self.say("DEEPEN looking for modules spec {} left shallow.".format(self.spec_named()))
-        result = self.run_clean_session(
-            "deepening-check", "Deepening check", PLUGIN + "spec-deepening-check {} {}".format(
-                self.spec, base), Recorded(
-                REPORT_RECORDED, lambda: self.tracker.deepening_report(self.spec),
-                self.report_owed("Deepening report", "deepening-check", "deepening-report.md")))
-
-        # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
-        report = self.tracker.deepening_report(self.spec)
-        if not report:
-            raise self.stop_naming_denials("STOP  the Deepening check recorded no report on spec {}, "
-                                           "so no deepening was read and the spec stays open.".format(
-                                               self.spec_named()), result)
-        return report
+        return self.run_judge(DEEPENING, base)
 
     def read_deepening(self, report, limit):
-        held = self.log_dir / "deepening-check.md"
-        written(held, report + "\n")
+        held = self.hold_report(DEEPENING, report)
         self.say("DEEPEN the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
 
@@ -1846,26 +1867,13 @@ class Loop:
     # After the deepening tickets, so it also judges the code their refactors left.
     def check_simplify(self, base):
         self.moved(SIMPLIFY_CHECK)
-        self.say_scope("Simplify check", base)
+        self.say_scope(SIMPLIFY.what, base)
         self.say("SIMPLIFY looking for code spec {} made harder than it has to be.".format(
             self.spec_named()))
-        result = self.run_clean_session(
-            "simplify-check", "Simplify check", PLUGIN + "spec-simplify-check {} {}".format(
-                self.spec, base), Recorded(
-                REPORT_RECORDED, lambda: self.tracker.simplify_report(self.spec),
-                self.report_owed("Simplify report", "simplify-check", "simplify-report.md")))
-
-        # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
-        report = self.tracker.simplify_report(self.spec)
-        if not report:
-            raise self.stop_naming_denials("STOP  the Simplify check recorded no report on spec {}, "
-                                           "so no cleanup was read and the spec stays open.".format(
-                                               self.spec_named()), result)
-        return report
+        return self.run_judge(SIMPLIFY, base)
 
     def read_simplify(self, report):
-        held = self.log_dir / "simplify-check.md"
-        written(held, report + "\n")
+        held = self.hold_report(SIMPLIFY, report)
         self.say("SIMPLIFY the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
 
@@ -1915,49 +1923,21 @@ class Loop:
 
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
-        named = "drift-re-check" if asked else "drift-check"
+        again = bool(asked)
         self.moved(DRIFT_CHECK)
-        self.say_scope("drift re-check" if asked else "drift check", base)
+        self.say_scope(DRIFT.said_as(again), base)
         if asked:
             self.say("DRIFT the Gap ticket is closed. Checking {} against spec {} again.".format(
                 ", ".join(asked), self.spec_named()))
         else:
             self.say("DRIFT all tickets closed. Checking the result against spec {}.".format(
                 self.spec_named()))
-        recorded = Recorded(
-            NEW_REPORT_RECORDED if asked else REPORT_RECORDED,
-            lambda: self.drift_recorded(asked),
-            self.report_owed("new drift report" if asked else "drift report", "drift-check",
-                             "drift-report.md"))
-        result = self.run_clean_session(
-            named, "drift check", PLUGIN + "spec-drift-check {} {}{}".format(
-                self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""), recorded,
-            handed_on=self.spec_departures())
-        return self.read_drift_report(named, asked, result)
+        report = self.run_judge(DRIFT, base, ITEM_SEPARATOR.join(asked), again,
+                                self.spec_departures())
+        return self.count_held_drift(report, asked)
 
-    # The Tracker hands back the newest report, so a re-check that recorded none reads the first.
-    def drift_recorded(self, asked):
-        report = self.tracker.drift_report(self.spec)
-        return report and not (asked and report == self.drift_read)
-
-    # Read back from the Tracker, so a report the Session only said and never recorded is caught.
-    def read_drift_report(self, named, asked, result):
-        report = self.tracker.drift_report(self.spec)
-        if not report:
-            raise self.stop_naming_denials("STOP  the drift check recorded no report on spec {}, so nothing "
-                                   "was counted and the spec stays open.".format(
-                                       self.spec_named()), result)
-        # The Tracker hands back the newest report, so a re-check that recorded none reads the first.
-        if asked and report == self.drift_read:
-            raise self.stop_naming_denials("STOP  the re-check recorded no new report on spec {}, so the Gap "
-                                   "items were not judged again and the spec stays open.".format(
-                                       self.spec_named()), result)
-        return self.count_held_drift(named, report, asked)
-
-    def count_held_drift(self, named, report, asked):
-        self.drift_read = report
-        held = self.log_dir / (named + ".md")
-        written(held, report + "\n")
+    def count_held_drift(self, report, asked):
+        held = self.hold_report(DRIFT, report, again=bool(asked))
         self.say("DRIFT the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
         return self.count_drift(read_verdicts(report), held, asked)
@@ -2017,7 +1997,7 @@ class Loop:
     # A rerun counts the report an earlier run recorded, so the drift check and its Gap ticket come once.
     def close_gaps(self, base):
         earlier = self.earlier_report(self.tracker.earlier_drift_report(self.spec), "drift", "DRIFT")
-        gaps = self.count_held_drift("drift-check", earlier, ()) if earlier else self.check_drift(base)
+        gaps = self.count_held_drift(earlier, ()) if earlier else self.check_drift(base)
         if not gaps:
             return
         if not any(title == GAP_TITLE for _, _, title in self.tracker.ticket_rows(self.spec)):
@@ -2030,27 +2010,13 @@ class Loop:
     # After the Gap round, so it sees every name the spec brought in, the Gap build's too.
     def check_names(self, base):
         self.moved(NAME_CHECK)
-        self.say_scope("Name check", base)
+        self.say_scope(NAMES.what, base)
         self.say("NAMES checking the names spec {} brought in against the glossary.".format(
             self.spec_named()))
-        result = self.run_clean_session(
-            "name-check", "Name check", PLUGIN + "spec-name-check {} {}".format(
-                self.spec, base), Recorded(
-                REPORT_RECORDED, lambda: self.tracker.name_report(self.spec),
-                self.report_owed("Name report", "name-check", "name-report.md")))
-
-        # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
-        report = self.tracker.name_report(self.spec)
-        if not report:
-            raise self.stop_naming_denials("STOP  the Name check recorded no report on spec {}, so no name "
-                                   "was read and the spec stays open.".format(
-                                       self.spec_named()), result)
-        return self.read_held_names(report)
+        return self.read_held_names(self.run_judge(NAMES, base))
 
     def read_held_names(self, report):
-        self.names_read = report
-        held = self.log_dir / "name-check.md"
-        written(held, report + "\n")
+        held = self.hold_report(NAMES, report)
         self.say("NAMES the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))
 
@@ -2086,19 +2052,8 @@ class Loop:
         self.moved(NAME_CHECK)
         self.say("NAMES the rename ticket {} is closed. Checking it made each rename on spec "
                  "{}.".format(self.named(ticket), self.spec_named()))
-        result = self.run_clean_session(
-            "name-re-check", "Name re-check", PLUGIN + "spec-name-check {} {} {}".format(
-                self.spec, base, self.tracker.reference(ticket)), Recorded(
-                    NEW_REPORT_RECORDED, self.new_name_report,
-                    self.report_owed("new Name report", "name-check", "name-report.md")))
-
-        report = self.new_name_report()
-        if not report:
-            raise self.stop_naming_denials("STOP  the Name re-check recorded no new report on spec {}, so no "
-                                   "rename was checked and the spec stays open.".format(
-                                       self.spec_named()), result)
-        held = self.log_dir / "name-re-check.md"
-        written(held, report + "\n")
+        report = self.run_judge(NAMES, base, self.tracker.reference(ticket), again=True)
+        held = self.hold_report(NAMES, report, again=True)
         verdicts = read_rename_verdicts(report)
         if verdicts is None:
             raise stop("STOP  the Name re-check on spec {} holds no {} list, so no rename was "
@@ -2120,11 +2075,6 @@ class Loop:
                            "".join("      Not made: {}\n".format(unmade_said(unmade))
                                    for unmade in counted.unmade), held))
         self.say("NAMES every rename is made on spec {}".format(self.spec_named()))
-
-    # The Tracker hands back the newest report, so a check that recorded none reads the first.
-    def new_name_report(self):
-        report = self.tracker.name_report(self.spec)
-        return report if report != self.names_read else None
 
     # Its own ticket after the Gap ticket, so each build has one job and no later build brings a name.
     # A rerun reads the report an earlier run recorded, so the Name check and its rename ticket come once.
