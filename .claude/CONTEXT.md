@@ -368,10 +368,11 @@ as `build` does. A step is not a stage: the Dev loop has two stages, and each ho
 _Avoid_: Phase, part
 
 **Step time**:
-When one step of a run started and when it ended, the steps the script runs as well as the steps a
-Session runs. The driver keeps one for every step it runs, a rerun's too, and never writes over one,
-so the time a run took can be read back after it ends. The Position holds only the step now, and the
-Journal holds only what each Session gave back.
+When one piece of a run started and when it ended. A piece is a step, or the driver's own work
+between steps that reads no Steering: the baseline, a ticket's Land and the Full run. A judge's
+re-check counts under that judge's step. The driver keeps one for every piece it runs, a rerun's too,
+and never writes over one, so the pieces add up to the whole run and can be read back after it ends.
+The Position holds only the step now, and the Journal holds only what each Session gave back.
 _Avoid_: Timing, span, lap, duration
 
 **Suite**:
