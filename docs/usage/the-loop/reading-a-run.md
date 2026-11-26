@@ -133,7 +133,7 @@ drift check, then the Name check, then the full run:
 2026-09-28 18:31:39 DEEPEN no deepening is owed on spec #200
 2026-09-28 18:31:40 SCOPE the Simplify check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 18:31:40 SIMPLIFY looking for code spec #200 made harder than it has to be.
-2026-09-28 18:36:12 SIMPLIFY the report is recorded on spec #200. Read it at .spec-loop/200/simplify.md
+2026-09-28 18:36:12 SIMPLIFY the report is recorded on spec #200. Read it at .spec-loop/200/simplify-check.md
 2026-09-28 18:36:12 SIMPLIFY no cleanup is owed on spec #200
 2026-09-28 18:36:13 SCOPE the drift check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 18:36:13 DRIFT all tickets closed. Checking the result against spec #200.
@@ -287,8 +287,8 @@ after the last ticket: the Deepening check, the deepening tickets, the Simplify 
 ticket, the drift check, the Gap round, the Name check, the rename ticket, the Name re-check and the
 full run. The Deepening check prints as the `deepening-check` step, with its call, `claude -p
 "/skillworks:spec-deepening-check <spec> <base>" --session-id <new id>`, and the `deepening-ticket` line says
-each ticket it files is built through every step. The Simplify check prints as the `simplify` step,
-with its call, `claude -p "/skillworks:spec-simplify <spec> <base>" --session-id <new id>`, and the
+each ticket it files is built through every step. The Simplify check prints as the `simplify-check` step,
+with its call, `claude -p "/skillworks:spec-simplify-check <spec> <base>" --session-id <new id>`, and the
 `simplify-ticket` line says the ticket it files is built through every step. A judge your team turned
 off prints as its step with `off:` and the setting that turns it off, such as `deepening-check off:
 docs/skillworks/deepening-check.md sets limit to 0`, and its ticket line is left out.

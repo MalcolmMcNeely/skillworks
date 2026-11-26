@@ -7,12 +7,12 @@ has looked at the spec's work as a whole for code it made harder than it has to 
 
 So after [the Deepening check](deepening-check.md) and every deepening ticket it filed, and before
 [the drift check](drift-check.md), the script opens one more worktree and runs
-`/skillworks:spec-simplify <spec> <base>` in a Fresh Session. The Session is told to run only Trials,
-as the drift check is. It changes no code. It records one report with the spec, under the heading
-`## Simplify report`, through `tracker-publish simplify` with either Tracker. With the GitHub Tracker
-the report is a new comment on the spec issue. With the files Tracker the report goes at the end of
-the spec's `spec.md`, below any Deepening report and above any drift report. The script then reads the
-report back from the Tracker and keeps a copy at `.spec-loop/<spec>/simplify.md`, beside
+`/skillworks:spec-simplify-check <spec> <base>` in a Fresh Session. The Session is told to run only
+Trials, as the drift check is. It changes no code. It records one report with the spec, under the
+heading `## Simplify report`, through `tracker-publish simplify-check` with either Tracker. With the
+GitHub Tracker the report is a new comment on the spec issue. With the files Tracker the report goes at
+the end of the spec's `spec.md`, below any Deepening report and above any drift report. The script then
+reads the report back from the Tracker and keeps a copy at `.spec-loop/<spec>/simplify-check.md`, beside
 `deepening-check.md` and `drift.md`.
 
 ## What it reads
@@ -79,7 +79,7 @@ that is off does not run, and the log gets a `NOTE` line that says so:
 2026-09-28 18:31:40 NOTE  the Simplify check is off, because docs/skillworks/simplify-check.md sets enabled to false
 ```
 
-A dry run shows the `simplify` step as off, and shows no `simplify-ticket` line.
+A dry run shows the `simplify-check` step as off, and shows no `simplify-ticket` line.
 
 ## When it stops the loop
 
@@ -87,7 +87,7 @@ The loop stops, and the spec stays open, when:
 
 - the Simplify check recorded no report, after two Nudges. A check that recorded no report is Nudged
   first: the script resumes the same Session in its own worktree, and names what is missing and the
-  `tracker-publish simplify` command that records it;
+  `tracker-publish simplify-check` command that records it;
 - the Simplify check began its last message with a `BLOCKED` line. The loop stops at once, with no
   Nudge;
 - the report has no `### Findings` list. No Nudge is sent;

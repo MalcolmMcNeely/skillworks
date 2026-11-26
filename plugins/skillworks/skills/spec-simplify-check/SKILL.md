@@ -1,17 +1,17 @@
 ---
-name: spec-simplify
+name: spec-simplify-check
 argument-hint: "<spec> <base>"
 description: Read a spec's own commits for code harder than it has to be, judge them from the four angles of reuse, simplification, efficiency and altitude, and record the Simplify report with the spec.
 disable-model-invocation: true
 ---
 
-# Spec Simplify
+# Spec Simplify Check
 
 The Simplify check. `/skillworks:spec-loop` runs it once every ticket of the spec has Landed and the deepening tickets are built, before the drift check. It looks for one thing: code the spec's work made harder than it has to be. The loop files everything you list as one simplify ticket, and builds it like any ticket.
 
 Two arguments: the spec's number, then the commit the loop started from. The number is the spec's issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, with the files Tracker.
 
-`/skillworks:spec-simplify 42 a1b2c3d`
+`/skillworks:spec-simplify-check 42 a1b2c3d`
 
 The base commit bounds the search for the spec's commits. If it was not passed, read `.spec-loop/<spec>/base.sha`. If that is missing too, stop and say so. Do not guess a base.
 
@@ -82,7 +82,7 @@ Record the report with the spec. Its first line is `## Simplify report`, with ei
 Write it with the Write tool to `.spec-loop/<spec>/simplify-report.md` in this checkout, and record it with this one command, whichever the Tracker:
 
 ```bash
-tracker-publish simplify <spec> .spec-loop/<spec>/simplify-report.md
+tracker-publish simplify-check <spec> .spec-loop/<spec>/simplify-report.md
 ```
 
 Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.

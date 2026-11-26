@@ -96,7 +96,7 @@ or `tracker-publish deepening-check` refused twice, and its line names the comma
 
 The Simplify check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md` or `simplify-check.md`. It answers Blocked too when `spec-commits` or
-`tracker-publish simplify` refused twice, and its line names the command.
+`tracker-publish simplify-check` refused twice, and its line names the command.
 
 The drift check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md`, `surfaces.md` or `domain.md`. It answers Blocked too when `spec-commits` or
@@ -245,7 +245,7 @@ half-changed code. The Keep and the restart work as they do for any ticket.
 open:
 
 ```
-STOP  the Simplify report on spec #200 holds no ### Findings list, so no cleanup was read and the spec stays open. Read it at .spec-loop/200/simplify.md
+STOP  the Simplify report on spec #200 holds no ### Findings list, so no cleanup was read and the spec stays open. Read it at .spec-loop/200/simplify-check.md
 ```
 
 **A simplify ticket that fails.** [The simplify ticket](simplify-check.md#the-simplify-ticket) is

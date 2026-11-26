@@ -1502,7 +1502,7 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
 
 
 HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill", "show-steering", "spec-deepening-check",
-                 "spec-simplify")
+                 "spec-simplify-check")
 
 VISIBLE_SKILLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
                   "diagnosing-bugs", "prototype", "unslop", "architecture-tests", "skillsmith")
@@ -1799,7 +1799,7 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
 
 @pytest.mark.parametrize("page", [SKILLS / "what-next" / "SKILL.md", SKILLS / "review-changes" / "spec.md",
                                   SKILLS / "spec-drift" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md",
-                                  SKILLS / "spec-deepening-check" / "SKILL.md", SKILLS / "spec-simplify" / "SKILL.md"],
+                                  SKILLS / "spec-deepening-check" / "SKILL.md", SKILLS / "spec-simplify-check" / "SKILL.md"],
                          ids=lambda page: page.relative_to(SKILLS).as_posix())
 def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(page):
     text = page.read_text(encoding="utf-8")
@@ -2029,47 +2029,47 @@ def test_this_repos_deepening_check_file_holds_the_seeds_baseline_both_team_list
     assert [line for line in settings_block(ROOT / WHERE["deepening-check.md"]) if line.startswith("limit:")] != []
 
 
-def test_spec_simplify_takes_the_spec_and_its_base_and_reads_only_the_spec_commits():
-    spec_simplify = skill_text("spec-simplify")
+def test_spec_simplify_check_takes_the_spec_and_its_base_and_reads_only_the_spec_commits():
+    spec_simplify_check = skill_text("spec-simplify-check")
 
-    assert "`/skillworks:spec-simplify 42 a1b2c3d`" in spec_simplify
-    assert "spec-commits <spec> <base>" in spec_simplify
+    assert "`/skillworks:spec-simplify-check 42 a1b2c3d`" in spec_simplify_check
+    assert "spec-commits <spec> <base>" in spec_simplify_check
 
 
-def test_spec_simplify_judges_from_the_four_angles_and_hunts_no_correctness_bugs():
-    page = " ".join(skill_text("spec-simplify").split())
+def test_spec_simplify_check_judges_from_the_four_angles_and_hunts_no_correctness_bugs():
+    page = " ".join(skill_text("spec-simplify-check").split())
 
     for angle in ("**Reuse.**", "**Simplification.**", "**Efficiency.**", "**Altitude.**"):
         assert angle in page, angle
     assert "**Hunt no correctness bugs.**" in page
 
 
-def test_spec_simplify_never_calls_simplify_and_changes_no_code():
-    page = " ".join(skill_text("spec-simplify").split())
+def test_spec_simplify_check_never_calls_simplify_and_changes_no_code():
+    page = " ".join(skill_text("spec-simplify-check").split())
 
     assert "**Never call `/simplify`.**" in page
     assert "**Report only. Change no code.**" in page
 
 
-def test_spec_simplify_gives_the_shape_of_the_simplify_report_the_loop_reads():
-    spec_simplify = skill_text("spec-simplify")
-    page = " ".join(spec_simplify.split())
+def test_spec_simplify_check_gives_the_shape_of_the_simplify_report_the_loop_reads():
+    spec_simplify_check = skill_text("spec-simplify-check")
+    page = " ".join(spec_simplify_check.split())
 
-    assert "The first line is `{}`.".format(SIMPLIFY_REPORT) in spec_simplify
-    assert "The `### Findings` list comes next." in spec_simplify
+    assert "The first line is `{}`.".format(SIMPLIFY_REPORT) in spec_simplify_check
+    assert "The `### Findings` list comes next." in spec_simplify_check
     assert "With nothing found, the list says `- None`." in page
-    assert "tracker-publish simplify <spec> .spec-loop/<spec>/simplify-report.md" in spec_simplify
+    assert "tracker-publish simplify-check <spec> .spec-loop/<spec>/simplify-report.md" in spec_simplify_check
 
 
-def test_spec_simplify_skips_the_check_when_its_steering_file_turns_it_off():
-    page = " ".join(skill_text("spec-simplify").split())
+def test_spec_simplify_check_skips_the_check_when_its_steering_file_turns_it_off():
+    page = " ".join(skill_text("spec-simplify-check").split())
 
     assert "`enabled` in the YAML block at its end" in page
 
 
 @pytest.mark.parametrize("command", ["spec-commits", "tracker-publish"])
-def test_spec_simplify_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
-    refused = [paragraph for paragraph in skill_text("spec-simplify").split("\n\n")
+def test_spec_simplify_check_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
+    refused = [paragraph for paragraph in skill_text("spec-simplify-check").split("\n\n")
                if "If `{}` refuses".format(command) in paragraph]
 
     assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
@@ -2077,8 +2077,8 @@ def test_spec_simplify_ends_a_command_that_refuses_twice_on_the_blocked_line_und
             for paragraph in refused] == [True]
 
 
-def test_spec_simplify_stops_on_a_missing_steering_file_and_names_setup():
-    page = " ".join(skill_text("spec-simplify").split())
+def test_spec_simplify_check_stops_on_a_missing_steering_file_and_names_setup():
+    page = " ".join(skill_text("spec-simplify-check").split())
 
     assert "`steering-file docs/skillworks/simplify-check.md` says the file is missing, stop." in page
     assert "`/skillworks:skillworks-setup` writes it" in page
@@ -2777,7 +2777,7 @@ STEERING_READERS = {
     "file-placement.md": ["review-changes/architecture.md"],
     "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md", "codebase-design/DEEPENING.md"],
     "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
-                         "spec-deepening-check/SKILL.md", "spec-simplify/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md",
+                         "spec-deepening-check/SKILL.md", "spec-simplify-check/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md",
                          "review-changes/SKILL.md", "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
                   "spec-names/SKILL.md", "spec-deepening-check/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
@@ -2791,10 +2791,10 @@ STEERING_READERS = {
     "review-spec.md": ["review-changes/spec.md"],
     "suite.json": ["implement/SKILL.md", "architecture-tests/SKILL.md", "resolve-conflict/SKILL.md"],
     "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
-                  "spec-deepening-check/SKILL.md", "spec-simplify/SKILL.md", "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
+                  "spec-deepening-check/SKILL.md", "spec-simplify-check/SKILL.md", "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
     "surfaces.md": ["grill/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "review-changes/spec.md"],
     "deepening-check.md": ["spec-deepening-check/SKILL.md"],
-    "simplify-check.md": ["spec-simplify/SKILL.md"],
+    "simplify-check.md": ["spec-simplify-check/SKILL.md"],
 }
 
 

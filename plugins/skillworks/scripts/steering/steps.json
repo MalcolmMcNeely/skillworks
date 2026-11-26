@@ -128,6 +128,15 @@
         "docs/skillworks/issue-tracker.md",
         "docs/skillworks/domain.md"
       ]
+    },
+    {
+      "name": "simplify-check",
+      "stage": "the spec loop",
+      "description": "Looks for code the spec made harder than it has to be, and files one ticket to clean it up.",
+      "on-demand": [
+        "docs/skillworks/simplify-check.md",
+        "docs/skillworks/issue-tracker.md"
+      ]
     }
   ]
 }

@@ -30,6 +30,7 @@ STEP_LIST = (
     "  suite            Runs every check in the Suite file, with no Session.\n"
     "  finish           Commits the ticket and closes it with its Closing note.\n"
     "  deepening-check  Looks for modules the spec left shallow, and files a ticket to deepen each one.\n"
+    "  simplify-check   Looks for code the spec made harder than it has to be, and files one ticket to clean it up.\n"
     "\n"
     "The step map: https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/the-loop/step-map.md\n"
 )
@@ -231,6 +232,36 @@ def test_the_deepening_check_shows_its_own_file_the_tracker_and_the_domain_docs_
         "\n"
         "==> [repo] docs/skillworks/domain.md <==\n"
         "# Domain\n"
+    )), ran.err
+
+
+def test_the_simplify_check_shows_its_own_file_and_the_tracker_even_when_turned_off(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, "docs/skillworks/simplify-check.md", "# Simplify\n\n```yaml\nenabled: false\n```\n")
+    write(repo.work, "docs/skillworks/issue-tracker.md", "# Tracker\n")
+
+    ran = show("simplify-check", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the simplify-check step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  on demand  [repo]     docs/skillworks/simplify-check.md\n"
+        "  on demand  [repo]     docs/skillworks/issue-tracker.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [repo] docs/skillworks/simplify-check.md <==\n"
+        "# Simplify\n"
+        "\n"
+        "```yaml\n"
+        "enabled: false\n"
+        "```\n"
+        "\n"
+        "==> [repo] docs/skillworks/issue-tracker.md <==\n"
+        "# Tracker\n"
     )), ran.err
 
 

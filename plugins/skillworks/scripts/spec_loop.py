@@ -504,7 +504,7 @@ def told_plan():
     named = {told: [step.name for step in STEPS if step.told == told]
              for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
     named[TOLD_TO_BUILD].append("cut")
-    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify", "drift", "re-check", "names", "name-re-check"]
+    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify-check", "drift", "re-check", "names", "name-re-check"]
     return "  each Session above is told, after its command\n" + "".join(
         "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
 
@@ -1305,7 +1305,7 @@ class Loop:
 
     def after_tickets_plan(self):
         deepening_check = 'claude -p "{}spec-deepening-check {} <base>'.format(PLUGIN, self.spec)
-        simplify = 'claude -p "{}spec-simplify {} <base>'.format(PLUGIN, self.spec)
+        simplify_check = 'claude -p "{}spec-simplify-check {} <base>'.format(PLUGIN, self.spec)
         drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
         names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
         deepening = (plan_line("deepening-check", deepening_check + '" --session-id <new id>',
@@ -1316,13 +1316,13 @@ class Loop:
                                  "above")
                      if self.deepening_limit() else
                      plan_line("deepening-check", "off: " + DEEPENING_OFF))
-        simplifying = (plan_line("simplify", simplify + '" --session-id <new id>',
+        simplifying = (plan_line("simplify-check", simplify_check + '" --session-id <new id>',
                                  "a Simplify report recorded, a Findings list")
                        + nudges_line(REPORT_RECORDED)
                        + plan_line("simplify-ticket", "one ticket under the spec that quotes every "
                                    "line of the Findings list, built through every step above")
                        if self.simplify_enabled() else
-                       plan_line("simplify", "off: " + SIMPLIFY_OFF))
+                       plan_line("simplify-check", "off: " + SIMPLIFY_OFF))
         return ("  after every ticket is closed\n"
                 + deepening
                 + simplifying
@@ -1849,10 +1849,11 @@ class Loop:
         self.say_scope("Simplify check", base)
         self.say("SIMPLIFY looking for code spec {} made harder than it has to be.".format(
             self.spec_named()))
-        result = self.run_clean_session("simplify", "Simplify check", PLUGIN + "spec-simplify {} {}".format(
-            self.spec, base), Recorded(
+        result = self.run_clean_session(
+            "simplify-check", "Simplify check", PLUGIN + "spec-simplify-check {} {}".format(
+                self.spec, base), Recorded(
                 REPORT_RECORDED, lambda: self.tracker.simplify_report(self.spec),
-                self.report_owed("Simplify report", "simplify", "simplify-report.md")))
+                self.report_owed("Simplify report", "simplify-check", "simplify-report.md")))
 
         # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
         report = self.tracker.simplify_report(self.spec)
@@ -1863,7 +1864,7 @@ class Loop:
         return report
 
     def read_simplify(self, report):
-        held = self.log_dir / "simplify.md"
+        held = self.log_dir / "simplify-check.md"
         written(held, report + "\n")
         self.say("SIMPLIFY the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))

@@ -104,7 +104,7 @@ NAME_CHECK = "/skillworks:spec-names"
 
 DEEPENING_CHECK = "/skillworks:spec-deepening-check"
 
-SIMPLIFY_CHECK = "/skillworks:spec-simplify"
+SIMPLIFY_CHECK = "/skillworks:spec-simplify-check"
 
 JUDGES = (DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift", NAME_CHECK)
 
@@ -3523,7 +3523,7 @@ def test_the_dry_run_prints_each_set_of_words_beside_the_steps_that_get_it(loop)
 
     assert ("  each Session above is told, after its command\n"
             "    build, fix, cut:\n    " + TOLD_TO_BUILD + "\n"
-            "    standards, spec, architecture, sweep, deepening-check, simplify, drift, re-check, names, "
+            "    standards, spec, architecture, sweep, deepening-check, simplify-check, drift, re-check, names, "
             "name-re-check:\n"
             "    " + TOLD_TO_JUDGE + "\n"
             "    finish:\n    " + TOLD_TO_FINISH + "\n") in ran.out
@@ -5128,7 +5128,7 @@ TAXED = "`src/orders/totals.py`, efficiency: the tax rate is read for every line
 SIMPLIFY_TICKET = "162"
 
 SIMPLIFY_OWED = ("Spec #158 holds no Simplify report yet. Record the report you wrote with "
-                 "tracker-publish simplify 158 .spec-loop/158/simplify-report.md")
+                 "tracker-publish simplify-check 158 .spec-loop/158/simplify-report.md")
 
 
 def simplified(loop, report, *landing, deepening=NO_STRONG):
@@ -5174,7 +5174,7 @@ def test_the_simplify_check_s_log_names_its_scope_its_start_and_its_report(loop)
     assert "SIMPLIFY looking for code spec #158 made harder than it has to be." in log
     assert "SIMPLIFY the report is recorded on spec #158. Read it at" in log
     assert "SIMPLIFY no cleanup is owed on spec #158" in log
-    assert (loop.records() / "simplify.md").read_text(encoding="utf-8") == (
+    assert (loop.records() / "simplify-check.md").read_text(encoding="utf-8") == (
         NO_FINDINGS.removeprefix("## Simplify report\n\n"))
 
 
@@ -5191,8 +5191,8 @@ def test_a_simplify_check_that_records_no_report_is_nudged_twice_then_stops_the_
 
     assert ran.status == 1
     assert unstamped_nudges(loop) == [
-        "NUDGE spec #158 simplify     1 of 2, failed report-recorded",
-        "NUDGE spec #158 simplify     2 of 2, failed report-recorded"]
+        "NUDGE spec #158 simplify-check 1 of 2, failed report-recorded",
+        "NUDGE spec #158 simplify-check 2 of 2, failed report-recorded"]
     assert stopped_after_the_last_nudge(loop)
     assert ("STOP  the Simplify check recorded no report on spec #158, so no cleanup was read and "
             "the spec stays open.") in loop.log()
@@ -5221,13 +5221,13 @@ def test_a_blocked_simplify_check_stops_the_loop_at_once(loop, runner):
     sessions = given_sessions_that_report(loop)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.simplify_report = "Looks good to me.\n"
-    sessions.says["spec-simplify"] = "BLOCKED docs/skillworks/simplify-check.md is missing."
+    sessions.says["spec-simplify-check"] = "BLOCKED docs/skillworks/simplify-check.md is missing."
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
     assert nudge_lines(loop) == []
-    assert ("STOP  spec #158 simplify is Blocked: BLOCKED docs/skillworks/simplify-check.md is "
+    assert ("STOP  spec #158 simplify-check is Blocked: BLOCKED docs/skillworks/simplify-check.md is "
             "missing.") in loop.log()
     assert prompts_asking(runner, "/skillworks:spec-drift") == []
 
@@ -5304,11 +5304,11 @@ def test_the_dry_run_names_the_deepening_check_then_the_simplify_check_then_the_
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
     assert steps[steps.index("deepening-check"):steps.index("drift") + 1] == [
-        "deepening-check", "deepening-ticket", "simplify", "simplify-ticket", "drift"]
-    assert planned_call(ran, "simplify") == (
-        'simplify     claude -p "/skillworks:spec-simplify 158 <base>" --session-id <new id>')
-    assert planned_checks(ran, "simplify") == "a Simplify report recorded, a Findings list"
-    assert planned_nudges(ran, "simplify") == "up to 2, on report-recorded"
+        "deepening-check", "deepening-ticket", "simplify-check", "simplify-ticket", "drift"]
+    assert planned_call(ran, "simplify-check") == (
+        'simplify-check claude -p "/skillworks:spec-simplify-check 158 <base>" --session-id <new id>')
+    assert planned_checks(ran, "simplify-check") == "a Simplify report recorded, a Findings list"
+    assert planned_nudges(ran, "simplify-check") == "up to 2, on report-recorded"
     assert ("one ticket under the spec that quotes every line of the Findings list, built through "
             "every step above") in planned_call(ran, "simplify-ticket")
 
@@ -5380,6 +5380,16 @@ def test_a_deepening_report_recorded_under_the_old_deepen_kind_stops_the_check_f
     ran = loop.run(SPEC)
 
     assert (ran.status, prompts_asking(runner, DEEPENING_CHECK)) == (0, []), said(ran)
+
+
+# The report kind simplify, now simplify-check, wrote this same heading, so a report it recorded still counts.
+def test_a_simplify_report_recorded_under_the_old_simplify_kind_stops_the_check_from_running_again(loop, runner):
+    tracker, _ = rerun_holding(loop)
+    tracker.posted_before = ["## Simplify report\n\n### Findings\n\n- None\n"]
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, prompts_asking(runner, SIMPLIFY_CHECK)) == (0, []), said(ran)
 
 
 def test_a_rerun_after_a_simplify_check_that_filed_nothing_runs_no_simplify_check(loop, runner):
@@ -5469,11 +5479,11 @@ def test_the_dry_run_shows_each_judge_that_is_off(loop):
 
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
-    assert steps[:steps.index("drift")][-2:] == ["deepening-check", "simplify"]
+    assert steps[:steps.index("drift")][-2:] == ["deepening-check", "simplify-check"]
     assert planned_call(ran, "deepening-check") == (
         "deepening-check off: docs/skillworks/deepening-check.md sets limit to 0")
-    assert planned_call(ran, "simplify") == (
-        "simplify     off: docs/skillworks/simplify-check.md sets enabled to false")
+    assert planned_call(ran, "simplify-check") == (
+        "simplify-check off: docs/skillworks/simplify-check.md sets enabled to false")
 
 
 # --- the Bash limit each Session runs with -----------------------------------
@@ -7369,7 +7379,7 @@ def test_the_step_list_holds_the_steps_of_the_dev_loop_in_order():
         ("cut", THE_SPEC_LOOP), ("build", THE_SPEC_LOOP), ("standards", THE_SPEC_LOOP),
         ("spec", THE_SPEC_LOOP), ("architecture", THE_SPEC_LOOP), ("fix", THE_SPEC_LOOP),
         ("sweep", THE_SPEC_LOOP), ("suite", THE_SPEC_LOOP), ("finish", THE_SPEC_LOOP),
-        ("deepening-check", THE_SPEC_LOOP)]
+        ("deepening-check", THE_SPEC_LOOP), ("simplify-check", THE_SPEC_LOOP)]
 
 
 def test_the_deepening_check_reads_its_own_file_the_tracker_and_the_domain_docs_on_demand():
@@ -7377,6 +7387,12 @@ def test_the_deepening_check_reads_its_own_file_the_tracker_and_the_domain_docs_
 
     assert held["deepening-check"] == ["docs/skillworks/deepening-check.md",
                                        "docs/skillworks/issue-tracker.md", "docs/skillworks/domain.md"]
+
+
+def test_the_simplify_check_reads_its_own_file_and_the_tracker_on_demand():
+    held = {step["name"]: step["on-demand"] for step in listed_steps()}
+
+    assert held["simplify-check"] == ["docs/skillworks/simplify-check.md", "docs/skillworks/issue-tracker.md"]
 
 
 def test_no_two_steps_in_the_step_list_share_a_name():
