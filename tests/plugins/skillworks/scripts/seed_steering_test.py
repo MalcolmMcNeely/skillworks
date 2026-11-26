@@ -4623,3 +4623,29 @@ def test_the_setup_page_asks_the_steering_repo_question_under_sidecar_steering()
 def test_the_sidecar_steering_page_says_how_the_first_member_pushes_and_a_new_member_joins(heading):
     assert heading in SIDECAR_STEERING_PAGE.read_text(encoding="utf-8").splitlines()
 
+
+EVAL_RUNS = SKILLS / "write-generation-prompt" / "eval-runs.md"
+
+EVAL_RUN_READS = {
+    "write-generation-prompt": "[eval-runs.md](eval-runs.md)",
+    "write-judge-prompt": "`${CLAUDE_PLUGIN_ROOT}/skills/write-generation-prompt/eval-runs.md`",
+}
+
+
+@pytest.mark.parametrize("skill", list(EVAL_RUN_READS))
+def test_each_prompt_skill_reads_the_eval_run_rules_from_the_one_shared_file(skill):
+    text = skill_text(skill)
+
+    assert EVAL_RUN_READS[skill] in text
+    assert "Use only the quick run" not in text
+
+
+def test_the_shared_eval_run_file_holds_every_eval_run_rule():
+    rules = " ".join(EVAL_RUNS.read_text(encoding="utf-8").split())
+
+    assert "Use only the quick run the eval docs describe, and never a full run." in rules
+    assert "those limits win over the quick run" in rules
+    assert "**At the keyboard**, start each eval run in the background" in rules
+    assert "**In a Session a script started**, such as a loop step, run each eval run in the foreground." in rules
+    assert "the driver's words rule each \"ask the person and wait\"" in rules
+

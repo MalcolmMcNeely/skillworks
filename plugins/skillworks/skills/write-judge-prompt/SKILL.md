@@ -35,16 +35,7 @@ When the app has no eval harness, stop. An eval judge needs the code that runs t
 
 ## How each eval run runs
 
-Use only the quick run the eval docs describe, and never a full run. A full run takes too long to repeat on each try.
-
-Where the repo's own instructions limit eval runs, such as for loop work, those limits win over the quick run. Use the smaller run, and say in the report which instruction set it.
-
-Where a run runs depends on how this Session started:
-
-- **At the keyboard**, start each eval run in the background, and wait for its notification.
-- **In a Session a script started**, such as a loop step, run each eval run in the foreground. A background command ends with the Session's last turn, so its result would be lost.
-
-In a loop, the driver's words rule each "ask the person and wait" in this skill.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/write-generation-prompt/eval-runs.md`, and run every eval run as it says.
 
 ## Before you write an eval judge
 

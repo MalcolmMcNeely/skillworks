@@ -31,22 +31,13 @@ This skill holds no fact about any one app. The code and the repo's own docs are
 
 Each answer needs a `file:line` or a quoted doc. A question you cannot answer is reported as "not found", with where you looked. Do not guess.
 
-**Intent** is what the owners of the app have settled about the output. Code cannot show it. Take it from the request, from a ticket or spec the request names, or from the prompt itself. If the work depends on a point that none of these settles, ask the person, and wait.
+**Intent** is what the owners of the app have settled about the output. Code cannot show it. Take it from the request, from a ticket or spec the request names, or from the prompt itself. If the work depends on a point that none of these settles, ask the person and wait.
 
 Once a point about the output is settled, write it into the prompt, where the model reads it. A point about the evals goes in the eval docs. Keep neither in a side file, because a copy goes stale while the prompt and the eval docs stay true. A prompt line that disagrees with a settled point is a fault to fix.
 
 ## How each eval run runs
 
-Use only the quick run the eval docs describe, and never a full run. A full run takes too long to repeat on each try.
-
-Where the repo's own instructions limit eval runs, such as for loop work, those limits win over the quick run. Use the smaller run, and say in the report which instruction set it.
-
-Where a run runs depends on how this Session started:
-
-- **At the keyboard**, start each eval run in the background, and wait for its notification.
-- **In a Session a script started**, such as a loop step, run each eval run in the foreground. A background command ends with the Session's last turn, so its result would be lost.
-
-In a loop, the driver's words rule each "ask the person, and wait" in this skill.
+Read [eval-runs.md](eval-runs.md), and run every eval run as it says.
 
 ## Before you change anything
 
