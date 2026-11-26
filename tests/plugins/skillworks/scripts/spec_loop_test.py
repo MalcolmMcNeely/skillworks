@@ -5853,6 +5853,14 @@ def test_the_watching_a_run_page_says_where_the_time_went_with_one_colour_for_ea
     assert "A running card shows no bar of where the time went." in watching
 
 
+def test_the_watching_a_run_page_says_clear_all_finished_clears_finished_cards_only():
+    watching = flat(page_text(WATCHING_A_RUN_PAGE))
+
+    assert ("`Clear all finished` clears finished cards only. A stopped or gone card stays, because it "
+            "still needs you.") in watching
+    assert "It shows only when two or more cards are finished" in watching
+
+
 @pytest.mark.parametrize("step", ["baseline", "cut", "deepening-check", "simplify-check", "drift-check",
                                   "name-check", "full-run"])
 def test_the_watching_a_run_page_names_each_piece_beyond_the_ticket_steps(step):

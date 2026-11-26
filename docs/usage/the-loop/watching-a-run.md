@@ -215,6 +215,11 @@ Press `Clear` to take the card out of the pane. The mod keeps the clear against 
 driver, so the same run does not come back in your next Session. When you start that spec again, the
 new run shows in the pane.
 
+Above the cards, a `Clear all finished` button takes every finished card out of the pane with one
+press, and names how many it clears, such as `Clear all finished (2)`. It shows only when two or more
+cards are finished. `Clear all finished` clears finished cards only. A stopped or gone card stays,
+because it still needs you. The mod keeps these clears the same way as a `Clear`.
+
 ## When the pane opens
 
 The pane opens by itself when a loop starts a run that this Session has not seen before. When you

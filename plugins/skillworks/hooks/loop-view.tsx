@@ -416,12 +416,14 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Button, Text } = $.ui.resolve(e)
-    const clear = async (run: string) => {
-      cleared.add(run)
-      loops = loops.filter(loop => loop.run !== run)
+    const clear = async (...runs: string[]) => {
+      for (const run of runs) cleared.add(run)
+      loops = loops.filter(loop => !runs.includes(loop.run))
       $.ui.invalidate('ui.render')
       await $.store.set(CLEARED, [...cleared].slice(-CLEARS_KEPT))
     }
+    // A stopped or gone loop still needs the developer, so one press never takes it off.
+    const finished = loops.filter(loop => stateOf(loop, now) === 'finished')
     const ticketRow = (loop: Loop, row: TicketRow) => {
       const isNow = row.number === loop.ticket?.number
       return (
@@ -438,6 +440,10 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column">
         {loops.length === 0 && <Text dimColor>No loop has a Position in this clone.</Text>}
+        {finished.length >= 2 && (
+          <Button key="clear-all-finished" label={`Clear all finished (${finished.length})`}
+            onPress={() => clear(...finished.map(loop => loop.run))} />
+        )}
         {loops.map(loop => {
           if (hasEnded(loop, now)) {
             const state = stateOf(loop, now)

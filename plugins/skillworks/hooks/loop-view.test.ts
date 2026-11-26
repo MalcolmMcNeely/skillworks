@@ -696,6 +696,100 @@ test('a new run of a cleared spec shows in the pane again', async ($, on) => {
   expect((await lines($))[0]).toBe('Spec #589 · building tickets')
 })
 
+const TWO_FINISHED_AND_A_STOPPED = {
+  '589': FINISHED,
+  '600': { ...FINISHED, spec: '600', run: 'run-c' },
+  '601': { ...STOPPED, spec: '601', run: 'run-d' },
+}
+
+async function clearAllButtons($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const found = (await ui.findAll({ type: 'Button' }))
+    .map(button => String(button.props.label ?? button.text ?? ''))
+    .filter(label => label.startsWith('Clear all finished'))
+  await ui.unmount()
+  return found
+}
+
+async function allFinishedClearedByTheDeveloper($: Engine) {
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const button = (await ui.findAll({ type: 'Button' }))
+    .find(each => String(each.props.label ?? each.text ?? '').startsWith('Clear all finished'))
+  await ui.press({ key: button?.key ?? '' })
+  await ui.unmount()
+}
+
+test('Clear all finished names how many finished cards it clears', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, TWO_FINISHED_AND_A_STOPPED)
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await clearAllButtons($)).toEqual(['Clear all finished (2)'])
+})
+
+test('Clear all finished takes every finished card off and leaves the stopped card', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, TWO_FINISHED_AND_A_STOPPED)
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+
+  // Act
+  await allFinishedClearedByTheDeveloper($)
+
+  // Assert
+  expect((await cards($)).map(card => card.spec)).toEqual(['601'])
+})
+
+test('with one finished card there is no Clear all finished', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, { '589': FINISHED, '601': { ...STOPPED, spec: '601', run: 'run-d' } })
+  const { start } = claudeCode(on)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect(await clearAllButtons($)).toEqual([])
+})
+
+test('runs cleared by Clear all finished stay out of the pane in a new Session', async ($, on) => {
+  // Arrange
+  mock.clock(on, { now: NOW })
+  cloneHolding(on, TWO_FINISHED_AND_A_STOPPED)
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+  await allFinishedClearedByTheDeveloper($)
+
+  // Act
+  await $.session.start(start)
+
+  // Assert
+  expect((await cards($)).map(card => card.spec)).toEqual(['601'])
+})
+
+test('a spec cleared by Clear all finished shows again once it runs under a new run', async ($, on) => {
+  // Arrange
+  const clock = mock.clock(on, { now: NOW })
+  const { positions } = cloneHolding(on, TWO_FINISHED_AND_A_STOPPED)
+  const { start } = claudeCode(on)
+  await $.session.start(start)
+  await allFinishedClearedByTheDeveloper($)
+
+  // Act
+  positions['589'] = running({ run: 'run-b' })
+  await clock.advance(3_000)
+
+  // Assert
+  expect((await cards($)).map(card => card.spec)).toEqual(['589', '601'])
+})
+
 test('a running card shows, from the top, the bar, the path row, the ticket with its steps, the time left and the tickets', async ($, on) => {
   // Arrange
   mock.clock(on, { now: NOW })
