@@ -6,7 +6,7 @@ argument-hint: "[the failure or score the eval judge should catch]"
 
 You produce a new eval judge, a change to an eval judge, or a check of an eval judge against human labels, and you report how well the eval judge agrees with people. The typed text names the failure or the score, and may name a ticket or spec. Other lines that arrive with the request are not arguments.
 
-In this skill, an **output** is one text a model returns for one case. The **generator** is the model call whose output an eval scores, and an **eval judge** is the model call that scores that output. An eval judge decides which model and which prompt ship, so an eval judge nobody has checked turns every score into a guess. Most of this skill is about earning that trust, and little of it is about wording.
+In this skill, an **output** is one text a model returns for one case. The **generation call** is the model call whose output an eval scores, and an **eval judge** is the model call that scores that output. An eval judge decides which model and which prompt ship, so an eval judge nobody has checked turns every score into a guess. Most of this skill is about earning that trust, and little of it is about wording.
 
 Before you write any eval judge prompt, call the Skill tool with "skillworks:skillsmith", once, because its wording rules hold for an eval judge prompt. This skill wins on two points:
 
@@ -19,8 +19,8 @@ This skill holds no fact about any one app. The code and the repo's own docs are
 
 1. How does the harness run? What quick run do its docs describe? How do you run only some of its cases?
 2. Do the repo's own instructions limit eval runs, such as for loop work?
-3. Where is each generator output, eval judge score and reason stored?
-4. How do you re-score stored outputs by calling only the eval judge? A harness that caches generator replies does this when only the eval judge prompt changed. If the harness cannot, say that every check costs a run of the generator too.
+3. Where is each output of the generation call, and each eval judge score and reason, stored?
+4. How do you re-score stored outputs by calling only the eval judge? A harness that caches the generation call's replies does this when only the eval judge prompt changed. If the harness cannot, say that every check costs a run of the generation call too.
 5. Where do the eval judge prompts live, and how does code load them?
 6. What verdict type does the code parse? Give its scale and what counts as a pass.
 7. Which model, provider and family is the eval judge? What keeps an eval judge from scoring its own family?
@@ -29,7 +29,7 @@ This skill holds no fact about any one app. The code and the repo's own docs are
 
 A question you cannot answer is reported as "not found", with where you looked. Do not guess.
 
-When the app has no eval harness, stop. An eval judge needs the code that runs the generator over cases, the stored outputs, and the call to the eval judge. Say which of those is missing, and say that nothing was written.
+When the app has no eval harness, stop. An eval judge needs the code that runs the generation call over cases, the stored outputs, and the call to the eval judge. Say which of those is missing, and say that nothing was written.
 
 **Decisions** about the evals come from the request, from a ticket or spec the request names, or from the eval docs. Examples are a choice against code checks, or where label sheets go. If the work depends on a point none of these settles, ask the person and wait. Once a point is settled, write it into the eval docs, where the next reader finds it, and not into a side file.
 
@@ -111,10 +111,10 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/write-generation-prompt/provider-questions.md
 - **Read every disagreement, then mend:**
   - **Low TPR**, where the eval judge fails good output: find what the good outputs it failed have in common, say in the Pass definition that this earns a PASS, and give a Pass example that shows it.
   - **Low TNR**, where the eval judge passes bad output: make the Fail definition stricter, and add a close-call Fail example.
-  - **Both low:** propose a stronger eval judge model, still from another family than every generator.
+  - **Both low:** propose a stronger eval judge model, still from another family than every generation call's model.
   - **Both stuck after a few rounds:** split the criterion.
   - **A label looks wrong:** ask the labeller. Never change a label yourself.
-- **The bar.** Aim for 0.9 on both TPR and TNR. Below 0.8 on either, the eval judge is not fit to rank generators, so say so plainly.
+- **The bar.** Aim for 0.9 on both TPR and TNR. Below 0.8 on either, the eval judge is not fit to rank generation calls, so say so plainly.
 - **Run the test set once,** at the end, and report its numbers beside the working-set numbers.
 - **Check the spread.** Re-score the working set once more with nothing changed, and count the verdicts that flipped. An eval judge that flips on more than a few outputs needs clearer definitions. More votes do not help when the eval judge is wrong the same way each time.
 - **After any eval judge change, re-score the baseline outputs** under a run name that names the change. Use the baseline's settings, so that only the eval judge is called. Scores from different eval judge versions do not compare.
@@ -131,4 +131,4 @@ End with a message that holds every item below:
 - Each map answer you could not find, and each doc that disagreed with the code.
 - Each decision left for the person.
 
-This skill changes eval judge prompts and the label sheet. It changes eval judge code and the eval docs only once the person agrees, except the line that says where label sheets go. It leaves the generation prompt and the generator's settings alone, because a change to them in the same pass makes the result impossible to pin on either.
+This skill changes eval judge prompts and the label sheet. It changes eval judge code and the eval docs only once the person agrees, except the line that says where label sheets go. It leaves the generation prompt and the generation call's settings alone, because a change to them in the same pass makes the result impossible to pin on either.

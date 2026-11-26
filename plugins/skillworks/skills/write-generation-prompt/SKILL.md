@@ -6,7 +6,7 @@ argument-hint: "[what is wrong, or what the prompt should do]"
 
 You produce a change to a text-generation prompt and an eval result that shows whether the change helped. The typed text says what is wrong or what the prompt should do, and may name a ticket or spec. Other lines that arrive with the request are not arguments.
 
-In this skill, an **output** is one text the model returns for one case. The **generator** is the model call whose output an eval scores, and an **eval judge** is the model call that scores it.
+In this skill, an **output** is one text the model returns for one case. The **generation call** is the model call whose output an eval scores, and an **eval judge** is the model call that scores it.
 
 Before you write any prompt text, call the Skill tool with "skillworks:skillsmith", once, because a runtime prompt is a document a model reads and skillsmith's wording rules hold for it. On one point this skill wins: a real limit on an output field, such as a field size another system enforces, is a format rule. Keep that limit, with its reason, even though skillsmith warns against word caps.
 
@@ -47,7 +47,7 @@ Read [eval-runs.md](eval-runs.md), and run every eval run as it says.
    - **Why it is cheap.** Every later run uses the same settings, so each comparison is a quick run against a quick run, like for like.
    - **Reuse.** When the harness caches replies, a rerun with nothing changed reads from the cache, so first look for a stored run with the same settings and reuse it.
    - **No quick run in the docs.** Build the cheapest run from the options the docs list: the fewest iterations, one model, only the touched cases. Say in the report that you built it.
-   - **No evals.** Stop. Name what is missing: the code that runs the generator over cases, the stored outputs, or the call to the eval judge. Say that no change can be measured and that nothing was written. Ask the person whether to build evals first (`write-judge-prompt` covers the eval judge side) or to go ahead unmeasured, and wait for the answer.
+   - **No evals.** Stop. Name what is missing: the code that runs the generation call over cases, the stored outputs, or the call to the eval judge. Say that no change can be measured and that nothing was written. Ask the person whether to build evals first (`write-judge-prompt` covers the eval judge side) or to go ahead unmeasured, and wait for the answer.
 
 ## Provider questions
 

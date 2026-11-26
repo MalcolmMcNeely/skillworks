@@ -1,6 +1,6 @@
 # Provider questions
 
-Each question asks about the provider and the model a call uses: the generator, or an eval judge. These facts change between model releases, so never answer one from memory.
+Each question asks about the provider and the model a call uses: the generation call, or an eval judge. These facts change between model releases, so never answer one from memory.
 
 Answer each question that bears on the call from the provider's current docs for that model, and give the URL of the page that answers it. A question the docs do not answer is "not found", with where you looked. Report each answer, with its URL, in the report.
 
