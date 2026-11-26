@@ -28,7 +28,7 @@ class Judge(NamedTuple):
         return self.name.replace("-check", "-report") + ".md"
 
     @property
-    def rechecks(self):
+    def has_re_check(self):
         return bool(self.lost_again)
 
     def session(self, again=False):
@@ -59,7 +59,7 @@ DRIFT = Judge(
     earlier=lambda tracker, spec: tracker.earlier_drift_report(spec),
     filed=lambda title: title == GAP_TITLE,
     lost="nothing was counted", lost_again="the Gap items were not judged again")
-NAMES = Judge(
+NAME = Judge(
     "name-check", NAME_CHECK, "Name report",
     read=lambda tracker, spec: tracker.name_report(spec),
     earlier=lambda tracker, spec: tracker.earlier_name_report(spec),
@@ -67,10 +67,10 @@ NAMES = Judge(
     lost="no name was read", lost_again="no rename was checked")
 
 # In the order the loop runs them.
-JUDGES = (DEEPENING, SIMPLIFY, DRIFT, NAMES)
+JUDGES = (DEEPENING, SIMPLIFY, DRIFT, NAME)
 
 
 def told_to_judge():
     return [session for judge in JUDGES
-            for session in ([judge.session(), judge.session(again=True)] if judge.rechecks
+            for session in ([judge.session(), judge.session(again=True)] if judge.has_re_check
                             else [judge.session()])]
