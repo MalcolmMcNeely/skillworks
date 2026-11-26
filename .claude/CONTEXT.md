@@ -137,6 +137,12 @@ Edit. It is a record and never a judgement: an axis that edits is doing its job,
 loop. What an Edit cannot be is silent.
 _Avoid_: Record, change, diff
 
+**Finding**:
+One problem a judge reports in the code it reads, in one line: where it is and what is wrong. A
+review has findings, and the Simplify check lists its findings in its report. A check of a spec's
+items gives Verdicts instead.
+_Avoid_: Simplification, issue
+
 **Flake**:
 A check that went red on one run of a Suite and passed on a later run of the same Suite, on the same
 inputs. Nothing changed between the two, so the red was not the code's. A Flake counts as green, and
