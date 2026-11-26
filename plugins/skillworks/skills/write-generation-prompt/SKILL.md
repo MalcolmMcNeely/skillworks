@@ -12,7 +12,7 @@ Before you write any prompt text, call the Skill tool with "skillworks:skillsmit
 
 ## Map the app
 
-This skill holds no fact about any one app. The code and the repo's own docs are the source of truth, so read them fresh on every run rather than trust a summary written earlier. Answer each question below and give a `file:line` for each answer. Where the code and a doc disagree, the code wins. Name the doc that is wrong.
+This skill holds no fact about any one app. The code and the repo's own docs are the source of truth, so read them fresh on every run rather than trust a summary written earlier. Answer each question below and give a `file:line` or a quoted doc for each answer. Where the code and a doc disagree, the code wins. Name the doc that is wrong.
 
 1. Where does the prompt text live, and how does code assemble it: its parts, their order, and its modes?
 2. What is the input's shape, and what else reads that shape, such as the evals?
@@ -29,7 +29,7 @@ This skill holds no fact about any one app. The code and the repo's own docs are
 
    Say so if there are no evals, or if the docs describe no quick run.
 
-Each answer needs a `file:line` or a quoted doc. A question you cannot answer is reported as "not found", with where you looked. Do not guess.
+A question you cannot answer is reported as "not found", with where you looked. Do not guess.
 
 **Intent** is what the owners of the app have settled about the output. Code cannot show it. Take it from the request, from a ticket or spec the request names, or from the prompt itself. If the work depends on a point that none of these settles, ask the person and wait.
 
