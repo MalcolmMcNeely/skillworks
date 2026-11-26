@@ -10,7 +10,7 @@ from conftest import PLUGIN, ROOT, Ran, Repo, git, launch, sidecar_steering, wri
 from seeds import agent_skills
 from suite import Suite
 from tracker.files import CLOSING_NOTE
-from tracker.reading import DRIFT_REPORT, NAME_REPORT
+from tracker.reading import DEEPENING_REPORT, DRIFT_REPORT, NAME_REPORT
 
 SKILLS = PLUGIN / "skills"
 SETUP = SKILLS / "skillworks-setup"
@@ -31,6 +31,7 @@ WHERE = {
     "suite.json": "docs/skillworks/suite.json",
     "loop.json": "docs/skillworks/loop.json",
     "surfaces.md": "docs/skillworks/surfaces.md",
+    "deepening-check.md": "docs/skillworks/deepening-check.md",
 }
 
 WORKING_FOLDERS = [".spec-loop/", ".handoff/", ".claude/worktrees/", ".context-backfill/"]
@@ -1497,7 +1498,7 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
     assert "disable-model-invocation: true\n" in front
 
 
-HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill", "show-steering")
+HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill", "show-steering", "spec-deepen")
 
 VISIBLE_SKILLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
                   "diagnosing-bugs", "prototype", "unslop", "architecture-tests", "skillsmith")
@@ -1793,7 +1794,8 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
 
 
 @pytest.mark.parametrize("page", [SKILLS / "what-next" / "SKILL.md", SKILLS / "review-changes" / "spec.md",
-                                  SKILLS / "spec-drift" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md"],
+                                  SKILLS / "spec-drift" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md",
+                                  SKILLS / "spec-deepen" / "SKILL.md"],
                          ids=lambda page: page.relative_to(SKILLS).as_posix())
 def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(page):
     text = page.read_text(encoding="utf-8")
@@ -1924,6 +1926,91 @@ def test_spec_names_ends_a_command_that_refuses_twice_on_the_blocked_line_under_
     assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
                                                "Under the spec loop", "`BLOCKED`"))
             for paragraph in refused] == [True]
+
+
+def test_spec_deepen_reads_only_the_spec_commits_and_judges_them_with_the_deep_module_vocabulary():
+    spec_deepen = skill_text("spec-deepen")
+
+    assert "`/skillworks:spec-deepen 42 a1b2c3d`" in spec_deepen
+    assert "spec-commits <spec> <base>" in spec_deepen
+    assert 'Call the Skill tool with "skillworks:codebase-design"' in spec_deepen
+    assert "**The deletion test.**" in spec_deepen
+    assert "the folder `adr-folder` names" in spec_deepen
+
+
+def test_spec_deepen_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    spec_deepen = skill_text("spec-deepen")
+
+    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_deepen
+    assert "CONTEXT.md" not in spec_deepen
+
+
+def test_spec_deepen_asks_nobody_writes_no_html_report_and_changes_no_code():
+    spec_deepen = skill_text("spec-deepen")
+
+    assert "**Ask nobody anything.**" in spec_deepen
+    assert "**Write no HTML report, and open nothing.**" in spec_deepen
+    assert "**Report only. Change no code.**" in spec_deepen
+
+
+def test_spec_deepen_gives_the_shape_of_the_deepening_report_the_loop_reads():
+    spec_deepen = skill_text("spec-deepen")
+    page = " ".join(spec_deepen.split())
+
+    assert "The first line is `{}`.".format(DEEPENING_REPORT) in spec_deepen
+    assert "The `### Strong` list comes next." in spec_deepen
+    assert "With no Strong candidate to file, the list says `- None`." in page
+    assert "`### Over the limit`" in spec_deepen
+    assert "`### Worth exploring`" in spec_deepen
+    assert "`### Speculative`" in spec_deepen
+    assert "`### ADR`" in spec_deepen
+    assert ("A candidate that goes against an ADR is never in the `### Strong` list, whatever its strength."
+            in page)
+    assert "tracker-publish deepen <spec> .spec-loop/<spec>/deepening-report.md" in spec_deepen
+
+
+def test_spec_deepen_lists_at_most_the_limit_its_steering_file_sets_strongest_first():
+    page = " ".join(skill_text("spec-deepen").split())
+
+    assert "at most `limit` lines, strongest first" in page
+
+
+@pytest.mark.parametrize("command", ["spec-commits", "tracker-publish"])
+def test_spec_deepen_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
+    refused = [paragraph for paragraph in skill_text("spec-deepen").split("\n\n")
+               if "If `{}` refuses".format(command) in paragraph]
+
+    assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
+                                               "Under the spec loop", "`BLOCKED`"))
+            for paragraph in refused] == [True]
+
+
+def test_the_deepening_check_seed_says_what_counts_as_strong_by_the_deletion_test_and_the_adrs():
+    strong = section(seeded("deepening-check.md"), "Strong")
+
+    assert "**It passes the deletion test.**" in strong
+    assert "**No decision stands against it.**" in strong
+
+
+@pytest.mark.parametrize("heading", ["Checks", "Do not report"])
+def test_the_deepening_check_seed_holds_an_empty_team_list(heading):
+    assert items(section(seeded("deepening-check.md"), heading)) == []
+
+
+def test_the_deepening_check_seed_ends_with_a_limit_of_three():
+    seed = seeded("deepening-check.md")
+
+    assert settings_block(SETUP / "seeds" / "deepening-check.md") == ["limit: 3"]
+    assert seed.rstrip("\n").endswith("```")
+
+
+def test_this_repos_deepening_check_file_holds_the_seeds_baseline_both_team_lists_and_a_limit():
+    ours = (ROOT / WHERE["deepening-check.md"]).read_text(encoding="utf-8")
+
+    assert above_the_checks(ours) == above_the_checks(seeded("deepening-check.md"))
+    for heading in ("Checks", "Do not report"):
+        assert "\n## {}\n".format(heading) in ours, heading
+    assert [line for line in settings_block(ROOT / WHERE["deepening-check.md"]) if line.startswith("limit:")] != []
 
 
 def test_tdd_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
@@ -2504,7 +2591,7 @@ THIS_REPO = ["Skillworks.", "slnx", "Studio", "Dashboard", "Loki", "Aspire", "do
 
 def test_the_seeds_carry_no_fact_about_this_repo():
     names = sorted(WHERE)
-    assert len(names) == 15
+    assert len(names) == 16
     for name in names:
         text = seeded(name)
         for fact in THIS_REPO:
@@ -2590,10 +2677,10 @@ STEERING_READERS = {
     "file-placement.md": ["review-changes/architecture.md"],
     "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md", "codebase-design/DEEPENING.md"],
     "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
-                         "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
+                         "spec-deepen/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/SKILL.md",
                          "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
-                  "spec-names/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
+                  "spec-names/SKILL.md", "spec-deepen/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
                   "codebase-design/DESIGN-IT-TWICE.md", "context-backfill/SKILL.md",
                   "improve-codebase-architecture/SKILL.md"],
     "adr-format.md": ["domain-modeling/WRITING-ADRS.md", "context-backfill/SKILL.md",
@@ -2604,8 +2691,9 @@ STEERING_READERS = {
     "review-spec.md": ["review-changes/spec.md"],
     "suite.json": ["implement/SKILL.md", "architecture-tests/SKILL.md", "resolve-conflict/SKILL.md"],
     "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
-                  "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
+                  "spec-deepen/SKILL.md", "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
     "surfaces.md": ["grill/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "review-changes/spec.md"],
+    "deepening-check.md": ["spec-deepen/SKILL.md"],
 }
 
 

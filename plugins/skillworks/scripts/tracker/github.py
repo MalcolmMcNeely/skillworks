@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from stop import is_a_number, refusal
-from tracker.reading import DRIFT_REPORT, NAME_REPORT, listed
+from tracker.reading import DEEPENING_REPORT, DRIFT_REPORT, NAME_REPORT, listed
 
 # gh asks at a terminal, and a script run by a loop or by hand may have nobody at one.
 GH_QUIET = {"GH_PROMPT_DISABLED": "1"}
@@ -406,3 +406,6 @@ class GitHub:
 
     def name_report(self, spec):
         return self.report_below(spec, NAME_REPORT)
+
+    def deepening_report(self, spec):
+        return self.report_below(spec, DEEPENING_REPORT)

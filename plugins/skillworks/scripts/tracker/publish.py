@@ -10,16 +10,18 @@ from steering.target_branch import LOOP_FILE, tracker_for
 from stop import Stop, is_a_number, misuse, refusal
 from tracker.files import FENCE, STATUS, as_numbers, frontmatter, number_of
 from tracker.github import BRANCH_HEADING, GitHub, NewTicket
-from tracker.reading import DRIFT_REPORT, NAME_REPORT
+from tracker.reading import DEEPENING_REPORT, DRIFT_REPORT, NAME_REPORT
 
 USAGE = (
     "usage: tracker-publish spec <slug> <body-file> [<branch>]\n"
     "       tracker-publish tickets <spec> <ticket-file>...\n"
     "       tracker-publish drift <spec> <report-file>\n"
     "       tracker-publish names <spec> <report-file>\n"
+    "       tracker-publish deepen <spec> <report-file>\n"
 )
 
-REPORTS = {"drift": (DRIFT_REPORT, "drift report"), "names": (NAME_REPORT, "Name report")}
+REPORTS = {"drift": (DRIFT_REPORT, "drift report"), "names": (NAME_REPORT, "Name report"),
+           "deepen": (DEEPENING_REPORT, "Deepening report")}
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 

@@ -26,6 +26,7 @@ The outputs:
 | `docs/skillworks/suite.json` | The Suite: what green means for this repo's code. It starts with no checks, and a Suite with no checks is not ready, so the loop stops until the team names its checks. |
 | `docs/skillworks/loop.json` | The loop's settings. `tracker` is `github` or `files`, and setup asks which. `target-branch` is the branch the loop Lands on, or `pr` for one pull request per spec. It starts as the remote's default branch, and setup asks the team to confirm it. `co-authored-by` is `show` or `hide`, the team's answer on the credit for Claude. It starts as `hide`, and setup asks. |
 | `docs/skillworks/surfaces.md` | The Surfaces: the places a change can have to reach besides its code. It starts with the README and the user docs. The grill asks about each Surface a change touches. |
+| `docs/skillworks/deepening-check.md` | What the Deepening check counts as a Strong deepening opportunity, a team's own checks and a Do not report list, which start empty, and `limit`, the most deepening tickets the loop files for one spec. It starts as `3`, and `0` turns the check off. |
 | `.gitignore` lines | The working folders: `.spec-loop/`, `.handoff/`, `.claude/worktrees/` and `.context-backfill/`. They are per machine and never committed. `.context-backfill/` holds the Answer sheet of the Context backfill. Setup also creates `.handoff/`, where `handoff` saves. Under Sidecar Steering they go to the repo's git exclude file instead, with `.claude/settings.local.json`. |
 | A `## Agent skills` block in `CLAUDE.md` | The pointer. `CLAUDE.md` loads every session; `docs/skillworks/` does not. The block is a Seed: `seed-agent-skills` builds it, and a second run merges a person's edits. |
 | The Marketplace and `enabledPlugins` in `.claude/settings.json` | A fresh clone gets the Plugin on trust, with no install by hand. The Marketplace is a GitHub source pinned to one commit, so every member runs the Plugin at the commit the Steering pins. A repo that holds the Plugin's `marketplace.json` keeps a folder source. |
@@ -273,7 +274,7 @@ If the add or the install fails, never leave the developer there. Tell them to q
 Say what was written and what was kept. Under Sidecar Steering, say that each path below sits in the Sidecar and not in the repo, and that the repo's tracked files did not change. Say where each Steering file lives:
 
 - `docs/skillworks/rules/`: `comments.md`, `determinism.md`, `file-placement.md`, `testing.md` and `words.md`. `CLAUDE.md` imports each one, so they load into every session.
-- `docs/skillworks/`: `issue-tracker.md`, `domain.md`, `adr-format.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json` and `surfaces.md`. A skill reads each one when it needs it.
+- `docs/skillworks/`: `issue-tracker.md`, `domain.md`, `adr-format.md`, `placement-checks.md`, `review-standards.md`, `review-architecture.md`, `review-spec.md`, `suite.json`, `loop.json`, `surfaces.md` and `deepening-check.md`. A skill reads each one when it needs it.
 
 Say that auto-memory is off for this repository, or that the user chose to keep it on. Say whether commits and pull requests credit Claude. Then tell them what the team fills in before the loop can finish a ticket:
 

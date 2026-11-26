@@ -53,7 +53,7 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 
 ## Spec loop operations
 
-Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift`, `/skillworks:spec-names`, the `spec-loop` command and the `spec-commits` command.
+Used by `/skillworks:to-tickets`, `/skillworks:implement`, `/skillworks:spec-drift`, `/skillworks:spec-names`, `/skillworks:spec-deepen`, the `spec-loop` command and the `spec-commits` command.
 
 A **spec** issue is the parent. Its **tickets** are GitHub sub-issues of it. That parentage scopes the loop: a driver reads one spec's children and nothing else, so two people running the loop on two specs cannot take each other's tickets.
 
@@ -70,6 +70,7 @@ Read everything through `gh api`. The `gh` flags for sub-issues and dependencies
 - **Write a spec's tickets**: `tracker-publish tickets <spec> <file>...`, every file at once, the same files as with the files Tracker. It files each ticket blockers first as an issue with the `ready-for-agent` label, makes it a sub-issue of the spec, adds a blocking link for each ticket its `blocked-by` names, and prints each issue number. The issue body opens with a hidden line that holds the spec's number, then the text below the ticket's `# ` heading, with no frontmatter. A rerun matches each file to an open sub-issue of the spec by title. A ticket not yet linked to its spec, an open `ready-for-agent` issue with no parent, matches only when its title is the same and its hidden line names the spec, so another spec's ticket is never taken. The rerun files only what is missing and adds only the missing links, so two tickets with one title are turned down. `/skillworks:to-tickets` says how.
 - **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command posts it as a new comment on the spec issue and prints the comment's URL. A rerun adds another comment and leaves the old one, since the loop reads the last comment. `/skillworks:spec-drift` says how.
 - **Record a Name report**: `tracker-publish names <spec> <file>`. The file opens with `## Name report`, and the command posts it as a new comment on the spec issue, as for a drift report. `/skillworks:spec-names` says how.
+- **Record a Deepening report**: `tracker-publish deepen <spec> <file>`. The file opens with `## Deepening report`, and the command posts it as a new comment on the spec issue, as for a drift report. `/skillworks:spec-deepen` says how.
 - **Never use `is:blocked` in search** without `-f advanced_search=true`. On the legacy path it silently degrades to a free-text match on the word "blocked" and returns confident nonsense.
 
 Sub-issues carry **no** blocking semantics. A spec with open children is not reported as blocked. Ordering comes from the dependency edges alone.
@@ -135,6 +136,7 @@ A ticket's number is local to its spec, so a ticket is named by both: `<spec>/<t
 - **List what is open**: each folder in `.specs/` in the Sidecar whose `spec.md` says `status: open`, and in each one the tickets that are startable. `tracker-show` prints each file.
 - **Record a drift report**: `tracker-publish drift <spec> <file>`. The file opens with `## Drift report`, and the command puts it at the end of the spec's `spec.md` in place of any earlier one, since there is no issue to comment on. The loop reads it back from there. `/skillworks:spec-drift` says how.
 - **Record a Name report**: `tracker-publish names <spec> <file>`. The file opens with `## Name report`, and the command puts it below the drift report in place of any earlier one. A new drift report takes it away, since a new drift check starts the judging again. `/skillworks:spec-names` says how.
+- **Record a Deepening report**: `tracker-publish deepen <spec> <file>`. The file opens with `## Deepening report`, and the command puts it above the drift report in place of any earlier one, since the Deepening check runs first. A new drift report leaves it where it is. `/skillworks:spec-deepen` says how.
 - **Claim a ticket**: there are no claims. The Sidecar serves one machine, and `spec-loop` refuses to start a spec that already has a loop running on it, so no two loops build the same ticket.
 - **Close a ticket**: `tracker-close <spec>/<ticket> <note-file>`. It sets `status: closed` and puts the note at the end of the ticket's file, under `## Closing note`. On a ticket already closed it changes nothing and says so.
 

@@ -8,7 +8,7 @@ from typing import NamedTuple
 from clock.clock import Clock
 from sidecar.sidecar import Sidecar
 from stop import is_a_number, refusal
-from tracker.reading import DRIFT_REPORT, FLAKES, NAME_REPORT, listed
+from tracker.reading import DEEPENING_REPORT, DRIFT_REPORT, FLAKES, NAME_REPORT, listed
 
 SPECS = ".specs"
 SPEC_FILE = "spec.md"
@@ -27,7 +27,9 @@ HEAD = "HEAD"
 LOOP_STATE = ".spec-loop"
 LOOP_BRANCHES = "spec-loop/"
 
-REPORTS = (DRIFT_REPORT, NAME_REPORT)
+REPORTS = (DEEPENING_REPORT, DRIFT_REPORT, NAME_REPORT)
+
+JUDGED_LATER = {DEEPENING_REPORT: (DRIFT_REPORT, NAME_REPORT)}
 
 
 class Ticket(NamedTuple):
@@ -97,13 +99,13 @@ def with_field(text, key, value):
     return ending.join(lines)
 
 
-def section_in(body, named, ends_at=None):
+def section_in(body, named, *ends_at):
     lines = body.split("\n")
     stripped = [line.strip() for line in lines]
     if named not in stripped:
         return ""
     start = stripped.index(named) + 1
-    end = stripped.index(ends_at, start) if ends_at in stripped[start:] else len(lines)
+    end = next((at for at in range(start, len(lines)) if stripped[at] in ends_at), len(lines))
     return "\n".join(lines[start:end]).strip("\n")
 
 
@@ -385,6 +387,9 @@ class Files:
     def drift_report(self, spec):
         return section_in(self.spec_body(spec), DRIFT_REPORT, NAME_REPORT)
 
+    def deepening_report(self, spec):
+        return section_in(self.spec_body(spec), DEEPENING_REPORT, *JUDGED_LATER[DEEPENING_REPORT])
+
     def name_report(self, spec):
         return section_in(self.spec_body(spec), NAME_REPORT)
 
@@ -423,10 +428,14 @@ class Files:
         self.changed(spec, None, "Note the Flakes of spec {}".format(spec),
                      lambda text: with_section_above(text, FLAKES, note, REPORTS))
 
-    # Each report replaces its heading to the end of the file, so a drift report takes the Name report after it too.
+    # A drift report replaces its heading to the end of the file, so it takes the Name report after it too.
+    # A judge that runs before the drift check keeps its report above, so it takes no later report away.
     def record_report(self, spec, heading, report, what):
-        path = self.changed(spec, None, "Record the {} of spec {}".format(what, spec),
-                            lambda text: with_last_section(text, heading, report))
+        def recorded(text):
+            if heading in JUDGED_LATER:
+                return with_section_above(text, heading, report, JUDGED_LATER[heading])
+            return with_last_section(text, heading, report)
+        path = self.changed(spec, None, "Record the {} of spec {}".format(what, spec), recorded)
         return (self.sidecar().folder / path).as_posix()
 
     # The number is read inside the lock, so two filings at once take two numbers.

@@ -411,6 +411,72 @@ def test_a_name_report_without_its_heading_is_turned_down(writer):
     assert writer.tracker("1").name_report("1") == ""
 
 
+DEEPENING = ("## Deepening report\n\n### Strong\n\n"
+             "- The Tracker readers: two shallow modules share one parse, so fold them into one.\n")
+
+
+def test_a_deepening_report_is_written_to_the_end_of_the_specs_file_and_reads_back(writer):
+    writer.spec()
+
+    ran = writer.run("deepen", "1", writer.written("deepen.md", DEEPENING))
+
+    assert ran.status == 0, said(ran)
+    assert ran.out == (writer.sidecar() / ".specs/0001-local-tracker/spec.md").as_posix() + "\n"
+    assert writer.held(".specs/0001-local-tracker/spec.md") == spec_text() + "\n" + DEEPENING
+    assert writer.tracker("1").deepening_report("1") == (
+        "### Strong\n\n- The Tracker readers: two shallow modules share one parse, so fold them into one.")
+
+
+def test_the_drift_and_name_reports_go_below_the_deepening_report_and_each_reads_back_alone(writer):
+    writer.spec()
+    writer.run("deepen", "1", writer.written("deepen.md", DEEPENING))
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    ran = writer.run("names", "1", writer.written("names.md", NAMES))
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/spec.md") == (
+        spec_text() + "\n" + DEEPENING + "\n" + REPORT + "\n" + NAMES)
+    assert [writer.tracker("1").deepening_report("1"), writer.tracker("1").drift_report("1")] == [
+        "### Strong\n\n- The Tracker readers: two shallow modules share one parse, so fold them into one.",
+        "- Story 1: Done\n- Story 2: Missing"]
+
+
+# The Deepening check runs before the drift check, so its report never takes a later judge's report away.
+def test_a_second_deepening_report_takes_the_place_of_the_first_and_keeps_the_reports_below_it(writer):
+    writer.spec()
+    writer.run("deepen", "1", writer.written("deepen.md", DEEPENING))
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("names", "1", writer.written("names.md", NAMES))
+
+    ran = writer.run("deepen", "1", writer.written("again.md", "## Deepening report\n\n### Strong\n\n- None\n"))
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/spec.md") == (
+        spec_text() + "\n## Deepening report\n\n### Strong\n\n- None\n\n" + REPORT + "\n" + NAMES)
+
+
+# A spec whose drift check ran before it had a Deepening check gets its report above, where the readers look.
+def test_a_first_deepening_report_on_a_spec_that_holds_a_drift_report_goes_above_it(writer):
+    writer.spec()
+    writer.run("drift", "1", writer.written("drift.md", REPORT))
+
+    ran = writer.run("deepen", "1", writer.written("deepen.md", DEEPENING))
+
+    assert ran.status == 0, said(ran)
+    assert writer.held(".specs/0001-local-tracker/spec.md") == spec_text() + "\n" + DEEPENING + "\n" + REPORT
+
+
+def test_a_deepening_report_without_its_heading_is_turned_down(writer):
+    writer.spec()
+
+    ran = writer.run("deepen", "1", writer.written("deepen.md", "### Strong\n\n- None\n"))
+
+    assert ran.status == 1
+    assert "## Deepening report" in ran.err
+    assert writer.tracker("1").deepening_report("1") == ""
+
+
 def test_publishing_a_spec_its_tickets_and_its_reports_neither_pushes_nor_fetches(writer):
     write_loop(writer.repo.work, "pr")
     before = refs_of(writer.repo)
@@ -465,6 +531,7 @@ def github(runner):
 @pytest.mark.parametrize("command, report, read_back", [
     ("drift", REPORT, GitHub.drift_report),
     ("names", NAMES, GitHub.name_report),
+    ("deepen", DEEPENING, GitHub.deepening_report),
 ])
 def test_on_github_a_report_is_posted_as_a_comment_on_the_spec_and_its_url_printed(
         writer, on_github, command, report, read_back):
@@ -490,6 +557,7 @@ def test_on_github_a_second_report_is_a_second_comment_and_the_first_stays(write
 @pytest.mark.parametrize("command, report, heading", [
     ("drift", "- Story 1: Done\n", "## Drift report"),
     ("names", "### Renames\n\n- None\n", "## Name report"),
+    ("deepen", "### Strong\n\n- None\n", "## Deepening report"),
 ])
 def test_on_github_a_report_without_its_heading_is_turned_down(writer, on_github, command, report,
                                                                 heading):

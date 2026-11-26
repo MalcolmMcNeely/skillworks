@@ -2,6 +2,8 @@ DRIFT_REPORT = "## Drift report"
 
 NAME_REPORT = "## Name report"
 
+DEEPENING_REPORT = "## Deepening report"
+
 FLAKES = "## Flakes"
 
 
