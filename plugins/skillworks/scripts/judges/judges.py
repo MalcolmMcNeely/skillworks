@@ -17,6 +17,7 @@ class Judge(NamedTuple):
     earlier: Callable
     filed: Callable
     lost: str
+    word: str
     lost_again: str = ""
 
     @property
@@ -46,28 +47,32 @@ DEEPENING = Judge(
     read=lambda tracker, spec: tracker.deepening_report(spec),
     earlier=lambda tracker, spec: tracker.deepening_report(spec),
     filed=lambda title: title.startswith(DEEPENING_TITLE),
-    lost="no deepening was read")
+    lost="no deepening was read", word="Strong")
 SIMPLIFY = Judge(
     "simplify-check", SIMPLIFY_CHECK, "Simplify report",
     read=lambda tracker, spec: tracker.simplify_report(spec),
     earlier=lambda tracker, spec: tracker.simplify_report(spec),
     filed=lambda title: title == SIMPLIFY_TITLE,
-    lost="no cleanup was read")
+    lost="no cleanup was read", word="findings")
 DRIFT = Judge(
     "drift-check", DRIFT_CHECK, "drift report",
     read=lambda tracker, spec: tracker.drift_report(spec),
     earlier=lambda tracker, spec: tracker.earlier_drift_report(spec),
     filed=lambda title: title == GAP_TITLE,
-    lost="nothing was counted", lost_again="the Gap items were not judged again")
+    lost="nothing was counted", word="Gaps", lost_again="the Gap items were not judged again")
 NAME = Judge(
     "name-check", NAME_CHECK, "Name report",
     read=lambda tracker, spec: tracker.name_report(spec),
     earlier=lambda tracker, spec: tracker.earlier_name_report(spec),
     filed=lambda title: title == RENAME_TITLE,
-    lost="no name was read", lost_again="no rename was checked")
+    lost="no name was read", word="renames", lost_again="no rename was checked")
 
 # In the order the loop runs them.
 JUDGES = (DEEPENING, SIMPLIFY, DRIFT, NAME)
+
+
+def filed_by(title):
+    return next((judge.name for judge in JUDGES if judge.filed(title)), None)
 
 
 def told_to_judge():

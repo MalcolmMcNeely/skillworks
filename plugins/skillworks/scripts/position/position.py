@@ -17,6 +17,11 @@ NAME_CHECK = "Name check"
 FINISHED = "finished"
 STOPPED = "stopped"
 
+TO_COME = "to come"
+NOW = "now"
+DONE = "done"
+OFF = "off"
+
 # Read by the pane in a language of its own, so the form is one any date parser takes.
 TIME_FORM = "%Y-%m-%dT%H:%M:%SZ"
 

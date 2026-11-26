@@ -4,11 +4,16 @@ from datetime import timedelta
 from pathlib import Path
 
 from conftest import ROOT
-from spec_loop_test import (A_BLOCKED, A_CHOICE, A_DENIED_COMMAND, FINISH, ONE_OPEN_TICKET, SPEC,
-                            TWO_OPEN_TICKETS,
-                            a_denied_command, all_of, baseline_tree, closed, committed, full_run_tree,
+from spec_loop_test import (A_BLOCKED, A_CHOICE, A_DENIED_COMMAND, DEEPENED_BEFORE, FINISH,
+                            FIRST_DEEPENING, FOLDED,
+                            ONE_CLOSED_TICKET, ONE_OPEN_TICKET, SPEC, TWO_OPEN_TICKETS,
+                            a_denied_command, all_of, baseline_tree, closed, committed,
+                            deepening_report, drift_report, full_run_tree, given_a_cut_that_files,
+                            given_a_deepening_limit, given_a_filed_ticket_that_lands,
                             given_a_session_that_was_denied, given_a_spec_axis_that_says,
-                            given_sessions_that_report, given_the_tracker_holds, loop)
+                            given_drift_reports, given_sessions_that_report, given_simplify_enabled,
+                            given_the_closed_ticket_landed_after_the_base, given_the_tracker_holds,
+                            loop, rerun_holding, verdicts_alone)
 
 
 def position_of(loop):
@@ -419,6 +424,135 @@ def beat_once_with(loop, replace):
     loop.replace = replace
     loop.clock.move(HEARTBEAT)
     loop.replace = os.replace
+
+
+def judges_of(position):
+    return [(judge["name"], judge["state"]) for judge in position["judges"]]
+
+
+def test_before_the_judges_run_every_judge_is_to_come_in_the_loop_s_order(loop):
+    sessions = given_a_run_that_lands(loop)
+    seen = []
+    read_while(sessions, "implement 168 --stop-after-tests", loop, seen)
+
+    loop.run(SPEC)
+
+    assert judges_of(seen[0]) == [
+        ("deepening-check", "to come"), ("simplify-check", "to come"),
+        ("drift-check", "to come"), ("name-check", "to come")]
+
+
+def judge_in(position, name):
+    return next(judge for judge in position["judges"] if judge["name"] == name)
+
+
+def given_a_deepening_check_that_files(loop, *strong):
+    tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
+    sessions = given_sessions_that_report(loop)
+    given_the_closed_ticket_landed_after_the_base(loop)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, FIRST_DEEPENING)
+    tracker.deepening_report = deepening_report(*strong)
+    return sessions
+
+
+def test_a_judge_reads_now_while_its_session_runs(loop):
+    sessions = given_a_run_that_lands(loop)
+    seen = []
+    read_while(sessions, "spec-simplify-check", loop, seen)
+
+    loop.run(SPEC)
+
+    assert judge_in(seen[0], "simplify-check")["state"] == "now"
+
+
+def test_a_judge_that_ended_reads_done_with_its_count_and_the_tickets_it_filed(loop):
+    given_a_deepening_check_that_files(loop, FOLDED)
+
+    loop.run(SPEC)
+
+    assert judge_in(position_of(loop), "deepening-check") == {
+        "name": "deepening-check", "state": "done", "found": 1, "word": "Strong",
+        "filed": [FIRST_DEEPENING]}
+
+
+def test_judges_the_team_turned_off_read_off_from_the_first_position(loop):
+    sessions = given_a_run_that_lands(loop)
+    given_a_deepening_limit(loop, "0")
+    given_simplify_enabled(loop, "false")
+    seen = []
+    read_while(sessions, "implement 168 --stop-after-tests", loop, seen)
+
+    loop.run(SPEC)
+
+    assert judges_of(seen[0])[:2] == [("deepening-check", "off"), ("simplify-check", "off")]
+
+
+def test_a_judge_a_rerun_found_already_filed_reads_done_with_its_count_and_its_tickets(loop):
+    tracker, _ = rerun_holding(loop, DEEPENED_BEFORE)
+    tracker.posted_before = [deepening_report(FOLDED)]
+
+    loop.run(SPEC)
+
+    assert judge_in(position_of(loop), "deepening-check") == {
+        "name": "deepening-check", "state": "done", "found": 1, "word": "Strong",
+        "filed": ["162"]}
+
+
+def test_a_judge_that_found_nothing_reads_done_with_a_count_of_0_and_no_tickets(loop):
+    given_a_run_that_lands(loop)
+
+    loop.run(SPEC)
+
+    assert judge_in(position_of(loop), "drift-check") == {
+        "name": "drift-check", "state": "done", "found": 0, "word": "Gaps", "filed": []}
+
+
+def test_a_judge_whose_re_check_is_still_to_run_reads_now_while_its_ticket_builds(loop):
+    tracker = given_the_tracker_holds(loop, ONE_OPEN_TICKET)
+    sessions = given_sessions_that_report(loop)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, "169")
+    given_drift_reports(sessions, tracker, drift_report(S1="Missing"), verdicts_alone(S1="Done"))
+    seen = []
+    read_while(sessions, "implement 169 --stop-after-tests", loop, seen)
+
+    loop.run(SPEC)
+
+    assert judge_in(seen[0], "drift-check")["state"] == "now"
+
+
+def judge_of_each_ticket(position):
+    return [(row["number"], row["judge"]) for row in position["tickets"]]
+
+
+def test_a_ticket_from_the_cut_names_no_judge(loop):
+    tracker = given_the_tracker_holds(loop, ())
+    sessions = given_sessions_that_report(loop)
+    given_a_cut_that_files(sessions, tracker, ONE_OPEN_TICKET)
+    sessions.then[FINISH] = all_of(committed(loop.runner), closed(tracker))
+
+    loop.run(SPEC)
+
+    assert judge_of_each_ticket(position_of(loop)) == [("168", None)]
+
+
+def test_a_ticket_a_judge_filed_names_that_judge_s_step(loop):
+    given_a_deepening_check_that_files(loop, FOLDED)
+
+    loop.run(SPEC)
+
+    assert judge_of_each_ticket(position_of(loop)) == [
+        ("161", None), (FIRST_DEEPENING, "deepening-check")]
+
+
+def test_a_ticket_a_judge_files_is_not_in_the_position_while_the_judge_runs(loop):
+    sessions = given_a_deepening_check_that_files(loop, FOLDED)
+    seen = []
+    read_while(sessions, "spec-deepening-check", loop, seen)
+
+    loop.run(SPEC)
+
+    assert judge_of_each_ticket(seen[0]) == [("161", None)]
 
 
 def test_reading_a_run_names_the_position_file_beside_the_log():

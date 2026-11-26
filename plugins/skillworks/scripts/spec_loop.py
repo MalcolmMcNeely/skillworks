@@ -50,14 +50,14 @@ from count.findings import FINDINGS, enabled_in, read_findings
 from count.simplify_ticket import simplify_ticket
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
-from judges.judges import DEEPENING, DRIFT, NAME, SIMPLIFY, told_to_judge
+from judges.judges import DEEPENING, DRIFT, JUDGES, NAME, SIMPLIFY, filed_by, told_to_judge
 from judges.earlier_run import earlier_run
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
-from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DRIFT_CHECK,
+from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DONE, DRIFT_CHECK,
                                END_PATIENCE, FINISHED,
-                               HEARTBEAT_SECONDS, NAME_CHECK, PATIENCE, POSITION, SIMPLIFY_CHECK,
-                               STOPPED,
+                               HEARTBEAT_SECONDS, NAME_CHECK, NOW, OFF, PATIENCE, POSITION,
+                               SIMPLIFY_CHECK, STOPPED, TO_COME,
                                position_time, written_whole)
 from position.position import FULL_RUN as DOING_FULL_RUN
 from runner import Subprocess, given_every_session, session_changes
@@ -571,6 +571,8 @@ class Loop:
         self.writes_position = False
         self.doing = None
         self.spec_tickets = []
+        self.judged = {judge.name: {"name": judge.name, "state": TO_COME, "found": None,
+                                    "word": judge.word, "filed": []} for judge in JUDGES}
         self.ticket_now = None
         self.denied = 0
         self.stop_line = None
@@ -592,6 +594,7 @@ class Loop:
             "run": self.run_id,
             "heartbeat": position_time(self.clock.now()),
             "doing": self.doing,
+            "judges": list(self.judged.values()),
             "tickets": self.spec_tickets,
             "ticket": self.ticket_now,
             "at": self.place or None,
@@ -665,12 +668,34 @@ class Loop:
 
     def read_spec_tickets(self):
         rows = self.tracker.ticket_rows(self.spec)
-        self.spec_tickets = [{"number": number, "title": title, "landed": state == "closed"}
-                             for number, state, title in rows]
+        self.spec_tickets = [{"number": number, "title": title, "landed": state == "closed",
+                              "judge": filed_by(title)} for number, state, title in rows]
         self.ticket_count = len(self.spec_tickets)
+        for name, judged in self.judged.items():
+            judged["filed"] = [row["number"] for row in self.spec_tickets if row["judge"] == name]
 
-    def filed(self, ticket, title):
-        self.spec_tickets.append({"number": ticket, "title": title, "landed": False})
+    def filed(self, ticket, title, judge):
+        self.spec_tickets.append({"number": ticket, "title": title, "landed": False,
+                                  "judge": judge.name})
+        self.judged[judge.name]["filed"].append(ticket)
+
+    # Read leniently, so a Steering file the judge's own read stops on still shows the judge to come.
+    def judges_off(self):
+        if limit_in(self.steering_text(DEEPENING_FILE)) == 0:
+            self.judged[DEEPENING.name]["state"] = OFF
+        if enabled_in(self.steering_text(SIMPLIFY_FILE)) is False:
+            self.judged[SIMPLIFY.name]["state"] = OFF
+
+    def judge_found(self, judge, count):
+        self.judged[judge.name]["found"] = count
+
+    def judge_now(self, judge):
+        self.judged[judge.name]["state"] = NOW
+        self.moved()
+
+    def judge_done(self, judge):
+        self.judged[judge.name]["state"] = DONE
+        self.moved()
 
     def started(self, ticket, title):
         self.ticket_now = {"number": ticket, "title": title,
@@ -1792,14 +1817,18 @@ class Loop:
                        "again.".format(DEEPENING_FILE))
         return limit
 
-    def build_earlier_tickets(self, judge, earlier, held):
+    def build_earlier_tickets(self, judge, earlier, held, listed):
         if not earlier.tickets:
             return False
         held.update(earlier.tickets)
+        found = listed(earlier.report) if earlier.report else None
+        if found is not None:
+            self.judge_found(judge, len(found))
         self.say_judge(judge, "spec {} already holds the {}'s tickets, {}, so the check runs once "
                        "and does not run again".format(
                            self.spec_named(), judge.what,
                            ", ".join(self.named(number) for number, _ in earlier.tickets)))
+        self.judge_done(judge)
         self.run_tickets()
         return True
 
@@ -1821,6 +1850,7 @@ class Loop:
         else:
             def read():
                 return judge.read(self.tracker, self.spec)
+        self.judge_now(judge)
         # A re-check is kept under its judge's step, so the pieces match the steps the pane lists.
         with self.step_time(judge.name):
             result = self.run_clean_session(
@@ -1868,6 +1898,7 @@ class Loop:
                            self.spec_named(), STRONG, held))
         for said in strong:
             self.say("STRONG " + said)
+        self.judge_found(DEEPENING, len(strong))
         filed, over = filed_within(strong, limit)
         if over:
             self.say("WARN  the Deepening report on spec {} lists {} and the limit is {}, so only "
@@ -1882,7 +1913,7 @@ class Loop:
     def file_deepening_ticket(self, strong):
         title, body = deepening_ticket(strong)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title)
+        self.filed(ticket, title, DEEPENING)
         self.deepening_tickets[ticket] = title
         self.ticket_count += 1
         self.say("FILED {} under spec {} deepens {}, so the loop builds it through every step".format(
@@ -1895,15 +1926,15 @@ class Loop:
             self.say("NOTE  the Deepening check is off, because " + DEEPENING_OFF)
             return
         earlier = earlier_run(self.tracker, self.spec, DEEPENING)
-        if self.build_earlier_tickets(DEEPENING, earlier, self.deepening_tickets):
+        if self.build_earlier_tickets(DEEPENING, earlier, self.deepening_tickets, read_strong):
             return
         report = self.earlier_report(DEEPENING, earlier) or self.check_deepening(base)
         filed = self.read_deepening(report, limit)
-        if not filed:
-            return
         for strong in filed:
             self.file_deepening_ticket(strong)
-        self.run_tickets()
+        self.judge_done(DEEPENING)
+        if filed:
+            self.run_tickets()
 
     # --- the Simplify check --------------------------------------------------
 
@@ -1927,6 +1958,7 @@ class Loop:
                            self.spec_named(), FINDINGS, held))
         for said in findings:
             self.say("FINDING " + said)
+        self.judge_found(SIMPLIFY, len(findings))
         if not findings:
             self.say_judge(SIMPLIFY, "no cleanup is owed on spec {}".format(self.spec_named()))
         return findings
@@ -1935,7 +1967,7 @@ class Loop:
     def file_simplify_ticket(self, findings):
         title, body = simplify_ticket(findings)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title)
+        self.filed(ticket, title, SIMPLIFY)
         self.simplify_tickets[ticket] = title
         self.ticket_count += 1
         self.say("FILED {} under spec {} makes {}, so the loop builds it through every step".format(
@@ -1954,14 +1986,15 @@ class Loop:
             self.say("NOTE  the Simplify check is off, because " + SIMPLIFY_OFF)
             return
         earlier = earlier_run(self.tracker, self.spec, SIMPLIFY)
-        if self.build_earlier_tickets(SIMPLIFY, earlier, self.simplify_tickets):
+        if self.build_earlier_tickets(SIMPLIFY, earlier, self.simplify_tickets, read_findings):
             return
         report = self.earlier_report(SIMPLIFY, earlier) or self.check_simplify(base)
         findings = self.read_simplify(report)
-        if not findings:
-            return
-        self.file_simplify_ticket(findings)
-        self.run_tickets()
+        if findings:
+            self.file_simplify_ticket(findings)
+        self.judge_done(SIMPLIFY)
+        if findings:
+            self.run_tickets()
 
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
@@ -1993,6 +2026,8 @@ class Loop:
         every = with_readme(self.items, readme_surface_of(self.root))
         items = every.only(asked) if asked else every
         counted = count_verdicts(items, report.verdicts)
+        if not asked:
+            self.judge_found(DRIFT, len(counted.gaps))
         self.say("COUNT {} {}, and the drift report gives {}".format(
             "the re-check was asked about" if asked else "the spec holds",
             how_many(len(items.every()), "item", "items"),
@@ -2030,7 +2065,7 @@ class Loop:
             self.say("GAP   " + gap_said(gap))
         title, body = gap_ticket(gaps)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title)
+        self.filed(ticket, title, DRIFT)
         self.ticket_count += 1
         self.say("FILED {} under spec {} builds {}, so the loop goes round once".format(
             self.named(ticket), self.spec_named(), how_many(len(gaps), "Gap", "Gaps")))
@@ -2041,12 +2076,12 @@ class Loop:
         earlier = earlier_run(self.tracker, self.spec, DRIFT)
         report = self.earlier_report(DRIFT, earlier)
         gaps = self.count_held_drift(report, ()) if report else self.check_drift(base)
-        if not gaps:
-            return
-        if not earlier.tickets:
-            self.file_gap_ticket(gaps)
-            self.run_tickets()
-        self.check_drift(base, [gap.item.name for gap in gaps])
+        if gaps:
+            if not earlier.tickets:
+                self.file_gap_ticket(gaps)
+                self.run_tickets()
+            self.check_drift(base, [gap.item.name for gap in gaps])
+        self.judge_done(DRIFT)
 
     # --- the Name check ------------------------------------------------------
 
@@ -2070,6 +2105,7 @@ class Loop:
                            self.spec_named(), RENAMES, held))
         for said in renames:
             self.say("NAME  " + said)
+        self.judge_found(NAME, len(renames))
         if not renames:
             self.say_judge(NAME, "no rename is owed on spec {}".format(self.spec_named()))
         return renames
@@ -2084,7 +2120,7 @@ class Loop:
                          "the spec use most. A person settles the word.".format(name_of(said)))
         title, body = rename_ticket(renames)
         ticket = self.tracker.file_ticket(self.spec, title, body)
-        self.filed(ticket, title)
+        self.filed(ticket, title, NAME)
         self.ticket_count += 1
         self.say("FILED {} under spec {} makes {}, so the loop builds it and checks each one".format(
             self.named(ticket), self.spec_named(), how_many(len(renames), "rename", "renames")))
@@ -2125,13 +2161,13 @@ class Loop:
         earlier = earlier_run(self.tracker, self.spec, NAME)
         report = self.earlier_report(NAME, earlier)
         renames = self.read_held_names(report) if report else self.check_names(base)
-        if not renames:
-            return
-        ticket = earlier.ticket
-        if ticket is None:
-            ticket = self.file_rename_ticket(renames)
-            self.run_tickets()
-        self.check_renames(base, ticket, renames)
+        if renames:
+            ticket = earlier.ticket
+            if ticket is None:
+                ticket = self.file_rename_ticket(renames)
+                self.run_tickets()
+            self.check_renames(base, ticket, renames)
+        self.judge_done(NAME)
 
     # --- the note of the run's Flakes ----------------------------------------
 
@@ -2224,6 +2260,7 @@ class Loop:
         self.preflight()
         if dry:
             return self.dry_run()
+        self.judges_off()
         self.heartbeat_started()
 
         self.read_shape()
