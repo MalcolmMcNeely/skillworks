@@ -2,15 +2,22 @@
 
 from typing import Callable, NamedTuple
 
+from count.deepening_ticket import TITLE as DEEPENING_TITLE
+from count.gap_ticket import TITLE as GAP_TITLE
+from count.rename_ticket import TITLE as RENAME_TITLE
+from count.simplify_ticket import TITLE as SIMPLIFY_TITLE
 from position.position import DEEPENING_CHECK, DRIFT_CHECK, NAME_CHECK, SIMPLIFY_CHECK
 
 
 class Judge(NamedTuple):
     name: str
     what: str
+    tag: str
     report: str
     report_file: str
     read: Callable
+    earlier: Callable
+    filed: Callable
     lost: str
     lost_again: str = ""
 
@@ -36,16 +43,30 @@ class Judge(NamedTuple):
         return self.session(again) + ".md"
 
 
-DEEPENING = Judge("deepening-check", DEEPENING_CHECK, "Deepening report", "deepening-report.md",
-                  lambda tracker, spec: tracker.deepening_report(spec), "no deepening was read")
-SIMPLIFY = Judge("simplify-check", SIMPLIFY_CHECK, "Simplify report", "simplify-report.md",
-                 lambda tracker, spec: tracker.simplify_report(spec), "no cleanup was read")
-DRIFT = Judge("drift-check", DRIFT_CHECK, "drift report", "drift-report.md",
-              lambda tracker, spec: tracker.drift_report(spec), "nothing was counted",
-              "the Gap items were not judged again")
-NAMES = Judge("name-check", NAME_CHECK, "Name report", "name-report.md",
-              lambda tracker, spec: tracker.name_report(spec), "no name was read",
-              "no rename was checked")
+DEEPENING = Judge(
+    "deepening-check", DEEPENING_CHECK, "DEEPEN", "Deepening report", "deepening-report.md",
+    read=lambda tracker, spec: tracker.deepening_report(spec),
+    earlier=lambda tracker, spec: tracker.deepening_report(spec),
+    filed=lambda title: title.startswith(DEEPENING_TITLE),
+    lost="no deepening was read")
+SIMPLIFY = Judge(
+    "simplify-check", SIMPLIFY_CHECK, "SIMPLIFY", "Simplify report", "simplify-report.md",
+    read=lambda tracker, spec: tracker.simplify_report(spec),
+    earlier=lambda tracker, spec: tracker.simplify_report(spec),
+    filed=lambda title: title == SIMPLIFY_TITLE,
+    lost="no cleanup was read")
+DRIFT = Judge(
+    "drift-check", DRIFT_CHECK, "DRIFT", "drift report", "drift-report.md",
+    read=lambda tracker, spec: tracker.drift_report(spec),
+    earlier=lambda tracker, spec: tracker.earlier_drift_report(spec),
+    filed=lambda title: title == GAP_TITLE,
+    lost="nothing was counted", lost_again="the Gap items were not judged again")
+NAMES = Judge(
+    "name-check", NAME_CHECK, "NAMES", "Name report", "name-report.md",
+    read=lambda tracker, spec: tracker.name_report(spec),
+    earlier=lambda tracker, spec: tracker.earlier_name_report(spec),
+    filed=lambda title: title == RENAME_TITLE,
+    lost="no name was read", lost_again="no rename was checked")
 
 # In the order the loop runs them.
 JUDGES = (DEEPENING, SIMPLIFY, DRIFT, NAMES)

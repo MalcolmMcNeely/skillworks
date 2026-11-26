@@ -38,21 +38,20 @@ import ticket_worktree
 from filelock import FileLock, Timeout
 from branches.open_the_pull_request import open_the_pull_request
 from clock.clock import Clock
-from count.deepening_ticket import TITLE as DEEPENING_TITLE
 from count.deepening_ticket import deepening_ticket
 from count.deepenings import STRONG, filed_within, limit_in, read_strong
-from count.gap_ticket import TITLE as GAP_TITLE, gap_ticket
+from count.gap_ticket import gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items, with_readme
-from count.rename_ticket import TITLE as RENAME_TITLE, rename_ticket
+from count.rename_ticket import rename_ticket
 from count.renames import (RENAMES, count_renames, has_no_glossary_word, name_of,
                            read_rename_verdicts, read_renames, unmade_said)
 from count.findings import FINDINGS, enabled_in, read_findings
-from count.simplify_ticket import TITLE as SIMPLIFY_TITLE
 from count.simplify_ticket import simplify_ticket
 from count.verdicts import VERDICTS, read_verdicts
 from fetch_origin import fetch_origin
 from judges.judges import DEEPENING, DRIFT, NAMES, SIMPLIFY, told_to_judge
+from judges.earlier_run import earlier_run
 from layers.layers import repo_steering_of
 from output.streams import speaking_any_character
 from position.position import (BASELINE, BUILDING, CUTTING, DEEPENING_CHECK, DRIFT_CHECK,
@@ -1752,25 +1751,22 @@ class Loop:
                        "again.".format(DEEPENING_FILE))
         return limit
 
-    # Found by the title its template writes, since the Tracker keeps no other mark of who filed a ticket.
-    def build_earlier_tickets(self, filed_by_judge, held, what, said_as):
-        found = [(number, title) for number, _, title in self.tracker.ticket_rows(self.spec)
-                 if filed_by_judge(title)]
-        if not found:
+    def build_earlier_tickets(self, judge, earlier, held):
+        if not earlier.tickets:
             return False
-        held.update(found)
+        held.update(earlier.tickets)
         self.say("{} spec {} already holds the {}'s tickets, {}, so the check runs once and does "
-                 "not run again".format(said_as, self.spec_named(), what,
-                                        ", ".join(self.named(number) for number, _ in found)))
+                 "not run again".format(judge.tag, self.spec_named(), judge.what,
+                                        ", ".join(self.named(number) for number, _ in earlier.tickets)))
         self.run_tickets()
         return True
 
     # A judge that filed nothing leaves no ticket behind, so only its report shows that it ran.
-    def earlier_report(self, report, what, said_as):
-        if report:
-            self.say("{} spec {} already holds the {} report, so the check runs once and does not run "
-                     "again".format(said_as, self.spec_named(), what))
-        return report
+    def earlier_report(self, judge, earlier):
+        if earlier.report:
+            self.say("{} spec {} already holds the {}, so the check runs once and does not run "
+                     "again".format(judge.tag, self.spec_named(), judge.report))
+        return earlier.report
 
     # Read back from the Tracker, so a report the Session only said and never recorded is caught.
     def run_judge(self, judge, base, handed="", again=False, handed_on=""):
@@ -1850,11 +1846,10 @@ class Loop:
         if not limit:
             self.say("NOTE  the Deepening check is off, because " + DEEPENING_OFF)
             return
-        if self.build_earlier_tickets(lambda title: title.startswith(DEEPENING_TITLE),
-                                      self.deepening_tickets, "Deepening check", "DEEPEN"):
+        earlier = earlier_run(self.tracker, self.spec, DEEPENING)
+        if self.build_earlier_tickets(DEEPENING, earlier, self.deepening_tickets):
             return
-        report = (self.earlier_report(self.tracker.deepening_report(self.spec), "Deepening", "DEEPEN")
-                  or self.check_deepening(base))
+        report = self.earlier_report(DEEPENING, earlier) or self.check_deepening(base)
         filed = self.read_deepening(report, limit)
         if not filed:
             return
@@ -1910,11 +1905,10 @@ class Loop:
         if not self.simplify_enabled():
             self.say("NOTE  the Simplify check is off, because " + SIMPLIFY_OFF)
             return
-        if self.build_earlier_tickets(lambda title: title == SIMPLIFY_TITLE,
-                                      self.simplify_tickets, "Simplify check", "SIMPLIFY"):
+        earlier = earlier_run(self.tracker, self.spec, SIMPLIFY)
+        if self.build_earlier_tickets(SIMPLIFY, earlier, self.simplify_tickets):
             return
-        report = (self.earlier_report(self.tracker.simplify_report(self.spec), "Simplify", "SIMPLIFY")
-                  or self.check_simplify(base))
+        report = self.earlier_report(SIMPLIFY, earlier) or self.check_simplify(base)
         findings = self.read_simplify(report)
         if not findings:
             return
@@ -1996,11 +1990,12 @@ class Loop:
     # One round, so a Gap that survives a build aimed at it comes to a person rather than looping.
     # A rerun counts the report an earlier run recorded, so the drift check and its Gap ticket come once.
     def close_gaps(self, base):
-        earlier = self.earlier_report(self.tracker.earlier_drift_report(self.spec), "drift", "DRIFT")
-        gaps = self.count_held_drift(earlier, ()) if earlier else self.check_drift(base)
+        earlier = earlier_run(self.tracker, self.spec, DRIFT)
+        report = self.earlier_report(DRIFT, earlier)
+        gaps = self.count_held_drift(report, ()) if report else self.check_drift(base)
         if not gaps:
             return
-        if not any(title == GAP_TITLE for _, _, title in self.tracker.ticket_rows(self.spec)):
+        if not earlier.tickets:
             self.file_gap_ticket(gaps)
             self.run_tickets()
         self.check_drift(base, [gap.item.name for gap in gaps])
@@ -2079,15 +2074,13 @@ class Loop:
     # Its own ticket after the Gap ticket, so each build has one job and no later build brings a name.
     # A rerun reads the report an earlier run recorded, so the Name check and its rename ticket come once.
     def close_renames(self, base):
-        earlier = self.earlier_report(self.tracker.earlier_name_report(self.spec), "Name", "NAMES")
-        renames = self.read_held_names(earlier) if earlier else self.check_names(base)
+        earlier = earlier_run(self.tracker, self.spec, NAMES)
+        report = self.earlier_report(NAMES, earlier)
+        renames = self.read_held_names(report) if report else self.check_names(base)
         if not renames:
             return
-        filed = [number for number, _, title in self.tracker.ticket_rows(self.spec)
-                 if title == RENAME_TITLE]
-        if filed:
-            ticket = filed[0]
-        else:
+        ticket = earlier.ticket
+        if ticket is None:
             ticket = self.file_rename_ticket(renames)
             self.run_tickets()
         self.check_renames(base, ticket, renames)
