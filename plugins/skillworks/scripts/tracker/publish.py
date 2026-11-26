@@ -15,13 +15,13 @@ from tracker.reading import DEEPENING_REPORT, DRIFT_REPORT, NAME_REPORT, SIMPLIF
 USAGE = (
     "usage: tracker-publish spec <slug> <body-file> [<branch>]\n"
     "       tracker-publish tickets <spec> <ticket-file>...\n"
-    "       tracker-publish drift <spec> <report-file>\n"
+    "       tracker-publish drift-check <spec> <report-file>\n"
     "       tracker-publish names <spec> <report-file>\n"
     "       tracker-publish deepening-check <spec> <report-file>\n"
     "       tracker-publish simplify-check <spec> <report-file>\n"
 )
 
-REPORTS = {"drift": (DRIFT_REPORT, "drift report"), "names": (NAME_REPORT, "Name report"),
+REPORTS = {"drift-check": (DRIFT_REPORT, "drift report"), "names": (NAME_REPORT, "Name report"),
            "deepening-check": (DEEPENING_REPORT, "Deepening report"),
            "simplify-check": (SIMPLIFY_REPORT, "Simplify report")}
 

@@ -137,7 +137,7 @@ drift check, then the Name check, then the full run:
 2026-09-28 18:36:12 SIMPLIFY no cleanup is owed on spec #200
 2026-09-28 18:36:13 SCOPE the drift check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 18:36:13 DRIFT all tickets closed. Checking the result against spec #200.
-2026-09-28 18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift.md
+2026-09-28 18:40:12 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift-check.md
 2026-09-28 18:40:12 COUNT the spec holds 21 items, and the drift report gives 21 Verdicts
 2026-09-28 18:40:12 NOTE  Unrequested: A helper that trims the log's lines to 80 characters.
 2026-09-28 18:40:13 SCOPE the Name check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
@@ -236,9 +236,16 @@ log gets one line that says so, and the loop reads that report as the check's:
 2026-09-28 18:24:10 SIMPLIFY spec #200 already holds the Simplify report, so the check runs once and does not run again
 ```
 
+The drift check works the same way. On a rerun it counts the drift report already on the Tracker, and
+the log says so:
+
+```
+2026-09-28 18:36:13 DRIFT spec #200 already holds the drift report, so the check runs once and does not run again
+```
+
 When the count finds a Gap, [the Gap round](drift-check.md#the-gap-round) adds its lines before the full run's. A
 `GAP` line names each Gap, and the `FILED` line names the Gap ticket. The ticket's own lines follow,
-then the re-check's:
+then the drift re-check's:
 
 ```
 2026-09-28 18:40:12 COUNT the spec holds 21 items, and the drift report gives 20 Verdicts
@@ -249,7 +256,7 @@ then the re-check's:
 2026-09-28 19:31:02 DONE  #210  9e3a1f0
 2026-09-28 19:31:03 SCOPE the drift re-check reads 24 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 19:31:03 DRIFT the Gap ticket is closed. Checking S4, The user docs against spec #200 again.
-2026-09-28 19:39:47 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift-gaps.md
+2026-09-28 19:39:47 DRIFT the report is recorded on spec #200. Read it at .spec-loop/200/drift-re-check.md
 2026-09-28 19:39:47 COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts
 ```
 
@@ -289,7 +296,10 @@ full run. The Deepening check prints as the `deepening-check` step, with its cal
 "/skillworks:spec-deepening-check <spec> <base>" --session-id <new id>`, and the `deepening-ticket` line says
 each ticket it files is built through every step. The Simplify check prints as the `simplify-check` step,
 with its call, `claude -p "/skillworks:spec-simplify-check <spec> <base>" --session-id <new id>`, and the
-`simplify-ticket` line says the ticket it files is built through every step. A judge your team turned
+`simplify-ticket` line says the ticket it files is built through every step. The drift check prints
+as the `drift-check` step, with its call, `claude -p "/skillworks:spec-drift-check <spec> <base>"
+--session-id <new id>`. The drift re-check is not a step, and it prints on its own `drift-re-check`
+line, with the Gap items after the base. A judge your team turned
 off prints as its step with `off:` and the setting that turns it off, such as `deepening-check off:
 docs/skillworks/deepening-check.md sets limit to 0`, and its ticket line is left out.
 Last, it prints the paragraph every Session is told after its command. A
@@ -321,7 +331,7 @@ One entry holds:
 | `at` | The date and the time in UTC, as on a log line: `2026-09-28 15:59:37` |
 | `ticket` | The ticket number, or `null` for the Cut and the checks |
 | `spec_step` | `Cut`, `Deepening check`, `Simplify check`, `drift check`, `Name check` or `Name re-check`, or `null` for a ticket step |
-| `step` | The step, such as `build`, `standards` or `resolve`, or the name of the Cut or the check, such as `cut` or `drift-gaps` |
+| `step` | The step, such as `build`, `standards` or `resolve`, or the name of the Cut or the check, such as `cut`, `drift-check` or `drift-re-check` |
 | `attempt` | `0` for the first result of the step, `1` and `2` for the answer to the first and the second Nudge |
 | `status` | The exit status of the Session |
 | `failed` | The checks the result failed. It is `[]` when none failed, and `null` when no check was judged, such as after a non-zero exit |

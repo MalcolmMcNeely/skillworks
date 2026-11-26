@@ -137,6 +137,17 @@
         "docs/skillworks/simplify-check.md",
         "docs/skillworks/issue-tracker.md"
       ]
+    },
+    {
+      "name": "drift-check",
+      "stage": "the spec loop",
+      "description": "Reads the finished work against the spec, and files one ticket for any Gap it finds.",
+      "on-demand": [
+        "docs/skillworks/loop.json",
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/domain.md",
+        "docs/skillworks/surfaces.md"
+      ]
     }
   ]
 }

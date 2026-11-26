@@ -55,7 +55,7 @@ The Dev loop runs each of these itself. A developer may type one for a reason th
 - **`/skillworks:implement`** — builds one ticket. The driver's `build`, `fix` and `finish` steps each run one of its sections, a flag picking the one each step needs. Run by hand with no flag, it works through all seven sections in order, and its Reviewing section runs `/skillworks:review-changes`.
 - **The review axes**, **`/skillworks:review-standards`**, **`/skillworks:review-spec`** and **`/skillworks:review-architecture`** — the `standards`, `spec` and `architecture` steps. Each reads the uncommitted change against its review file.
 - **`/skillworks:comment-sweep`** — the `sweep` step. It cuts comments back to what the comments rule keeps.
-- **`/skillworks:spec-drift`** — the drift check, which reads the whole diff against the spec after the last ticket.
+- **`/skillworks:spec-drift-check`** — the drift check, which reads the whole diff against the spec after the last ticket.
 - **`/skillworks:spec-names`** — the Name check, which reads the whole diff against the glossary after the drift check.
 - **`/skillworks:resolve-conflict`** — resolves the conflict a ticket's rebase onto its Target branch hits, in the session that built the ticket, against **the other side** the driver hands it. The landing script runs it when its rebase conflicts.
 

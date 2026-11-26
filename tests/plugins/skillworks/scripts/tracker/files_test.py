@@ -367,7 +367,7 @@ def given_sessions_that_finish(driver, runs=None, **finish):
     sessions.then[FINISH] = finishing(driver.runner, **finish)
     sessions.then["spec-deepening-check"] = deepening(driver)
     sessions.then["spec-simplify-check"] = simplifying(driver)
-    sessions.then["spec-drift"] = drifting(driver)
+    sessions.then["spec-drift-check"] = drifting(driver)
     sessions.then["spec-names"] = naming(driver)
     driver.put({
         FOLDER + "/spec.md": spec_file(),
@@ -502,7 +502,7 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     sessions.then[FINISH] = finishing(driver.runner)
     sessions.then["spec-deepening-check"] = deepening(driver)
     sessions.then["spec-simplify-check"] = simplifying(driver)
-    sessions.then["spec-drift"] = drifting(driver)
+    sessions.then["spec-drift-check"] = drifting(driver)
     sessions.then["spec-names"] = naming(driver)
     return sessions
 
@@ -556,7 +556,7 @@ def recording(driver, command, report):
 
 
 def drifting(driver, report=REPORT):
-    return recording(driver, "drift", report)
+    return recording(driver, "drift-check", report)
 
 
 RENAMES = "### Renames\n\n- None\n"
@@ -589,7 +589,7 @@ def test_the_loop_reads_back_the_drift_report_recorded_with_the_spec(driver):
 
     assert ran.status == 0, said(ran)
     assert REPORT + "\n" + NAMES in driver.held(FOLDER + "/spec.md")
-    held = driver.repo.work / ".spec-loop" / SPEC / "drift.md"
+    held = driver.repo.work / ".spec-loop" / SPEC / "drift-check.md"
     assert held.read_text(encoding="utf-8") == VERDICTS
     assert "DRIFT the report is recorded on spec 7" in ran.out
     assert "COUNT the spec holds 3 items, and the drift report gives 3 Verdicts" in ran.out
@@ -620,7 +620,7 @@ def test_a_name_check_that_recorded_no_report_stops_and_leaves_the_spec_open(dri
 
 def test_a_drift_check_that_recorded_no_report_stops_and_leaves_the_spec_open(driver):
     sessions = given_sessions_that_finish(driver)
-    del sessions.then["spec-drift"]
+    del sessions.then["spec-drift-check"]
 
     ran = driver.run()
 
@@ -684,7 +684,7 @@ def given_a_gap_round(driver, *reports):
     sessions = given_sessions_that_finish(driver)
     given_a_filed_ticket_that_lands(driver, sessions)
     waiting = list(reports)
-    sessions.then["spec-drift"] = lambda: drifting(driver, waiting.pop(0))()
+    sessions.then["spec-drift-check"] = lambda: drifting(driver, waiting.pop(0))()
     return sessions
 
 

@@ -100,7 +100,7 @@ The Simplify check answers Blocked for a missing file as well, when it is `loop.
 
 The drift check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md`, `surfaces.md` or `domain.md`. It answers Blocked too when `spec-commits` or
-`tracker-publish drift` refused twice, and its line names the command.
+`tracker-publish drift-check` refused twice, and its line names the command.
 
 The Name check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md` or `domain.md`. It answers Blocked too when `spec-commits` or
@@ -264,7 +264,7 @@ loop ends. The line names each Gap left:
 STOP  the drift check still finds 2 Gaps on spec #200 after the Gap ticket was built, and the loop goes round once. A person decides.
       Gap: S4 is Missing: No code writes the NOTE lines.
       Gap: The user docs has no Verdict
-      Read it at .spec-loop/200/drift-gaps.md
+      Read it at .spec-loop/200/drift-re-check.md
 ```
 
 The loop built these once and they are still owed, so a second build would most likely miss again.

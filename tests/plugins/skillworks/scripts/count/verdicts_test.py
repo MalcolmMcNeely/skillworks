@@ -6,7 +6,7 @@ import textwrap
 from conftest import PLUGIN
 from count.verdicts import read_verdicts
 
-SPEC_DRIFT = PLUGIN / "skills" / "spec-drift" / "SKILL.md"
+SPEC_DRIFT = PLUGIN / "skills" / "spec-drift-check" / "SKILL.md"
 
 
 def report(*sections):
@@ -120,7 +120,7 @@ def test_a_report_read_back_without_its_heading_is_read_the_same():
     assert judged(read) == [("S1", "Done", "")]
 
 
-# --- what spec-drift is told to write ------------------------------------------
+# --- what spec-drift-check is told to write ------------------------------------
 
 def skill_text():
     return SPEC_DRIFT.read_text(encoding="utf-8")
@@ -128,7 +128,7 @@ def skill_text():
 
 def example_report():
     found = re.search(r"```markdown\n(.*?)```", skill_text(), re.DOTALL)
-    assert found, "spec-drift shows no example report"
+    assert found, "spec-drift-check shows no example report"
     return textwrap.dedent(found.group(1))
 
 

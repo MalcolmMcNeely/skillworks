@@ -1,11 +1,11 @@
 ---
-name: spec-drift
+name: spec-drift-check
 argument-hint: "<spec> <base> [items, separated by commas]"
 description: Compare the work a spec loop produced against what the spec asked for, and record the gaps with the spec.
 disable-model-invocation: true
 ---
 
-# Spec Drift
+# Spec Drift Check
 
 `/skillworks:spec-loop` runs this once every ticket has Landed. Every ticket passed its own acceptance criteria. Nothing so far has asked whether the pile of them is what the spec wanted.
 
@@ -15,11 +15,11 @@ Read each Steering file with `steering-file <path>`, and never by another route.
 
 `tracker` in `steering-file docs/skillworks/loop.json` names the Tracker, and `steering-file docs/skillworks/issue-tracker.md` says how to read each one. Read the spec and its tickets through those docs, and make no call of your own that they do not name.
 
-`/skillworks:spec-drift 42 a1b2c3d`
+`/skillworks:spec-drift-check 42 a1b2c3d`
 
 A list of items can follow the base commit, separated by commas. The loop gives one when it checks the Gaps again after the Gap ticket Lands:
 
-`/skillworks:spec-drift 42 a1b2c3d S2, D1, The user docs`
+`/skillworks:spec-drift-check 42 a1b2c3d S2, D1, The user docs`
 
 Given a list, judge only those items, and write Verdicts for those alone. Every other step runs as usual, and reads the same commits as the first check. The loop counts only the items it asked about, so a Verdict for any other item counts for nothing.
 
@@ -124,7 +124,7 @@ Where the rule held, the item for the part that lost gets **Contradicts**, and t
 8. Record the report with the spec. Its first line is `## Drift report`, with either Tracker, because the loop finds the report by that heading and reads it back. Write it with the Write tool to `.spec-loop/<spec>/drift-report.md` in this checkout, and record it with this one command, whichever the Tracker:
 
    ```bash
-   tracker-publish drift <spec> .spec-loop/<spec>/drift-report.md
+   tracker-publish drift-check <spec> .spec-loop/<spec>/drift-report.md
    ```
 
    Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.

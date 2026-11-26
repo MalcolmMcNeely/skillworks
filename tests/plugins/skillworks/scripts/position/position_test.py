@@ -45,7 +45,7 @@ def test_a_position_read_while_a_step_runs_names_that_step(loop):
 def test_a_ticket_that_lands_shows_as_landed_in_the_next_position(loop):
     sessions = given_a_run_that_lands(loop)
     seen = []
-    read_while(sessions, "spec-drift", loop, seen)
+    read_while(sessions, "spec-drift-check", loop, seen)
 
     loop.run(SPEC)
 
@@ -55,7 +55,7 @@ def test_a_ticket_that_lands_shows_as_landed_in_the_next_position(loop):
 def test_the_drift_check_shows_as_what_the_loop_does_now(loop):
     sessions = given_a_run_that_lands(loop)
     seen = []
-    read_while(sessions, "spec-drift", loop, seen)
+    read_while(sessions, "spec-drift-check", loop, seen)
 
     loop.run(SPEC)
 

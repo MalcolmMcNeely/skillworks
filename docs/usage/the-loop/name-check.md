@@ -54,7 +54,7 @@ names the name or the concept and says in one sentence why it must change. A con
 has no word for says `no glossary word` on its line. With nothing to rename, the list says `- None`.
 
 The script reads the report back from the Tracker, so a finding the Session only said and never
-recorded is caught. It keeps a copy at `.spec-loop/<spec>/names.md`, beside `drift.md`, and writes a
+recorded is caught. It keeps a copy at `.spec-loop/<spec>/names.md`, beside `drift-check.md`, and writes a
 `NAME` line for each rename. A Name check that recorded no report is Nudged: the script resumes the
 same Session in its own worktree, and names what is missing and the `tracker-publish names` command
 that records it. Each Nudge writes a `NUDGE` line. No report after two Nudges stops the loop, and so

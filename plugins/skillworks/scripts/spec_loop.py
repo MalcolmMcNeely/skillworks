@@ -41,7 +41,7 @@ from clock.clock import Clock
 from count.deepening_ticket import TITLE as DEEPENING_TITLE
 from count.deepening_ticket import deepening_ticket
 from count.deepenings import STRONG, filed_within, limit_in, read_strong
-from count.gap_ticket import gap_ticket
+from count.gap_ticket import TITLE as GAP_TITLE, gap_ticket
 from count.gaps import count_verdicts, gap_said
 from count.items import read_items, with_readme
 from count.rename_ticket import rename_ticket
@@ -504,7 +504,7 @@ def told_plan():
     named = {told: [step.name for step in STEPS if step.told == told]
              for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
     named[TOLD_TO_BUILD].append("cut")
-    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify-check", "drift", "re-check", "names", "name-re-check"]
+    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify-check", "drift-check", "drift-re-check", "names", "name-re-check"]
     return "  each Session above is told, after its command\n" + "".join(
         "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
 
@@ -1306,7 +1306,7 @@ class Loop:
     def after_tickets_plan(self):
         deepening_check = 'claude -p "{}spec-deepening-check {} <base>'.format(PLUGIN, self.spec)
         simplify_check = 'claude -p "{}spec-simplify-check {} <base>'.format(PLUGIN, self.spec)
-        drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
+        drift_check = 'claude -p "{}spec-drift-check {} <base>'.format(PLUGIN, self.spec)
         names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
         deepening = (plan_line("deepening-check", deepening_check + '" --session-id <new id>',
                                "a Deepening report recorded, a Strong list")
@@ -1326,12 +1326,12 @@ class Loop:
         return ("  after every ticket is closed\n"
                 + deepening
                 + simplifying
-                + plan_line("drift", drift + '" --session-id <new id>',
+                + plan_line("drift-check", drift_check + '" --session-id <new id>',
                             "a report recorded, a Verdicts list, no Contradicts")
                 + nudges_line(REPORT_RECORDED)
                 + plan_line("gap-ticket", "one ticket under the spec when the count finds a Gap, "
                             "built through every step above")
-                + plan_line("re-check", drift + ' <the Gap items>" --session-id <new id>, once',
+                + plan_line("drift-re-check", drift_check + ' <the Gap items>" --session-id <new id>, once',
                             "no Gap left, no Contradicts")
                 + nudges_line(NEW_REPORT_RECORDED)
                 + plan_line("names", names + '" --session-id <new id>',
@@ -1915,7 +1915,7 @@ class Loop:
 
     # Handed the Gap items, it judges those alone, so the re-check has a small context and misses less.
     def check_drift(self, base, asked=()):
-        named = "drift-gaps" if asked else "drift"
+        named = "drift-re-check" if asked else "drift-check"
         self.moved(DRIFT_CHECK)
         self.say_scope("drift re-check" if asked else "drift check", base)
         if asked:
@@ -1927,10 +1927,11 @@ class Loop:
         recorded = Recorded(
             NEW_REPORT_RECORDED if asked else REPORT_RECORDED,
             lambda: self.drift_recorded(asked),
-            self.report_owed("new drift report" if asked else "drift report", "drift",
+            self.report_owed("new drift report" if asked else "drift report", "drift-check",
                              "drift-report.md"))
-        result = self.run_clean_session(named, "drift check", PLUGIN + "spec-drift {} {}{}".format(
-            self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""), recorded,
+        result = self.run_clean_session(
+            named, "drift check", PLUGIN + "spec-drift-check {} {}{}".format(
+                self.spec, base, " " + ITEM_SEPARATOR.join(asked) if asked else ""), recorded,
             handed_on=self.spec_departures())
         return self.read_drift_report(named, asked, result)
 
@@ -1951,6 +1952,9 @@ class Loop:
             raise self.stop_naming_denials("STOP  the re-check recorded no new report on spec {}, so the Gap "
                                    "items were not judged again and the spec stays open.".format(
                                        self.spec_named()), result)
+        return self.count_held_drift(named, report, asked)
+
+    def count_held_drift(self, named, report, asked):
         self.drift_read = report
         held = self.log_dir / (named + ".md")
         written(held, report + "\n")
@@ -2010,12 +2014,15 @@ class Loop:
             self.named(ticket), self.spec_named(), how_many(len(gaps), "Gap", "Gaps")))
 
     # One round, so a Gap that survives a build aimed at it comes to a person rather than looping.
+    # A rerun counts the report an earlier run recorded, so the drift check and its Gap ticket come once.
     def close_gaps(self, base):
-        gaps = self.check_drift(base)
+        earlier = self.earlier_report(self.tracker.earlier_drift_report(self.spec), "drift", "DRIFT")
+        gaps = self.count_held_drift("drift-check", earlier, ()) if earlier else self.check_drift(base)
         if not gaps:
             return
-        self.file_gap_ticket(gaps)
-        self.run_tickets()
+        if not any(title == GAP_TITLE for _, _, title in self.tracker.ticket_rows(self.spec)):
+            self.file_gap_ticket(gaps)
+            self.run_tickets()
         self.check_drift(base, [gap.item.name for gap in gaps])
 
     # --- the Name check ------------------------------------------------------

@@ -1617,7 +1617,7 @@ def test_the_walk_for_skill_tool_calls_finds_the_grills_call_to_to_spec():
 
 
 # A loop Session may not write outside its checkout, and one rule for all four stops a copy bringing it back.
-@pytest.mark.parametrize("skill", ["to-spec", "to-tickets", "spec-drift", "spec-names"])
+@pytest.mark.parametrize("skill", ["to-spec", "to-tickets", "spec-drift-check", "spec-names"])
 def test_a_skill_that_publishes_writes_its_file_in_the_ignored_loop_folder(skill):
     text = skill_text(skill)
 
@@ -1728,7 +1728,7 @@ def step_map_row(step):
     return rows[0]
 
 
-@pytest.mark.parametrize("step", ["`grill`", "`write-spec`", "`spec`", "The drift check"])
+@pytest.mark.parametrize("step", ["`grill`", "`write-spec`", "`spec`", "`drift-check`"])
 def test_the_step_map_names_the_surfaces_file_for_each_step_that_reads_it(step):
     assert "/surfaces.md`" in step_map_row(step)
 
@@ -1772,7 +1772,7 @@ def test_the_spec_review_checks_each_surface_the_spec_names_for_the_ticket():
 
 
 def test_the_drift_check_checks_and_reports_each_surface_the_spec_names():
-    drift = skill_text("spec-drift")
+    drift = skill_text("spec-drift-check")
 
     assert "Surfaces section" in drift
     assert "every Surface the spec names" in drift
@@ -1780,9 +1780,9 @@ def test_the_drift_check_checks_and_reports_each_surface_the_spec_names():
 
 
 def test_the_drift_check_given_a_list_of_items_judges_those_alone():
-    drift = skill_text("spec-drift")
+    drift = skill_text("spec-drift-check")
 
-    assert "`/skillworks:spec-drift 42 a1b2c3d S2, D1, The user docs`" in drift
+    assert "`/skillworks:spec-drift-check 42 a1b2c3d S2, D1, The user docs`" in drift
     assert "judge only those items" in drift
     assert "write Verdicts for those alone" in drift
 
@@ -1791,14 +1791,14 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
     files = files_tracker(seeded("issue-tracker.md"))
 
     assert "**List what is open**" in files
-    assert "tracker-publish drift <spec> <file>" in files
+    assert "tracker-publish drift-check <spec> <file>" in files
     assert "`{}`".format(DRIFT_REPORT) in files
     assert "tracker-publish names <spec> <file>" in files
     assert "`{}`".format(NAME_REPORT) in files
 
 
 @pytest.mark.parametrize("page", [SKILLS / "what-next" / "SKILL.md", SKILLS / "review-changes" / "spec.md",
-                                  SKILLS / "spec-drift" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md",
+                                  SKILLS / "spec-drift-check" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md",
                                   SKILLS / "spec-deepening-check" / "SKILL.md", SKILLS / "spec-simplify-check" / "SKILL.md"],
                          ids=lambda page: page.relative_to(SKILLS).as_posix())
 def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(page):
@@ -1838,62 +1838,62 @@ def test_review_spec_reads_a_files_ticket_from_its_folder_in_the_worktree():
     assert "worktree" in review_spec
 
 
-def test_spec_drift_records_its_report_with_the_spec_under_the_heading_the_loop_reads():
-    spec_drift = skill_text("spec-drift")
+def test_spec_drift_check_records_its_report_with_the_spec_under_the_heading_the_loop_reads():
+    spec_drift_check = skill_text("spec-drift-check")
 
-    assert "tracker-publish drift <spec> .spec-loop/<spec>/drift-report.md" in spec_drift
-    assert "`{}`".format(DRIFT_REPORT) in spec_drift
-    assert "`spec.md`" in spec_drift
-
-
-def test_spec_drift_reads_the_spec_commits_and_judges_the_target_branch_as_it_stands():
-    spec_drift = skill_text("spec-drift")
-
-    assert "spec-commits <spec> <base>" in spec_drift
-    assert "git diff <base>..origin/<target>" not in spec_drift
-    assert "Judge the Target branch as it stands" in spec_drift
-    assert "behaviour in the spec's commits that no story and no ticket asked for" in spec_drift
-    assert "only when it still stands on `origin/<target>`" in spec_drift
+    assert "tracker-publish drift-check <spec> .spec-loop/<spec>/drift-report.md" in spec_drift_check
+    assert "`{}`".format(DRIFT_REPORT) in spec_drift_check
+    assert "`spec.md`" in spec_drift_check
 
 
-def test_spec_drift_judges_the_deepening_and_simplify_tickets_work_and_lists_none_of_it_as_unrequested():
-    spec_drift = skill_text("spec-drift")
-    unrequested = next(paragraph for paragraph in spec_drift.split("\n\n")
+def test_spec_drift_check_reads_the_spec_commits_and_judges_the_target_branch_as_it_stands():
+    spec_drift_check = skill_text("spec-drift-check")
+
+    assert "spec-commits <spec> <base>" in spec_drift_check
+    assert "git diff <base>..origin/<target>" not in spec_drift_check
+    assert "Judge the Target branch as it stands" in spec_drift_check
+    assert "behaviour in the spec's commits that no story and no ticket asked for" in spec_drift_check
+    assert "only when it still stands on `origin/<target>`" in spec_drift_check
+
+
+def test_spec_drift_check_judges_the_deepening_and_simplify_tickets_work_and_lists_none_of_it_as_unrequested():
+    spec_drift_check = skill_text("spec-drift-check")
+    unrequested = next(paragraph for paragraph in spec_drift_check.split("\n\n")
                        if "List **Unrequested** work" in paragraph)
 
-    assert "the deepening tickets and the simplify ticket among them" in spec_drift
+    assert "the deepening tickets and the simplify ticket among them" in spec_drift_check
     assert "read their commits for your Verdicts" in unrequested
     assert "list none of their work as Unrequested" in unrequested
     assert "`{}`".format(DEEPENING_TITLE.rstrip()) in unrequested
     assert "`{}`".format(SIMPLIFY_TITLE) in unrequested
 
 
-def test_spec_drift_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
-    spec_drift = skill_text("spec-drift")
+def test_spec_drift_check_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    spec_drift_check = skill_text("spec-drift-check")
 
-    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_drift
-    assert "CONTEXT.md" not in spec_drift
+    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_drift_check
+    assert "CONTEXT.md" not in spec_drift_check
 
 
 # A hand run with the files Tracker fetches as the tracker docs say, so the ban holds only where the driver fetched.
-def test_spec_drift_runs_no_fetch_of_its_own_under_the_loop_alone():
+def test_spec_drift_check_runs_no_fetch_of_its_own_under_the_loop_alone():
     assert ("Under the spec loop, run no `git fetch` of your own, even where "
-            "`steering-file docs/skillworks/issue-tracker.md` names one.") in skill_text("spec-drift")
+            "`steering-file docs/skillworks/issue-tracker.md` names one.") in skill_text("spec-drift-check")
 
 
-def test_spec_drift_says_its_report_is_recorded_when_the_command_prints_where_it_went():
+def test_spec_drift_check_says_its_report_is_recorded_when_the_command_prints_where_it_went():
     assert ("The report is recorded when the command prints the comment's URL, or the path of "
-            "`spec.md`.") in skill_text("spec-drift")
+            "`spec.md`.") in skill_text("spec-drift-check")
 
 
-def test_spec_drift_posts_nothing_on_the_spec_after_its_report_because_the_loop_reads_the_last_comment():
+def test_spec_drift_check_posts_nothing_on_the_spec_after_its_report_because_the_loop_reads_the_last_comment():
     assert ("the loop reads the last one, so post nothing on the spec after the report"
-            in skill_text("spec-drift"))
+            in skill_text("spec-drift-check"))
 
 
 @pytest.mark.parametrize("command", ["spec-commits", "tracker-publish"])
-def test_spec_drift_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
-    refused = [paragraph for paragraph in skill_text("spec-drift").split("\n\n")
+def test_spec_drift_check_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
+    refused = [paragraph for paragraph in skill_text("spec-drift-check").split("\n\n")
                if "If `{}` refuses".format(command) in paragraph]
 
     assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
@@ -2227,16 +2227,16 @@ def test_the_comment_sweep_begins_its_report_with_a_blocked_line_under_the_loop_
     assert stops("comment-sweep", read_of("docs/skillworks/rules/comments.md"), "`BLOCKED`", "Under the spec loop")
 
 
-SPEC_DRIFT_READS = [read_of(WHERE[name])
+SPEC_DRIFT_CHECK_READS = [read_of(WHERE[name])
                     for name in ("loop.json", "issue-tracker.md", "surfaces.md", "domain.md")]
 
 
-def test_spec_drift_stops_when_a_steering_file_it_reads_is_missing():
-    assert stops("spec-drift", *SPEC_DRIFT_READS)
+def test_spec_drift_check_stops_when_a_steering_file_it_reads_is_missing():
+    assert stops("spec-drift-check", *SPEC_DRIFT_CHECK_READS)
 
 
-def test_spec_drift_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_steering_file_is_missing():
-    assert stops("spec-drift", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_DRIFT_READS)
+def test_spec_drift_check_begins_its_last_message_with_a_blocked_line_under_the_loop_when_a_steering_file_is_missing():
+    assert stops("spec-drift-check", "`BLOCKED`", "Under the spec loop", "begin your last message", *SPEC_DRIFT_CHECK_READS)
 
 
 SPEC_NAMES_READS = [read_of(WHERE[name]) for name in ("loop.json", "issue-tracker.md", "domain.md")]
@@ -2776,10 +2776,10 @@ STEERING_READERS = {
     "determinism.md": ["tdd/tests.md"],
     "file-placement.md": ["review-changes/architecture.md"],
     "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md", "codebase-design/DEEPENING.md"],
-    "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
+    "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift-check/SKILL.md", "spec-names/SKILL.md",
                          "spec-deepening-check/SKILL.md", "spec-simplify-check/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md",
                          "review-changes/SKILL.md", "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
-    "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
+    "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift-check/SKILL.md",
                   "spec-names/SKILL.md", "spec-deepening-check/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
                   "codebase-design/DESIGN-IT-TWICE.md", "context-backfill/SKILL.md",
                   "improve-codebase-architecture/SKILL.md"],
@@ -2790,9 +2790,9 @@ STEERING_READERS = {
     "review-architecture.md": ["review-changes/architecture.md"],
     "review-spec.md": ["review-changes/spec.md"],
     "suite.json": ["implement/SKILL.md", "architecture-tests/SKILL.md", "resolve-conflict/SKILL.md"],
-    "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
+    "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift-check/SKILL.md", "spec-names/SKILL.md",
                   "spec-deepening-check/SKILL.md", "spec-simplify-check/SKILL.md", "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
-    "surfaces.md": ["grill/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "review-changes/spec.md"],
+    "surfaces.md": ["grill/SKILL.md", "to-spec/SKILL.md", "spec-drift-check/SKILL.md", "review-changes/spec.md"],
     "deepening-check.md": ["spec-deepening-check/SKILL.md"],
     "simplify-check.md": ["spec-simplify-check/SKILL.md"],
 }
@@ -2949,8 +2949,8 @@ def test_the_spec_axis_judges_a_departure_and_a_broken_rule_is_asked_for_built_w
     assert "Where the rule held, there is no finding" in judging
 
 
-def test_spec_drift_judges_a_departure_and_where_the_rule_held_the_part_that_lost_contradicts():
-    judging = " ".join(section(skill_text("spec-drift"), "Judging a Departure").split())
+def test_spec_drift_check_judges_a_departure_and_where_the_rule_held_the_part_that_lost_contradicts():
+    judging = " ".join(section(skill_text("spec-drift-check"), "Judging a Departure").split())
 
     assert "`DEPARTS`" in judging
     assert "Do both parts really name the point?" in judging
@@ -3201,7 +3201,7 @@ def test_the_name_check_page_describes_the_name_check_and_its_report():
     assert "the commits the spec's tickets Landed after the base commit, through `spec-commits`" in page
     assert "A name is a finding only while it still stands on the Target branch." in page
     assert "A rename is never \"Optional\"." in page
-    assert "`.spec-loop/<spec>/names.md`, beside `drift.md`" in page
+    assert "`.spec-loop/<spec>/names.md`, beside `drift-check.md`" in page
     assert "With no rename there is no rename ticket and no Name re-check" in page
     assert "## The Name check" not in LOOP_OVERVIEW.read_text(encoding="utf-8")
 

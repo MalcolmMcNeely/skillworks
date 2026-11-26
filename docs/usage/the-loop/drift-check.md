@@ -8,14 +8,19 @@ are what the spec wanted.
 So when no open ticket is left, after the two judges that look for work to build, [the Deepening
 check](deepening-check.md) and [the Simplify check](simplify-check.md), and after every ticket they
 filed has Landed, the script opens one more worktree and runs
-`/skillworks:spec-drift <spec> <base>` in a Fresh Session. It judges the work against the spec, not the
-tickets, because a ticket that drifted still passed its own criteria. It records one report with the
-spec, under the heading `## Drift report`, through `tracker-publish drift` with either Tracker. With
-the GitHub Tracker the report is a new comment on the spec issue, and a rerun adds another comment
-below it. With the files Tracker there is no issue, so the report goes at the end of the spec's
-`spec.md`.
+`/skillworks:spec-drift-check <spec> <base>` in a Fresh Session. The plan and the log name it as the
+`drift-check` step. It judges the work against the spec, not the tickets, because a ticket that
+drifted still passed its own criteria. It records one report with the spec, under the heading
+`## Drift report`, through `tracker-publish drift-check` with either Tracker. With the GitHub Tracker
+the report is a new comment on the spec issue. With the files Tracker there is no issue, so the report
+goes at the end of the spec's `spec.md`.
 The script then reads the report back from the Tracker and keeps a copy at
-`.spec-loop/<spec>/drift.md`.
+`.spec-loop/<spec>/drift-check.md`.
+
+A loop run again on a spec that already holds a drift report does not run the drift check again. It
+counts the report it finds, and the log gets a `DRIFT` line that says so. When the spec already holds
+the Gap ticket, the loop builds it if it is still open, files no second one, and goes on to the
+`drift-re-check`.
 
 The drift check reads the spec's commits through `spec-commits`: the commits after the base commit
 that the spec's tickets Landed, the deepening tickets', the simplify ticket's and the Gap ticket's
@@ -92,9 +97,9 @@ The loop stops, and the spec stays open, when:
 
 - the drift check recorded no report, after two Nudges. A drift check that recorded no report is
   Nudged first: the script resumes the same Session in its own worktree, and names what is missing
-  and the `tracker-publish drift` command that records it. Each Nudge writes a `NUDGE` line;
+  and the `tracker-publish drift-check` command that records it. Each Nudge writes a `NUDGE` line;
 - the drift check began its last message with a `BLOCKED` line. It does so when a Steering file it
-  reads is missing, or when `spec-commits` or `tracker-publish drift` refused twice. The loop stops
+  reads is missing, or when `spec-commits` or `tracker-publish drift-check` refused twice. The loop stops
   at once, with no Nudge, as [When a step fails](stops.md) shows;
 - the report has no `### Verdicts` list;
 - any Verdict is Contradicts. The stop line names each Contradicts and every Gap beside it, because a
@@ -118,13 +123,14 @@ ask for a ticket.
    `ready-for-agent` label with GitHub, and a new file in the spec's `tickets/` folder with files.
 2. **The build.** The loop reads the open tickets again, finds the Gap ticket, and builds it through
    [the same steps](steps.md) as every other ticket, then Lands it.
-3. **The re-check.** The script runs the drift check again, on the Gap items alone:
-   `/skillworks:spec-drift <spec> <base> S4, The user docs`. It reads the same spec's commits as the
-   first drift check, the Gap ticket's now among them. A small context misses less. The
-   report is kept at `.spec-loop/<spec>/drift-gaps.md`, and the script counts it against those items
-   only.
+3. **The drift re-check.** The script runs the drift check again, on the Gap items alone:
+   `/skillworks:spec-drift-check <spec> <base> S4, The user docs`. The plan and the log name it
+   `drift-re-check`. It reads the same spec's commits as the first drift check, the Gap ticket's now
+   among them. A small context misses less. The report is kept at
+   `.spec-loop/<spec>/drift-re-check.md`, and the script counts it against those items only.
 
 There is one round. A Gap that survives a build aimed at it comes to you rather than looping, so a Gap
-left after the re-check stops the loop and names each one. A Contradicts in the re-check stops it too,
-and so does a re-check that recorded no new report after two Nudges, because the Gap items were not
-judged again. A re-check that recorded no new report is Nudged first, as the drift check is.
+left after the drift re-check stops the loop and names each one. A Contradicts in the drift re-check
+stops it too, and so does a drift re-check that recorded no new report after two Nudges, because the
+Gap items were not judged again. A drift re-check that recorded no new report is Nudged first, as the
+drift check is.

@@ -31,6 +31,7 @@ STEP_LIST = (
     "  finish           Commits the ticket and closes it with its Closing note.\n"
     "  deepening-check  Looks for modules the spec left shallow, and files a ticket to deepen each one.\n"
     "  simplify-check   Looks for code the spec made harder than it has to be, and files one ticket to clean it up.\n"
+    "  drift-check      Reads the finished work against the spec, and files one ticket for any Gap it finds.\n"
     "\n"
     "The step map: https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/the-loop/step-map.md\n"
 )
@@ -262,6 +263,42 @@ def test_the_simplify_check_shows_its_own_file_and_the_tracker_even_when_turned_
         "\n"
         "==> [repo] docs/skillworks/issue-tracker.md <==\n"
         "# Tracker\n"
+    )), ran.err
+
+
+def test_the_drift_check_shows_the_loop_file_the_tracker_the_domain_docs_and_the_surfaces(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, "docs/skillworks/loop.json", '{"tracker": "github"}\n')
+    write(repo.work, "docs/skillworks/issue-tracker.md", "# Tracker\n")
+    write(repo.work, "docs/skillworks/domain.md", "# Domain\n")
+    write(repo.work, "docs/skillworks/surfaces.md", "# Surfaces\n")
+
+    ran = show("drift-check", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the drift-check step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  on demand  [repo]     docs/skillworks/loop.json\n"
+        "  on demand  [repo]     docs/skillworks/issue-tracker.md\n"
+        "  on demand  [repo]     docs/skillworks/domain.md\n"
+        "  on demand  [repo]     docs/skillworks/surfaces.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [repo] docs/skillworks/loop.json <==\n"
+        '{"tracker": "github"}\n'
+        "\n"
+        "==> [repo] docs/skillworks/issue-tracker.md <==\n"
+        "# Tracker\n"
+        "\n"
+        "==> [repo] docs/skillworks/domain.md <==\n"
+        "# Domain\n"
+        "\n"
+        "==> [repo] docs/skillworks/surfaces.md <==\n"
+        "# Surfaces\n"
     )), ran.err
 
 

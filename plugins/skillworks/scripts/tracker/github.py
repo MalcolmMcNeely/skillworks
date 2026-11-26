@@ -427,3 +427,6 @@ class GitHub:
 
     def simplify_report(self, spec):
         return self.newest_report(spec, SIMPLIFY_REPORT)
+
+    def earlier_drift_report(self, spec):
+        return self.newest_report(spec, DRIFT_REPORT)

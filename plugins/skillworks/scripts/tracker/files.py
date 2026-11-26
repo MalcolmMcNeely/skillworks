@@ -388,6 +388,10 @@ class Files:
     def drift_report(self, spec):
         return section_in(self.spec_body(spec), DRIFT_REPORT, NAME_REPORT)
 
+    # The spec's file holds one drift report, so the one a run reads is the one an earlier run left.
+    def earlier_drift_report(self, spec):
+        return self.drift_report(spec)
+
     def deepening_report(self, spec):
         return section_in(self.spec_body(spec), DEEPENING_REPORT, *JUDGED_LATER[DEEPENING_REPORT])
 

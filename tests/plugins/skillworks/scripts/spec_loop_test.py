@@ -106,7 +106,7 @@ DEEPENING_CHECK = "/skillworks:spec-deepening-check"
 
 SIMPLIFY_CHECK = "/skillworks:spec-simplify-check"
 
-JUDGES = (DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift", NAME_CHECK)
+JUDGES = (DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift-check", NAME_CHECK)
 
 
 def name_report(*renames):
@@ -833,7 +833,7 @@ def test_the_dry_run_names_the_nudges_of_the_checks(loop):
     ran = loop.run(SPEC, "--dry-run")
 
     assert [planned_nudges(ran, step) for step in
-            ("drift", "re-check", "names", "name-re-check")] == [
+            ("drift-check", "drift-re-check", "names", "name-re-check")] == [
         "up to 2, on report-recorded", "up to 2, on new-report-recorded",
         "up to 2, on report-recorded", "up to 2, on new-report-recorded"]
 
@@ -844,12 +844,15 @@ def test_the_dry_run_names_the_gap_round_between_the_drift_check_and_the_full_ru
     ran = loop.run(SPEC, "--dry-run")
 
     assert ran.status == 0, said(ran)
-    assert planned_steps(ran)[-7:-3] == ["drift", "gap-ticket", "re-check", "names"]
+    assert planned_steps(ran)[-7:-3] == ["drift-check", "gap-ticket", "drift-re-check", "names"]
     assert planned_steps(ran)[-1] == "full-run"
-    assert '"/skillworks:spec-drift 158 <base>"' in planned_call(ran, "drift")
+    assert planned_call(ran, "drift-check") == (
+        'drift-check  claude -p "/skillworks:spec-drift-check 158 <base>" --session-id <new id>')
     assert "one ticket under the spec when the count finds a Gap" in planned_call(ran, "gap-ticket")
-    assert '"/skillworks:spec-drift 158 <base> <the Gap items>"' in planned_call(ran, "re-check")
-    assert planned_checks(ran, "re-check") == "no Gap left, no Contradicts"
+    assert planned_call(ran, "drift-re-check") == (
+        'drift-re-check claude -p "/skillworks:spec-drift-check 158 <base> <the Gap items>" '
+        '--session-id <new id>, once')
+    assert planned_checks(ran, "drift-re-check") == "no Gap left, no Contradicts"
     assert "once and last" in planned_call(ran, "full-run")
 
 
@@ -3149,7 +3152,7 @@ def test_the_cut_is_told_to_run_only_trials(loop, runner):
 def test_the_drift_check_and_the_name_check_are_told_to_run_only_trials(loop, runner):
     drifted(loop, drift_report())
 
-    prompts = prompts_asking(runner, "/skillworks:spec-drift") + prompts_asking(runner, NAME_CHECK)
+    prompts = prompts_asking(runner, "/skillworks:spec-drift-check") + prompts_asking(runner, NAME_CHECK)
     assert len(prompts) == 2
     assert all(TRIALS_ONLY in prompt for prompt in prompts)
 
@@ -3397,7 +3400,7 @@ def test_the_cut_leaves_its_count_of_denials(loop):
 def test_the_drift_check_leaves_its_count_of_denials(loop):
     drifted(loop, drift_report(), A_DENIED_WRITE)
 
-    assert "DENY  spec #158 drift        1 Denial\n      Denial: Write" in loop.log()
+    assert "DENY  spec #158 drift-check  1 Denial\n      Denial: Write" in loop.log()
 
 
 def test_the_name_check_leaves_its_count_of_denials(loop):
@@ -3503,7 +3506,7 @@ def test_the_drift_check_and_the_name_check_are_told_only_the_words_for_a_step_t
         loop, runner):
     drifted(loop, drift_report())
 
-    prompts = prompts_asking(runner, "/skillworks:spec-drift") + prompts_asking(runner, NAME_CHECK)
+    prompts = prompts_asking(runner, "/skillworks:spec-drift-check") + prompts_asking(runner, NAME_CHECK)
     assert len(prompts) == 2
     assert all(prompt.endswith(TOLD_TO_JUDGE) and "Choice" not in prompt for prompt in prompts)
 
@@ -3523,7 +3526,8 @@ def test_the_dry_run_prints_each_set_of_words_beside_the_steps_that_get_it(loop)
 
     assert ("  each Session above is told, after its command\n"
             "    build, fix, cut:\n    " + TOLD_TO_BUILD + "\n"
-            "    standards, spec, architecture, sweep, deepening-check, simplify-check, drift, re-check, names, "
+            "    standards, spec, architecture, sweep, deepening-check, simplify-check, drift-check, drift-re-check, "
+            "names, "
             "name-re-check:\n"
             "    " + TOLD_TO_JUDGE + "\n"
             "    finish:\n    " + TOLD_TO_FINISH + "\n") in ran.out
@@ -3608,7 +3612,7 @@ def test_a_stop_ends_the_log_with_every_departure_first_then_the_choices_then_th
 def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run(loop):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
-    sessions.says["spec-drift"] = "Recorded.\n" + A_HAND_CHECK
+    sessions.says["spec-drift-check"] = "Recorded.\n" + A_HAND_CHECK
     sessions.says["spec-names"] = "Recorded.\n" + A_CHOICE
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = drift_report()
@@ -3620,7 +3624,7 @@ def test_a_clean_finish_ends_the_log_with_every_choice_and_hand_check_of_the_run
     assert last_stamped(loop) == header
     assert lines_under(loop, header) == [
         "      spec #158 names        " + A_CHOICE,
-        "      spec #158 drift        " + A_HAND_CHECK]
+        "      spec #158 drift-check  " + A_HAND_CHECK]
 
 
 def test_the_fix_is_handed_the_lines_the_build_wrote_and_told_to_write_only_a_new_one(
@@ -3697,7 +3701,7 @@ def test_the_drift_check_is_handed_the_departures_every_build_of_the_spec_wrote_
 
     loop.run(SPEC)
 
-    assert prompts_asking(runner, "/skillworks:spec-drift")[0].endswith(
+    assert prompts_asking(runner, "/skillworks:spec-drift-check")[0].endswith(
         handed_departures(A_DEPARTURE, ANOTHER_DEPARTURE))
 
 
@@ -3714,7 +3718,7 @@ def test_a_departure_a_build_wrote_in_an_earlier_run_on_the_spec_reaches_the_dri
 
     loop.run(SPEC)
 
-    assert prompts_asking(runner, "/skillworks:spec-drift")[0].endswith(
+    assert prompts_asking(runner, "/skillworks:spec-drift-check")[0].endswith(
         handed_departures(A_DEPARTURE))
 
 
@@ -3814,14 +3818,14 @@ def test_a_blocked_finish_that_closed_its_ticket_reopens_it(loop):
 
 def test_a_blocked_drift_check_stops_the_loop_before_the_name_check(loop, runner):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    given_sessions_that_report(loop).says["spec-drift"] = A_BLOCKED
+    given_sessions_that_report(loop).says["spec-drift-check"] = A_BLOCKED
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = drift_report()
 
     loop.run(SPEC)
 
     assert prompts_asking(runner, NAME_CHECK) == []
-    assert stop_lines(loop)[0] == "STOP  spec #158 drift is Blocked: " + A_BLOCKED
+    assert stop_lines(loop)[0] == "STOP  spec #158 drift-check is Blocked: " + A_BLOCKED
 
 
 # --- an error the driver did not expect --------------------------------------
@@ -3956,7 +3960,7 @@ def test_the_drift_session_names_the_session_that_started_the_driver(loop, runne
 
     loop.run(SPEC)
 
-    assert call_asking(runner, "/skillworks:spec-drift") is not None
+    assert call_asking(runner, "/skillworks:spec-drift-check") is not None
     assert changes_given_to_sessions(runner)[-1].get("OTEL_RESOURCE_ATTRIBUTES") == PARENT
 
 
@@ -4034,7 +4038,7 @@ def test_the_drift_check_is_handed_no_ticket_trailer(loop, runner, monkeypatch):
     ran = drifted_in_a_round(loop, drift_report(S2="Missing"), verdicts_alone(S2="Done"))
 
     assert ran.status == 0, said(ran)
-    assert handed_no_trailer(runner, "/skillworks:spec-drift")
+    assert handed_no_trailer(runner, "/skillworks:spec-drift-check")
 
 
 def test_the_gap_ticket_s_sessions_are_handed_its_trailer(loop, runner):
@@ -4123,7 +4127,7 @@ def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runn
     ran = loop.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert (loop.records() / "drift.md").read_text(encoding="utf-8") == (
+    assert (loop.records() / "drift-check.md").read_text(encoding="utf-8") == (
         drift_report().removeprefix("## Drift report\n\n"))
     assert "DRIFT the report is recorded on spec #{}".format(SPEC) in ran.out
 
@@ -4132,7 +4136,7 @@ def test_the_drift_report_the_session_posted_on_the_spec_is_read_back(loop, runn
 
 def drifted(loop, report, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
-    given_a_session_that_was_denied(given_sessions_that_report(loop), "spec-drift", *denials)
+    given_a_session_that_was_denied(given_sessions_that_report(loop), "spec-drift-check", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = report
     return loop.run(SPEC)
@@ -4172,7 +4176,7 @@ def test_a_spec_whose_last_comment_is_no_drift_report_stops_the_loop(loop):
     assert ran.status == 1
     assert ("STOP  the drift check recorded no report on spec #{}, so nothing was counted"
             .format(SPEC)) in loop.log()
-    assert not (loop.records() / "drift.md").exists()
+    assert not (loop.records() / "drift-check.md").exists()
     assert "END" not in loop.log()
 
 
@@ -4208,7 +4212,7 @@ def test_a_contradicts_stops_the_loop_before_any_gap_is_built(loop, runner):
 
     assert ran.status == 1
     assert not runner.built("issue create")
-    assert len(prompts_asking(runner, "/skillworks:spec-drift")) == 1
+    assert len(prompts_asking(runner, "/skillworks:spec-drift-check")) == 1
     assert "GAP" not in loop.log()
 
 
@@ -4246,7 +4250,7 @@ def given_drift_reports(sessions, tracker, *reports):
 
     def record():
         tracker.drift_report = waiting.pop(0)
-    sessions.then["spec-drift"] = record
+    sessions.then["spec-drift-check"] = record
 
 
 # A file of its own, since a ticket landed before it already holds what every build writes.
@@ -4262,7 +4266,7 @@ def given_a_filed_ticket_that_lands(loop, tracker, sessions, ticket):
 def drifted_in_a_round(loop, first, second, *denials):
     tracker = given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
-    given_a_session_that_was_denied(sessions, "spec-drift", *denials)
+    given_a_session_that_was_denied(sessions, "spec-drift-check", *denials)
     given_the_closed_ticket_landed_after_the_base(loop)
     given_a_filed_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
     given_drift_reports(sessions, tracker, first, second)
@@ -4360,12 +4364,12 @@ def test_the_re_check_judges_the_gap_items_alone_and_a_closed_round_ends_the_run
         verdicts_alone(S2="Done", The_user_docs="In step"))
 
     assert ran.status == 0, said(ran)
-    assert commands_asking(runner, "/skillworks:spec-drift") == [
-        "/skillworks:spec-drift {} {}".format(SPEC, base_of(loop)),
-        "/skillworks:spec-drift {} {} S2, The user docs".format(SPEC, base_of(loop))]
+    assert commands_asking(runner, "/skillworks:spec-drift-check") == [
+        "/skillworks:spec-drift-check {} {}".format(SPEC, base_of(loop)),
+        "/skillworks:spec-drift-check {} {} S2, The user docs".format(SPEC, base_of(loop))]
     log = loop.log()
     assert "COUNT the re-check was asked about 2 items, and the drift report gives 2 Verdicts" in log
-    assert (loop.records() / "drift-gaps.md").is_file()
+    assert (loop.records() / "drift-re-check.md").is_file()
     assert "STOP" not in log
     assert "END   spec #{}".format(SPEC) in log
 
@@ -4382,7 +4386,7 @@ def test_a_gap_left_after_the_round_stops_the_loop_naming_each_one(loop, runner)
     assert "      Gap: S2 is Missing: Still no code.\n" in log
     assert "      Gap: D1" not in log
     assert len(runner.built("issue create")) == 1
-    assert len(prompts_asking(runner, "/skillworks:spec-drift")) == 2
+    assert len(prompts_asking(runner, "/skillworks:spec-drift-check")) == 2
     assert "END" not in log
 
 
@@ -4460,8 +4464,8 @@ def test_the_name_check_runs_after_the_gap_round(loop, runner):
 
     assert ran.status == 0, said(ran)
     judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
-    assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift",
-                      "/skillworks:spec-drift", NAME_CHECK]
+    assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift-check",
+                      "/skillworks:spec-drift-check", NAME_CHECK]
 
 
 def test_the_name_check_names_the_session_that_started_the_driver(loop, runner, monkeypatch):
@@ -4680,7 +4684,7 @@ def test_a_name_re_check_with_no_verdicts_list_stops_the_loop(loop):
 # --- the Nudge a check that recorded nothing is given ------------------------
 
 DRIFT_OWED = ("Spec #158 holds no drift report yet. Record the report you wrote with "
-              "tracker-publish drift 158 .spec-loop/158/drift-report.md")
+              "tracker-publish drift-check 158 .spec-loop/158/drift-report.md")
 NAMES_OWED = ("Spec #158 holds no Name report yet. Record the report you wrote with "
               "tracker-publish names 158 .spec-loop/158/names-report.md")
 
@@ -4700,8 +4704,8 @@ def test_a_drift_check_that_recorded_no_report_has_a_nudge_line_for_each_nudge(l
     drifted(loop, "Looks good to me.\n")
 
     assert unstamped_nudges(loop) == [
-        "NUDGE spec #158 drift        1 of 2, failed report-recorded",
-        "NUDGE spec #158 drift        2 of 2, failed report-recorded"]
+        "NUDGE spec #158 drift-check  1 of 2, failed report-recorded",
+        "NUDGE spec #158 drift-check  2 of 2, failed report-recorded"]
 
 
 def test_a_drift_check_that_recorded_no_report_still_stops_the_loop_after_the_last_nudge(loop):
@@ -4728,7 +4732,7 @@ def test_a_drift_check_nudge_resumes_the_check_s_own_session_in_its_worktree(loo
     drifted(loop, "Looks good to me.\n")
 
     made = [call for call in runner.made if call.args[0] == "claude"]
-    check = next(call for call in made if call.stdin.startswith("/skillworks:spec-drift"))
+    check = next(call for call in made if call.stdin.startswith("/skillworks:spec-drift-check"))
     nudges = [call for call in made if not call.stdin.startswith("/")]
     assert [(call.args[call.args.index("--resume") + 1], call.where) for call in nudges] == [
         (id_given(check.args), check.where)] * 2
@@ -4739,7 +4743,7 @@ def test_a_drift_check_that_records_its_report_after_a_nudge_lets_the_run_carry_
     sessions = given_sessions_that_report(loop)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.drift_report = "Looks good to me.\n"
-    sessions.when_nudged["spec-drift"] = lambda: setattr(tracker, "drift_report", drift_report())
+    sessions.when_nudged["spec-drift-check"] = lambda: setattr(tracker, "drift_report", drift_report())
 
     ran = loop.run(SPEC)
 
@@ -4751,8 +4755,8 @@ def test_a_drift_re_check_that_recorded_no_new_report_is_nudged(loop):
     drifted_in_a_round(loop, report, report)
 
     assert unstamped_nudges(loop) == [
-        "NUDGE spec #158 drift-gaps   1 of 2, failed new-report-recorded",
-        "NUDGE spec #158 drift-gaps   2 of 2, failed new-report-recorded"]
+        "NUDGE spec #158 drift-re-check 1 of 2, failed new-report-recorded",
+        "NUDGE spec #158 drift-re-check 2 of 2, failed new-report-recorded"]
 
 
 def test_a_drift_re_check_that_records_a_new_report_after_a_nudge_lets_the_run_carry_on(loop):
@@ -4762,7 +4766,7 @@ def test_a_drift_re_check_that_records_a_new_report_after_a_nudge_lets_the_run_c
     given_a_filed_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
     report = drift_report(S2="Missing")
     given_drift_reports(sessions, tracker, report, report)
-    sessions.when_nudged["spec-drift"] = lambda: setattr(
+    sessions.when_nudged["spec-drift-check"] = lambda: setattr(
         tracker, "drift_report", verdicts_alone(S2="Done"))
 
     ran = loop.run(SPEC)
@@ -4850,7 +4854,7 @@ def test_a_check_that_left_its_tree_changed_earns_no_nudge(loop):
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
     given_the_closed_ticket_landed_after_the_base(loop)
-    sessions.writes["spec-drift"] = ("stray.txt", "left behind\n")
+    sessions.writes["spec-drift-check"] = ("stray.txt", "left behind\n")
 
     loop.run(SPEC)
 
@@ -4861,7 +4865,7 @@ def test_a_check_that_exited_non_zero_earns_no_nudge(loop):
     given_the_tracker_holds(loop, ONE_CLOSED_TICKET)
     sessions = given_sessions_that_report(loop)
     given_the_closed_ticket_landed_after_the_base(loop)
-    sessions.refuses.add("spec-drift")
+    sessions.refuses.add("spec-drift-check")
 
     loop.run(SPEC)
 
@@ -4942,7 +4946,7 @@ def test_the_deepening_check_runs_after_the_last_ticket_lands_and_before_the_dri
 
     assert ran.status == 0, said(ran)
     judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
-    assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift", NAME_CHECK]
+    assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift-check", NAME_CHECK]
     log = loop.log()
     assert log.index("DONE  #168") < log.index("DEEPEN") < log.index("DRIFT")
 
@@ -4990,7 +4994,7 @@ def test_a_deepening_check_that_records_no_report_is_nudged_twice_then_stops_the
     assert stopped_after_the_last_nudge(loop)
     assert ("STOP  the Deepening check recorded no report on spec #158, so no deepening was "
             "read and the spec stays open.") in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_a_deepening_check_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
@@ -5007,7 +5011,7 @@ def test_a_deepening_report_with_no_strong_list_stops_the_loop_with_no_nudge(loo
     assert nudge_lines(loop) == []
     assert ("STOP  the Deepening report on spec #158 holds no ### Strong list, so no deepening "
             "was read and the spec stays open.") in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_a_blocked_deepening_check_stops_the_loop_at_once(loop, runner):
@@ -5023,7 +5027,7 @@ def test_a_blocked_deepening_check_stops_the_loop_at_once(loop, runner):
     assert nudge_lines(loop) == []
     assert ("STOP  spec #158 deepening-check is Blocked: BLOCKED docs/skillworks/deepening-check.md is "
             "missing.") in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_each_strong_line_is_filed_as_a_deepening_ticket_of_its_own(loop, runner):
@@ -5089,7 +5093,7 @@ def test_a_deepening_ticket_that_fails_stops_the_loop_before_the_drift_check(loo
 
     assert ran.status == 1
     assert "FAIL  #{} step finish".format(FIRST_DEEPENING) in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_the_list_at_the_end_names_each_deepening_ticket_the_run_built(loop):
@@ -5108,7 +5112,7 @@ def test_the_dry_run_names_the_deepening_check_before_the_drift_check(loop):
 
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
-    assert steps.index("deepening-check") < steps.index("drift")
+    assert steps.index("deepening-check") < steps.index("drift-check")
     assert steps[steps.index("deepening-check") + 1] == "deepening-ticket"
     assert planned_call(ran, "deepening-check") == (
         'deepening-check claude -p "/skillworks:spec-deepening-check 158 <base>" --session-id <new id>')
@@ -5148,7 +5152,7 @@ def test_the_simplify_check_runs_after_the_deepening_tickets_land_and_before_the
 
     assert ran.status == 0, said(ran)
     judged = [call[-1].split()[0] for call in session_calls(runner) if call[-1].startswith(JUDGES)]
-    assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift", NAME_CHECK]
+    assert judged == [DEEPENING_CHECK, SIMPLIFY_CHECK, "/skillworks:spec-drift-check", NAME_CHECK]
     log = loop.log()
     assert log.index("DONE  #" + FIRST_DEEPENING) < log.index("SIMPLIFY") < log.index("DRIFT")
 
@@ -5196,7 +5200,7 @@ def test_a_simplify_check_that_records_no_report_is_nudged_twice_then_stops_the_
     assert stopped_after_the_last_nudge(loop)
     assert ("STOP  the Simplify check recorded no report on spec #158, so no cleanup was read and "
             "the spec stays open.") in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_a_simplify_check_nudge_names_what_is_missing_and_the_command_that_records_it(loop, runner):
@@ -5213,7 +5217,7 @@ def test_a_simplify_report_with_no_findings_list_stops_the_loop_with_no_nudge(lo
     assert nudge_lines(loop) == []
     assert ("STOP  the Simplify report on spec #158 holds no ### Findings list, so no cleanup was "
             "read and the spec stays open.") in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_a_blocked_simplify_check_stops_the_loop_at_once(loop, runner):
@@ -5229,7 +5233,7 @@ def test_a_blocked_simplify_check_stops_the_loop_at_once(loop, runner):
     assert nudge_lines(loop) == []
     assert ("STOP  spec #158 simplify-check is Blocked: BLOCKED docs/skillworks/simplify-check.md is "
             "missing.") in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_every_finding_is_filed_in_one_simplify_ticket(loop, runner):
@@ -5272,7 +5276,7 @@ def test_a_simplify_ticket_that_fails_stops_the_loop_before_the_drift_check(loop
 
     assert ran.status == 1
     assert "FAIL  #{} step finish".format(SIMPLIFY_TICKET) in loop.log()
-    assert prompts_asking(runner, "/skillworks:spec-drift") == []
+    assert prompts_asking(runner, "/skillworks:spec-drift-check") == []
 
 
 def test_the_list_at_the_end_names_the_simplify_ticket_the_run_built(loop):
@@ -5303,8 +5307,8 @@ def test_the_dry_run_names_the_deepening_check_then_the_simplify_check_then_the_
 
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
-    assert steps[steps.index("deepening-check"):steps.index("drift") + 1] == [
-        "deepening-check", "deepening-ticket", "simplify-check", "simplify-ticket", "drift"]
+    assert steps[steps.index("deepening-check"):steps.index("drift-check") + 1] == [
+        "deepening-check", "deepening-ticket", "simplify-check", "simplify-ticket", "drift-check"]
     assert planned_call(ran, "simplify-check") == (
         'simplify-check claude -p "/skillworks:spec-simplify-check 158 <base>" --session-id <new id>')
     assert planned_checks(ran, "simplify-check") == "a Simplify report recorded, a Findings list"
@@ -5390,6 +5394,37 @@ def test_a_simplify_report_recorded_under_the_old_simplify_kind_stops_the_check_
     ran = loop.run(SPEC)
 
     assert (ran.status, prompts_asking(runner, SIMPLIFY_CHECK)) == (0, []), said(ran)
+
+
+# The report kind drift, now drift-check, wrote this same heading, so a report it recorded still counts.
+def test_a_drift_report_recorded_under_the_old_drift_kind_stops_the_check_from_running_again(loop, runner):
+    tracker, _ = rerun_holding(loop)
+    tracker.posted_before = [drift_report()]
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, prompts_asking(runner, "/skillworks:spec-drift-check")) == (0, []), said(ran)
+    assert ("DRIFT spec #158 already holds the drift report, so the check runs once and does not run "
+            "again") in loop.log()
+
+
+GAP_STILL_OPEN = (GAP_TICKET, "open", "TICKET: Build the Gaps the drift check found")
+
+
+def test_a_spec_that_holds_the_gap_ticket_builds_it_files_no_second_and_runs_only_the_re_check(
+        loop, runner):
+    tracker, sessions = rerun_holding(loop, GAP_STILL_OPEN)
+    given_a_filed_ticket_that_lands(loop, tracker, sessions, GAP_TICKET)
+    tracker.posted_before = [drift_report(S2="Missing. No code stops.")]
+    tracker.drift_report = verdicts_alone(S2="Done")
+
+    ran = loop.run(SPEC)
+
+    assert ran.status == 0, said(ran)
+    assert commands_asking(runner, "/skillworks:spec-drift-check") == [
+        "/skillworks:spec-drift-check {} {} S2".format(SPEC, base_of(loop))]
+    assert "DONE  #{}".format(GAP_TICKET) in loop.log()
+    assert not runner.built("issue create")
 
 
 def test_a_rerun_after_a_simplify_check_that_filed_nothing_runs_no_simplify_check(loop, runner):
@@ -5479,7 +5514,7 @@ def test_the_dry_run_shows_each_judge_that_is_off(loop):
 
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
-    assert steps[:steps.index("drift")][-2:] == ["deepening-check", "simplify-check"]
+    assert steps[:steps.index("drift-check")][-2:] == ["deepening-check", "simplify-check"]
     assert planned_call(ran, "deepening-check") == (
         "deepening-check off: docs/skillworks/deepening-check.md sets limit to 0")
     assert planned_call(ran, "simplify-check") == (
@@ -6131,7 +6166,7 @@ def test_the_check_stops_and_sessions_pages_say_the_checks_are_nudged_before_the
 
     assert [
         "the drift check recorded no report, after two Nudges." in said[0],
-        "a re-check that recorded no new report after two Nudges" in said[0],
+        "a drift re-check that recorded no new report after two Nudges" in said[0],
         "No report after two Nudges stops the loop" in said[1],
         "A Name re-check that recorded no new report is Nudged" in said[1],
         "A check that still recorded nothing after two Nudges stops the loop" in said[2],
@@ -6545,7 +6580,7 @@ def test_the_full_run_runs_once_and_last_after_the_drift_check_and_its_count(loo
     assert log.count("FULL  #168 landed in this run") == 1
     assert log.index("DRIFT") < log.index("COUNT") < log.index("FULL  #168 landed in this run")
     drift = next(at for at, call in enumerate(runner.made)
-                 if call.args[0] == "claude" and call.stdin.startswith("/skillworks:spec-drift"))
+                 if call.args[0] == "claude" and call.stdin.startswith("/skillworks:spec-drift-check"))
     full = next(at for at, call in enumerate(runner.made)
                 if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
     assert drift < full
@@ -6585,7 +6620,7 @@ def test_the_full_run_runs_once_and_last_after_the_gap_round(loop, runner):
     log = loop.log()
     assert log.index("DONE  #169") < log.index("COUNT the re-check") < log.index("FULL  #168, #169")
     re_check = max(at for at, call in enumerate(runner.made) if call.args[0] == "claude"
-                   and call.stdin.startswith("/skillworks:spec-drift"))
+                   and call.stdin.startswith("/skillworks:spec-drift-check"))
     full = next(at for at, call in enumerate(runner.made)
                 if call.args[0] == "dotnet" and call.where == full_run_tree(loop))
     assert re_check < full
@@ -7103,7 +7138,7 @@ def test_in_pr_mode_the_spec_is_closed_after_the_drift_check(pr_mode, runner):
     ran = pr_mode.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert call_at(runner, "/skillworks:spec-drift") < call_at(runner, "gh issue close {} ".format(SPEC))
+    assert call_at(runner, "/skillworks:spec-drift-check") < call_at(runner, "gh issue close {} ".format(SPEC))
     assert "CLOSE spec #{} is closed".format(SPEC) in pr_mode.log()
 
 
@@ -7145,7 +7180,7 @@ def test_with_a_branch_name_the_driver_touches_no_pull_request(loop, runner):
     ran = loop.run(SPEC)
 
     assert ran.status == 0, said(ran)
-    assert call_asking(runner, "/skillworks:spec-drift") is not None
+    assert call_asking(runner, "/skillworks:spec-drift-check") is not None
     assert pull_request_calls(runner) == []
     assert "READY" not in loop.log()
 
@@ -7379,7 +7414,8 @@ def test_the_step_list_holds_the_steps_of_the_dev_loop_in_order():
         ("cut", THE_SPEC_LOOP), ("build", THE_SPEC_LOOP), ("standards", THE_SPEC_LOOP),
         ("spec", THE_SPEC_LOOP), ("architecture", THE_SPEC_LOOP), ("fix", THE_SPEC_LOOP),
         ("sweep", THE_SPEC_LOOP), ("suite", THE_SPEC_LOOP), ("finish", THE_SPEC_LOOP),
-        ("deepening-check", THE_SPEC_LOOP), ("simplify-check", THE_SPEC_LOOP)]
+        ("deepening-check", THE_SPEC_LOOP), ("simplify-check", THE_SPEC_LOOP),
+        ("drift-check", THE_SPEC_LOOP)]
 
 
 def test_the_deepening_check_reads_its_own_file_the_tracker_and_the_domain_docs_on_demand():
@@ -7393,6 +7429,13 @@ def test_the_simplify_check_reads_its_own_file_and_the_tracker_on_demand():
     held = {step["name"]: step["on-demand"] for step in listed_steps()}
 
     assert held["simplify-check"] == ["docs/skillworks/simplify-check.md", "docs/skillworks/issue-tracker.md"]
+
+
+def test_the_drift_check_reads_the_loop_file_the_tracker_the_domain_docs_and_the_surfaces_on_demand():
+    held = {step["name"]: step["on-demand"] for step in listed_steps()}
+
+    assert held["drift-check"] == ["docs/skillworks/loop.json", "docs/skillworks/issue-tracker.md",
+                                   "docs/skillworks/domain.md", "docs/skillworks/surfaces.md"]
 
 
 def test_no_two_steps_in_the_step_list_share_a_name():
@@ -7622,7 +7665,7 @@ def test_the_cut_and_each_of_its_nudges_leave_a_journal_entry(loop):
 def test_the_drift_check_and_each_of_its_nudges_leave_a_journal_entry(loop):
     drifted(loop, "Looks good to me.\n")
 
-    assert attempts_of(loop, "drift") == [0, 1, 2]
+    assert attempts_of(loop, "drift-check") == [0, 1, 2]
 
 
 def test_the_name_check_and_each_of_its_nudges_leave_a_journal_entry(loop):

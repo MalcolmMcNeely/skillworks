@@ -321,7 +321,7 @@ REPORT = "## Drift report\n\n- Story 1: Done\n- Story 2: Missing\n"
 def test_a_drift_report_is_written_to_the_end_of_the_specs_file(writer):
     writer.spec()
 
-    ran = writer.run("drift", "1", writer.written("drift.md", REPORT))
+    ran = writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
 
     assert ran.status == 0, said(ran)
     assert ran.out == (writer.sidecar() / ".specs/0001-local-tracker/spec.md").as_posix() + "\n"
@@ -331,9 +331,9 @@ def test_a_drift_report_is_written_to_the_end_of_the_specs_file(writer):
 
 def test_a_second_drift_report_takes_the_place_of_the_first(writer):
     writer.spec()
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
 
-    ran = writer.run("drift", "1", writer.written("again.md", "## Drift report\n\nAll done.\n"))
+    ran = writer.run("drift-check", "1", writer.written("again.md", "## Drift report\n\nAll done.\n"))
 
     assert ran.status == 0, said(ran)
     text = writer.held(".specs/0001-local-tracker/spec.md")
@@ -342,10 +342,19 @@ def test_a_second_drift_report_takes_the_place_of_the_first(writer):
     assert writer.tracker("1").drift_report("1") == "All done."
 
 
+def test_the_old_drift_kind_is_turned_down_and_the_usage_names_drift_check(writer):
+    writer.spec()
+
+    ran = writer.run("drift", "1", writer.written("drift-check.md", REPORT))
+
+    assert (ran.status != 0, "tracker-publish drift-check <spec> <report-file>" in ran.err,
+            writer.tracker("1").drift_report("1")) == (True, True, "")
+
+
 def test_a_drift_report_without_its_heading_is_turned_down(writer):
     writer.spec()
 
-    ran = writer.run("drift", "1", writer.written("drift.md", "- Story 1: Done\n"))
+    ran = writer.run("drift-check", "1", writer.written("drift-check.md", "- Story 1: Done\n"))
 
     assert ran.status == 1
     assert "## Drift report" in ran.err
@@ -353,7 +362,7 @@ def test_a_drift_report_without_its_heading_is_turned_down(writer):
 
 
 def test_a_drift_report_for_a_spec_with_no_folder_is_turned_down(writer):
-    ran = writer.run("drift", "9", writer.written("drift.md", REPORT))
+    ran = writer.run("drift-check", "9", writer.written("drift-check.md", REPORT))
 
     assert ran.status == 1
     assert "holds no spec 9" in ran.err
@@ -364,7 +373,7 @@ NAMES = "## Name report\n\n### Renames\n\n- `Batch`: it now holds a whole spec.\
 
 def test_a_name_report_is_written_below_the_drift_report_and_each_reads_back_alone(writer):
     writer.spec()
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
 
     ran = writer.run("names", "1", writer.written("names.md", NAMES))
 
@@ -391,10 +400,10 @@ def test_a_second_name_report_takes_the_place_of_the_first(writer):
 # A new drift check starts a new round of judging, so the Name report it follows is out of date.
 def test_a_new_drift_report_takes_the_name_report_below_it_away(writer):
     writer.spec()
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
     writer.run("names", "1", writer.written("names.md", NAMES))
 
-    ran = writer.run("drift", "1", writer.written("again.md", "## Drift report\n\nAll done.\n"))
+    ran = writer.run("drift-check", "1", writer.written("again.md", "## Drift report\n\nAll done.\n"))
 
     assert ran.status == 0, said(ran)
     assert writer.tracker("1").drift_report("1") == "All done."
@@ -430,7 +439,7 @@ def test_a_deepening_report_is_written_to_the_end_of_the_specs_file_and_reads_ba
 def test_the_drift_and_name_reports_go_below_the_deepening_report_and_each_reads_back_alone(writer):
     writer.spec()
     writer.run("deepening-check", "1", writer.written("deepening-check.md", DEEPENING))
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
 
     ran = writer.run("names", "1", writer.written("names.md", NAMES))
 
@@ -446,7 +455,7 @@ def test_the_drift_and_name_reports_go_below_the_deepening_report_and_each_reads
 def test_a_second_deepening_report_takes_the_place_of_the_first_and_keeps_the_reports_below_it(writer):
     writer.spec()
     writer.run("deepening-check", "1", writer.written("deepening-check.md", DEEPENING))
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
     writer.run("names", "1", writer.written("names.md", NAMES))
 
     ran = writer.run("deepening-check", "1", writer.written("again.md", "## Deepening report\n\n### Strong\n\n- None\n"))
@@ -459,7 +468,7 @@ def test_a_second_deepening_report_takes_the_place_of_the_first_and_keeps_the_re
 # A spec whose drift check ran before it had a Deepening check gets its report above, where the readers look.
 def test_a_first_deepening_report_on_a_spec_that_holds_a_drift_report_goes_above_it(writer):
     writer.spec()
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
 
     ran = writer.run("deepening-check", "1", writer.written("deepening-check.md", DEEPENING))
 
@@ -506,7 +515,7 @@ def test_the_simplify_report_goes_below_the_deepening_report_and_above_the_drift
     writer.spec()
     writer.run("deepening-check", "1", writer.written("deepening-check.md", DEEPENING))
     writer.run("simplify-check", "1", writer.written("simplify-check.md", SIMPLIFY))
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
 
     ran = writer.run("names", "1", writer.written("names.md", NAMES))
 
@@ -517,7 +526,7 @@ def test_the_simplify_report_goes_below_the_deepening_report_and_above_the_drift
 
 def test_each_report_reads_back_alone_with_the_simplify_report_among_them(writer):
     writer.spec()
-    for command, report in (("deepening-check", DEEPENING), ("simplify-check", SIMPLIFY), ("drift", REPORT), ("names", NAMES)):
+    for command, report in (("deepening-check", DEEPENING), ("simplify-check", SIMPLIFY), ("drift-check", REPORT), ("names", NAMES)):
         writer.run(command, "1", writer.written(command + ".md", report))
     tracker = writer.tracker("1")
 
@@ -530,7 +539,7 @@ def test_each_report_reads_back_alone_with_the_simplify_report_among_them(writer
 def test_a_second_simplify_report_takes_the_place_of_the_first_and_keeps_the_reports_below_it(writer):
     writer.spec()
     writer.run("simplify-check", "1", writer.written("simplify-check.md", SIMPLIFY))
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
     writer.run("names", "1", writer.written("names.md", NAMES))
 
     ran = writer.run("simplify-check", "1", writer.written("again.md", "## Simplify report\n\n### Findings\n\n- None\n"))
@@ -554,7 +563,7 @@ def test_a_second_deepening_report_keeps_the_simplify_report_below_it(writer):
 
 def test_a_first_simplify_report_on_a_spec_that_holds_a_drift_report_goes_above_it(writer):
     writer.spec()
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
 
     ran = writer.run("simplify-check", "1", writer.written("simplify-check.md", SIMPLIFY))
 
@@ -587,7 +596,7 @@ def test_publishing_a_spec_its_tickets_and_its_reports_neither_pushes_nor_fetche
 
     writer.spec("local-tracker", BODY, SPEC_BRANCH)
     writer.tickets("1", three_tickets())
-    writer.run("drift", "1", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "1", writer.written("drift-check.md", REPORT))
     writer.run("names", "1", writer.written("names.md", NAMES))
 
     assert refs_of(writer.repo) == before
@@ -635,7 +644,7 @@ def github(runner):
 
 
 @pytest.mark.parametrize("command, report, read_back", [
-    ("drift", REPORT, GitHub.drift_report),
+    ("drift-check", REPORT, GitHub.drift_report),
     ("names", NAMES, GitHub.name_report),
     ("deepening-check", DEEPENING, GitHub.deepening_report),
     ("simplify-check", SIMPLIFY, GitHub.simplify_report),
@@ -651,9 +660,9 @@ def test_on_github_a_report_is_posted_as_a_comment_on_the_spec_and_its_url_print
 
 
 def test_on_github_a_second_report_is_a_second_comment_and_the_first_stays(writer, on_github):
-    writer.run("drift", "158", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "158", writer.written("drift-check.md", REPORT))
 
-    ran = writer.run("drift", "158", writer.written("again.md", "## Drift report\n\nAll done.\n"))
+    ran = writer.run("drift-check", "158", writer.written("again.md", "## Drift report\n\nAll done.\n"))
 
     assert ran.status == 0, said(ran)
     assert ran.out == "https://github.com/owner/repo/issues/158#issuecomment-2\n"
@@ -668,13 +677,13 @@ def test_on_github_a_second_report_is_a_second_comment_and_the_first_stays(write
 def test_on_github_an_end_judge_s_report_reads_back_after_a_later_judge_s_report(
         writer, on_github, command, report, read_back):
     writer.run(command, "158", writer.written("report.md", report))
-    writer.run("drift", "158", writer.written("drift.md", REPORT))
+    writer.run("drift-check", "158", writer.written("drift-check.md", REPORT))
 
     assert read_back(github(writer.runner), "158") == report.split("\n", 2)[2].strip("\n")
 
 
 @pytest.mark.parametrize("command, report, heading", [
-    ("drift", "- Story 1: Done\n", "## Drift report"),
+    ("drift-check", "- Story 1: Done\n", "## Drift report"),
     ("names", "### Renames\n\n- None\n", "## Name report"),
     ("deepening-check", "### Strong\n\n- None\n", "## Deepening report"),
     ("simplify-check", "### Findings\n\n- None\n", "## Simplify report"),
