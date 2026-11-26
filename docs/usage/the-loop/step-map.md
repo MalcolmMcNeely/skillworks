@@ -35,13 +35,16 @@ use with nobody watching.
 | `sweep` | the spec loop | `CLAUDE.md` and the rules | `docs/skillworks/rules/comments.md` | The keep and cut table in `comments.md`, and `doc-comments`. |
 | `suite` | the spec loop | Nothing. No Session runs. | `docs/skillworks/suite.json`, and each Dockerfile a check names as its `image` | Every check, its `ready`, its `ignores`, its `image`, and `runs`. |
 | `finish` | the spec loop | `CLAUDE.md` and the rules | `docs/skillworks/loop.json`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/suite.json` | Nothing. The loop reads back the two conventions in `issue-tracker.md`, so leave them as they are. |
+| `deepening-check` | the spec loop | `CLAUDE.md` and the rules | `docs/skillworks/deepening-check.md`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`. Then the glossary and the folder `adr-folder` names. | What counts as Strong, your checks, "Do not report" and `limit` in `deepening-check.md`. A `limit` of 0 turns the check off, and it is still a step. |
 
-The loop runs more than the twelve steps. What it runs besides them reads Steering too:
+A judge at the end of the loop that is a step works with `/skillworks:show-steering <step>` like any
+other step, such as `/skillworks:show-steering deepening-check`.
+
+The loop runs more than the thirteen steps. What it runs besides them reads Steering too:
 
 | What runs | Always loads | Loads on demand | What your team can change |
 |---|---|---|---|
 | Landing | `CLAUDE.md` and the rules, in the Session that resolves a conflict | `docs/skillworks/suite.json`, for the Suite again | The checks in `suite.json`. |
-| The Deepening check | `CLAUDE.md` and the rules | `docs/skillworks/deepening-check.md`, `docs/skillworks/issue-tracker.md`, `docs/skillworks/domain.md`. Then the glossary and the folder `adr-folder` names. | What counts as Strong, your checks, "Do not report" and `limit` in `deepening-check.md`. |
 | A deepening ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of one line of the Deepening report's `### Strong` list. |
 | The Simplify check | `CLAUDE.md` and the rules | `docs/skillworks/simplify-check.md`, `docs/skillworks/issue-tracker.md` | The four angles, your checks and "Do not report" in `simplify-check.md`. |
 | The simplify ticket | What each step above loads, since it is built through them | The same as each step | Nothing in a file. The script writes it from a fixed template, out of every line of the Simplify report's `### Findings` list. |

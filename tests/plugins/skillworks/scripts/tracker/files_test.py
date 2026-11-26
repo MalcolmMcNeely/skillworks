@@ -365,7 +365,7 @@ def given_sessions_that_finish(driver, runs=None, **finish):
     given_a_suite_that_passes(driver, runs)
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner, **finish)
-    sessions.then["spec-deepen"] = deepening(driver)
+    sessions.then["spec-deepening-check"] = deepening(driver)
     sessions.then["spec-simplify"] = simplifying(driver)
     sessions.then["spec-drift"] = drifting(driver)
     sessions.then["spec-names"] = naming(driver)
@@ -500,7 +500,7 @@ def given_sessions_that_finish_on_the_spec_branch(driver):
     git(driver.repo.work, "push", "--quiet", "origin", "main:" + SPEC_BRANCH)
     sessions = Sessions(driver.repo, driver.runner)
     sessions.then[FINISH] = finishing(driver.runner)
-    sessions.then["spec-deepen"] = deepening(driver)
+    sessions.then["spec-deepening-check"] = deepening(driver)
     sessions.then["spec-simplify"] = simplifying(driver)
     sessions.then["spec-drift"] = drifting(driver)
     sessions.then["spec-names"] = naming(driver)
@@ -572,7 +572,7 @@ DEEPENINGS = "## Deepening report\n\n### Strong\n\n- None\n"
 
 
 def deepening(driver, report=DEEPENINGS):
-    return recording(driver, "deepen", report)
+    return recording(driver, "deepening-check", report)
 
 
 NO_FINDINGS = "## Simplify report\n\n### Findings\n\n- None\n"

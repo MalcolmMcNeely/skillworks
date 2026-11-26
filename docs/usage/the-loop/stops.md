@@ -92,7 +92,7 @@ blocker, so that can happen only when a blocker opens after the pick.
 
 The Deepening check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md`, `domain.md` or `deepening-check.md`. It answers Blocked too when `spec-commits`
-or `tracker-publish deepen` refused twice, and its line names the command.
+or `tracker-publish deepening-check` refused twice, and its line names the command.
 
 The Simplify check answers Blocked for a missing file as well, when it is `loop.json`,
 `issue-tracker.md` or `simplify-check.md`. It answers Blocked too when `spec-commits` or

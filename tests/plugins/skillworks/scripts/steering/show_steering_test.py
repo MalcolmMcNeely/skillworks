@@ -15,20 +15,21 @@ STEP_LIST = (
     "Name a step to see the Steering it reads: show-steering <step>\n"
     "\n"
     "The Grill\n"
-    "  grill         Interviews you about the design, and writes the glossary and the ADRs as they settle.\n"
-    "  gate          Sums up the design and waits for your yes.\n"
-    "  write-spec    Writes the spec from the settled design and publishes it to the Tracker.\n"
+    "  grill            Interviews you about the design, and writes the glossary and the ADRs as they settle.\n"
+    "  gate             Sums up the design and waits for your yes.\n"
+    "  write-spec       Writes the spec from the settled design and publishes it to the Tracker.\n"
     "\n"
     "The spec loop\n"
-    "  cut           Breaks the spec into tickets, each with the tickets that block it.\n"
-    "  build         Builds one ticket test first, and leaves the change uncommitted.\n"
-    "  standards     Reviews the change against the rules and the review file for standards.\n"
-    "  spec          Reviews the change against what the ticket and its spec asked for.\n"
-    "  architecture  Reviews where the change sits, and runs the placement checks.\n"
-    "  fix           Fixes what the three reviews found, or a Suite that went red.\n"
-    "  sweep         Cuts the comments the comments rule does not keep.\n"
-    "  suite         Runs every check in the Suite file, with no Session.\n"
-    "  finish        Commits the ticket and closes it with its Closing note.\n"
+    "  cut              Breaks the spec into tickets, each with the tickets that block it.\n"
+    "  build            Builds one ticket test first, and leaves the change uncommitted.\n"
+    "  standards        Reviews the change against the rules and the review file for standards.\n"
+    "  spec             Reviews the change against what the ticket and its spec asked for.\n"
+    "  architecture     Reviews where the change sits, and runs the placement checks.\n"
+    "  fix              Fixes what the three reviews found, or a Suite that went red.\n"
+    "  sweep            Cuts the comments the comments rule does not keep.\n"
+    "  suite            Runs every check in the Suite file, with no Session.\n"
+    "  finish           Commits the ticket and closes it with its Closing note.\n"
+    "  deepening-check  Looks for modules the spec left shallow, and files a ticket to deepen each one.\n"
     "\n"
     "The step map: https://github.com/MalcolmMcNeely/skillworks/blob/main/docs/usage/the-loop/step-map.md\n"
 )
@@ -195,6 +196,41 @@ def test_a_missing_on_demand_file_is_marked_missing_with_exit_code_0(repo, home)
         "\n"
         "==> [repo] CLAUDE.md <==\n"
         "# Rules\n"
+    )), ran.err
+
+
+def test_the_deepening_check_shows_its_own_file_the_tracker_and_the_domain_docs_even_when_turned_off(repo, home):
+    write(repo.work, "CLAUDE.md", "# Rules\n")
+    write(repo.work, "docs/skillworks/deepening-check.md", "# Deepening\n\n```yaml\nlimit: 0\n```\n")
+    write(repo.work, "docs/skillworks/issue-tracker.md", "# Tracker\n")
+    write(repo.work, "docs/skillworks/domain.md", "# Domain\n")
+
+    ran = show("deepening-check", where=repo.work, home=home)
+
+    assert (ran.status, ran.out) == (0, (
+        "The Steering the deepening-check step reads:\n"
+        "\n"
+        "  always     [user]     ~/.claude/CLAUDE.md  missing\n"
+        "  always     [repo]     CLAUDE.md\n"
+        "  on demand  [repo]     docs/skillworks/deepening-check.md\n"
+        "  on demand  [repo]     docs/skillworks/issue-tracker.md\n"
+        "  on demand  [repo]     docs/skillworks/domain.md\n"
+        "\n"
+        "==> [repo] CLAUDE.md <==\n"
+        "# Rules\n"
+        "\n"
+        "==> [repo] docs/skillworks/deepening-check.md <==\n"
+        "# Deepening\n"
+        "\n"
+        "```yaml\n"
+        "limit: 0\n"
+        "```\n"
+        "\n"
+        "==> [repo] docs/skillworks/issue-tracker.md <==\n"
+        "# Tracker\n"
+        "\n"
+        "==> [repo] docs/skillworks/domain.md <==\n"
+        "# Domain\n"
     )), ran.err
 
 

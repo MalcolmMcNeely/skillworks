@@ -102,7 +102,7 @@ def drift_report(*extra, unrequested=(), **given):
 
 NAME_CHECK = "/skillworks:spec-names"
 
-DEEPENING_CHECK = "/skillworks:spec-deepen"
+DEEPENING_CHECK = "/skillworks:spec-deepening-check"
 
 SIMPLIFY_CHECK = "/skillworks:spec-simplify"
 
@@ -3523,7 +3523,7 @@ def test_the_dry_run_prints_each_set_of_words_beside_the_steps_that_get_it(loop)
 
     assert ("  each Session above is told, after its command\n"
             "    build, fix, cut:\n    " + TOLD_TO_BUILD + "\n"
-            "    standards, spec, architecture, sweep, deepen, simplify, drift, re-check, names, "
+            "    standards, spec, architecture, sweep, deepening-check, simplify, drift, re-check, names, "
             "name-re-check:\n"
             "    " + TOLD_TO_JUDGE + "\n"
             "    finish:\n    " + TOLD_TO_FINISH + "\n") in ran.out
@@ -4815,8 +4815,8 @@ def test_a_name_re_check_that_recorded_no_new_report_is_nudged(loop):
     renamed_in_a_round(loop, report, report)
 
     assert unstamped_nudges(loop) == [
-        "NUDGE spec #158 names-renames1 of 2, failed new-report-recorded",
-        "NUDGE spec #158 names-renames2 of 2, failed new-report-recorded"]
+        "NUDGE spec #158 names-renames 1 of 2, failed new-report-recorded",
+        "NUDGE spec #158 names-renames 2 of 2, failed new-report-recorded"]
 
 
 def test_a_name_re_check_that_records_a_new_report_after_a_nudge_lets_the_run_carry_on(loop):
@@ -4907,7 +4907,7 @@ FIRST_DEEPENING = "162"
 SECOND_DEEPENING = "163"
 
 DEEPENING_OWED = ("Spec #158 holds no Deepening report yet. Record the report you wrote with "
-                  "tracker-publish deepen 158 .spec-loop/158/deepening-report.md")
+                  "tracker-publish deepening-check 158 .spec-loop/158/deepening-report.md")
 
 
 def given_a_deepening_limit(loop, limit):
@@ -4968,7 +4968,7 @@ def test_the_deepening_check_s_log_names_its_scope_its_start_and_its_report(loop
     assert "DEEPEN looking for modules spec #158 left shallow." in log
     assert "DEEPEN the report is recorded on spec #158. Read it at" in log
     assert "DEEPEN no deepening is owed on spec #158" in log
-    assert (loop.records() / "deepening.md").read_text(encoding="utf-8") == (
+    assert (loop.records() / "deepening-check.md").read_text(encoding="utf-8") == (
         NO_STRONG.removeprefix("## Deepening report\n\n"))
 
 
@@ -4985,8 +4985,8 @@ def test_a_deepening_check_that_records_no_report_is_nudged_twice_then_stops_the
 
     assert ran.status == 1
     assert unstamped_nudges(loop) == [
-        "NUDGE spec #158 deepen       1 of 2, failed report-recorded",
-        "NUDGE spec #158 deepen       2 of 2, failed report-recorded"]
+        "NUDGE spec #158 deepening-check 1 of 2, failed report-recorded",
+        "NUDGE spec #158 deepening-check 2 of 2, failed report-recorded"]
     assert stopped_after_the_last_nudge(loop)
     assert ("STOP  the Deepening check recorded no report on spec #158, so no deepening was "
             "read and the spec stays open.") in loop.log()
@@ -5015,13 +5015,13 @@ def test_a_blocked_deepening_check_stops_the_loop_at_once(loop, runner):
     sessions = given_sessions_that_report(loop)
     given_the_closed_ticket_landed_after_the_base(loop)
     tracker.deepening_report = "Looks good to me.\n"
-    sessions.says["spec-deepen"] = "BLOCKED docs/skillworks/deepening-check.md is missing."
+    sessions.says["spec-deepening-check"] = "BLOCKED docs/skillworks/deepening-check.md is missing."
 
     ran = loop.run(SPEC)
 
     assert ran.status == 1
     assert nudge_lines(loop) == []
-    assert ("STOP  spec #158 deepen is Blocked: BLOCKED docs/skillworks/deepening-check.md is "
+    assert ("STOP  spec #158 deepening-check is Blocked: BLOCKED docs/skillworks/deepening-check.md is "
             "missing.") in loop.log()
     assert prompts_asking(runner, "/skillworks:spec-drift") == []
 
@@ -5108,12 +5108,12 @@ def test_the_dry_run_names_the_deepening_check_before_the_drift_check(loop):
 
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
-    assert steps.index("deepen") < steps.index("drift")
-    assert steps[steps.index("deepen") + 1] == "deepening-ticket"
-    assert planned_call(ran, "deepen") == (
-        'deepen       claude -p "/skillworks:spec-deepen 158 <base>" --session-id <new id>')
-    assert planned_checks(ran, "deepen") == "a Deepening report recorded, a Strong list"
-    assert planned_nudges(ran, "deepen") == "up to 2, on report-recorded"
+    assert steps.index("deepening-check") < steps.index("drift")
+    assert steps[steps.index("deepening-check") + 1] == "deepening-ticket"
+    assert planned_call(ran, "deepening-check") == (
+        'deepening-check claude -p "/skillworks:spec-deepening-check 158 <base>" --session-id <new id>')
+    assert planned_checks(ran, "deepening-check") == "a Deepening report recorded, a Strong list"
+    assert planned_nudges(ran, "deepening-check") == "up to 2, on report-recorded"
     assert ("one ticket under the spec for each line of the Strong list, up to the limit, each "
             "built through every step above") in planned_call(ran, "deepening-ticket")
 
@@ -5303,8 +5303,8 @@ def test_the_dry_run_names_the_deepening_check_then_the_simplify_check_then_the_
 
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
-    assert steps[steps.index("deepen"):steps.index("drift") + 1] == [
-        "deepen", "deepening-ticket", "simplify", "simplify-ticket", "drift"]
+    assert steps[steps.index("deepening-check"):steps.index("drift") + 1] == [
+        "deepening-check", "deepening-ticket", "simplify", "simplify-ticket", "drift"]
     assert planned_call(ran, "simplify") == (
         'simplify     claude -p "/skillworks:spec-simplify 158 <base>" --session-id <new id>')
     assert planned_checks(ran, "simplify") == "a Simplify report recorded, a Findings list"
@@ -5370,6 +5370,16 @@ def test_a_rerun_after_a_deepening_check_that_filed_nothing_runs_no_deepening_ch
     assert not runner.built("issue create")
     assert ("DEEPEN spec #158 already holds the Deepening report, so the check runs once and does "
             "not run again") in loop.log()
+
+
+# The report kind deepen, now deepening-check, wrote this same heading, so a report it recorded still counts.
+def test_a_deepening_report_recorded_under_the_old_deepen_kind_stops_the_check_from_running_again(loop, runner):
+    tracker, _ = rerun_holding(loop)
+    tracker.posted_before = ["## Deepening report\n\n### Strong\n\n- None\n"]
+
+    ran = loop.run(SPEC)
+
+    assert (ran.status, prompts_asking(runner, DEEPENING_CHECK)) == (0, []), said(ran)
 
 
 def test_a_rerun_after_a_simplify_check_that_filed_nothing_runs_no_simplify_check(loop, runner):
@@ -5459,9 +5469,9 @@ def test_the_dry_run_shows_each_judge_that_is_off(loop):
 
     assert ran.status == 0, said(ran)
     steps = planned_steps(ran)
-    assert steps[:steps.index("drift")][-2:] == ["deepen", "simplify"]
-    assert planned_call(ran, "deepen") == (
-        "deepen       off: docs/skillworks/deepening-check.md sets limit to 0")
+    assert steps[:steps.index("drift")][-2:] == ["deepening-check", "simplify"]
+    assert planned_call(ran, "deepening-check") == (
+        "deepening-check off: docs/skillworks/deepening-check.md sets limit to 0")
     assert planned_call(ran, "simplify") == (
         "simplify     off: docs/skillworks/simplify-check.md sets enabled to false")
 
@@ -7353,12 +7363,20 @@ def given_a_map_of(steps):
             "More.\n").format(MAP_MARK, rows)
 
 
-def test_the_step_list_holds_the_twelve_steps_of_the_dev_loop_in_order():
+def test_the_step_list_holds_the_steps_of_the_dev_loop_in_order():
     assert [(step["name"], step["stage"]) for step in listed_steps()] == [
         ("grill", THE_GRILL), ("gate", THE_GRILL), ("write-spec", THE_GRILL),
         ("cut", THE_SPEC_LOOP), ("build", THE_SPEC_LOOP), ("standards", THE_SPEC_LOOP),
         ("spec", THE_SPEC_LOOP), ("architecture", THE_SPEC_LOOP), ("fix", THE_SPEC_LOOP),
-        ("sweep", THE_SPEC_LOOP), ("suite", THE_SPEC_LOOP), ("finish", THE_SPEC_LOOP)]
+        ("sweep", THE_SPEC_LOOP), ("suite", THE_SPEC_LOOP), ("finish", THE_SPEC_LOOP),
+        ("deepening-check", THE_SPEC_LOOP)]
+
+
+def test_the_deepening_check_reads_its_own_file_the_tracker_and_the_domain_docs_on_demand():
+    held = {step["name"]: step["on-demand"] for step in listed_steps()}
+
+    assert held["deepening-check"] == ["docs/skillworks/deepening-check.md",
+                                       "docs/skillworks/issue-tracker.md", "docs/skillworks/domain.md"]
 
 
 def test_no_two_steps_in_the_step_list_share_a_name():
@@ -7382,9 +7400,10 @@ def test_every_on_demand_path_in_the_step_list_is_a_steering_path():
 
 
 def test_the_step_list_names_each_step_the_driver_runs_for_a_ticket_in_its_order():
-    after_the_tickets = [step["name"] for step in listed_steps()][4:]
+    names = [step["name"] for step in listed_steps()]
+    ticket_steps = names[names.index("build"):names.index("finish") + 1]
 
-    assert after_the_tickets == [step.name for step in spec_loop.STEPS]
+    assert ticket_steps == [step.name for step in spec_loop.STEPS]
 
 
 def test_the_step_map_agrees_with_the_step_list():

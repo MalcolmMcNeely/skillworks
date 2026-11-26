@@ -1501,7 +1501,7 @@ def test_the_grills_skill_is_named_grill_and_stays_hidden_from_claude():
     assert "disable-model-invocation: true\n" in front
 
 
-HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill", "show-steering", "spec-deepen",
+HIDDEN_SKILLS = ("implement", "to-tickets", "grill", "spec-loop", "context-backfill", "show-steering", "spec-deepening-check",
                  "spec-simplify")
 
 VISIBLE_SKILLS = ("tdd", "review-changes", "comment-sweep", "grilling", "domain-modeling", "codebase-design",
@@ -1799,7 +1799,7 @@ def test_the_files_tracker_docs_say_how_to_list_what_is_open_and_record_a_drift_
 
 @pytest.mark.parametrize("page", [SKILLS / "what-next" / "SKILL.md", SKILLS / "review-changes" / "spec.md",
                                   SKILLS / "spec-drift" / "SKILL.md", SKILLS / "spec-names" / "SKILL.md",
-                                  SKILLS / "spec-deepen" / "SKILL.md", SKILLS / "spec-simplify" / "SKILL.md"],
+                                  SKILLS / "spec-deepening-check" / "SKILL.md", SKILLS / "spec-simplify" / "SKILL.md"],
                          ids=lambda page: page.relative_to(SKILLS).as_posix())
 def test_a_skill_that_reads_the_tracker_reads_it_through_the_tracker_docs(page):
     text = page.read_text(encoding="utf-8")
@@ -1944,56 +1944,56 @@ def test_spec_names_ends_a_command_that_refuses_twice_on_the_blocked_line_under_
             for paragraph in refused] == [True]
 
 
-def test_spec_deepen_reads_only_the_spec_commits_and_judges_them_with_the_deep_module_vocabulary():
-    spec_deepen = skill_text("spec-deepen")
+def test_deepening_check_reads_only_the_spec_commits_and_judges_them_with_the_deep_module_vocabulary():
+    deepening_check = skill_text("spec-deepening-check")
 
-    assert "`/skillworks:spec-deepen 42 a1b2c3d`" in spec_deepen
-    assert "spec-commits <spec> <base>" in spec_deepen
-    assert 'Call the Skill tool with "skillworks:codebase-design"' in spec_deepen
-    assert "**The deletion test.**" in spec_deepen
-    assert "the folder `adr-folder` names" in spec_deepen
-
-
-def test_spec_deepen_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
-    spec_deepen = skill_text("spec-deepen")
-
-    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in spec_deepen
-    assert "CONTEXT.md" not in spec_deepen
+    assert "`/skillworks:spec-deepening-check 42 a1b2c3d`" in deepening_check
+    assert "spec-commits <spec> <base>" in deepening_check
+    assert 'Call the Skill tool with "skillworks:codebase-design"' in deepening_check
+    assert "**The deletion test.**" in deepening_check
+    assert "the folder `adr-folder` names" in deepening_check
 
 
-def test_spec_deepen_asks_nobody_writes_no_html_report_and_changes_no_code():
-    spec_deepen = skill_text("spec-deepen")
+def test_deepening_check_finds_the_glossary_through_the_domain_docs_and_names_no_glossary_file_itself():
+    deepening_check = skill_text("spec-deepening-check")
 
-    assert "**Ask nobody anything.**" in spec_deepen
-    assert "**Write no HTML report, and open nothing.**" in spec_deepen
-    assert "**Report only. Change no code.**" in spec_deepen
+    assert "`steering-file docs/skillworks/domain.md` says where this repo keeps its glossaries." in deepening_check
+    assert "CONTEXT.md" not in deepening_check
 
 
-def test_spec_deepen_gives_the_shape_of_the_deepening_report_the_loop_reads():
-    spec_deepen = skill_text("spec-deepen")
-    page = " ".join(spec_deepen.split())
+def test_deepening_check_asks_nobody_writes_no_html_report_and_changes_no_code():
+    deepening_check = skill_text("spec-deepening-check")
 
-    assert "The first line is `{}`.".format(DEEPENING_REPORT) in spec_deepen
-    assert "The `### Strong` list comes next." in spec_deepen
+    assert "**Ask nobody anything.**" in deepening_check
+    assert "**Write no HTML report, and open nothing.**" in deepening_check
+    assert "**Report only. Change no code.**" in deepening_check
+
+
+def test_deepening_check_gives_the_shape_of_the_deepening_report_the_loop_reads():
+    deepening_check = skill_text("spec-deepening-check")
+    page = " ".join(deepening_check.split())
+
+    assert "The first line is `{}`.".format(DEEPENING_REPORT) in deepening_check
+    assert "The `### Strong` list comes next." in deepening_check
     assert "With no Strong candidate to file, the list says `- None`." in page
-    assert "`### Over the limit`" in spec_deepen
-    assert "`### Worth exploring`" in spec_deepen
-    assert "`### Speculative`" in spec_deepen
-    assert "`### ADR`" in spec_deepen
+    assert "`### Over the limit`" in deepening_check
+    assert "`### Worth exploring`" in deepening_check
+    assert "`### Speculative`" in deepening_check
+    assert "`### ADR`" in deepening_check
     assert ("A candidate that goes against an ADR is never in the `### Strong` list, whatever its strength."
             in page)
-    assert "tracker-publish deepen <spec> .spec-loop/<spec>/deepening-report.md" in spec_deepen
+    assert "tracker-publish deepening-check <spec> .spec-loop/<spec>/deepening-report.md" in deepening_check
 
 
-def test_spec_deepen_lists_at_most_the_limit_its_steering_file_sets_strongest_first():
-    page = " ".join(skill_text("spec-deepen").split())
+def test_deepening_check_lists_at_most_the_limit_its_steering_file_sets_strongest_first():
+    page = " ".join(skill_text("spec-deepening-check").split())
 
     assert "at most `limit` lines, strongest first" in page
 
 
 @pytest.mark.parametrize("command", ["spec-commits", "tracker-publish"])
-def test_spec_deepen_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
-    refused = [paragraph for paragraph in skill_text("spec-deepen").split("\n\n")
+def test_deepening_check_ends_a_command_that_refuses_twice_on_the_blocked_line_under_the_loop(command):
+    refused = [paragraph for paragraph in skill_text("spec-deepening-check").split("\n\n")
                if "If `{}` refuses".format(command) in paragraph]
 
     assert [all(said in paragraph for said in ("run it again once", "If it refuses again, stop",
@@ -2777,10 +2777,10 @@ STEERING_READERS = {
     "file-placement.md": ["review-changes/architecture.md"],
     "testing.md": ["tdd/SKILL.md", "to-spec/SKILL.md", "codebase-design/DEEPENING.md"],
     "issue-tracker.md": ["implement/SKILL.md", "to-tickets/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
-                         "spec-deepen/SKILL.md", "spec-simplify/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md",
+                         "spec-deepening-check/SKILL.md", "spec-simplify/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md",
                          "review-changes/SKILL.md", "review-changes/standards.md", "review-changes/spec.md", "review-changes/architecture.md"],
     "domain.md": ["review-changes/standards.md", "review-changes/architecture.md", "spec-drift/SKILL.md",
-                  "spec-names/SKILL.md", "spec-deepen/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
+                  "spec-names/SKILL.md", "spec-deepening-check/SKILL.md", "to-tickets/SKILL.md", "tdd/SKILL.md",
                   "codebase-design/DESIGN-IT-TWICE.md", "context-backfill/SKILL.md",
                   "improve-codebase-architecture/SKILL.md"],
     "adr-format.md": ["domain-modeling/WRITING-ADRS.md", "context-backfill/SKILL.md",
@@ -2791,9 +2791,9 @@ STEERING_READERS = {
     "review-spec.md": ["review-changes/spec.md"],
     "suite.json": ["implement/SKILL.md", "architecture-tests/SKILL.md", "resolve-conflict/SKILL.md"],
     "loop.json": ["implement/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "spec-names/SKILL.md",
-                  "spec-deepen/SKILL.md", "spec-simplify/SKILL.md", "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
+                  "spec-deepening-check/SKILL.md", "spec-simplify/SKILL.md", "domain-modeling/SKILL.md", "spec-loop/SKILL.md", "what-next/SKILL.md", "review-changes/spec.md"],
     "surfaces.md": ["grill/SKILL.md", "to-spec/SKILL.md", "spec-drift/SKILL.md", "review-changes/spec.md"],
-    "deepening-check.md": ["spec-deepen/SKILL.md"],
+    "deepening-check.md": ["spec-deepening-check/SKILL.md"],
     "simplify-check.md": ["spec-simplify/SKILL.md"],
 }
 

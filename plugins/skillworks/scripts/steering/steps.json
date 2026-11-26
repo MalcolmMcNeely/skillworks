@@ -118,6 +118,16 @@
         "docs/skillworks/issue-tracker.md",
         "docs/skillworks/suite.json"
       ]
+    },
+    {
+      "name": "deepening-check",
+      "stage": "the spec loop",
+      "description": "Looks for modules the spec left shallow, and files a ticket to deepen each one.",
+      "on-demand": [
+        "docs/skillworks/deepening-check.md",
+        "docs/skillworks/issue-tracker.md",
+        "docs/skillworks/domain.md"
+      ]
     }
   ]
 }

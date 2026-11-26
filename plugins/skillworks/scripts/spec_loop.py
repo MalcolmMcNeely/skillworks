@@ -504,7 +504,7 @@ def told_plan():
     named = {told: [step.name for step in STEPS if step.told == told]
              for told in (TOLD_TO_BUILD, TOLD_TO_JUDGE, TOLD_TO_FINISH)}
     named[TOLD_TO_BUILD].append("cut")
-    named[TOLD_TO_JUDGE] += ["deepen", "simplify", "drift", "re-check", "names", "name-re-check"]
+    named[TOLD_TO_JUDGE] += ["deepening-check", "simplify", "drift", "re-check", "names", "name-re-check"]
     return "  each Session above is told, after its command\n" + "".join(
         "    {}:\n    {}\n".format(", ".join(steps), told) for told, steps in named.items())
 
@@ -1304,18 +1304,18 @@ class Loop:
         return listed(out.getvalue())
 
     def after_tickets_plan(self):
-        deepen = 'claude -p "{}spec-deepen {} <base>'.format(PLUGIN, self.spec)
+        deepening_check = 'claude -p "{}spec-deepening-check {} <base>'.format(PLUGIN, self.spec)
         simplify = 'claude -p "{}spec-simplify {} <base>'.format(PLUGIN, self.spec)
         drift = 'claude -p "{}spec-drift {} <base>'.format(PLUGIN, self.spec)
         names = 'claude -p "{}spec-names {} <base>'.format(PLUGIN, self.spec)
-        deepening = (plan_line("deepen", deepen + '" --session-id <new id>',
+        deepening = (plan_line("deepening-check", deepening_check + '" --session-id <new id>',
                                "a Deepening report recorded, a Strong list")
                      + nudges_line(REPORT_RECORDED)
                      + plan_line("deepening-ticket", "one ticket under the spec for each line of "
                                  "the Strong list, up to the limit, each built through every step "
                                  "above")
                      if self.deepening_limit() else
-                     plan_line("deepen", "off: " + DEEPENING_OFF))
+                     plan_line("deepening-check", "off: " + DEEPENING_OFF))
         simplifying = (plan_line("simplify", simplify + '" --session-id <new id>',
                                  "a Simplify report recorded, a Findings list")
                        + nudges_line(REPORT_RECORDED)
@@ -1683,7 +1683,7 @@ class Loop:
         nudge = 0
         while True:
             written(result, ran.out)
-            self.say_result("spec {} {:<13}".format(self.spec_named(), named), result)
+            self.say_result("spec {} {:<12} ".format(self.spec_named(), named), result)
             if ran.status != 0:
                 self.say("WARN  {} exited non-zero. See {}".format(what, reasons))
             blocked = blocked_line(result)
@@ -1700,7 +1700,7 @@ class Loop:
             if not failed or nudge == NUDGES:
                 break
             nudge += 1
-            self.say("NUDGE spec {} {:<13}{} of {}, failed {}".format(
+            self.say("NUDGE spec {} {:<12} {} of {}, failed {}".format(
                 self.spec_named(), named, nudge, NUDGES, recorded.check))
             ran = self.claude_p(recorded.owed + nudge_tail, "--resume", field(result, "session_id"))
             appended(reasons, ran.err)
@@ -1776,10 +1776,11 @@ class Loop:
         self.moved(DEEPENING_CHECK)
         self.say_scope("Deepening check", base)
         self.say("DEEPEN looking for modules spec {} left shallow.".format(self.spec_named()))
-        result = self.run_clean_session("deepen", "Deepening check", PLUGIN + "spec-deepen {} {}".format(
-            self.spec, base), Recorded(
+        result = self.run_clean_session(
+            "deepening-check", "Deepening check", PLUGIN + "spec-deepening-check {} {}".format(
+                self.spec, base), Recorded(
                 REPORT_RECORDED, lambda: self.tracker.deepening_report(self.spec),
-                self.report_owed("Deepening report", "deepen", "deepening-report.md")))
+                self.report_owed("Deepening report", "deepening-check", "deepening-report.md")))
 
         # Read back from the Tracker, so a finding the Session only said and never recorded is caught.
         report = self.tracker.deepening_report(self.spec)
@@ -1790,7 +1791,7 @@ class Loop:
         return report
 
     def read_deepening(self, report, limit):
-        held = self.log_dir / "deepening.md"
+        held = self.log_dir / "deepening-check.md"
         written(held, report + "\n")
         self.say("DEEPEN the report is recorded on spec {}. Read it at {}".format(
             self.spec_named(), held))

@@ -17,12 +17,12 @@ USAGE = (
     "       tracker-publish tickets <spec> <ticket-file>...\n"
     "       tracker-publish drift <spec> <report-file>\n"
     "       tracker-publish names <spec> <report-file>\n"
-    "       tracker-publish deepen <spec> <report-file>\n"
+    "       tracker-publish deepening-check <spec> <report-file>\n"
     "       tracker-publish simplify <spec> <report-file>\n"
 )
 
 REPORTS = {"drift": (DRIFT_REPORT, "drift report"), "names": (NAME_REPORT, "Name report"),
-           "deepen": (DEEPENING_REPORT, "Deepening report"), "simplify": (SIMPLIFY_REPORT, "Simplify report")}
+           "deepening-check": (DEEPENING_REPORT, "Deepening report"), "simplify": (SIMPLIFY_REPORT, "Simplify report")}
 
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 

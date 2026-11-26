@@ -129,7 +129,7 @@ drift check, then the Name check, then the full run:
 ```
 2026-09-28 18:24:10 SCOPE the Deepening check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 18:24:10 DEEPEN looking for modules spec #200 left shallow.
-2026-09-28 18:31:39 DEEPEN the report is recorded on spec #200. Read it at .spec-loop/200/deepening.md
+2026-09-28 18:31:39 DEEPEN the report is recorded on spec #200. Read it at .spec-loop/200/deepening-check.md
 2026-09-28 18:31:39 DEEPEN no deepening is owed on spec #200
 2026-09-28 18:31:40 SCOPE the Simplify check reads 23 commits of spec #200, and leaves out 4 other commits after the base commit
 2026-09-28 18:31:40 SIMPLIFY looking for code spec #200 made harder than it has to be.
@@ -285,12 +285,12 @@ Expect a long run. A ticket can take from half an hour to a few hours.
 ticket, its worktree and Job branch, every step's command and facts, the landing steps, and what comes
 after the last ticket: the Deepening check, the deepening tickets, the Simplify check, the simplify
 ticket, the drift check, the Gap round, the Name check, the rename ticket, the Name re-check and the
-full run. The Deepening check prints as the `deepen` step, with its call, `claude -p
-"/skillworks:spec-deepen <spec> <base>" --session-id <new id>`, and the `deepening-ticket` line says
+full run. The Deepening check prints as the `deepening-check` step, with its call, `claude -p
+"/skillworks:spec-deepening-check <spec> <base>" --session-id <new id>`, and the `deepening-ticket` line says
 each ticket it files is built through every step. The Simplify check prints as the `simplify` step,
 with its call, `claude -p "/skillworks:spec-simplify <spec> <base>" --session-id <new id>`, and the
 `simplify-ticket` line says the ticket it files is built through every step. A judge your team turned
-off prints as its step with `off:` and the setting that turns it off, such as `deepen       off:
+off prints as its step with `off:` and the setting that turns it off, such as `deepening-check off:
 docs/skillworks/deepening-check.md sets limit to 0`, and its ticket line is left out.
 Last, it prints the paragraph every Session is told after its command. A
 spec in another shape stops the dry run at its `ABORT` line, as it would stop a run. It starts no

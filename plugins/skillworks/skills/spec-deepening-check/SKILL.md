@@ -1,17 +1,17 @@
 ---
-name: spec-deepen
+name: spec-deepening-check
 argument-hint: "<spec> <base>"
 description: Read a spec's own commits for modules the work left shallow, judge each deepening opportunity by the deep-module vocabulary and the deletion test, and record the Deepening report with the spec.
 disable-model-invocation: true
 ---
 
-# Spec Deepen
+# Spec Deepening Check
 
 The Deepening check. `/skillworks:spec-loop` runs it once every ticket of the spec has Landed, before the drift check. It looks for one thing: modules the spec's work left shallow, and the refactors that would make them deep. The loop files each Strong candidate you list as a deepening ticket of its own, and builds it like any ticket.
 
 Two arguments: the spec's number, then the commit the loop started from. The number is the spec's issue number with the GitHub Tracker, or the number its folder under `.specs/` opens with, with the files Tracker.
 
-`/skillworks:spec-deepen 42 a1b2c3d`
+`/skillworks:spec-deepening-check 42 a1b2c3d`
 
 The base commit bounds the search for the spec's commits. If it was not passed, read `.spec-loop/<spec>/base.sha`. If that is missing too, stop and say so. Do not guess a base.
 
@@ -110,7 +110,7 @@ Record the report with the spec. Its first line is `## Deepening report`, with e
 Write it with the Write tool to `.spec-loop/<spec>/deepening-report.md` in this checkout, and record it with this one command, whichever the Tracker:
 
 ```bash
-tracker-publish deepen <spec> .spec-loop/<spec>/deepening-report.md
+tracker-publish deepening-check <spec> .spec-loop/<spec>/deepening-report.md
 ```
 
 Git ignores `.spec-loop/`, so the file leaves the checkout clean. Write nowhere outside the checkout, and make no temp folder: a loop Session has no permission for either, and nobody is there to give it.

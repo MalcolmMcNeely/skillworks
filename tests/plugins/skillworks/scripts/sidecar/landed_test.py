@@ -166,7 +166,7 @@ def given_tickets_that_land(steered, *tickets, trailer=True):
         sessions.then["implement {} --finish".format(reference)] = finishing(
             steered.runner, reference, *names, trailer=trailer)
     steered.put(files)
-    sessions.then["spec-deepen"] = recording(steered, "deepen", DEEPENINGS)
+    sessions.then["spec-deepening-check"] = recording(steered, "deepening-check", DEEPENINGS)
     sessions.then["spec-simplify"] = recording(steered, "simplify", NO_FINDINGS)
     sessions.then["spec-drift"] = recording(steered, "drift", DRIFT)
     sessions.then["spec-names"] = recording(steered, "names", NAMES)

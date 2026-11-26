@@ -13,7 +13,7 @@ as the drift check is. It changes no code. It records one report with the spec, 
 the report is a new comment on the spec issue. With the files Tracker the report goes at the end of
 the spec's `spec.md`, below any Deepening report and above any drift report. The script then reads the
 report back from the Tracker and keeps a copy at `.spec-loop/<spec>/simplify.md`, beside
-`deepening.md` and `drift.md`.
+`deepening-check.md` and `drift.md`.
 
 ## What it reads
 

@@ -6,12 +6,12 @@ Every ticket passed its own reviews. Nothing so far has looked at the spec's wor
 modules it left shallow.
 
 So when no open ticket is left, and before [the drift check](drift-check.md), the script opens one
-more worktree and runs `/skillworks:spec-deepen <spec> <base>` in a Fresh Session. The Session is told
+more worktree and runs `/skillworks:spec-deepening-check <spec> <base>` in a Fresh Session. The Session is told
 to run only Trials, as the drift check is. It changes no code. It records one report with the spec,
-under the heading `## Deepening report`, through `tracker-publish deepen` with either Tracker. With the
+under the heading `## Deepening report`, through `tracker-publish deepening-check` with either Tracker. With the
 GitHub Tracker the report is a new comment on the spec issue. With the files Tracker the report goes
 at the end of the spec's `spec.md`, above any drift report. The script then reads the report back from
-the Tracker and keeps a copy at `.spec-loop/<spec>/deepening.md`, beside `drift.md` and `names.md`.
+the Tracker and keeps a copy at `.spec-loop/<spec>/deepening-check.md`, beside `drift.md` and `names.md`.
 
 ## What it reads
 
@@ -76,7 +76,7 @@ is off does not run, and the log gets a `NOTE` line that says so:
 2026-09-28 18:24:10 NOTE  the Deepening check is off, because docs/skillworks/deepening-check.md sets limit to 0
 ```
 
-A dry run shows the `deepen` step as off, and shows no `deepening-ticket` line.
+A dry run shows the `deepening-check` step as off, and shows no `deepening-ticket` line.
 
 ## The deepening tickets
 
@@ -98,7 +98,7 @@ The loop stops, and the spec stays open, when:
 
 - the Deepening check recorded no report, after two Nudges. A check that recorded no report is
   Nudged first: the script resumes the same Session in its own worktree, and names what is missing and
-  the `tracker-publish deepen` command that records it;
+  the `tracker-publish deepening-check` command that records it;
 - the Deepening check began its last message with a `BLOCKED` line. The loop stops at once, with no
   Nudge;
 - the report has no `### Strong` list. No Nudge is sent;
